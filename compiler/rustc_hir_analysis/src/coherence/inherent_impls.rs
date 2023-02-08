@@ -197,7 +197,7 @@ impl<'tcx> InherentCollect<'tcx> {
             ty::Dynamic(data, ..) if data.principal_def_id().is_some() => {
                 self.check_def_id(item, self_ty, data.principal_def_id().unwrap());
             }
-            ty::Dynamic(..) => {
+            ty::Dynamic(..) | ty::DynStar(..) => {
                 struct_span_err!(
                     self.tcx.sess,
                     ty.span,

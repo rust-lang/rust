@@ -1013,7 +1013,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some(fluent::lint_improper_ctypes_slice_help),
             },
 
-            ty::Dynamic(..) => {
+            ty::Dynamic(..) | ty::DynStar(..) => {
                 FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_dyn, help: None }
             }
 

@@ -168,7 +168,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             ty::Alias(_, data) => {
                 stack.extend(data.substs.iter().rev());
             }
-            ty::Dynamic(obj, lt, _) => {
+            ty::Dynamic(obj, lt) | ty::DynStar(obj, lt) => {
                 stack.push(lt.into());
                 stack.extend(obj.iter().rev().flat_map(|predicate| {
                     let (substs, opt_ty) = match predicate.skip_binder() {

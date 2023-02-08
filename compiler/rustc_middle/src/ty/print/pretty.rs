@@ -710,16 +710,22 @@ pub trait PrettyPrinter<'tcx>:
             ty::Adt(def, substs) => {
                 p!(print_def_path(def.did(), substs));
             }
-            ty::Dynamic(data, r, repr) => {
+            ty::Dynamic(data, r) => {
                 let print_r = self.should_print_region(r);
                 if print_r {
                     p!("(");
                 }
-                match repr {
-                    ty::Dyn => p!("dyn "),
-                    ty::DynStar => p!("dyn* "),
+                p!("dyn ", print(data));
+                if print_r {
+                    p!(" + ", print(r), ")");
                 }
-                p!(print(data));
+            }
+            ty::DynStar(data, r) => {
+                let print_r = self.should_print_region(r);
+                if print_r {
+                    p!("(");
+                }
+                p!("dyn* ", print(data));
                 if print_r {
                     p!(" + ", print(r), ")");
                 }

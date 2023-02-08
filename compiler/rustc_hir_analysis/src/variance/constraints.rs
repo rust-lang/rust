@@ -256,7 +256,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_invariant_substs(current, data.substs, variance);
             }
 
-            ty::Dynamic(data, r, _) => {
+            ty::Dynamic(data, r) | ty::DynStar(data, r) => {
                 // The type `dyn Trait<T> +'a` is covariant w/r/t `'a`:
                 self.add_constraints_from_region(current, r, variance);
 

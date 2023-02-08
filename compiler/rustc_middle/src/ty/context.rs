@@ -67,7 +67,7 @@ use rustc_target::abi::{Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 use rustc_type_ir::sty::TyKind::*;
 use rustc_type_ir::WithCachedTypeInfo;
-use rustc_type_ir::{DynKind, InternAs, InternIteratorElement, Interner, TypeFlags};
+use rustc_type_ir::{InternAs, InternIteratorElement, Interner, TypeFlags};
 
 use std::any::Any;
 use std::borrow::Borrow;
@@ -1353,6 +1353,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     GeneratorWitness,
                     GeneratorWitnessMIR,
                     Dynamic,
+                    DynStar,
                     Closure,
                     Tuple,
                     Bound,
@@ -1819,9 +1820,17 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         obj: &'tcx List<PolyExistentialPredicate<'tcx>>,
         reg: ty::Region<'tcx>,
-        repr: DynKind,
     ) -> Ty<'tcx> {
-        self.mk_ty(Dynamic(obj, reg, repr))
+        self.mk_ty(Dynamic(obj, reg))
+    }
+
+    #[inline]
+    pub fn mk_dyn_star(
+        self,
+        obj: &'tcx List<PolyExistentialPredicate<'tcx>>,
+        reg: ty::Region<'tcx>,
+    ) -> Ty<'tcx> {
+        self.mk_ty(DynStar(obj, reg))
     }
 
     #[inline]

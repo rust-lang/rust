@@ -71,7 +71,7 @@ impl<'tcx> CastTy<'tcx> {
             ty::Adt(d, _) if d.is_enum() && d.is_payloadfree() => Some(CastTy::Int(IntTy::CEnum)),
             ty::RawPtr(mt) => Some(CastTy::Ptr(mt)),
             ty::FnPtr(..) => Some(CastTy::FnPtr),
-            ty::Dynamic(_, _, ty::DynStar) => Some(CastTy::DynStar),
+            ty::DynStar(..) => Some(CastTy::DynStar),
             _ => None,
         }
     }

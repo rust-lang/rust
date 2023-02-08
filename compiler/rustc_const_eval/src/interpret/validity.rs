@@ -592,6 +592,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             | ty::Slice(..)
             | ty::Str
             | ty::Dynamic(..)
+            | ty::DynStar(..)
             | ty::Closure(..)
             | ty::Generator(..) => Ok(false),
             // Some types only occur during typechecking, they have no layout.

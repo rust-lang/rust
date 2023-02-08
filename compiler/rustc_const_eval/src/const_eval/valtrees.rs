@@ -118,7 +118,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         // resolving their backing type, even if we can do that at const eval time. We may
         // hypothetically be able to allow `dyn StructuralEq` trait objects in the future,
         // but it is unclear if this is useful.
-        ty::Dynamic(..) => Err(ValTreeCreationError::NonSupportedType),
+        ty::Dynamic(..) | ty::DynStar(..) => Err(ValTreeCreationError::NonSupportedType),
 
         ty::Tuple(elem_tys) => {
             branches(ecx, place, elem_tys.len(), None, num_nodes)
@@ -319,7 +319,8 @@ pub fn valtree_to_const_value<'tcx>(
         | ty::RawPtr(_)
         | ty::Str
         | ty::Slice(_)
-        | ty::Dynamic(..) => bug!("no ValTree should have been created for type {:?}", ty.kind()),
+        | ty::Dynamic(..)
+        | ty::DynStar(..) => bug!("no ValTree should have been created for type {:?}", ty.kind()),
     }
 }
 

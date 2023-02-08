@@ -32,8 +32,8 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{SubstsRef, UserSubsts};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{
-    self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, Dynamic,
-    OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
+    self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, OpaqueHiddenType,
+    OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
 };
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{Span, DUMMY_SP};
@@ -1928,7 +1928,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         //
                         // apply them to prove that the source type `Foo` implements `Clone` etc
                         let (existential_predicates, region) = match ty.kind() {
-                            Dynamic(predicates, region, ty::DynStar) => (predicates, region),
+                            ty::DynStar(predicates, region) => (predicates, region),
                             _ => panic!("Invalid dyn* cast_ty"),
                         };
 

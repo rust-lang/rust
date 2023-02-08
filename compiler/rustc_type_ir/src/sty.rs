@@ -119,7 +119,17 @@ pub enum TyKind<I: Interner> {
     FnPtr(I::PolyFnSig),
 
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
-    Dynamic(I::ListBinderExistentialPredicate, I::Region, DynKind),
+    Dynamic(I::ListBinderExistentialPredicate, I::Region),
+
+    /// A dyn* trait object. Written as `dyn* for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
+    ///
+    /// These objects are represented as a `(data, vtable)` pair where `data` is a ptr-sized value
+    /// (often a pointer to the real object, but not necessarily) and `vtable` is a pointer to
+    /// the vtable for `dyn* Trait`. The representation is essentially the same as `&dyn Trait`
+    /// or similar, but the drop function included in the vtable is responsible for freeing the
+    /// underlying storage if needed. This allows a `dyn*` object to be treated agnostically with
+    /// respect to whether it points to a `Box<T>`, `Rc<T>`, etc.
+    DynStar(I::ListBinderExistentialPredicate, I::Region),
 
     /// The anonymous type of a closure. Used to represent the type of `|a| a`.
     ///
@@ -268,6 +278,7 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Infer(_) => 24,
         Error(_) => 25,
         GeneratorWitnessMIR(_, _) => 26,
+        DynStar(..) => 27,
     }
 }
 
@@ -289,7 +300,8 @@ impl<I: Interner> Clone for TyKind<I> {
             Ref(r, t, m) => Ref(r.clone(), t.clone(), m.clone()),
             FnDef(d, s) => FnDef(d.clone(), s.clone()),
             FnPtr(s) => FnPtr(s.clone()),
-            Dynamic(p, r, repr) => Dynamic(p.clone(), r.clone(), *repr),
+            Dynamic(p, r) => Dynamic(p.clone(), r.clone()),
+            DynStar(p, r) => DynStar(p.clone(), r.clone()),
             Closure(d, s) => Closure(d.clone(), s.clone()),
             Generator(d, s, m) => Generator(d.clone(), s.clone(), m.clone()),
             GeneratorWitness(g) => GeneratorWitness(g.clone()),
@@ -328,8 +340,8 @@ impl<I: Interner> PartialEq for TyKind<I> {
             (Ref(a_r, a_t, a_m), Ref(b_r, b_t, b_m)) => a_r == b_r && a_t == b_t && a_m == b_m,
             (FnDef(a_d, a_s), FnDef(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (FnPtr(a_s), FnPtr(b_s)) => a_s == b_s,
-            (Dynamic(a_p, a_r, a_repr), Dynamic(b_p, b_r, b_repr)) => {
-                a_p == b_p && a_r == b_r && a_repr == b_repr
+            (Dynamic(a_p, a_r), Dynamic(b_p, b_r)) | (DynStar(a_p, a_r), DynStar(b_p, b_r)) => {
+                a_p == b_p && a_r == b_r
             }
             (Closure(a_d, a_s), Closure(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Generator(a_d, a_s, a_m), Generator(b_d, b_s, b_m)) => {
@@ -388,8 +400,11 @@ impl<I: Interner> Ord for TyKind<I> {
                 }
                 (FnDef(a_d, a_s), FnDef(b_d, b_s)) => a_d.cmp(b_d).then_with(|| a_s.cmp(b_s)),
                 (FnPtr(a_s), FnPtr(b_s)) => a_s.cmp(b_s),
-                (Dynamic(a_p, a_r, a_repr), Dynamic(b_p, b_r, b_repr)) => {
-                    a_p.cmp(b_p).then_with(|| a_r.cmp(b_r).then_with(|| a_repr.cmp(b_repr)))
+                (Dynamic(a_p, a_r), Dynamic(b_p, b_r)) => {
+                    a_p.cmp(b_p).then_with(|| a_r.cmp(b_r))
+                }
+                (DynStar(a_p, a_r), DynStar(b_p, b_r)) => {
+                    a_p.cmp(b_p).then_with(|| a_r.cmp(b_r))
                 }
                 (Closure(a_p, a_s), Closure(b_p, b_s)) => a_p.cmp(b_p).then_with(|| a_s.cmp(b_s)),
                 (Generator(a_d, a_s, a_m), Generator(b_d, b_s, b_m)) => {
@@ -449,10 +464,9 @@ impl<I: Interner> hash::Hash for TyKind<I> {
                 s.hash(state)
             }
             FnPtr(s) => s.hash(state),
-            Dynamic(p, r, repr) => {
+            Dynamic(p, r) | DynStar(p, r) => {
                 p.hash(state);
-                r.hash(state);
-                repr.hash(state)
+                r.hash(state)
             }
             Closure(d, s) => {
                 d.hash(state);
@@ -504,7 +518,8 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Ref(r, t, m) => f.debug_tuple_field3_finish("Ref", r, t, m),
             FnDef(d, s) => f.debug_tuple_field2_finish("FnDef", d, s),
             FnPtr(s) => f.debug_tuple_field1_finish("FnPtr", s),
-            Dynamic(p, r, repr) => f.debug_tuple_field3_finish("Dynamic", p, r, repr),
+            Dynamic(p, r) => f.debug_tuple_field2_finish("Dynamic", p, r),
+            DynStar(p, r) => f.debug_tuple_field2_finish("DynStar", p, r),
             Closure(d, s) => f.debug_tuple_field2_finish("Closure", d, s),
             Generator(d, s, m) => f.debug_tuple_field3_finish("Generator", d, s, m),
             GeneratorWitness(g) => f.debug_tuple_field1_finish("GeneratorWitness", g),
@@ -590,10 +605,9 @@ where
             FnPtr(polyfnsig) => e.emit_enum_variant(disc, |e| {
                 polyfnsig.encode(e);
             }),
-            Dynamic(l, r, repr) => e.emit_enum_variant(disc, |e| {
+            Dynamic(l, r) | DynStar(l, r) => e.emit_enum_variant(disc, |e| {
                 l.encode(e);
-                r.encode(e);
-                repr.encode(e);
+                r.encode(e)
             }),
             Closure(def_id, substs) => e.emit_enum_variant(disc, |e| {
                 def_id.encode(e);
@@ -681,7 +695,7 @@ where
             11 => Ref(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
             12 => FnDef(Decodable::decode(d), Decodable::decode(d)),
             13 => FnPtr(Decodable::decode(d)),
-            14 => Dynamic(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
+            14 => Dynamic(Decodable::decode(d), Decodable::decode(d)),
             15 => Closure(Decodable::decode(d), Decodable::decode(d)),
             16 => Generator(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
             17 => GeneratorWitness(Decodable::decode(d)),
@@ -694,6 +708,7 @@ where
             24 => Infer(Decodable::decode(d)),
             25 => Error(Decodable::decode(d)),
             26 => GeneratorWitnessMIR(Decodable::decode(d), Decodable::decode(d)),
+            27 => DynStar(Decodable::decode(d), Decodable::decode(d)),
             _ => panic!(
                 "{}",
                 format!(
@@ -778,10 +793,9 @@ where
             FnPtr(polyfnsig) => {
                 polyfnsig.hash_stable(__hcx, __hasher);
             }
-            Dynamic(l, r, repr) => {
+            Dynamic(l, r) | DynStar(l, r) => {
                 l.hash_stable(__hcx, __hasher);
                 r.hash_stable(__hcx, __hasher);
-                repr.hash_stable(__hcx, __hasher);
             }
             Closure(def_id, substs) => {
                 def_id.hash_stable(__hcx, __hasher);

@@ -40,6 +40,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 use rustc_span::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_target::abi::{Align, Size, VariantIdx};
+use rustc_type_ir::DynKind;
 
 use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
@@ -150,10 +151,8 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (&ty::Array(_, len), &ty::Slice(_)) => {
             cx.const_usize(len.eval_usize(cx.tcx(), ty::ParamEnv::reveal_all()))
         }
-        (
-            &ty::Dynamic(ref data_a, _, src_dyn_kind),
-            &ty::Dynamic(ref data_b, _, target_dyn_kind),
-        ) if src_dyn_kind == target_dyn_kind => {
+        (&ty::Dynamic(ref data_a, _), &ty::Dynamic(ref data_b, _))
+        | (&ty::DynStar(ref data_a, _), &ty::DynStar(ref data_b, _)) => {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
@@ -169,7 +168,15 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             if let Some(entry_idx) = vptr_entry_idx {
                 let ptr_ty = cx.type_i8p();
                 let ptr_align = cx.tcx().data_layout.pointer_align.abi;
-                let vtable_ptr_ty = vtable_ptr_ty(cx, target, target_dyn_kind);
+                let vtable_ptr_ty = vtable_ptr_ty(
+                    cx,
+                    target,
+                    match target.kind() {
+                        ty::Dynamic(..) => DynKind::Dyn,
+                        ty::DynStar(..) => DynKind::DynStar,
+                        _ => unreachable!(),
+                    },
+                );
                 let llvtable = bx.pointercast(old_info, bx.type_ptr_to(ptr_ty));
                 let gep = bx.inbounds_gep(
                     ptr_ty,
@@ -185,8 +192,12 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 old_info
             }
         }
-        (_, &ty::Dynamic(ref data, _, target_dyn_kind)) => {
-            let vtable_ptr_ty = vtable_ptr_ty(cx, target, target_dyn_kind);
+        (_, &ty::Dynamic(ref data, _)) => {
+            let vtable_ptr_ty = vtable_ptr_ty(cx, target, DynKind::Dyn);
+            cx.const_ptrcast(meth::get_vtable(cx, source, data.principal()), vtable_ptr_ty)
+        }
+        (_, &ty::DynStar(ref data, _)) => {
+            let vtable_ptr_ty = vtable_ptr_ty(cx, target, DynKind::DynStar);
             cx.const_ptrcast(meth::get_vtable(cx, source, data.principal()), vtable_ptr_ty)
         }
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
@@ -197,14 +208,15 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 fn vtable_ptr_ty<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
     target: Ty<'tcx>,
+    // FIXME(dyn-star): This should be only place we need a `DynKind`, so move its definition here.
     kind: ty::DynKind,
 ) -> <Cx as BackendTypes>::Type {
     cx.scalar_pair_element_backend_type(
         cx.layout_of(match kind {
             // vtable is the second field of `*mut dyn Trait`
-            ty::Dyn => cx.tcx().mk_mut_ptr(target),
+            DynKind::Dyn => cx.tcx().mk_mut_ptr(target),
             // vtable is the second field of `dyn* Trait`
-            ty::DynStar => target,
+            DynKind::DynStar => target,
         }),
         1,
         true,
@@ -269,10 +281,7 @@ pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     old_info: Option<Bx::Value>,
 ) -> (Bx::Value, Bx::Value) {
     debug!("cast_to_dyn_star: {:?} => {:?}", src_ty_and_layout.ty, dst_ty);
-    assert!(
-        matches!(dst_ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
-        "destination type must be a dyn*"
-    );
+    assert!(matches!(dst_ty.kind(), ty::DynStar(_, _)), "destination type must be a dyn*");
     // FIXME(dyn-star): this is probably not the best way to check if this is
     // a pointer, and really we should ensure that the value is a suitable
     // pointer earlier in the compilation process.

@@ -582,7 +582,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::Dynamic(ref data_a, _, ty::Dyn), &ty::Dynamic(ref data_b, _, ty::Dyn)) => {
+            (&ty::Dynamic(ref data_a, _), &ty::Dynamic(ref data_b, _)) => {
                 // Upcast coercions permit several things:
                 //
                 // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
@@ -631,7 +631,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(_, _, ty::Dyn)) => {
+            (_, &ty::Dynamic(_, _)) => {
                 candidates.vec.push(BuiltinUnsizeCandidate);
             }
 
@@ -738,6 +738,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self_ty.skip_binder().kind() {
             ty::Alias(..)
             | ty::Dynamic(..)
+            | ty::DynStar(..)
             | ty::Error(_)
             | ty::Bound(..)
             | ty::Param(_)
@@ -823,7 +824,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
-            | ty::Dynamic(_, _, _)
+            | ty::Dynamic(..)
+            | ty::DynStar(..)
             | ty::Closure(_, _)
             | ty::Generator(_, _, _)
             | ty::GeneratorWitness(_)

@@ -186,7 +186,7 @@ impl FlagComputation {
                 self.add_substs(substs);
             }
 
-            &ty::Dynamic(obj, r, _) => {
+            &ty::Dynamic(obj, r) | &ty::DynStar(obj, r) => {
                 for predicate in obj.iter() {
                     self.bound_computation(predicate, |computation, predicate| match predicate {
                         ty::ExistentialPredicate::Trait(tr) => computation.add_substs(tr.substs),

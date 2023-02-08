@@ -1745,7 +1745,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             );
             Type::Path { path }
         }
-        ty::Dynamic(obj, ref reg, _) => {
+        ty::Dynamic(obj, ref reg) | ty::DynStar(obj, ref reg) => {
             // HACK: pick the first `did` as the `did` of the trait object. Someone
             // might want to implement "native" support for marker-trait-only
             // trait objects.

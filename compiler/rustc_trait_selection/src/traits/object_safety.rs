@@ -662,7 +662,7 @@ fn object_ty_for_trait<'tcx>(
         .mk_poly_existential_predicates(iter::once(trait_predicate).chain(elaborated_predicates));
     debug!(?existential_predicates);
 
-    tcx.mk_dynamic(existential_predicates, lifetime, ty::Dyn)
+    tcx.mk_dynamic(existential_predicates, lifetime)
 }
 
 /// Checks the method's receiver (the `self` argument) can be dispatched on when `Self` is a

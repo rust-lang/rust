@@ -264,7 +264,7 @@ fn dtorck_constraint_for_ty<'tcx>(
 
         // Objects must be alive in order for their destructor
         // to be called.
-        ty::Dynamic(..) => {
+        ty::Dynamic(..) | ty::DynStar(..) => {
             constraints.outlives.push(ty.into());
         }
 

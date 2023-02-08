@@ -273,16 +273,19 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     })
                     .map(|inner| MustUsePath::Opaque(Box::new(inner)))
                 }
-                ty::Dynamic(binders, _, _) => binders.iter().find_map(|predicate| {
-                    if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
-                    {
-                        let def_id = trait_ref.def_id;
-                        is_def_must_use(cx, def_id, span)
-                            .map(|inner| MustUsePath::TraitObject(Box::new(inner)))
-                    } else {
-                        None
-                    }
-                }),
+                ty::Dynamic(binders, _) | ty::DynStar(binders, _) => {
+                    binders.iter().find_map(|predicate| {
+                        if let ty::ExistentialPredicate::Trait(ref trait_ref) =
+                            predicate.skip_binder()
+                        {
+                            let def_id = trait_ref.def_id;
+                            is_def_must_use(cx, def_id, span)
+                                .map(|inner| MustUsePath::TraitObject(Box::new(inner)))
+                        } else {
+                            None
+                        }
+                    })
+                }
                 ty::Tuple(tys) => {
                     let elem_exprs = if let hir::ExprKind::Tup(elem_exprs) = expr.kind {
                         debug_assert_eq!(elem_exprs.len(), tys.len());

@@ -330,11 +330,12 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                     )),
                 })
             }
-            // FIXME(dyn-star): handle the dynamic kind (dyn or dyn*)
-            ty::Dynamic(predicates, region, _kind) => chalk_ir::TyKind::Dyn(chalk_ir::DynTy {
-                bounds: predicates.lower_into(interner),
-                lifetime: region.lower_into(interner),
-            }),
+            ty::Dynamic(predicates, region) | ty::DynStar(predicates, region) => {
+                chalk_ir::TyKind::Dyn(chalk_ir::DynTy {
+                    bounds: predicates.lower_into(interner),
+                    lifetime: region.lower_into(interner),
+                })
+            }
             ty::Closure(def_id, substs) => {
                 chalk_ir::TyKind::Closure(chalk_ir::ClosureId(def_id), substs.lower_into(interner))
             }

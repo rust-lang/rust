@@ -544,6 +544,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             | ty::GeneratorWitness(_)
             | ty::GeneratorWitnessMIR(..)
             | ty::Dynamic(..)
+            | ty::DynStar(..)
             | ty::Param(_)
             | ty::Bound(..)
             | ty::Placeholder(_)

@@ -192,7 +192,7 @@ fn layout_of_uncached<'tcx>(
             tcx.intern_layout(cx.scalar_pair(data_ptr, metadata))
         }
 
-        ty::Dynamic(_, _, ty::DynStar) => {
+        ty::DynStar(_, _) => {
             let mut data = scalar_unit(Int(dl.ptr_sized_integer(), false));
             data.valid_range_mut().start = 0;
             let mut vtable = scalar_unit(Pointer(AddressSpace::DATA));
@@ -252,7 +252,7 @@ fn layout_of_uncached<'tcx>(
 
         // Odd unit types.
         ty::FnDef(..) => univariant(&[], &ReprOptions::default(), StructKind::AlwaysSized)?,
-        ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => {
+        ty::Dynamic(_, _) | ty::Foreign(..) => {
             let mut unit = univariant_uninterned(
                 cx,
                 ty,

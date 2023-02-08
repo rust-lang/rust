@@ -99,12 +99,14 @@ pub fn simplify_type<'tcx>(
         ty::Array(..) => Some(ArraySimplifiedType),
         ty::Slice(..) => Some(SliceSimplifiedType),
         ty::RawPtr(ptr) => Some(PtrSimplifiedType(ptr.mutbl)),
-        ty::Dynamic(trait_info, ..) => match trait_info.principal_def_id() {
-            Some(principal_def_id) if !tcx.trait_is_auto(principal_def_id) => {
-                Some(TraitSimplifiedType(principal_def_id))
+        ty::Dynamic(trait_info, ..) | ty::DynStar(trait_info, ..) => {
+            match trait_info.principal_def_id() {
+                Some(principal_def_id) if !tcx.trait_is_auto(principal_def_id) => {
+                    Some(TraitSimplifiedType(principal_def_id))
+                }
+                _ => Some(MarkerTraitObjectSimplifiedType),
             }
-            _ => Some(MarkerTraitObjectSimplifiedType),
-        },
+        }
         ty::Ref(_, _, mutbl) => Some(RefSimplifiedType(mutbl)),
         ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(ClosureSimplifiedType(def_id)),
         ty::Generator(def_id, _, _) => Some(GeneratorSimplifiedType(def_id)),
@@ -202,6 +204,7 @@ impl DeepRejectCtxt {
             | ty::Slice(..)
             | ty::RawPtr(..)
             | ty::Dynamic(..)
+            | ty::DynStar(..)
             | ty::Ref(..)
             | ty::Never
             | ty::Tuple(..)
@@ -268,6 +271,14 @@ impl DeepRejectCtxt {
                 // compare their length. But considering that the relevant `Relate` impl
                 // actually sorts and deduplicates these, that doesn't work.
                 matches!(k, ty::Dynamic(impl_preds, ..) if
+                    obl_preds.principal_def_id() == impl_preds.principal_def_id()
+                )
+            }
+            ty::DynStar(obl_preds, ..) => {
+                // Ideally we would walk the existential predicates here or at least
+                // compare their length. But considering that the relevant `Relate` impl
+                // actually sorts and deduplicates these, that doesn't work.
+                matches!(k, ty::DynStar(impl_preds, ..) if
                     obl_preds.principal_def_id() == impl_preds.principal_def_id()
                 )
             }

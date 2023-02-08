@@ -1964,12 +1964,12 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_trait(self) -> bool {
-        matches!(self.kind(), Dynamic(_, _, ty::Dyn))
+        matches!(self.kind(), Dynamic(..))
     }
 
     #[inline]
     pub fn is_dyn_star(self) -> bool {
-        matches!(self.kind(), Dynamic(_, _, ty::DynStar))
+        matches!(self.kind(), DynStar(..))
     }
 
     #[inline]
@@ -2211,6 +2211,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Dynamic(..)
+            | ty::DynStar(..)
             | ty::Closure(..)
             | ty::GeneratorWitness(..)
             | ty::GeneratorWitnessMIR(..)
@@ -2264,7 +2265,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Tuple(..) => (tcx.types.unit, false),
 
             ty::Str | ty::Slice(_) => (tcx.types.usize, false),
-            ty::Dynamic(..) => {
+            ty::Dynamic(..) | ty::DynStar(..)=> {
                 let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
                 (tcx.bound_type_of(dyn_metadata).subst(tcx, &[tail.into()]), false)
             },
@@ -2339,6 +2340,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::GeneratorWitnessMIR(..)
             | ty::Array(..)
             | ty::Closure(..)
+            | ty::DynStar(..)
             | ty::Never
             | ty::Error(_) => true,
 
@@ -2373,7 +2375,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Bool | ty::Char | ty::Never => true,
 
             // These aren't even `Clone`
-            ty::Str | ty::Slice(..) | ty::Foreign(..) | ty::Dynamic(..) => false,
+            ty::Str | ty::Slice(..) | ty::Foreign(..) | ty::Dynamic(..) | ty::DynStar(..) => false,
 
             ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
             | ty::Int(..)

@@ -214,7 +214,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::Ref(r_b, _, mutbl_b) => {
                 return self.coerce_borrowed_pointer(a, b, r_b, mutbl_b);
             }
-            ty::Dynamic(predicates, region, ty::DynStar) if self.tcx.features().dyn_star => {
+            ty::DynStar(predicates, region) if self.tcx.features().dyn_star => {
                 return self.coerce_dyn_star(a, b, predicates, region);
             }
             _ => {}
@@ -727,8 +727,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return Err(TypeError::Mismatch);
         }
 
-        if let ty::Dynamic(a_data, _, _) = a.kind()
-            && let ty::Dynamic(b_data, _, _) = b.kind()
+        if let ty::Dynamic(a_data, _) | ty::DynStar(a_data, _) = a.kind()
+            && let ty::Dynamic(b_data, _) | ty::DynStar(b_data, _) = b.kind()
             && a_data.principal_def_id() == b_data.principal_def_id()
         {
             return self.unify_and(a, b, |_| vec![]);

@@ -267,14 +267,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx.infcx.probe(|_| {
             match (a_ty.kind(), b_ty.kind()) {
                 // Trait upcasting, or `dyn Trait + Auto + 'a` -> `dyn Trait + 'b`
-                (&ty::Dynamic(_, _, ty::Dyn), &ty::Dynamic(_, _, ty::Dyn)) => {
+                (&ty::Dynamic(_, _), &ty::Dynamic(_, _)) => {
                     // Dyn upcasting is handled separately, since due to upcasting,
                     // when there are two supertraits that differ by substs, we
                     // may return more than one query response.
                     return Err(NoSolution);
                 }
                 // `T` -> `dyn Trait` unsizing
-                (_, &ty::Dynamic(data, region, ty::Dyn)) => {
+                (_, &ty::Dynamic(data, region)) => {
                     // Can only unsize to an object-safe type
                     if data
                         .principal_def_id()
@@ -385,10 +385,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         let a_ty = goal.predicate.self_ty();
         let b_ty = goal.predicate.trait_ref.substs.type_at(1);
-        let ty::Dynamic(a_data, a_region, ty::Dyn) = *a_ty.kind() else {
+        let ty::Dynamic(a_data, a_region) = *a_ty.kind() else {
             return vec![];
         };
-        let ty::Dynamic(b_data, b_region, ty::Dyn) = *b_ty.kind() else {
+        let ty::Dynamic(b_data, b_region) = *b_ty.kind() else {
             return vec![];
         };
 
@@ -417,7 +417,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                             .map(ty::Binder::dummy),
                     );
                 let new_a_data = tcx.mk_poly_existential_predicates(new_a_data);
-                let new_a_ty = tcx.mk_dynamic(new_a_data, b_region, ty::Dyn);
+                let new_a_ty = tcx.mk_dynamic(new_a_data, b_region);
 
                 // We also require that A's lifetime outlives B's lifetime.
                 let mut nested_obligations = ecx.infcx.eq(goal.param_env, new_a_ty, b_ty)?;

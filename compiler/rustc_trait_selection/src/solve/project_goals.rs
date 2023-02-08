@@ -386,7 +386,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
                 ty::Str | ty::Slice(_) => tcx.types.usize,
 
-                ty::Dynamic(_, _, _) => {
+                ty::Dynamic(..) | ty::DynStar(..) => {
                     let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
                     tcx.bound_type_of(dyn_metadata)
                         .subst(tcx, &[ty::GenericArg::from(goal.predicate.self_ty())])

@@ -30,9 +30,9 @@ use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
+use rustc_middle::ty::EarlyBinder;
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, Const, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeVisitable};
-use rustc_middle::ty::{DynKind, EarlyBinder};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECTS};
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -46,6 +46,7 @@ use rustc_trait_selection::traits::error_reporting::{
 };
 use rustc_trait_selection::traits::wf::object_region_bounds;
 
+use rustc_type_ir::DynKind;
 use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeSet;
 use std::slice;
@@ -1628,7 +1629,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
         debug!("region_bound: {:?}", region_bound);
 
-        let ty = tcx.mk_dynamic(existential_predicates, region_bound, representation);
+        let ty = match representation {
+            DynKind::Dyn => tcx.mk_dynamic(existential_predicates, region_bound),
+            DynKind::DynStar => tcx.mk_dyn_star(existential_predicates, region_bound),
+        };
+
         debug!("trait_object_type: {:?}", ty);
         ty
     }
@@ -2879,8 +2884,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir::TyKind::TraitObject(bounds, lifetime, repr) => {
                 self.maybe_lint_bare_trait(ast_ty, in_path);
                 let repr = match repr {
-                    TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
-                    TraitObjectSyntax::DynStar => ty::DynStar,
+                    TraitObjectSyntax::Dyn | TraitObjectSyntax::None => DynKind::Dyn,
+                    TraitObjectSyntax::DynStar => DynKind::DynStar,
                 };
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime, borrowed, repr)
             }

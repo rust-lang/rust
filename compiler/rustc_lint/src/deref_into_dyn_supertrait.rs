@@ -63,11 +63,11 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
             && let opt_did @ Some(did) = trait_.trait_def_id()
             && opt_did == cx.tcx.lang_items().deref_trait()
             // `t` is `dyn t_principal`
-            && let ty::Dynamic(data, _, ty::Dyn) = t.kind()
+            && let ty::Dynamic(data, _) = t.kind()
             && let Some(t_principal) = data.principal()
             // `<T as Deref>::Target` is `dyn target_principal`
             && let Some(target) = cx.get_associated_type(t, did, "Target")
-            && let ty::Dynamic(data, _, ty::Dyn) = target.kind()
+            && let ty::Dynamic(data, _) = target.kind()
             && let Some(target_principal) = data.principal()
             // `target_principal` is a supertrait of `t_principal`
             && supertraits(cx.tcx, t_principal.with_self_ty(cx.tcx, cx.tcx.types.trait_object_dummy_self))

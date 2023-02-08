@@ -223,7 +223,7 @@ where
                 // This will also visit substs if necessary, so we don't need to recurse.
                 return self.visit_projection_ty(proj);
             }
-            ty::Dynamic(predicates, ..) => {
+            ty::Dynamic(predicates, ..) | ty::DynStar(predicates, ..) => {
                 // All traits in the list are considered the "primary" part of the type
                 // and are visited by shallow visitors.
                 for predicate in predicates {

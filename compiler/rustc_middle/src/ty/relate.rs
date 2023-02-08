@@ -439,13 +439,17 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
 
         (&ty::Foreign(a_id), &ty::Foreign(b_id)) if a_id == b_id => Ok(tcx.mk_foreign(a_id)),
 
-        (&ty::Dynamic(a_obj, a_region, a_repr), &ty::Dynamic(b_obj, b_region, b_repr))
-            if a_repr == b_repr =>
-        {
+        (&ty::Dynamic(a_obj, a_region), &ty::Dynamic(b_obj, b_region)) => {
             let region_bound = relation.with_cause(Cause::ExistentialRegionBound, |relation| {
                 relation.relate(a_region, b_region)
             })?;
-            Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound, a_repr))
+            Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound))
+        }
+        (&ty::DynStar(a_obj, a_region), &ty::DynStar(b_obj, b_region)) => {
+            let region_bound = relation.with_cause(Cause::ExistentialRegionBound, |relation| {
+                relation.relate(a_region, b_region)
+            })?;
+            Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound))
         }
 
         (&ty::Generator(a_id, a_substs, movability), &ty::Generator(b_id, b_substs, _))

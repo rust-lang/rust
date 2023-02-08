@@ -89,7 +89,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
             ty::Param(_) => {
                 return ControlFlow::Break(ty);
             }
-            ty::Dynamic(..) => {
+            ty::Dynamic(..) | ty::DynStar(..) => {
                 return ControlFlow::Break(ty);
             }
             ty::Foreign(_) => {

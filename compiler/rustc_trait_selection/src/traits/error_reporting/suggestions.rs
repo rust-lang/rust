@@ -1141,7 +1141,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         }
                     })
                 }
-                ty::Dynamic(data, _, ty::Dyn) => {
+                ty::Dynamic(data, _) => {
                     data.iter().find_map(|pred| {
                         if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
                         && Some(proj.def_id) == self.tcx.lang_items().fn_once_output()
@@ -1387,7 +1387,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         self_ty: Ty<'tcx>,
         object_ty: Ty<'tcx>,
     ) {
-        let ty::Dynamic(predicates, _, ty::Dyn) = object_ty.kind() else { return; };
+        let ty::Dynamic(predicates, _) = object_ty.kind() else { return; };
         let self_ref_ty = self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, self_ty);
 
         for predicate in predicates.iter() {
@@ -1745,7 +1745,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let trait_pred = self.resolve_vars_if_possible(trait_pred);
         let ty = trait_pred.skip_binder().self_ty();
         let is_object_safe = match ty.kind() {
-            ty::Dynamic(predicates, _, ty::Dyn) => {
+            ty::Dynamic(predicates, _) => {
                 // If the `dyn Trait` is not object safe, do not suggest `Box<dyn Trait>`.
                 predicates
                     .principal_def_id()
@@ -1805,7 +1805,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut spans_and_needs_box = vec![];
 
         match liberated_sig.output().kind() {
-            ty::Dynamic(predicates, _, ty::Dyn) => {
+            ty::Dynamic(predicates, _) => {
                 let cause = ObligationCause::misc(ret_ty.span, obligation.cause.body_id);
                 let param_env = ty::ParamEnv::empty();
 

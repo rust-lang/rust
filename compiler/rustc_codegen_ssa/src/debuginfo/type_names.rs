@@ -209,6 +209,7 @@ fn push_debuginfo_type_name<'tcx>(
                 output.push(']');
             }
         }
+        ty::DynStar(..) => unimplemented!(),
         ty::Dynamic(ref trait_data, ..) => {
             let auto_traits: SmallVec<[DefId; 4]> = trait_data.auto_traits().collect();
 

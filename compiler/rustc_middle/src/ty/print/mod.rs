@@ -245,7 +245,7 @@ fn characteristic_def_id_of_type_cached<'a>(
     match *ty.kind() {
         ty::Adt(adt_def, _) => Some(adt_def.did()),
 
-        ty::Dynamic(data, ..) => data.principal_def_id(),
+        ty::Dynamic(data, ..) | ty::DynStar(data, ..) => data.principal_def_id(),
 
         ty::Array(subty, _) | ty::Slice(subty) => {
             characteristic_def_id_of_type_cached(subty, visited)

@@ -647,7 +647,7 @@ where
                 | ty::GeneratorWitness(..)
                 | ty::GeneratorWitnessMIR(..)
                 | ty::Foreign(..)
-                | ty::Dynamic(_, _, ty::Dyn) => {
+                | ty::Dynamic(..) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
                 }
 
@@ -714,7 +714,7 @@ where
                     } else {
                         match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
                             ty::Slice(_) | ty::Str => tcx.types.usize,
-                            ty::Dynamic(_, _, ty::Dyn) => mk_dyn_vtable(),
+                            ty::Dynamic(_, _) => mk_dyn_vtable(),
                             _ => bug!("TyAndLayout::field({:?}): not applicable", this),
                         }
                     };
@@ -768,7 +768,7 @@ where
                     }
                 }
 
-                ty::Dynamic(_, _, ty::DynStar) => {
+                ty::DynStar(_, _) => {
                     if i == 0 {
                         TyMaybeWithLayout::Ty(tcx.types.usize)
                     } else if i == 1 {

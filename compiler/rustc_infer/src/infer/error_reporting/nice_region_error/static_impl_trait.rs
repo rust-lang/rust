@@ -542,7 +542,7 @@ pub struct TraitObjectVisitor(pub FxIndexSet<DefId>);
 impl<'tcx> TypeVisitor<'tcx> for TraitObjectVisitor {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
-            ty::Dynamic(preds, re, _) if re.is_static() => {
+            ty::Dynamic(preds, re) | ty::DynStar(preds, re) if re.is_static() => {
                 if let Some(def_id) = preds.principal_def_id() {
                     self.0.insert(def_id);
                 }

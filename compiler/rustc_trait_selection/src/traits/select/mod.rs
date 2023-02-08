@@ -2070,7 +2070,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Array(..)
             | ty::Closure(..)
             | ty::Never
-            | ty::Dynamic(_, _, ty::DynStar)
+            | ty::DynStar(..)
             | ty::Error(_) => {
                 // safe for everything
                 Where(ty::Binder::dummy(Vec::new()))
@@ -2135,6 +2135,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::Dynamic(..)
+            | ty::DynStar(..)
             | ty::Str
             | ty::Slice(..)
             | ty::Generator(_, _, hir::Movability::Static)
@@ -2255,6 +2256,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::Placeholder(..)
             | ty::Dynamic(..)
+            | ty::DynStar(..)
             | ty::Param(..)
             | ty::Foreign(..)
             | ty::Alias(ty::Projection, ..)

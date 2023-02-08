@@ -181,7 +181,7 @@ fn do_orphan_check_impl<'tcx>(
             ),
 
             // impl AutoTrait for dyn Trait {}
-            ty::Dynamic(..) => (
+            ty::Dynamic(..) | ty::DynStar(..) => (
                 LocalImpl::Disallow { problematic_kind: "trait object" },
                 NonlocalImpl::DisallowOther,
             ),

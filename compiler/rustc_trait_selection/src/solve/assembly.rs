@@ -385,6 +385,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
             | ty::Dynamic(..)
+            | ty::DynStar(..)
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(_)
@@ -445,7 +446,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Error(_) => return,
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
-            ty::Dynamic(bounds, ..) => bounds,
+            ty::Dynamic(bounds, ..) | ty::DynStar(bounds, ..) => bounds,
         };
 
         let tcx = self.tcx();

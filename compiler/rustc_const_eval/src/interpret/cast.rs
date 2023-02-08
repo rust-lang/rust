@@ -121,7 +121,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             DynStar => {
-                if let ty::Dynamic(data, _, ty::DynStar) = cast_ty.kind() {
+                if let ty::DynStar(data, _) = cast_ty.kind() {
                     // Initial cast from sized to dyn trait
                     let vtable = self.get_vtable_ptr(src.layout.ty, data.principal())?;
                     let vtable = Scalar::from_maybe_pointer(vtable, self);
@@ -347,7 +347,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let new_vptr = self.get_vtable_ptr(ty, data_b.principal())?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
             }
-            (_, &ty::Dynamic(data, _, ty::Dyn)) => {
+            (_, &ty::Dynamic(data, _)) => {
                 // Initial cast from sized to dyn trait
                 let vtable = self.get_vtable_ptr(src_pointee_ty, data.principal())?;
                 let ptr = self.read_scalar(src)?;

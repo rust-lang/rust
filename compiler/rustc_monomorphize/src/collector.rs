@@ -1093,7 +1093,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
         }
 
         // T as dyn* Trait
-        (_, &ty::Dynamic(_, _, ty::DynStar)) => ptr_vtable(source_ty, target_ty),
+        (_, &ty::DynStar(..)) => ptr_vtable(source_ty, target_ty),
 
         (&ty::Adt(source_adt_def, source_substs), &ty::Adt(target_adt_def, target_substs)) => {
             assert_eq!(source_adt_def, target_adt_def);

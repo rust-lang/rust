@@ -176,6 +176,7 @@ fn compute_components<'tcx>(
             ty::Tuple(..) |       // ...
             ty::FnPtr(_) |        // OutlivesFunction (*)
             ty::Dynamic(..) |     // OutlivesObject, OutlivesFragment (*)
+            ty::DynStar(..) |     // OutlivesObject, OutlivesFragment (*)
             ty::Placeholder(..) |
             ty::Bound(..) |
             ty::Error(_) => {

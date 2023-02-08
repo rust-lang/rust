@@ -689,7 +689,7 @@ impl<'tcx> WfPredicates<'tcx> {
                     }
                 }
 
-                ty::Dynamic(data, r, _) => {
+                ty::Dynamic(data, r) | ty::DynStar(data, r) => {
                     // WfObject
                     //
                     // Here, we defer WF checking due to higher-ranked

@@ -962,6 +962,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Bound(..)
             | ty::Closure(..)
             | ty::Dynamic(..)
+            | ty::DynStar(..)
             | ty::Foreign(_)
             | ty::Generator(..)
             | ty::GeneratorWitness(_)
@@ -1002,6 +1003,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Bound(..)
             | ty::Closure(..)
             | ty::Dynamic(..)
+            | ty::DynStar(..)
             | ty::Foreign(_)
             | ty::Generator(..)
             | ty::GeneratorWitness(_)
@@ -1123,7 +1125,11 @@ impl<'tcx> Ty<'tcx> {
             // Conservatively return `false` for all others...
 
             // Anonymous function types
-            ty::FnDef(..) | ty::Closure(..) | ty::Dynamic(..) | ty::Generator(..) => false,
+            ty::FnDef(..)
+            | ty::Closure(..)
+            | ty::Dynamic(..)
+            | ty::DynStar(..)
+            | ty::Generator(..) => false,
 
             // Generic or inferred types
             //
@@ -1240,7 +1246,7 @@ pub fn needs_drop_components<'tcx>(
         // Foreign types can never have destructors.
         ty::Foreign(..) => Ok(SmallVec::new()),
 
-        ty::Dynamic(..) | ty::Error(_) => Err(AlwaysRequiresDrop),
+        ty::Dynamic(..) | ty::DynStar(..) | ty::Error(_) => Err(AlwaysRequiresDrop),
 
         ty::Slice(ty) => needs_drop_components(*ty, target_layout),
         ty::Array(elem_ty, size) => {
@@ -1295,6 +1301,7 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
 
         ty::Alias(..)
         | ty::Dynamic(..)
+        | ty::DynStar(..)
         | ty::Error(_)
         | ty::Bound(..)
         | ty::Param(_)

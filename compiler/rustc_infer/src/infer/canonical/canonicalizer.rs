@@ -450,6 +450,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             | ty::FnDef(..)
             | ty::FnPtr(_)
             | ty::Dynamic(..)
+            | ty::DynStar(..)
             | ty::Never
             | ty::Tuple(..)
             | ty::Alias(..)

@@ -28,6 +28,8 @@ fn sized_constraint_for_ty<'tcx>(
             vec![ty]
         }
 
+        DynStar(..) => todo!(),
+
         Tuple(ref tys) => match tys.last() {
             None => vec![],
             Some(&ty) => sized_constraint_for_ty(tcx, adtdef, ty),
@@ -388,7 +390,9 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 
     let self_ty = trait_ref.self_ty();
     let self_ty_matches = match self_ty.kind() {
-        ty::Dynamic(ref data, re, _) if re.is_static() => data.principal().is_none(),
+        ty::Dynamic(ref data, re) | ty::DynStar(ref data, re) if re.is_static() => {
+            data.principal().is_none()
+        }
         _ => false,
     };
 

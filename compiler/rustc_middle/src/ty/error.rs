@@ -310,6 +310,7 @@ impl<'tcx> Ty<'tcx> {
             },
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(..) => "trait object".into(),
+            ty::DynStar(..) => "dyn* trait object".into(),
             ty::Closure(..) => "closure".into(),
             ty::Generator(def_id, ..) => tcx.generator_kind(def_id).unwrap().descr().into(),
             ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => "generator witness".into(),
