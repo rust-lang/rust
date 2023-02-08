@@ -180,7 +180,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
 
         let state_str = if ignore { "ignored" } else { "active" };
 
-        writeln!(output, "{name}: {fntype} | {state_str} | {location_info}")?;
+        writeln!(output, "{name} | {fntype} | {state_str} | {location_info}")?;
         st.write_log(|| format!("{fntype} {name} {state_str} {location_info}\n"))?;
     }
 
