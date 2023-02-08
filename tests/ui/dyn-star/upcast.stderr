@@ -7,13 +7,13 @@ LL | #![feature(dyn_star, trait_upcasting)]
    = note: see issue #102425 <https://github.com/rust-lang/rust/issues/102425> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0277]: `dyn* Foo` needs to be a pointer-sized type
+error[E0277]: `dyn* Foo` needs to have the same alignment and size as a pointer
   --> $DIR/upcast.rs:30:23
    |
 LL |     let w: dyn* Bar = w;
-   |                       ^ `dyn* Foo` needs to be a pointer-sized type
+   |                       ^ `dyn* Foo` needs to be a pointer-like type
    |
-   = help: the trait `PointerSized` is not implemented for `dyn* Foo`
+   = help: the trait `PointerLike` is not implemented for `dyn* Foo`
 
 error: aborting due to previous error; 1 warning emitted
 

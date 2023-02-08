@@ -1,14 +1,14 @@
-error[E0277]: `&T` needs to be a pointer-sized type
+error[E0277]: `&T` needs to have the same alignment and size as a pointer
   --> $DIR/check-size-at-cast-polymorphic-bad.rs:11:15
    |
 LL |     dyn_debug(t);
-   |               ^ `&T` needs to be a pointer-sized type
+   |               ^ `&T` needs to be a pointer-like type
    |
-   = help: the trait `PointerSized` is not implemented for `&T`
+   = help: the trait `PointerLike` is not implemented for `&T`
 help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
    |
-LL | fn polymorphic<T: Debug + ?Sized>(t: &T) where &T: PointerSized {
-   |                                          ++++++++++++++++++++++
+LL | fn polymorphic<T: Debug + ?Sized>(t: &T) where &T: PointerLike {
+   |                                          +++++++++++++++++++++
 
 error: aborting due to previous error
 
