@@ -1567,8 +1567,18 @@ impl<'a> State<'a> {
 
             match bound {
                 GenericBound::Trait(tref, modifier) => {
-                    if modifier == &TraitBoundModifier::Maybe {
-                        self.word("?");
+                    match modifier {
+                        TraitBoundModifier::None => {}
+                        TraitBoundModifier::Maybe => {
+                            self.word("?");
+                        }
+                        TraitBoundModifier::MaybeConst => {
+                            self.word_space("~const");
+                        }
+                        TraitBoundModifier::MaybeConstMaybe => {
+                            self.word_space("~const");
+                            self.word("?");
+                        }
                     }
                     self.print_poly_trait_ref(tref);
                 }
