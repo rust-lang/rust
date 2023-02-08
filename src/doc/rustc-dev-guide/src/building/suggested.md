@@ -22,48 +22,17 @@ You can also install the hook as a step of running `./x.py setup`!
 `rust-analyzer` can help you check and format your code whenever you save
 a file. By default, `rust-analyzer` runs the `cargo check` and `rustfmt`
 commands, but you can override these commands to use more adapted versions
-of these tools when hacking on `rustc`. For example, for Visual Studio Code,
-you can write: <!-- date-check: nov 2022 --><!-- the date comment is for the edition below -->
-
-```JSON
-{
-    "rust-analyzer.checkOnSave.overrideCommand": [
-        "python3",
-        "x.py",
-        "check",
-        "--json-output"
-    ],
-    "rust-analyzer.rustfmt.overrideCommand": [
-        "./build/host/rustfmt/bin/rustfmt",
-        "--edition=2021"
-    ],
-    "rust-analyzer.procMacro.server": "./build/host/stage0/libexec/rust-analyzer-proc-macro-srv",
-    "rust-analyzer.procMacro.enable": true,
-    "rust-analyzer.cargo.buildScripts.enable": true,
-    "rust-analyzer.cargo.buildScripts.invocationLocation": "root",
-    "rust-analyzer.cargo.buildScripts.invocationStrategy": "once",
-    "rust-analyzer.cargo.buildScripts.overrideCommand": [
-        "python3",
-        "x.py",
-        "check",
-        "--json-output"
-    ],
-    "rust-analyzer.cargo.sysroot": "./build/host/stage0-sysroot",
-    "rust-analyzer.rustc.source": "./Cargo.toml",
-}
-```
-
-in your `.vscode/settings.json` file. This will ask `rust-analyzer` to use
-`./x.py check` to check the sources, and the stage 0 rustfmt to format them.
+of these tools when hacking on `rustc`. For example, `x.py setup` will prompt
+you to create a `.vscode/settings.json` file which will configure Visual Studio code.
+This will ask `rust-analyzer` to use `./x.py check` to check the sources, and the
+stage 0 rustfmt to format them.
 
 If you have enough free disk space and you would like to be able to run `x.py` commands while
 rust-analyzer runs in the background, you can also add `--build-dir build-rust-analyzer` to the
 `overrideCommand` to avoid x.py locking.
 
 If you're running `coc.nvim`, you can use `:CocLocalConfig` to create a
-`.vim/coc-settings.json` and enter the same settings as above, but replacing
-`editor.formatOnSave: true,` with
-`"coc.preferences.formatOnSaveFiletypes": ["rust"],`.
+`.vim/coc-settings.json` and copy the settings from [this file](https://github.com/rust-lang/rust/blob/master/src/etc/vscode_settings.json).
 
 If running `./x.py check` on save is inconvenient, in VS Code you can use a [Build
 Task] instead:
