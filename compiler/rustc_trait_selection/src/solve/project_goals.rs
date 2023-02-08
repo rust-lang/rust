@@ -3,7 +3,7 @@ use crate::traits::{specialization_graph, translate_substs};
 use super::assembly::{self, Candidate, CandidateSource};
 use super::infcx_ext::InferCtxtExt;
 use super::trait_goals::structural_traits;
-use super::{Certainty, EvalCtxt, Goal, QueryResult};
+use super::{Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -182,11 +182,17 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 // If there are *STILL* multiple candidates, give up
                 // and report ambiguity.
                 i += 1;
-                if i > 1 {
-                    debug!("multiple matches, ambig");
-                    // FIXME: return overflow if all candidates overflow, otherwise return ambiguity.
-                    unimplemented!();
-                }
+            }
+
+            if candidates.len() > 1 {
+                let certainty = if candidates.iter().all(|x| {
+                    matches!(x.result.value.certainty, Certainty::Maybe(MaybeCause::Overflow))
+                }) {
+                    Certainty::Maybe(MaybeCause::Overflow)
+                } else {
+                    Certainty::AMBIGUOUS
+                };
+                return self.make_canonical_response(certainty);
             }
         }
 
@@ -203,7 +209,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             (CandidateSource::Impl(_), _)
             | (CandidateSource::ParamEnv(_), _)
             | (CandidateSource::BuiltinImpl, _)
-            | (CandidateSource::AliasBound, _) => unimplemented!(),
+            | (CandidateSource::AliasBound, _) => false,
         }
     }
 }
@@ -452,7 +458,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                         [ty::GenericArg::from(goal.predicate.self_ty())],
                     ));
 
-                    let is_sized_certainty = ecx.evaluate_goal(goal.with(tcx, sized_predicate))?.1;
+                    let (_, is_sized_certainty) =
+                        ecx.evaluate_goal(goal.with(tcx, sized_predicate))?;
                     return ecx.eq_term_and_make_canonical_response(
                         goal,
                         is_sized_certainty,
