@@ -265,6 +265,15 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 self.index.implications.insert(implied_by, feature);
             }
 
+            if let Some(ConstStability {
+                level: Unstable { implied_by: Some(implied_by), .. },
+                feature,
+                ..
+            }) = const_stab
+            {
+                self.index.implications.insert(implied_by, feature);
+            }
+
             self.index.stab_map.insert(def_id, stab);
             stab
         });
