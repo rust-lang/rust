@@ -89,6 +89,20 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
+        // This differs from the current stable behavior and
+        // fixes #84857. Due to breakage found via crater, we
+        // currently instead lint patterns which can be used to
+        // exploit this unsoundness on stable, see #93367 for
+        // more details.
+        if let Some(def_id) = ecx.tcx().find_map_relevant_impl(
+            goal.predicate.def_id(),
+            goal.predicate.self_ty(),
+            Some,
+        ) {
+            debug!(?def_id, ?goal, "disqualified auto-trait implementation");
+            return Err(NoSolution);
+        }
+
         ecx.probe_and_evaluate_goal_for_constituent_tys(
             goal,
             structural_traits::instantiate_constituent_tys_for_auto_trait,
