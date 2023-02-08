@@ -104,6 +104,7 @@ mod simplify_comparison_integral;
 mod sroa;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
+mod upvar_to_local_prop;
 
 use rustc_const_eval::transform::check_consts::{self, ConstCx};
 use rustc_const_eval::transform::promote_consts;
@@ -491,6 +492,10 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // `AddRetag` needs to run after `ElaborateDrops`. Otherwise it should run fairly late,
         // but before optimizations begin.
         &elaborate_box_derefs::ElaborateBoxDerefs,
+        // `UpvarToLocalProp` needs to run before `generator::StateTransform`, because its
+        // purpose is to coalesce locals into their original upvars before fresh space is
+        // allocated for them in the generator.
+        &upvar_to_local_prop::UpvarToLocalProp,
         &generator::StateTransform,
         &add_retag::AddRetag,
         &Lint(const_prop_lint::ConstProp),
