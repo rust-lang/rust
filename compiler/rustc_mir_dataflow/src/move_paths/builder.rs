@@ -376,7 +376,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             | TerminatorKind::Resume
             | TerminatorKind::Abort
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::Unreachable => {}
+            | TerminatorKind::Unreachable
+            | TerminatorKind::Drop { .. } => {}
 
             TerminatorKind::Assert { ref cond, .. } => {
                 self.gather_operand(cond);
@@ -390,10 +391,6 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 self.gather_operand(value);
                 self.create_move_path(place);
                 self.gather_init(place.as_ref(), InitKind::Deep);
-            }
-
-            TerminatorKind::Drop { place, target: _, unwind: _ } => {
-                self.gather_move(place);
             }
             TerminatorKind::DropAndReplace { place, ref value, .. } => {
                 self.create_move_path(place);

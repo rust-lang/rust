@@ -1716,7 +1716,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let (values, err) = if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
                 bound_predicate.skip_binder()
             {
-                let data = self.replace_bound_vars_with_fresh_vars(
+                let data = self.instantiate_binder_with_fresh_vars(
                     obligation.cause.span,
                     infer::LateBoundRegionConversionTime::HigherRankedType,
                     bound_predicate.rebind(data),
