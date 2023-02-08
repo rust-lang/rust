@@ -304,7 +304,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 }
             }
         } else {
-            let kind = self.infcx.replace_bound_vars_with_placeholders(kind);
+            let kind = self.infcx.instantiate_binder_with_placeholders(kind);
             let goal = goal.with(self.tcx(), ty::Binder::dummy(kind));
             let (_, certainty) = self.evaluate_goal(goal)?;
             self.make_canonical_response(certainty)

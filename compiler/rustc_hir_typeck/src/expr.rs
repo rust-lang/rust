@@ -568,7 +568,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // placeholder lifetimes with probing, we just replace higher lifetimes
                     // with fresh vars.
                     let span = args.get(i).map(|a| a.span).unwrap_or(expr.span);
-                    let input = self.replace_bound_vars_with_fresh_vars(
+                    let input = self.instantiate_binder_with_fresh_vars(
                         span,
                         infer::LateBoundRegionConversionTime::FnCall,
                         fn_sig.input(i),
@@ -586,7 +586,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Also, as we just want to check sizedness, instead of introducing
             // placeholder lifetimes with probing, we just replace higher lifetimes
             // with fresh vars.
-            let output = self.replace_bound_vars_with_fresh_vars(
+            let output = self.instantiate_binder_with_fresh_vars(
                 expr.span,
                 infer::LateBoundRegionConversionTime::FnCall,
                 fn_sig.output(),
