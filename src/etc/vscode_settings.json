@@ -7,7 +7,7 @@
     ],
     "rust-analyzer.linkedProjects": ["src/bootstrap/Cargo.toml", "Cargo.toml"],
     "rust-analyzer.rustfmt.overrideCommand": [
-        "./build/host/rustfmt/bin/rustfmt",
+        "./build/host/stage0/bin/rustfmt",
         "--edition=2021"
     ],
     "rust-analyzer.procMacro.server": "./build/host/stage0/libexec/rust-analyzer-proc-macro-srv",
