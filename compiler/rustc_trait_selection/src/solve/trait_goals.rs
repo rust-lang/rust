@@ -4,7 +4,7 @@ use std::iter;
 
 use super::assembly::{self, Candidate, CandidateSource};
 use super::infcx_ext::InferCtxtExt;
-use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
+use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
@@ -511,11 +511,17 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 // If there are *STILL* multiple candidates, give up
                 // and report ambiguity.
                 i += 1;
-                if i > 1 {
-                    debug!("multiple matches, ambig");
-                    // FIXME: return overflow if all candidates overflow, otherwise return ambiguity.
-                    unimplemented!();
-                }
+            }
+
+            if candidates.len() > 1 {
+                let certainty = if candidates.iter().all(|x| {
+                    matches!(x.result.value.certainty, Certainty::Maybe(MaybeCause::Overflow))
+                }) {
+                    Certainty::Maybe(MaybeCause::Overflow)
+                } else {
+                    Certainty::AMBIGUOUS
+                };
+                return self.make_canonical_response(certainty);
             }
         }
 
@@ -532,17 +538,18 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             (CandidateSource::Impl(_), _)
             | (CandidateSource::ParamEnv(_), _)
             | (CandidateSource::AliasBound, _)
-            | (CandidateSource::BuiltinImpl, _) => unimplemented!(),
+            | (CandidateSource::BuiltinImpl, _) => false,
         }
     }
 
-    fn discard_reservation_impl(&self, candidate: Candidate<'tcx>) -> Candidate<'tcx> {
+    fn discard_reservation_impl(&self, mut candidate: Candidate<'tcx>) -> Candidate<'tcx> {
         if let CandidateSource::Impl(def_id) = candidate.source {
             if let ty::ImplPolarity::Reservation = self.tcx().impl_polarity(def_id) {
                 debug!("Selected reservation impl");
-                // FIXME: reduce candidate to ambiguous
-                // FIXME: replace `var_values` with identity, yeet external constraints.
-                unimplemented!()
+                // We assemble all candidates inside of a probe so by
+                // making a new canonical response here our result will
+                // have no constraints.
+                candidate.result = self.make_canonical_response(Certainty::AMBIGUOUS).unwrap();
             }
         }
 
