@@ -706,13 +706,33 @@ def print_free_disk_space(pipeline: Pipeline):
         f"Free disk space: {format_bytes(free)} out of total {format_bytes(total)} ({(used / total) * 100:.2f}% used)")
 
 
+def log_metrics(step: BuildStep):
+    substeps: List[Tuple[int, BuildStep]] = []
+
+    def visit(step: BuildStep, level: int):
+        substeps.append((level, step))
+        for child in step.children:
+            visit(child, level=level + 1)
+
+    visit(step, 0)
+
+    output = StringIO()
+    for (level, step) in substeps:
+        label = f"{'.' * level}{step.type}"
+        print(f"{label:<65}{step.duration:>8.2f}s", file=output)
+    logging.info(f"Build step durations\n{output.getvalue()}")
+
+
 def record_metrics(pipeline: Pipeline, timer: Timer):
     metrics = load_last_metrics(pipeline.metrics_path())
     if metrics is None:
         return
-    llvm_steps = metrics.find_all_by_type("bootstrap::native::Llvm")
+    llvm_steps = tuple(metrics.find_all_by_type("bootstrap::native::Llvm"))
+    assert len(llvm_steps) > 0
     llvm_duration = sum(step.duration for step in llvm_steps)
-    rustc_steps = metrics.find_all_by_type("bootstrap::compile::Rustc")
+
+    rustc_steps = tuple(metrics.find_all_by_type("bootstrap::compile::Rustc"))
+    assert len(rustc_steps) > 0
     rustc_duration = sum(step.duration for step in rustc_steps)
 
     # The LLVM step is part of the Rustc step
@@ -720,6 +740,8 @@ def record_metrics(pipeline: Pipeline, timer: Timer):
 
     timer.add_duration("LLVM", llvm_duration)
     timer.add_duration("Rustc", rustc_duration)
+
+    log_metrics(metrics)
 
 
 def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: List[str]):
