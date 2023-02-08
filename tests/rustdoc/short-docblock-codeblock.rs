@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-// @count foo/index.html '//*[@class="item-right docblock-short"]' 0
+// @count foo/index.html '//*[@class="desc docblock-short"]' 0
 
 /// ```
 /// let x = 12;

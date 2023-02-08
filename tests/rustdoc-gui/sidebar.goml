@@ -70,8 +70,8 @@ assert-text: (".sidebar-elems section ul > li:nth-child(8)", "Functions")
 assert-text: (".sidebar-elems section ul > li:nth-child(9)", "Type Definitions")
 assert-text: (".sidebar-elems section ul > li:nth-child(10)", "Unions")
 assert-text: (".sidebar-elems section ul > li:nth-child(11)", "Keywords")
-assert-text: ("#structs + .item-table .item-left > a", "Foo")
-click: "#structs + .item-table .item-left > a"
+assert-text: ("#structs + .item-table .item-name > a", "Foo")
+click: "#structs + .item-table .item-name > a"
 
 // PAGE: struct.Foo.html
 assert-count: (".sidebar .location", 1)
@@ -103,8 +103,8 @@ assert-text: (".sidebar-elems > section ul.block > li:nth-child(2)", "Structs")
 assert-text: (".sidebar-elems > section ul.block > li:nth-child(3)", "Traits")
 assert-text: (".sidebar-elems > section ul.block > li:nth-child(4)", "Functions")
 assert-text: (".sidebar-elems > section ul.block > li:nth-child(5)", "Type Definitions")
-assert-text: ("#functions + .item-table .item-left > a", "foobar")
-click: "#functions + .item-table .item-left > a"
+assert-text: ("#functions + .item-table .item-name > a", "foobar")
+click: "#functions + .item-table .item-name > a"
 
 // PAGE: fn.foobar.html
 // In items containing no items (like functions or constants) and in modules, we have no
@@ -127,7 +127,7 @@ assert-text: (".sidebar > .location", "Module sub_sub_module")
 // We check that we don't have the crate list.
 assert-false: ".sidebar-elems .crate"
 assert-text: (".sidebar-elems > section ul > li:nth-child(1)", "Functions")
-assert-text: ("#functions + .item-table .item-left > a", "foo")
+assert-text: ("#functions + .item-table .item-name > a", "foo")
 
 // Links to trait implementations in the sidebar should not wrap even if they are long.
 goto: "file://" + |DOC_PATH| + "/lib2/struct.HasALongTraitWithParams.html"

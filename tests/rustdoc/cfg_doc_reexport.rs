@@ -5,8 +5,8 @@
 #![no_core]
 
 // @has 'foo/index.html'
-// @has - '//*[@class="item-left"]/*[@class="stab portability"]' 'foobar'
-// @has - '//*[@class="item-left"]/*[@class="stab portability"]' 'bar'
+// @has - '//*[@class="item-name"]/*[@class="stab portability"]' 'foobar'
+// @has - '//*[@class="item-name"]/*[@class="stab portability"]' 'bar'
 
 #[doc(cfg(feature = "foobar"))]
 mod imp_priv {

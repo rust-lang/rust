@@ -1,6 +1,6 @@
 // This test ensures that <table> elements aren't display in items summary.
 goto: "file://" + |DOC_PATH| + "/lib2/summary_table/index.html"
 // We check that we picked the right item first.
-assert-text: (".item-table .item-left", "Foo")
+assert-text: (".item-table .item-name", "Foo")
 // Then we check that its summary is empty.
-assert-false: ".item-table .item-right"
+assert-false: ".item-table .desc"

@@ -19,7 +19,7 @@ define-function: (
         local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         // We reload the page so the local storage settings are being used.
         reload:
-        assert-css: (".item-left sup", {"color": |color|})
+        assert-css: (".item-name sup", {"color": |color|})
     },
 )
 

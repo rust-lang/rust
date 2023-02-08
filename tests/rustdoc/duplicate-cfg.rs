@@ -2,8 +2,8 @@
 #![feature(doc_cfg)]
 
 // @has 'foo/index.html'
-// @matches '-' '//*[@class="item-left"]//*[@class="stab portability"]' '^sync$'
-// @has '-' '//*[@class="item-left"]//*[@class="stab portability"]/@title' 'Available on crate feature `sync` only'
+// @matches '-' '//*[@class="item-name"]//*[@class="stab portability"]' '^sync$'
+// @has '-' '//*[@class="item-name"]//*[@class="stab portability"]/@title' 'Available on crate feature `sync` only'
 
 // @has 'foo/struct.Foo.html'
 // @has '-' '//*[@class="stab portability"]' 'sync'
