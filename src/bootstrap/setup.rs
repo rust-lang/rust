@@ -1,6 +1,7 @@
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::Config;
 use crate::{t, VERSION};
+use sha2::Digest;
 use std::env::consts::EXE_SUFFIX;
 use std::fmt::Write as _;
 use std::fs::File;
@@ -10,6 +11,9 @@ use std::process::Command;
 use std::str::FromStr;
 use std::{fmt, fs, io};
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Profile {
     Compiler,
@@ -18,6 +22,13 @@ pub enum Profile {
     Tools,
     User,
 }
+
+/// A list of historical hashes of `src/etc/vscode_settings.json`.
+/// New entries should be appended whenever this is updated so we can detected
+/// outdated vs. user-modified settings files.
+static SETTINGS_HASHES: &[&str] =
+    &["ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8"];
+static VSCODE_SETTINGS: &str = include_str!("../etc/vscode_settings.json");
 
 impl Profile {
     fn include_path(&self, src_path: &Path) -> PathBuf {
@@ -155,6 +166,7 @@ pub fn setup(config: &Config, profile: Profile) {
 
     if !config.dry_run() {
         t!(install_git_hook_maybe(&config));
+        t!(create_vscode_settings_maybe(&config));
     }
 
     println!();
@@ -351,6 +363,34 @@ pub fn interactive_path() -> io::Result<Profile> {
     Ok(template)
 }
 
+#[derive(PartialEq)]
+enum PromptResult {
+    Yes,   // y/Y/yes
+    No,    // n/N/no
+    Print, // p/P/print
+}
+
+/// Prompt a user for a answer, looping until they enter an accepted input or nothing
+fn prompt_user(prompt: &str) -> io::Result<Option<PromptResult>> {
+    let mut input = String::new();
+    loop {
+        print!("{prompt} ");
+        io::stdout().flush()?;
+        input.clear();
+        io::stdin().read_line(&mut input)?;
+        match input.trim().to_lowercase().as_str() {
+            "y" | "yes" => return Ok(Some(PromptResult::Yes)),
+            "n" | "no" => return Ok(Some(PromptResult::No)),
+            "p" | "print" => return Ok(Some(PromptResult::Print)),
+            "" => return Ok(None),
+            _ => {
+                eprintln!("error: unrecognized option '{}'", input.trim());
+                eprintln!("note: press Ctrl+C to exit");
+            }
+        };
+    }
+}
+
 // install a git hook to automatically run tidy, if they want
 fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
     let git = t!(config.git().args(&["rev-parse", "--git-common-dir"]).output().map(|output| {
@@ -363,43 +403,98 @@ fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
         return Ok(());
     }
 
-    let mut input = String::new();
-    println!();
     println!(
-        "Rust's CI will automatically fail if it doesn't pass `tidy`, the internal tool for ensuring code quality.
+        "\nRust's CI will automatically fail if it doesn't pass `tidy`, the internal tool for ensuring code quality.
 If you'd like, x.py can install a git hook for you that will automatically run `test tidy` before
 pushing your code to ensure your code is up to par. If you decide later that this behavior is
 undesirable, simply delete the `pre-push` file from .git/hooks."
     );
 
-    let should_install = loop {
-        print!("Would you like to install the git hook?: [y/N] ");
-        io::stdout().flush()?;
-        input.clear();
-        io::stdin().read_line(&mut input)?;
-        break match input.trim().to_lowercase().as_str() {
-            "y" | "yes" => true,
-            "n" | "no" | "" => false,
-            _ => {
-                eprintln!("error: unrecognized option '{}'", input.trim());
-                eprintln!("note: press Ctrl+C to exit");
-                continue;
-            }
-        };
-    };
-
-    if should_install {
-        let src = config.src.join("src").join("etc").join("pre-push.sh");
-        match fs::hard_link(src, &dst) {
-            Err(e) => eprintln!(
+    if prompt_user("Would you like to install the git hook?: [y/N]")? != Some(PromptResult::Yes) {
+        println!("Ok, skipping installation!");
+        return Ok(());
+    }
+    let src = config.src.join("src").join("etc").join("pre-push.sh");
+    match fs::hard_link(src, &dst) {
+        Err(e) => {
+            eprintln!(
                 "error: could not create hook {}: do you already have the git hook installed?\n{}",
                 dst.display(),
                 e
-            ),
-            Ok(_) => println!("Linked `src/etc/pre-push.sh` to `.git/hooks/pre-push`"),
+            );
+            return Err(e);
+        }
+        Ok(_) => println!("Linked `src/etc/pre-push.sh` to `.git/hooks/pre-push`"),
+    };
+    Ok(())
+}
+
+/// Create a `.vscode/settings.json` file for rustc development, or just print it
+fn create_vscode_settings_maybe(config: &Config) -> io::Result<()> {
+    let (current_hash, historical_hashes) = SETTINGS_HASHES.split_last().unwrap();
+    let vscode_settings = config.src.join(".vscode").join("settings.json");
+    // If None, no settings.json exists
+    // If Some(true), is a previous version of settings.json
+    // If Some(false), is not a previous version (i.e. user modified)
+    // If it's up to date we can just skip this
+    let mut mismatched_settings = None;
+    if let Ok(current) = fs::read_to_string(&vscode_settings) {
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(&current);
+        let hash = hex::encode(hasher.finalize().as_slice());
+        if hash == *current_hash {
+            return Ok(());
+        } else if historical_hashes.contains(&hash.as_str()) {
+            mismatched_settings = Some(true);
+        } else {
+            mismatched_settings = Some(false);
+        }
+    }
+    println!(
+        "\nx.py can automatically install the recommended `.vscode/settings.json` file for rustc development"
+    );
+    match mismatched_settings {
+        Some(true) => eprintln!(
+            "warning: existing `.vscode/settings.json` is out of date, x.py will update it"
+        ),
+        Some(false) => eprintln!(
+            "warning: existing `.vscode/settings.json` has been modified by user, x.py will back it up and replace it"
+        ),
+        _ => (),
+    }
+    let should_create = match prompt_user(
+        "Would you like to create/update `settings.json`, or only print suggested settings?: [y/p/N]",
+    )? {
+        Some(PromptResult::Yes) => true,
+        Some(PromptResult::Print) => false,
+        _ => {
+            println!("Ok, skipping settings!");
+            return Ok(());
+        }
+    };
+    if should_create {
+        let path = config.src.join(".vscode");
+        if !path.exists() {
+            fs::create_dir(&path)?;
+        }
+        let verb = match mismatched_settings {
+            // exists but outdated, we can replace this
+            Some(true) => "Updated",
+            // exists but user modified, back it up
+            Some(false) => {
+                // exists and is not current version or outdated, so back it up
+                let mut backup = vscode_settings.clone();
+                backup.set_extension("bak");
+                eprintln!("warning: copying `settings.json` to `settings.json.bak`");
+                fs::copy(&vscode_settings, &backup)?;
+                "Updated"
+            }
+            _ => "Created",
         };
+        fs::write(&vscode_settings, &VSCODE_SETTINGS)?;
+        println!("{verb} `.vscode/settings.json`");
     } else {
-        println!("Ok, skipping installation!");
+        println!("\n{VSCODE_SETTINGS}");
     }
     Ok(())
 }
