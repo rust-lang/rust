@@ -581,40 +581,22 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 Some(self.operand_from_scalar(scalar, value.layout.ty))
             }
             Immediate::ScalarPair(..) => {
-                // Found a value represented as a pair. For now only do const-prop if the type
-                // of `rvalue` is also a tuple with two scalars.
-                // FIXME: enable the general case stated above ^.
-                let ty = value.layout.ty;
-                // Only do it for tuples
-                let ty::Tuple(types) = ty.kind() else { return None };
-                // Only do it if tuple is also a pair with two scalars
-                if let [ty1, ty2] = types[..] {
-                    let ty_is_scalar = |ty| {
-                        self.ecx.layout_of(ty).ok().map(|layout| layout.abi.is_scalar())
-                            == Some(true)
-                    };
-                    let alloc = if ty_is_scalar(ty1) && ty_is_scalar(ty2) {
-                        self.ecx
-                            .intern_with_temp_alloc(value.layout, |ecx, dest| {
-                                ecx.write_immediate(*imm, dest)
-                            })
-                            .unwrap()
-                    } else {
-                        return None;
-                    };
+                let alloc = self
+                    .ecx
+                    .intern_with_temp_alloc(value.layout, |ecx, dest| {
+                        ecx.write_immediate(*imm, dest)
+                    })
+                    .ok()?;
 
-                    // Assign entire constant in a single statement.
-                    // We can't use aggregates, as we run after the aggregate-lowering `MirPhase`.
-                    let const_val = ConstValue::ByRef { alloc, offset: Size::ZERO };
-                    let literal = ConstantKind::Val(const_val, ty);
-                    Some(Operand::Constant(Box::new(Constant {
-                        span: DUMMY_SP,
-                        user_ty: None,
-                        literal,
-                    })))
-                } else {
-                    None
-                }
+                let literal = ConstantKind::Val(
+                    ConstValue::ByRef { alloc, offset: Size::ZERO },
+                    value.layout.ty,
+                );
+                Some(Operand::Constant(Box::new(Constant {
+                    span: DUMMY_SP,
+                    user_ty: None,
+                    literal,
+                })))
             }
             // Scalars or scalar pairs that contain undef values are assumed to not have
             // successfully evaluated and are thus not propagated.
