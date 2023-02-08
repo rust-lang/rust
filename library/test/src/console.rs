@@ -153,13 +153,16 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
         use crate::TestFn::*;
 
         let TestDescAndFn {
-            desc: TestDesc {
-                name,
-                ignore,
-                #[cfg(not(bootstrap))]
-                location_info,
-                ..
-            }, testfn } = test;
+            desc:
+                TestDesc {
+                    name,
+                    ignore,
+                    #[cfg(not(bootstrap))]
+                    location_info,
+                    ..
+                },
+            testfn,
+        } = test;
 
         let fntype = match testfn {
             StaticTestFn(..) | DynTestFn(..) => {
@@ -172,8 +175,11 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
             }
         };
 
-        writeln!(output, "{name}: {fntype} | {ignore} | <location_info>")?;
-        st.write_log(|| format!("{fntype} {name} {ignore} <location_info>\n"))?;
+        #[cfg(bootstrap)]
+        let location_info = "location_info_tbd_during_bootstrap";
+
+        writeln!(output, "{name}: {fntype} | {ignore} | {location_info}")?;
+        st.write_log(|| format!("{fntype} {name} {ignore} {location_info}\n"))?;
     }
 
     fn plural(count: u32, s: &str) -> String {
