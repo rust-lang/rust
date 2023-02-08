@@ -346,9 +346,7 @@ where
 {
     match cache.lookup(&key) {
         Some((value, index)) => {
-            if std::intrinsics::unlikely(tcx.profiler().enabled()) {
-                tcx.profiler().query_cache_hit(index.into());
-            }
+            tcx.profiler().query_cache_hit(index.into());
             tcx.dep_graph().read_index(index);
             Some(value)
         }
@@ -408,9 +406,7 @@ where
                 panic!("value must be in cache after waiting")
             };
 
-            if std::intrinsics::unlikely(qcx.dep_context().profiler().enabled()) {
-                qcx.dep_context().profiler().query_cache_hit(index.into());
-            }
+            qcx.dep_context().profiler().query_cache_hit(index.into());
             query_blocked_prof_timer.finish_with_query_invocation_id(index.into());
 
             (v, Some(index))
@@ -776,9 +772,7 @@ where
     // Ensure that only one of them runs the query.
     let cache = Q::query_cache(qcx);
     if let Some((_, index)) = cache.lookup(&key) {
-        if std::intrinsics::unlikely(qcx.dep_context().profiler().enabled()) {
-            qcx.dep_context().profiler().query_cache_hit(index.into());
-        }
+        qcx.dep_context().profiler().query_cache_hit(index.into());
         return;
     }
 
