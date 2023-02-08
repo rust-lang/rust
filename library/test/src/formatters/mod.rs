@@ -1,7 +1,7 @@
 use std::{io, io::prelude::Write};
 
 use crate::{
-    console::ConsoleTestState,
+    console::{ConsoleTestDiscoveryState, ConsoleTestState},
     test_result::TestResult,
     time,
     types::{TestDesc, TestName},
@@ -18,6 +18,10 @@ pub(crate) use self::pretty::PrettyFormatter;
 pub(crate) use self::terse::TerseFormatter;
 
 pub(crate) trait OutputFormatter {
+    fn write_discovery_start(&mut self) -> io::Result<()>;
+    fn write_test_discovered(&mut self, desc: &TestDesc, test_type: &str) -> io::Result<()>;
+    fn write_discovery_finish(&mut self, state: &ConsoleTestDiscoveryState) -> io::Result<()>;
+
     fn write_run_start(&mut self, test_count: usize, shuffle_seed: Option<u64>) -> io::Result<()>;
     fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()>;
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()>;
