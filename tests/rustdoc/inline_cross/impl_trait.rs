@@ -11,7 +11,7 @@ pub use impl_trait_aux::func;
 // @has impl_trait/fn.func2.html
 // @has - '//pre[@class="rust item-decl"]' "func2<T>("
 // @has - '//pre[@class="rust item-decl"]' "_x: impl Deref<Target = Option<T>> + Iterator<Item = T>,"
-// @has - '//pre[@class="rust item-decl"]' "_y: impl Iterator<Item = u8>)"
+// @has - '//pre[@class="rust item-decl"]' "_y: impl Iterator<Item = u8> )"
 // @!has - '//pre[@class="rust item-decl"]' 'where'
 pub use impl_trait_aux::func2;
 
