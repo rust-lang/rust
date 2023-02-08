@@ -502,7 +502,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) => {
             let t = relation.relate(a_t, b_t)?;
             match relation.relate(sz_a, sz_b) {
-                Ok(sz) => Ok(tcx.mk_ty(ty::Array(t, sz))),
+                Ok(sz) => Ok(tcx.mk_array_with_const_len(t, sz)),
                 Err(err) => {
                     // Check whether the lengths are both concrete/known values,
                     // but are unequal, for better diagnostics.

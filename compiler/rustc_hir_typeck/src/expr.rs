@@ -1429,7 +1429,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.check_repeat_element_needs_copy_bound(element, count, element_ty);
 
-        tcx.mk_ty(ty::Array(t, count))
+        tcx.mk_array_with_const_len(t, count)
     }
 
     fn check_repeat_element_needs_copy_bound(

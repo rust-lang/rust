@@ -2071,14 +2071,14 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
 
         fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
             if let ty::Infer(_) = t.kind() {
-                self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+                self.tcx.mk_placeholder(ty::PlaceholderType {
                     universe: ty::UniverseIndex::ROOT,
                     name: ty::BoundTyKind::Anon({
                         let idx = self.idx;
                         self.idx += 1;
                         idx
                     }),
-                }))
+                })
             } else {
                 t.super_fold_with(self)
             }

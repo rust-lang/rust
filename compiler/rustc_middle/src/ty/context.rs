@@ -1636,6 +1636,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if *r == kind { r } else { self.mk_region(kind) }
     }
 
+    // Avoid this in favour of more specific `mk_*` methods, where possible.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
     pub fn mk_ty(self, st: TyKind<'tcx>) -> Ty<'tcx> {
@@ -1788,6 +1789,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    pub fn mk_array_with_const_len(self, ty: Ty<'tcx>, ct: Const<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(Array(ty, ct))
+    }
+
+    #[inline]
     pub fn mk_slice(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ty(Slice(ty))
     }
@@ -1862,7 +1868,7 @@ impl<'tcx> TyCtxt<'tcx> {
         item_def_id: DefId,
         substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
     ) -> Ty<'tcx> {
-        self.mk_ty(Alias(ty::Projection, self.mk_alias_ty(item_def_id, substs)))
+        self.mk_alias(ty::Projection, self.mk_alias_ty(item_def_id, substs))
     }
 
     #[inline]
@@ -1971,8 +1977,23 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    pub fn mk_bound(self, index: ty::DebruijnIndex, bound_ty: ty::BoundTy) -> Ty<'tcx> {
+        self.mk_ty(Bound(index, bound_ty))
+    }
+
+    #[inline]
+    pub fn mk_placeholder(self, placeholder: ty::PlaceholderType) -> Ty<'tcx> {
+        self.mk_ty(Placeholder(placeholder))
+    }
+
+    #[inline]
+    pub fn mk_alias(self, kind: ty::AliasKind, alias_ty: ty::AliasTy<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(Alias(kind, alias_ty))
+    }
+
+    #[inline]
     pub fn mk_opaque(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(Alias(ty::Opaque, self.mk_alias_ty(def_id, substs)))
+        self.mk_alias(ty::Opaque, self.mk_alias_ty(def_id, substs))
     }
 
     pub fn mk_place_field(self, place: Place<'tcx>, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {

@@ -677,11 +677,11 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
         // shifted in by one so that they are still escaping.
         let predicates = ty::fold::shift_vars(interner.tcx, self, 1);
 
-        let self_ty = interner.tcx.mk_ty(ty::Bound(
+        let self_ty = interner.tcx.mk_bound(
             // This is going to be wrapped in a binder
             ty::DebruijnIndex::from_usize(1),
             ty::BoundTy { var: ty::BoundVar::from_usize(0), kind: ty::BoundTyKind::Anon(0) },
-        ));
+        );
         let where_clauses = predicates.into_iter().map(|predicate| {
             let (predicate, binders, _named_regions) =
                 collect_bound_vars(interner, interner.tcx, predicate);
@@ -1077,18 +1077,18 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match *t.kind() {
             ty::Param(param) => match self.list.iter().position(|r| r == &param) {
-                Some(idx) => self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+                Some(idx) => self.tcx.mk_placeholder(ty::PlaceholderType {
                     universe: ty::UniverseIndex::from_usize(0),
                     name: ty::BoundTyKind::Anon(idx as u32),
-                })),
+                }),
                 None => {
                     self.list.push(param);
                     let idx = self.list.len() - 1 + self.next_ty_placeholder;
                     self.params.insert(idx as u32, param);
-                    self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+                    self.tcx.mk_placeholder(ty::PlaceholderType {
                         universe: ty::UniverseIndex::from_usize(0),
                         name: ty::BoundTyKind::Anon(idx as u32),
-                    }))
+                    })
                 }
             },
             _ => t.super_fold_with(self),
@@ -1147,7 +1147,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseParamsSubstitutor<'tcx> {
         match *t.kind() {
             ty::Placeholder(ty::PlaceholderType { universe: ty::UniverseIndex::ROOT, name }) => {
                 match self.params.get(&name.expect_anon()) {
-                    Some(param) => self.tcx.mk_ty(ty::Param(*param)),
+                    Some(&ty::ParamTy { index, name }) => self.tcx.mk_ty_param(index, name),
                     None => t,
                 }
             }
