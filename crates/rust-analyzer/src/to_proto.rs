@@ -216,15 +216,10 @@ pub(crate) fn completion_items(
     let mut res = Vec::with_capacity(items.len());
     for item in items {
         completion_item(&mut res, config, line_index, &tdpp, max_relevance, item);
-
-        if let Some(limit) = config.completion().limit {
-            if res.len() >= limit {
-                break;
-            }
-        }
     }
 
     if let Some(limit) = config.completion().limit {
+        res.sort_by(|item1, item2| item1.sort_text.cmp(&item2.sort_text));
         res.truncate(limit);
     }
 
