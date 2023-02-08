@@ -24,10 +24,12 @@ pub enum Profile {
 }
 
 /// A list of historical hashes of `src/etc/vscode_settings.json`.
-/// New entries should be appended whenever this is updated so we can detected
+/// New entries should be appended whenever this is updated so we can detect
 /// outdated vs. user-modified settings files.
-static SETTINGS_HASHES: &[&str] =
-    &["ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8"];
+static SETTINGS_HASHES: &[&str] = &[
+    "ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8",
+    "56e7bf011c71c5d81e0bf42e84938111847a810eee69d906bba494ea90b51922",
+];
 static VSCODE_SETTINGS: &str = include_str!("../etc/vscode_settings.json");
 
 impl Profile {
