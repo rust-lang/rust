@@ -399,10 +399,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Alias(_, alias_ty) => alias_ty,
         };
 
-        for (assumption, _) in self
-            .tcx()
-            .bound_explicit_item_bounds(alias_ty.def_id)
-            .subst_iter_copied(self.tcx(), alias_ty.substs)
+        for assumption in self.tcx().item_bounds(alias_ty.def_id).subst(self.tcx(), alias_ty.substs)
         {
             match G::consider_assumption(self, goal, assumption) {
                 Ok(result) => {
