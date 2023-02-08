@@ -182,14 +182,7 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
     }
 }
 
-fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtxt<'tcx>) {
-    place.local = new_base.local;
-
-    let mut new_projection = new_base.projection.to_vec();
-    new_projection.append(&mut place.projection.to_vec());
-
-    place.projection = tcx.mk_place_elems(&new_projection);
-}
+use crate::replace_base;
 
 const SELF_ARG: Local = Local::from_u32(1);
 

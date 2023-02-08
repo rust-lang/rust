@@ -626,3 +626,7 @@ fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_
 
     tcx.arena.alloc(promoted)
 }
+
+fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtxt<'tcx>) {
+    *place = new_base.project_deeper(&place.projection[..], tcx)
+}
