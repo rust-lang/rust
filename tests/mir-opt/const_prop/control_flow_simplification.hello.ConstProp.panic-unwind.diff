@@ -8,8 +8,9 @@
   
       bb0: {
           StorageLive(_1);
-          _1 = const _;
+-         _1 = const _;
 -         switchInt(move _1) -> [0: bb2, otherwise: bb1];
++         _1 = const false;
 +         switchInt(const false) -> [0: bb2, otherwise: bb1];
       }
   
