@@ -18,6 +18,8 @@ use crate::mir::{
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData};
+use crate::ty::query::ExternProviders;
+use crate::ty::query::Providers;
 use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Const, ConstData, DefIdTree, FloatTy, FloatVar,
@@ -479,7 +481,7 @@ pub struct GlobalCtxt<'tcx> {
     pub on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
 
     pub queries: &'tcx dyn query::QueryEngine<'tcx>,
-    pub query_caches: query::QueryCaches<'tcx>,
+    pub query_system: query::QuerySystem<'tcx>,
     pub(crate) query_kinds: &'tcx [DepKindStruct<'tcx>],
 
     // Internal caches for metadata decoding. No need to track deps on this.
@@ -639,6 +641,8 @@ impl<'tcx> TyCtxt<'tcx> {
         untracked: Untracked,
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
+        local_providers: Providers,
+        extern_providers: ExternProviders,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
         query_kinds: &'tcx [DepKindStruct<'tcx>],
     ) -> GlobalCtxt<'tcx> {
@@ -664,7 +668,7 @@ impl<'tcx> TyCtxt<'tcx> {
             untracked,
             on_disk_cache,
             queries,
-            query_caches: query::QueryCaches::default(),
+            query_system: query::QuerySystem::new(local_providers, extern_providers),
             query_kinds,
             ty_rcache: Default::default(),
             pred_rcache: Default::default(),

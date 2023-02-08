@@ -1,3 +1,5 @@
+#![allow(unused_parens)]
+
 use crate::dep_graph;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
@@ -34,6 +36,7 @@ use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::GeneratorDiagnosticData;
 use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt, UnusedGenericParams};
+use rustc_arena::TypedArena;
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
@@ -41,6 +44,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::WorkerLocal;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -65,6 +69,24 @@ use std::sync::Arc;
 
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
+
+pub struct QuerySystem<'tcx> {
+    pub local_providers: Box<Providers>,
+    pub extern_providers: Box<ExternProviders>,
+    pub arenas: QueryArenas<'tcx>,
+    pub caches: QueryCaches<'tcx>,
+}
+
+impl<'tcx> QuerySystem<'tcx> {
+    pub fn new(local_providers: Providers, extern_providers: ExternProviders) -> Self {
+        QuerySystem {
+            local_providers: Box::new(local_providers),
+            extern_providers: Box::new(extern_providers),
+            arenas: Default::default(),
+            caches: Default::default(),
+        }
+    }
+}
 
 #[derive(Copy, Clone)]
 pub struct TyCtxtAt<'tcx> {
@@ -112,10 +134,10 @@ macro_rules! query_helper_param_ty {
 }
 
 macro_rules! query_if_arena {
-    ([] $arena:ty, $no_arena:ty) => {
+    ([] $arena:tt $no_arena:tt) => {
         $no_arena
     };
-    ([(arena_cache) $($rest:tt)*] $arena:ty, $no_arena:ty) => {
+    ([(arena_cache) $($rest:tt)*] $arena:tt $no_arena:tt) => {
         $arena
     };
     ([$other:tt $($modifiers:tt)*]$($args:tt)*) => {
@@ -131,7 +153,7 @@ macro_rules! separate_provide_extern_decl {
         for<'tcx> fn(
             TyCtxt<'tcx>,
             query_keys::$name<'tcx>,
-        ) -> query_values::$name<'tcx>
+        ) -> query_provided::$name<'tcx>
     };
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
         separate_provide_extern_decl!([$($modifiers)*][$($args)*])
@@ -183,30 +205,62 @@ macro_rules! define_callbacks {
 
             $(pub type $name<'tcx> = $($K)*;)*
         }
-        #[allow(nonstandard_style, unused_lifetimes, unused_parens)]
+        #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_values {
             use super::*;
 
-            $(pub type $name<'tcx> = query_if_arena!([$($modifiers)*] <$V as Deref>::Target, $V);)*
+            $(pub type $name<'tcx> = $V;)*
         }
-        #[allow(nonstandard_style, unused_lifetimes, unused_parens)]
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_provided {
+            use super::*;
+
+            $(
+                pub type $name<'tcx> = query_if_arena!([$($modifiers)*] (<$V as Deref>::Target) ($V));
+            )*
+        }
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_provided_to_value {
+            use super::*;
+
+            $(
+                #[inline]
+                pub fn $name<'tcx>(
+                    _tcx: TyCtxt<'tcx>,
+                    value: query_provided::$name<'tcx>,
+                ) -> query_values::$name<'tcx> {
+                    query_if_arena!([$($modifiers)*]
+                        (&*_tcx.query_system.arenas.$name.alloc(value))
+                        (value)
+                    )
+                }
+            )*
+        }
+        #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_storage {
             use super::*;
 
             $(
-                pub type $name<'tcx> = query_if_arena!([$($modifiers)*]
-                    <<$($K)* as Key>::CacheSelector
-                        as CacheSelector<'tcx, <$V as Deref>::Target>>::ArenaCache,
-                    <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, $V>>::Cache
-                );
+                pub type $name<'tcx> = <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, $V>>::Cache;
             )*
         }
 
-        #[allow(nonstandard_style, unused_lifetimes)]
-        pub mod query_stored {
-            use super::*;
+        pub struct QueryArenas<'tcx> {
+            $($(#[$attr])* pub $name: query_if_arena!([$($modifiers)*]
+                (WorkerLocal<TypedArena<<$V as Deref>::Target>>)
+                ()
+            ),)*
+        }
 
-            $(pub type $name<'tcx> = $V;)*
+        impl Default for QueryArenas<'_> {
+            fn default() -> Self {
+                Self {
+                    $($name: query_if_arena!([$($modifiers)*]
+                        (WorkerLocal::new(|_| Default::default()))
+                        ()
+                    ),)*
+                }
+            }
         }
 
         #[derive(Default)]
@@ -221,7 +275,7 @@ macro_rules! define_callbacks {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                match try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key) {
+                match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
                     Some(_) => return,
                     None => self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure),
                 };
@@ -246,7 +300,7 @@ macro_rules! define_callbacks {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                match try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key) {
+                match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
                     Some(value) => value,
                     None => self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap(),
                 }
@@ -257,7 +311,7 @@ macro_rules! define_callbacks {
             $(pub $name: for<'tcx> fn(
                 TyCtxt<'tcx>,
                 query_keys::$name<'tcx>,
-            ) -> query_values::$name<'tcx>,)*
+            ) -> query_provided::$name<'tcx>,)*
         }
 
         pub struct ExternProviders {
@@ -334,12 +388,13 @@ macro_rules! define_feedable {
         $(impl<'tcx, K: IntoQueryParam<$($K)*> + Copy> TyCtxtFeed<'tcx, K> {
             $(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, value: query_values::$name<'tcx>) -> $V {
+            pub fn $name(self, value: query_provided::$name<'tcx>) -> $V {
                 let key = self.key().into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
                 let tcx = self.tcx;
-                let cache = &tcx.query_caches.$name;
+                let value = query_provided_to_value::$name(tcx, value);
+                let cache = &tcx.query_system.caches.$name;
 
                 match try_get_cached(tcx, cache, &key) {
                     Some(old) => {
@@ -357,7 +412,8 @@ macro_rules! define_feedable {
                             &value,
                             hash_result!([$($modifiers)*]),
                         );
-                        cache.complete(key, value, dep_node_index)
+                        cache.complete(key, value, dep_node_index);
+                        value
                     }
                 }
             }
