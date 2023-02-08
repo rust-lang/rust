@@ -16,7 +16,7 @@ use rustc_middle::mir::visit::{
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::InternalSubsts;
-use rustc_middle::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt, TypeVisitable};
 use rustc_span::{def_id::DefId, Span};
 use rustc_target::abi::{self, Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi as CallAbi;
@@ -625,21 +625,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     fn replace_with_const(
         &mut self,
-        rval: &mut Rvalue<'tcx>,
         value: &OpTy<'tcx>,
         source_info: SourceInfo,
-    ) {
-        if let Rvalue::Use(Operand::Constant(c)) = rval {
-            match c.literal {
-                ConstantKind::Ty(c) if matches!(c.kind(), ConstKind::Unevaluated(..)) => {}
-                _ => {
-                    trace!("skipping replace of Rvalue::Use({:?} because it is already a const", c);
-                    return;
-                }
-            }
-        }
-
-        trace!("attempting to replace {:?} with {:?}", rval, value);
+    ) -> Option<Operand<'tcx>> {
+        trace!("attempting to replace with {:?}", value);
         if let Err(e) = self.ecx.const_validate_operand(
             value,
             vec![],
@@ -649,64 +638,56 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             CtfeValidationMode::Regular,
         ) {
             trace!("validation error, attempt failed: {:?}", e);
-            return;
+            return None;
         }
 
         // FIXME> figure out what to do when read_immediate_raw fails
         let imm = self.ecx.read_immediate_raw(value).ok();
 
-        if let Some(Right(imm)) = imm {
-            match *imm {
-                interpret::Immediate::Scalar(scalar) => {
-                    *rval = Rvalue::Use(self.operand_from_scalar(
-                        scalar,
-                        value.layout.ty,
-                        source_info.span,
-                    ));
-                }
-                Immediate::ScalarPair(..) => {
-                    // Found a value represented as a pair. For now only do const-prop if the type
-                    // of `rvalue` is also a tuple with two scalars.
-                    // FIXME: enable the general case stated above ^.
-                    let ty = value.layout.ty;
-                    // Only do it for tuples
-                    if let ty::Tuple(types) = ty.kind() {
-                        // Only do it if tuple is also a pair with two scalars
-                        if let [ty1, ty2] = types[..] {
-                            let ty_is_scalar = |ty| {
-                                self.ecx.layout_of(ty).ok().map(|layout| layout.abi.is_scalar())
-                                    == Some(true)
-                            };
-                            let alloc = if ty_is_scalar(ty1) && ty_is_scalar(ty2) {
-                                let alloc = self
-                                    .ecx
-                                    .intern_with_temp_alloc(value.layout, |ecx, dest| {
-                                        ecx.write_immediate(*imm, dest)
-                                    })
-                                    .unwrap();
-                                Some(alloc)
-                            } else {
-                                None
-                            };
-
-                            if let Some(alloc) = alloc {
-                                // Assign entire constant in a single statement.
-                                // We can't use aggregates, as we run after the aggregate-lowering `MirPhase`.
-                                let const_val = ConstValue::ByRef { alloc, offset: Size::ZERO };
-                                let literal = ConstantKind::Val(const_val, ty);
-                                *rval = Rvalue::Use(Operand::Constant(Box::new(Constant {
-                                    span: source_info.span,
-                                    user_ty: None,
-                                    literal,
-                                })));
-                            }
-                        }
-                    }
-                }
-                // Scalars or scalar pairs that contain undef values are assumed to not have
-                // successfully evaluated and are thus not propagated.
-                _ => {}
+        let Right(imm) = imm? else { return None };
+        match *imm {
+            interpret::Immediate::Scalar(scalar) => {
+                Some(self.operand_from_scalar(scalar, value.layout.ty, source_info.span))
             }
+            Immediate::ScalarPair(..) => {
+                // Found a value represented as a pair. For now only do const-prop if the type
+                // of `rvalue` is also a tuple with two scalars.
+                // FIXME: enable the general case stated above ^.
+                let ty = value.layout.ty;
+                // Only do it for tuples
+                let ty::Tuple(types) = ty.kind() else { return None };
+                // Only do it if tuple is also a pair with two scalars
+                if let [ty1, ty2] = types[..] {
+                    let ty_is_scalar = |ty| {
+                        self.ecx.layout_of(ty).ok().map(|layout| layout.abi.is_scalar())
+                            == Some(true)
+                    };
+                    let alloc = if ty_is_scalar(ty1) && ty_is_scalar(ty2) {
+                        self.ecx
+                            .intern_with_temp_alloc(value.layout, |ecx, dest| {
+                                ecx.write_immediate(*imm, dest)
+                            })
+                            .unwrap()
+                    } else {
+                        return None;
+                    };
+
+                    // Assign entire constant in a single statement.
+                    // We can't use aggregates, as we run after the aggregate-lowering `MirPhase`.
+                    let const_val = ConstValue::ByRef { alloc, offset: Size::ZERO };
+                    let literal = ConstantKind::Val(const_val, ty);
+                    Some(Operand::Constant(Box::new(Constant {
+                        span: source_info.span,
+                        user_ty: None,
+                        literal,
+                    })))
+                } else {
+                    None
+                }
+            }
+            // Scalars or scalar pairs that contain undef values are assumed to not have
+            // successfully evaluated and are thus not propagated.
+            _ => None,
         }
     }
 
@@ -899,7 +880,9 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                     // consists solely of uninitialized memory (so it doesn't capture any locals).
                     if let Some(ref value) = self.get_const(place) && self.should_const_prop(value) {
                         trace!("replacing {:?} with {:?}", rval, value);
-                        self.replace_with_const(rval, value, source_info);
+                        if let Some(operand) = self.replace_with_const(value, source_info) {
+                            *rval = Rvalue::Use(operand);
+                        }
                         if can_const_prop == ConstPropMode::FullConstProp
                             || can_const_prop == ConstPropMode::OnlyInsideOwnBlock
                         {
