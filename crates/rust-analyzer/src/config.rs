@@ -524,6 +524,7 @@ impl Default for ConfigData {
 #[derive(Debug, Clone)]
 pub struct Config {
     pub discovered_projects: Option<Vec<ProjectManifest>>,
+    pub workspace_roots: Vec<AbsPathBuf>,
     caps: lsp_types::ClientCapabilities,
     root_path: AbsPathBuf,
     data: ConfigData,
@@ -720,7 +721,11 @@ impl fmt::Display for ConfigUpdateError {
 }
 
 impl Config {
-    pub fn new(root_path: AbsPathBuf, caps: ClientCapabilities) -> Self {
+    pub fn new(
+        root_path: AbsPathBuf,
+        caps: ClientCapabilities,
+        workspace_roots: Vec<AbsPathBuf>,
+    ) -> Self {
         Config {
             caps,
             data: ConfigData::default(),
@@ -728,7 +733,17 @@ impl Config {
             discovered_projects: None,
             root_path,
             snippets: Default::default(),
+            workspace_roots,
         }
+    }
+
+    pub fn rediscover_workspaces(&mut self) {
+        let discovered = ProjectManifest::discover_all(&self.workspace_roots);
+        tracing::info!("discovered projects: {:?}", discovered);
+        if discovered.is_empty() {
+            tracing::error!("failed to find any projects in {:?}", &self.workspace_roots);
+        }
+        self.discovered_projects = Some(discovered);
     }
 
     pub fn update(&mut self, mut json: serde_json::Value) -> Result<(), ConfigUpdateError> {
@@ -827,6 +842,9 @@ macro_rules! try_or_def {
 }
 
 impl Config {
+    pub fn has_linked_projects(&self) -> bool {
+        !self.data.linkedProjects.is_empty()
+    }
     pub fn linked_projects(&self) -> Vec<LinkedProject> {
         match self.data.linkedProjects.as_slice() {
             [] => match self.discovered_projects.as_ref() {
