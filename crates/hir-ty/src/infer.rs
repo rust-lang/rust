@@ -1024,7 +1024,7 @@ impl<'a> InferenceContext<'a> {
 pub(crate) enum Expectation {
     None,
     HasType(Ty),
-    // Castable(Ty), // rustc has this, we currently just don't propagate an expectation for casts
+    Castable(Ty),
     RValueLikeUnsized(Ty),
 }
 
@@ -1077,6 +1077,7 @@ impl Expectation {
         match self {
             Expectation::None => Expectation::None,
             Expectation::HasType(t) => Expectation::HasType(table.resolve_ty_shallow(t)),
+            Expectation::Castable(t) => Expectation::Castable(table.resolve_ty_shallow(t)),
             Expectation::RValueLikeUnsized(t) => {
                 Expectation::RValueLikeUnsized(table.resolve_ty_shallow(t))
             }
@@ -1086,17 +1087,18 @@ impl Expectation {
     fn to_option(&self, table: &mut unify::InferenceTable<'_>) -> Option<Ty> {
         match self.resolve(table) {
             Expectation::None => None,
-            Expectation::HasType(t) |
-            // Expectation::Castable(t) |
-            Expectation::RValueLikeUnsized(t) => Some(t),
+            Expectation::HasType(t)
+            | Expectation::Castable(t)
+            | Expectation::RValueLikeUnsized(t) => Some(t),
         }
     }
 
     fn only_has_type(&self, table: &mut unify::InferenceTable<'_>) -> Option<Ty> {
         match self {
             Expectation::HasType(t) => Some(table.resolve_ty_shallow(t)),
-            // Expectation::Castable(_) |
-            Expectation::RValueLikeUnsized(_) | Expectation::None => None,
+            Expectation::Castable(_) | Expectation::RValueLikeUnsized(_) | Expectation::None => {
+                None
+            }
         }
     }
 
