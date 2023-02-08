@@ -246,7 +246,7 @@ fn compare_method_predicate_entailment<'tcx>(
 
     let mut wf_tys = FxIndexSet::default();
 
-    let unnormalized_impl_sig = infcx.replace_bound_vars_with_fresh_vars(
+    let unnormalized_impl_sig = infcx.instantiate_binder_with_fresh_vars(
         impl_m_span,
         infer::HigherRankedType,
         tcx.fn_sig(impl_m.def_id).subst_identity(),
@@ -640,7 +640,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let impl_sig = ocx.normalize(
         &norm_cause,
         param_env,
-        infcx.replace_bound_vars_with_fresh_vars(
+        infcx.instantiate_binder_with_fresh_vars(
             return_span,
             infer::HigherRankedType,
             tcx.fn_sig(impl_m.def_id).subst_identity(),

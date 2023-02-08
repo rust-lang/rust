@@ -924,7 +924,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             ty::AssocKind::Fn => self.probe(|_| {
                 let substs = self.fresh_substs_for_item(self.span, method.def_id);
                 let fty = self.tcx.fn_sig(method.def_id).subst(self.tcx, substs);
-                let fty = self.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, fty);
+                let fty = self.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, fty);
 
                 if let Some(self_ty) = self_ty {
                     if self
