@@ -610,9 +610,9 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             Expr::Cast { expr, type_ref } => {
-                // FIXME: propagate the "castable to" expectation (and find a test case that shows this is necessary)
-                let _inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 let cast_ty = self.make_ty(type_ref);
+                let _inner_ty =
+                    self.infer_expr_inner(*expr, &Expectation::Castable(cast_ty.clone()));
                 // FIXME check the cast...
                 cast_ty
             }

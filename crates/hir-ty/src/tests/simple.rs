@@ -3200,3 +3200,34 @@ fn func() {
     "#,
     );
 }
+#[test]
+fn castable_to() {
+    check_infer(
+        r#"
+//- minicore: sized
+#[lang = "owned_box"]
+pub struct Box<T: ?Sized> {
+    inner: *mut T,
+}
+impl<T> Box<T> {
+    fn new(t: T) -> Self { loop {} }
+}
+
+fn func() {
+    let x = Box::new([]) as Box<[i32; 0]>;
+}
+"#,
+        expect![[r#"
+            99..100 't': T
+            113..124 '{ loop {} }': Box<T>
+            115..122 'loop {}': !
+            120..122 '{}': ()
+            138..184 '{     ...0]>; }': ()
+            148..149 'x': Box<[i32; 0]>
+            152..160 'Box::new': fn new<[i32; 0]>([i32; 0]) -> Box<[i32; 0]>
+            152..164 'Box::new([])': Box<[i32; 0]>
+            152..181 'Box::n...2; 0]>': Box<[i32; 0]>
+            161..163 '[]': [i32; 0]
+        "#]],
+    );
+}
