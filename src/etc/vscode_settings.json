@@ -1,0 +1,26 @@
+{
+    "rust-analyzer.checkOnSave.overrideCommand": [
+        "python3",
+        "x.py",
+        "check",
+        "--json-output"
+    ],
+    "rust-analyzer.linkedProjects": ["src/bootstrap/Cargo.toml", "Cargo.toml"],
+    "rust-analyzer.rustfmt.overrideCommand": [
+        "./build/host/rustfmt/bin/rustfmt",
+        "--edition=2021"
+    ],
+    "rust-analyzer.procMacro.server": "./build/host/stage0/libexec/rust-analyzer-proc-macro-srv",
+    "rust-analyzer.procMacro.enable": true,
+    "rust-analyzer.cargo.buildScripts.enable": true,
+    "rust-analyzer.cargo.buildScripts.invocationLocation": "root",
+    "rust-analyzer.cargo.buildScripts.invocationStrategy": "once",
+    "rust-analyzer.cargo.buildScripts.overrideCommand": [
+        "python3",
+        "x.py",
+        "check",
+        "--json-output"
+    ],
+    "rust-analyzer.cargo.sysroot": "./build/host/stage0-sysroot",
+    "rust-analyzer.rustc.source": "./Cargo.toml"
+}

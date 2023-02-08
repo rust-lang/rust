@@ -1200,11 +1200,9 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     if !info.payload().is::<rustc_errors::ExplicitBug>()
         && !info.payload().is::<rustc_errors::DelayedBugPanic>()
     {
-        let mut d = rustc_errors::Diagnostic::new(rustc_errors::Level::Bug, "unexpected panic");
-        handler.emit_diagnostic(&mut d);
+        handler.emit_err(session_diagnostics::Ice);
     }
 
-    handler.emit_note(session_diagnostics::Ice);
     handler.emit_note(session_diagnostics::IceBugReport { bug_report_url });
     handler.emit_note(session_diagnostics::IceVersion {
         version: util::version_str!().unwrap_or("unknown_version"),

@@ -94,7 +94,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_candidates_for_transmutability(obligation, &mut candidates);
             } else if lang_items.tuple_trait() == Some(def_id) {
                 self.assemble_candidate_for_tuple(obligation, &mut candidates);
-            } else if lang_items.pointer_sized() == Some(def_id) {
+            } else if lang_items.pointer_like() == Some(def_id) {
                 self.assemble_candidate_for_ptr_sized(obligation, &mut candidates);
             } else {
                 if lang_items.clone_trait() == Some(def_id) {
