@@ -2,9 +2,9 @@
 
 use std::iter;
 
-use super::assembly::{self, Candidate, CandidateSource};
+use super::assembly;
 use super::infcx_ext::InferCtxtExt;
-use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
+use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
@@ -479,80 +479,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
         let candidates = self.assemble_and_evaluate_candidates(goal);
-        self.merge_trait_candidates_discard_reservation_impls(candidates)
-    }
-
-    #[instrument(level = "debug", skip(self), ret)]
-    pub(super) fn merge_trait_candidates_discard_reservation_impls(
-        &mut self,
-        mut candidates: Vec<Candidate<'tcx>>,
-    ) -> QueryResult<'tcx> {
-        match candidates.len() {
-            0 => return Err(NoSolution),
-            1 => return Ok(self.discard_reservation_impl(candidates.pop().unwrap()).result),
-            _ => {}
-        }
-
-        if candidates.len() > 1 {
-            let mut i = 0;
-            'outer: while i < candidates.len() {
-                for j in (0..candidates.len()).filter(|&j| i != j) {
-                    if self.trait_candidate_should_be_dropped_in_favor_of(
-                        &candidates[i],
-                        &candidates[j],
-                    ) {
-                        debug!(candidate = ?candidates[i], "Dropping candidate #{}/{}", i, candidates.len());
-                        candidates.swap_remove(i);
-                        continue 'outer;
-                    }
-                }
-
-                debug!(candidate = ?candidates[i], "Retaining candidate #{}/{}", i, candidates.len());
-                // If there are *STILL* multiple candidates, give up
-                // and report ambiguity.
-                i += 1;
-            }
-
-            if candidates.len() > 1 {
-                let certainty = if candidates.iter().all(|x| {
-                    matches!(x.result.value.certainty, Certainty::Maybe(MaybeCause::Overflow))
-                }) {
-                    Certainty::Maybe(MaybeCause::Overflow)
-                } else {
-                    Certainty::AMBIGUOUS
-                };
-                return self.make_canonical_response(certainty);
-            }
-        }
-
-        Ok(self.discard_reservation_impl(candidates.pop().unwrap()).result)
-    }
-
-    fn trait_candidate_should_be_dropped_in_favor_of(
-        &self,
-        candidate: &Candidate<'tcx>,
-        other: &Candidate<'tcx>,
-    ) -> bool {
-        // FIXME: implement this
-        match (candidate.source, other.source) {
-            (CandidateSource::Impl(_), _)
-            | (CandidateSource::ParamEnv(_), _)
-            | (CandidateSource::AliasBound, _)
-            | (CandidateSource::BuiltinImpl, _) => false,
-        }
-    }
-
-    fn discard_reservation_impl(&self, mut candidate: Candidate<'tcx>) -> Candidate<'tcx> {
-        if let CandidateSource::Impl(def_id) = candidate.source {
-            if let ty::ImplPolarity::Reservation = self.tcx().impl_polarity(def_id) {
-                debug!("Selected reservation impl");
-                // We assemble all candidates inside of a probe so by
-                // making a new canonical response here our result will
-                // have no constraints.
-                candidate.result = self.make_canonical_response(Certainty::AMBIGUOUS).unwrap();
-            }
-        }
-
-        candidate
+        self.merge_candidates_and_discard_reservation_impls(candidates)
     }
 }
