@@ -1043,6 +1043,7 @@ pub fn make_test_description<R: Read>(
         name,
         ignore,
         ignore_message,
+        #[cfg(not(bootstrap))]
         location_info: "src\\lib.rs:10:10: 10:20",
         should_panic,
         compile_fail: false,
