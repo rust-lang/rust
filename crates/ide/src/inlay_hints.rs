@@ -294,10 +294,12 @@ fn label_of_ty(
     ) -> Result<(), HirDisplayError> {
         let iter_item_type = hint_iterator(sema, famous_defs, &ty);
         match iter_item_type {
-            Some((iter_trait, ty)) => {
+            Some((iter_trait, item, ty)) => {
                 const LABEL_START: &str = "impl ";
                 const LABEL_ITERATOR: &str = "Iterator";
-                const LABEL_MIDDLE: &str = "<Item = ";
+                const LABEL_MIDDLE: &str = "<";
+                const LABEL_ITEM: &str = "Item";
+                const LABEL_MIDDLE2: &str = " = ";
                 const LABEL_END: &str = ">";
 
                 max_length = max_length.map(|len| {
@@ -305,6 +307,7 @@ fn label_of_ty(
                         LABEL_START.len()
                             + LABEL_ITERATOR.len()
                             + LABEL_MIDDLE.len()
+                            + LABEL_MIDDLE2.len()
                             + LABEL_END.len(),
                     )
                 });
@@ -314,6 +317,10 @@ fn label_of_ty(
                 label_builder.write_str(LABEL_ITERATOR)?;
                 label_builder.end_location_link();
                 label_builder.write_str(LABEL_MIDDLE)?;
+                label_builder.start_location_link(ModuleDef::from(item).into());
+                label_builder.write_str(LABEL_ITEM)?;
+                label_builder.end_location_link();
+                label_builder.write_str(LABEL_MIDDLE2)?;
                 rec(sema, famous_defs, max_length, ty, label_builder)?;
                 label_builder.write_str(LABEL_END)?;
                 Ok(())
@@ -437,7 +444,7 @@ fn hint_iterator(
     sema: &Semantics<'_, RootDatabase>,
     famous_defs: &FamousDefs<'_, '_>,
     ty: &hir::Type,
-) -> Option<(hir::Trait, hir::Type)> {
+) -> Option<(hir::Trait, hir::TypeAlias, hir::Type)> {
     let db = sema.db;
     let strukt = ty.strip_references().as_adt()?;
     let krate = strukt.module(db).krate();
@@ -460,7 +467,7 @@ fn hint_iterator(
             _ => None,
         })?;
         if let Some(ty) = ty.normalize_trait_assoc_type(db, &[], assoc_type_item) {
-            return Some((iter_trait, ty));
+            return Some((iter_trait, assoc_type_item, ty));
         }
     }
 

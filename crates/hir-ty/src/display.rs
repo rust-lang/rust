@@ -12,7 +12,7 @@ use hir_def::{
     find_path,
     generics::{TypeOrConstParamData, TypeParamProvenance},
     item_scope::ItemInNs,
-    lang_item::LangItem,
+    lang_item::{LangItem, LangItemTarget},
     path::{Path, PathKind},
     type_ref::{ConstScalar, TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
@@ -729,8 +729,30 @@ impl HirDisplay for Ty {
                         )?;
                         // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
                     }
-                    ImplTraitId::AsyncBlockTypeImplTrait(..) => {
-                        write!(f, "impl Future<Output = ")?;
+                    ImplTraitId::AsyncBlockTypeImplTrait(body, ..) => {
+                        let future_trait = db
+                            .lang_item(body.module(db.upcast()).krate(), LangItem::Future)
+                            .and_then(LangItemTarget::as_trait);
+                        let output = future_trait.and_then(|t| {
+                            db.trait_data(t).associated_type_by_name(&hir_expand::name!(Output))
+                        });
+                        write!(f, "impl ")?;
+                        if let Some(t) = future_trait {
+                            f.start_location_link(t.into());
+                        }
+                        write!(f, "Future")?;
+                        if let Some(_) = future_trait {
+                            f.end_location_link();
+                        }
+                        write!(f, "<")?;
+                        if let Some(t) = output {
+                            f.start_location_link(t.into());
+                        }
+                        write!(f, "Output")?;
+                        if let Some(_) = output {
+                            f.end_location_link();
+                        }
+                        write!(f, " = ")?;
                         parameters.at(Interner, 0).hir_fmt(f)?;
                         write!(f, ">")?;
                     }
