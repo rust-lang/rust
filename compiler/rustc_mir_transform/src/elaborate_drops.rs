@@ -14,7 +14,7 @@ use rustc_mir_dataflow::un_derefer::UnDerefer;
 use rustc_mir_dataflow::MoveDataParamEnv;
 use rustc_mir_dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
-use rustc_span::Span;
+use rustc_span::{DesugaringKind, Span};
 use rustc_target::abi::VariantIdx;
 use std::fmt;
 
@@ -425,10 +425,19 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             bb,
                         ),
                         LookupResult::Parent(..) => {
-                            self.tcx.sess.delay_span_bug(
-                                terminator.source_info.span,
-                                &format!("drop of untracked value {:?}", bb),
-                            );
+                            if !matches!(
+                                terminator.source_info.span.desugaring_kind(),
+                                Some(DesugaringKind::Replace),
+                            ) {
+                                self.tcx.sess.delay_span_bug(
+                                    terminator.source_info.span,
+                                    &format!("drop of untracked value {:?}", bb),
+                                );
+                            }
+                            // A drop and replace behind a pointer/array/whatever.
+                            // The borrow checker requires that these locations are initialized before the assignment,
+                            // so we just leave an unconditional drop.
+                            assert!(!data.is_cleanup);
                         }
                     }
                 }
