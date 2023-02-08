@@ -917,84 +917,80 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
         trace!("visit_statement: {:?}", statement);
         let source_info = statement.source_info;
         self.source_info = Some(source_info);
-        if let StatementKind::Assign(box (place, ref mut rval)) = statement.kind {
-            let can_const_prop = self.ecx.machine.can_const_prop[place.local];
-            if let Some(()) = self.const_prop(rval, place) {
-                // This will return None if the above `const_prop` invocation only "wrote" a
-                // type whose creation requires no write. E.g. a generator whose initial state
-                // consists solely of uninitialized memory (so it doesn't capture any locals).
-                if let Some(ref value) = self.get_const(place) && self.should_const_prop(value) {
-                    trace!("replacing {:?} with {:?}", rval, value);
-                    self.replace_with_const(rval, value, source_info);
-                    if can_const_prop == ConstPropMode::FullConstProp
-                        || can_const_prop == ConstPropMode::OnlyInsideOwnBlock
-                    {
-                        trace!("propagated into {:?}", place);
-                    }
-                }
-                match can_const_prop {
-                    ConstPropMode::OnlyInsideOwnBlock => {
-                        trace!(
-                            "found local restricted to its block. \
-                                Will remove it from const-prop after block is finished. Local: {:?}",
-                            place.local
-                        );
-                    }
-                    ConstPropMode::OnlyPropagateInto | ConstPropMode::NoPropagation => {
-                        trace!("can't propagate into {:?}", place);
-                        if place.local != RETURN_PLACE {
-                            Self::remove_const(&mut self.ecx, place.local);
+        match statement.kind {
+            StatementKind::Assign(box (place, ref mut rval)) => {
+                let can_const_prop = self.ecx.machine.can_const_prop[place.local];
+                if let Some(()) = self.const_prop(rval, place) {
+                    // This will return None if the above `const_prop` invocation only "wrote" a
+                    // type whose creation requires no write. E.g. a generator whose initial state
+                    // consists solely of uninitialized memory (so it doesn't capture any locals).
+                    if let Some(ref value) = self.get_const(place) && self.should_const_prop(value) {
+                        trace!("replacing {:?} with {:?}", rval, value);
+                        self.replace_with_const(rval, value, source_info);
+                        if can_const_prop == ConstPropMode::FullConstProp
+                            || can_const_prop == ConstPropMode::OnlyInsideOwnBlock
+                        {
+                            trace!("propagated into {:?}", place);
                         }
                     }
-                    ConstPropMode::FullConstProp => {}
-                }
-            } else {
-                // Const prop failed, so erase the destination, ensuring that whatever happens
-                // from here on, does not know about the previous value.
-                // This is important in case we have
-                // ```rust
-                // let mut x = 42;
-                // x = SOME_MUTABLE_STATIC;
-                // // x must now be uninit
-                // ```
-                // FIXME: we overzealously erase the entire local, because that's easier to
-                // implement.
-                trace!(
-                    "propagation into {:?} failed.
-                        Nuking the entire site from orbit, it's the only way to be sure",
-                    place,
-                );
-                Self::remove_const(&mut self.ecx, place.local);
-            }
-        } else {
-            match statement.kind {
-                StatementKind::SetDiscriminant { ref place, .. } => {
-                    match self.ecx.machine.can_const_prop[place.local] {
-                        ConstPropMode::FullConstProp | ConstPropMode::OnlyInsideOwnBlock => {
-                            if self.use_ecx(|this| this.ecx.statement(statement)).is_some() {
-                                trace!("propped discriminant into {:?}", place);
-                            } else {
+                    match can_const_prop {
+                        ConstPropMode::OnlyInsideOwnBlock => {
+                            trace!(
+                                "found local restricted to its block. \
+                                Will remove it from const-prop after block is finished. Local: {:?}",
+                                place.local
+                            );
+                        }
+                        ConstPropMode::OnlyPropagateInto | ConstPropMode::NoPropagation => {
+                            trace!("can't propagate into {:?}", place);
+                            if place.local != RETURN_PLACE {
                                 Self::remove_const(&mut self.ecx, place.local);
                             }
                         }
-                        ConstPropMode::OnlyPropagateInto | ConstPropMode::NoPropagation => {
+                        ConstPropMode::FullConstProp => {}
+                    }
+                } else {
+                    // Const prop failed, so erase the destination, ensuring that whatever happens
+                    // from here on, does not know about the previous value.
+                    // This is important in case we have
+                    // ```rust
+                    // let mut x = 42;
+                    // x = SOME_MUTABLE_STATIC;
+                    // // x must now be uninit
+                    // ```
+                    // FIXME: we overzealously erase the entire local, because that's easier to
+                    // implement.
+                    trace!(
+                        "propagation into {:?} failed.
+                        Nuking the entire site from orbit, it's the only way to be sure",
+                        place,
+                    );
+                    Self::remove_const(&mut self.ecx, place.local);
+                }
+            }
+            StatementKind::SetDiscriminant { ref place, .. } => {
+                match self.ecx.machine.can_const_prop[place.local] {
+                    ConstPropMode::FullConstProp | ConstPropMode::OnlyInsideOwnBlock => {
+                        if self.use_ecx(|this| this.ecx.statement(statement)).is_some() {
+                            trace!("propped discriminant into {:?}", place);
+                        } else {
                             Self::remove_const(&mut self.ecx, place.local);
                         }
                     }
+                    ConstPropMode::OnlyPropagateInto | ConstPropMode::NoPropagation => {
+                        Self::remove_const(&mut self.ecx, place.local);
+                    }
                 }
-                StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                    let frame = self.ecx.frame_mut();
-                    frame.locals[local].value =
-                        if let StatementKind::StorageLive(_) = statement.kind {
-                            LocalValue::Live(interpret::Operand::Immediate(
-                                interpret::Immediate::Uninit,
-                            ))
-                        } else {
-                            LocalValue::Dead
-                        };
-                }
-                _ => {}
             }
+            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
+                let frame = self.ecx.frame_mut();
+                frame.locals[local].value = if let StatementKind::StorageLive(_) = statement.kind {
+                    LocalValue::Live(interpret::Operand::Immediate(interpret::Immediate::Uninit))
+                } else {
+                    LocalValue::Dead
+                };
+            }
+            _ => {}
         }
 
         self.super_statement(statement, location);
