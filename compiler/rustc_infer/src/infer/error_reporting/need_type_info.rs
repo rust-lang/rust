@@ -158,8 +158,12 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         if infcx.probe_ty_var(ty_vid).is_ok() {
             warn!("resolved ty var in error message");
         }
-        if let TypeVariableOriginKind::TypeParameterDefinition(name, _) =
-            infcx.inner.borrow_mut().type_variables().var_origin(ty_vid).kind
+
+        let mut infcx_inner = infcx.inner.borrow_mut();
+        let ty_vars = infcx_inner.type_variables();
+        let var_origin = ty_vars.var_origin(ty_vid);
+        if let TypeVariableOriginKind::TypeParameterDefinition(name, _) = var_origin.kind
+            && !var_origin.span.from_expansion()
         {
             Some(name)
         } else {
@@ -254,7 +258,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     if let TypeVariableOriginKind::TypeParameterDefinition(name, def_id) =
                         var_origin.kind
                     {
-                        if name != kw::SelfUpper {
+                        if name != kw::SelfUpper && !var_origin.span.from_expansion() {
                             return InferenceDiagnosticsData {
                                 name: name.to_string(),
                                 span: Some(var_origin.span),
@@ -780,7 +784,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         // The sources are listed in order of preference here.
         let tcx = self.infcx.tcx;
         let ctx = CostCtxt { tcx };
-        let base_cost = match source.kind {
+        match source.kind {
             InferSourceKind::LetBinding { ty, .. } => ctx.ty_cost(ty),
             InferSourceKind::ClosureArg { ty, .. } => ctx.ty_cost(ty),
             InferSourceKind::GenericArg { def_id, generic_args, .. } => {
@@ -797,17 +801,17 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             InferSourceKind::ClosureReturn { ty, should_wrap_expr, .. } => {
                 30 + ctx.ty_cost(ty) + if should_wrap_expr.is_some() { 10 } else { 0 }
             }
-        };
-
-        let suggestion_may_apply = if source.from_expansion() { 10000 } else { 0 };
-
-        base_cost + suggestion_may_apply
+        }
     }
 
     /// Uses `fn source_cost` to determine whether this inference source is preferable to
     /// previous sources. We generally prefer earlier sources.
     #[instrument(level = "debug", skip(self))]
     fn update_infer_source(&mut self, mut new_source: InferSource<'tcx>) {
+        if new_source.from_expansion() {
+            return;
+        }
+
         let cost = self.source_cost(&new_source) + self.attempt;
         debug!(?cost);
         self.attempt += 1;
@@ -819,6 +823,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             // `let x: _ = iter.collect();`, as this is a very common case.
             *def_id = Some(did);
         }
+
         if cost < self.infer_source_cost {
             self.infer_source_cost = cost;
             self.infer_source = Some(new_source);
