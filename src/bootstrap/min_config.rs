@@ -1,5 +1,6 @@
 use core::fmt;
 use std::{
+    cmp,
     collections::HashMap,
     env, fs,
     path::{Path, PathBuf},
@@ -11,6 +12,8 @@ use serde_derive::Deserialize;
 
 use crate::{
     cache::{Interned, INTERNER},
+    config::{self, set},
+    flags::Flags,
     t,
     util::output,
 };
@@ -91,8 +94,17 @@ impl MinimalConfig {
         }
     }
 
-    pub fn parse(config_flag: Option<PathBuf>) -> MinimalConfig {
+    fn set_shared_fields_from_parent(&mut self, parent_build_config: config::Build) {
+        set(&mut self.verbose, parent_build_config.verbose);
+        set(&mut self.patch_binaries_for_nix, parent_build_config.patch_binaries_for_nix);
+    }
+
+    pub fn parse(flags: &Flags, parent_build_config: Option<config::Build>) -> MinimalConfig {
         let mut config = Self::default_opts();
+
+        if let Some(parent_build_config) = parent_build_config {
+            config.set_shared_fields_from_parent(parent_build_config);
+        };
 
         if let Some(src) = src() {
             config.src = src;
@@ -100,12 +112,21 @@ impl MinimalConfig {
 
         set_config_output_dir(&mut config.out);
 
-        let toml: TomlConfig =
-            set_and_return_toml_config(config.src.clone(), config_flag, &mut config.config);
+        config.stage0_metadata = deserialize_stage0_metadata(&config.src);
+        config.dry_run = if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled };
 
-        if let Some(build) = toml.build.unwrap_or_default().build {
-            config.build = TargetSelection::from_user(&build);
+        let toml: TomlConfig = set_cfg_path_and_return_toml_cfg(
+            config.src.clone(),
+            flags.config.clone(),
+            &mut config.config,
+        );
+
+        let build = toml.build.unwrap_or_default();
+        if let Some(file_build) = build.build {
+            config.build = TargetSelection::from_user(&file_build);
         }
+
+        config.verbose = cmp::max(config.verbose, flags.verbose as usize);
 
         if config.dry_run() {
             let dir = config.out.join("tmp-dry-run");
@@ -229,10 +250,8 @@ pub(crate) fn get_toml<T: Deserialize<'static> + Default>(file: &Path) -> T {
 /// Shared helper function to be used in `MinimalConfig::parse` and `bootstrap::config::Config::parse`
 ///
 /// Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
-#[allow(unused_variables)]
-pub(crate) fn set_config_output_dir(output_path: &mut PathBuf) {
-    #[cfg(test)]
-    {
+fn set_config_output_dir(output_path: &mut PathBuf) {
+    if cfg!(test) {
         *output_path = Path::new(
             &env::var_os("CARGO_TARGET_DIR").expect("cargo test directly is not supported"),
         )
@@ -243,7 +262,7 @@ pub(crate) fn set_config_output_dir(output_path: &mut PathBuf) {
 }
 
 /// Shared helper function to be used in `MinimalConfig::parse` and `bootstrap::config::Config::parse`
-pub(crate) fn set_and_return_toml_config<T: Deserialize<'static> + Default>(
+pub(crate) fn set_cfg_path_and_return_toml_cfg<T: Deserialize<'static> + Default>(
     src: PathBuf,
     config_flag: Option<PathBuf>,
     cfg_path: &mut Option<PathBuf>,

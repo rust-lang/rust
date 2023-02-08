@@ -13,7 +13,7 @@ use bootstrap::{Build, Config, Subcommand, VERSION};
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
-    let config = Config::parse(&args);
+    let config = Config::parse(&args, None);
 
     #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
     let mut build_lock;

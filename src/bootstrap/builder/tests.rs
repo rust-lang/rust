@@ -7,7 +7,7 @@ fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
 }
 
 fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config {
-    let mut config = Config::parse(cmd);
+    let mut config = Config::parse(cmd, None);
     // don't save toolstates
     config.save_toolstates = None;
     config.dry_run = DryRun::SelfCheck;
@@ -18,7 +18,7 @@ fn configure_with_args(cmd: &[String], host: &[&str], target: &[&str]) -> Config
     let submodule_build = Build::new(Config {
         // don't include LLVM, so CI doesn't require ninja/cmake to be installed
         rust_codegen_backends: vec![],
-        ..Config::parse(&["check".to_owned()])
+        ..Config::parse(&["check".to_owned()], None)
     });
     submodule_build.update_submodule(Path::new("src/doc/book"));
     submodule_build.update_submodule(Path::new("src/tools/rust-analyzer"));

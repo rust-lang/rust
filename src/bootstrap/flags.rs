@@ -183,7 +183,7 @@ impl Flags {
             HelpVerboseOnly::try_parse_from(it.clone())
         {
             println!("note: updating submodules before printing available paths");
-            let config = Config::parse(&[String::from("build")]);
+            let config = Config::parse(&[String::from("build")], None);
             let build = Build::new(config);
             let paths = Builder::get_help(&build, subcommand);
             if let Some(s) = paths {

@@ -7,9 +7,7 @@
 mod tests;
 
 use std::cell::{Cell, RefCell};
-use std::cmp;
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::fs;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
@@ -22,9 +20,7 @@ use crate::cc_detect::{ndk_compiler, Language};
 use crate::channel::{self, GitInfo};
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags, Warnings};
-use crate::min_config::{
-    deserialize_stage0_metadata, get_toml, set_and_return_toml_config, set_config_output_dir,
-};
+use crate::min_config::{get_toml, set_cfg_path_and_return_toml_cfg};
 use crate::util::{exe, output, t};
 use crate::MinimalConfig;
 use once_cell::sync::OnceCell;
@@ -391,6 +387,7 @@ impl Target {
         target
     }
 }
+
 /// Structure of the `config.toml` file that configuration is read from.
 ///
 /// This structure uses `Decodable` to automatically decode a TOML configuration
@@ -398,7 +395,7 @@ impl Target {
 /// `Config` structure.
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
-struct TomlConfig {
+pub struct TomlConfig {
     changelog_seen: Option<usize>,
     build: Option<Build>,
     install: Option<Install>,
@@ -443,8 +440,8 @@ macro_rules! define_config {
         $($field:ident: Option<$field_ty:ty> = $field_key:literal,)*
     }) => {
         $(#[$attr])*
-        struct $name {
-            $($field: Option<$field_ty>,)*
+        pub struct $name {
+            $(pub(crate) $field: Option<$field_ty>,)*
         }
 
         impl Merge for $name {
@@ -526,7 +523,7 @@ macro_rules! define_config {
 
 define_config! {
     /// TOML representation of various global build decisions.
-    #[derive(Default)]
+    #[derive(Clone, Default)]
     struct Build {
         build: Option<String> = "build",
         host: Option<Vec<String>> = "host",
@@ -632,7 +629,7 @@ define_config! {
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
-enum StringOrBool {
+pub(crate) enum StringOrBool {
     String(String),
     Bool(bool),
 }
@@ -752,14 +749,6 @@ impl Config {
         config.stdout_is_tty = std::io::stdout().is_terminal();
         config.stderr_is_tty = std::io::stderr().is_terminal();
 
-        // set by build.rs
-        config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
-
-        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        // Undo `src/bootstrap`
-        config.src = manifest_dir.parent().unwrap().parent().unwrap().to_owned();
-        config.out = PathBuf::from("build");
-
         config
     }
 
@@ -785,10 +774,19 @@ impl Config {
         args
     }
 
-    pub fn parse(args: &[String]) -> Config {
+    pub fn parse(args: &[String], custom_toml_config: Option<TomlConfig>) -> Config {
         let mut flags = Flags::parse(&args);
         let mut config = Config::default_opts();
-        config.minimal_config = MinimalConfig::parse(flags.config.clone());
+
+        let mut toml: TomlConfig = custom_toml_config.unwrap_or_else(|| {
+            set_cfg_path_and_return_toml_cfg(
+                config.src.clone(),
+                flags.config.clone(),
+                &mut config.config,
+            )
+        });
+
+        config.minimal_config = MinimalConfig::parse(&flags, toml.build.clone());
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);
@@ -800,7 +798,6 @@ impl Config {
         config.jobs = Some(threads_from_config(flags.jobs as u32));
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
-        config.dry_run = if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled };
         config.keep_stage = flags.keep_stage;
         config.keep_stage_std = flags.keep_stage_std;
         config.color = flags.color;
@@ -817,13 +814,10 @@ impl Config {
             crate::detail_exit(1);
         }
 
-        // Infer the rest of the configuration.
-
-        set_config_output_dir(&mut config.out);
-        config.stage0_metadata = deserialize_stage0_metadata(&config.src);
-
-        let mut toml: TomlConfig =
-            set_and_return_toml_config(config.src.clone(), flags.config, &mut config.config);
+        let build = toml.build.clone().unwrap_or_default();
+        if let Some(file_build) = build.build.as_ref() {
+            config.build = TargetSelection::from_user(file_build);
+        };
 
         if let Some(include) = &toml.profile {
             let mut include_path = config.src.clone();
@@ -836,11 +830,6 @@ impl Config {
         }
 
         config.changelog_seen = toml.changelog_seen;
-
-        let build = toml.build.unwrap_or_default();
-        if let Some(file_build) = build.build {
-            config.build = TargetSelection::from_user(&file_build);
-        };
 
         set(&mut config.out, flags.build_dir.or_else(|| build.build_dir.map(PathBuf::from)));
         // NOTE: Bootstrap spawns various commands with different working directories.
@@ -902,7 +891,6 @@ impl Config {
         set(&mut config.full_bootstrap, build.full_bootstrap);
         set(&mut config.extended, build.extended);
         config.tools = build.tools;
-        set(&mut config.verbose, build.verbose);
         set(&mut config.sanitizers, build.sanitizers);
         set(&mut config.profiler, build.profiler);
         set(&mut config.cargo_native_static, build.cargo_native_static);
@@ -910,9 +898,6 @@ impl Config {
         set(&mut config.local_rebuild, build.local_rebuild);
         set(&mut config.print_step_timings, build.print_step_timings);
         set(&mut config.print_step_rusage, build.print_step_rusage);
-        set(&mut config.patch_binaries_for_nix, build.patch_binaries_for_nix);
-
-        config.verbose = cmp::max(config.verbose, flags.verbose as usize);
 
         if let Some(install) = toml.install {
             config.prefix = install.prefix.map(PathBuf::from);
@@ -1526,7 +1511,7 @@ impl Config {
     }
 }
 
-fn set<T>(field: &mut T, val: Option<T>) {
+pub(crate) fn set<T>(field: &mut T, val: Option<T>) {
     if let Some(v) = val {
         *field = v;
     }

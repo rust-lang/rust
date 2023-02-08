@@ -1,19 +1,17 @@
 use std::{env, process::Command};
 
-use bootstrap::{t, MinimalConfig};
+use bootstrap::{Flags, MinimalConfig};
 
 #[path = "../../../src/tools/x/src/main.rs"]
 mod run_python;
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
-    let mut opts = getopts::Options::new();
-    opts.optopt("", "config", "TOML configuration file for build", "FILE");
-    let matches = t!(opts.parse(args));
+    let flags = Flags::parse(&args);
 
     // If there are no untracked changes to bootstrap, download it from CI.
     // Otherwise, build it from source. Use python to build to avoid duplicating the code between python and rust.
-    let config = MinimalConfig::parse(t!(matches.opt_get("config")));
+    let config = MinimalConfig::parse(&flags, None);
     let bootstrap_bin = if let Some(commit) = last_modified_bootstrap_commit(&config) {
         config.download_bootstrap(&commit)
     } else {
