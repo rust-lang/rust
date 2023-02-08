@@ -8,7 +8,7 @@ use rustc_errors::Applicability;
 use rustc_expand::base::*;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{FileNameDisplayPreference, Span};
 use std::iter;
 use thin_vec::thin_vec;
 
