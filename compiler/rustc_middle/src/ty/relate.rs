@@ -449,7 +449,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             let region_bound = relation.with_cause(Cause::ExistentialRegionBound, |relation| {
                 relation.relate(a_region, b_region)
             })?;
-            Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound))
+            Ok(tcx.mk_dyn_star(relation.relate(a_obj, b_obj)?, region_bound))
         }
 
         (&ty::Generator(a_id, a_substs, movability), &ty::Generator(b_id, b_substs, _))

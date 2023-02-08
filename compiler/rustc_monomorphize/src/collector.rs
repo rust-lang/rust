@@ -1072,7 +1072,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
             let tail = tcx.struct_tail_erasing_lifetimes(ty, param_env);
             match tail.kind() {
                 ty::Foreign(..) => false,
-                ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
+                ty::Str | ty::Slice(..) | ty::Dynamic(..) | ty::DynStar(..) => true,
                 _ => bug!("unexpected unsized tail: {:?}", tail),
             }
         };
@@ -1147,7 +1147,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
 ) {
     assert!(!trait_ty.has_escaping_bound_vars() && !impl_ty.has_escaping_bound_vars());
 
-    if let ty::Dynamic(ref trait_ty, ..) = trait_ty.kind() {
+    if let ty::Dynamic(ref trait_ty, ..) | ty::DynStar(ref trait_ty, ..) = trait_ty.kind() {
         if let Some(principal) = trait_ty.principal() {
             let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
             assert!(!poly_trait_ref.has_escaping_bound_vars());

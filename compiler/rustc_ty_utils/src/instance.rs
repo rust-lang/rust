@@ -71,6 +71,7 @@ fn inner_resolve_instance<'tcx>(
                         | ty::Tuple(..)
                         | ty::Adt(..)
                         | ty::Dynamic(..)
+                        | ty::DynStar(..)
                         | ty::Array(..)
                         | ty::Slice(..) => {}
                         // Drop shims can only be built from ADTs.

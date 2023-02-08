@@ -888,7 +888,7 @@ where
                     self.open_drop_for_adt(*def, substs)
                 }
             }
-            ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),
+            ty::Dynamic(..) | ty::DynStar(..) => self.complete_drop(self.succ, self.unwind),
             ty::Array(ety, size) => {
                 let size = size.try_eval_usize(self.tcx(), self.elaborator.param_env());
                 self.open_drop_for_array(*ety, size)

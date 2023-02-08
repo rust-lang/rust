@@ -727,9 +727,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return Err(TypeError::Mismatch);
         }
 
-        if let ty::Dynamic(a_data, _) | ty::DynStar(a_data, _) = a.kind()
-            && let ty::Dynamic(b_data, _) | ty::DynStar(b_data, _) = b.kind()
-            && a_data.principal_def_id() == b_data.principal_def_id()
+        if let (ty::Dynamic(a_data, _), ty::Dynamic(b_data, _)) | (ty::DynStar(a_data, _), ty::DynStar(b_data, _)) = (a.kind(), b.kind())
+        && a_data.principal_def_id() == b_data.principal_def_id()
         {
             return self.unify_and(a, b, |_| vec![]);
         }

@@ -400,10 +400,7 @@ impl<I: Interner> Ord for TyKind<I> {
                 }
                 (FnDef(a_d, a_s), FnDef(b_d, b_s)) => a_d.cmp(b_d).then_with(|| a_s.cmp(b_s)),
                 (FnPtr(a_s), FnPtr(b_s)) => a_s.cmp(b_s),
-                (Dynamic(a_p, a_r), Dynamic(b_p, b_r)) => {
-                    a_p.cmp(b_p).then_with(|| a_r.cmp(b_r))
-                }
-                (DynStar(a_p, a_r), DynStar(b_p, b_r)) => {
+                (Dynamic(a_p, a_r), Dynamic(b_p, b_r)) | (DynStar(a_p, a_r), DynStar(b_p, b_r))=> {
                     a_p.cmp(b_p).then_with(|| a_r.cmp(b_r))
                 }
                 (Closure(a_p, a_s), Closure(b_p, b_s)) => a_p.cmp(b_p).then_with(|| a_s.cmp(b_s)),
@@ -713,7 +710,7 @@ where
                 "{}",
                 format!(
                     "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "TyKind", 27,
+                    "TyKind", 28,
                 )
             ),
         }
