@@ -227,6 +227,11 @@ with `self` prefixed to them when inside a method.
 --
 Whether to add parenthesis and argument snippets when completing function.
 --
+[[rust-analyzer.completion.limit]]rust-analyzer.completion.limit (default: `null`)::
++
+--
+Maximum number of completions to return. If `None`, the limit is infinite.
+--
 [[rust-analyzer.completion.postfix.enable]]rust-analyzer.completion.postfix.enable (default: `true`)::
 +
 --

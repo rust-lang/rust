@@ -200,6 +200,8 @@ config_data! {
         completion_autoself_enable: bool        = "true",
         /// Whether to add parenthesis and argument snippets when completing function.
         completion_callable_snippets: CallableCompletionDef  = "\"fill_arguments\"",
+        /// Maximum number of completions to return. If `None`, the limit is infinite.
+        completion_limit: Option<usize> = "null",
         /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
         completion_postfix_enable: bool         = "true",
         /// Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
@@ -1343,6 +1345,7 @@ impl Config {
                     .snippet_support?
             )),
             snippets: self.snippets.clone(),
+            limit: self.data.completion_limit,
         }
     }
 

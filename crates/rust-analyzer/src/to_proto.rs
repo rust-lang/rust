@@ -215,8 +215,14 @@ pub(crate) fn completion_items(
     let max_relevance = items.iter().map(|it| it.relevance().score()).max().unwrap_or_default();
     let mut res = Vec::with_capacity(items.len());
     for item in items {
-        completion_item(&mut res, config, line_index, &tdpp, max_relevance, item)
+        completion_item(&mut res, config, line_index, &tdpp, max_relevance, item);
     }
+
+    if let Some(limit) = config.completion().limit {
+        res.sort_by(|item1, item2| item1.sort_text.cmp(&item2.sort_text));
+        res.truncate(limit);
+    }
+
     res
 }
 
