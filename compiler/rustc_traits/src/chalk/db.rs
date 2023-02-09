@@ -769,7 +769,7 @@ struct ReplaceOpaqueTyFolder<'tcx> {
     binder_index: ty::DebruijnIndex,
 }
 
-impl<'tcx> ty::TypeFolder<'tcx> for ReplaceOpaqueTyFolder<'tcx> {
+impl<'tcx> ty::ir::TypeFolder<'tcx> for ReplaceOpaqueTyFolder<'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }

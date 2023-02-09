@@ -14,7 +14,7 @@ use rustc_infer::traits::specialization_graph::LeafDef;
 use rustc_infer::traits::Reveal;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{ProjectionPredicate, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{ir::TypeVisitor, ProjectionPredicate, TypeSuperVisitable};
 use rustc_middle::ty::{ToPredicate, TypeVisitable};
 use rustc_span::{sym, DUMMY_SP};
 use std::iter;

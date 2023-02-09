@@ -17,7 +17,8 @@ use rustc_hir::{
     TyKind,
 };
 use rustc_middle::ty::{
-    self, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
+    self, ir::TypeVisitor, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt,
+    TypeSuperVisitable,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::Span;

@@ -69,7 +69,7 @@ macro_rules! CloneLiftImpls {
 macro_rules! TrivialTypeTraversalImpls {
     (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
         $(
-            impl<$tcx> $crate::ty::fold::TypeFoldable<$tcx> for $ty {
+            impl<$tcx> $crate::ty::fold::ir::TypeFoldable<$tcx> for $ty {
                 fn try_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$tcx>>(
                     self,
                     _: &mut F,
@@ -86,7 +86,7 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
             }
 
-            impl<$tcx> $crate::ty::visit::TypeVisitable<$tcx> for $ty {
+            impl<$tcx> $crate::ty::visit::ir::TypeVisitable<$tcx> for $ty {
                 #[inline]
                 fn visit_with<F: $crate::ty::visit::TypeVisitor<$tcx>>(
                     &self,
@@ -121,7 +121,7 @@ macro_rules! EnumTypeTraversalImpl {
     (impl<$($p:tt),*> TypeFoldable<$tcx:tt> for $s:path {
         $($variants:tt)*
     } $(where $($wc:tt)*)*) => {
-        impl<$($p),*> $crate::ty::fold::TypeFoldable<$tcx> for $s
+        impl<$($p),*> $crate::ty::fold::ir::TypeFoldable<$tcx> for $s
             $(where $($wc)*)*
         {
             fn try_fold_with<V: $crate::ty::fold::FallibleTypeFolder<$tcx>>(
@@ -136,7 +136,7 @@ macro_rules! EnumTypeTraversalImpl {
     (impl<$($p:tt),*> TypeVisitable<$tcx:tt> for $s:path {
         $($variants:tt)*
     } $(where $($wc:tt)*)*) => {
-        impl<$($p),*> $crate::ty::visit::TypeVisitable<$tcx> for $s
+        impl<$($p),*> $crate::ty::visit::ir::TypeVisitable<$tcx> for $s
             $(where $($wc)*)*
         {
             fn visit_with<V: $crate::ty::visit::TypeVisitor<$tcx>>(
@@ -163,7 +163,7 @@ macro_rules! EnumTypeTraversalImpl {
                 output(
                     $variant ( $($variant_arg),* ) => {
                         $variant (
-                            $($crate::ty::fold::TypeFoldable::try_fold_with($variant_arg, $folder)?),*
+                            $($crate::ty::fold::ir::TypeFoldable::try_fold_with($variant_arg, $folder)?),*
                         )
                     }
                     $($output)*
@@ -180,7 +180,7 @@ macro_rules! EnumTypeTraversalImpl {
                 output(
                     $variant { $($variant_arg),* } => {
                         $variant {
-                            $($variant_arg: $crate::ty::fold::TypeFoldable::fold_with(
+                            $($variant_arg: $crate::ty::fold::ir::TypeFoldable::fold_with(
                                 $variant_arg, $folder
                             )?),* }
                     }
@@ -216,7 +216,7 @@ macro_rules! EnumTypeTraversalImpl {
                 input($($input)*)
                 output(
                     $variant ( $($variant_arg),* ) => {
-                        $($crate::ty::visit::TypeVisitable::visit_with(
+                        $($crate::ty::visit::ir::TypeVisitable::visit_with(
                             $variant_arg, $visitor
                         )?;)*
                         ::std::ops::ControlFlow::Continue(())
@@ -234,7 +234,7 @@ macro_rules! EnumTypeTraversalImpl {
                 input($($input)*)
                 output(
                     $variant { $($variant_arg),* } => {
-                        $($crate::ty::visit::TypeVisitable::visit_with(
+                        $($crate::ty::visit::ir::TypeVisitable::visit_with(
                             $variant_arg, $visitor
                         )?;)*
                         ::std::ops::ControlFlow::Continue(())

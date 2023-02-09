@@ -13,8 +13,8 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::fold::{ir::TypeFolder, TypeFoldable, TypeSuperFoldable};
+use rustc_middle::ty::visit::TypeSuperVisitable;
 use rustc_middle::ty::TypeckResults;
 use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -561,7 +561,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             struct RecursionChecker {
                 def_id: LocalDefId,
             }
-            impl<'tcx> ty::TypeVisitor<'tcx> for RecursionChecker {
+            impl<'tcx> ty::ir::TypeVisitor<'tcx> for RecursionChecker {
                 type BreakTy = ();
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                     if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *t.kind() {

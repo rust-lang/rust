@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::ty::{self, ir::TypeVisitor, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
 use rustc_span::Span;
 use std::ops::ControlFlow;
 

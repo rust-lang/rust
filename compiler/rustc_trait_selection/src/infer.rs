@@ -6,7 +6,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{Canonical, CanonicalQueryResponse, QueryResponse};
 use rustc_middle::traits::query::Fallible;
-use rustc_middle::ty::{self, Ty, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_middle::ty::{GenericArg, ToPredicate};
 use rustc_span::{Span, DUMMY_SP};
 

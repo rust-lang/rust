@@ -3,9 +3,10 @@
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    visit::TypeVisitable, AliasTy, Const, ConstKind, DefIdTree, FallibleTypeFolder, InferConst,
-    InferTy, Opaque, PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitor,
+    ir::{FallibleTypeFolder, TypeVisitor},
+    visit::TypeVisitable,
+    AliasTy, Const, ConstKind, DefIdTree, InferConst, InferTy, Opaque, PolyTraitPredicate,
+    Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
 };
 
 use rustc_data_structures::fx::FxHashMap;

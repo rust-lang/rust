@@ -44,7 +44,9 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use std::ops::ControlFlow;
 
-pub use ir::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
+pub trait TypeVisitable<'tcx> = ir::TypeVisitable<'tcx>;
+pub trait TypeSuperVisitable<'tcx> = ir::TypeSuperVisitable<'tcx>;
+pub trait TypeVisitor<'tcx> = ir::TypeVisitor<'tcx>;
 
 pub mod ir {
     use crate::ty::{self, Binder, Ty, TypeFlags};
@@ -292,7 +294,7 @@ impl<'tcx> TyCtxt<'tcx> {
             callback: F,
         }
 
-        impl<'tcx, F> TypeVisitor<'tcx> for RegionVisitor<F>
+        impl<'tcx, F> ir::TypeVisitor<'tcx> for RegionVisitor<F>
         where
             F: FnMut(ty::Region<'tcx>) -> bool,
         {
@@ -394,7 +396,7 @@ impl<'tcx> ValidateBoundVars<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for ValidateBoundVars<'tcx> {
+impl<'tcx> ir::TypeVisitor<'tcx> for ValidateBoundVars<'tcx> {
     type BreakTy = ();
 
     fn visit_binder<T: TypeVisitable<'tcx>>(
@@ -506,7 +508,7 @@ struct HasEscapingVarsVisitor {
     outer_index: ty::DebruijnIndex,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
+impl<'tcx> ir::TypeVisitor<'tcx> for HasEscapingVarsVisitor {
     type BreakTy = FoundEscapingVars;
 
     fn visit_binder<T: TypeVisitable<'tcx>>(
@@ -583,7 +585,7 @@ impl std::fmt::Debug for HasTypeFlagsVisitor {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
+impl<'tcx> ir::TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     type BreakTy = FoundFlags;
 
     #[inline]
@@ -653,7 +655,7 @@ impl LateBoundRegionsCollector {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
+impl<'tcx> ir::TypeVisitor<'tcx> for LateBoundRegionsCollector {
     fn visit_binder<T: TypeVisitable<'tcx>>(
         &mut self,
         t: &Binder<'tcx, T>,
@@ -715,7 +717,7 @@ impl MaxUniverse {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for MaxUniverse {
+impl<'tcx> ir::TypeVisitor<'tcx> for MaxUniverse {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         if let ty::Placeholder(placeholder) = t.kind() {
             self.max_universe = ty::UniverseIndex::from_u32(

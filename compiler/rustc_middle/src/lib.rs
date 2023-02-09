@@ -60,6 +60,7 @@
 #![feature(yeet_expr)]
 #![feature(result_option_inspect)]
 #![feature(const_option)]
+#![feature(trait_alias)]
 #![recursion_limit = "512"]
 #![allow(rustc::potential_query_instability)]
 

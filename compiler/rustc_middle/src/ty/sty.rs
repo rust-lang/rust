@@ -7,8 +7,10 @@ use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, DefIdTree, Discr, FallibleTypeFolder, Term, Ty, TyCtxt, TypeFlags, TypeFoldable,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self,
+    ir::{FallibleTypeFolder, TypeVisitor},
+    AdtDef, DefIdTree, Discr, Term, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable,
 };
 use crate::ty::{List, ParamEnv};
 use hir::def::DefKind;

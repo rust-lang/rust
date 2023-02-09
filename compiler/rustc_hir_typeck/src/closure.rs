@@ -12,7 +12,7 @@ use rustc_infer::infer::{InferOk, InferResult};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, Ty, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{self, ir::TypeVisitor, Ty, TypeSuperVisitable};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::sym;

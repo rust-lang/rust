@@ -1,7 +1,6 @@
 //! A subset of a mir body used for const evaluatability checking.
 use crate::ty::{
-    self, Const, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitable,
+    self, ir::TypeFolder, Const, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
 };
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;

@@ -8,7 +8,7 @@ use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
 use crate::traits::project::ProjectAndUnifyResult;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::fold::{ir::TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{ImplPolarity, Region, RegionVid};
 

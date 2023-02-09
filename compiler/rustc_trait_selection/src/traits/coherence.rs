@@ -22,7 +22,7 @@ use rustc_infer::traits::util;
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitor};
+use rustc_middle::ty::{self, ir::TypeVisitor, ImplSubject, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::fmt::Debug;

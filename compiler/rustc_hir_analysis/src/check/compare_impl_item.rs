@@ -16,7 +16,7 @@ use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::util::ExplicitSelf;
 use rustc_middle::ty::{
-    self, DefIdTree, InternalSubsts, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
+    self, ir::TypeFolder, DefIdTree, InternalSubsts, Ty, TypeFoldable, TypeSuperFoldable,
 };
 use rustc_middle::ty::{GenericParamDefKind, ToPredicate, TyCtxt};
 use rustc_span::Span;

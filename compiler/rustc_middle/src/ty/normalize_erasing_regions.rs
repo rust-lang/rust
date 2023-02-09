@@ -9,7 +9,10 @@
 
 use crate::mir;
 use crate::traits::query::NoSolution;
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
+use crate::ty::fold::{
+    ir::{FallibleTypeFolder, TypeFolder},
+    TypeFoldable,
+};
 use crate::ty::{self, EarlyBinder, SubstsRef, Ty, TyCtxt};
 
 #[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]

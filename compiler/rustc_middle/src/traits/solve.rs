@@ -2,7 +2,10 @@ use std::ops::ControlFlow;
 
 use rustc_data_structures::intern::Interned;
 
-use crate::ty::{FallibleTypeFolder, Ty, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor};
+use crate::ty::{
+    ir::{self, TypeFoldable, TypeVisitable},
+    FallibleTypeFolder, Ty, TypeFolder, TypeVisitor,
+};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub struct ExternalConstraints<'tcx>(pub(crate) Interned<'tcx, ExternalConstraintsData<'tcx>>);
@@ -25,18 +28,20 @@ pub struct ExternalConstraintsData<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for ExternalConstraints<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        Ok(FallibleTypeFolder::tcx(folder).intern_external_constraints(ExternalConstraintsData {
-            regions: (),
-            opaque_types: self
-                .opaque_types
-                .iter()
-                .map(|opaque| opaque.try_fold_with(folder))
-                .collect::<Result<_, F::Error>>()?,
-        }))
+        Ok(ir::FallibleTypeFolder::tcx(folder).intern_external_constraints(
+            ExternalConstraintsData {
+                regions: (),
+                opaque_types: self
+                    .opaque_types
+                    .iter()
+                    .map(|opaque| opaque.try_fold_with(folder))
+                    .collect::<Result<_, F::Error>>()?,
+            },
+        ))
     }
 
     fn fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
-        TypeFolder::tcx(folder).intern_external_constraints(ExternalConstraintsData {
+        ir::TypeFolder::tcx(folder).intern_external_constraints(ExternalConstraintsData {
             regions: (),
             opaque_types: self.opaque_types.iter().map(|opaque| opaque.fold_with(folder)).collect(),
         })

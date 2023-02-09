@@ -1,5 +1,5 @@
 use crate::error::ConstNotUsedTraitAlias;
-use crate::ty::fold::{TypeFolder, TypeSuperFoldable};
+use crate::ty::fold::{ir::TypeFolder, TypeSuperFoldable};
 use crate::ty::subst::{GenericArg, GenericArgKind};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;

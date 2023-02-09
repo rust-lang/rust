@@ -1,5 +1,4 @@
-use crate::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use crate::ty::visit::TypeVisitable;
+use crate::ty::fold::{ir::TypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::{self, Ty, TyCtxt, TypeFlags};
 
 pub(super) fn provide(providers: &mut ty::query::Providers) {

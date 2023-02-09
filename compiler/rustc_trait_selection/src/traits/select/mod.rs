@@ -48,7 +48,7 @@ use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
-use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable};
 use rustc_session::config::TraitSolver;
 use rustc_span::symbol::sym;
 

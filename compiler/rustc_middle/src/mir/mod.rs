@@ -7,10 +7,10 @@ use crate::mir::interpret::{
 };
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
+use crate::ty::fold::{ir::TypeFoldable, FallibleTypeFolder};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::visit::{TypeVisitable, TypeVisitor};
-use crate::ty::{self, DefIdTree, List, Ty, TyCtxt};
+use crate::ty::{self, ir, DefIdTree, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 
@@ -2751,7 +2751,7 @@ impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for UserTypeProjection {
+impl<'tcx> ir::TypeVisitable<'tcx> for UserTypeProjection {
     fn visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> ControlFlow<Vs::BreakTy> {
         self.base.visit_with(visitor)
         // Note: there's nothing in `self.proj` to visit.

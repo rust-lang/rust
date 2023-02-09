@@ -34,11 +34,10 @@ use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::fold::{ir::TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, FmtPrinter, Print};
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
-    TypeVisitable,
 };
 use rustc_session::config::TraitSolver;
 use rustc_session::Limit;
@@ -2964,7 +2963,7 @@ impl ArgKind {
 
 struct HasNumericInferVisitor;
 
-impl<'tcx> ty::TypeVisitor<'tcx> for HasNumericInferVisitor {
+impl<'tcx> ty::ir::TypeVisitor<'tcx> for HasNumericInferVisitor {
     type BreakTy = ();
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

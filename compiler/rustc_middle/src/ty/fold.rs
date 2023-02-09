@@ -48,7 +48,10 @@ use rustc_hir::def_id::DefId;
 
 use std::collections::BTreeMap;
 
-pub use ir::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
+pub trait TypeFoldable<'tcx> = ir::TypeFoldable<'tcx> + TypeVisitable<'tcx>;
+pub trait TypeSuperFoldable<'tcx> = ir::TypeSuperFoldable<'tcx>;
+pub trait TypeFolder<'tcx> = ir::TypeFolder<'tcx>;
+pub trait FallibleTypeFolder<'tcx> = ir::FallibleTypeFolder<'tcx>;
 
 pub mod ir {
     use crate::ty::{self, ir::TypeVisitable, Binder, Ty, TyCtxt};
@@ -233,7 +236,7 @@ where
     pub ct_op: H,
 }
 
-impl<'tcx, F, G, H> TypeFolder<'tcx> for BottomUpFolder<'tcx, F, G, H>
+impl<'tcx, F, G, H> ir::TypeFolder<'tcx> for BottomUpFolder<'tcx, F, G, H>
 where
     F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
     G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
@@ -323,7 +326,7 @@ impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
+impl<'a, 'tcx> ir::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -397,7 +400,7 @@ impl<'tcx, D: BoundVarReplacerDelegate<'tcx>> BoundVarReplacer<'tcx, D> {
     }
 }
 
-impl<'tcx, D> TypeFolder<'tcx> for BoundVarReplacer<'tcx, D>
+impl<'tcx, D> ir::TypeFolder<'tcx> for BoundVarReplacer<'tcx, D>
 where
     D: BoundVarReplacerDelegate<'tcx>,
 {
@@ -663,7 +666,7 @@ impl<'tcx> Shifter<'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for Shifter<'tcx> {
+impl<'tcx> ir::TypeFolder<'tcx> for Shifter<'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }

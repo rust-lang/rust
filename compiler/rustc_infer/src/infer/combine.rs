@@ -38,8 +38,8 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{
-    self, AliasKind, FallibleTypeFolder, InferConst, ToPredicate, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable, TypeVisitable,
+    self, ir::FallibleTypeFolder, AliasKind, InferConst, ToPredicate, Ty, TyCtxt, TypeFoldable,
+    TypeSuperFoldable,
 };
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::{Span, DUMMY_SP};

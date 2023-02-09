@@ -15,7 +15,7 @@ use rustc_middle::ty::{
     self,
     query::Providers,
     subst::SubstsRef,
-    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
+    visit::{ir::TypeVisitor, TypeSuperVisitable, TypeVisitable},
     Const, Ty, TyCtxt, UnusedGenericParams,
 };
 use rustc_span::symbol::sym;
