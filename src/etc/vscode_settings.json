@@ -1,4 +1,6 @@
 {
+    "rust-analyzer.check.invocationLocation": "root",
+    "rust-analyzer.check.invocationStrategy": "once",
     "rust-analyzer.checkOnSave.overrideCommand": [
         "python3",
         "x.py",
