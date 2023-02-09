@@ -1,6 +1,6 @@
 use super::ARITHMETIC_SIDE_EFFECTS;
 use clippy_utils::{
-    consts::{constant, constant_simple},
+    consts::{constant, constant_simple, Constant},
     diagnostics::span_lint,
     peel_hir_expr_refs, peel_hir_expr_unary,
 };
@@ -97,17 +97,19 @@ impl ArithmeticSideEffects {
         self.expr_span = Some(expr.span);
     }
 
-    /// If `expr` is not a literal integer like `1`, returns `None`.
+    /// Returns the numeric value of a literal integer originated from `expr`, if any.
     ///
-    /// Returns the absolute value of the expression, if this is an integer literal.
-    fn literal_integer(expr: &hir::Expr<'_>) -> Option<u128> {
+    /// Literal integers can be originated from adhoc declarations like `1`, associated constants
+    /// like `i32::MAX` or constant references like `N` from `const N: i32 = 1;`,
+    fn literal_integer(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<u128> {
         let actual = peel_hir_expr_unary(expr).0;
         if let hir::ExprKind::Lit(ref lit) = actual.kind && let ast::LitKind::Int(n, _) = lit.node {
-            Some(n)
+            return Some(n)
         }
-        else {
-            None
+        if let Some((Constant::Int(n), _)) = constant(cx, cx.typeck_results(), expr) {
+            return Some(n);
         }
+        None
     }
 
     /// Manages when the lint should be triggered. Operations in constant environments, hard coded
@@ -143,7 +145,10 @@ impl ArithmeticSideEffects {
         let has_valid_op = if Self::is_integral(lhs_ty) && Self::is_integral(rhs_ty) {
             let (actual_lhs, lhs_ref_counter) = peel_hir_expr_refs(lhs);
             let (actual_rhs, rhs_ref_counter) = peel_hir_expr_refs(rhs);
-            match (Self::literal_integer(actual_lhs), Self::literal_integer(actual_rhs)) {
+            match (
+                Self::literal_integer(cx, actual_lhs),
+                Self::literal_integer(cx, actual_rhs),
+            ) {
                 (None, None) => false,
                 (None, Some(n)) | (Some(n), None) => match (&op.node, n) {
                     (hir::BinOpKind::Div | hir::BinOpKind::Rem, 0) => false,
@@ -180,7 +185,7 @@ impl ArithmeticSideEffects {
             return;
         }
         let actual_un_expr = peel_hir_expr_refs(un_expr).0;
-        if Self::literal_integer(actual_un_expr).is_some() {
+        if Self::literal_integer(cx, actual_un_expr).is_some() {
             return;
         }
         self.issue_lint(cx, expr);
