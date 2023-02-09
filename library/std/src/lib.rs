@@ -278,7 +278,6 @@
 #![feature(char_error_internals)]
 #![feature(char_internals)]
 #![feature(core_intrinsics)]
-#![feature(cstr_from_bytes_until_nul)]
 #![feature(cstr_internals)]
 #![feature(duration_constants)]
 #![feature(error_generic_member_access)]
