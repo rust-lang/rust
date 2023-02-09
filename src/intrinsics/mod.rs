@@ -22,7 +22,7 @@ pub(crate) use cpuid::codegen_cpuid_call;
 pub(crate) use llvm::codegen_llvm_intrinsic_call;
 
 use rustc_middle::ty::layout::HasParamEnv;
-use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_span::symbol::{kw, sym, Symbol};
 
@@ -640,47 +640,33 @@ fn codegen_regular_intrinsic_call<'tcx>(
         sym::assert_inhabited | sym::assert_zero_valid | sym::assert_mem_uninitialized_valid => {
             intrinsic_args!(fx, args => (); intrinsic);
 
-            let layout = fx.layout_of(substs.type_at(0));
-            if layout.abi.is_uninhabited() {
-                with_no_trimmed_paths!({
-                    crate::base::codegen_panic_nounwind(
-                        fx,
-                        &format!("attempted to instantiate uninhabited type `{}`", layout.ty),
-                        source_info,
-                    )
+            let ty = substs.type_at(0);
+            let layout = fx.layout_of(ty);
+            let do_panic = match intrinsic {
+                sym::assert_inhabited => layout.abi.is_uninhabited(),
+                sym::assert_zero_valid => !fx.tcx.permits_zero_init(fx.param_env().and(layout)),
+                sym::assert_mem_uninitialized_valid => {
+                    !fx.tcx.permits_uninit_init(fx.param_env().and(layout))
+                }
+                _ => unreachable!(),
+            };
+            if do_panic {
+                let msg_str = with_no_visible_paths!({
+                    with_no_trimmed_paths!({
+                        if layout.abi.is_uninhabited() {
+                            // Use this error even for the other intrinsics as it is more precise.
+                            format!("attempted to instantiate uninhabited type `{}`", ty)
+                        } else if intrinsic == sym::assert_zero_valid {
+                            format!("attempted to zero-initialize type `{}`, which is invalid", ty)
+                        } else {
+                            format!(
+                                "attempted to leave type `{}` uninitialized, which is invalid",
+                                ty
+                            )
+                        }
+                    })
                 });
-                return;
-            }
-
-            if intrinsic == sym::assert_zero_valid
-                && !fx.tcx.permits_zero_init(fx.param_env().and(layout))
-            {
-                with_no_trimmed_paths!({
-                    crate::base::codegen_panic_nounwind(
-                        fx,
-                        &format!(
-                            "attempted to zero-initialize type `{}`, which is invalid",
-                            layout.ty
-                        ),
-                        source_info,
-                    );
-                });
-                return;
-            }
-
-            if intrinsic == sym::assert_mem_uninitialized_valid
-                && !fx.tcx.permits_uninit_init(fx.param_env().and(layout))
-            {
-                with_no_trimmed_paths!({
-                    crate::base::codegen_panic_nounwind(
-                        fx,
-                        &format!(
-                            "attempted to leave type `{}` uninitialized, which is invalid",
-                            layout.ty
-                        ),
-                        source_info,
-                    )
-                });
+                crate::base::codegen_panic_nounwind(fx, &msg_str, source_info);
                 return;
             }
         }
