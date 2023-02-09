@@ -2,8 +2,10 @@
 //! <https://www.unicode.org/Public/security/10.0.0/confusables.txt>
 
 use super::StringReader;
-use crate::token::{self, Delimiter};
-use rustc_errors::{Applicability, Diagnostic};
+use crate::{
+    errors::TokenSubstitution,
+    token::{self, Delimiter},
+};
 use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
 #[rustfmt::skip] // for line breaks
@@ -338,48 +340,44 @@ pub(super) fn check_for_substitution<'a>(
     reader: &StringReader<'a>,
     pos: BytePos,
     ch: char,
-    err: &mut Diagnostic,
     count: usize,
-) -> Option<token::TokenKind> {
-    let &(_, u_name, ascii_str) = UNICODE_ARRAY.iter().find(|&&(c, _, _)| c == ch)?;
+) -> (Option<token::TokenKind>, Option<TokenSubstitution>) {
+    let Some(&(_, u_name, ascii_str)) = UNICODE_ARRAY.iter().find(|&&(c, _, _)| c == ch) else {
+        return (None, None);
+    };
 
     let span = Span::with_root_ctxt(pos, pos + Pos::from_usize(ch.len_utf8() * count));
 
     let Some((_, ascii_name, token)) = ASCII_ARRAY.iter().find(|&&(s, _, _)| s == ascii_str) else {
         let msg = format!("substitution character not found for '{}'", ch);
         reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
-        return None;
+        return (None, None);
     };
 
     // special help suggestion for "directed" double quotes
-    if let Some(s) = peek_delimited(&reader.src[reader.src_index(pos)..], '“', '”') {
-        let msg = format!(
-            "Unicode characters '“' (Left Double Quotation Mark) and \
-             '”' (Right Double Quotation Mark) look like '{}' ({}), but are not",
-            ascii_str, ascii_name
+    let sugg = if let Some(s) = peek_delimited(&reader.src[reader.src_index(pos)..], '“', '”') {
+        let span = Span::with_root_ctxt(
+            pos,
+            pos + Pos::from_usize('“'.len_utf8() + s.len() + '”'.len_utf8()),
         );
-        err.span_suggestion(
-            Span::with_root_ctxt(
-                pos,
-                pos + Pos::from_usize('“'.len_utf8() + s.len() + '”'.len_utf8()),
-            ),
-            &msg,
-            format!("\"{}\"", s),
-            Applicability::MaybeIncorrect,
-        );
-    } else {
-        let msg = format!(
-            "Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
-            ch, u_name, ascii_str, ascii_name
-        );
-        err.span_suggestion(
+        Some(TokenSubstitution::DirectedQuotes {
             span,
-            &msg,
-            ascii_str.to_string().repeat(count),
-            Applicability::MaybeIncorrect,
-        );
-    }
-    token.clone()
+            suggestion: format!("\"{s}\""),
+            ascii_str,
+            ascii_name,
+        })
+    } else {
+        let suggestion = ascii_str.to_string().repeat(count);
+        Some(TokenSubstitution::Other {
+            span,
+            suggestion,
+            ch: ch.to_string(),
+            u_name,
+            ascii_str,
+            ascii_name,
+        })
+    };
+    (token.clone(), sugg)
 }
 
 /// Extract string if found at current position with given delimiters
