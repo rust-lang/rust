@@ -679,6 +679,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         &param_name,
                         &constraint,
                         Some(trait_pred.def_id()),
+                        None,
                     ) {
                         return;
                     }
@@ -897,7 +898,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             return false;
         }
 
-        let self_ty = self.replace_bound_vars_with_fresh_vars(
+        let self_ty = self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
             LateBoundRegionConversionTime::FnCall,
             trait_pred.self_ty(),
@@ -1087,6 +1088,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     param.name.as_str(),
                     "Clone",
                     Some(clone_trait),
+                    None,
                 );
             }
             err.span_suggestion_verbose(
@@ -1189,7 +1191,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         }) else { return None; };
 
-        let output = self.replace_bound_vars_with_fresh_vars(
+        let output = self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
             LateBoundRegionConversionTime::FnCall,
             output,
@@ -1198,7 +1200,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .skip_binder()
             .iter()
             .map(|ty| {
-                self.replace_bound_vars_with_fresh_vars(
+                self.instantiate_binder_with_fresh_vars(
                     DUMMY_SP,
                     LateBoundRegionConversionTime::FnCall,
                     inputs.rebind(*ty),
@@ -3804,13 +3806,13 @@ fn hint_missing_borrow<'tcx>(
     err: &mut Diagnostic,
 ) {
     let found_args = match found.kind() {
-        ty::FnPtr(f) => infcx.replace_bound_vars_with_placeholders(*f).inputs().iter(),
+        ty::FnPtr(f) => infcx.instantiate_binder_with_placeholders(*f).inputs().iter(),
         kind => {
             span_bug!(span, "found was converted to a FnPtr above but is now {:?}", kind)
         }
     };
     let expected_args = match expected.kind() {
-        ty::FnPtr(f) => infcx.replace_bound_vars_with_placeholders(*f).inputs().iter(),
+        ty::FnPtr(f) => infcx.instantiate_binder_with_placeholders(*f).inputs().iter(),
         kind => {
             span_bug!(span, "expected was converted to a FnPtr above but is now {:?}", kind)
         }

@@ -1,0 +1,6 @@
+error: the compiler unexpectedly panicked. this is a bug.
+
+query stack during panic:
+#0 [check_well_formed] checking that `<impl at $DIR/provisional-result-done.rs:20:1: 20:31>` is well-formed
+#1 [check_mod_type_wf] checking that types are well-formed in top-level module
+end of query stack

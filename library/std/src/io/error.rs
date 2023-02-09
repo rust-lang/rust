@@ -102,7 +102,7 @@ enum ErrorData<C> {
 /// portability.
 ///
 /// [`into`]: Into::into
-#[unstable(feature = "raw_os_error_ty", issue = "none")]
+#[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub type RawOsError = i32;
 
 // `#[repr(align(4))]` is probably redundant, it should have that value or

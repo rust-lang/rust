@@ -995,7 +995,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         Ok(self.commit_if_ok(|_snapshot| {
             let ty::SubtypePredicate { a_is_expected, a, b } =
-                self.replace_bound_vars_with_placeholders(predicate);
+                self.instantiate_binder_with_placeholders(predicate);
 
             let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
 
@@ -1008,7 +1008,7 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &traits::ObligationCause<'tcx>,
         predicate: ty::PolyRegionOutlivesPredicate<'tcx>,
     ) {
-        let ty::OutlivesPredicate(r_a, r_b) = self.replace_bound_vars_with_placeholders(predicate);
+        let ty::OutlivesPredicate(r_a, r_b) = self.instantiate_binder_with_placeholders(predicate);
         let origin =
             SubregionOrigin::from_obligation_cause(cause, || RelateRegionParamBound(cause.span));
         self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
@@ -1447,7 +1447,14 @@ impl<'tcx> InferCtxt<'tcx> {
         value
     }
 
-    pub fn replace_bound_vars_with_fresh_vars<T>(
+    // Instantiates the bound variables in a given binder with fresh inference
+    // variables in the current universe.
+    //
+    // Use this method if you'd like to find some substitution of the binder's
+    // variables (e.g. during a method call). If there isn't a [`LateBoundRegionConversionTime`]
+    // that corresponds to your use case, consider whether or not you should
+    // use [`InferCtxt::instantiate_binder_with_placeholders`] instead.
+    pub fn instantiate_binder_with_fresh_vars<T>(
         &self,
         span: Span,
         lbrct: LateBoundRegionConversionTime,

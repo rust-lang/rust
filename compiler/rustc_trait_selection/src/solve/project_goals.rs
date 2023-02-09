@@ -323,7 +323,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         {
             ecx.infcx.probe(|_| {
                 let assumption_projection_pred =
-                    ecx.infcx.instantiate_bound_vars_with_infer(poly_projection_pred);
+                    ecx.infcx.instantiate_binder_with_infer(poly_projection_pred);
                 let nested_goals = ecx.infcx.eq(
                     goal.param_env,
                     goal.predicate.projection_ty,
@@ -370,11 +370,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         bug!("`Copy`/`Clone` does not have an associated type: {:?}", goal);
     }
 
-    fn consider_builtin_pointer_sized_candidate(
+    fn consider_builtin_pointer_like_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
-        bug!("`PointerSized` does not have an associated type: {:?}", goal);
+        bug!("`PointerLike` does not have an associated type: {:?}", goal);
     }
 
     fn consider_builtin_fn_trait_candidates(

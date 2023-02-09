@@ -31,7 +31,7 @@ impl Trait<{1 + 2}> for u8 {}
 impl<const N: usize> Trait<N> for [u8; N] {}
 
 // @has foo/struct.Foo.html '//pre[@class="rust item-decl"]' \
-//      'pub struct Foo<const N: usize>where u8: Trait<N>'
+//      'pub struct Foo<const N: usize> where u8: Trait<N>'
 pub struct Foo<const N: usize> where u8: Trait<N>;
 // @has foo/struct.Bar.html '//pre[@class="rust item-decl"]' 'pub struct Bar<T, const N: usize>(_)'
 pub struct Bar<T, const N: usize>([T; N]);

@@ -33,4 +33,14 @@ struct FlexZeroSlice {
     //~^^ this was previously accepted
 }
 
+// Again, currently allowed, but will be phased out.
+#[derive(Debug)]
+#[repr(packed)]
+struct WithStr {
+    width: u8,
+    data: str,
+    //~^ WARNING string slice in a packed struct that derives a built-in trait
+    //~^^ this was previously accepted
+}
+
 fn main() {}

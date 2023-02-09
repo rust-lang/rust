@@ -60,9 +60,8 @@ jobs:
             env: {}
           - name: x86_64-gnu-tools
             tidy: false
-            env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
             os: ubuntu-20.04-xl
+            env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:

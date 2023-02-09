@@ -126,7 +126,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let vtable = self.get_vtable_ptr(src.layout.ty, data.principal())?;
                     let vtable = Scalar::from_maybe_pointer(vtable, self);
                     let data = self.read_immediate(src)?.to_scalar();
-                    let _assert_pointer_sized = data.to_pointer(self)?;
+                    let _assert_pointer_like = data.to_pointer(self)?;
                     let val = Immediate::ScalarPair(data, vtable);
                     self.write_immediate(val, dest)?;
                 } else {

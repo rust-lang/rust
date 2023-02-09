@@ -477,7 +477,8 @@ pub struct MiriMachine<'mir, 'tcx> {
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     pub(crate) fn new(config: &MiriConfig, layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Self {
-        let local_crates = helpers::get_local_crates(layout_cx.tcx);
+        let tcx = layout_cx.tcx;
+        let local_crates = helpers::get_local_crates(tcx);
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
         let profiler = config.measureme_out.as_ref().map(|out| {
@@ -486,10 +487,13 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         let rng = StdRng::seed_from_u64(config.seed.unwrap_or(0));
         let borrow_tracker = config.borrow_tracker.map(|bt| bt.instanciate_global_state(config));
         let data_race = config.data_race_detector.then(|| data_race::GlobalState::new(config));
+        // Determinine page size, stack address, and stack size.
+        // These values are mostly meaningless, but the stack address is also where we start
+        // allocating physical integer addresses for all allocations.
         let page_size = if let Some(page_size) = config.page_size {
             page_size
         } else {
-            let target = &layout_cx.tcx.sess.target;
+            let target = &tcx.sess.target;
             match target.arch.as_ref() {
                 "wasm32" | "wasm64" => 64 * 1024, // https://webassembly.github.io/spec/core/exec/runtime.html#memory-instances
                 "aarch64" =>
@@ -504,10 +508,12 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 _ => 4 * 1024,
             }
         };
-        let stack_addr = page_size * 32;
-        let stack_size = page_size * 16;
+        // On 16bit targets, 32 pages is more than the entire address space!
+        let stack_addr = if tcx.pointer_size().bits() < 32 { page_size } else { page_size * 32 };
+        let stack_size =
+            if tcx.pointer_size().bits() < 32 { page_size * 4 } else { page_size * 16 };
         MiriMachine {
-            tcx: layout_cx.tcx,
+            tcx,
             borrow_tracker,
             data_race,
             intptrcast: RefCell::new(intptrcast::GlobalStateInner::new(config, stack_addr)),
@@ -971,7 +977,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     fn adjust_alloc_base_pointer(
         ecx: &MiriInterpCx<'mir, 'tcx>,
         ptr: Pointer<AllocId>,
-    ) -> Pointer<Provenance> {
+    ) -> InterpResult<'tcx, Pointer<Provenance>> {
         if cfg!(debug_assertions) {
             // The machine promises to never call us on thread-local or extern statics.
             let alloc_id = ptr.provenance;
@@ -985,17 +991,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 _ => {}
             }
         }
-        let absolute_addr = intptrcast::GlobalStateInner::rel_ptr_to_addr(ecx, ptr);
+        let absolute_addr = intptrcast::GlobalStateInner::rel_ptr_to_addr(ecx, ptr)?;
         let tag = if let Some(borrow_tracker) = &ecx.machine.borrow_tracker {
             borrow_tracker.borrow_mut().base_ptr_tag(ptr.provenance, &ecx.machine)
         } else {
             // Value does not matter, SB is disabled
             BorTag::default()
         };
-        Pointer::new(
+        Ok(Pointer::new(
             Provenance::Concrete { alloc_id: ptr.provenance, tag },
             Size::from_bytes(absolute_addr),
-        )
+        ))
     }
 
     #[inline(always)]
