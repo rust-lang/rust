@@ -329,7 +329,10 @@ impl StepDescription {
         }
         // sanity checks on hosts
         if builder.hosts.is_empty() {
-            eprintln!("`x.py {}` run with empty `host` parameter. Either set it or leave it out for default value.", builder.kind.as_str());
+            eprintln!(
+                "`x.py {}` run with empty `host` parameter. Either set it or leave it out for default value.",
+                builder.kind.as_str()
+            );
             crate::detail_exit(1);
         }
 
