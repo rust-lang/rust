@@ -2,7 +2,7 @@ use std::env;
 use std::path::PathBuf;
 use std::process;
 
-use self::utils::{is_ci, Compiler};
+use self::utils::{is_ci, is_ci_opt, Compiler};
 
 mod abi_cafe;
 mod bench;
@@ -53,8 +53,10 @@ pub fn main() {
         // Disabling incr comp reduces cache size and incr comp doesn't save as much on CI anyway
         env::set_var("CARGO_BUILD_INCREMENTAL", "false");
 
-        // Enable the Cranelift verifier
-        env::set_var("CG_CLIF_ENABLE_VERIFIER", "1");
+        if !is_ci_opt() {
+            // Enable the Cranelift verifier
+            env::set_var("CG_CLIF_ENABLE_VERIFIER", "1");
+        }
     }
 
     let mut args = env::args().skip(1);

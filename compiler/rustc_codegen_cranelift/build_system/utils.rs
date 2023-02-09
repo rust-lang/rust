@@ -121,10 +121,18 @@ impl CargoProject {
     }
 
     #[must_use]
-    pub(crate) fn fetch(&self, cargo: impl AsRef<Path>, dirs: &Dirs) -> Command {
+    pub(crate) fn fetch(
+        &self,
+        cargo: impl AsRef<Path>,
+        rustc: impl AsRef<Path>,
+        dirs: &Dirs,
+    ) -> Command {
         let mut cmd = Command::new(cargo.as_ref());
 
-        cmd.arg("fetch").arg("--manifest-path").arg(self.manifest_path(dirs));
+        cmd.env("RUSTC", rustc.as_ref())
+            .arg("fetch")
+            .arg("--manifest-path")
+            .arg(self.manifest_path(dirs));
 
         cmd
     }
@@ -271,5 +279,9 @@ pub(crate) fn copy_dir_recursively(from: &Path, to: &Path) {
 }
 
 pub(crate) fn is_ci() -> bool {
-    env::var("CI").as_deref() == Ok("true")
+    env::var("CI").is_ok()
+}
+
+pub(crate) fn is_ci_opt() -> bool {
+    env::var("CI_OPT").is_ok()
 }
