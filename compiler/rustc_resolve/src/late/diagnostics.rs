@@ -2244,19 +2244,23 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 }
                 None => {
                     debug!(?param.ident, ?param.ident.span);
-
                     let deletion_span = deletion_span();
-                    self.r.lint_buffer.buffer_lint_with_diagnostic(
-                        lint::builtin::UNUSED_LIFETIMES,
-                        param.id,
-                        param.ident.span,
-                        &format!("lifetime parameter `{}` never used", param.ident),
-                        lint::BuiltinLintDiagnostics::SingleUseLifetime {
-                            param_span: param.ident.span,
-                            use_span: None,
-                            deletion_span,
-                        },
-                    );
+                    // the give lifetime originates from expanded code so we won't be able to remove it #104432
+                    let lifetime_only_in_expanded_code =
+                        deletion_span.map(|sp| sp.in_derive_expansion()).unwrap_or(true);
+                    if !lifetime_only_in_expanded_code {
+                        self.r.lint_buffer.buffer_lint_with_diagnostic(
+                            lint::builtin::UNUSED_LIFETIMES,
+                            param.id,
+                            param.ident.span,
+                            &format!("lifetime parameter `{}` never used", param.ident),
+                            lint::BuiltinLintDiagnostics::SingleUseLifetime {
+                                param_span: param.ident.span,
+                                use_span: None,
+                                deletion_span,
+                            },
+                        );
+                    }
                 }
             }
         }
