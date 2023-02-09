@@ -787,15 +787,15 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// type Foo = <Bar as Identity>::Identity;
 /// ```
 #[stable(feature = "pin", since = "1.33.0")]
-pub trait Identity: Sized {
+pub trait Identity {
     #[cfg_attr(not(bootstrap), lang = "identity")]
     #[stable(feature = "pin", since = "1.33.0")]
-    /// lol
-    type Identity;
+    /// doc
+    type Identity: ?Sized;
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<T> Identity for T {
+impl<T: ?Sized> Identity for T {
     type Identity = T;
 }
 
