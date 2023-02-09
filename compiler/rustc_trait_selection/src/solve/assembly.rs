@@ -4,6 +4,7 @@ use super::infcx_ext::InferCtxtExt;
 #[cfg(doc)]
 use super::trait_goals::structural_traits::*;
 use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
+use itertools::Itertools;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::elaborate_predicates;
@@ -489,9 +490,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 i += 1;
             }
 
-            // If there are *STILL* multiple candidates, give up
-            // and report ambiguity.
-            if candidates.len() > 1 {
+            // If there are *STILL* multiple candidates that have *different* response
+            // results, give up and report ambiguity.
+            if candidates.len() > 1 && !candidates.iter().map(|cand| cand.result).all_equal() {
                 let certainty = if candidates.iter().all(|x| {
                     matches!(x.result.value.certainty, Certainty::Maybe(MaybeCause::Overflow))
                 }) {
@@ -503,6 +504,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
         }
 
+        // FIXME: What if there are >1 candidates left with the same response, and one is a reservation impl?
         Ok(self.discard_reservation_impl(candidates.pop().unwrap()).result)
     }
 
