@@ -291,7 +291,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn adjust_alloc_base_pointer(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         ptr: Pointer,
-    ) -> Pointer<Self::Provenance>;
+    ) -> InterpResult<'tcx, Pointer<Self::Provenance>>;
 
     /// "Int-to-pointer cast"
     fn ptr_from_addr_cast(
@@ -505,8 +505,8 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     fn adjust_alloc_base_pointer(
         _ecx: &InterpCx<$mir, $tcx, Self>,
         ptr: Pointer<AllocId>,
-    ) -> Pointer<AllocId> {
-        ptr
+    ) -> InterpResult<$tcx, Pointer<AllocId>> {
+        Ok(ptr)
     }
 
     #[inline(always)]

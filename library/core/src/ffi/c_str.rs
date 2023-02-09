@@ -1,4 +1,5 @@
 use crate::cmp::Ordering;
+use crate::error::Error;
 use crate::ffi::c_char;
 use crate::fmt;
 use crate::intrinsics;
@@ -129,10 +130,12 @@ impl FromBytesWithNulError {
     const fn not_nul_terminated() -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::NotNulTerminated }
     }
+}
 
-    #[doc(hidden)]
-    #[unstable(feature = "cstr_internals", issue = "none")]
-    pub fn __description(&self) -> &str {
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
+impl Error for FromBytesWithNulError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
         match self.kind {
             FromBytesWithNulErrorKind::InteriorNul(..) => {
                 "data provided contains an interior nul byte"
@@ -150,10 +153,10 @@ impl FromBytesWithNulError {
 /// This error is created by the [`CStr::from_bytes_until_nul`] method.
 ///
 #[derive(Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+#[stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
 pub struct FromBytesUntilNulError(());
 
-#[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+#[stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
 impl fmt::Display for FromBytesUntilNulError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "data provided does not contain a nul")
@@ -180,7 +183,7 @@ impl Default for &CStr {
 impl fmt::Display for FromBytesWithNulError {
     #[allow(deprecated, deprecated_in_future)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.__description())?;
+        f.write_str(self.description())?;
         if let FromBytesWithNulErrorKind::InteriorNul(pos) = self.kind {
             write!(f, " at byte pos {pos}")?;
         }
@@ -306,8 +309,6 @@ impl CStr {
     ///
     /// # Examples
     /// ```
-    /// #![feature(cstr_from_bytes_until_nul)]
-    ///
     /// use std::ffi::CStr;
     ///
     /// let mut buffer = [0u8; 16];
@@ -322,8 +323,9 @@ impl CStr {
     /// assert_eq!(c_str.to_str().unwrap(), "AAAAAAAA");
     /// ```
     ///
-    #[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
-    #[rustc_const_unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+    #[rustc_allow_const_fn_unstable(const_slice_index)]
+    #[stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
     pub const fn from_bytes_until_nul(bytes: &[u8]) -> Result<&CStr, FromBytesUntilNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {

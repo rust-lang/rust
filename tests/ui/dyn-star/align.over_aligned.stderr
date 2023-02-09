@@ -7,13 +7,13 @@ LL | #![feature(dyn_star)]
    = note: see issue #102425 <https://github.com/rust-lang/rust/issues/102425> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0277]: `AlignedUsize` needs to be a pointer-sized type
+error[E0277]: `AlignedUsize` needs to have the same alignment and size as a pointer
   --> $DIR/align.rs:15:13
    |
 LL |     let x = AlignedUsize(12) as dyn* Debug;
-   |             ^^^^^^^^^^^^^^^^ `AlignedUsize` needs to be a pointer-sized type
+   |             ^^^^^^^^^^^^^^^^ `AlignedUsize` needs to be a pointer-like type
    |
-   = help: the trait `PointerSized` is not implemented for `AlignedUsize`
+   = help: the trait `PointerLike` is not implemented for `AlignedUsize`
 
 error: aborting due to previous error; 1 warning emitted
 

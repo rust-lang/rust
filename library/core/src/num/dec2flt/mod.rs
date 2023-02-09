@@ -75,6 +75,7 @@
     issue = "none"
 )]
 
+use crate::error::Error;
 use crate::fmt;
 use crate::str::FromStr;
 
@@ -182,15 +183,10 @@ enum FloatErrorKind {
     Invalid,
 }
 
-impl ParseFloatError {
-    #[unstable(
-        feature = "int_error_internals",
-        reason = "available through Error trait and this method should \
-                  not be exposed publicly",
-        issue = "none"
-    )]
-    #[doc(hidden)]
-    pub fn __description(&self) -> &str {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for ParseFloatError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
         match self.kind {
             FloatErrorKind::Empty => "cannot parse float from empty string",
             FloatErrorKind::Invalid => "invalid float literal",
@@ -201,7 +197,8 @@ impl ParseFloatError {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseFloatError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.__description().fmt(f)
+        #[allow(deprecated)]
+        self.description().fmt(f)
     }
 }
 

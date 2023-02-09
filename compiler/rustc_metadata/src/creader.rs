@@ -356,7 +356,12 @@ impl<'a> CrateLoader<'a> {
         for (_, other) in self.cstore.iter_crate_data() {
             // Same stable crate id but different SVH
             if other.stable_crate_id() == root.stable_crate_id() && other.hash() != root.hash() {
-                return Err(CrateError::SymbolConflictsOthers(root.name()));
+                bug!(
+                    "Previously returned E0523 here. \
+                     See https://github.com/rust-lang/rust/pull/100599 for additional discussion.\
+                     root.name() = {}.",
+                    root.name()
+                );
             }
         }
 

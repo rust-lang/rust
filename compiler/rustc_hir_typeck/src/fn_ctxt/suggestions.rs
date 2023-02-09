@@ -1336,16 +1336,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::Path { segments: [segment], .. },
             ))
             | hir::ExprKind::Path(QPath::TypeRelative(ty, segment)) => {
-                let self_ty = self.astconv().ast_ty_to_ty(ty);
-                if let Ok(pick) = self.probe_for_name(
-                    Mode::Path,
-                    Ident::new(capitalized_name, segment.ident.span),
-                    Some(expected_ty),
-                    IsSuggestion(true),
-                    self_ty,
-                    expr.hir_id,
-                    ProbeScope::TraitsInScope,
-                ) {
+                if let Some(self_ty) = self.typeck_results.borrow().node_type_opt(ty.hir_id)
+                    && let Ok(pick) = self.probe_for_name(
+                        Mode::Path,
+                        Ident::new(capitalized_name, segment.ident.span),
+                        Some(expected_ty),
+                        IsSuggestion(true),
+                        self_ty,
+                        expr.hir_id,
+                        ProbeScope::TraitsInScope,
+                    )
+                {
                     (pick.item, segment)
                 } else {
                     return false;
@@ -1457,6 +1458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     generics,
                     diag,
                     vec![(param.name.as_str(), "Clone", Some(clone_trait_did))].into_iter(),
+                    None,
                 );
             } else {
                 self.suggest_derive(diag, &[(trait_ref.to_predicate(self.tcx), None, None)]);

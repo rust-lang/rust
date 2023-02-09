@@ -51,7 +51,7 @@ impl App {
             ["generate", ref base] => (Mode::Generate, PathBuf::from(base)),
             ["check", ref base] => (Mode::Check, PathBuf::from(base)),
             _ => {
-                eprintln!("usage: expand-yaml-anchors <source-dir> <dest-dir>");
+                eprintln!("usage: expand-yaml-anchors <generate|check> <base-dir>");
                 std::process::exit(1);
             }
         };

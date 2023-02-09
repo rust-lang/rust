@@ -38,7 +38,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // so that they represent the view from "inside" the closure.
         let user_provided_sig = self
             .instantiate_canonical_with_fresh_inference_vars(body.span, &user_provided_poly_sig);
-        let user_provided_sig = self.infcx.replace_bound_vars_with_fresh_vars(
+        let user_provided_sig = self.infcx.instantiate_binder_with_fresh_vars(
             body.span,
             LateBoundRegionConversionTime::FnCall,
             user_provided_sig,

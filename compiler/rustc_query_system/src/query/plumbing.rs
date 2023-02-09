@@ -121,20 +121,17 @@ where
 
 #[cold]
 #[inline(never)]
-fn mk_cycle<Qcx, V, R, D: DepKind>(
+fn mk_cycle<Qcx, R, D: DepKind>(
     qcx: Qcx,
     cycle_error: CycleError<D>,
     handler: HandleCycleError,
-    cache: &dyn crate::query::QueryStorage<Value = V, Stored = R>,
 ) -> R
 where
     Qcx: QueryContext + crate::query::HasDepContext<DepKind = D>,
-    V: std::fmt::Debug + Value<Qcx::DepContext, Qcx::DepKind>,
-    R: Copy,
+    R: std::fmt::Debug + Value<Qcx::DepContext, Qcx::DepKind>,
 {
     let error = report_cycle(qcx.dep_context().sess(), &cycle_error);
-    let value = handle_cycle_error(*qcx.dep_context(), &cycle_error, error, handler);
-    cache.store_nocache(value)
+    handle_cycle_error(*qcx.dep_context(), &cycle_error, error, handler)
 }
 
 fn handle_cycle_error<Tcx, V>(
@@ -346,9 +343,7 @@ where
 {
     match cache.lookup(&key) {
         Some((value, index)) => {
-            if std::intrinsics::unlikely(tcx.profiler().enabled()) {
-                tcx.profiler().query_cache_hit(index.into());
-            }
+            tcx.profiler().query_cache_hit(index.into());
             tcx.dep_graph().read_index(index);
             Some(value)
         }
@@ -399,7 +394,7 @@ where
             (result, Some(dep_node_index))
         }
         TryGetJob::Cycle(error) => {
-            let result = mk_cycle(qcx, error, Q::HANDLE_CYCLE_ERROR, cache);
+            let result = mk_cycle(qcx, error, Q::HANDLE_CYCLE_ERROR);
             (result, None)
         }
         #[cfg(parallel_compiler)]
@@ -408,9 +403,7 @@ where
                 panic!("value must be in cache after waiting")
             };
 
-            if std::intrinsics::unlikely(qcx.dep_context().profiler().enabled()) {
-                qcx.dep_context().profiler().query_cache_hit(index.into());
-            }
+            qcx.dep_context().profiler().query_cache_hit(index.into());
             query_blocked_prof_timer.finish_with_query_invocation_id(index.into());
 
             (v, Some(index))
@@ -776,9 +769,7 @@ where
     // Ensure that only one of them runs the query.
     let cache = Q::query_cache(qcx);
     if let Some((_, index)) = cache.lookup(&key) {
-        if std::intrinsics::unlikely(qcx.dep_context().profiler().enabled()) {
-            qcx.dep_context().profiler().query_cache_hit(index.into());
-        }
+        qcx.dep_context().profiler().query_cache_hit(index.into());
         return;
     }
 

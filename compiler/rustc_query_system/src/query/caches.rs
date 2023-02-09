@@ -23,10 +23,6 @@ pub trait CacheSelector<'tcx, V> {
 pub trait QueryStorage {
     type Value: Debug;
     type Stored: Copy;
-
-    /// Store a value without putting it in the cache.
-    /// This is meant to be used with cycle errors.
-    fn store_nocache(&self, value: Self::Value) -> Self::Stored;
 }
 
 pub trait QueryCache: QueryStorage + Sized {
@@ -68,12 +64,6 @@ impl<K, V> Default for DefaultCache<K, V> {
 impl<K: Eq + Hash, V: Copy + Debug> QueryStorage for DefaultCache<K, V> {
     type Value = V;
     type Stored = V;
-
-    #[inline]
-    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
-        // We have no dedicated storage
-        value
-    }
 }
 
 impl<K, V> QueryCache for DefaultCache<K, V>
@@ -144,13 +134,6 @@ impl<'tcx, K, V> Default for ArenaCache<'tcx, K, V> {
 impl<'tcx, K: Eq + Hash, V: Debug + 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
     type Value = V;
     type Stored = &'tcx V;
-
-    #[inline]
-    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
-        let value = self.arena.alloc((value, DepNodeIndex::INVALID));
-        let value = unsafe { &*(&value.0 as *const _) };
-        &value
-    }
 }
 
 impl<'tcx, K, V: 'tcx> QueryCache for ArenaCache<'tcx, K, V>
@@ -231,12 +214,6 @@ impl<K: Idx, V> Default for VecCache<K, V> {
 impl<K: Eq + Idx, V: Copy + Debug> QueryStorage for VecCache<K, V> {
     type Value = V;
     type Stored = V;
-
-    #[inline]
-    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
-        // We have no dedicated storage
-        value
-    }
 }
 
 impl<K, V> QueryCache for VecCache<K, V>
@@ -309,13 +286,6 @@ impl<'tcx, K: Idx, V> Default for VecArenaCache<'tcx, K, V> {
 impl<'tcx, K: Eq + Idx, V: Debug + 'tcx> QueryStorage for VecArenaCache<'tcx, K, V> {
     type Value = V;
     type Stored = &'tcx V;
-
-    #[inline]
-    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
-        let value = self.arena.alloc((value, DepNodeIndex::INVALID));
-        let value = unsafe { &*(&value.0 as *const _) };
-        &value
-    }
 }
 
 impl<'tcx, K, V: 'tcx> QueryCache for VecArenaCache<'tcx, K, V>

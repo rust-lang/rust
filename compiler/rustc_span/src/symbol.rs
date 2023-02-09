@@ -1085,7 +1085,7 @@ symbols! {
         plugins,
         pointee_trait,
         pointer,
-        pointer_sized,
+        pointer_like,
         poll,
         position,
         post_dash_lto: "post-lto",

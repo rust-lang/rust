@@ -544,7 +544,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
             .map(|(hir_ty, &supplied_ty)| {
                 // Instantiate (this part of..) S to S', i.e., with fresh variables.
-                self.replace_bound_vars_with_fresh_vars(
+                self.instantiate_binder_with_fresh_vars(
                     hir_ty.span,
                     LateBoundRegionConversionTime::FnCall,
                     // (*) binder moved to here
@@ -566,7 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 all_obligations.extend(obligations);
             }
 
-            let supplied_output_ty = self.replace_bound_vars_with_fresh_vars(
+            let supplied_output_ty = self.instantiate_binder_with_fresh_vars(
                 decl.output.span(),
                 LateBoundRegionConversionTime::FnCall,
                 supplied_sig.output(),

@@ -307,8 +307,6 @@ jobs:
           - name: x86_64-gnu-tools
             <<: *job-linux-xl
             tidy: false
-            env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
 
   auto:
     permissions:

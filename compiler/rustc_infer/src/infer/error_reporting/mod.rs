@@ -1922,7 +1922,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         (ty::Uint(ty::UintTy::U8), ty::Char) => {
                             if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
                                 && let Some(code) = code.strip_prefix('\'').and_then(|s| s.strip_suffix('\''))
-                                && code.chars().next().map_or(false, |c| c.is_ascii())
+                                && !code.starts_with("\\u") // forbid all Unicode escapes
+                                && code.chars().next().map_or(false, |c| c.is_ascii()) // forbids literal Unicode characters beyond ASCII
                             {
                                 err.span_suggestion(
                                     span,
