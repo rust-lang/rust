@@ -229,10 +229,6 @@ fn run_compiler(
         registry: diagnostics_registry(),
     };
 
-    if !tracing::dispatcher::has_been_set() {
-        init_rustc_env_logger_with_backtrace_option(&config.opts.unstable_opts.log_backtrace);
-    }
-
     match make_input(config.opts.error_format, &matches.free) {
         Err(reported) => return Err(reported),
         Ok(Some(input)) => {
@@ -1251,16 +1247,7 @@ pub fn install_ice_hook() {
 /// This allows tools to enable rust logging without having to magically match rustc's
 /// tracing crate version.
 pub fn init_rustc_env_logger() {
-    init_rustc_env_logger_with_backtrace_option(&None);
-}
-
-/// This allows tools to enable rust logging without having to magically match rustc's
-/// tracing crate version. In contrast to `init_rustc_env_logger` it allows you to
-/// choose a target module you wish to show backtraces along with its logging.
-pub fn init_rustc_env_logger_with_backtrace_option(backtrace_target: &Option<String>) {
-    if let Err(error) = rustc_log::init_rustc_env_logger_with_backtrace_option(backtrace_target) {
-        early_error(ErrorOutputType::default(), &error.to_string());
-    }
+    init_env_logger("RUSTC_LOG");
 }
 
 /// This allows tools to enable rust logging without having to magically match rustc's
@@ -1324,6 +1311,7 @@ mod signal_handler {
 pub fn main() -> ! {
     let start_time = Instant::now();
     let start_rss = get_resident_set_size();
+    init_rustc_env_logger();
     signal_handler::install();
     let mut callbacks = TimePassesCallbacks::default();
     install_ice_hook();
