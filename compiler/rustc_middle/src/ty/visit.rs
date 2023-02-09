@@ -39,23 +39,21 @@
 //! - u.visit_with(visitor)
 //! ```
 use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
+use rustc_errors::ErrorGuaranteed;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use std::ops::ControlFlow;
 
-pub trait TypeVisitable<'tcx> = ir::TypeVisitable<'tcx> + ir::TypeVisitableExt<'tcx>;
+pub trait TypeVisitable<'tcx> = ir::TypeVisitable<'tcx> + TypeVisitableExt<'tcx>;
 pub trait TypeSuperVisitable<'tcx> = ir::TypeSuperVisitable<'tcx>;
 pub trait TypeVisitor<'tcx> = ir::TypeVisitor<'tcx>;
 
 pub mod ir {
-    use crate::ty::{self, Binder, Ty, TypeFlags};
-    use rustc_errors::ErrorGuaranteed;
+    use crate::ty::{self, Binder, Ty};
 
     use std::fmt;
     use std::ops::ControlFlow;
-
-    use super::{FoundFlags, HasEscapingVarsVisitor, HasTypeFlagsVisitor};
 
     /// This trait is implemented for every type that can be visited,
     /// providing the skeleton of the traversal.
@@ -75,131 +73,6 @@ pub mod ir {
         /// `TypeVisitor`.
         fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
     }
-
-    pub trait TypeVisitableExt<'tcx>: TypeVisitable<'tcx> {
-        /// Returns `true` if `self` has any late-bound regions that are either
-        /// bound by `binder` or bound by some binder outside of `binder`.
-        /// If `binder` is `ty::INNERMOST`, this indicates whether
-        /// there are any late-bound regions that appear free.
-        fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
-            self.visit_with(&mut HasEscapingVarsVisitor { outer_index: binder }).is_break()
-        }
-
-        /// Returns `true` if this type has any regions that escape `binder` (and
-        /// hence are not bound by it).
-        fn has_vars_bound_above(&self, binder: ty::DebruijnIndex) -> bool {
-            self.has_vars_bound_at_or_above(binder.shifted_in(1))
-        }
-
-        /// Return `true` if this type has regions that are not a part of the type.
-        /// For example, `for<'a> fn(&'a i32)` return `false`, while `fn(&'a i32)`
-        /// would return `true`. The latter can occur when traversing through the
-        /// former.
-        ///
-        /// See [`HasEscapingVarsVisitor`] for more information.
-        fn has_escaping_bound_vars(&self) -> bool {
-            self.has_vars_bound_at_or_above(ty::INNERMOST)
-        }
-
-        fn has_type_flags(&self, flags: TypeFlags) -> bool {
-            let res = self.visit_with(&mut HasTypeFlagsVisitor { flags }).break_value()
-                == Some(FoundFlags);
-            trace!(?self, ?flags, ?res, "has_type_flags");
-            res
-        }
-        fn has_projections(&self) -> bool {
-            self.has_type_flags(TypeFlags::HAS_PROJECTION)
-        }
-        fn has_opaque_types(&self) -> bool {
-            self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
-        }
-        fn has_generators(&self) -> bool {
-            self.has_type_flags(TypeFlags::HAS_TY_GENERATOR)
-        }
-        fn references_error(&self) -> bool {
-            self.has_type_flags(TypeFlags::HAS_ERROR)
-        }
-        fn error_reported(&self) -> Result<(), ErrorGuaranteed> {
-            if self.references_error() {
-                if let Some(reported) = ty::tls::with(|tcx| tcx.sess.is_compilation_going_to_fail())
-                {
-                    Err(reported)
-                } else {
-                    bug!("expect tcx.sess.is_compilation_going_to_fail return `Some`");
-                }
-            } else {
-                Ok(())
-            }
-        }
-        fn has_non_region_param(&self) -> bool {
-            self.has_type_flags(TypeFlags::NEEDS_SUBST - TypeFlags::HAS_RE_PARAM)
-        }
-        fn has_infer_regions(&self) -> bool {
-            self.has_type_flags(TypeFlags::HAS_RE_INFER)
-        }
-        fn has_infer_types(&self) -> bool {
-            self.has_type_flags(TypeFlags::HAS_TY_INFER)
-        }
-        fn has_non_region_infer(&self) -> bool {
-            self.has_type_flags(TypeFlags::NEEDS_INFER - TypeFlags::HAS_RE_INFER)
-        }
-        fn needs_infer(&self) -> bool {
-            self.has_type_flags(TypeFlags::NEEDS_INFER)
-        }
-        fn has_placeholders(&self) -> bool {
-            self.has_type_flags(
-                TypeFlags::HAS_RE_PLACEHOLDER
-                    | TypeFlags::HAS_TY_PLACEHOLDER
-                    | TypeFlags::HAS_CT_PLACEHOLDER,
-            )
-        }
-        fn needs_subst(&self) -> bool {
-            self.has_type_flags(TypeFlags::NEEDS_SUBST)
-        }
-        /// "Free" regions in this context means that it has any region
-        /// that is not (a) erased or (b) late-bound.
-        fn has_free_regions(&self) -> bool {
-            self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
-        }
-
-        fn has_erased_regions(&self) -> bool {
-            self.has_type_flags(TypeFlags::HAS_RE_ERASED)
-        }
-
-        /// True if there are any un-erased free regions.
-        fn has_erasable_regions(&self) -> bool {
-            self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
-        }
-
-        /// Indicates whether this value references only 'global'
-        /// generic parameters that are the same regardless of what fn we are
-        /// in. This is used for caching.
-        fn is_global(&self) -> bool {
-            !self.has_type_flags(TypeFlags::HAS_FREE_LOCAL_NAMES)
-        }
-
-        /// True if there are any late-bound regions
-        fn has_late_bound_regions(&self) -> bool {
-            self.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND)
-        }
-        /// True if there are any late-bound non-region variables
-        fn has_non_region_late_bound(&self) -> bool {
-            self.has_type_flags(TypeFlags::HAS_LATE_BOUND - TypeFlags::HAS_RE_LATE_BOUND)
-        }
-        /// True if there are any late-bound variables
-        fn has_late_bound_vars(&self) -> bool {
-            self.has_type_flags(TypeFlags::HAS_LATE_BOUND)
-        }
-
-        /// Indicates whether this value still has parameters/placeholders/inference variables
-        /// which could be replaced later, in a way that would change the results of `impl`
-        /// specialization.
-        fn still_further_specializable(&self) -> bool {
-            self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
-        }
-    }
-
-    impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitableExt<'tcx> for T {}
 
     pub trait TypeSuperVisitable<'tcx>: TypeVisitable<'tcx> {
         /// Provides a default visit for a type of interest. This should only be
@@ -244,6 +117,130 @@ pub mod ir {
         }
     }
 }
+
+pub trait TypeVisitableExt<'tcx>: ir::TypeVisitable<'tcx> {
+    /// Returns `true` if `self` has any late-bound regions that are either
+    /// bound by `binder` or bound by some binder outside of `binder`.
+    /// If `binder` is `ty::INNERMOST`, this indicates whether
+    /// there are any late-bound regions that appear free.
+    fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
+        self.visit_with(&mut HasEscapingVarsVisitor { outer_index: binder }).is_break()
+    }
+
+    /// Returns `true` if this type has any regions that escape `binder` (and
+    /// hence are not bound by it).
+    fn has_vars_bound_above(&self, binder: ty::DebruijnIndex) -> bool {
+        self.has_vars_bound_at_or_above(binder.shifted_in(1))
+    }
+
+    /// Return `true` if this type has regions that are not a part of the type.
+    /// For example, `for<'a> fn(&'a i32)` return `false`, while `fn(&'a i32)`
+    /// would return `true`. The latter can occur when traversing through the
+    /// former.
+    ///
+    /// See [`HasEscapingVarsVisitor`] for more information.
+    fn has_escaping_bound_vars(&self) -> bool {
+        self.has_vars_bound_at_or_above(ty::INNERMOST)
+    }
+
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        let res =
+            self.visit_with(&mut HasTypeFlagsVisitor { flags }).break_value() == Some(FoundFlags);
+        trace!(?self, ?flags, ?res, "has_type_flags");
+        res
+    }
+    fn has_projections(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_PROJECTION)
+    }
+    fn has_opaque_types(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
+    }
+    fn has_generators(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_GENERATOR)
+    }
+    fn references_error(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_ERROR)
+    }
+    fn error_reported(&self) -> Result<(), ErrorGuaranteed> {
+        if self.references_error() {
+            if let Some(reported) = ty::tls::with(|tcx| tcx.sess.is_compilation_going_to_fail()) {
+                Err(reported)
+            } else {
+                bug!("expect tcx.sess.is_compilation_going_to_fail return `Some`");
+            }
+        } else {
+            Ok(())
+        }
+    }
+    fn has_non_region_param(&self) -> bool {
+        self.has_type_flags(TypeFlags::NEEDS_SUBST - TypeFlags::HAS_RE_PARAM)
+    }
+    fn has_infer_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_INFER)
+    }
+    fn has_infer_types(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_INFER)
+    }
+    fn has_non_region_infer(&self) -> bool {
+        self.has_type_flags(TypeFlags::NEEDS_INFER - TypeFlags::HAS_RE_INFER)
+    }
+    fn needs_infer(&self) -> bool {
+        self.has_type_flags(TypeFlags::NEEDS_INFER)
+    }
+    fn has_placeholders(&self) -> bool {
+        self.has_type_flags(
+            TypeFlags::HAS_RE_PLACEHOLDER
+                | TypeFlags::HAS_TY_PLACEHOLDER
+                | TypeFlags::HAS_CT_PLACEHOLDER,
+        )
+    }
+    fn needs_subst(&self) -> bool {
+        self.has_type_flags(TypeFlags::NEEDS_SUBST)
+    }
+    /// "Free" regions in this context means that it has any region
+    /// that is not (a) erased or (b) late-bound.
+    fn has_free_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
+    }
+
+    fn has_erased_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_ERASED)
+    }
+
+    /// True if there are any un-erased free regions.
+    fn has_erasable_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
+    }
+
+    /// Indicates whether this value references only 'global'
+    /// generic parameters that are the same regardless of what fn we are
+    /// in. This is used for caching.
+    fn is_global(&self) -> bool {
+        !self.has_type_flags(TypeFlags::HAS_FREE_LOCAL_NAMES)
+    }
+
+    /// True if there are any late-bound regions
+    fn has_late_bound_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND)
+    }
+    /// True if there are any late-bound non-region variables
+    fn has_non_region_late_bound(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_LATE_BOUND - TypeFlags::HAS_RE_LATE_BOUND)
+    }
+    /// True if there are any late-bound variables
+    fn has_late_bound_vars(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_LATE_BOUND)
+    }
+
+    /// Indicates whether this value still has parameters/placeholders/inference variables
+    /// which could be replaced later, in a way that would change the results of `impl`
+    /// specialization.
+    fn still_further_specializable(&self) -> bool {
+        self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
+    }
+}
+
+impl<'tcx, T: ir::TypeVisitable<'tcx>> TypeVisitableExt<'tcx> for T {}
 
 ///////////////////////////////////////////////////////////////////////////
 // Region folder
