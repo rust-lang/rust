@@ -27,13 +27,13 @@ impl ProcMacroProcessSrv {
         process_path: AbsPathBuf,
         args: impl IntoIterator<Item = impl AsRef<OsStr>> + Clone,
     ) -> io::Result<ProcMacroProcessSrv> {
-        let create_srv = || {
-            let mut process = Process::run(process_path.clone(), args.clone())?;
+        let create_srv = |null_stderr| {
+            let mut process = Process::run(process_path.clone(), args.clone(), null_stderr)?;
             let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
 
             io::Result::Ok(ProcMacroProcessSrv { _process: process, stdin, stdout, version: 0 })
         };
-        let mut srv = create_srv()?;
+        let mut srv = create_srv(true)?;
         tracing::info!("sending version check");
         match srv.version_check() {
             Ok(v) if v > CURRENT_API_VERSION => Err(io::Error::new(
@@ -45,12 +45,13 @@ impl ProcMacroProcessSrv {
             )),
             Ok(v) => {
                 tracing::info!("got version {v}");
+                srv = create_srv(false)?;
                 srv.version = v;
                 Ok(srv)
             }
             Err(e) => {
                 tracing::info!(%e, "proc-macro version check failed, restarting and assuming version 0");
-                create_srv()
+                create_srv(false)
             }
         }
     }
@@ -98,9 +99,10 @@ impl Process {
     fn run(
         path: AbsPathBuf,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+        null_stderr: bool,
     ) -> io::Result<Process> {
         let args: Vec<OsString> = args.into_iter().map(|s| s.as_ref().into()).collect();
-        let child = JodChild(mk_child(&path, args)?);
+        let child = JodChild(mk_child(&path, args, null_stderr)?);
         Ok(Process { child })
     }
 
@@ -116,13 +118,14 @@ impl Process {
 fn mk_child(
     path: &AbsPath,
     args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+    null_stderr: bool,
 ) -> io::Result<Child> {
     Command::new(path.as_os_str())
         .args(args)
         .env("RUST_ANALYZER_INTERNALS_DO_NOT_USE", "this is unstable")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(if null_stderr { Stdio::null() } else { Stdio::inherit() })
         .spawn()
 }
 
