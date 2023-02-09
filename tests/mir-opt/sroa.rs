@@ -87,6 +87,13 @@ fn ref_copies(x: &Foo) {
     let u = y.c;
 }
 
+fn constant() {
+    const U: (usize, u8) = (5, 9);
+    let y = U;
+    let t = y.0;
+    let u = y.1;
+}
+
 fn main() {
     dropping();
     enums(5);
@@ -96,6 +103,7 @@ fn main() {
     escaping();
     copies(Foo { a: 5, b: (), c: "a", d: Some(-4) });
     ref_copies(&Foo { a: 5, b: (), c: "a", d: Some(-4) });
+    constant();
 }
 
 // EMIT_MIR sroa.dropping.ScalarReplacementOfAggregates.diff
@@ -106,3 +114,4 @@ fn main() {
 // EMIT_MIR sroa.escaping.ScalarReplacementOfAggregates.diff
 // EMIT_MIR sroa.copies.ScalarReplacementOfAggregates.diff
 // EMIT_MIR sroa.ref_copies.ScalarReplacementOfAggregates.diff
+// EMIT_MIR sroa.constant.ScalarReplacementOfAggregates.diff
