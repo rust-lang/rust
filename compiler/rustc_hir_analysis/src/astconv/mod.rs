@@ -1614,14 +1614,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             "the lifetime bound for this object type cannot be deduced \
                              from context; please supply an explicit bound"
                         );
-                        if borrowed {
+                        let e = if borrowed {
                             // We will have already emitted an error E0106 complaining about a
                             // missing named lifetime in `&dyn Trait`, so we elide this one.
-                            err.delay_as_bug();
+                            err.delay_as_bug()
                         } else {
-                            err.emit();
-                        }
-                        tcx.re_error()
+                            err.emit()
+                        };
+                        tcx.re_error(e)
                     })
                 }
             })

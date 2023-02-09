@@ -127,7 +127,8 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
             None if self.do_not_error => self.tcx.lifetimes.re_static,
             None => {
-                self.tcx
+                let e = self
+                    .tcx
                     .sess
                     .struct_span_err(self.span, "non-defining opaque type use in defining scope")
                     .span_label(
@@ -140,7 +141,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                     )
                     .emit();
 
-                self.tcx().re_error()
+                self.tcx().re_error(e)
             }
         }
     }

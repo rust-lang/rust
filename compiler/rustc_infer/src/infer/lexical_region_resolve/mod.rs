@@ -216,7 +216,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 Ok(self.tcx().lifetimes.re_static)
             }
 
-            ReError(_) => Ok(self.tcx().re_error()),
+            ReError(_) => Ok(a_region),
 
             ReEarlyBound(_) | ReFree(_) => {
                 // All empty regions are less than early-bound, free,
@@ -548,7 +548,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 );
             }
 
-            (ReError(_), _) | (_, ReError(_)) => self.tcx().re_error(),
+            (ReError(_), _) => a,
+
+            (_, ReError(_)) => b,
 
             (ReStatic, _) | (_, ReStatic) => {
                 // nothing lives longer than `'static`
@@ -1044,7 +1046,7 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
             ty::ReVar(rid) => match self.values[rid] {
                 VarValue::Empty(_) => r,
                 VarValue::Value(r) => r,
-                VarValue::ErrorValue => tcx.re_error(),
+                VarValue::ErrorValue => tcx.re_error_misc(),
             },
             _ => r,
         };
