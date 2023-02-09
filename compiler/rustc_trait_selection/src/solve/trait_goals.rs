@@ -385,10 +385,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         let a_ty = goal.predicate.self_ty();
         let b_ty = goal.predicate.trait_ref.substs.type_at(1);
-        let ty::Dynamic(a_data, a_region) = *a_ty.kind() else {
+        let (ty::Dynamic(a_data, a_region) | ty::DynStar(a_data, a_region)) = *a_ty.kind() else {
             return vec![];
         };
-        let ty::Dynamic(b_data, b_region) = *b_ty.kind() else {
+        let (ty::Dynamic(b_data, b_region) | ty::DynStar(b_data, b_region)) = *b_ty.kind() else {
             return vec![];
         };
 

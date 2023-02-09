@@ -2864,7 +2864,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let Some(span) = sp {
                     if let ty::PredicateKind::Clause(clause) = predicate.kind().skip_binder()
                         && let ty::Clause::Trait(trait_pred) = clause
-                        && let ty::Dynamic(..) = trait_pred.self_ty().kind()
+                        && let ty::Dynamic(..) | ty::DynStar(..) = trait_pred.self_ty().kind()
                     {
                         let span = if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
                             && snippet.starts_with("dyn ")
