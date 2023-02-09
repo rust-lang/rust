@@ -1413,8 +1413,6 @@ options! {
         "what location details should be tracked when using caller_location, either \
         `none`, or a comma separated list of location details, for which \
         valid options are `file`, `line`, and `column` (default: `file,line,column`)"),
-    log_backtrace: Option<String> = (None, parse_opt_string, [TRACKED],
-        "add a backtrace along with logging"),
     ls: bool = (false, parse_bool, [UNTRACKED],
         "list the symbols defined by a library crate (default: no)"),
     macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
