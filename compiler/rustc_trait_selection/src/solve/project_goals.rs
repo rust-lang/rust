@@ -1,6 +1,6 @@
 use crate::traits::{specialization_graph, translate_substs};
 
-use super::assembly::{self, Candidate, CandidateSource};
+use super::assembly;
 use super::infcx_ext::InferCtxtExt;
 use super::trait_goals::structural_traits;
 use super::{Certainty, EvalCtxt, Goal, QueryResult};
@@ -34,7 +34,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // projection cache in the solver.
         if self.term_is_fully_unconstrained(goal) {
             let candidates = self.assemble_and_evaluate_candidates(goal);
-            self.merge_project_candidates(candidates)
+            self.merge_candidates_and_discard_reservation_impls(candidates)
         } else {
             let predicate = goal.predicate;
             let unconstrained_rhs = match predicate.term.unpack() {
@@ -152,59 +152,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             self.evaluate_all(nested_goals).expect("failed to unify with unconstrained term");
 
         self.make_canonical_response(normalization_certainty.unify_and(rhs_certainty))
-    }
-
-    fn merge_project_candidates(
-        &mut self,
-        mut candidates: Vec<Candidate<'tcx>>,
-    ) -> QueryResult<'tcx> {
-        match candidates.len() {
-            0 => return Err(NoSolution),
-            1 => return Ok(candidates.pop().unwrap().result),
-            _ => {}
-        }
-
-        if candidates.len() > 1 {
-            let mut i = 0;
-            'outer: while i < candidates.len() {
-                for j in (0..candidates.len()).filter(|&j| i != j) {
-                    if self.project_candidate_should_be_dropped_in_favor_of(
-                        &candidates[i],
-                        &candidates[j],
-                    ) {
-                        debug!(candidate = ?candidates[i], "Dropping candidate #{}/{}", i, candidates.len());
-                        candidates.swap_remove(i);
-                        continue 'outer;
-                    }
-                }
-
-                debug!(candidate = ?candidates[i], "Retaining candidate #{}/{}", i, candidates.len());
-                // If there are *STILL* multiple candidates, give up
-                // and report ambiguity.
-                i += 1;
-                if i > 1 {
-                    debug!("multiple matches, ambig");
-                    // FIXME: return overflow if all candidates overflow, otherwise return ambiguity.
-                    unimplemented!();
-                }
-            }
-        }
-
-        Ok(candidates.pop().unwrap().result)
-    }
-
-    fn project_candidate_should_be_dropped_in_favor_of(
-        &self,
-        candidate: &Candidate<'tcx>,
-        other: &Candidate<'tcx>,
-    ) -> bool {
-        // FIXME: implement this
-        match (candidate.source, other.source) {
-            (CandidateSource::Impl(_), _)
-            | (CandidateSource::ParamEnv(_), _)
-            | (CandidateSource::BuiltinImpl, _)
-            | (CandidateSource::AliasBound, _) => unimplemented!(),
-        }
     }
 }
 
@@ -452,7 +399,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                         [ty::GenericArg::from(goal.predicate.self_ty())],
                     ));
 
-                    let is_sized_certainty = ecx.evaluate_goal(goal.with(tcx, sized_predicate))?.1;
+                    let (_, is_sized_certainty) =
+                        ecx.evaluate_goal(goal.with(tcx, sized_predicate))?;
                     return ecx.eq_term_and_make_canonical_response(
                         goal,
                         is_sized_certainty,
