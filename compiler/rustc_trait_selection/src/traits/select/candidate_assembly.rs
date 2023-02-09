@@ -384,7 +384,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         if self.tcx().trait_is_auto(def_id) {
             match self_ty.kind() {
-                ty::Dynamic(..) => {
+                ty::Dynamic(..) | ty::DynStar(..) => {
                     // For object types, we don't know what the closed
                     // over types are. This means we conservatively
                     // say nothing; a candidate may be added by
@@ -453,7 +453,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // any LBR.
             let self_ty = self.tcx().erase_late_bound_regions(obligation.self_ty());
             let poly_trait_ref = match self_ty.kind() {
-                ty::Dynamic(ref data, ..) => {
+                ty::Dynamic(ref data, ..) | ty::DynStar(ref data, ..) => {
                     if data.auto_traits().any(|did| did == obligation.predicate.def_id()) {
                         debug!(
                             "assemble_candidates_from_object_ty: matched builtin bound, \
@@ -548,7 +548,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .ty()
             .unwrap();
 
-            if let ty::Dynamic(data, ..) = ty.kind() { data.principal() } else { None }
+            if let ty::Dynamic(data, ..) | ty::DynStar(data, ..) = ty.kind() {
+                data.principal()
+            } else {
+                None
+            }
         })
     }
 

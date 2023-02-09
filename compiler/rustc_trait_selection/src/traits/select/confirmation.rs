@@ -430,7 +430,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let trait_predicate = self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
         let self_ty = self.infcx.shallow_resolve(trait_predicate.self_ty());
         let obligation_trait_ref = ty::Binder::dummy(trait_predicate.trait_ref);
-        let ty::Dynamic(data, ..) = *self_ty.kind() else {
+        let (ty::Dynamic(data, ..) | ty::DynStar(data, ..)) = *self_ty.kind() else {
             span_bug!(obligation.cause.span, "object candidate with non-object");
         };
 
