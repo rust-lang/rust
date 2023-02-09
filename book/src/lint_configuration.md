@@ -53,6 +53,7 @@ Please use that command to update the file and do not edit it by hand.
 | [ignore-interior-mutability](#ignore-interior-mutability) | `["bytes::Bytes"]` |
 | [allow-mixed-uninlined-format-args](#allow-mixed-uninlined-format-args) | `true` |
 | [suppress-restriction-lint-in-const](#suppress-restriction-lint-in-const) | `false` |
+| [missing-docs-in-crate-items](#missing-docs-in-crate-items) | `false` |
 
 ### arithmetic-side-effects-allowed
 Suppress checking of the passed type names in all types of operations.
@@ -538,6 +539,14 @@ if no suggestion can be made.
 **Default Value:** `false` (`bool`)
 
 * [indexing_slicing](https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing)
+
+
+### missing-docs-in-crate-items
+Whether to **only** check for missing documentation in `pub(crate)` items.
+
+**Default Value:** `false` (`bool`)
+
+* [missing_docs_in_private_items](https://rust-lang.github.io/rust-clippy/master/index.html#missing_docs_in_private_items)
 
 
 

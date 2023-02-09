@@ -456,7 +456,7 @@ define_Conf! {
     (suppress_restriction_lint_in_const: bool = false),
     /// Lint: MISSING_DOCS_IN_PRIVATE_ITEMS.
     ///
-    /// Whether to **only** check for missing docmuentation in `pub(crate)` items.
+    /// Whether to **only** check for missing documentation in `pub(crate)` items.
     (missing_docs_in_crate_items: bool = false),
 }
 
