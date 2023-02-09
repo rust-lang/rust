@@ -9,8 +9,8 @@ use crate::{cmp, fmt, hash, mem, num};
 /// Note that particularly large alignments, while representable in this type,
 /// are likely not to be supported by actual allocators and linkers.
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-#[derive(Copy, Clone, Eq)]
-#[derive_const(PartialEq)]
+#[derive(Copy, Clone)]
+#[derive_const(PartialEq, Eq)]
 #[repr(transparent)]
 pub struct Alignment(AlignmentEnum);
 
