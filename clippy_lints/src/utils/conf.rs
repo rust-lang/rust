@@ -456,8 +456,8 @@ define_Conf! {
     (suppress_restriction_lint_in_const: bool = false),
     /// Lint: MISSING_DOCS_IN_PRIVATE_ITEMS.
     ///
-    /// FIXME: docs
-    (only_check_missing_docs_in_crate_items: bool = false),
+    /// Whether to **only** check for missing docmuentation in `pub(crate)` items.
+    (missing_docs_in_crate_items: bool = false),
 }
 
 /// Search for the configuration file.

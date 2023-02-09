@@ -24,6 +24,25 @@ mod my_mod {
         pub(super) fn sub_super_with_docs() {}
         pub(super) fn sub_super_no_docs() {}
     }
+
+    /// some docs
+    pub(crate) struct CrateStructWithDocs {
+        /// some docs
+        pub(crate) crate_field_with_docs: (),
+        pub(crate) crate_field_no_docs: (),
+        /// some docs
+        priv_field_with_docs: (),
+        priv_field_no_docs: (),
+    }
+
+    pub(crate) struct CrateStructNoDocs {
+        /// some docs
+        pub(crate) crate_field_with_docs: (),
+        pub(crate) crate_field_no_docs: (),
+        /// some docs
+        priv_field_with_docs: (),
+        priv_field_no_docs: (),
+    }
 }
 
 fn main() {
