@@ -937,6 +937,7 @@ def main():
         )
 
     exit_code = 0
+    success_word = "successfully"
     try:
         bootstrap(args)
     except (SystemExit, KeyboardInterrupt) as error:
@@ -945,9 +946,10 @@ def main():
         else:
             exit_code = 1
             print(error)
+        success_word = "unsuccessfully"
 
     if not help_triggered:
-        print("Build completed successfully in", format_build_time(time() - start_time))
+        print("Build completed", success_word, "in", format_build_time(time() - start_time))
     sys.exit(exit_code)
 
 
