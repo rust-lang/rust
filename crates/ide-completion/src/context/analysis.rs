@@ -675,10 +675,10 @@ fn classify_name_ref(
         {
             if let Some(item) = ast::Item::cast(n) {
                 let is_inbetween = match &item {
-                    ast::Item::Const(it) => it.body().is_none(),
+                    ast::Item::Const(it) => it.body().is_none() && it.semicolon_token().is_none(),
                     ast::Item::Enum(it) => it.variant_list().is_none(),
                     ast::Item::ExternBlock(it) => it.extern_item_list().is_none(),
-                    ast::Item::Fn(it) => it.body().is_none(),
+                    ast::Item::Fn(it) => it.body().is_none() && it.semicolon_token().is_none(),
                     ast::Item::Impl(it) => it.assoc_item_list().is_none(),
                     ast::Item::Module(it) => {
                         it.item_list().is_none() && it.semicolon_token().is_none()
@@ -688,7 +688,7 @@ fn classify_name_ref(
                         it.field_list().is_none() && it.semicolon_token().is_none()
                     }
                     ast::Item::Trait(it) => it.assoc_item_list().is_none(),
-                    ast::Item::TypeAlias(it) => it.ty().is_none(),
+                    ast::Item::TypeAlias(it) => it.ty().is_none() && it.semicolon_token().is_none(),
                     ast::Item::Union(it) => it.record_field_list().is_none(),
                     _ => false,
                 };
