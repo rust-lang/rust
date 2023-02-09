@@ -275,10 +275,6 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
     self::comments::add_locals_header_comment(fx);
 
     for (local, arg_kind, ty) in func_params {
-        let layout = fx.layout_of(ty);
-
-        let is_ssa = ssa_analyzed[local] == crate::analyze::SsaKind::Ssa;
-
         // While this is normally an optimization to prevent an unnecessary copy when an argument is
         // not mutated by the current function, this is necessary to support unsized arguments.
         if let ArgKind::Normal(Some(val)) = arg_kind {
@@ -300,6 +296,8 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
             }
         }
 
+        let layout = fx.layout_of(ty);
+        let is_ssa = ssa_analyzed[local].is_ssa(fx, ty);
         let place = make_local_place(fx, local, layout, is_ssa);
         assert_eq!(fx.local_map.push(place), local);
 
@@ -323,7 +321,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
         let ty = fx.monomorphize(fx.mir.local_decls[local].ty);
         let layout = fx.layout_of(ty);
 
-        let is_ssa = ssa_analyzed[local] == crate::analyze::SsaKind::Ssa;
+        let is_ssa = ssa_analyzed[local].is_ssa(fx, ty);
 
         let place = make_local_place(fx, local, layout, is_ssa);
         assert_eq!(fx.local_map.push(place), local);

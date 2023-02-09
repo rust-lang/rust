@@ -14,7 +14,8 @@ pub(super) fn codegen_return_param<'tcx>(
 ) -> CPlace<'tcx> {
     let (ret_place, ret_param): (_, SmallVec<[_; 2]>) = match fx.fn_abi.as_ref().unwrap().ret.mode {
         PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) | PassMode::Cast(..) => {
-            let is_ssa = ssa_analyzed[RETURN_PLACE] == crate::analyze::SsaKind::Ssa;
+            let is_ssa =
+                ssa_analyzed[RETURN_PLACE].is_ssa(fx, fx.fn_abi.as_ref().unwrap().ret.layout.ty);
             (
                 super::make_local_place(
                     fx,
