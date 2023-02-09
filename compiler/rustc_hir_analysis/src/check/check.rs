@@ -121,7 +121,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
 
         let param_env = tcx.param_env(item_def_id);
         for field in &def.non_enum_variant().fields {
-            let field_ty = field.ty(tcx, substs);
+            let field_ty = tcx.normalize_erasing_regions(param_env, field.ty(tcx, substs));
 
             if !allowed_union_field(field_ty, tcx, param_env) {
                 let (field_span, ty_span) = match tcx.hir().get_if_local(field.did) {

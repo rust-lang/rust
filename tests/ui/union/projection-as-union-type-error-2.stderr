@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `u8: NotImplemented` is not satisfied
+  --> $DIR/projection-as-union-type-error-2.rs:18:8
+   |
+LL |     a: <Foo as Identity>::Identity,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NotImplemented` is not implemented for `u8`
+   |
+note: required for `u8` to implement `Identity`
+  --> $DIR/projection-as-union-type-error-2.rs:11:25
+   |
+LL | impl<T: NotImplemented> Identity for T {
+   |         --------------  ^^^^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
