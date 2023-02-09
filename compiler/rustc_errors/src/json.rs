@@ -17,6 +17,7 @@ use crate::translation::{to_fluent_args, Translate};
 use crate::DiagnosticId;
 use crate::{
     CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, SubDiagnostic,
+    TerminalUrl,
 };
 use rustc_lint_defs::Applicability;
 
@@ -47,6 +48,7 @@ pub struct JsonEmitter {
     diagnostic_width: Option<usize>,
     macro_backtrace: bool,
     track_diagnostics: bool,
+    terminal_url: TerminalUrl,
 }
 
 impl JsonEmitter {
@@ -60,6 +62,7 @@ impl JsonEmitter {
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
         track_diagnostics: bool,
+        terminal_url: TerminalUrl,
     ) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::BufWriter::new(io::stderr())),
@@ -73,6 +76,7 @@ impl JsonEmitter {
             diagnostic_width,
             macro_backtrace,
             track_diagnostics,
+            terminal_url,
         }
     }
 
@@ -84,6 +88,7 @@ impl JsonEmitter {
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
         track_diagnostics: bool,
+        terminal_url: TerminalUrl,
     ) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
         JsonEmitter::stderr(
@@ -96,6 +101,7 @@ impl JsonEmitter {
             diagnostic_width,
             macro_backtrace,
             track_diagnostics,
+            terminal_url,
         )
     }
 
@@ -110,6 +116,7 @@ impl JsonEmitter {
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
         track_diagnostics: bool,
+        terminal_url: TerminalUrl,
     ) -> JsonEmitter {
         JsonEmitter {
             dst,
@@ -123,6 +130,7 @@ impl JsonEmitter {
             diagnostic_width,
             macro_backtrace,
             track_diagnostics,
+            terminal_url,
         }
     }
 
@@ -360,6 +368,7 @@ impl Diagnostic {
                 je.diagnostic_width,
                 je.macro_backtrace,
                 je.track_diagnostics,
+                je.terminal_url,
             )
             .ui_testing(je.ui_testing)
             .emit_diagnostic(diag);

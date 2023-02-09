@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{ColorConfig, ErrorGuaranteed, FatalError};
+use rustc_errors::{ColorConfig, ErrorGuaranteed, FatalError, TerminalUrl};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{self as hir, intravisit, CRATE_HIR_ID};
 use rustc_interface::interface;
@@ -557,6 +557,7 @@ pub(crate) fn make_test(
                 Some(80),
                 false,
                 false,
+                TerminalUrl::No,
             )
             .supports_color();
 
@@ -571,6 +572,7 @@ pub(crate) fn make_test(
                 None,
                 false,
                 false,
+                TerminalUrl::No,
             );
 
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
@@ -756,6 +758,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 None,
                 false,
                 false,
+                TerminalUrl::No,
             );
 
             let handler = Handler::with_emitter(false, None, Box::new(emitter));

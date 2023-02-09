@@ -8,7 +8,7 @@ use rustc_span::{BytePos, Span};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
-use rustc_errors::{Handler, MultiSpan, PResult};
+use rustc_errors::{Handler, MultiSpan, PResult, TerminalUrl};
 
 use std::io;
 use std::io::prelude::*;
@@ -152,6 +152,7 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
             None,
             false,
             false,
+            TerminalUrl::No,
         );
         let handler = Handler::with_emitter(true, None, Box::new(emitter));
         #[allow(rustc::untranslatable_diagnostic)]

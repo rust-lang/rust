@@ -4,7 +4,7 @@ use crate::json::JsonEmitter;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 
 use crate::emitter::{ColorConfig, HumanReadableErrorType};
-use crate::Handler;
+use crate::{Handler, TerminalUrl};
 use rustc_span::{BytePos, Span};
 
 use std::str;
@@ -60,6 +60,7 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
             None,
             false,
             false,
+            TerminalUrl::No,
         );
 
         let span = Span::with_root_ctxt(BytePos(span.0), BytePos(span.1));
