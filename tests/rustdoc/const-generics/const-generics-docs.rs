@@ -21,8 +21,8 @@ pub use extern_crate::WTrait;
 //      'pub trait Trait<const N: usize>'
 // @has - '//*[@id="impl-Trait%3C1%3E-for-u8"]//h3[@class="code-header"]' 'impl Trait<1> for u8'
 // @has - '//*[@id="impl-Trait%3C2%3E-for-u8"]//h3[@class="code-header"]' 'impl Trait<2> for u8'
-// @has - '//*[@id="impl-Trait%3C{1%20+%202}%3E-for-u8"]//h3[@class="code-header"]' 'impl Trait<{1 + 2}> for u8'
-// @has - '//*[@id="impl-Trait%3CN%3E-for-%5Bu8%3B%20N%5D"]//h3[@class="code-header"]' \
+// @has - '//*[@id="impl-Trait%3C%7B1+%2B+2%7D%3E-for-u8"]//h3[@class="code-header"]' 'impl Trait<{1 + 2}> for u8'
+// @has - '//*[@id="impl-Trait%3CN%3E-for-%5Bu8;+N%5D"]//h3[@class="code-header"]' \
 //      'impl<const N: usize> Trait<N> for [u8; N]'
 pub trait Trait<const N: usize> {}
 impl Trait<1> for u8 {}
@@ -47,7 +47,7 @@ impl<const M: usize> Foo<M> where u8: Trait<M> {
     }
 }
 
-// @has foo/struct.Bar.html '//*[@id="impl-Bar%3Cu8%2C%20M%3E"]/h3[@class="code-header"]' 'impl<const M: usize> Bar<u8, M>'
+// @has foo/struct.Bar.html '//*[@id="impl-Bar%3Cu8,+M%3E"]/h3[@class="code-header"]' 'impl<const M: usize> Bar<u8, M>'
 impl<const M: usize> Bar<u8, M> {
     // @has - '//*[@id="method.hey"]' \
     //      'pub fn hey<const N: usize>(&self) -> Foo<N>where u8: Trait<N>'

@@ -646,11 +646,9 @@ fn object_ty_for_trait<'tcx>(
             debug!(?obligation);
             let pred = obligation.predicate.to_opt_poly_projection_pred()?;
             Some(pred.map_bound(|p| {
-                ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
-                    def_id: p.projection_ty.def_id,
-                    substs: p.projection_ty.substs,
-                    term: p.term,
-                })
+                ty::ExistentialPredicate::Projection(ty::ExistentialProjection::erase_self_ty(
+                    tcx, p,
+                ))
             }))
         })
         .collect();
