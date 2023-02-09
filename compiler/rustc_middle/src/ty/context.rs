@@ -478,6 +478,17 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 /// [rustc dev guide] for more details.
 ///
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/ty.html
+///
+/// An implementation detail: `TyCtxt` is a wrapper type for [GlobalCtxt],
+/// which is the struct that actually holds all the data. `TyCtxt` derefs to
+/// `GlobalCtxt`, and in practice `TyCtxt` is passed around everywhere, and all
+/// operations are done via `TyCtxt`. A `TyCtxt` is obtained for a `GlobalCtxt`
+/// by calling `enter` with a closure `f`. That function creates both the
+/// `TyCtxt`, and an `ImplicitCtxt` around it that is put into TLS. Within `f`:
+/// - The `ImplicitCtxt` is available implicitly via TLS.
+/// - The `TyCtxt` is available explicitly via the `tcx` parameter, and also
+///   implicitly within the `ImplicitCtxt`. Explicit access is preferred when
+///   possible.
 #[derive(Copy, Clone)]
 #[rustc_diagnostic_item = "TyCtxt"]
 #[rustc_pass_by_value]
@@ -493,6 +504,7 @@ impl<'tcx> Deref for TyCtxt<'tcx> {
     }
 }
 
+/// See [TyCtxt] for details about this type.
 pub struct GlobalCtxt<'tcx> {
     pub arena: &'tcx WorkerLocal<Arena<'tcx>>,
     pub hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
