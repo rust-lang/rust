@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use super::assembly::{self, Candidate, CandidateSource};
+use super::assembly;
 use super::infcx_ext::InferCtxtExt;
 use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
@@ -479,73 +479,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
     ) -> QueryResult<'tcx> {
         let candidates = self.assemble_and_evaluate_candidates(goal);
-        self.merge_trait_candidates_discard_reservation_impls(candidates)
-    }
-
-    #[instrument(level = "debug", skip(self), ret)]
-    pub(super) fn merge_trait_candidates_discard_reservation_impls(
-        &mut self,
-        mut candidates: Vec<Candidate<'tcx>>,
-    ) -> QueryResult<'tcx> {
-        match candidates.len() {
-            0 => return Err(NoSolution),
-            1 => return Ok(self.discard_reservation_impl(candidates.pop().unwrap()).result),
-            _ => {}
-        }
-
-        if candidates.len() > 1 {
-            let mut i = 0;
-            'outer: while i < candidates.len() {
-                for j in (0..candidates.len()).filter(|&j| i != j) {
-                    if self.trait_candidate_should_be_dropped_in_favor_of(
-                        &candidates[i],
-                        &candidates[j],
-                    ) {
-                        debug!(candidate = ?candidates[i], "Dropping candidate #{}/{}", i, candidates.len());
-                        candidates.swap_remove(i);
-                        continue 'outer;
-                    }
-                }
-
-                debug!(candidate = ?candidates[i], "Retaining candidate #{}/{}", i, candidates.len());
-                // If there are *STILL* multiple candidates, give up
-                // and report ambiguity.
-                i += 1;
-                if i > 1 {
-                    debug!("multiple matches, ambig");
-                    // FIXME: return overflow if all candidates overflow, otherwise return ambiguity.
-                    unimplemented!();
-                }
-            }
-        }
-
-        Ok(self.discard_reservation_impl(candidates.pop().unwrap()).result)
-    }
-
-    fn trait_candidate_should_be_dropped_in_favor_of(
-        &self,
-        candidate: &Candidate<'tcx>,
-        other: &Candidate<'tcx>,
-    ) -> bool {
-        // FIXME: implement this
-        match (candidate.source, other.source) {
-            (CandidateSource::Impl(_), _)
-            | (CandidateSource::ParamEnv(_), _)
-            | (CandidateSource::AliasBound, _)
-            | (CandidateSource::BuiltinImpl, _) => unimplemented!(),
-        }
-    }
-
-    fn discard_reservation_impl(&self, candidate: Candidate<'tcx>) -> Candidate<'tcx> {
-        if let CandidateSource::Impl(def_id) = candidate.source {
-            if let ty::ImplPolarity::Reservation = self.tcx().impl_polarity(def_id) {
-                debug!("Selected reservation impl");
-                // FIXME: reduce candidate to ambiguous
-                // FIXME: replace `var_values` with identity, yeet external constraints.
-                unimplemented!()
-            }
-        }
-
-        candidate
+        self.merge_candidates_and_discard_reservation_impls(candidates)
     }
 }
