@@ -39,189 +39,203 @@
 //! - u.visit_with(visitor)
 //! ```
 use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
-use rustc_errors::ErrorGuaranteed;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
-use std::fmt;
 use std::ops::ControlFlow;
 
-/// This trait is implemented for every type that can be visited,
-/// providing the skeleton of the traversal.
-///
-/// To implement this conveniently, use the derive macro located in
-/// `rustc_macros`.
-pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
-    /// The entry point for visiting. To visit a value `t` with a visitor `v`
-    /// call: `t.visit_with(v)`.
+pub use ir::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
+
+pub mod ir {
+    use crate::ty::{self, Binder, Ty, TypeFlags};
+    use rustc_errors::ErrorGuaranteed;
+
+    use std::fmt;
+    use std::ops::ControlFlow;
+
+    use super::{FoundFlags, HasEscapingVarsVisitor, HasTypeFlagsVisitor};
+
+    /// This trait is implemented for every type that can be visited,
+    /// providing the skeleton of the traversal.
     ///
-    /// For most types, this just traverses the value, calling `visit_with` on
-    /// each field/element.
-    ///
-    /// For types of interest (such as `Ty`), the implementation of this method
-    /// that calls a visitor method specifically for that type (such as
-    /// `V::visit_ty`). This is where control transfers from `TypeFoldable` to
-    /// `TypeVisitor`.
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
+    /// To implement this conveniently, use the derive macro located in
+    /// `rustc_macros`.
+    pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
+        /// The entry point for visiting. To visit a value `t` with a visitor `v`
+        /// call: `t.visit_with(v)`.
+        ///
+        /// For most types, this just traverses the value, calling `visit_with` on
+        /// each field/element.
+        ///
+        /// For types of interest (such as `Ty`), the implementation of this method
+        /// that calls a visitor method specifically for that type (such as
+        /// `V::visit_ty`). This is where control transfers from `TypeFoldable` to
+        /// `TypeVisitor`.
+        fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
 
-    /// Returns `true` if `self` has any late-bound regions that are either
-    /// bound by `binder` or bound by some binder outside of `binder`.
-    /// If `binder` is `ty::INNERMOST`, this indicates whether
-    /// there are any late-bound regions that appear free.
-    fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
-        self.visit_with(&mut HasEscapingVarsVisitor { outer_index: binder }).is_break()
-    }
+        /// Returns `true` if `self` has any late-bound regions that are either
+        /// bound by `binder` or bound by some binder outside of `binder`.
+        /// If `binder` is `ty::INNERMOST`, this indicates whether
+        /// there are any late-bound regions that appear free.
+        fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
+            self.visit_with(&mut HasEscapingVarsVisitor { outer_index: binder }).is_break()
+        }
 
-    /// Returns `true` if this type has any regions that escape `binder` (and
-    /// hence are not bound by it).
-    fn has_vars_bound_above(&self, binder: ty::DebruijnIndex) -> bool {
-        self.has_vars_bound_at_or_above(binder.shifted_in(1))
-    }
+        /// Returns `true` if this type has any regions that escape `binder` (and
+        /// hence are not bound by it).
+        fn has_vars_bound_above(&self, binder: ty::DebruijnIndex) -> bool {
+            self.has_vars_bound_at_or_above(binder.shifted_in(1))
+        }
 
-    /// Return `true` if this type has regions that are not a part of the type.
-    /// For example, `for<'a> fn(&'a i32)` return `false`, while `fn(&'a i32)`
-    /// would return `true`. The latter can occur when traversing through the
-    /// former.
-    ///
-    /// See [`HasEscapingVarsVisitor`] for more information.
-    fn has_escaping_bound_vars(&self) -> bool {
-        self.has_vars_bound_at_or_above(ty::INNERMOST)
-    }
+        /// Return `true` if this type has regions that are not a part of the type.
+        /// For example, `for<'a> fn(&'a i32)` return `false`, while `fn(&'a i32)`
+        /// would return `true`. The latter can occur when traversing through the
+        /// former.
+        ///
+        /// See [`HasEscapingVarsVisitor`] for more information.
+        fn has_escaping_bound_vars(&self) -> bool {
+            self.has_vars_bound_at_or_above(ty::INNERMOST)
+        }
 
-    fn has_type_flags(&self, flags: TypeFlags) -> bool {
-        let res =
-            self.visit_with(&mut HasTypeFlagsVisitor { flags }).break_value() == Some(FoundFlags);
-        trace!(?self, ?flags, ?res, "has_type_flags");
-        res
-    }
-    fn has_projections(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_PROJECTION)
-    }
-    fn has_opaque_types(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
-    }
-    fn has_generators(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_GENERATOR)
-    }
-    fn references_error(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_ERROR)
-    }
-    fn error_reported(&self) -> Result<(), ErrorGuaranteed> {
-        if self.references_error() {
-            if let Some(reported) = ty::tls::with(|tcx| tcx.sess.is_compilation_going_to_fail()) {
-                Err(reported)
+        fn has_type_flags(&self, flags: TypeFlags) -> bool {
+            let res = self.visit_with(&mut HasTypeFlagsVisitor { flags }).break_value()
+                == Some(FoundFlags);
+            trace!(?self, ?flags, ?res, "has_type_flags");
+            res
+        }
+        fn has_projections(&self) -> bool {
+            self.has_type_flags(TypeFlags::HAS_PROJECTION)
+        }
+        fn has_opaque_types(&self) -> bool {
+            self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
+        }
+        fn has_generators(&self) -> bool {
+            self.has_type_flags(TypeFlags::HAS_TY_GENERATOR)
+        }
+        fn references_error(&self) -> bool {
+            self.has_type_flags(TypeFlags::HAS_ERROR)
+        }
+        fn error_reported(&self) -> Result<(), ErrorGuaranteed> {
+            if self.references_error() {
+                if let Some(reported) = ty::tls::with(|tcx| tcx.sess.is_compilation_going_to_fail())
+                {
+                    Err(reported)
+                } else {
+                    bug!("expect tcx.sess.is_compilation_going_to_fail return `Some`");
+                }
             } else {
-                bug!("expect tcx.sess.is_compilation_going_to_fail return `Some`");
+                Ok(())
             }
-        } else {
-            Ok(())
+        }
+        fn has_non_region_param(&self) -> bool {
+            self.has_type_flags(TypeFlags::NEEDS_SUBST - TypeFlags::HAS_RE_PARAM)
+        }
+        fn has_infer_regions(&self) -> bool {
+            self.has_type_flags(TypeFlags::HAS_RE_INFER)
+        }
+        fn has_infer_types(&self) -> bool {
+            self.has_type_flags(TypeFlags::HAS_TY_INFER)
+        }
+        fn has_non_region_infer(&self) -> bool {
+            self.has_type_flags(TypeFlags::NEEDS_INFER - TypeFlags::HAS_RE_INFER)
+        }
+        fn needs_infer(&self) -> bool {
+            self.has_type_flags(TypeFlags::NEEDS_INFER)
+        }
+        fn has_placeholders(&self) -> bool {
+            self.has_type_flags(
+                TypeFlags::HAS_RE_PLACEHOLDER
+                    | TypeFlags::HAS_TY_PLACEHOLDER
+                    | TypeFlags::HAS_CT_PLACEHOLDER,
+            )
+        }
+        fn needs_subst(&self) -> bool {
+            self.has_type_flags(TypeFlags::NEEDS_SUBST)
+        }
+        /// "Free" regions in this context means that it has any region
+        /// that is not (a) erased or (b) late-bound.
+        fn has_free_regions(&self) -> bool {
+            self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
+        }
+
+        fn has_erased_regions(&self) -> bool {
+            self.has_type_flags(TypeFlags::HAS_RE_ERASED)
+        }
+
+        /// True if there are any un-erased free regions.
+        fn has_erasable_regions(&self) -> bool {
+            self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
+        }
+
+        /// Indicates whether this value references only 'global'
+        /// generic parameters that are the same regardless of what fn we are
+        /// in. This is used for caching.
+        fn is_global(&self) -> bool {
+            !self.has_type_flags(TypeFlags::HAS_FREE_LOCAL_NAMES)
+        }
+
+        /// True if there are any late-bound regions
+        fn has_late_bound_regions(&self) -> bool {
+            self.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND)
+        }
+        /// True if there are any late-bound non-region variables
+        fn has_non_region_late_bound(&self) -> bool {
+            self.has_type_flags(TypeFlags::HAS_LATE_BOUND - TypeFlags::HAS_RE_LATE_BOUND)
+        }
+        /// True if there are any late-bound variables
+        fn has_late_bound_vars(&self) -> bool {
+            self.has_type_flags(TypeFlags::HAS_LATE_BOUND)
+        }
+
+        /// Indicates whether this value still has parameters/placeholders/inference variables
+        /// which could be replaced later, in a way that would change the results of `impl`
+        /// specialization.
+        fn still_further_specializable(&self) -> bool {
+            self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
         }
     }
-    fn has_non_region_param(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_SUBST - TypeFlags::HAS_RE_PARAM)
-    }
-    fn has_infer_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_INFER)
-    }
-    fn has_infer_types(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_INFER)
-    }
-    fn has_non_region_infer(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_INFER - TypeFlags::HAS_RE_INFER)
-    }
-    fn needs_infer(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_INFER)
-    }
-    fn has_placeholders(&self) -> bool {
-        self.has_type_flags(
-            TypeFlags::HAS_RE_PLACEHOLDER
-                | TypeFlags::HAS_TY_PLACEHOLDER
-                | TypeFlags::HAS_CT_PLACEHOLDER,
-        )
-    }
-    fn needs_subst(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_SUBST)
-    }
-    /// "Free" regions in this context means that it has any region
-    /// that is not (a) erased or (b) late-bound.
-    fn has_free_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
+
+    pub trait TypeSuperVisitable<'tcx>: TypeVisitable<'tcx> {
+        /// Provides a default visit for a type of interest. This should only be
+        /// called within `TypeVisitor` methods, when a non-custom traversal is
+        /// desired for the value of the type of interest passed to that method.
+        /// For example, in `MyVisitor::visit_ty(ty)`, it is valid to call
+        /// `ty.super_visit_with(self)`, but any other visiting should be done
+        /// with `xyz.visit_with(self)`.
+        fn super_visit_with<V: TypeVisitor<'tcx>>(
+            &self,
+            visitor: &mut V,
+        ) -> ControlFlow<V::BreakTy>;
     }
 
-    fn has_erased_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_ERASED)
-    }
+    /// This trait is implemented for every visiting traversal. There is a visit
+    /// method defined for every type of interest. Each such method has a default
+    /// that recurses into the type's fields in a non-custom fashion.
+    pub trait TypeVisitor<'tcx>: Sized {
+        type BreakTy = !;
 
-    /// True if there are any un-erased free regions.
-    fn has_erasable_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
-    }
+        fn visit_binder<T: TypeVisitable<'tcx>>(
+            &mut self,
+            t: &Binder<'tcx, T>,
+        ) -> ControlFlow<Self::BreakTy> {
+            t.super_visit_with(self)
+        }
 
-    /// Indicates whether this value references only 'global'
-    /// generic parameters that are the same regardless of what fn we are
-    /// in. This is used for caching.
-    fn is_global(&self) -> bool {
-        !self.has_type_flags(TypeFlags::HAS_FREE_LOCAL_NAMES)
-    }
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            t.super_visit_with(self)
+        }
 
-    /// True if there are any late-bound regions
-    fn has_late_bound_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND)
-    }
-    /// True if there are any late-bound non-region variables
-    fn has_non_region_late_bound(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_LATE_BOUND - TypeFlags::HAS_RE_LATE_BOUND)
-    }
-    /// True if there are any late-bound variables
-    fn has_late_bound_vars(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_LATE_BOUND)
-    }
+        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+            r.super_visit_with(self)
+        }
 
-    /// Indicates whether this value still has parameters/placeholders/inference variables
-    /// which could be replaced later, in a way that would change the results of `impl`
-    /// specialization.
-    fn still_further_specializable(&self) -> bool {
-        self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
-    }
-}
+        fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+            c.super_visit_with(self)
+        }
 
-pub trait TypeSuperVisitable<'tcx>: TypeVisitable<'tcx> {
-    /// Provides a default visit for a type of interest. This should only be
-    /// called within `TypeVisitor` methods, when a non-custom traversal is
-    /// desired for the value of the type of interest passed to that method.
-    /// For example, in `MyVisitor::visit_ty(ty)`, it is valid to call
-    /// `ty.super_visit_with(self)`, but any other visiting should be done
-    /// with `xyz.visit_with(self)`.
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
-}
-
-/// This trait is implemented for every visiting traversal. There is a visit
-/// method defined for every type of interest. Each such method has a default
-/// that recurses into the type's fields in a non-custom fashion.
-pub trait TypeVisitor<'tcx>: Sized {
-    type BreakTy = !;
-
-    fn visit_binder<T: TypeVisitable<'tcx>>(
-        &mut self,
-        t: &Binder<'tcx, T>,
-    ) -> ControlFlow<Self::BreakTy> {
-        t.super_visit_with(self)
-    }
-
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        t.super_visit_with(self)
-    }
-
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        r.super_visit_with(self)
-    }
-
-    fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        c.super_visit_with(self)
-    }
-
-    fn visit_predicate(&mut self, p: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
-        p.super_visit_with(self)
+        fn visit_predicate(&mut self, p: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
+            p.super_visit_with(self)
+        }
     }
 }
 

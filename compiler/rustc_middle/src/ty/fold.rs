@@ -48,161 +48,173 @@ use rustc_hir::def_id::DefId;
 
 use std::collections::BTreeMap;
 
-/// This trait is implemented for every type that can be folded,
-/// providing the skeleton of the traversal.
-///
-/// To implement this conveniently, use the derive macro located in
-/// `rustc_macros`.
-pub trait TypeFoldable<'tcx>: TypeVisitable<'tcx> {
-    /// The entry point for folding. To fold a value `t` with a folder `f`
-    /// call: `t.try_fold_with(f)`.
+pub use ir::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
+
+pub mod ir {
+    use crate::ty::{self, ir::TypeVisitable, Binder, Ty, TyCtxt};
+
+    /// This trait is implemented for every type that can be folded,
+    /// providing the skeleton of the traversal.
     ///
-    /// For most types, this just traverses the value, calling `try_fold_with`
-    /// on each field/element.
+    /// To implement this conveniently, use the derive macro located in
+    /// `rustc_macros`.
+    pub trait TypeFoldable<'tcx>: TypeVisitable<'tcx> {
+        /// The entry point for folding. To fold a value `t` with a folder `f`
+        /// call: `t.try_fold_with(f)`.
+        ///
+        /// For most types, this just traverses the value, calling `try_fold_with`
+        /// on each field/element.
+        ///
+        /// For types of interest (such as `Ty`), the implementation of method
+        /// calls a folder method specifically for that type (such as
+        /// `F::try_fold_ty`). This is where control transfers from `TypeFoldable`
+        /// to `TypeFolder`.
+        fn try_fold_with<F: FallibleTypeFolder<'tcx>>(
+            self,
+            folder: &mut F,
+        ) -> Result<Self, F::Error>;
+
+        /// A convenient alternative to `try_fold_with` for use with infallible
+        /// folders. Do not override this method, to ensure coherence with
+        /// `try_fold_with`.
+        fn fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
+            self.try_fold_with(folder).into_ok()
+        }
+    }
+
+    // This trait is implemented for types of interest.
+    pub trait TypeSuperFoldable<'tcx>: TypeFoldable<'tcx> {
+        /// Provides a default fold for a type of interest. This should only be
+        /// called within `TypeFolder` methods, when a non-custom traversal is
+        /// desired for the value of the type of interest passed to that method.
+        /// For example, in `MyFolder::try_fold_ty(ty)`, it is valid to call
+        /// `ty.try_super_fold_with(self)`, but any other folding should be done
+        /// with `xyz.try_fold_with(self)`.
+        fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+            self,
+            folder: &mut F,
+        ) -> Result<Self, F::Error>;
+
+        /// A convenient alternative to `try_super_fold_with` for use with
+        /// infallible folders. Do not override this method, to ensure coherence
+        /// with `try_super_fold_with`.
+        fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
+            self.try_super_fold_with(folder).into_ok()
+        }
+    }
+
+    /// This trait is implemented for every infallible folding traversal. There is
+    /// a fold method defined for every type of interest. Each such method has a
+    /// default that does an "identity" fold. Implementations of these methods
+    /// often fall back to a `super_fold_with` method if the primary argument
+    /// doesn't satisfy a particular condition.
     ///
-    /// For types of interest (such as `Ty`), the implementation of method
-    /// calls a folder method specifically for that type (such as
-    /// `F::try_fold_ty`). This is where control transfers from `TypeFoldable`
-    /// to `TypeFolder`.
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error>;
+    /// A blanket implementation of [`FallibleTypeFolder`] will defer to
+    /// the infallible methods of this trait to ensure that the two APIs
+    /// are coherent.
+    pub trait TypeFolder<'tcx>: FallibleTypeFolder<'tcx, Error = !> {
+        fn tcx(&self) -> TyCtxt<'tcx>;
 
-    /// A convenient alternative to `try_fold_with` for use with infallible
-    /// folders. Do not override this method, to ensure coherence with
-    /// `try_fold_with`.
-    fn fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
-        self.try_fold_with(folder).into_ok()
+        fn fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Binder<'tcx, T>
+        where
+            T: TypeFoldable<'tcx>,
+        {
+            t.super_fold_with(self)
+        }
+
+        fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+            t.super_fold_with(self)
+        }
+
+        fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+            r.super_fold_with(self)
+        }
+
+        fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+            c.super_fold_with(self)
+        }
+
+        fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+            p.super_fold_with(self)
+        }
     }
-}
 
-// This trait is implemented for types of interest.
-pub trait TypeSuperFoldable<'tcx>: TypeFoldable<'tcx> {
-    /// Provides a default fold for a type of interest. This should only be
-    /// called within `TypeFolder` methods, when a non-custom traversal is
-    /// desired for the value of the type of interest passed to that method.
-    /// For example, in `MyFolder::try_fold_ty(ty)`, it is valid to call
-    /// `ty.try_super_fold_with(self)`, but any other folding should be done
-    /// with `xyz.try_fold_with(self)`.
-    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error>;
+    /// This trait is implemented for every folding traversal. There is a fold
+    /// method defined for every type of interest. Each such method has a default
+    /// that does an "identity" fold.
+    ///
+    /// A blanket implementation of this trait (that defers to the relevant
+    /// method of [`TypeFolder`]) is provided for all infallible folders in
+    /// order to ensure the two APIs are coherent.
+    pub trait FallibleTypeFolder<'tcx>: Sized {
+        type Error;
 
-    /// A convenient alternative to `try_super_fold_with` for use with
-    /// infallible folders. Do not override this method, to ensure coherence
-    /// with `try_super_fold_with`.
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
-        self.try_super_fold_with(folder).into_ok()
+        fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
+
+        fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, Self::Error>
+        where
+            T: TypeFoldable<'tcx>,
+        {
+            t.try_super_fold_with(self)
+        }
+
+        fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+            t.try_super_fold_with(self)
+        }
+
+        fn try_fold_region(
+            &mut self,
+            r: ty::Region<'tcx>,
+        ) -> Result<ty::Region<'tcx>, Self::Error> {
+            r.try_super_fold_with(self)
+        }
+
+        fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
+            c.try_super_fold_with(self)
+        }
+
+        fn try_fold_predicate(
+            &mut self,
+            p: ty::Predicate<'tcx>,
+        ) -> Result<ty::Predicate<'tcx>, Self::Error> {
+            p.try_super_fold_with(self)
+        }
     }
-}
 
-/// This trait is implemented for every infallible folding traversal. There is
-/// a fold method defined for every type of interest. Each such method has a
-/// default that does an "identity" fold. Implementations of these methods
-/// often fall back to a `super_fold_with` method if the primary argument
-/// doesn't satisfy a particular condition.
-///
-/// A blanket implementation of [`FallibleTypeFolder`] will defer to
-/// the infallible methods of this trait to ensure that the two APIs
-/// are coherent.
-pub trait TypeFolder<'tcx>: FallibleTypeFolder<'tcx, Error = !> {
-    fn tcx(&self) -> TyCtxt<'tcx>;
-
-    fn fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Binder<'tcx, T>
+    // This blanket implementation of the fallible trait for infallible folders
+    // delegates to infallible methods to ensure coherence.
+    impl<'tcx, F> FallibleTypeFolder<'tcx> for F
     where
-        T: TypeFoldable<'tcx>,
+        F: TypeFolder<'tcx>,
     {
-        t.super_fold_with(self)
-    }
+        type Error = !;
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        t.super_fold_with(self)
-    }
+        fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+            TypeFolder::tcx(self)
+        }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        r.super_fold_with(self)
-    }
+        fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, !>
+        where
+            T: TypeFoldable<'tcx>,
+        {
+            Ok(self.fold_binder(t))
+        }
 
-    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        c.super_fold_with(self)
-    }
+        fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
+            Ok(self.fold_ty(t))
+        }
 
-    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
-        p.super_fold_with(self)
-    }
-}
+        fn try_fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, !> {
+            Ok(self.fold_region(r))
+        }
 
-/// This trait is implemented for every folding traversal. There is a fold
-/// method defined for every type of interest. Each such method has a default
-/// that does an "identity" fold.
-///
-/// A blanket implementation of this trait (that defers to the relevant
-/// method of [`TypeFolder`]) is provided for all infallible folders in
-/// order to ensure the two APIs are coherent.
-pub trait FallibleTypeFolder<'tcx>: Sized {
-    type Error;
+        fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, !> {
+            Ok(self.fold_const(c))
+        }
 
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
-
-    fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, Self::Error>
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        t.try_super_fold_with(self)
-    }
-
-    fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
-        t.try_super_fold_with(self)
-    }
-
-    fn try_fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
-        r.try_super_fold_with(self)
-    }
-
-    fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
-        c.try_super_fold_with(self)
-    }
-
-    fn try_fold_predicate(
-        &mut self,
-        p: ty::Predicate<'tcx>,
-    ) -> Result<ty::Predicate<'tcx>, Self::Error> {
-        p.try_super_fold_with(self)
-    }
-}
-
-// This blanket implementation of the fallible trait for infallible folders
-// delegates to infallible methods to ensure coherence.
-impl<'tcx, F> FallibleTypeFolder<'tcx> for F
-where
-    F: TypeFolder<'tcx>,
-{
-    type Error = !;
-
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
-        TypeFolder::tcx(self)
-    }
-
-    fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, !>
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        Ok(self.fold_binder(t))
-    }
-
-    fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
-        Ok(self.fold_ty(t))
-    }
-
-    fn try_fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, !> {
-        Ok(self.fold_region(r))
-    }
-
-    fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, !> {
-        Ok(self.fold_const(c))
-    }
-
-    fn try_fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> Result<ty::Predicate<'tcx>, !> {
-        Ok(self.fold_predicate(p))
+        fn try_fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> Result<ty::Predicate<'tcx>, !> {
+            Ok(self.fold_predicate(p))
+        }
     }
 }
 

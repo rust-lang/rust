@@ -146,6 +146,10 @@ mod structural_impls;
 mod sty;
 mod typeck_results;
 
+pub mod ir {
+    pub use super::{fold::ir::*, visit::ir::*};
+}
+
 // Data types
 
 pub type RegisteredTools = FxHashSet<Ident>;
