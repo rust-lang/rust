@@ -238,18 +238,22 @@ Changes not staged for commit:
 no changes added to commit (use "git add" and/or "git commit -a")
 ```
 
-These changes are not changes to files: they are changes to submodules (more on
-this [later](#git-submodules)). To get rid of those, run `git submodule update`
-(or run any `x.py` command, which will automatically update the submodules).
-Note that,
-as of <!-- date-check --> Aug 2022,
+These changes are not changes to files: they are changes to submodules (more on this
+[later](#git-submodules)). To get rid of those, run `./x.py --help`, which will automatically update
+the submodules.
+
+Some submodules are not actually needed; for example, `src/llvm-project` doesn't need to be checked
+out if you're using `download-ci-llvm`.  To avoid having to keep fetching its history, you can use
+`git submodule deinit -f src/llvm-project`, which will also avoid it showing as modified again.
+
+Note that, as of <!-- date-check --> Aug 2022,
 there is a [bug][#77620] if you use worktrees,
 submodules, and `x.py` in a commit hook.
 If you run into an error like the following,
 it's not anything you did wrong:
 
 ```
-error: failed to read `/home/joshua/rustc-worktree/src/tools/miri/cargo-miri/Cargo.toml`
+error: failed to read `/home/jyn/rustc-worktree/src/tools/cargo/Cargo.toml`
 
 Caused by:
   No such file or directory (os error 2)
@@ -259,8 +263,6 @@ There is a workaround in [the issue][#77620-workaround].
 
 [#77620]: https://github.com/rust-lang/rust/issues/77620
 [#77620-workaround]: https://github.com/rust-lang/rust/issues/77620#issuecomment-705228229
-
-(Note that as of Sept 2022 `miri` is a subtree and not a submodule.)
 
 ## Rebasing and Conflicts
 
