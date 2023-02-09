@@ -588,10 +588,13 @@ impl<'tcx> CPlace<'tcx> {
                 return;
             }
             CPlaceInner::VarPair(_local, var1, var2) => {
-                let (ptr, meta) = from.force_stack(fx);
-                assert!(meta.is_none());
-                let (data1, data2) =
-                    CValue(CValueInner::ByRef(ptr, None), dst_layout).load_scalar_pair(fx);
+                let (data1, data2) = if from.layout().ty == dst_layout.ty {
+                    CValue(from.0, dst_layout).load_scalar_pair(fx)
+                } else {
+                    let (ptr, meta) = from.force_stack(fx);
+                    assert!(meta.is_none());
+                    CValue(CValueInner::ByRef(ptr, None), dst_layout).load_scalar_pair(fx)
+                };
                 let (dst_ty1, dst_ty2) = fx.clif_pair_type(self.layout().ty).unwrap();
                 transmute_value(fx, var1, data1, dst_ty1);
                 transmute_value(fx, var2, data2, dst_ty2);

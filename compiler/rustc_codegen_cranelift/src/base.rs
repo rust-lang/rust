@@ -21,23 +21,6 @@ pub(crate) struct CodegenedFunction {
     func_debug_cx: Option<FunctionDebugContext>,
 }
 
-#[cfg_attr(not(feature = "jit"), allow(dead_code))]
-pub(crate) fn codegen_and_compile_fn<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    cx: &mut crate::CodegenCx,
-    cached_context: &mut Context,
-    module: &mut dyn Module,
-    instance: Instance<'tcx>,
-) {
-    let _inst_guard =
-        crate::PrintOnPanic(|| format!("{:?} {}", instance, tcx.symbol_name(instance).name));
-
-    let cached_func = std::mem::replace(&mut cached_context.func, Function::new());
-    let codegened_func = codegen_fn(tcx, cx, cached_func, module, instance);
-
-    compile_fn(cx, cached_context, module, codegened_func);
-}
-
 pub(crate) fn codegen_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
     cx: &mut crate::CodegenCx,
@@ -46,6 +29,9 @@ pub(crate) fn codegen_fn<'tcx>(
     instance: Instance<'tcx>,
 ) -> CodegenedFunction {
     debug_assert!(!instance.substs.needs_infer());
+
+    let symbol_name = tcx.symbol_name(instance).name.to_string();
+    let _timer = tcx.prof.generic_activity_with_arg("codegen fn", &*symbol_name);
 
     let mir = tcx.instance_mir(instance.def);
     let _mir_guard = crate::PrintOnPanic(|| {
@@ -58,7 +44,6 @@ pub(crate) fn codegen_fn<'tcx>(
     });
 
     // Declare function
-    let symbol_name = tcx.symbol_name(instance).name.to_string();
     let sig = get_function_sig(tcx, module.target_config().default_call_conv, instance);
     let func_id = module.declare_function(&symbol_name, Linkage::Local, &sig).unwrap();
 
@@ -112,7 +97,7 @@ pub(crate) fn codegen_fn<'tcx>(
         next_ssa_var: 0,
     };
 
-    tcx.sess.time("codegen clif ir", || codegen_fn_body(&mut fx, start_block));
+    tcx.prof.generic_activity("codegen clif ir").run(|| codegen_fn_body(&mut fx, start_block));
     fx.bcx.seal_all_blocks();
     fx.bcx.finalize();
 
@@ -146,6 +131,9 @@ pub(crate) fn compile_fn(
     module: &mut dyn Module,
     codegened_func: CodegenedFunction,
 ) {
+    let _timer =
+        cx.profiler.generic_activity_with_arg("compile function", &*codegened_func.symbol_name);
+
     let clif_comments = codegened_func.clif_comments;
 
     // Store function in context
@@ -191,9 +179,30 @@ pub(crate) fn compile_fn(
     };
 
     // Define function
-    cx.profiler.verbose_generic_activity("define function").run(|| {
+    cx.profiler.generic_activity("define function").run(|| {
         context.want_disasm = cx.should_write_ir;
         module.define_function(codegened_func.func_id, context).unwrap();
+
+        if cx.profiler.enabled() {
+            let mut recording_args = false;
+            cx.profiler
+                .generic_activity_with_arg_recorder(
+                    "define function (clif pass timings)",
+                    |recorder| {
+                        let pass_times = cranelift_codegen::timing::take_current();
+                        // Replace newlines with | as measureme doesn't allow control characters like
+                        // newlines inside strings.
+                        recorder.record_arg(format!("{}", pass_times).replace("\n", " | "));
+                        recording_args = true;
+                    },
+                )
+                .run(|| {
+                    if recording_args {
+                        // Wait a tiny bit to ensure chrome's profiler doesn't hide the event
+                        std::thread::sleep(std::time::Duration::from_nanos(2))
+                    }
+                });
+        }
     });
 
     if cx.should_write_ir {
@@ -220,7 +229,7 @@ pub(crate) fn compile_fn(
     let isa = module.isa();
     let debug_context = &mut cx.debug_context;
     let unwind_context = &mut cx.unwind_context;
-    cx.profiler.verbose_generic_activity("generate debug info").run(|| {
+    cx.profiler.generic_activity("generate debug info").run(|| {
         if let Some(debug_context) = debug_context {
             codegened_func.func_debug_cx.unwrap().finalize(
                 debug_context,
@@ -237,7 +246,7 @@ pub(crate) fn verify_func(
     writer: &crate::pretty_clif::CommentWriter,
     func: &Function,
 ) {
-    tcx.sess.time("verify clif ir", || {
+    tcx.prof.generic_activity("verify clif ir").run(|| {
         let flags = cranelift_codegen::settings::Flags::new(cranelift_codegen::settings::builder());
         match cranelift_codegen::verify_function(&func, &flags) {
             Ok(_) => {}
@@ -273,7 +282,10 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
         fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
         return;
     }
-    fx.tcx.sess.time("codegen prelude", || crate::abi::codegen_fn_prelude(fx, start_block));
+    fx.tcx
+        .prof
+        .generic_activity("codegen prelude")
+        .run(|| crate::abi::codegen_fn_prelude(fx, start_block));
 
     for (bb, bb_data) in fx.mir.basic_blocks.iter_enumerated() {
         let block = fx.get_block(bb);
@@ -434,7 +446,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 cleanup: _,
                 from_hir_call: _,
             } => {
-                fx.tcx.sess.time("codegen call", || {
+                fx.tcx.prof.generic_activity("codegen call").run(|| {
                     crate::abi::codegen_terminator_call(
                         fx,
                         mir::SourceInfo { span: *fn_span, ..source_info },
@@ -778,17 +790,30 @@ fn codegen_stmt<'tcx>(
                     let val = CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), val.into());
                     lval.write_cvalue(fx, val);
                 }
-                Rvalue::Aggregate(ref kind, ref operands) => match kind.as_ref() {
-                    AggregateKind::Array(_ty) => {
-                        for (i, operand) in operands.iter().enumerate() {
-                            let operand = codegen_operand(fx, operand);
-                            let index = fx.bcx.ins().iconst(fx.pointer_type, i as i64);
-                            let to = lval.place_index(fx, index);
-                            to.write_cvalue(fx, operand);
+                Rvalue::Aggregate(ref kind, ref operands) => {
+                    let (variant_index, variant_dest, active_field_index) = match **kind {
+                        mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
+                            let variant_dest = lval.downcast_variant(fx, variant_index);
+                            (variant_index, variant_dest, active_field_index)
                         }
+                        _ => (VariantIdx::from_u32(0), lval, None),
+                    };
+                    if active_field_index.is_some() {
+                        assert_eq!(operands.len(), 1);
                     }
-                    _ => unreachable!("shouldn't exist at codegen {:?}", to_place_and_rval.1),
-                },
+                    for (i, operand) in operands.iter().enumerate() {
+                        let operand = codegen_operand(fx, operand);
+                        let field_index = active_field_index.unwrap_or(i);
+                        let to = if let mir::AggregateKind::Array(_) = **kind {
+                            let index = fx.bcx.ins().iconst(fx.pointer_type, field_index as i64);
+                            variant_dest.place_index(fx, index)
+                        } else {
+                            variant_dest.place_field(fx, mir::Field::new(field_index))
+                        };
+                        to.write_cvalue(fx, operand);
+                    }
+                    crate::discriminant::codegen_set_discriminant(fx, lval, variant_index);
+                }
             }
         }
         StatementKind::StorageLive(_)
