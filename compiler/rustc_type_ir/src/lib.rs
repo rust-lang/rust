@@ -28,7 +28,7 @@ pub use ty_info::*;
 /// Needed so we can use #[derive(HashStable_Generic)]
 pub trait HashStableContext {}
 
-pub trait Interner {
+pub trait Interner: Sized {
     type AdtDef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type SubstsRef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type DefId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
