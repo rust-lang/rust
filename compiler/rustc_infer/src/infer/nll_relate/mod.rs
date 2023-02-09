@@ -792,7 +792,7 @@ struct ScopeInstantiator<'me, 'tcx> {
     bound_region_scope: &'me mut BoundRegionScope<'tcx>,
 }
 
-impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
+impl<'me, 'tcx> TypeVisitor<TyCtxt<'tcx>> for ScopeInstantiator<'me, 'tcx> {
     fn visit_binder<T: TypeVisitable<'tcx>>(
         &mut self,
         t: &ty::Binder<'tcx, T>,

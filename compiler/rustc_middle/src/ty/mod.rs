@@ -923,7 +923,7 @@ impl<'tcx> ir::TypeFoldable<'tcx> for Term<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeVisitable<'tcx> for Term<'tcx> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.unpack().visit_with(visitor)
     }
@@ -1632,7 +1632,7 @@ impl<'tcx> ir::TypeFoldable<'tcx> for ParamEnv<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeVisitable<'tcx> for ParamEnv<'tcx> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.caller_bounds().visit_with(visitor)?;
         self.reveal().visit_with(visitor)

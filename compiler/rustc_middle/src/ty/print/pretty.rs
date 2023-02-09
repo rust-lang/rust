@@ -2493,7 +2493,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::visit::ir::TypeVisitor<'tcx> for RegionNameCollector<'tcx> {
+        impl<'tcx> ty::visit::ir::TypeVisitor<TyCtxt<'tcx>> for RegionNameCollector<'tcx> {
             type BreakTy = ();
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {

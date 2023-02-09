@@ -2963,7 +2963,7 @@ impl ArgKind {
 
 struct HasNumericInferVisitor;
 
-impl<'tcx> ty::ir::TypeVisitor<'tcx> for HasNumericInferVisitor {
+impl<'tcx> ty::ir::TypeVisitor<TyCtxt<'tcx>> for HasNumericInferVisitor {
     type BreakTy = ();
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

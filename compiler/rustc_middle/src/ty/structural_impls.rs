@@ -369,7 +369,7 @@ impl<'tcx> ir::TypeFoldable<'tcx> for ty::AdtDef<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeVisitable<'tcx> for ty::AdtDef<'tcx> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for ty::AdtDef<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::Continue(())
     }
@@ -384,7 +384,9 @@ impl<'tcx, T: TypeFoldable<'tcx>, U: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> 
     }
 }
 
-impl<'tcx, T: TypeVisitable<'tcx>, U: TypeVisitable<'tcx>> ir::TypeVisitable<'tcx> for (T, U) {
+impl<'tcx, T: TypeVisitable<'tcx>, U: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>>
+    for (T, U)
+{
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.0.visit_with(visitor)?;
         self.1.visit_with(visitor)
@@ -407,7 +409,7 @@ impl<'tcx, A: TypeFoldable<'tcx>, B: TypeFoldable<'tcx>, C: TypeFoldable<'tcx>>
 }
 
 impl<'tcx, A: TypeVisitable<'tcx>, B: TypeVisitable<'tcx>, C: TypeVisitable<'tcx>>
-    ir::TypeVisitable<'tcx> for (A, B, C)
+    ir::TypeVisitable<TyCtxt<'tcx>> for (A, B, C)
 {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.0.visit_with(visitor)?;
@@ -482,7 +484,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> for Rc<T> {
     }
 }
 
-impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<'tcx> for Rc<T> {
+impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for Rc<T> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         (**self).visit_with(visitor)
     }
@@ -528,7 +530,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> for Arc<T> {
     }
 }
 
-impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<'tcx> for Arc<T> {
+impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for Arc<T> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         (**self).visit_with(visitor)
     }
@@ -540,7 +542,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> for Box<T> {
     }
 }
 
-impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<'tcx> for Box<T> {
+impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for Box<T> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         (**self).visit_with(visitor)
     }
@@ -552,13 +554,13 @@ impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> for Vec<T> {
     }
 }
 
-impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<'tcx> for Vec<T> {
+impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for Vec<T> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
 
-impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<'tcx> for &[T] {
+impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for &[T] {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
@@ -570,7 +572,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> for Box<[T]> {
     }
 }
 
-impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<'tcx> for Box<[T]> {
+impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for Box<[T]> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
@@ -582,7 +584,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> for ty::Binder<'tcx, T>
     }
 }
 
-impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<'tcx> for ty::Binder<'tcx, T> {
+impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for ty::Binder<'tcx, T> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_binder(self)
     }
@@ -597,7 +599,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeSuperFoldable<'tcx> for ty::Binder<'tcx, T
     }
 }
 
-impl<'tcx, T: TypeVisitable<'tcx>> TypeSuperVisitable<'tcx> for ty::Binder<'tcx, T> {
+impl<'tcx, T: TypeVisitable<'tcx>> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Binder<'tcx, T> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.as_ref().skip_binder().visit_with(visitor)
     }
@@ -627,7 +629,7 @@ impl<'tcx> ir::TypeFoldable<'tcx> for Ty<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeVisitable<'tcx> for Ty<'tcx> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_ty(*self)
     }
@@ -683,7 +685,7 @@ impl<'tcx> TypeSuperFoldable<'tcx> for Ty<'tcx> {
     }
 }
 
-impl<'tcx> TypeSuperVisitable<'tcx> for Ty<'tcx> {
+impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match self.kind() {
             ty::RawPtr(ref tm) => tm.visit_with(visitor),
@@ -733,7 +735,7 @@ impl<'tcx> ir::TypeFoldable<'tcx> for ty::Region<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeVisitable<'tcx> for ty::Region<'tcx> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for ty::Region<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_region(*self)
     }
@@ -748,7 +750,7 @@ impl<'tcx> TypeSuperFoldable<'tcx> for ty::Region<'tcx> {
     }
 }
 
-impl<'tcx> TypeSuperVisitable<'tcx> for ty::Region<'tcx> {
+impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Region<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::Continue(())
     }
@@ -760,7 +762,7 @@ impl<'tcx> ir::TypeFoldable<'tcx> for ty::Predicate<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeVisitable<'tcx> for ty::Predicate<'tcx> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_predicate(*self)
     }
@@ -776,7 +778,7 @@ impl<'tcx> TypeSuperFoldable<'tcx> for ty::Predicate<'tcx> {
     }
 }
 
-impl<'tcx> TypeSuperVisitable<'tcx> for ty::Predicate<'tcx> {
+impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.kind().visit_with(visitor)
     }
@@ -794,7 +796,7 @@ impl<'tcx, T: TypeFoldable<'tcx>, I: Idx> ir::TypeFoldable<'tcx> for IndexVec<I,
     }
 }
 
-impl<'tcx, T: TypeVisitable<'tcx>, I: Idx> ir::TypeVisitable<'tcx> for IndexVec<I, T> {
+impl<'tcx, T: TypeVisitable<'tcx>, I: Idx> ir::TypeVisitable<TyCtxt<'tcx>> for IndexVec<I, T> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
@@ -806,7 +808,7 @@ impl<'tcx> ir::TypeFoldable<'tcx> for ty::Const<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeVisitable<'tcx> for ty::Const<'tcx> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_const(*self)
     }
@@ -827,7 +829,7 @@ impl<'tcx> TypeSuperFoldable<'tcx> for ty::Const<'tcx> {
     }
 }
 
-impl<'tcx> TypeSuperVisitable<'tcx> for ty::Const<'tcx> {
+impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.ty().visit_with(visitor)?;
         self.kind().visit_with(visitor)
@@ -840,19 +842,19 @@ impl<'tcx> ir::TypeFoldable<'tcx> for InferConst<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeVisitable<'tcx> for InferConst<'tcx> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for InferConst<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::Continue(())
     }
 }
 
-impl<'tcx> TypeSuperVisitable<'tcx> for ty::UnevaluatedConst<'tcx> {
+impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::UnevaluatedConst<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.substs.visit_with(visitor)
     }
 }
 
-impl<'tcx> ir::TypeVisitable<'tcx> for TyAndLayout<'tcx, Ty<'tcx>> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for TyAndLayout<'tcx, Ty<'tcx>> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_ty(self.ty)
     }

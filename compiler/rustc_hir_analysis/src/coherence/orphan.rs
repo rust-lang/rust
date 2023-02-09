@@ -552,7 +552,7 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
         seen: FxHashSet<DefId>,
     }
 
-    impl<'tcx> TypeVisitor<'tcx> for DisableAutoTraitVisitor<'tcx> {
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for DisableAutoTraitVisitor<'tcx> {
         type BreakTy = ();
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             let tcx = self.tcx;

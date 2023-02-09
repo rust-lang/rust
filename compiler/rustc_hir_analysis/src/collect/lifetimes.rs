@@ -1752,7 +1752,7 @@ fn is_late_bound_map(
 
     use std::ops::ControlFlow;
     use ty::Ty;
-    impl<'tcx> TypeVisitor<'tcx> for ConstrainedCollectorPostAstConv {
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ConstrainedCollectorPostAstConv {
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
             match t.kind() {
                 ty::Param(param_ty) => {

@@ -80,7 +80,7 @@ impl<'tcx> Search<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
     type BreakTy = Ty<'tcx>;
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

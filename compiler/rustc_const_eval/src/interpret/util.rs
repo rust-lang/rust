@@ -21,7 +21,7 @@ where
         tcx: TyCtxt<'tcx>,
     }
 
-    impl<'tcx> TypeVisitor<'tcx> for UsedParamsNeedSubstVisitor<'tcx> {
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UsedParamsNeedSubstVisitor<'tcx> {
         type BreakTy = FoundParam;
 
         fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

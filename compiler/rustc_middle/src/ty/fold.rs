@@ -61,7 +61,7 @@ pub mod ir {
     ///
     /// To implement this conveniently, use the derive macro located in
     /// `rustc_macros`.
-    pub trait TypeFoldable<'tcx>: TypeVisitable<'tcx> {
+    pub trait TypeFoldable<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
         /// The entry point for folding. To fold a value `t` with a folder `f`
         /// call: `t.try_fold_with(f)`.
         ///

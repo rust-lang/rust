@@ -2040,7 +2040,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn contains(self, other: Ty<'tcx>) -> bool {
         struct ContainsTyVisitor<'tcx>(Ty<'tcx>);
 
-        impl<'tcx> TypeVisitor<'tcx> for ContainsTyVisitor<'tcx> {
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsTyVisitor<'tcx> {
             type BreakTy = ();
 
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -2058,7 +2058,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn contains_closure(self) -> bool {
         struct ContainsClosureVisitor;
 
-        impl<'tcx> TypeVisitor<'tcx> for ContainsClosureVisitor {
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsClosureVisitor {
             type BreakTy = ();
 
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

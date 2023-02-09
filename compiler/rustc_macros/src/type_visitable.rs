@@ -19,7 +19,7 @@ pub fn type_visitable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
     s.bind_with(|_| synstructure::BindStyle::Move);
 
     s.bound_impl(
-        quote!(::rustc_middle::ty::visit::ir::TypeVisitable<'tcx>),
+        quote!(::rustc_middle::ty::visit::ir::TypeVisitable<::rustc_middle::ty::TyCtxt<'tcx>>),
         quote! {
             fn visit_with<__V: ::rustc_middle::ty::visit::TypeVisitor<'tcx>>(
                 &self,

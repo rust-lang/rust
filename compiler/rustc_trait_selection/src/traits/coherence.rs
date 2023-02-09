@@ -627,7 +627,7 @@ enum OrphanCheckEarlyExit<'tcx> {
     LocalTy(Ty<'tcx>),
 }
 
-impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx> {
     type BreakTy = OrphanCheckEarlyExit<'tcx>;
     fn visit_region(&mut self, _r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         ControlFlow::Continue(())

@@ -56,7 +56,7 @@ struct ParameterCollector {
     include_nonconstraining: bool,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *t.kind() {
             ty::Alias(ty::Projection, ..) if !self.include_nonconstraining => {

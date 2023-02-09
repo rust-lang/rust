@@ -4,7 +4,7 @@ use rustc_data_structures::intern::Interned;
 
 use crate::ty::{
     ir::{self, TypeFoldable, TypeVisitable},
-    FallibleTypeFolder, Ty, TypeFolder, TypeVisitor,
+    FallibleTypeFolder, Ty, TyCtxt, TypeFolder, TypeVisitor,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -48,7 +48,7 @@ impl<'tcx> TypeFoldable<'tcx> for ExternalConstraints<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for ExternalConstraints<'tcx> {
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(
         &self,
         visitor: &mut V,

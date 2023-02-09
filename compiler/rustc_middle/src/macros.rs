@@ -86,7 +86,7 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
             }
 
-            impl<$tcx> $crate::ty::visit::ir::TypeVisitable<$tcx> for $ty {
+            impl<$tcx> $crate::ty::visit::ir::TypeVisitable<$crate::ty::TyCtxt<$tcx>> for $ty {
                 #[inline]
                 fn visit_with<F: $crate::ty::visit::TypeVisitor<$tcx>>(
                     &self,
@@ -136,7 +136,7 @@ macro_rules! EnumTypeTraversalImpl {
     (impl<$($p:tt),*> TypeVisitable<$tcx:tt> for $s:path {
         $($variants:tt)*
     } $(where $($wc:tt)*)*) => {
-        impl<$($p),*> $crate::ty::visit::ir::TypeVisitable<$tcx> for $s
+        impl<$($p),*> $crate::ty::visit::ir::TypeVisitable<$crate::ty::TyCtxt<$tcx>> for $s
             $(where $($wc)*)*
         {
             fn visit_with<V: $crate::ty::visit::TypeVisitor<$tcx>>(
