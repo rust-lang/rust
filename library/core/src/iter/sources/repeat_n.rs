@@ -81,7 +81,7 @@ pub fn repeat_n<T: Clone>(element: T, count: usize) -> RepeatN<T> {
 #[doc(hidden)] // waiting on ACP#120 to decide whether to expose publicly
 pub struct RepeatN<A> {
     count: usize,
-    // Invariant: has been dropped iff count == 0.
+    // Invariant: has been dropped if count == 0.
     element: ManuallyDrop<A>,
 }
 
