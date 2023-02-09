@@ -53,12 +53,6 @@ use tracing_subscriber::fmt::{
 };
 use tracing_subscriber::layer::SubscriberExt;
 
-pub fn init_rustc_env_logger() -> Result<(), Error> {
-    init_env_logger("RUSTC_LOG")
-}
-
-/// In contrast to `init_rustc_env_logger` this allows you to choose an env var
-/// other than `RUSTC_LOG`.
 pub fn init_env_logger(env: &str) -> Result<(), Error> {
     let filter = match env::var(env) {
         Ok(env) => EnvFilter::new(env),
