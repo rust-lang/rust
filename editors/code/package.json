@@ -19,6 +19,12 @@
     "categories": [
         "Programming Languages"
     ],
+    "capabilities": {
+        "untrustedWorkspaces": {
+            "supported": false,
+            "description": "rust-analyzer invokes binaries set up by its configuration as well as the Rust toolchain's binaries. A malicious actor could exploit this to run arbitrary code on your machine."
+        }
+    },
     "engines": {
         "vscode": "^1.66.0"
     },
