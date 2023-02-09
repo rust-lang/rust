@@ -5,7 +5,7 @@
 ## Getting the type of an expression
 
 To get the type of an expression, use the `global_ctxt` to get a `TyCtxt`.
-The following was tested with <!-- date-check: Jan 2023 --> `nightly-2022-12-19`
+The following was tested with <!-- date-check: Feb 2023 --> `nightly-2023-02-06`
 (see [here][example] for the complete example):
 
 [example]: https://github.com/rust-lang/rustc-dev-guide/blob/master/examples/rustc-driver-interacting-with-the-ast.rs
@@ -22,7 +22,7 @@ let config = rustc_interface::Config {
 rustc_interface::run_compiler(config, |compiler| {
     compiler.enter(|queries| {
         // Analyze the crate and inspect the types under the cursor.
-        queries.global_ctxt().unwrap().take().enter(|tcx| {
+        queries.global_ctxt().unwrap().enter(|tcx| {
             // Every compilation contains a single crate.
             let hir_krate = tcx.hir();
             // Iterate over the top-level items in the crate, looking for the main function.
@@ -35,9 +35,9 @@ rustc_interface::run_compiler(config, |compiler| {
                         if let rustc_hir::StmtKind::Local(local) = block.stmts[0].kind {
                             if let Some(expr) = local.init {
                                 let hir_id = expr.hir_id; // hir_id identifies the string "Hello, world!"
-                                let def_id = tcx.hir().local_def_id(item.hir_id()); // def_id identifies the main function
+                                let def_id = item.hir_id().owner.def_id; // def_id identifies the main function
                                 let ty = tcx.typeck(def_id).node_type(hir_id);
-                                println!("{:?}: {:?}", expr, ty);
+                                println!("{expr:#?}: {ty:?}");
                             }
                         }
                     }

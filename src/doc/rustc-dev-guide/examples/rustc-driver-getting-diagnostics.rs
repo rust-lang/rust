@@ -12,6 +12,7 @@ extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_driver;
 
 use rustc_errors::registry;
 use rustc_session::config::{self, CheckCfg};
@@ -67,7 +68,6 @@ fn main() {
         },
         crate_cfg: rustc_hash::FxHashSet::default(),
         crate_check_cfg: CheckCfg::default(),
-        input_path: None,
         output_dir: None,
         output_file: None,
         file_loader: None,
@@ -80,7 +80,7 @@ fn main() {
     };
     rustc_interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {
-            queries.global_ctxt().unwrap().take().enter(|tcx| {
+            queries.global_ctxt().unwrap().enter(|tcx| {
                 // Run the analysis phase on the local crate to trigger the type error.
                 let _ = tcx.analysis(());
             });

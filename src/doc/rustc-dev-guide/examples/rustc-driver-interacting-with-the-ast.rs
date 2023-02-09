@@ -13,6 +13,7 @@ extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_driver;
 
 use std::{path, process, str};
 
@@ -45,7 +46,6 @@ fn main() {
         },
         crate_cfg: rustc_hash::FxHashSet::default(),
         crate_check_cfg: CheckCfg::default(),
-        input_path: None,
         output_dir: None,
         output_file: None,
         file_loader: None,
@@ -59,13 +59,12 @@ fn main() {
     rustc_interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {
             // TODO: add this to -Z unpretty
-            let ast_krate = queries.parse().unwrap().take();
+            let ast_krate = queries.parse().unwrap().get_mut().clone();
             for item in ast_krate.items {
                 println!("{}", item_to_string(&item));
             }
-
             // Analyze the crate and inspect the types under the cursor.
-            queries.global_ctxt().unwrap().take().enter(|tcx| {
+            queries.global_ctxt().unwrap().enter(|tcx| {
                 // Every compilation contains a single crate.
                 let hir_krate = tcx.hir();
                 // Iterate over the top-level items in the crate, looking for the main function.
@@ -78,7 +77,7 @@ fn main() {
                             if let rustc_hir::StmtKind::Local(local) = block.stmts[0].kind {
                                 if let Some(expr) = local.init {
                                     let hir_id = expr.hir_id; // hir_id identifies the string "Hello, world!"
-                                    let def_id = tcx.hir().local_def_id(item.hir_id()); // def_id identifies the main function
+                                    let def_id = item.hir_id().owner.def_id; // def_id identifies the main function
                                     let ty = tcx.typeck(def_id).node_type(hir_id);
                                     println!("{expr:#?}: {ty:?}");
                                 }

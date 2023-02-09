@@ -12,6 +12,7 @@ extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_driver;
 
 use std::{path, process, str};
 
@@ -46,7 +47,6 @@ fn main() {
 "#
             .into(),
         },
-        input_path: None,  // Option<PathBuf>
         output_dir: None,  // Option<PathBuf>
         output_file: None, // Option<PathBuf>
         file_loader: None, // Option<Box<dyn FileLoader + Send + Sync>>
@@ -71,17 +71,17 @@ fn main() {
     rustc_interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {
             // Parse the program and print the syntax tree.
-            let parse = queries.parse().unwrap().take();
+            let parse = queries.parse().unwrap().get_mut().clone();
             println!("{parse:?}");
             // Analyze the program and inspect the types of definitions.
-            queries.global_ctxt().unwrap().take().enter(|tcx| {
+            queries.global_ctxt().unwrap().enter(|tcx| {
                 for id in tcx.hir().items() {
                     let hir = tcx.hir();
                     let item = hir.item(id);
                     match item.kind {
                         rustc_hir::ItemKind::Static(_, _, _) | rustc_hir::ItemKind::Fn(_, _, _) => {
                             let name = item.ident;
-                            let ty = tcx.type_of(hir.local_def_id(item.hir_id()));
+                            let ty = tcx.type_of(item.hir_id().owner.def_id);
                             println!("{name:?}:\t{ty:?}")
                         }
                         _ => (),
