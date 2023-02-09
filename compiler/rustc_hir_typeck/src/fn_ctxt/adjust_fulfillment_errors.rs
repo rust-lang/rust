@@ -802,18 +802,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut walk = ty.walk();
         while let Some(arg) = walk.next() {
             if arg == param_to_point_at {
-            return true;
-        } else if let ty::GenericArgKind::Type(ty) = arg.unpack()
-            && let ty::Alias(ty::Projection, ..) = ty.kind()
-        {
-            // This logic may seem a bit strange, but typically when
-            // we have a projection type in a function signature, the
-            // argument that's being passed into that signature is
-            // not actually constraining that projection's substs in
-            // a meaningful way. So we skip it, and see improvements
-            // in some UI tests.
-            walk.skip_current_subtree();
-        }
+                return true;
+            }
+            if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                && let ty::Alias(ty::Projection, ..) = ty.kind()
+            {
+                // This logic may seem a bit strange, but typically when
+                // we have a projection type in a function signature, the
+                // argument that's being passed into that signature is
+                // not actually constraining that projection's substs in
+                // a meaningful way. So we skip it, and see improvements
+                // in some UI tests.
+                walk.skip_current_subtree();
+            }
         }
         false
     }
