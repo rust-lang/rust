@@ -327,6 +327,11 @@ impl StepDescription {
                 desc.name
             );
         }
+        // sanity checks on hosts
+        if builder.hosts.is_empty() {
+            eprintln!("`x.py {}` run with empty `host` parameter. Either set it or leave it out for default value.", builder.kind.as_str());
+            crate::detail_exit(1);
+        }
 
         if paths.is_empty() || builder.config.include_default_paths {
             for (desc, should_run) in v.iter().zip(&should_runs) {
