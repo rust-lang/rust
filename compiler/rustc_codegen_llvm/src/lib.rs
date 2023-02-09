@@ -250,9 +250,10 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         module: &ModuleCodegen<Self::Module>,
         diff_fncs: Vec<AutoDiffItem>,
         typetrees: FxHashMap<String, Self::TypeTree>,
+        config: &ModuleConfig,
         ) -> Result<(), FatalError> {
         unsafe {
-            back::write::differentiate(module, cgcx, diff_fncs, typetrees)
+            back::write::differentiate(module, cgcx, diff_fncs, typetrees, config)
         }
     }
 

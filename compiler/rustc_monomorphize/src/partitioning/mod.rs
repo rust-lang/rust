@@ -416,50 +416,40 @@ fn collect_and_partition_mono_items<'tcx>(
         })
         .collect();
 
-    let autodiff_items = items.iter().filter_map(|item| {
-        match *item {
-            MonoItem::Fn(ref instance) => {
-                let target_id = instance.def_id();
-                let target_attrs = tcx.autodiff_attrs(target_id);
-                if target_attrs.apply_autodiff() {
-                    let target_symbol = symbol_name_for_instance_in_crate(tcx, instance.clone(), LOCAL_CRATE);
-                    let range = inlining_map.index.get(&item).unwrap();
+    let autodiff_items = items.iter()
+        .filter_map(|item| {
+            match *item {
+                MonoItem::Fn(ref instance) => Some((item, instance)),
+                _ => None,
+            }
+        })
+        .filter_map(|(item, instance)| {
+            let target_id = instance.def_id();
+            let target_attrs = tcx.autodiff_attrs(target_id);
+            if !target_attrs.apply_autodiff() {
+                return None;
+            }
 
-                    inlining_map.targets[range.clone()].into_iter()
-                        .filter_map(|item| match *item {
-                            MonoItem::Fn(ref instance_s) => {
-                                let source_id = instance_s.def_id();
+            let target_symbol = symbol_name_for_instance_in_crate(tcx, instance.clone(), LOCAL_CRATE);
+            let range = inlining_map.index.get(&item).unwrap();
 
-                                if tcx.autodiff_attrs(source_id).is_active() {
-                                    Some(symbol_name_for_instance_in_crate(tcx, instance_s.clone(), LOCAL_CRATE))
-                                } else {
-                                    None
-                                }
-                            },
-                            _ => None,
-                        }).next().map(|source_symbol|
-                            target_attrs.clone().into_item(source_symbol, target_symbol))
-                } else {
-                    None
-                }
-            },
-            _ => None,
-        }
-    });
+            inlining_map.targets[range.clone()].into_iter()
+                .filter_map(|item| match *item {
+                    MonoItem::Fn(ref instance_s) => {
+                        let source_id = instance_s.def_id();
+
+                        if tcx.autodiff_attrs(source_id).is_active() {
+                            Some(symbol_name_for_instance_in_crate(tcx, instance_s.clone(), LOCAL_CRATE))
+                        } else {
+                            None
+                        }
+                    },
+                    _ => None,
+                }).next().map(|source_symbol|
+                    target_attrs.clone().into_item(source_symbol, target_symbol))
+        });
 
     let autodiff_items = tcx.arena.alloc_from_iter(autodiff_items);
-
-    //let autodiff_items = mono_items.iter()
-    //    .map(|def_id| tcx.autodiff_attrs(def_id))
-    //    .filter(|x| x.is_active())
-    //    .collect::<Vec<_>>();
-
-
-    //for item in autodiff_items2 {
-    //    if let Some(range) = inlining_map.index.get(&item) {
-    //        dbg!(&inlining_map.targets[range.clone()]);
-    //    }
-    //}
 
     if tcx.sess.opts.debugging_opts.print_mono_items.is_some() {
         let mut item_to_cgus: FxHashMap<_, Vec<_>> = Default::default();

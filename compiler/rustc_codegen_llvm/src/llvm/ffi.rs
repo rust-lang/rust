@@ -1036,6 +1036,7 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
 
     let mut args_tree = typetree.input_tt.into_iter()
         .map(|x| x.inner).collect::<Vec<_>>();
+    //let mut args_tree = vec![TypeTree::new().inner; typetree.input_tt.len()];
 
     // We don't support volatile / extern / (global?) values.
     // Just because I didn't had time to test them, and it seems less urgent.
@@ -1104,6 +1105,8 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
 
     let mut args_tree = typetree.input_tt.into_iter()
         .map(|x| x.inner).collect::<Vec<_>>();
+
+    //let mut args_tree = vec![TypeTree::new().inner; typetree.input_tt.len()];
 
     // We don't support volatile / extern / (global?) values.
     // Just because I didn't had time to test them, and it seems less urgent.
@@ -2762,6 +2765,13 @@ extern "C" {
 extern "C" {
     pub fn EnzymeSetCLInteger(arg1: *mut ::std::os::raw::c_void, arg2: i64);
 }
+
+extern "C" {
+    pub static mut EnzymePrintActivity: c_void;
+    pub static mut EnzymePrintType: c_void;
+    pub static mut EnzymePrint: c_void;
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct CFnTypeInfo {
@@ -2982,14 +2992,3 @@ impl Drop for TypeTree {
         unsafe { EnzymeFreeTypeTree(self.inner) }
     }
 }
-
-#[derive(Clone)]
-pub struct ParamInfos {
-    pub input_activity: Vec<CDIFFE_TYPE>, // How should it's arguments be treated?
-
-    //pub input_tts: Vec<TypeTree>,
-    pub ret_info: CDIFFE_TYPE,
-    //pub ret_tt: TypeTree,
-
-}
-

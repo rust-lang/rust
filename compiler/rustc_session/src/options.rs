@@ -1242,6 +1242,8 @@ options! {
         an additional `.html` file showing the computed coverage spans."),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
+    enzyme_print_activity: bool = (false, parse_bool, [TRACKED],
+        "print type trees for functions passed to enzyme"),
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),

@@ -68,6 +68,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         module: &ModuleCodegen<Self::Module>,
         diff_fncs: Vec<AutoDiffItem>,
         typetrees: FxHashMap<String, Self::TypeTree>,
+        config: &ModuleConfig,
     ) -> Result<(), FatalError>;
     fn typetrees(module: &mut Self::Module) -> FxHashMap<String, Self::TypeTree>;
 }

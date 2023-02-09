@@ -735,6 +735,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(dep_info_omit_d_target, true);
     tracked!(drop_tracking, true);
     tracked!(dual_proc_macros, true);
+    tracked!(enzyme_print_activity, false);
     tracked!(fewer_names, Some(true));
     tracked!(force_unstable_if_unmarked, true);
     tracked!(fuel, Some(("abc".to_string(), 99)));

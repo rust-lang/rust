@@ -661,10 +661,6 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item:
     let fnc_todiff = src_fnc_tmp.unwrap();
     let target_fnc = target_fnc_tmp.unwrap();
 
-    dbg!("before-ad");
-    dbg!(&fnc_todiff);
-    dbg!(&target_fnc);
-    dbg!(&args_activity);
     let opt  = 1;
     let ret_primary_ret = false;
     let diff_primary_ret = false;
@@ -711,13 +707,17 @@ pub(crate) unsafe fn differentiate(
     _cgcx: &CodegenContext<LlvmCodegenBackend>,
     diff_items: Vec<AutoDiffItem>,
     typetrees: FxHashMap<String, DiffTypeTree>,
+    config: &ModuleConfig,
     ) -> Result<(), FatalError> {
 
     let llmod = module.module_llvm.llmod();
     let llcx = &module.module_llvm.llcx;
 
-    dbg!(&diff_items);
-    dbg!(&typetrees.len());
+    if config.enzyme_print_activity {
+        llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintActivity), 1);
+        llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintType), 1);
+        llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrint), 1);
+    }
 
     for item in diff_items {
         let tt = typetrees.get(&item.source).unwrap().clone();

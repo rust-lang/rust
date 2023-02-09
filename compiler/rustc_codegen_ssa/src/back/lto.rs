@@ -1,6 +1,7 @@
 use super::write::CodegenContext;
 use crate::traits::*;
 use crate::ModuleCodegen;
+use crate::back::write::ModuleConfig;
 
 use rustc_data_structures::{memmap::Mmap, fx::FxHashMap};
 use rustc_errors::FatalError;
@@ -87,12 +88,13 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
         cgcx: &CodegenContext<B>,
         diff_fncs: Vec<AutoDiffItem>,
         typetrees: FxHashMap<String, B::TypeTree>,
+        config: &ModuleConfig,
     ) -> Result<LtoModuleCodegen<B>, FatalError> {
         match *self {
             LtoModuleCodegen::Fat { ref mut module, .. } => {
                 let module = module.take().unwrap();
                 {
-                    B::autodiff(cgcx, &module, diff_fncs, typetrees)?;
+                    B::autodiff(cgcx, &module, diff_fncs, typetrees, config)?;
                 }
                 Ok(LtoModuleCodegen::Fat { module: Some(module), _serialized_bitcode: Vec::new() })
             }

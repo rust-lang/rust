@@ -115,6 +115,7 @@ pub struct ModuleConfig {
     pub new_llvm_pass_manager: Option<bool>,
     pub emit_lifetime_markers: bool,
     pub llvm_plugins: Vec<String>,
+    pub enzyme_print_activity: bool,
 }
 
 impl ModuleConfig {
@@ -263,6 +264,7 @@ impl ModuleConfig {
                                                             new_llvm_pass_manager: sess.opts.debugging_opts.new_llvm_pass_manager,
                                                             emit_lifetime_markers: sess.emit_lifetime_markers(),
                                                             llvm_plugins: if_regular!(sess.opts.debugging_opts.llvm_plugins.clone(), vec![]),
+                                                            enzyme_print_activity: sess.opts.debugging_opts.enzyme_print_activity,
         }
     }
 
@@ -383,7 +385,8 @@ fn generate_lto_work<'tcx, B: ExtraBackendMethods>(
             B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
 
         if cgcx.lto == Lto::Fat {
-            lto_module = unsafe { lto_module.autodiff(cgcx, autodiff, typetrees).unwrap() };
+            let config = cgcx.config(ModuleKind::Regular);
+            lto_module = unsafe { lto_module.autodiff(cgcx, autodiff, typetrees, config).unwrap() };
         }
 
         (vec![lto_module], vec![])
