@@ -32,9 +32,11 @@ pub trait Interner {
     type AdtDef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type SubstsRef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type DefId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type Binder<T>;
     type Ty: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Const: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Region: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type Predicate;
     type TypeAndMut: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Mutability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Movability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
