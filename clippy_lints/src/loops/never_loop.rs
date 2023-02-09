@@ -191,7 +191,7 @@ fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: H
         // checks if break targets a block instead of a loop
         ExprKind::Break(Destination { target_id: Ok(t), .. }, e) if ignore_ids.contains(&t) => e
             .map_or(NeverLoopResult::Otherwise, |e| {
-                combine_seq(never_loop_expr(e, ignore_ids, main_loop_id), NeverLoopResult::Otherwise)
+                never_loop_expr(e, ignore_ids, main_loop_id)
             }),
         ExprKind::Break(_, e) | ExprKind::Ret(e) => e.as_ref().map_or(NeverLoopResult::AlwaysBreak, |e| {
             combine_seq(
