@@ -7,7 +7,7 @@ use cache::ProvisionalCache;
 use overflow::OverflowData;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::TyCtxt;
-use std::collections::hash_map::Entry;
+use std::{collections::hash_map::Entry, mem};
 
 rustc_index::newtype_index! {
     pub struct StackDepth {}
@@ -134,12 +134,15 @@ impl<'tcx> SearchGraph<'tcx> {
         let provisional_entry_index = *cache.lookup_table.get(&goal).unwrap();
         let provisional_entry = &mut cache.entries[provisional_entry_index];
         let depth = provisional_entry.depth;
+        // We eagerly update the response in the cache here. If we have to reevaluate
+        // this goal we use the new response when hitting a cycle, and we definitely
+        // want to access the final response whenever we look at the cache.
+        let prev_response = mem::replace(&mut provisional_entry.response, response);
+
         // Was the current goal the root of a cycle and was the provisional response
         // different from the final one.
-        if has_been_used && provisional_entry.response != response {
-            // If so, update the provisional reponse for this goal...
-            provisional_entry.response = response;
-            // ...remove all entries whose result depends on this goal
+        if has_been_used && prev_response != response {
+            // If so, remove all entries whose result depends on this goal
             // from the provisional cache...
             //
             // That's not completely correct, as a nested goal can also
