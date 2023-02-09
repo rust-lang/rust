@@ -505,7 +505,7 @@ impl Error for crate::ffi::FromBytesWithNulError {
     }
 }
 
-#[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+#[stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
 impl Error for crate::ffi::FromBytesUntilNulError {}
 
 #[unstable(feature = "get_many_mut", issue = "104642")]
