@@ -38,7 +38,7 @@ pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
 
 use std::collections::VecDeque;
 use std::default::Default;
-use std::fmt;
+use std::fmt::{self, Write};
 use std::fs;
 use std::iter::Peekable;
 use std::path::PathBuf;
@@ -2020,31 +2020,60 @@ fn get_associated_constants(
         .collect::<Vec<_>>()
 }
 
-// The point is to url encode any potential character from a type with genericity.
-fn small_url_encode(s: String) -> String {
+pub(crate) fn small_url_encode(s: String) -> String {
+    // These characters don't need to be escaped in a URI.
+    // See https://url.spec.whatwg.org/#query-percent-encode-set
+    // and https://url.spec.whatwg.org/#urlencoded-parsing
+    // and https://url.spec.whatwg.org/#url-code-points
+    fn dont_escape(c: u8) -> bool {
+        (b'a' <= c && c <= b'z')
+            || (b'A' <= c && c <= b'Z')
+            || (b'0' <= c && c <= b'9')
+            || c == b'-'
+            || c == b'_'
+            || c == b'.'
+            || c == b','
+            || c == b'~'
+            || c == b'!'
+            || c == b'\''
+            || c == b'('
+            || c == b')'
+            || c == b'*'
+            || c == b'/'
+            || c == b';'
+            || c == b':'
+            || c == b'?'
+            // As described in urlencoded-parsing, the
+            // first `=` is the one that separates key from
+            // value. Following `=`s are part of the value.
+            || c == b'='
+    }
     let mut st = String::new();
     let mut last_match = 0;
-    for (idx, c) in s.char_indices() {
-        let escaped = match c {
-            '<' => "%3C",
-            '>' => "%3E",
-            ' ' => "%20",
-            '?' => "%3F",
-            '\'' => "%27",
-            '&' => "%26",
-            ',' => "%2C",
-            ':' => "%3A",
-            ';' => "%3B",
-            '[' => "%5B",
-            ']' => "%5D",
-            '"' => "%22",
-            _ => continue,
-        };
+    for (idx, b) in s.bytes().enumerate() {
+        if dont_escape(b) {
+            continue;
+        }
 
-        st += &s[last_match..idx];
-        st += escaped;
-        // NOTE: we only expect single byte characters here - which is fine as long as we
-        // only match single byte characters
+        if last_match != idx {
+            // Invariant: `idx` must be the first byte in a character at this point.
+            st += &s[last_match..idx];
+        }
+        if b == b' ' {
+            // URL queries are decoded with + replaced with SP.
+            // While the same is not true for hashes, rustdoc only needs to be
+            // consistent with itself when encoding them.
+            st += "+";
+        } else if b == b'%' {
+            st += "%%";
+        } else {
+            write!(st, "%{:02X}", b).unwrap();
+        }
+        // Invariant: if the current byte is not at the start of a multi-byte character,
+        // we need to get down here so that when the next turn of the loop comes around,
+        // last_match winds up equalling idx.
+        //
+        // In other words, dont_escape must always return `false` in multi-byte character.
         last_match = idx + 1;
     }
 
