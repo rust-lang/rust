@@ -793,7 +793,7 @@ impl<'a> Builder<'a> {
                 run::CollectLicenseMetadata,
                 run::GenerateCopyright,
             ),
-            Kind::Setup => describe!(setup::Profile),
+            Kind::Setup => describe!(setup::Profile, setup::Hook, setup::Link, setup::Vscode),
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
             // special-cased in Build::build()
             Kind::Format => vec![],

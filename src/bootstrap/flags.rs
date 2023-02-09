@@ -542,7 +542,8 @@ Arguments:
             Kind::Setup => {
                 subcommand_help.push_str(&format!(
                     "\n
-x.py setup creates a `config.toml` which changes the defaults for x.py itself.
+x.py setup creates a `config.toml` which changes the defaults for x.py itself,
+as well as setting up a git pre-push hook, VS code config and toolchain link.
 
 Arguments:
     This subcommand accepts a 'profile' to use for builds. For example:
@@ -552,7 +553,13 @@ Arguments:
     The profile is optional and you will be prompted interactively if it is not given.
     The following profiles are available:
 
-{}",
+{}
+
+    To only set up the git hook, VS code or toolchain link, you may use
+        ./x.py setup hook
+        ./x.py setup vscode
+        ./x.py setup link
+",
                     Profile::all_for_help("        ").trim_end()
                 ));
             }
@@ -625,7 +632,7 @@ Arguments:
             }
             Kind::Setup => {
                 let profile = if paths.len() > 1 {
-                    eprintln!("\nerror: At most one profile can be passed to setup\n");
+                    eprintln!("\nerror: At most one option can be passed to setup\n");
                     usage(1, &opts, verbose, &subcommand_help)
                 } else if let Some(path) = paths.pop() {
                     let profile_string = t!(path.into_os_string().into_string().map_err(
