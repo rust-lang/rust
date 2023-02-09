@@ -28,6 +28,7 @@ fn main() {
         TyKind::FnDef(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::FnPtr(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Dynamic(..) => (),          //~ ERROR usage of `ty::TyKind::<kind>`
+        TyKind::DynStar(..) => (),          //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Closure(..) => (),          //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Generator(..) => (),        //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::GeneratorWitness(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`

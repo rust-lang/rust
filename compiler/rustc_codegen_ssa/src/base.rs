@@ -208,7 +208,6 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 fn vtable_ptr_ty<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
     target: Ty<'tcx>,
-    // FIXME(dyn-star): This should be only place we need a `DynKind`, so move its definition here.
     kind: ty::DynKind,
 ) -> <Cx as BackendTypes>::Type {
     cx.scalar_pair_element_backend_type(
