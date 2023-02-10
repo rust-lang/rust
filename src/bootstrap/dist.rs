@@ -192,109 +192,107 @@ fn make_win_dist(
         }
     }
 
-    let compiler = if target == "i686-pc-windows-gnu" {
-        "i686-w64-mingw32-gcc.exe"
-    } else if target == "x86_64-pc-windows-gnu" {
-        "x86_64-w64-mingw32-gcc.exe"
-    } else {
-        "gcc.exe"
-    };
-    let target_tools = [compiler, "ld.exe", "dlltool.exe", "libwinpthread-1.dll"];
+    // Copy runtime dlls next to rustc.exe
     let mut rustc_dlls = vec!["libwinpthread-1.dll"];
     if target.starts_with("i686-") {
         rustc_dlls.push("libgcc_s_dw2-1.dll");
     } else {
         rustc_dlls.push("libgcc_s_seh-1.dll");
     }
-
-    let target_libs = [
-        //MinGW libs
-        "libgcc.a",
-        "libgcc_eh.a",
-        "libgcc_s.a",
-        "libm.a",
-        "libmingw32.a",
-        "libmingwex.a",
-        "libstdc++.a",
-        "libiconv.a",
-        "libmoldname.a",
-        "libpthread.a",
-        //Windows import libs
-        "libadvapi32.a",
-        "libbcrypt.a",
-        "libcomctl32.a",
-        "libcomdlg32.a",
-        "libcredui.a",
-        "libcrypt32.a",
-        "libdbghelp.a",
-        "libgdi32.a",
-        "libimagehlp.a",
-        "libiphlpapi.a",
-        "libkernel32.a",
-        "libmsimg32.a",
-        "libmsvcrt.a",
-        "libodbc32.a",
-        "libole32.a",
-        "liboleaut32.a",
-        "libopengl32.a",
-        "libpsapi.a",
-        "librpcrt4.a",
-        "libsecur32.a",
-        "libsetupapi.a",
-        "libshell32.a",
-        "libsynchronization.a",
-        "libuser32.a",
-        "libuserenv.a",
-        "libuuid.a",
-        "libwinhttp.a",
-        "libwinmm.a",
-        "libwinspool.a",
-        "libws2_32.a",
-        "libwsock32.a",
-    ];
-
-    //Find mingw artifacts we want to bundle
-    let target_tools = find_files(&target_tools, &bin_path);
     let rustc_dlls = find_files(&rustc_dlls, &bin_path);
-    let target_libs = find_files(&target_libs, &lib_path);
-
-    // Copy runtime dlls next to rustc.exe
     let dist_bin_dir = rust_root.join("bin/");
     fs::create_dir_all(&dist_bin_dir).expect("creating dist_bin_dir failed");
     for src in rustc_dlls {
         builder.copy_to_folder(&src, &dist_bin_dir);
     }
 
-    //Copy platform tools to platform-specific bin directory
-    let target_bin_dir = plat_root
-        .join("lib")
-        .join("rustlib")
-        .join(target.triple)
-        .join("bin")
-        .join("self-contained");
-    fs::create_dir_all(&target_bin_dir).expect("creating target_bin_dir failed");
-    for src in target_tools {
-        builder.copy_to_folder(&src, &target_bin_dir);
-    }
+    if builder.config.lld_enabled {
+        //Copy platform tools to platform-specific bin directory
+        let compiler = if target == "i686-pc-windows-gnu" {
+            "i686-w64-mingw32-gcc.exe"
+        } else if target == "x86_64-pc-windows-gnu" {
+            "x86_64-w64-mingw32-gcc.exe"
+        } else {
+            "gcc.exe"
+        };
+        let target_tools = [compiler, "ld.exe", "dlltool.exe", "libwinpthread-1.dll"];
+        let target_tools = find_files(&target_tools, &bin_path);
+        let target_bin_dir = plat_root
+            .join("lib")
+            .join("rustlib")
+            .join(target.triple)
+            .join("bin")
+            .join("self-contained");
+        fs::create_dir_all(&target_bin_dir).expect("creating target_bin_dir failed");
+        for src in target_tools {
+            builder.copy_to_folder(&src, &target_bin_dir);
+        }
 
-    // Warn windows-gnu users that the bundled GCC cannot compile C files
-    builder.create(
-        &target_bin_dir.join("GCC-WARNING.txt"),
-        "gcc.exe contained in this folder cannot be used for compiling C files - it is only \
-         used as a linker. In order to be able to compile projects containing C code use \
-         the GCC provided by MinGW or Cygwin.",
-    );
+        // Warn windows-gnu users that the bundled GCC cannot compile C files
+        builder.create(
+            &target_bin_dir.join("GCC-WARNING.txt"),
+            "gcc.exe contained in this folder cannot be used for compiling C files - it is only \
+            used as a linker. In order to be able to compile projects containing C code use \
+            the GCC provided by MinGW or Cygwin.",
+        );
 
-    //Copy platform libs to platform-specific lib directory
-    let target_lib_dir = plat_root
-        .join("lib")
-        .join("rustlib")
-        .join(target.triple)
-        .join("lib")
-        .join("self-contained");
-    fs::create_dir_all(&target_lib_dir).expect("creating target_lib_dir failed");
-    for src in target_libs {
-        builder.copy_to_folder(&src, &target_lib_dir);
+        //Copy platform libs to platform-specific lib directory
+        let target_libs = [
+            //MinGW libs
+            "libgcc.a",
+            "libgcc_eh.a",
+            "libgcc_s.a",
+            "libm.a",
+            "libmingw32.a",
+            "libmingwex.a",
+            "libstdc++.a",
+            "libiconv.a",
+            "libmoldname.a",
+            "libpthread.a",
+            //Windows import libs
+            "libadvapi32.a",
+            "libbcrypt.a",
+            "libcomctl32.a",
+            "libcomdlg32.a",
+            "libcredui.a",
+            "libcrypt32.a",
+            "libdbghelp.a",
+            "libgdi32.a",
+            "libimagehlp.a",
+            "libiphlpapi.a",
+            "libkernel32.a",
+            "libmsimg32.a",
+            "libmsvcrt.a",
+            "libodbc32.a",
+            "libole32.a",
+            "liboleaut32.a",
+            "libopengl32.a",
+            "libpsapi.a",
+            "librpcrt4.a",
+            "libsecur32.a",
+            "libsetupapi.a",
+            "libshell32.a",
+            "libsynchronization.a",
+            "libuser32.a",
+            "libuserenv.a",
+            "libuuid.a",
+            "libwinhttp.a",
+            "libwinmm.a",
+            "libwinspool.a",
+            "libws2_32.a",
+            "libwsock32.a",
+        ];
+        let target_libs = find_files(&target_libs, &lib_path);
+        let target_lib_dir = plat_root
+            .join("lib")
+            .join("rustlib")
+            .join(target.triple)
+            .join("lib")
+            .join("self-contained");
+        fs::create_dir_all(&target_lib_dir).expect("creating target_lib_dir failed");
+        for src in target_libs {
+            builder.copy_to_folder(&src, &target_lib_dir);
+        }
     }
 }
 
