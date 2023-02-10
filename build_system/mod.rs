@@ -1,5 +1,5 @@
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process;
 
 use self::utils::{is_ci, is_ci_opt, Compiler};
@@ -101,12 +101,24 @@ pub(crate) fn main() {
         }
     }
 
-    let bootstrap_host_compiler = Compiler::bootstrap_with_triple(
-        std::env::var("HOST_TRIPLE")
+    let bootstrap_host_compiler = {
+        let cargo = rustc_info::get_cargo_path();
+        let rustc = rustc_info::get_rustc_path();
+        let rustdoc = rustc_info::get_rustdoc_path();
+        let triple = std::env::var("HOST_TRIPLE")
             .ok()
             .or_else(|| config::get_value("host"))
-            .unwrap_or_else(|| rustc_info::get_host_triple(Path::new("rustc"))),
-    );
+            .unwrap_or_else(|| rustc_info::get_host_triple(&rustc));
+        Compiler {
+            cargo,
+            rustc,
+            rustdoc,
+            rustflags: String::new(),
+            rustdocflags: String::new(),
+            triple,
+            runner: vec![],
+        }
+    };
     let target_triple = std::env::var("TARGET_TRIPLE")
         .ok()
         .or_else(|| config::get_value("target"))

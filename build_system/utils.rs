@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{get_cargo_path, get_rustc_path, get_rustdoc_path};
 
 #[derive(Clone, Debug)]
 pub(crate) struct Compiler {
@@ -19,18 +18,6 @@ pub(crate) struct Compiler {
 }
 
 impl Compiler {
-    pub(crate) fn bootstrap_with_triple(triple: String) -> Compiler {
-        Compiler {
-            cargo: get_cargo_path(),
-            rustc: get_rustc_path(),
-            rustdoc: get_rustdoc_path(),
-            rustflags: String::new(),
-            rustdocflags: String::new(),
-            triple,
-            runner: vec![],
-        }
-    }
-
     pub(crate) fn set_cross_linker_and_runner(&mut self) {
         match self.triple.as_str() {
             "aarch64-unknown-linux-gnu" => {
