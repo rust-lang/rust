@@ -40,7 +40,7 @@ pub(crate) fn build_sysroot(
     try_hard_link(cg_clif_dylib_src, &cg_clif_dylib_path);
 
     // Build and copy rustc and cargo wrappers
-    let wrapper_base_name = get_file_name("____", "bin");
+    let wrapper_base_name = get_file_name(&bootstrap_host_compiler.rustc, "____", "bin");
     let toolchain_name = get_toolchain_name();
     for wrapper in ["rustc-clif", "rustdoc-clif", "cargo-clif"] {
         let wrapper_name = wrapper_base_name.replace("____", wrapper);

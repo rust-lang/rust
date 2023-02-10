@@ -52,5 +52,5 @@ pub(crate) fn build_backend(
         .target_dir(dirs)
         .join(&bootstrap_host_compiler.triple)
         .join(channel)
-        .join(get_file_name("rustc_codegen_cranelift", "dylib"))
+        .join(get_file_name(&bootstrap_host_compiler.rustc, "rustc_codegen_cranelift", "dylib"))
 }
