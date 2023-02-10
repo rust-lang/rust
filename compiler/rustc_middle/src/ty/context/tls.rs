@@ -89,9 +89,8 @@ mod tlv {
     /// This is used to set the pointer to the new `ImplicitCtxt`.
     #[inline]
     pub(super) fn with_tlv<F: FnOnce() -> R, R>(value: *const (), f: F) -> R {
-        let old = get_tlv();
-        let _reset = rustc_data_structures::OnDrop(move || TLV.with(|tlv| tlv.set(old)));
-        TLV.with(|tlv| tlv.set(value));
+        let old = TLV.replace(value);
+        let _reset = rustc_data_structures::OnDrop(move || TLV.set(old));
         f()
     }
 }
@@ -110,9 +109,9 @@ unsafe fn downcast<'a, 'tcx>(context: *const ()) -> &'a ImplicitCtxt<'a, 'tcx> {
 #[inline]
 pub fn enter_context<'a, 'tcx, F, R>(context: &ImplicitCtxt<'a, 'tcx>, f: F) -> R
 where
-    F: FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
+    F: FnOnce() -> R,
 {
-    tlv::with_tlv(erase(context), || f(&context))
+    tlv::with_tlv(erase(context), f)
 }
 
 /// Allows access to the current `ImplicitCtxt` in a closure if one is available.

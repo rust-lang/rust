@@ -203,12 +203,10 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
                 // rust-lang/rust#57464: `impl Trait` can leak local
                 // scopes (in manner violating typeck). Therefore, use
                 // `delay_span_bug` to allow type error over an ICE.
-                ty::tls::with(|tcx| {
-                    tcx.sess.delay_span_bug(
-                        rustc_span::DUMMY_SP,
-                        &format!("unexpected region in query response: `{:?}`", r),
-                    );
-                });
+                canonicalizer.tcx.sess.delay_span_bug(
+                    rustc_span::DUMMY_SP,
+                    &format!("unexpected region in query response: `{:?}`", r),
+                );
                 r
             }
         }
