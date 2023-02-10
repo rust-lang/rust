@@ -4,7 +4,6 @@ error[E0726]: implicit elided lifetime not allowed here
 LL | async fn error(lt: HasLifetime) {
    |                    ^^^^^^^^^^^ expected lifetime parameter
    |
-   = note: assuming a `'static` lifetime...
 help: indicate the anonymous lifetime
    |
 LL | async fn error(lt: HasLifetime<'_>) {

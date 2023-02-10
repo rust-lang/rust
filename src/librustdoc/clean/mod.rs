@@ -242,6 +242,7 @@ pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Life
         ty::ReLateBound(..)
         | ty::ReFree(..)
         | ty::ReVar(..)
+        | ty::ReError(_)
         | ty::RePlaceholder(..)
         | ty::ReErased => {
             debug!("cannot clean region {:?}", region);

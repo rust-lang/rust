@@ -705,6 +705,10 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 return Ok(r);
             }
 
+            ty::ReError(_) => {
+                return Ok(r);
+            }
+
             ty::RePlaceholder(..)
             | ty::ReVar(..)
             | ty::ReStatic
@@ -861,7 +865,7 @@ impl<'tcx> FallibleTypeFolder<'tcx> for ConstInferUnifier<'_, 'tcx> {
         match *r {
             // Never make variables for regions bound within the type itself,
             // nor for erased regions.
-            ty::ReLateBound(..) | ty::ReErased => {
+            ty::ReLateBound(..) | ty::ReErased | ty::ReError(_) => {
                 return Ok(r);
             }
 

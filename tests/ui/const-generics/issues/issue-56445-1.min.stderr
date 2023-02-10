@@ -6,7 +6,7 @@ LL | struct Bug<'a, const S: &'a str>(PhantomData<&'a ()>);
    |
    = note: for more information, see issue #74052 <https://github.com/rust-lang/rust/issues/74052>
 
-error: `&'static str` is forbidden as the type of a const generic parameter
+error: `&str` is forbidden as the type of a const generic parameter
   --> $DIR/issue-56445-1.rs:9:25
    |
 LL | struct Bug<'a, const S: &'a str>(PhantomData<&'a ()>);

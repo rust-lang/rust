@@ -263,11 +263,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     // elision. `resolve_lifetime` should have
                     // reported an error in this case -- but if
                     // not, let's error out.
-                    tcx.sess.delay_span_bug(lifetime.ident.span, "unelided lifetime in signature");
-
-                    // Supply some dummy value. We don't have an
-                    // `re_error`, annoyingly, so use `'static`.
-                    tcx.lifetimes.re_static
+                    tcx.re_error_with_message(lifetime.ident.span, "unelided lifetime in signature")
                 })
             }
         }
@@ -481,11 +477,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             debug!(?param, "unelided lifetime in signature");
 
                             // This indicates an illegal lifetime in a non-assoc-trait position
-                            tcx.sess.delay_span_bug(self.span, "unelided lifetime in signature");
-
-                            // Supply some dummy value. We don't have an
-                            // `re_error`, annoyingly, so use `'static`.
-                            tcx.lifetimes.re_static
+                            tcx.re_error_with_message(self.span, "unelided lifetime in signature")
                         })
                         .into(),
                     GenericParamDefKind::Type { has_default, .. } => {
@@ -1622,14 +1614,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             "the lifetime bound for this object type cannot be deduced \
                              from context; please supply an explicit bound"
                         );
-                        if borrowed {
+                        let e = if borrowed {
                             // We will have already emitted an error E0106 complaining about a
                             // missing named lifetime in `&dyn Trait`, so we elide this one.
-                            err.delay_as_bug();
+                            err.delay_as_bug()
                         } else {
-                            err.emit();
-                        }
-                        tcx.lifetimes.re_static
+                            err.emit()
+                        };
+                        tcx.re_error(e)
                     })
                 }
             })

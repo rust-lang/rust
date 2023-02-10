@@ -786,13 +786,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     }
                     let Some(ty::ReEarlyBound(e)) = map.get(&region.into()).map(|r| r.expect_region().kind())
                     else {
-                        tcx
-                            .sess
-                            .delay_span_bug(
-                                return_span,
-                                "expected ReFree to map to ReEarlyBound"
-                            );
-                        return tcx.lifetimes.re_static;
+                        return tcx.re_error_with_message(return_span, "expected ReFree to map to ReEarlyBound")
                     };
                     tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
                         def_id: e.def_id,

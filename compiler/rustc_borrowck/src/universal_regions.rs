@@ -167,6 +167,9 @@ struct UniversalRegionIndices<'tcx> {
     /// contains an entry for `ReStatic` -- it might be nice to just
     /// use a substs, and then handle `ReStatic` another way.
     indices: FxHashMap<ty::Region<'tcx>, RegionVid>,
+
+    /// The vid assigned to `'static`. Used only for diagnostics.
+    pub fr_static: RegionVid,
 }
 
 #[derive(Debug, PartialEq)]
@@ -609,7 +612,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let subst_mapping =
             iter::zip(identity_substs.regions(), fr_substs.regions().map(|r| r.to_region_vid()));
 
-        UniversalRegionIndices { indices: global_mapping.chain(subst_mapping).collect() }
+        UniversalRegionIndices { indices: global_mapping.chain(subst_mapping).collect(), fr_static }
     }
 
     fn compute_inputs_and_output(
@@ -821,6 +824,11 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         if let ty::ReVar(..) = *r {
             r.to_region_vid()
+        } else if r.is_error() {
+            // We use the `'static` `RegionVid` because `ReError` doesn't actually exist in the
+            // `UniversalRegionIndices`. This is fine because 1) it is a fallback only used if
+            // errors are being emitted and 2) it leaves the happy path unaffected.
+            self.fr_static
         } else {
             *self
                 .indices

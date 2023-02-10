@@ -109,6 +109,8 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
             // them.
             ty::ReErased => return r,
 
+            ty::ReError(_) => return r,
+
             // The regions that we expect from borrow checking.
             ty::ReEarlyBound(_) | ty::ReFree(_) => {}
 
@@ -125,20 +127,21 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
             None if self.do_not_error => self.tcx.lifetimes.re_static,
             None => {
-                self.tcx
+                let e = self
+                    .tcx
                     .sess
                     .struct_span_err(self.span, "non-defining opaque type use in defining scope")
                     .span_label(
                         self.span,
                         format!(
                             "lifetime `{}` is part of concrete type but not used in \
-                                 parameter list of the `impl Trait` type alias",
+                             parameter list of the `impl Trait` type alias",
                             r
                         ),
                     )
                     .emit();
 
-                self.tcx().lifetimes.re_static
+                self.tcx().re_error(e)
             }
         }
     }

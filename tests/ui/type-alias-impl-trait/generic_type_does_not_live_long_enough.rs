@@ -4,7 +4,7 @@ fn main() {
     let y = 42;
     let x = wrong_generic(&y);
     let z: i32 = x;
-    //~^ ERROR expected generic type parameter, found `&'static i32
+    //~^ ERROR expected generic type parameter, found `&i32`
 }
 
 type WrongGeneric<T> = impl 'static;

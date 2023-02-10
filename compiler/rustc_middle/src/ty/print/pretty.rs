@@ -2114,7 +2114,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
 
             ty::ReVar(_) if identify_regions => true,
 
-            ty::ReVar(_) | ty::ReErased => false,
+            ty::ReVar(_) | ty::ReErased | ty::ReError(_) => false,
 
             ty::ReStatic => true,
         }
@@ -2194,6 +2194,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             }
             ty::ReVar(_) => {}
             ty::ReErased => {}
+            ty::ReError(_) => {}
             ty::ReStatic => {
                 p!("'static");
                 return Ok(self);

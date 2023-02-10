@@ -343,11 +343,11 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     let note = match closure_kind_ty.to_opt_closure_kind() {
                         Some(ty::ClosureKind::Fn) => {
                             "closure implements `Fn`, so references to captured variables \
-                                can't escape the closure"
+                             can't escape the closure"
                         }
                         Some(ty::ClosureKind::FnMut) => {
                             "closure implements `FnMut`, so references to captured variables \
-                                can't escape the closure"
+                             can't escape the closure"
                         }
                         Some(ty::ClosureKind::FnOnce) => {
                             bug!("BrEnv in a `FnOnce` closure");
@@ -364,7 +364,11 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 ty::BoundRegionKind::BrAnon(..) => None,
             },
 
-            ty::ReLateBound(..) | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReErased => None,
+            ty::ReLateBound(..)
+            | ty::ReVar(..)
+            | ty::RePlaceholder(..)
+            | ty::ReErased
+            | ty::ReError(_) => None,
         }
     }
 

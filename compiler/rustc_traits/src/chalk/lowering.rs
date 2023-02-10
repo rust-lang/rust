@@ -493,6 +493,9 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'t
             ty::ReEarlyBound(_) => {
                 panic!("Should have already been substituted.");
             }
+            ty::ReError(_) => {
+                panic!("Error lifetime should not have already been lowered.");
+            }
             ty::ReLateBound(db, br) => chalk_ir::LifetimeData::BoundVar(chalk_ir::BoundVar::new(
                 chalk_ir::DebruijnIndex::new(db.as_u32()),
                 br.var.as_usize(),

@@ -369,6 +369,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
 
             ty::ReStatic
             | ty::ReEarlyBound(..)
+            | ty::ReError(_)
             | ty::ReFree(_)
             | ty::RePlaceholder(..)
             | ty::ReErased => self.canonicalize_mode.canonicalize_free_region(self, r),

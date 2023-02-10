@@ -134,6 +134,8 @@ pub(super) fn note_and_explain_region<'tcx>(
 
         ty::RePlaceholder(_) => return,
 
+        ty::ReError(_) => return,
+
         // FIXME(#13998) RePlaceholder should probably print like
         // ReFree rather than dumping Debug output on the user.
         //
@@ -312,6 +314,9 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
                     Some(reg_info.def_id),
                 )
             }
+        }
+        ty::ReError(_) => {
+            err.delay_as_bug();
         }
         _ => {
             // Ugh. This is a painful case: the hidden region is not one
@@ -2546,7 +2551,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             );
 
             err.note_expected_found(&"", sup_expected, &"", sup_found);
-            err.emit();
+            if sub_region.is_error() | sup_region.is_error() {
+                err.delay_as_bug();
+            } else {
+                err.emit();
+            }
             return;
         }
 
@@ -2562,7 +2571,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         );
 
         self.note_region_origin(&mut err, &sub_origin);
-        err.emit();
+        if sub_region.is_error() | sup_region.is_error() {
+            err.delay_as_bug();
+        } else {
+            err.emit();
+        }
     }
 
     /// Determine whether an error associated with the given span and definition

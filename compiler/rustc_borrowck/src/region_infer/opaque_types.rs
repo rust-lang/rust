@@ -91,11 +91,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     }
                     None => {
                         subst_regions.push(vid);
-                        infcx.tcx.sess.delay_span_bug(
+                        infcx.tcx.re_error_with_message(
                             concrete_type.span,
                             "opaque type with non-universal region substs",
-                        );
-                        infcx.tcx.lifetimes.re_static
+                        )
                     }
                 }
             };

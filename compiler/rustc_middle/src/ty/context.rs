@@ -661,6 +661,30 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty(Error(reported))
     }
 
+    /// Constructs a `RegionKind::ReError` lifetime.
+    #[track_caller]
+    pub fn re_error(self, reported: ErrorGuaranteed) -> Region<'tcx> {
+        self.mk_region(ty::ReError(reported))
+    }
+
+    /// Constructs a `RegionKind::ReError` lifetime and registers a `delay_span_bug` to ensure it
+    /// gets used.
+    #[track_caller]
+    pub fn re_error_misc(self) -> Region<'tcx> {
+        self.re_error_with_message(
+            DUMMY_SP,
+            "RegionKind::ReError constructed but no error reported",
+        )
+    }
+
+    /// Constructs a `RegionKind::ReError` lifetime and registers a `delay_span_bug` with the given
+    /// `msg` to ensure it gets used.
+    #[track_caller]
+    pub fn re_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Region<'tcx> {
+        let reported = self.sess.delay_span_bug(span, msg);
+        self.re_error(reported)
+    }
+
     /// Like [TyCtxt::ty_error] but for constants, with current `ErrorGuaranteed`
     #[track_caller]
     pub fn const_error_with_guaranteed(

@@ -1,0 +1,26 @@
+error[E0726]: implicit elided lifetime not allowed here
+  --> $DIR/issue-69314.rs:18:20
+   |
+LL |     async fn f2(m: Msg) {}
+   |                    ^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |     async fn f2(m: Msg<'_>) {}
+   |                       ++++
+
+error[E0597]: `buf` does not live long enough
+  --> $DIR/issue-69314.rs:14:19
+   |
+LL |         let m2 = &buf[..];
+   |                   ^^^ borrowed value does not live long enough
+LL |         let m = Self::g(m2).await;
+   |                 ----------- argument requires that `buf` is borrowed for `'static`
+LL |         Self::f2(m).await;
+LL |     }
+   |     - `buf` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0597, E0726.
+For more information about an error, try `rustc --explain E0597`.
