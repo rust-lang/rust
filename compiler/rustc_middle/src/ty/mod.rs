@@ -970,6 +970,33 @@ impl<'tcx> Term<'tcx> {
             TermKind::Const(c) => c.into(),
         }
     }
+
+    /// This function returns `None` for `AliasKind::Opaque`.
+    ///
+    /// FIXME: rename `AliasTy` to `AliasTerm` and make sure we correctly
+    /// deal with constants.
+    pub fn to_alias_term_no_opaque(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
+        match self.unpack() {
+            TermKind::Ty(ty) => match ty.kind() {
+                ty::Alias(kind, alias_ty) => match kind {
+                    AliasKind::Projection => Some(*alias_ty),
+                    AliasKind::Opaque => None,
+                },
+                _ => None,
+            },
+            TermKind::Const(ct) => match ct.kind() {
+                ConstKind::Unevaluated(uv) => Some(tcx.mk_alias_ty(uv.def.did, uv.substs)),
+                _ => None,
+            },
+        }
+    }
+
+    pub fn is_infer(&self) -> bool {
+        match self.unpack() {
+            TermKind::Ty(ty) => ty.is_ty_or_numeric_infer(),
+            TermKind::Const(ct) => ct.is_ct_infer(),
+        }
+    }
 }
 
 const TAG_MASK: usize = 0b11;
