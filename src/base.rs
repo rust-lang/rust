@@ -192,7 +192,7 @@ pub(crate) fn compile_fn(
                         let pass_times = cranelift_codegen::timing::take_current();
                         // Replace newlines with | as measureme doesn't allow control characters like
                         // newlines inside strings.
-                        recorder.record_arg(format!("{}", pass_times).replace("\n", " | "));
+                        recorder.record_arg(format!("{}", pass_times).replace('\n', " | "));
                         recording_args = true;
                     },
                 )
