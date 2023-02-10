@@ -4824,6 +4824,7 @@ llvm::Function *EnzymeLogic::CreateNoFree(Function *F) {
     return F;
 
   std::set<std::string> NoFrees = {
+      "memchr",
       "_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC1EPKcRKS3_",
       "_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_"
       "PKS3_l",
