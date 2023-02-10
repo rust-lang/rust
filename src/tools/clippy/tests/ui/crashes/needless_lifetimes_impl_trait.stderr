@@ -9,6 +9,11 @@ note: the lint level is defined here
    |
 LL | #![deny(clippy::needless_lifetimes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: elide the lifetimes
+   |
+LL -     fn baz<'a>(&'a self) -> impl Foo + 'a {
+LL +     fn baz(&self) -> impl Foo + '_ {
+   |
 
 error: aborting due to previous error
 

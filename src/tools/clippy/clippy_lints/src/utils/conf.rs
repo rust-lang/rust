@@ -253,7 +253,7 @@ define_Conf! {
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
     (avoid_breaking_exported_api: bool = true),
-    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION.
+    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN.
     ///
     /// The minimum rust version that the project supports
     (msrv: Option<String> = None),
@@ -323,7 +323,7 @@ define_Conf! {
     ///
     /// The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by reference.
     (trivial_copy_size_limit: Option<u64> = None),
-    /// Lint: LARGE_TYPE_PASS_BY_MOVE.
+    /// Lint: LARGE_TYPES_PASSED_BY_VALUE.
     ///
     /// The minimum size (in bytes) to consider a type for passing by reference instead of by value.
     (pass_by_value_size_limit: u64 = 256),
@@ -411,7 +411,7 @@ define_Conf! {
     /// the slice pattern that is suggested. If more elements would be necessary, the lint is suppressed.
     /// For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
     (max_suggested_slice_pattern_length: u64 = 3),
-    /// Lint: AWAIT_HOLDING_INVALID_TYPE
+    /// Lint: AWAIT_HOLDING_INVALID_TYPE.
     (await_holding_invalid_types: Vec<crate::utils::conf::DisallowedPath> = Vec::new()),
     /// Lint: LARGE_INCLUDE_FILE.
     ///
@@ -437,7 +437,7 @@ define_Conf! {
     ///
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     (large_error_threshold: u64 = 128),
-    /// Lint: MUTABLE_KEY.
+    /// Lint: MUTABLE_KEY_TYPE.
     ///
     /// A list of paths to types that should be treated like `Arc`, i.e. ignored but
     /// for the generic parameters for determining interior mutability
@@ -446,7 +446,7 @@ define_Conf! {
     ///
     /// Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
     (allow_mixed_uninlined_format_args: bool = true),
-    /// Lint: INDEXING_SLICING
+    /// Lint: INDEXING_SLICING.
     ///
     /// Whether to suppress a restriction lint in constant code. In same
     /// cases the restructured operation might not be unavoidable, as the

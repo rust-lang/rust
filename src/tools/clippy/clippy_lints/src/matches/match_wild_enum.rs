@@ -45,8 +45,13 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
 
     // Accumulate the variants which should be put in place of the wildcard because they're not
     // already covered.
-    let has_hidden = adt_def.variants().iter().any(|x| is_hidden(cx, x));
-    let mut missing_variants: Vec<_> = adt_def.variants().iter().filter(|x| !is_hidden(cx, x)).collect();
+    let is_external = adt_def.did().as_local().is_none();
+    let has_external_hidden = is_external && adt_def.variants().iter().any(|x| is_hidden(cx, x));
+    let mut missing_variants: Vec<_> = adt_def
+        .variants()
+        .iter()
+        .filter(|x| !(is_external && is_hidden(cx, x)))
+        .collect();
 
     let mut path_prefix = CommonPrefixSearcher::None;
     for arm in arms {
@@ -133,7 +138,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
 
     match missing_variants.as_slice() {
         [] => (),
-        [x] if !adt_def.is_variant_list_non_exhaustive() && !has_hidden => span_lint_and_sugg(
+        [x] if !adt_def.is_variant_list_non_exhaustive() && !has_external_hidden => span_lint_and_sugg(
             cx,
             MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
             wildcard_span,
@@ -144,7 +149,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
         ),
         variants => {
             let mut suggestions: Vec<_> = variants.iter().copied().map(format_suggestion).collect();
-            let message = if adt_def.is_variant_list_non_exhaustive() || has_hidden {
+            let message = if adt_def.is_variant_list_non_exhaustive() || has_external_hidden {
                 suggestions.push("_".into());
                 "wildcard matches known variants and will also match future added variants"
             } else {

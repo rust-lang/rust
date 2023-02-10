@@ -43,6 +43,7 @@ Please use that command to update the file and do not edit it by hand.
 | [allowed-scripts](#allowed-scripts) | `["Latin"]` |
 | [enable-raw-pointer-heuristic-for-send](#enable-raw-pointer-heuristic-for-send) | `true` |
 | [max-suggested-slice-pattern-length](#max-suggested-slice-pattern-length) | `3` |
+| [await-holding-invalid-types](#await-holding-invalid-types) | `[]` |
 | [max-include-file-size](#max-include-file-size) | `1000000` |
 | [allow-expect-in-tests](#allow-expect-in-tests) | `false` |
 | [allow-unwrap-in-tests](#allow-unwrap-in-tests) | `false` |
@@ -167,6 +168,17 @@ The minimum rust version that the project supports
 * [manual_clamp](https://rust-lang.github.io/rust-clippy/master/index.html#manual_clamp)
 * [manual_let_else](https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else)
 * [unchecked_duration_subtraction](https://rust-lang.github.io/rust-clippy/master/index.html#unchecked_duration_subtraction)
+* [collapsible_str_replace](https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_str_replace)
+* [seek_from_current](https://rust-lang.github.io/rust-clippy/master/index.html#seek_from_current)
+* [seek_rewind](https://rust-lang.github.io/rust-clippy/master/index.html#seek_rewind)
+* [unnecessary_lazy_evaluations](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_lazy_evaluations)
+* [transmute_ptr_to_ref](https://rust-lang.github.io/rust-clippy/master/index.html#transmute_ptr_to_ref)
+* [almost_complete_range](https://rust-lang.github.io/rust-clippy/master/index.html#almost_complete_range)
+* [needless_borrow](https://rust-lang.github.io/rust-clippy/master/index.html#needless_borrow)
+* [derivable_impls](https://rust-lang.github.io/rust-clippy/master/index.html#derivable_impls)
+* [manual_is_ascii_check](https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_ascii_check)
+* [manual_rem_euclid](https://rust-lang.github.io/rust-clippy/master/index.html#manual_rem_euclid)
+* [manual_retain](https://rust-lang.github.io/rust-clippy/master/index.html#manual_retain)
 
 
 ### cognitive-complexity-threshold
@@ -279,7 +291,7 @@ The minimum size (in bytes) to consider a type for passing by reference instead 
 
 **Default Value:** `256` (`u64`)
 
-* [large_type_pass_by_move](https://rust-lang.github.io/rust-clippy/master/index.html#large_type_pass_by_move)
+* [large_types_passed_by_value](https://rust-lang.github.io/rust-clippy/master/index.html#large_types_passed_by_value)
 
 
 ### too-many-lines-threshold
@@ -442,6 +454,14 @@ For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
 * [index_refutable_slice](https://rust-lang.github.io/rust-clippy/master/index.html#index_refutable_slice)
 
 
+### await-holding-invalid-types
+
+
+**Default Value:** `[]` (`Vec<crate::utils::conf::DisallowedPath>`)
+
+* [await_holding_invalid_type](https://rust-lang.github.io/rust-clippy/master/index.html#await_holding_invalid_type)
+
+
 ### max-include-file-size
 The maximum size of a file included via `include_bytes!()` or `include_str!()`, in bytes
 
@@ -497,7 +517,7 @@ for the generic parameters for determining interior mutability
 
 **Default Value:** `["bytes::Bytes"]` (`Vec<String>`)
 
-* [mutable_key](https://rust-lang.github.io/rust-clippy/master/index.html#mutable_key)
+* [mutable_key_type](https://rust-lang.github.io/rust-clippy/master/index.html#mutable_key_type)
 
 
 ### allow-mixed-uninlined-format-args
@@ -509,7 +529,7 @@ Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)
 
 
 ### suppress-restriction-lint-in-const
-In same
+Whether to suppress a restriction lint in constant code. In same
 cases the restructured operation might not be unavoidable, as the
 suggested counterparts are unavailable in constant code. This
 configuration will cause restriction lints to trigger even
