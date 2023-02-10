@@ -275,8 +275,9 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         let infcx = self
             .tcx
             .infer_ctxt()
-            // HACK This bubble is required for this tests to pass:
-            // type-alias-impl-trait/issue-67844-nested-opaque.rs
+            // HACK This ignore is required for this tests to pass:
+            // nested-return-type2-tait2.rs
+            // nested-return-type2-tait3.rs
             .with_opaque_type_inference(DefiningAnchor::Ignore)
             .build();
         let ocx = ObligationCtxt::new(&infcx);

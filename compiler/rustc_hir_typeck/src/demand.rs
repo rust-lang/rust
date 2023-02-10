@@ -113,7 +113,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-        match self.at(cause, self.param_env).sup(expected, actual) {
+        match self.at(cause, self.param_env).define_opaque_types(true).sup(expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
                 None
@@ -143,7 +143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-        match self.at(cause, self.param_env).eq(expected, actual) {
+        match self.at(cause, self.param_env).define_opaque_types(true).eq(expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
                 None

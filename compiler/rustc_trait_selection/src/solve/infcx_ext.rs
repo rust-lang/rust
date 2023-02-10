@@ -54,7 +54,6 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         rhs: T,
     ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
         self.at(&ObligationCause::dummy(), param_env)
-            .define_opaque_types(false)
             .eq(lhs, rhs)
             .map(|InferOk { value: (), obligations }| {
                 obligations.into_iter().map(|o| o.into()).collect()

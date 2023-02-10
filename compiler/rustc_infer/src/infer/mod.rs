@@ -260,12 +260,15 @@ pub struct InferCtxt<'tcx> {
     /// The `DefId` of the item in whose context we are performing inference or typeck.
     /// It is used to check whether an opaque type use is a defining use.
     ///
-    /// If it is `DefiningAnchor::Ignore`, we can't resolve opaque types here and need to bubble up
-    /// the obligation. This frequently happens for
-    /// short lived InferCtxt within queries. The opaque type obligations are forwarded
-    /// to the outside until the end up in an `InferCtxt` for typeck or borrowck.
+    /// If it is `DefiningAnchor::Ignore`, we can't resolve opaque types here and just
+    /// act as if we were in a defining scope. This is useful for codegen, as it reveals
+    /// opaque types, but some nested obligations may end up with opaque types and we don't
+    /// normalize obligations. It is also useful for coherence, as we want opaque types to
+    /// act as if they accept every type for which their bounds hold, no matter the defining scopes.
+    /// This is necessary as impls are accessible outside the defining scopes of types they get
+    /// implemented for. Finally, this is useful for sanity assertions in const eval.
     ///
-    /// It is default value is `DefiningAnchor::Error`, this way it is easier to catch errors that
+    /// Its default value is `DefiningAnchor::Error`, this way it is easier to catch errors that
     /// might come up during inference or typeck.
     pub defining_use_anchor: DefiningAnchor,
 
