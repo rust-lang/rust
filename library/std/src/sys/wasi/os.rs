@@ -21,6 +21,7 @@ mod libc {
     extern "C" {
         pub fn getcwd(buf: *mut c_char, size: size_t) -> *mut c_char;
         pub fn chdir(dir: *const c_char) -> c_int;
+        pub fn __wasilibc_get_environ() -> *mut *mut c_char;
     }
 }
 
@@ -161,7 +162,12 @@ impl Iterator for Env {
 pub fn env() -> Env {
     unsafe {
         let _guard = env_read_lock();
-        let mut environ = libc::environ;
+
+        // Use `__wasilibc_get_environ` instead of `environ` here so that we
+        // don't require wasi-libc to eagerly initialize the environment
+        // variables.
+        let mut environ = libc::__wasilibc_get_environ();
+
         let mut result = Vec::new();
         if !environ.is_null() {
             while !(*environ).is_null() {
