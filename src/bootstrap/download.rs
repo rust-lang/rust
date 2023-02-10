@@ -340,9 +340,12 @@ impl Config {
         let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
         let rustfmt_stamp = bin_root.join(".rustfmt-stamp");
 
-        let legacy_rustfmt = self.initial_rustc.with_file_name(exe("rustfmt", host));
-        if !legacy_rustfmt.exists() {
-            t!(self.symlink_file(&rustfmt_path, &legacy_rustfmt));
+        #[cfg(not(windows))]
+        {
+            let legacy_rustfmt = self.initial_rustc.with_file_name(exe("rustfmt", host));
+            if !legacy_rustfmt.exists() {
+                t!(self.symlink_file(&rustfmt_path, &legacy_rustfmt));
+            }
         }
 
         if rustfmt_path.exists() && !program_out_of_date(&rustfmt_stamp, &channel) {
