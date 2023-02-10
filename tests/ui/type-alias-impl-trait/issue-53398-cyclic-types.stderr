@@ -1,11 +1,8 @@
-error[E0275]: overflow evaluating the requirement `Foo: Sized`
+error[E0275]: overflow evaluating the requirement `<fn() -> Foo {foo} as FnOnce<()>>::Output == fn() -> Foo {foo}`
   --> $DIR/issue-53398-cyclic-types.rs:5:13
    |
 LL | fn foo() -> Foo {
    |             ^^^
-   |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_53398_cyclic_types`)
-   = note: required because it appears within the type `fn() -> Foo {foo}`
 
 error: aborting due to previous error
 

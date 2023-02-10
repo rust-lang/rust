@@ -46,6 +46,7 @@ pub trait InferCtxtExt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> traits::EvaluationResult;
 }
+
 impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     fn type_is_copy_modulo_regions(
         &self,
