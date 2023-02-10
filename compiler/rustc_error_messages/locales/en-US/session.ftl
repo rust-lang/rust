@@ -25,6 +25,8 @@ session_profile_sample_use_file_does_not_exist = file `{$path}` passed to `-C pr
 
 session_target_requires_unwind_tables = target requires unwind tables, they cannot be disabled with `-C force-unwind-tables=no`
 
+session_instrumentation_not_supported = {$us} instrumentation is not supported for this target
+
 session_sanitizer_not_supported = {$us} sanitizer is not supported for this target
 
 session_sanitizers_not_supported = {$us} sanitizers are not supported for this target

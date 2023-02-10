@@ -174,6 +174,25 @@ pub enum InstrumentCoverage {
     Off,
 }
 
+/// Settings for `-Z instrument-xray` flag.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct InstrumentXRay {
+    /// `-Z instrument-xray=always`, force instrumentation
+    pub always: bool,
+    /// `-Z instrument-xray=never`, disable instrumentation
+    pub never: bool,
+    /// `-Z instrument-xray=ignore-loops`, ignore presence of loops,
+    /// instrument functions based only on instruction count
+    pub ignore_loops: bool,
+    /// `-Z instrument-xray=instruction-threshold=N`, explicitly set instruction threshold
+    /// for instrumentation, or `None` to use compiler's default
+    pub instruction_threshold: Option<usize>,
+    /// `-Z instrument-xray=skip-entry`, do not instrument function entry
+    pub skip_entry: bool,
+    /// `-Z instrument-xray=skip-exit`, do not instrument function exit
+    pub skip_exit: bool,
+}
+
 #[derive(Clone, PartialEq, Hash, Debug)]
 pub enum LinkerPluginLto {
     LinkerPlugin(PathBuf),
@@ -2805,9 +2824,9 @@ impl PpMode {
 pub(crate) mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, ErrorOutputType,
-        InstrumentCoverage, LdImpl, LinkerPluginLto, LocationDetail, LtoCli, OomStrategy, OptLevel,
-        OutputType, OutputTypes, Passes, SourceFileHashAlgorithm, SplitDwarfKind,
-        SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
+        InstrumentCoverage, InstrumentXRay, LdImpl, LinkerPluginLto, LocationDetail, LtoCli,
+        OomStrategy, OptLevel, OutputType, OutputTypes, Passes, SourceFileHashAlgorithm,
+        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -2876,6 +2895,7 @@ pub(crate) mod dep_tracking {
         CodeModel,
         TlsModel,
         InstrumentCoverage,
+        InstrumentXRay,
         CrateType,
         MergeFunctions,
         PanicStrategy,

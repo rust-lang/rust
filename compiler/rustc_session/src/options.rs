@@ -380,6 +380,7 @@ mod desc {
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub const parse_instrument_coverage: &str =
         "`all` (default), `except-unused-generics`, `except-unused-functions`, or `off`";
+    pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a number bigger than 0";
     pub const parse_trait_solver: &str =
@@ -866,6 +867,68 @@ mod parse {
             "off" | "no" | "n" | "false" | "0" => InstrumentCoverage::Off,
             _ => return false,
         });
+        true
+    }
+
+    pub(crate) fn parse_instrument_xray(
+        slot: &mut Option<InstrumentXRay>,
+        v: Option<&str>,
+    ) -> bool {
+        if v.is_some() {
+            let mut bool_arg = None;
+            if parse_opt_bool(&mut bool_arg, v) {
+                *slot = if bool_arg.unwrap() { Some(InstrumentXRay::default()) } else { None };
+                return true;
+            }
+        }
+
+        let mut options = slot.get_or_insert_default();
+        let mut seen_always = false;
+        let mut seen_never = false;
+        let mut seen_ignore_loops = false;
+        let mut seen_instruction_threshold = false;
+        let mut seen_skip_entry = false;
+        let mut seen_skip_exit = false;
+        for option in v.into_iter().map(|v| v.split(',')).flatten() {
+            match option {
+                "always" if !seen_always && !seen_never => {
+                    options.always = true;
+                    options.never = false;
+                    seen_always = true;
+                }
+                "never" if !seen_never && !seen_always => {
+                    options.never = true;
+                    options.always = false;
+                    seen_never = true;
+                }
+                "ignore-loops" if !seen_ignore_loops => {
+                    options.ignore_loops = true;
+                    seen_ignore_loops = true;
+                }
+                option
+                    if option.starts_with("instruction-threshold")
+                        && !seen_instruction_threshold =>
+                {
+                    let Some(("instruction-threshold", n)) = option.split_once('=') else {
+                        return false;
+                    };
+                    match n.parse() {
+                        Ok(n) => options.instruction_threshold = Some(n),
+                        Err(_) => return false,
+                    }
+                    seen_instruction_threshold = true;
+                }
+                "skip-entry" if !seen_skip_entry => {
+                    options.skip_entry = true;
+                    seen_skip_entry = true;
+                }
+                "skip-exit" if !seen_skip_exit => {
+                    options.skip_exit = true;
+                    seen_skip_exit = true;
+                }
+                _ => return false,
+            }
+        }
         true
     }
 
@@ -1397,6 +1460,16 @@ options! {
         `=off` (default)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
+    instrument_xray: Option<InstrumentXRay> = (None, parse_instrument_xray, [TRACKED],
+        "insert function instrument code for XRay-based tracing (default: no)
+         Optional extra settings:
+         `=always`
+         `=never`
+         `=ignore-loops`
+         `=instruction-threshold=N`
+         `=skip-entry`
+         `=skip-exit`
+         Multiple options can be combined with commas."),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],
         "keep hygiene data after analysis (default: no)"),
     layout_seed: Option<u64> = (None, parse_opt_number, [TRACKED],
