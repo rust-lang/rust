@@ -11,22 +11,22 @@ fn main() {
 
     match matches.subcommand() {
         Some(("bless", matches)) => {
-            bless::bless(matches.contains_id("ignore-timestamp"));
+            bless::bless(matches.get_flag("ignore-timestamp"));
         },
         Some(("dogfood", matches)) => {
             dogfood::dogfood(
-                matches.contains_id("fix"),
-                matches.contains_id("allow-dirty"),
-                matches.contains_id("allow-staged"),
+                matches.get_flag("fix"),
+                matches.get_flag("allow-dirty"),
+                matches.get_flag("allow-staged"),
             );
         },
         Some(("fmt", matches)) => {
-            fmt::run(matches.contains_id("check"), matches.contains_id("verbose"));
+            fmt::run(matches.get_flag("check"), matches.get_flag("verbose"));
         },
         Some(("update_lints", matches)) => {
-            if matches.contains_id("print-only") {
+            if matches.get_flag("print-only") {
                 update_lints::print_lints();
-            } else if matches.contains_id("check") {
+            } else if matches.get_flag("check") {
                 update_lints::update(update_lints::UpdateMode::Check);
             } else {
                 update_lints::update(update_lints::UpdateMode::Change);
@@ -38,7 +38,7 @@ fn main() {
                 matches.get_one::<String>("name"),
                 matches.get_one::<String>("category").map(String::as_str),
                 matches.get_one::<String>("type").map(String::as_str),
-                matches.contains_id("msrv"),
+                matches.get_flag("msrv"),
             ) {
                 Ok(_) => update_lints::update(update_lints::UpdateMode::Change),
                 Err(e) => eprintln!("Unable to create lint: {e}"),
@@ -46,7 +46,7 @@ fn main() {
         },
         Some(("setup", sub_command)) => match sub_command.subcommand() {
             Some(("intellij", matches)) => {
-                if matches.contains_id("remove") {
+                if matches.get_flag("remove") {
                     setup::intellij::remove_rustc_src();
                 } else {
                     setup::intellij::setup_rustc_src(
@@ -57,17 +57,17 @@ fn main() {
                 }
             },
             Some(("git-hook", matches)) => {
-                if matches.contains_id("remove") {
+                if matches.get_flag("remove") {
                     setup::git_hook::remove_hook();
                 } else {
-                    setup::git_hook::install_hook(matches.contains_id("force-override"));
+                    setup::git_hook::install_hook(matches.get_flag("force-override"));
                 }
             },
             Some(("vscode-tasks", matches)) => {
-                if matches.contains_id("remove") {
+                if matches.get_flag("remove") {
                     setup::vscode::remove_tasks();
                 } else {
-                    setup::vscode::install_tasks(matches.contains_id("force-override"));
+                    setup::vscode::install_tasks(matches.get_flag("force-override"));
                 }
             },
             _ => {},
@@ -91,7 +91,7 @@ fn main() {
         Some(("rename_lint", matches)) => {
             let old_name = matches.get_one::<String>("old_name").unwrap();
             let new_name = matches.get_one::<String>("new_name").unwrap_or(old_name);
-            let uplift = matches.contains_id("uplift");
+            let uplift = matches.get_flag("uplift");
             update_lints::rename(old_name, new_name, uplift);
         },
         Some(("deprecate", matches)) => {
