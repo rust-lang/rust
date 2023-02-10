@@ -51,7 +51,7 @@ impl InferenceContext<'_> {
                 .map(to_chalk_trait_id)
                 .collect();
 
-        let self_ty = TyKind::Error.intern(Interner);
+        let self_ty = self.result.standard_types.unknown.clone();
         let bounds = dyn_ty.bounds.clone().substitute(Interner, &[self_ty.cast(Interner)]);
         for bound in bounds.iter(Interner) {
             // NOTE(skip_binders): the extracted types are rebound by the returned `FnPointer`
