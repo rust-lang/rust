@@ -7,13 +7,13 @@
 
 // This test can be removed once non-opaque pointers are gone from LLVM, maybe.
 
-#![feature(dyn_star, pointer_sized_trait)]
+#![feature(dyn_star, pointer_like_trait)]
 #![allow(incomplete_features)]
 
 use std::fmt::Debug;
-use std::marker::PointerSized;
+use std::marker::PointerLike;
 
-fn make_dyn_star<'a>(t: impl PointerSized + Debug + 'a) -> dyn* Debug + 'a {
+fn make_dyn_star<'a>(t: impl PointerLike + Debug + 'a) -> dyn* Debug + 'a {
     t as _
 }
 
