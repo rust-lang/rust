@@ -302,6 +302,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
+                ty::PredicateKind::AliasEq(..) => {
+                    // FIXME(deferred_projection_equality)
+                    todo!()
+                }
             }
         } else {
             let kind = self.infcx.instantiate_binder_with_placeholders(kind);

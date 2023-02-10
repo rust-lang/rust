@@ -177,6 +177,7 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
                 write!(f, "TypeWellFormedFromEnv({:?})", ty)
             }
             ty::PredicateKind::Ambiguous => write!(f, "Ambiguous"),
+            ty::PredicateKind::AliasEq(t1, t2) => write!(f, "AliasEq({t1:?}, {t2:?})"),
         }
     }
 }

@@ -1594,12 +1594,14 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     // Ignore projections, as they can only be global
                     // if the trait bound is global
                     Clause(Clause::Projection(..)) |
+                    AliasEq(..) |
                     // Ignore bounds that a user can't type
                     WellFormed(..) |
                     ObjectSafe(..) |
                     ClosureKind(..) |
                     Subtype(..) |
                     Coerce(..) |
+                    // FIXME(generic_const_exprs): `ConstEvaluatable` can be written
                     ConstEvaluatable(..) |
                     ConstEquate(..) |
                     Ambiguous |

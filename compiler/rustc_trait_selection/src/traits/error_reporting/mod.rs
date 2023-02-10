@@ -1278,6 +1278,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         span,
                         "TypeWellFormedFromEnv predicate should only exist in the environment"
                     ),
+
+                    ty::PredicateKind::AliasEq(..) => span_bug!(
+                        span,
+                        "AliasEq predicate should never be the predicate cause of a SelectionError"
+                    ),
                 }
             }
 

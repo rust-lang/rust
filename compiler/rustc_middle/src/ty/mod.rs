@@ -545,6 +545,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(Clause::RegionOutlives(_))
             | PredicateKind::Clause(Clause::TypeOutlives(_))
             | PredicateKind::Clause(Clause::Projection(_))
+            | PredicateKind::AliasEq(..)
             | PredicateKind::ObjectSafe(_)
             | PredicateKind::ClosureKind(_, _, _)
             | PredicateKind::Subtype(_)
@@ -632,6 +633,12 @@ pub enum PredicateKind<'tcx> {
     /// A marker predicate that is always ambiguous.
     /// Used for coherence to mark opaque types as possibly equal to each other but ambiguous.
     Ambiguous,
+
+    /// Separate from `Clause::Projection` which is used for normalization in new solver.
+    /// This predicate requires two terms to be equal to eachother.
+    ///
+    /// Only used for new solver
+    AliasEq(Term<'tcx>, Term<'tcx>),
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -1152,6 +1159,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(Clause::Trait(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Projection(..))
+            | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
@@ -1171,6 +1179,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(Clause::Projection(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Trait(..))
+            | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
@@ -1191,6 +1200,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(Clause::TypeOutlives(data)) => Some(predicate.rebind(data)),
             PredicateKind::Clause(Clause::Trait(..))
             | PredicateKind::Clause(Clause::Projection(..))
+            | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
