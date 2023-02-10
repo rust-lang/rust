@@ -144,7 +144,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         // ```
                         self.opaque_type_origin(def_id)?
                     }
-                    DefiningAnchor::Bubble => self.opaque_type_origin_unchecked(def_id),
+                    DefiningAnchor::Ignore => self.opaque_type_origin_unchecked(def_id),
                     DefiningAnchor::Error => return None,
                 };
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {
@@ -374,7 +374,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn opaque_type_origin(&self, def_id: LocalDefId) -> Option<OpaqueTyOrigin> {
         let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let parent_def_id = match self.defining_use_anchor {
-            DefiningAnchor::Bubble | DefiningAnchor::Error => return None,
+            DefiningAnchor::Ignore | DefiningAnchor::Error => return None,
             DefiningAnchor::Bind(bind) => bind,
         };
 
@@ -539,14 +539,16 @@ impl<'tcx> InferCtxt<'tcx> {
         let span = cause.span;
 
         let mut obligations = vec![];
-        let prev = self.inner.borrow_mut().opaque_types().register(
-            OpaqueTypeKey { def_id, substs },
-            OpaqueHiddenType { ty: hidden_ty, span },
-            origin,
-        );
-        if let Some(prev) = prev {
-            obligations =
-                self.at(&cause, param_env).eq_exp(a_is_expected, prev, hidden_ty)?.obligations;
+        if !matches!(self.defining_use_anchor, DefiningAnchor::Ignore) {
+            let prev = self.inner.borrow_mut().opaque_types().register(
+                OpaqueTypeKey { def_id, substs },
+                OpaqueHiddenType { ty: hidden_ty, span },
+                origin,
+            );
+            if let Some(prev) = prev {
+                obligations =
+                    self.at(&cause, param_env).eq_exp(a_is_expected, prev, hidden_ty)?.obligations;
+            }
         }
 
         let item_bounds = tcx.bound_explicit_item_bounds(def_id.to_def_id());

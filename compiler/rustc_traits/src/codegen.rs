@@ -32,10 +32,11 @@ pub fn codegen_select_candidate<'tcx>(
     let infcx = tcx
         .infer_ctxt()
         .ignoring_regions()
-        .with_opaque_type_inference(DefiningAnchor::Bubble)
+        // Opaque types may have gotten their hidden types constrained, but we can ignore them safely
+        // as they will get constrained elsewhere, too.
+        // (ouz-a) This is required for `type-alias-impl-trait/assoc-projection-ice.rs` to pass
+        .with_opaque_type_inference(DefiningAnchor::Ignore)
         .build();
-    //~^ HACK `Bubble` is required for
-    // this test to pass: type-alias-impl-trait/assoc-projection-ice.rs
     let mut selcx = SelectionContext::new(&infcx);
 
     let obligation_cause = ObligationCause::dummy();
@@ -78,11 +79,6 @@ pub fn codegen_select_candidate<'tcx>(
 
     let impl_source = infcx.resolve_vars_if_possible(impl_source);
     let impl_source = infcx.tcx.erase_regions(impl_source);
-
-    // Opaque types may have gotten their hidden types constrained, but we can ignore them safely
-    // as they will get constrained elsewhere, too.
-    // (ouz-a) This is required for `type-alias-impl-trait/assoc-projection-ice.rs` to pass
-    let _ = infcx.take_opaque_types();
 
     Ok(&*tcx.arena.alloc(impl_source))
 }

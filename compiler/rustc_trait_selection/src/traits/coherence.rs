@@ -96,7 +96,7 @@ pub fn overlapping_impls(
     }
 
     let infcx =
-        tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).intercrate().build();
+        tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Ignore).intercrate().build();
     let selcx = &mut SelectionContext::new(&infcx);
     let overlaps =
         overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).is_some();
@@ -108,7 +108,7 @@ pub fn overlapping_impls(
     // this time tracking intercrate ambiguity causes for better
     // diagnostics. (These take time and can lead to false errors.)
     let infcx =
-        tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).intercrate().build();
+        tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Ignore).intercrate().build();
     let selcx = &mut SelectionContext::new(&infcx);
     selcx.enable_tracking_intercrate_ambiguity_causes();
     Some(overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).unwrap())

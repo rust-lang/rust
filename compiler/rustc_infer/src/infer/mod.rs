@@ -244,11 +244,12 @@ impl<'tcx> InferCtxtInner<'tcx> {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DefiningAnchor {
-    /// `DefId` of the item.
+    /// `DefId` of the item for which we check whether any opaque types may
+    /// have their hidden types registered.
     Bind(LocalDefId),
-    /// When opaque types are not resolved, we `Bubble` up, meaning
-    /// return the opaque/hidden type pair from query, for caller of query to handle it.
-    Bubble,
+    /// Used to treat all opaque types as in their defining scope.
+    /// Used for coherence, codegen and sanity checks.
+    Ignore,
     /// Used to catch type mismatch errors when handling opaque types.
     Error,
 }
@@ -259,7 +260,7 @@ pub struct InferCtxt<'tcx> {
     /// The `DefId` of the item in whose context we are performing inference or typeck.
     /// It is used to check whether an opaque type use is a defining use.
     ///
-    /// If it is `DefiningAnchor::Bubble`, we can't resolve opaque types here and need to bubble up
+    /// If it is `DefiningAnchor::Ignore`, we can't resolve opaque types here and need to bubble up
     /// the obligation. This frequently happens for
     /// short lived InferCtxt within queries. The opaque type obligations are forwarded
     /// to the outside until the end up in an `InferCtxt` for typeck or borrowck.
@@ -1340,7 +1341,11 @@ impl<'tcx> InferCtxt<'tcx> {
 
     #[instrument(level = "debug", skip(self), ret)]
     pub fn take_opaque_types(&self) -> opaque_types::OpaqueTypeMap<'tcx> {
-        debug_assert_ne!(self.defining_use_anchor, DefiningAnchor::Error);
+        debug_assert!(
+            matches!(self.defining_use_anchor, DefiningAnchor::Bind(_)),
+            "{:?}",
+            self.defining_use_anchor
+        );
         std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
     }
 

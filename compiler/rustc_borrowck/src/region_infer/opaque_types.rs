@@ -272,10 +272,13 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // This logic duplicates most of `check_opaque_meets_bounds`.
         // FIXME(oli-obk): Also do region checks here and then consider removing `check_opaque_meets_bounds` entirely.
         let param_env = self.tcx.param_env(def_id);
-        // HACK This bubble is required for this tests to pass:
-        // type-alias-impl-trait/issue-67844-nested-opaque.rs
-        let infcx =
-            self.tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).build();
+        let infcx = self
+            .tcx
+            .infer_ctxt()
+            // HACK This bubble is required for this tests to pass:
+            // type-alias-impl-trait/issue-67844-nested-opaque.rs
+            .with_opaque_type_inference(DefiningAnchor::Ignore)
+            .build();
         let ocx = ObligationCtxt::new(&infcx);
         // Require the hidden type to be well-formed with only the generics of the opaque type.
         // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
@@ -315,10 +318,6 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // Check that all obligations are satisfied by the implementation's
         // version.
         let errors = ocx.select_all_or_error();
-
-        // This is still required for many(half of the tests in ui/type-alias-impl-trait)
-        // tests to pass
-        let _ = infcx.take_opaque_types();
 
         if errors.is_empty() {
             definition_ty

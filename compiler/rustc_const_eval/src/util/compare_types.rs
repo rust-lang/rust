@@ -41,8 +41,15 @@ pub fn is_subtype<'tcx>(
         return true;
     }
 
-    let mut builder =
-        tcx.infer_ctxt().ignoring_regions().with_opaque_type_inference(DefiningAnchor::Bubble);
+    let mut builder = tcx
+        .infer_ctxt()
+        .ignoring_regions()
+        // With `Reveal::All`, opaque types get normalized away, with `Reveal::UserFacing`
+        // we would get unification errors because we're unable to look into opaque types,
+        // even if they're constrained in our current function.
+        //
+        // It seems very unlikely that this hides any bugs.
+        .with_opaque_type_inference(DefiningAnchor::Ignore);
     let infcx = builder.build();
     let ocx = ObligationCtxt::new(&infcx);
     let cause = ObligationCause::dummy();
@@ -53,11 +60,5 @@ pub fn is_subtype<'tcx>(
         Err(_) => return false,
     };
     let errors = ocx.select_all_or_error();
-    // With `Reveal::All`, opaque types get normalized away, with `Reveal::UserFacing`
-    // we would get unification errors because we're unable to look into opaque types,
-    // even if they're constrained in our current function.
-    //
-    // It seems very unlikely that this hides any bugs.
-    let _ = infcx.take_opaque_types();
     errors.is_empty()
 }
