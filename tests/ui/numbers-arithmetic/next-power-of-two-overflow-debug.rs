@@ -1,5 +1,5 @@
 // run-pass
-// compile-flags: -C debug_assertions=yes
+// compile-flags: -C debug_assertions=true
 // needs-unwind
 // ignore-emscripten dies with an LLVM error
 
