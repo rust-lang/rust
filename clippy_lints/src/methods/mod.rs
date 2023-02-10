@@ -3171,7 +3171,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     ///
-    /// Arguments are not split by space. An argument like `arg("-t ext2")`
+    /// `Command::arg()` does not split arguments by space. An argument like `arg("-t ext2")`
     /// will be passed as a single argument to the command,
     /// which is likely not what was intended.
     ///
