@@ -235,7 +235,7 @@ impl<'a> InferenceContext<'a> {
             Expr::Closure { body, args, ret_type, arg_types, closure_kind } => {
                 assert_eq!(args.len(), arg_types.len());
 
-                let mut sig_tys = Vec::new();
+                let mut sig_tys = Vec::with_capacity(arg_types.len() + 1);
 
                 // collect explicitly written argument types
                 for arg_type in arg_types.iter() {
@@ -256,7 +256,8 @@ impl<'a> InferenceContext<'a> {
                     num_binders: 0,
                     sig: FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: false },
                     substitution: FnSubst(
-                        Substitution::from_iter(Interner, sig_tys.clone()).shifted_in(Interner),
+                        Substitution::from_iter(Interner, sig_tys.iter().cloned())
+                            .shifted_in(Interner),
                     ),
                 })
                 .intern(Interner);
@@ -318,16 +319,16 @@ impl<'a> InferenceContext<'a> {
             Expr::Call { callee, args, .. } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
                 let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone());
-                let mut res = None;
-                let mut derefed_callee = callee_ty.clone();
-                // manual loop to be able to access `derefs.table`
-                while let Some((callee_deref_ty, _)) = derefs.next() {
-                    res = derefs.table.callable_sig(&callee_deref_ty, args.len());
-                    if res.is_some() {
-                        derefed_callee = callee_deref_ty;
-                        break;
+                let (res, derefed_callee) = 'b: {
+                    // manual loop to be able to access `derefs.table`
+                    while let Some((callee_deref_ty, _)) = derefs.next() {
+                        let res = derefs.table.callable_sig(&callee_deref_ty, args.len());
+                        if res.is_some() {
+                            break 'b (res, callee_deref_ty);
+                        }
                     }
-                }
+                    (None, callee_ty.clone())
+                };
                 // if the function is unresolved, we use is_varargs=true to
                 // suppress the arg count diagnostic here
                 let is_varargs =

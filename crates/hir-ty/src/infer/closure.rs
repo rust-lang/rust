@@ -67,7 +67,7 @@ impl InferenceContext<'_> {
                 let arg = projection.substitution.as_slice(Interner).get(1)?;
                 if let Some(subst) = arg.ty(Interner)?.as_tuple() {
                     let generic_args = subst.as_slice(Interner);
-                    let mut sig_tys = Vec::new();
+                    let mut sig_tys = Vec::with_capacity(generic_args.len() + 1);
                     for arg in generic_args {
                         sig_tys.push(arg.ty(Interner)?.clone());
                     }
