@@ -1,4 +1,6 @@
-use super::combine::{CombineFields, ConstEquateRelation, RelationDir};
+use crate::traits::PredicateObligations;
+
+use super::combine::{CombineFields, ObligationEmittingRelation, RelationDir};
 use super::Subtype;
 
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
@@ -198,8 +200,15 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> ConstEquateRelation<'tcx> for Equate<'_, '_, 'tcx> {
-    fn const_equate_obligation(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>) {
-        self.fields.add_const_equate_obligation(self.a_is_expected, a, b);
+impl<'tcx> ObligationEmittingRelation<'tcx> for Equate<'_, '_, 'tcx> {
+    fn register_predicates(
+        &mut self,
+        obligations: impl IntoIterator<Item = impl ty::ToPredicate<'tcx>>,
+    ) {
+        self.fields.register_predicates(obligations);
+    }
+
+    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
+        self.fields.register_obligations(obligations);
     }
 }

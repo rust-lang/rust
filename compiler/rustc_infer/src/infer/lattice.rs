@@ -17,11 +17,12 @@
 //!
 //! [lattices]: https://en.wikipedia.org/wiki/Lattice_(order)
 
+use super::combine::ObligationEmittingRelation;
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::InferCtxt;
 
-use crate::traits::{ObligationCause, PredicateObligation};
-use rustc_middle::ty::relate::{RelateResult, TypeRelation};
+use crate::traits::ObligationCause;
+use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty};
 
@@ -30,12 +31,10 @@ use rustc_middle::ty::{self, Ty};
 ///
 /// GLB moves "down" the lattice (to smaller values); LUB moves
 /// "up" the lattice (to bigger values).
-pub trait LatticeDir<'f, 'tcx>: TypeRelation<'tcx> {
+pub trait LatticeDir<'f, 'tcx>: ObligationEmittingRelation<'tcx> {
     fn infcx(&self) -> &'f InferCtxt<'tcx>;
 
     fn cause(&self) -> &ObligationCause<'tcx>;
-
-    fn add_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>);
 
     fn define_opaque_types(&self) -> bool;
 
@@ -113,7 +112,7 @@ where
         | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
             if this.define_opaque_types() && def_id.is_local() =>
         {
-            this.add_obligations(
+            this.register_obligations(
                 infcx
                     .handle_opaque_type(a, b, this.a_is_expected(), this.cause(), this.param_env())?
                     .obligations,

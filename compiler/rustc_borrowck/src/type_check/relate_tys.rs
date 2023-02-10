@@ -1,4 +1,4 @@
-use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
+use rustc_infer::infer::nll_relate::{TypeRelating, TypeRelatingDelegate};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::mir::ConstraintCategory;
@@ -138,10 +138,6 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
                 from_closure: false,
             },
         );
-    }
-
-    fn normalization() -> NormalizationStrategy {
-        NormalizationStrategy::Eager
     }
 
     fn forbid_inference_vars() -> bool {
