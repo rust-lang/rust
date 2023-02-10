@@ -209,20 +209,21 @@ fn push_debuginfo_type_name<'tcx>(
                 output.push(']');
             }
         }
-        ty::DynStar(..) => unimplemented!(),
-        ty::Dynamic(ref trait_data, ..) => {
+        // ty::DynStar(..) => unimplemented!(),
+        ty::Dynamic(ref trait_data, ..) | ty::DynStar(ref trait_data, ..) => {
             let auto_traits: SmallVec<[DefId; 4]> = trait_data.auto_traits().collect();
+            let is_dyn_star = t.is_dyn_star();
 
             let has_enclosing_parens = if cpp_like_debuginfo {
-                output.push_str("dyn$<");
+                output.push_str(if is_dyn_star { "dyns$<" } else { "dyn$<" });
                 false
             } else {
                 if trait_data.len() > 1 && auto_traits.len() != 0 {
                     // We need enclosing parens because there is more than one trait
-                    output.push_str("(dyn ");
+                    output.push_str(if is_dyn_star { "(dyn* " } else { "(dyn " });
                     true
                 } else {
-                    output.push_str("dyn ");
+                    output.push_str(if is_dyn_star { "dyn* " } else { "dyn " });
                     false
                 }
             };
