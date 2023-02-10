@@ -25,12 +25,8 @@ pub(crate) fn unsized_info<'tcx>(
             .bcx
             .ins()
             .iconst(fx.pointer_type, len.eval_usize(fx.tcx, ParamEnv::reveal_all()) as i64),
-        (
-            &ty::Dynamic(ref data_a, _, src_dyn_kind),
-            &ty::Dynamic(ref data_b, _, target_dyn_kind),
-        ) => {
-            assert_eq!(src_dyn_kind, target_dyn_kind);
-
+        (&ty::Dynamic(ref data_a, _), &ty::Dynamic(ref data_b, _))
+        | (&ty::DynStar(ref data_a, _), &ty::DynStar(ref data_b, _)) => {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
@@ -114,10 +110,7 @@ pub(crate) fn cast_to_dyn_star<'tcx>(
     dst_ty: Ty<'tcx>,
     old_info: Option<Value>,
 ) -> (Value, Value) {
-    assert!(
-        matches!(dst_ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
-        "destination type must be a dyn*"
-    );
+    assert!(matches!(dst_ty.kind(), ty::DynStar(..)), "destination type must be a dyn*");
     (src, unsized_info(fx, src_ty_and_layout.ty, dst_ty, old_info))
 }
 
@@ -172,7 +165,7 @@ pub(crate) fn coerce_dyn_star<'tcx>(
     src: CValue<'tcx>,
     dst: CPlace<'tcx>,
 ) {
-    let (data, extra) = if let ty::Dynamic(_, _, ty::DynStar) = src.layout().ty.kind() {
+    let (data, extra) = if let ty::DynStar(_, _) = src.layout().ty.kind() {
         let (data, vtable) = src.load_scalar_pair(fx);
         (data, Some(vtable))
     } else {

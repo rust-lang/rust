@@ -578,7 +578,7 @@ pub(crate) fn codegen_drop<'tcx>(
         // we don't actually need to drop anything
     } else {
         match ty.kind() {
-            ty::Dynamic(_, _, ty::Dyn) => {
+            ty::Dynamic(_, _) => {
                 // IN THIS ARM, WE HAVE:
                 // ty = *mut (dyn Trait)
                 // which is: exists<T> ( *mut T,    Vtable<T: Trait> )
@@ -608,7 +608,7 @@ pub(crate) fn codegen_drop<'tcx>(
                 let sig = fx.bcx.import_signature(sig);
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
             }
-            ty::Dynamic(_, _, ty::DynStar) => {
+            ty::DynStar(_, _) => {
                 // IN THIS ARM, WE HAVE:
                 // ty = *mut (dyn* Trait)
                 // which is: *mut exists<T: sizeof(T) == sizeof(usize)> (T, Vtable<T: Trait>)

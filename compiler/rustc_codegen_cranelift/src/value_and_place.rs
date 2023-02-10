@@ -875,7 +875,7 @@ pub(crate) fn assert_assignable<'tcx>(
             );
             // fn(&T) -> for<'l> fn(&'l T) is allowed
         }
-        (&ty::Dynamic(from_traits, _, _from_kind), &ty::Dynamic(to_traits, _, _to_kind)) => {
+        (&ty::Dynamic(from_traits, _), &ty::Dynamic(to_traits, _)) => {
             // FIXME(dyn-star): Do the right thing with DynKinds
             for (from, to) in from_traits.iter().zip(to_traits) {
                 let from =
@@ -889,6 +889,8 @@ pub(crate) fn assert_assignable<'tcx>(
             }
             // dyn for<'r> Trait<'r> -> dyn Trait<'_> is allowed
         }
+        // FIXME(dyn-star)
+        (&ty::DynStar(_from_traits, _), &ty::DynStar(_to_traits, _)) => unimplemented!(),
         (&ty::Tuple(types_a), &ty::Tuple(types_b)) => {
             let mut types_a = types_a.iter();
             let mut types_b = types_b.iter();
