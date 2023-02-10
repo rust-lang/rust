@@ -927,7 +927,7 @@ impl HirDisplay for CallableSig {
     }
 }
 
-fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = TraitId> {
+fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = TraitId> + '_ {
     let krate = trait_.lookup(db).container.krate();
     utils::fn_traits(db, krate)
 }

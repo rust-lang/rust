@@ -1235,7 +1235,7 @@ fn named_associated_type_shorthand_candidates<R>(
     mut cb: impl FnMut(&Name, &TraitRef, TypeAliasId) -> Option<R>,
 ) -> Option<R> {
     let mut search = |t| {
-        for t in all_super_trait_refs(db, t) {
+        all_super_trait_refs(db, t, |t| {
             let data = db.trait_data(t.hir_trait_id());
 
             for (name, assoc_id) in &data.items {
@@ -1245,8 +1245,8 @@ fn named_associated_type_shorthand_candidates<R>(
                     }
                 }
             }
-        }
-        None
+            None
+        })
     };
 
     match res {
