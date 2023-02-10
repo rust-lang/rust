@@ -25,7 +25,7 @@ fn clif_sig_from_fn_abi<'tcx>(
 ) -> Signature {
     let call_conv = conv_to_call_conv(tcx.sess, fn_abi.conv, default_call_conv);
 
-    let inputs = fn_abi.args.iter().map(|arg_abi| arg_abi.get_abi_param(tcx).into_iter()).flatten();
+    let inputs = fn_abi.args.iter().flat_map(|arg_abi| arg_abi.get_abi_param(tcx).into_iter());
 
     let (return_ptr, returns) = fn_abi.ret.get_abi_return(tcx);
     // Sometimes the first param is an pointer to the place where the return value needs to be stored.
@@ -513,10 +513,9 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 args.into_iter()
                     .enumerate()
                     .skip(if first_arg_override.is_some() { 1 } else { 0 })
-                    .map(|(i, arg)| {
+                    .flat_map(|(i, arg)| {
                         adjust_arg_for_abi(fx, arg.value, &fn_abi.args[i], arg.is_owned).into_iter()
-                    })
-                    .flatten(),
+                    }),
             )
             .collect::<Vec<Value>>();
 

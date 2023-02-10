@@ -242,7 +242,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                 }
             }
             InlineAsmOperand::Const { ref value } => {
-                let (const_value, ty) = crate::constant::eval_mir_constant(fx, &*value)
+                let (const_value, ty) = crate::constant::eval_mir_constant(fx, value)
                     .unwrap_or_else(|| span_bug!(span, "asm const cannot be resolved"));
                 let value = rustc_codegen_ssa::common::asm_const_to_str(
                     fx.tcx,
@@ -334,13 +334,13 @@ pub(crate) fn codegen_inline_asm<'tcx>(
             }
             CInlineAsmOperand::Out { reg: _, late: _, place } => {
                 if let Some(place) = place {
-                    outputs.push((asm_gen.stack_slots_output[i].unwrap(), place.clone()));
+                    outputs.push((asm_gen.stack_slots_output[i].unwrap(), *place));
                 }
             }
             CInlineAsmOperand::InOut { reg: _, _late: _, in_value, out_place } => {
                 inputs.push((asm_gen.stack_slots_input[i].unwrap(), in_value.load_scalar(fx)));
                 if let Some(out_place) = out_place {
-                    outputs.push((asm_gen.stack_slots_output[i].unwrap(), out_place.clone()));
+                    outputs.push((asm_gen.stack_slots_output[i].unwrap(), *out_place));
                 }
             }
             CInlineAsmOperand::Const { value: _ } | CInlineAsmOperand::Symbol { symbol: _ } => {}

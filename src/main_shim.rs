@@ -28,7 +28,7 @@ pub(crate) fn maybe_create_entry_wrapper(
 
     if main_def_id.is_local() {
         let instance = Instance::mono(tcx, main_def_id).polymorphize(tcx);
-        if !is_jit && module.get_name(&*tcx.symbol_name(instance).name).is_none() {
+        if !is_jit && module.get_name(tcx.symbol_name(instance).name).is_none() {
             return;
         }
     } else if !is_primary_cgu {

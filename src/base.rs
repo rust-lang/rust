@@ -1000,7 +1000,7 @@ fn codegen_panic_inner<'tcx>(
     let symbol_name = fx.tcx.symbol_name(instance).name;
 
     fx.lib_call(
-        &*symbol_name,
+        symbol_name,
         args.iter().map(|&arg| AbiParam::new(fx.bcx.func.dfg.value_type(arg))).collect(),
         vec![],
         args,
