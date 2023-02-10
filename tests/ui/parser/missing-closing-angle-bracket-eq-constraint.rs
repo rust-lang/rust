@@ -17,7 +17,7 @@ fn test2<T1, T2>(arg1 : T1, arg2 : T2) {
 fn test3<'a>(arg : &'a u32) {
   let v : Vec<'a = vec![];
     //~^ ERROR: expected one of
-    //~| ERROR: type annotations needed for `Vec<T>`
+    //~| ERROR: type annotations needed for `Vec<_>`
 }
 
 fn main() {}
