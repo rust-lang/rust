@@ -6,7 +6,7 @@ borrowck_higher_ranked_lifetime_error =
     higher-ranked lifetime error
 
 borrowck_could_not_prove =
-    could not prove `{$predicate}`
+    could not prove `where {$predicate}`
 
 borrowck_could_not_normalize =
     could not normalize `{$value}`
