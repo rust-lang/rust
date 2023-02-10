@@ -19,12 +19,15 @@ pub(super) fn enum_hints(
     _: FileId,
     enum_: ast::Enum,
 ) -> Option<()> {
-    let disabled = match config.discriminant_hints {
-        DiscriminantHints::Always => false,
-        DiscriminantHints::Fieldless => sema.to_def(&enum_)?.is_data_carrying(sema.db),
-        DiscriminantHints::Never => true,
+    let enabled = match config.discriminant_hints {
+        DiscriminantHints::Always => true,
+        DiscriminantHints::Fieldless => {
+            !sema.to_def(&enum_)?.is_data_carrying(sema.db)
+                || enum_.variant_list()?.variants().any(|v| v.expr().is_some())
+        }
+        DiscriminantHints::Never => false,
     };
-    if disabled {
+    if !enabled {
         return None;
     }
     for variant in enum_.variant_list()?.variants() {
@@ -161,8 +164,25 @@ enum Enum {
     Variant1,
     Variant2 {},
     Variant3,
+    Variant5,
+    Variant6,
+}
+"#,
+        );
+        check_discriminants_fieldless(
+            r#"
+enum Enum {
+    Variant(),
+  //^^^^^^^^^0
+    Variant1,
+  //^^^^^^^^1
+    Variant2 {},
+  //^^^^^^^^^^^2
+    Variant3,
+  //^^^^^^^^3
     Variant5 = 5,
     Variant6,
+  //^^^^^^^^6
 }
 "#,
         );
