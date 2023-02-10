@@ -198,9 +198,7 @@ where
             }
 
             // Choose the greater child.
-            if child + 1 < v.len() && is_less(&v[child], &v[child + 1]) {
-                child += 1;
-            }
+            child += (child + 1 < v.len() && is_less(&v[child], &v[child + 1])) as usize;
 
             // Stop if the invariant holds at `node`.
             if !is_less(&v[node], &v[child]) {
