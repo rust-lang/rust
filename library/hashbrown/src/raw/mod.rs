@@ -1072,6 +1072,11 @@ where
 }
 
 impl<A> RawTableInner<A> {
+    /// Creates a new empty hash table without allocating any memory.
+    ///
+    /// In effect this returns a table with exactly 1 bucket. However we can
+    /// leave the data pointer dangling since that bucket is never written to
+    /// due to our load factor forcing us to always have at least 1 free bucket.
     #[inline]
     const fn new_in(alloc: A) -> Self {
         Self {
@@ -1086,6 +1091,18 @@ impl<A> RawTableInner<A> {
 }
 
 impl<A: Allocator + Clone> RawTableInner<A> {
+    /// Allocates a new [`RawTableInner`] with the given number of buckets.
+    /// The control bytes are left uninitialized.
+    ///
+    /// # Safety
+    ///
+    /// The caller of this function must ensure that the `buckets` is power of two
+    /// and also initialize all control bytes of the length `self.bucket_mask + 1 +
+    /// Group::WIDTH` with the [`EMPTY`] bytes.
+    ///
+    /// See also [`Allocator`] API for other safety concerns.
+    ///
+    /// [`Allocator`]: https://doc.rust-lang.org/alloc/alloc/trait.Allocator.html
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn new_uninitialized(
         alloc: A,
@@ -1106,6 +1123,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
             Err(_) => return Err(fallibility.alloc_err(layout)),
         };
 
+        // SAFETY: null pointer will be caught in above check
         let ctrl = NonNull::new_unchecked(ptr.as_ptr().add(ctrl_offset));
         Ok(Self {
             ctrl,
@@ -1116,6 +1134,10 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         })
     }
 
+    /// Attempts to allocate a new [`RawTableInner`] with at least enough
+    /// capacity for inserting the given number of elements without reallocating.
+    ///
+    /// All the control bytes are initialized with the [`EMPTY`] bytes.
     #[inline]
     fn fallible_with_capacity(
         alloc: A,
@@ -1126,11 +1148,16 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         if capacity == 0 {
             Ok(Self::new_in(alloc))
         } else {
+            // SAFETY: We checked that we could successfully allocate the new table, and then
+            // initialized all control bytes with the constant `EMPTY` byte.
             unsafe {
                 let buckets =
                     capacity_to_buckets(capacity).ok_or_else(|| fallibility.capacity_overflow())?;
 
                 let result = Self::new_uninitialized(alloc, table_layout, buckets, fallibility)?;
+                // SAFETY: We checked that the table is allocated and therefore the table already has
+                // `self.bucket_mask + 1 + Group::WIDTH` number of control bytes (see TableLayout::calculate_layout_for)
+                // so writing `self.num_ctrl_bytes() == bucket_mask + 1 + Group::WIDTH` bytes is safe.
                 result.ctrl(0).write_bytes(EMPTY, result.num_ctrl_bytes());
 
                 Ok(result)
