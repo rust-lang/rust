@@ -87,58 +87,84 @@ export class Config {
      * [1]: https://github.com/Microsoft/vscode/issues/11514#issuecomment-244707076
      */
     private configureLanguage() {
-        if (this.typingContinueCommentsOnNewline && !this.configureLang) {
-            const indentAction = vscode.IndentAction.None;
-
-            this.configureLang = vscode.languages.setLanguageConfiguration("rust", {
-                onEnterRules: [
-                    {
-                        // Doc single-line comment
-                        // e.g. ///|
-                        beforeText: /^\s*\/{3}.*$/,
-                        action: { indentAction, appendText: "/// " },
-                    },
-                    {
-                        // Parent doc single-line comment
-                        // e.g. //!|
-                        beforeText: /^\s*\/{2}\!.*$/,
-                        action: { indentAction, appendText: "//! " },
-                    },
-                    {
-                        // Begins an auto-closed multi-line comment (standard or parent doc)
-                        // e.g. /** | */ or /*! | */
-                        beforeText: /^\s*\/\*(\*|\!)(?!\/)([^\*]|\*(?!\/))*$/,
-                        afterText: /^\s*\*\/$/,
-                        action: {
-                            indentAction: vscode.IndentAction.IndentOutdent,
-                            appendText: " * ",
-                        },
-                    },
-                    {
-                        // Begins a multi-line comment (standard or parent doc)
-                        // e.g. /** ...| or /*! ...|
-                        beforeText: /^\s*\/\*(\*|\!)(?!\/)([^\*]|\*(?!\/))*$/,
-                        action: { indentAction, appendText: " * " },
-                    },
-                    {
-                        // Continues a multi-line comment
-                        // e.g.  * ...|
-                        beforeText: /^(\ \ )*\ \*(\ ([^\*]|\*(?!\/))*)?$/,
-                        action: { indentAction, appendText: "* " },
-                    },
-                    {
-                        // Dedents after closing a multi-line comment
-                        // e.g.  */|
-                        beforeText: /^(\ \ )*\ \*\/\s*$/,
-                        action: { indentAction, removeText: 1 },
-                    },
-                ],
-            });
-        }
-        if (!this.typingContinueCommentsOnNewline && this.configureLang) {
+        // Only need to dispose of the config if there's a change
+        if (this.configureLang) {
             this.configureLang.dispose();
             this.configureLang = undefined;
         }
+
+        let onEnterRules: vscode.OnEnterRule[] = [
+            {
+                // Carry indentation from the previous line
+                beforeText: /^\s*$/,
+                action: { indentAction: vscode.IndentAction.None },
+            },
+            {
+                // After the end of a function/field chain,
+                // with the semicolon on the same line
+                beforeText: /^\s+\..*;/,
+                action: { indentAction: vscode.IndentAction.Outdent },
+            },
+            {
+                // After the end of a function/field chain,
+                // with semicolon detached from the rest
+                beforeText: /^\s+;/,
+                previousLineText: /^\s+\..*/,
+                action: { indentAction: vscode.IndentAction.Outdent },
+            },
+        ];
+
+        if (this.typingContinueCommentsOnNewline) {
+            const indentAction = vscode.IndentAction.None;
+
+            onEnterRules = [
+                ...onEnterRules,
+                {
+                    // Doc single-line comment
+                    // e.g. ///|
+                    beforeText: /^\s*\/{3}.*$/,
+                    action: { indentAction, appendText: "/// " },
+                },
+                {
+                    // Parent doc single-line comment
+                    // e.g. //!|
+                    beforeText: /^\s*\/{2}\!.*$/,
+                    action: { indentAction, appendText: "//! " },
+                },
+                {
+                    // Begins an auto-closed multi-line comment (standard or parent doc)
+                    // e.g. /** | */ or /*! | */
+                    beforeText: /^\s*\/\*(\*|\!)(?!\/)([^\*]|\*(?!\/))*$/,
+                    afterText: /^\s*\*\/$/,
+                    action: {
+                        indentAction: vscode.IndentAction.IndentOutdent,
+                        appendText: " * ",
+                    },
+                },
+                {
+                    // Begins a multi-line comment (standard or parent doc)
+                    // e.g. /** ...| or /*! ...|
+                    beforeText: /^\s*\/\*(\*|\!)(?!\/)([^\*]|\*(?!\/))*$/,
+                    action: { indentAction, appendText: " * " },
+                },
+                {
+                    // Continues a multi-line comment
+                    // e.g.  * ...|
+                    beforeText: /^(\ \ )*\ \*(\ ([^\*]|\*(?!\/))*)?$/,
+                    action: { indentAction, appendText: "* " },
+                },
+                {
+                    // Dedents after closing a multi-line comment
+                    // e.g.  */|
+                    beforeText: /^(\ \ )*\ \*\/\s*$/,
+                    action: { indentAction, removeText: 1 },
+                },
+            ];
+        }
+
+        this.configureLang = vscode.languages.setLanguageConfiguration("rust", {
+            onEnterRules,
+        });
     }
 
     // We don't do runtime config validation here for simplicity. More on stackoverflow:
