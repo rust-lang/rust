@@ -17,8 +17,7 @@ followed by the `description` at the end of that section.
 Don't use quotes around any standard key names; use bare keys. Only use quoted
 keys for non-standard keys whose names require them, and avoid introducing such
 key names when possible.  See the [TOML
-specification](https://github.com/toml-lang/toml/blob/master/versions/en/toml-v0.4.0.md#table)
-for details.
+specification](https://toml.io/en/v1.0.0#keys) for details.
 
 Put a single space both before and after the `=` between a key and value. Do
 not indent any key names; start all key names at the start of a line.
