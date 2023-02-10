@@ -20,17 +20,61 @@ use syn::{parse::Parser, Ident, Lit, Meta, NestedMeta};
 fn full_path(krate: &Crate, item: &Id) -> Option<(String, String)> {
     let item_summary = krate.paths.get(item)?;
     let kind = &item_summary.kind;
-    let kind_str = serde_json::to_string(kind).ok()?;
+    let kind_str = match kind {
+        rustdoc_json_types::ItemKind::AssocConst => todo!("assoc_const"),
+        rustdoc_json_types::ItemKind::AssocType => todo!("assoc_type"),
+        rustdoc_json_types::ItemKind::Constant => "constant",
+        rustdoc_json_types::ItemKind::Enum => "enum",
+        rustdoc_json_types::ItemKind::ExternCrate => todo!("extern_crate"),
+        rustdoc_json_types::ItemKind::ForeignType => todo!("foreign_type"),
+        rustdoc_json_types::ItemKind::Function => "fn",
+        rustdoc_json_types::ItemKind::Impl => todo!("impl"),
+        rustdoc_json_types::ItemKind::Import => todo!("import"),
+        rustdoc_json_types::ItemKind::Keyword => todo!("keyword"),
+        rustdoc_json_types::ItemKind::Macro => "macro",
+        rustdoc_json_types::ItemKind::Module => "index",
+        rustdoc_json_types::ItemKind::OpaqueTy => todo!("opaque_ty"),
+        rustdoc_json_types::ItemKind::Primitive => "primitive",
+        rustdoc_json_types::ItemKind::ProcAttribute => todo!("proc_attribute"),
+        rustdoc_json_types::ItemKind::ProcDerive => todo!("proc_derive"),
+        rustdoc_json_types::ItemKind::Static => "static",
+        rustdoc_json_types::ItemKind::Struct => "struct",
+        rustdoc_json_types::ItemKind::StructField => todo!("struct_field"),
+        rustdoc_json_types::ItemKind::Trait => "trait",
+        rustdoc_json_types::ItemKind::TraitAlias => "trait_alias",
+        rustdoc_json_types::ItemKind::Typedef => "type",
+        rustdoc_json_types::ItemKind::Union => todo!("union"),
+        rustdoc_json_types::ItemKind::Variant => {
+            return Some((item_summary.path.join("::"), specialcase_variant(&item_summary.path)));
+        }
+    };
     let mut url = String::from("https://doc.rust-lang.org/nightly/");
     let mut iter = item_summary.path.iter();
-    iter.next_back();
+    if !matches!(kind, rustdoc_json_types::ItemKind::Module) {
+        iter.next_back();
+    }
     url.push_str(&iter.cloned().collect::<Vec<_>>().join("/"));
     url.push('/');
-    url.push_str(kind_str.trim_matches('"'));
-    url.push('.');
-    url.push_str(item_summary.path.last().unwrap());
+    url.push_str(kind_str);
+    if !matches!(kind, rustdoc_json_types::ItemKind::Module) {
+        url.push('.');
+        url.push_str(item_summary.path.last().unwrap());
+    }
     url.push_str(".html");
     Some((item_summary.path.join("::"), url))
+}
+
+fn specialcase_variant(path: &[String]) -> String {
+    let mut iter = path.iter();
+    let mut out = String::from("https://doc.rust-lang.org/nightly/");
+    let variant = iter.next_back();
+    let enum_name = iter.next_back();
+    out.push_str(&iter.cloned().collect::<Vec<_>>().join("/"));
+    out.push_str("/enum.");
+    out.push_str(enum_name.unwrap());
+    out.push_str(".html#variant.");
+    out.push_str(variant.unwrap());
+    out
 }
 
 fn is_ident(ident: &Ident, name: &str) -> bool {
@@ -40,6 +84,20 @@ fn is_ident(ident: &Ident, name: &str) -> bool {
 /// Returns an unstable feature -> (item path, doc url) mapping.
 pub fn load_rustdoc_json_metadata(doc_dir: &Path) -> HashMap<String, Vec<(String, String)>> {
     let mut all_items = HashMap::new();
+
+    // Given a `NestedMeta` like `feature = "xyz"`, returns `xyz`.
+    let get_feature_name = |nested: &_| match nested {
+        NestedMeta::Meta(Meta::NameValue(name_value)) => {
+            if !is_ident(name_value.path.get_ident()?, "feature") {
+                return None;
+            }
+            match &name_value.lit {
+                Lit::Str(s) => Some(s.value()),
+                _ => None,
+            }
+        }
+        _ => None,
+    };
 
     for file in fs::read_dir(doc_dir).expect("failed to list files in directory") {
         let entry = file.expect("failed to list file in directory");
@@ -53,41 +111,26 @@ pub fn load_rustdoc_json_metadata(doc_dir: &Path) -> HashMap<String, Vec<(String
                 continue;
             }
             let unstable_feature = item.attrs.iter().find_map(|attr: &String| {
-                let Ok(parsed) = syn::Attribute::parse_outer.parse_str(attr).map(|mut v| v.swap_remove(0)) else {return None};
+                let Ok(parseable) = syn::Attribute::parse_outer.parse_str(attr) else {return None;};
+                for parsed in parseable {
+                    let Some(ident) = parsed.path.get_ident() else {continue;};
+                    // Make sure this is an `unstable` attribute.
+                    if !is_ident(ident, "unstable") {
+                        continue;
+                    }
 
-                // Make sure this is an `unstable` attribute.
-                if !is_ident(parsed.path.get_ident()?, "unstable") {
-                    return None;
-                }
+                    // Given `#[unstable(feature = "xyz")]`, return `(feature = "xyz")`.
+                    let list = match parsed.parse_meta() {
+                        Ok(Meta::List(list)) => list,
+                        _ => continue,
+                    };
 
-                // Given `#[unstable(feature = "xyz")]`, return `(feature = "xyz")`.
-                let list = match parsed.parse_meta() {
-                    Ok(Meta::List(list)) => list,
-                    _ => return None,
-                };
-
-                // Given a `NestedMeta` like `feature = "xyz"`, returns `xyz`.
-                let get_feature_name = |nested: &_| {
-                    match nested {
-                        NestedMeta::Meta(Meta::NameValue(name_value)) => {
-                            if !is_ident(name_value.path.get_ident()?, "feature") {
-                                return None;
-                            }
-                            match &name_value.lit {
-                                Lit::Str(s) => Some(s.value()),
-                                _ => None,
-                            }
+                    for nested in list.nested.iter() {
+                        if let Some(feat) = get_feature_name(nested) {
+                            return Some(feat);
                         }
-                        _ => None,
-                    }
-                };
-
-                for nested in list.nested.iter() {
-                    if let Some(feat) = get_feature_name(nested) {
-                        return Some(feat);
                     }
                 }
-
                 None
             });
             if let Some(feat) = unstable_feature {
