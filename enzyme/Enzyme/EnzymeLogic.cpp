@@ -142,13 +142,14 @@ struct CacheAnalysis {
     } else if (isa<UndefValue>(obj) || isa<ConstantPointerNull>(obj)) {
       return false;
     } else if (auto arg = dyn_cast<Argument>(obj)) {
-      if (arg->getArgNo() < overwritten_args.size()) {
+      if (arg->getArgNo() >= overwritten_args.size()) {
         llvm::errs() << "overwritten_args:\n";
         for (auto pair : overwritten_args) {
           llvm::errs() << " + " << pair << "\n";
         }
         llvm::errs() << "could not find " << *arg << " of func "
                      << arg->getParent()->getName() << " in args_map\n";
+        llvm_unreachable("could not find arg in args_map");
       }
       if (overwritten_args[arg->getArgNo()]) {
         mustcache = true;
