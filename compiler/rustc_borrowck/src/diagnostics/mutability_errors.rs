@@ -231,14 +231,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }
                 }
                 if suggest {
-                    borrow_spans.var_span_label(
-                        &mut err,
-                        format!(
-                            "mutable borrow occurs due to use of {} in closure",
-                            self.describe_any_place(access_place.as_ref()),
-                        ),
-                        "mutable",
-                    );
+                    borrow_spans.var_subdiag(
+                    None,
+                    &mut err,
+                    Some(mir::BorrowKind::Mut { allow_two_phase_borrow: false }),
+                    |_kind, var_span| {
+                        let place = self.describe_any_place(access_place.as_ref());
+                        crate::session_diagnostics::CaptureVarCause::MutableBorrowUsePlaceClosure {
+                            place,
+                            var_span,
+                        }
+                    },
+                );
                 }
                 borrow_span
             }
