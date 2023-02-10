@@ -1,6 +1,7 @@
 // compile-flags: -O -C no-prepopulate-passes
 
 #![crate_type = "lib"]
+#![feature(dyn_star)]
 
 use std::mem::MaybeUninit;
 use std::num::NonZeroU64;
@@ -277,5 +278,11 @@ pub fn enum_id_1(x: Option<Result<u16, u16>>) -> Option<Result<u16, u16>> {
 // CHECK: { i8, i8 } @enum_id_2(i1 noundef zeroext %x.0, i8 %x.1)
 #[no_mangle]
 pub fn enum_id_2(x: Option<u8>) -> Option<u8> {
+  x
+}
+
+// CHECK: { {{i8\*|ptr}}, {{i.*\*|ptr}} } @dyn_star({{i8\*|ptr}} noundef %x.0, {{i.*\*|ptr}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}) %x.1)
+#[no_mangle]
+pub fn dyn_star(x: dyn* Drop) -> dyn* Drop {
   x
 }
