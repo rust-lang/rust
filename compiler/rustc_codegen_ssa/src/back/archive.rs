@@ -203,7 +203,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             }
         }
 
-        self.src_archives.push((archive_path.to_owned(), archive_map));
+        self.src_archives.push((archive_path, archive_map));
         Ok(())
     }
 
