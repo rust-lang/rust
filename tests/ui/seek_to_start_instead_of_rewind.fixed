@@ -26,7 +26,7 @@ fn seek_to_start_false_method(t: &mut StructWithSeekMethod) {
 
 // This should NOT trigger clippy warning because
 // StructWithSeekMethod does not implement std::io::Seek;
-fn seek_to_start_method_owned_false<T>(mut t: StructWithSeekMethod) {
+fn seek_to_start_method_owned_false(mut t: StructWithSeekMethod) {
     t.seek(SeekFrom::Start(0));
 }
 
@@ -38,7 +38,7 @@ fn seek_to_start_false_trait(t: &mut StructWithSeekTrait) {
 
 // This should NOT trigger clippy warning because
 // StructWithSeekMethod does not implement std::io::Seek;
-fn seek_to_start_false_trait_owned<T>(mut t: StructWithSeekTrait) {
+fn seek_to_start_false_trait_owned(mut t: StructWithSeekTrait) {
     t.seek(SeekFrom::Start(0));
 }
 

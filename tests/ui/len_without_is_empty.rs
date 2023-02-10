@@ -282,4 +282,50 @@ impl AsyncLen {
     }
 }
 
+// issue #9520
+pub struct NonStandardLenAndIsEmptySignature;
+impl NonStandardLenAndIsEmptySignature {
+    // don't lint
+    pub fn len(&self, something: usize) -> usize {
+        something
+    }
+
+    pub fn is_empty(&self, something: usize) -> bool {
+        something == 0
+    }
+}
+
+// test case for #9520 with generics in the function signature
+pub trait TestResource {
+    type NonStandardSignatureWithGenerics: Copy;
+    fn lookup_content(&self, item: Self::NonStandardSignatureWithGenerics) -> Result<Option<&[u8]>, String>;
+}
+pub struct NonStandardSignatureWithGenerics(u32);
+impl NonStandardSignatureWithGenerics {
+    pub fn is_empty<T, U>(self, resource: &T) -> bool
+    where
+        T: TestResource<NonStandardSignatureWithGenerics = U>,
+        U: Copy + From<NonStandardSignatureWithGenerics>,
+    {
+        if let Ok(Some(content)) = resource.lookup_content(self.into()) {
+            content.is_empty()
+        } else {
+            true
+        }
+    }
+
+    // test case for #9520 with generics in the function signature
+    pub fn len<T, U>(self, resource: &T) -> usize
+    where
+        T: TestResource<NonStandardSignatureWithGenerics = U>,
+        U: Copy + From<NonStandardSignatureWithGenerics>,
+    {
+        if let Ok(Some(content)) = resource.lookup_content(self.into()) {
+            content.len()
+        } else {
+            0_usize
+        }
+    }
+}
+
 fn main() {}

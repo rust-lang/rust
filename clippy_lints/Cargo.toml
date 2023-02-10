@@ -9,7 +9,7 @@ keywords = ["clippy", "lint", "plugin"]
 edition = "2021"
 
 [dependencies]
-cargo_metadata = "0.14"
+cargo_metadata = "0.15.3"
 clippy_utils = { path = "../clippy_utils" }
 declare_clippy_lint = { path = "../declare_clippy_lint" }
 if_chain = "1.0"
@@ -19,7 +19,7 @@ quine-mc_cluskey = "0.2"
 regex-syntax = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", optional = true }
-tempfile = { version = "3.2", optional = true }
+tempfile = { version = "3.3.0", optional = true }
 toml = "0.5"
 unicode-normalization = "0.1"
 unicode-script = { version = "0.5", default-features = false }

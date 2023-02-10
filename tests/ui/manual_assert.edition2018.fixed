@@ -29,9 +29,7 @@ fn main() {
         panic!("qaqaq{:?}", a);
     }
     assert!(a.is_empty(), "qaqaq{:?}", a);
-    if !a.is_empty() {
-        panic!("qwqwq");
-    }
+    assert!(a.is_empty(), "qwqwq");
     if a.len() == 3 {
         println!("qwq");
         println!("qwq");
@@ -46,21 +44,11 @@ fn main() {
         println!("qwq");
     }
     let b = vec![1, 2, 3];
-    if b.is_empty() {
-        panic!("panic1");
-    }
-    if b.is_empty() && a.is_empty() {
-        panic!("panic2");
-    }
-    if a.is_empty() && !b.is_empty() {
-        panic!("panic3");
-    }
-    if b.is_empty() || a.is_empty() {
-        panic!("panic4");
-    }
-    if a.is_empty() || !b.is_empty() {
-        panic!("panic5");
-    }
+    assert!(!b.is_empty(), "panic1");
+    assert!(!(b.is_empty() && a.is_empty()), "panic2");
+    assert!(!(a.is_empty() && !b.is_empty()), "panic3");
+    assert!(!(b.is_empty() || a.is_empty()), "panic4");
+    assert!(!(a.is_empty() || !b.is_empty()), "panic5");
     assert!(!a.is_empty(), "with expansion {}", one!());
     if a.is_empty() {
         let _ = 0;
@@ -71,12 +59,11 @@ fn main() {
 
 fn issue7730(a: u8) {
     // Suggestion should preserve comment
-    if a > 2 {
-        // comment
-        /* this is a
+    // comment
+/* this is a
         multiline
         comment */
-        /// Doc comment
-        panic!("panic with comment") // comment after `panic!`
-    }
+/// Doc comment
+// comment after `panic!`
+assert!(!(a > 2), "panic with comment");
 }
