@@ -1,6 +1,7 @@
 #![allow(rustc::potential_query_instability)]
 #![feature(box_patterns)]
 #![feature(drain_filter)]
+#![feature(box_syntax)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
@@ -73,6 +74,7 @@ mod function_item_references;
 mod generator;
 mod inline;
 mod instcombine;
+mod large_enums;
 mod lower_intrinsics;
 mod lower_slice_len;
 mod match_branches;
@@ -583,6 +585,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &simplify::SimplifyLocals::new("final"),
             &multiple_return_terminators::MultipleReturnTerminators,
             &deduplicate_blocks::DeduplicateBlocks,
+            &large_enums::EnumSizeOpt { discrepancy: 128 },
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
             &add_call_guards::CriticalCallEdges,
             // Dump the end result for testing and debugging purposes.
