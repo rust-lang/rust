@@ -18,7 +18,7 @@ borrowck_generic_does_not_live_long_enough =
     `{$kind}` does not live long enough
 
 borrowck_move_borrowed =
-    cannot move out of `{$desc}` beacause it is borrowed
+    cannot move out of `{$desc}` because it is borrowed
 
 borrowck_var_does_not_need_mut =
     variable does not need to be mutable
@@ -87,10 +87,10 @@ borrowck_use_due_to_use_closure =
     use occurs due to use in closure
 
 borrowck_assign_due_to_use_closure =
-    assign occurs due to use in closure
+    assignment occurs due to use in closure
 
 borrowck_assign_part_due_to_use_closure =
-    assign to part occurs due to use in closure
+    assignment to part occurs due to use in closure
 
 borrowck_capture_immute =
     capture is immutable because of use here
