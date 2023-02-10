@@ -92,10 +92,9 @@ impl<'tcx> CanonicalResponseExt for Canonical<'tcx, Response<'tcx>> {
     fn has_no_inference_or_external_constraints(&self) -> bool {
         // so that we get a compile error when regions are supported
         // so this code can be checked for being correct
-        let _: () = self.value.external_constraints.regions;
+        let _: &() = self.value.external_constraints.regions;
 
         self.value.var_values.is_identity()
-            && self.value.external_constraints.opaque_types.is_empty()
     }
 }
 
@@ -582,14 +581,11 @@ fn compute_external_query_constraints<'tcx>(
     infcx: &InferCtxt<'tcx>,
 ) -> Result<ExternalConstraints<'tcx>, NoSolution> {
     let region_obligations = infcx.take_registered_region_obligations();
-    let opaque_types = infcx.take_opaque_types_for_query_response();
-    Ok(infcx.tcx.intern_external_constraints(ExternalConstraintsData {
-        // FIXME: Now that's definitely wrong :)
-        //
-        // Should also do the leak check here I think
-        regions: drop(region_obligations),
-        opaque_types,
-    }))
+    // FIXME: Now that's definitely wrong :)
+    //
+    // Should also do the leak check here I think
+    drop(region_obligations);
+    Ok(infcx.tcx.intern_external_constraints(ExternalConstraintsData { regions: &() }))
 }
 
 fn instantiate_canonical_query_response<'tcx>(
@@ -609,10 +605,6 @@ fn instantiate_canonical_query_response<'tcx>(
                     Certainty::Yes => OldCertainty::Proven,
                     Certainty::Maybe(_) => OldCertainty::Ambiguous,
                 },
-                // FIXME: This to_owned makes me sad, but we should eventually impl
-                // `instantiate_query_response_and_region_obligations` separately
-                // instead of piggybacking off of the old implementation.
-                opaque_types: resp.external_constraints.opaque_types.to_owned(),
                 value: resp.certainty,
             }),
         ) else { bug!(); };

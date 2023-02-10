@@ -91,7 +91,6 @@ impl<'tcx> InferCtxt<'tcx> {
             var_values: inference_vars,
             region_constraints: QueryRegionConstraints::default(),
             certainty: Certainty::Proven, // Ambiguities are OK!
-            opaque_types: vec![],
             value: answer,
         })
     }
@@ -140,26 +139,12 @@ impl<'tcx> InferCtxt<'tcx> {
         let certainty =
             if ambig_errors.is_empty() { Certainty::Proven } else { Certainty::Ambiguous };
 
-        let opaque_types = self.take_opaque_types_for_query_response();
-
         Ok(QueryResponse {
             var_values: inference_vars,
             region_constraints,
             certainty,
             value: answer,
-            opaque_types,
         })
-    }
-
-    /// FIXME: This method should only be used for canonical queries and therefore be private.
-    ///
-    /// As the new solver does canonicalization slightly differently, this is also used there
-    /// for now. This should hopefully change fairly soon.
-    pub fn take_opaque_types_for_query_response(&self) -> Vec<(Ty<'tcx>, Ty<'tcx>)> {
-        std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
-            .into_iter()
-            .map(|(k, v)| (self.tcx.mk_opaque(k.def_id.to_def_id(), k.substs), v.hidden_type.ty))
-            .collect()
     }
 
     /// Given the (canonicalized) result to a canonical query,
@@ -244,8 +229,8 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         R: Debug + TypeFoldable<'tcx>,
     {
-        let InferOk { value: result_subst, mut obligations } = self
-            .query_response_substitution_guess(cause, param_env, original_values, query_response)?;
+        let InferOk { value: result_subst, mut obligations } =
+            self.query_response_substitution_guess(cause, original_values, query_response)?;
 
         // Compute `QueryOutlivesConstraint` values that unify each of
         // the original values `v_o` that was canonicalized into a
@@ -363,12 +348,8 @@ impl<'tcx> InferCtxt<'tcx> {
             original_values, query_response,
         );
 
-        let mut value = self.query_response_substitution_guess(
-            cause,
-            param_env,
-            original_values,
-            query_response,
-        )?;
+        let mut value =
+            self.query_response_substitution_guess(cause, original_values, query_response)?;
 
         value.obligations.extend(
             self.unify_query_response_substitution_guess(
@@ -396,7 +377,6 @@ impl<'tcx> InferCtxt<'tcx> {
     fn query_response_substitution_guess<R>(
         &self,
         cause: &ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
         original_values: &OriginalQueryValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> InferResult<'tcx, CanonicalVarValues<'tcx>>
@@ -496,16 +476,7 @@ impl<'tcx> InferCtxt<'tcx> {
             )),
         };
 
-        let mut obligations = vec![];
-
-        // Carry all newly resolved opaque types to the caller's scope
-        for &(a, b) in &query_response.value.opaque_types {
-            let a = substitute_value(self.tcx, &result_subst, a);
-            let b = substitute_value(self.tcx, &result_subst, b);
-            obligations.extend(self.at(cause, param_env).eq(a, b)?.obligations);
-        }
-
-        Ok(InferOk { value: result_subst, obligations })
+        Ok(InferOk { value: result_subst, obligations: vec![] })
     }
 
     /// Given a "guess" at the values for the canonical variables in

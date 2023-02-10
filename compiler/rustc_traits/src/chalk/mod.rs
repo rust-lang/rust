@@ -131,7 +131,6 @@ pub(crate) fn evaluate_goal<'tcx>(
                 var_values: CanonicalVarValues { var_values },
                 region_constraints: QueryRegionConstraints::default(),
                 certainty: Certainty::Proven,
-                opaque_types: vec![],
                 value: (),
             },
         };
@@ -159,7 +158,6 @@ pub(crate) fn evaluate_goal<'tcx>(
                                 var_values: CanonicalVarValues::dummy(),
                                 region_constraints: QueryRegionConstraints::default(),
                                 certainty: Certainty::Ambiguous,
-                                opaque_types: vec![],
                                 value: (),
                             },
                         };
