@@ -245,7 +245,7 @@ pub(crate) fn write_clif_file(
         for flag in isa.flags().iter() {
             writeln!(file, "set {}", flag)?;
         }
-        write!(file, "target {}", isa.triple().architecture.to_string())?;
+        write!(file, "target {}", isa.triple().architecture)?;
         for isa_flag in isa.isa_flags().iter() {
             write!(file, " {}", isa_flag)?;
         }
