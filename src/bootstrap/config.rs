@@ -97,6 +97,10 @@ pub struct Config {
     pub cmd: Subcommand,
     pub incremental: bool,
     pub dry_run: DryRun,
+    /// Arguments appearing after `--` to be forwarded to tools,
+    /// e.g. `--fix-broken` or test arguments.
+    pub free_args: Vec<String>,
+
     /// `None` if we shouldn't download CI compiler artifacts, or the commit to download if we should.
     #[cfg(not(test))]
     download_rustc_commit: Option<String>,
@@ -866,6 +870,7 @@ impl Config {
         config.keep_stage = flags.keep_stage;
         config.keep_stage_std = flags.keep_stage_std;
         config.color = flags.color;
+        config.free_args = flags.free_args.clone().unwrap_or_default();
         if let Some(value) = flags.deny_warnings {
             config.deny_warnings = value;
         }

@@ -58,9 +58,10 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
         clippy_lint_warn.iter().for_each(|v| clippy_lint_levels.push(format!("-W{}", v)));
         clippy_lint_forbid.iter().for_each(|v| clippy_lint_levels.push(format!("-F{}", v)));
         args.extend(clippy_lint_levels);
+        args.extend(builder.config.free_args.clone());
         args
     } else {
-        vec![]
+        builder.config.free_args.clone()
     }
 }
 
