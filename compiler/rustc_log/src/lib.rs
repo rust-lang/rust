@@ -14,7 +14,7 @@
 //!
 //! ```
 //! fn main() {
-//!     rustc_log::init_rustc_env_logger().unwrap();
+//!     rustc_log::init_env_logger("LOG").unwrap();
 //!
 //!     let edition = rustc_span::edition::Edition::Edition2021;
 //!     rustc_span::create_session_globals_then(edition, || {
@@ -23,9 +23,9 @@
 //! }
 //! ```
 //!
-//! Now `RUSTC_LOG=debug cargo run` will run your minimal main.rs and show
+//! Now `LOG=debug cargo run` will run your minimal main.rs and show
 //! rustc's debug logging. In a workflow like this, one might also add
-//! `std::env::set_var("RUSTC_LOG", "debug")` to the top of main so that `cargo
+//! `std::env::set_var("LOG", "debug")` to the top of main so that `cargo
 //! run` by itself is sufficient to get logs.
 //!
 //! The reason rustc_log is a tiny separate crate, as opposed to exposing the
@@ -53,12 +53,6 @@ use tracing_subscriber::fmt::{
 };
 use tracing_subscriber::layer::SubscriberExt;
 
-pub fn init_rustc_env_logger() -> Result<(), Error> {
-    init_env_logger("RUSTC_LOG")
-}
-
-/// In contrast to `init_rustc_env_logger` this allows you to choose an env var
-/// other than `RUSTC_LOG`.
 pub fn init_env_logger(env: &str) -> Result<(), Error> {
     let filter = match env::var(env) {
         Ok(env) => EnvFilter::new(env),
