@@ -96,10 +96,22 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
         impl_def_id: DefId,
     ) -> QueryResult<'tcx>;
 
+    // Consider a predicate we know holds (`assumption`) against a goal we're trying to prove.
     fn consider_assumption(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
+    ) -> QueryResult<'tcx> {
+        Self::consider_assumption_with_certainty(ecx, goal, assumption, Certainty::Yes)
+    }
+
+    // Consider a predicate we know holds (`assumption`) against a goal, unifying with
+    // the `assumption_certainty` if it satisfies the goal.
+    fn consider_assumption_with_certainty(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        assumption: ty::Predicate<'tcx>,
+        assumption_certainty: Certainty,
     ) -> QueryResult<'tcx>;
 
     // A type implements an `auto trait` if its components do as well. These components

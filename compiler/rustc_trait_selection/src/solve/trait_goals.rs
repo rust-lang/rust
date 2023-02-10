@@ -6,6 +6,7 @@ use super::assembly;
 use super::infcx_ext::InferCtxtExt;
 use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItem;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::supertraits;
@@ -61,10 +62,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         })
     }
 
-    fn consider_assumption(
+    fn consider_assumption_with_certainty(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
+        assumption_certainty: Certainty,
     ) -> QueryResult<'tcx> {
         if let Some(poly_trait_pred) = assumption.to_opt_poly_trait_pred()
             && poly_trait_pred.def_id() == goal.predicate.def_id()
@@ -78,7 +80,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     goal.predicate.trait_ref,
                     assumption_trait_pred.trait_ref,
                 )?;
-                ecx.evaluate_all_and_make_canonical_response(nested_goals)
+                ecx.evaluate_all(nested_goals).and_then(|certainty| {
+                    ecx.make_canonical_response(certainty.unify_and(assumption_certainty))
+                })
             })
         } else {
             Err(NoSolution)
@@ -173,20 +177,27 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
         goal_kind: ty::ClosureKind,
     ) -> QueryResult<'tcx> {
+        let tcx = ecx.tcx();
         if let Some(tupled_inputs_and_output) =
             structural_traits::extract_tupled_inputs_and_output_from_callable(
-                ecx.tcx(),
+                tcx,
                 goal.predicate.self_ty(),
                 goal_kind,
             )?
         {
+            // A built-in `Fn` trait needs to check that its output is `Sized`
+            // (FIXME: technically we only need to check this if the type is a fn ptr...)
+            let output_is_sized_pred = tupled_inputs_and_output
+                .map_bound(|(_, output)| tcx.at(DUMMY_SP).mk_trait_ref(LangItem::Sized, [output]));
+            let (_, output_is_sized_certainty) =
+                ecx.evaluate_goal(goal.with(tcx, output_is_sized_pred))?;
+
             let pred = tupled_inputs_and_output
                 .map_bound(|(inputs, _)| {
-                    ecx.tcx()
-                        .mk_trait_ref(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
+                    tcx.mk_trait_ref(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
                 })
-                .to_predicate(ecx.tcx());
-            Self::consider_assumption(ecx, goal, pred)
+                .to_predicate(tcx);
+            Self::consider_assumption_with_certainty(ecx, goal, pred, output_is_sized_certainty)
         } else {
             ecx.make_canonical_response(Certainty::AMBIGUOUS)
         }
