@@ -452,27 +452,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         };
     }
 
-    fn use_ecx<F, T>(&mut self, f: F) -> Option<T>
-    where
-        F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
-    {
-        match f(self) {
-            Ok(val) => Some(val),
-            Err(error) => {
-                trace!("InterpCx operation failed: {:?}", error);
-                // Some errors shouldn't come up because creating them causes
-                // an allocation, which we should avoid. When that happens,
-                // dedicated error variants should be introduced instead.
-                assert!(
-                    !error.kind().formatted_string(),
-                    "const-prop encountered formatting error: {}",
-                    error
-                );
-                None
-            }
-        }
-    }
-
     /// Returns the value, if any, of evaluating `c`.
     fn eval_constant(&mut self, c: &Constant<'tcx>) -> Option<OpTy<'tcx>> {
         // FIXME we need to revisit this for #67176
@@ -487,7 +466,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// Returns the value, if any, of evaluating `place`.
     fn eval_place(&mut self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
         trace!("eval_place(place={:?})", place);
-        self.use_ecx(|this| this.ecx.eval_place_to_op(place, None))
+        self.ecx.eval_place_to_op(place, None).ok()
     }
 
     /// Returns the value, if any, of evaluating `op`. Calls upon `eval_constant`
@@ -591,35 +570,37 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         rvalue: &Rvalue<'tcx>,
         place: Place<'tcx>,
     ) -> Option<()> {
-        self.use_ecx(|this| match rvalue {
+        match rvalue {
             Rvalue::BinaryOp(op, box (left, right))
             | Rvalue::CheckedBinaryOp(op, box (left, right)) => {
-                let l = this.ecx.eval_operand(left, None).and_then(|x| this.ecx.read_immediate(&x));
+                let l = self.ecx.eval_operand(left, None).and_then(|x| self.ecx.read_immediate(&x));
                 let r =
-                    this.ecx.eval_operand(right, None).and_then(|x| this.ecx.read_immediate(&x));
+                    self.ecx.eval_operand(right, None).and_then(|x| self.ecx.read_immediate(&x));
 
                 let const_arg = match (l, r) {
                     (Ok(x), Err(_)) | (Err(_), Ok(x)) => x, // exactly one side is known
-                    (Err(e), Err(_)) => return Err(e),      // neither side is known
-                    (Ok(_), Ok(_)) => return this.ecx.eval_rvalue_into_place(rvalue, place), // both sides are known
+                    (Err(_), Err(_)) => return None,        // neither side is known
+                    (Ok(_), Ok(_)) => return self.ecx.eval_rvalue_into_place(rvalue, place).ok(), // both sides are known
                 };
 
                 if !matches!(const_arg.layout.abi, abi::Abi::Scalar(..)) {
                     // We cannot handle Scalar Pair stuff.
                     // No point in calling `eval_rvalue_into_place`, since only one side is known
-                    throw_machine_stop_str!("cannot optimize this")
+                    return None;
                 }
 
-                let arg_value = const_arg.to_scalar().to_bits(const_arg.layout.size)?;
-                let dest = this.ecx.eval_place(place)?;
+                let arg_value = const_arg.to_scalar().to_bits(const_arg.layout.size).ok()?;
+                let dest = self.ecx.eval_place(place).ok()?;
 
                 match op {
-                    BinOp::BitAnd if arg_value == 0 => this.ecx.write_immediate(*const_arg, &dest),
+                    BinOp::BitAnd if arg_value == 0 => {
+                        self.ecx.write_immediate(*const_arg, &dest).ok()
+                    }
                     BinOp::BitOr
                         if arg_value == const_arg.layout.size.truncate(u128::MAX)
                             || (const_arg.layout.ty.is_bool() && arg_value == 1) =>
                     {
-                        this.ecx.write_immediate(*const_arg, &dest)
+                        self.ecx.write_immediate(*const_arg, &dest).ok()
                     }
                     BinOp::Mul if const_arg.layout.ty.is_integral() && arg_value == 0 => {
                         if let Rvalue::CheckedBinaryOp(_, _) = rvalue {
@@ -627,16 +608,16 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                                 const_arg.to_scalar(),
                                 Scalar::from_bool(false),
                             );
-                            this.ecx.write_immediate(val, &dest)
+                            self.ecx.write_immediate(val, &dest).ok()
                         } else {
-                            this.ecx.write_immediate(*const_arg, &dest)
+                            self.ecx.write_immediate(*const_arg, &dest).ok()
                         }
                     }
-                    _ => throw_machine_stop_str!("cannot optimize this"),
+                    _ => None,
                 }
             }
-            _ => this.ecx.eval_rvalue_into_place(rvalue, place),
-        })
+            _ => self.ecx.eval_rvalue_into_place(rvalue, place).ok(),
+        }
     }
 
     /// Creates a new `Operand::Constant` from a `Scalar` value
@@ -678,7 +659,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
 
         // FIXME> figure out what to do when read_immediate_raw fails
-        let imm = self.use_ecx(|this| this.ecx.read_immediate_raw(value));
+        let imm = self.ecx.read_immediate_raw(value).ok();
 
         if let Some(Right(imm)) = imm {
             match *imm {
@@ -698,25 +679,23 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     if let ty::Tuple(types) = ty.kind() {
                         // Only do it if tuple is also a pair with two scalars
                         if let [ty1, ty2] = types[..] {
-                            let alloc = self.use_ecx(|this| {
-                                let ty_is_scalar = |ty| {
-                                    this.ecx.layout_of(ty).ok().map(|layout| layout.abi.is_scalar())
-                                        == Some(true)
-                                };
-                                if ty_is_scalar(ty1) && ty_is_scalar(ty2) {
-                                    let alloc = this
-                                        .ecx
-                                        .intern_with_temp_alloc(value.layout, |ecx, dest| {
-                                            ecx.write_immediate(*imm, dest)
-                                        })
-                                        .unwrap();
-                                    Ok(Some(alloc))
-                                } else {
-                                    Ok(None)
-                                }
-                            });
+                            let ty_is_scalar = |ty| {
+                                self.ecx.layout_of(ty).ok().map(|layout| layout.abi.is_scalar())
+                                    == Some(true)
+                            };
+                            let alloc = if ty_is_scalar(ty1) && ty_is_scalar(ty2) {
+                                let alloc = self
+                                    .ecx
+                                    .intern_with_temp_alloc(value.layout, |ecx, dest| {
+                                        ecx.write_immediate(*imm, dest)
+                                    })
+                                    .unwrap();
+                                Some(alloc)
+                            } else {
+                                None
+                            };
 
-                            if let Some(Some(alloc)) = alloc {
+                            if let Some(alloc) = alloc {
                                 // Assign entire constant in a single statement.
                                 // We can't use aggregates, as we run after the aggregate-lowering `MirPhase`.
                                 let const_val = ConstValue::ByRef { alloc, offset: Size::ZERO };
@@ -971,7 +950,7 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
             StatementKind::SetDiscriminant { ref place, .. } => {
                 match self.ecx.machine.can_const_prop[place.local] {
                     ConstPropMode::FullConstProp | ConstPropMode::OnlyInsideOwnBlock => {
-                        if self.use_ecx(|this| this.ecx.statement(statement)).is_some() {
+                        if self.ecx.statement(statement).is_ok() {
                             trace!("propped discriminant into {:?}", place);
                         } else {
                             Self::remove_const(&mut self.ecx, place.local);
@@ -1004,8 +983,6 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
         match &mut terminator.kind {
             TerminatorKind::Assert { expected, ref mut cond, .. } => {
                 if let Some(ref value) = self.eval_operand(&cond)
-                    // FIXME should be used use_ecx rather than a local match... but we have
-                    // quite a few of these read_scalar/read_immediate that need fixing.
                     && let Ok(value_const) = self.ecx.read_scalar(&value)
                     && self.should_const_prop(value)
                 {
