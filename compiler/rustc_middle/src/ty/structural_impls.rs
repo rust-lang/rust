@@ -764,16 +764,6 @@ impl<'tcx> ir::TypeVisitable<'tcx> for ty::Predicate<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_predicate(*self)
     }
-
-    #[inline]
-    fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
-        self.outer_exclusive_binder() > binder
-    }
-
-    #[inline]
-    fn has_type_flags(&self, flags: ty::TypeFlags) -> bool {
-        self.flags().intersects(flags)
-    }
 }
 
 impl<'tcx> TypeSuperFoldable<'tcx> for ty::Predicate<'tcx> {

@@ -44,7 +44,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use std::ops::ControlFlow;
 
-pub trait TypeVisitable<'tcx> = ir::TypeVisitable<'tcx>;
+pub trait TypeVisitable<'tcx> = ir::TypeVisitable<'tcx> + ir::TypeVisitableExt<'tcx>;
 pub trait TypeSuperVisitable<'tcx> = ir::TypeSuperVisitable<'tcx>;
 pub trait TypeVisitor<'tcx> = ir::TypeVisitor<'tcx>;
 
@@ -74,7 +74,9 @@ pub mod ir {
         /// `V::visit_ty`). This is where control transfers from `TypeFoldable` to
         /// `TypeVisitor`.
         fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy>;
+    }
 
+    pub trait TypeVisitableExt<'tcx>: TypeVisitable<'tcx> {
         /// Returns `true` if `self` has any late-bound regions that are either
         /// bound by `binder` or bound by some binder outside of `binder`.
         /// If `binder` is `ty::INNERMOST`, this indicates whether
@@ -196,6 +198,8 @@ pub mod ir {
             self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
         }
     }
+
+    impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitableExt<'tcx> for T {}
 
     pub trait TypeSuperVisitable<'tcx>: TypeVisitable<'tcx> {
         /// Provides a default visit for a type of interest. This should only be
