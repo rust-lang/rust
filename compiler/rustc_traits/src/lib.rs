@@ -4,6 +4,7 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![feature(let_chains)]
+#![feature(drain_filter)]
 #![recursion_limit = "256"]
 
 #[macro_use]

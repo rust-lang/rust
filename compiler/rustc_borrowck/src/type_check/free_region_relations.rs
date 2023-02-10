@@ -8,6 +8,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, RegionVid, Ty};
+use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use std::rc::Rc;
 use type_op::TypeOpOutput;
@@ -217,8 +218,27 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         self.inverse_outlives.add(fr_b, fr_a);
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn create(mut self) -> CreateResult<'tcx> {
         let span = self.infcx.tcx.def_span(self.universal_regions.defining_ty.def_id());
+
+        // Insert the facts we know from the predicates. Why? Why not.
+        let param_env = self.param_env;
+        self.add_outlives_bounds(outlives::explicit_outlives_bounds(param_env));
+
+        // - outlives is reflexive, so `'r: 'r` for every region `'r`
+        // - `'static: 'r` for every region `'r`
+        // - `'r: 'fn_body` for every (other) universally quantified
+        //   region `'r`, all of which are provided by our caller
+        let fr_static = self.universal_regions.fr_static;
+        let fr_fn_body = self.universal_regions.fr_fn_body;
+        for fr in self.universal_regions.universal_regions() {
+            debug!("build: relating free region {:?} to itself and to 'static", fr);
+            self.relate_universal_regions(fr, fr);
+            self.relate_universal_regions(fr_static, fr);
+            self.relate_universal_regions(fr, fr_fn_body);
+        }
+
         let unnormalized_input_output_tys = self
             .universal_regions
             .unnormalized_input_tys
@@ -236,78 +256,58 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         //   the `relations` is built.
         let mut normalized_inputs_and_output =
             Vec::with_capacity(self.universal_regions.unnormalized_input_tys.len() + 1);
-        let constraint_sets: Vec<_> = unnormalized_input_output_tys
-            .flat_map(|ty| {
-                debug!("build: input_or_output={:?}", ty);
-                // We add implied bounds from both the unnormalized and normalized ty.
-                // See issue #87748
-                let constraints_implied1 = self.add_implied_bounds(ty);
-                let TypeOpOutput { output: norm_ty, constraints: constraints1, .. } = self
-                    .param_env
-                    .and(type_op::normalize::Normalize::new(ty))
-                    .fully_perform(self.infcx)
-                    .unwrap_or_else(|_| {
-                        let reported = self
-                            .infcx
-                            .tcx
-                            .sess
-                            .delay_span_bug(span, &format!("failed to normalize {:?}", ty));
-                        TypeOpOutput {
-                            output: self.infcx.tcx.ty_error_with_guaranteed(reported),
-                            constraints: None,
-                            error_info: None,
-                        }
-                    });
-                // Note: we need this in examples like
-                // ```
-                // trait Foo {
-                //   type Bar;
-                //   fn foo(&self) -> &Self::Bar;
-                // }
-                // impl Foo for () {
-                //   type Bar = ();
-                //   fn foo(&self) -> &() {}
-                // }
-                // ```
-                // Both &Self::Bar and &() are WF
-                let constraints_implied2 =
-                    if ty != norm_ty { self.add_implied_bounds(norm_ty) } else { None };
-                normalized_inputs_and_output.push(norm_ty);
-                constraints1.into_iter().chain(constraints_implied1).chain(constraints_implied2)
-            })
-            .collect();
+        let mut constraints = vec![];
+        for ty in unnormalized_input_output_tys {
+            debug!("build: input_or_output={:?}", ty);
+            // We add implied bounds from both the unnormalized and normalized ty.
+            // See issue #87748
+            let constraints_unnorm = self.add_implied_bounds(ty);
+            if let Some(c) = constraints_unnorm {
+                constraints.push(c)
+            }
+            let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } = self
+                .param_env
+                .and(type_op::normalize::Normalize::new(ty))
+                .fully_perform(self.infcx)
+                .unwrap_or_else(|_| {
+                    self.infcx
+                        .tcx
+                        .sess
+                        .delay_span_bug(span, &format!("failed to normalize {:?}", ty));
+                    TypeOpOutput {
+                        output: self.infcx.tcx.ty_error(),
+                        constraints: None,
+                        error_info: None,
+                    }
+                });
+            if let Some(c) = constraints_normalize {
+                constraints.push(c)
+            }
 
-        // Insert the facts we know from the predicates. Why? Why not.
-        let param_env = self.param_env;
-        self.add_outlives_bounds(outlives::explicit_outlives_bounds(param_env));
+            // Note: we need this in examples like
+            // ```
+            // trait Foo {
+            //   type Bar;
+            //   fn foo(&self) -> &Self::Bar;
+            // }
+            // impl Foo for () {
+            //   type Bar = ();
+            //   fn foo(&self) ->&() {}
+            // }
+            // ```
+            // Both &Self::Bar and &() are WF
+            if ty != norm_ty {
+                let constraints_norm = self.add_implied_bounds(norm_ty);
+                if let Some(c) = constraints_norm {
+                    constraints.push(c)
+                }
+            }
 
-        // Finally:
-        // - outlives is reflexive, so `'r: 'r` for every region `'r`
-        // - `'static: 'r` for every region `'r`
-        // - `'r: 'fn_body` for every (other) universally quantified
-        //   region `'r`, all of which are provided by our caller
-        let fr_static = self.universal_regions.fr_static;
-        let fr_fn_body = self.universal_regions.fr_fn_body;
-        for fr in self.universal_regions.universal_regions() {
-            debug!("build: relating free region {:?} to itself and to 'static", fr);
-            self.relate_universal_regions(fr, fr);
-            self.relate_universal_regions(fr_static, fr);
-            self.relate_universal_regions(fr, fr_fn_body);
+            normalized_inputs_and_output.push(norm_ty);
         }
 
-        for data in &constraint_sets {
-            constraint_conversion::ConstraintConversion::new(
-                self.infcx,
-                &self.universal_regions,
-                &self.region_bound_pairs,
-                self.implicit_region_bound,
-                self.param_env,
-                Locations::All(span),
-                span,
-                ConstraintCategory::Internal,
-                &mut self.constraints,
-            )
-            .convert_all(data);
+        for c in constraints {
+            self.push_region_constraints(c, span);
         }
 
         CreateResult {
@@ -321,6 +321,24 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         }
     }
 
+    #[instrument(skip(self, data), level = "debug")]
+    fn push_region_constraints(&mut self, data: &QueryRegionConstraints<'tcx>, span: Span) {
+        debug!("constraints generated: {:#?}", data);
+
+        constraint_conversion::ConstraintConversion::new(
+            self.infcx,
+            &self.universal_regions,
+            &self.region_bound_pairs,
+            self.implicit_region_bound,
+            self.param_env,
+            Locations::All(span),
+            span,
+            ConstraintCategory::Internal,
+            &mut self.constraints,
+        )
+        .convert_all(data);
+    }
+
     /// Update the type of a single local, which should represent
     /// either the return type of the MIR or one of its arguments. At
     /// the same time, compute and add any implied bounds that come
@@ -332,6 +350,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
             .fully_perform(self.infcx)
             .unwrap_or_else(|_| bug!("failed to compute implied bounds {:?}", ty));
+        debug!(?bounds, ?constraints);
         self.add_outlives_bounds(bounds);
         constraints
     }

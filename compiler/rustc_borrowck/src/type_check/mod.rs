@@ -910,6 +910,8 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
 }
 
 impl<'tcx> MirTypeckRegionConstraints<'tcx> {
+    /// Creates a `Region` for a given `PlaceholderRegion`, or returns the
+    /// region that corresponds to a previously created one.
     fn placeholder_region(
         &mut self,
         infcx: &InferCtxt<'tcx>,

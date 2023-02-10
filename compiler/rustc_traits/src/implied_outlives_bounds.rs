@@ -70,47 +70,61 @@ fn compute_implied_outlives_bounds<'tcx>(
         let obligations = wf::obligations(ocx.infcx, param_env, CRATE_DEF_ID, 0, arg, DUMMY_SP)
             .unwrap_or_default();
 
-        // While these predicates should all be implied by other parts of
-        // the program, they are still relevant as they may constrain
-        // inference variables, which is necessary to add the correct
-        // implied bounds in some cases, mostly when dealing with projections.
-        ocx.register_obligations(
-            obligations.iter().filter(|o| o.predicate.has_non_region_infer()).cloned(),
-        );
-
-        // From the full set of obligations, just filter down to the
-        // region relationships.
-        outlives_bounds.extend(obligations.into_iter().filter_map(|obligation| {
+        for obligation in obligations {
+            debug!(?obligation);
             assert!(!obligation.has_escaping_bound_vars());
-            match obligation.predicate.kind().no_bound_vars() {
-                None => None,
-                Some(pred) => match pred {
-                    ty::PredicateKind::Clause(ty::Clause::Trait(..))
-                    | ty::PredicateKind::Subtype(..)
-                    | ty::PredicateKind::Coerce(..)
-                    | ty::PredicateKind::Clause(ty::Clause::Projection(..))
-                    | ty::PredicateKind::ClosureKind(..)
-                    | ty::PredicateKind::ObjectSafe(..)
-                    | ty::PredicateKind::ConstEvaluatable(..)
-                    | ty::PredicateKind::ConstEquate(..)
-                    | ty::PredicateKind::Ambiguous
-                    | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
-                    ty::PredicateKind::WellFormed(arg) => {
-                        wf_args.push(arg);
-                        None
+
+            // While these predicates should all be implied by other parts of
+            // the program, they are still relevant as they may constrain
+            // inference variables, which is necessary to add the correct
+            // implied bounds in some cases, mostly when dealing with projections.
+            //
+            // Another important point here: we only register `Projection`
+            // predicates, since otherwise we might register outlives
+            // predicates containing inference variables, and we don't
+            // learn anything new from those.
+            if obligation.predicate.has_non_region_infer() {
+                match obligation.predicate.kind().skip_binder() {
+                    ty::PredicateKind::Clause(ty::Clause::Projection(..)) => {
+                        ocx.register_obligation(obligation.clone());
                     }
-
-                    ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
-                        ty::OutlivesPredicate(r_a, r_b),
-                    )) => Some(ty::OutlivesPredicate(r_a.into(), r_b)),
-
-                    ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
-                        ty_a,
-                        r_b,
-                    ))) => Some(ty::OutlivesPredicate(ty_a.into(), r_b)),
-                },
+                    _ => {}
+                }
             }
-        }));
+
+            let pred = match obligation.predicate.kind().no_bound_vars() {
+                None => continue,
+                Some(pred) => pred,
+            };
+            match pred {
+                ty::PredicateKind::Clause(ty::Clause::Trait(..))
+                | ty::PredicateKind::Subtype(..)
+                | ty::PredicateKind::Coerce(..)
+                | ty::PredicateKind::Clause(ty::Clause::Projection(..))
+                | ty::PredicateKind::ClosureKind(..)
+                | ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::ConstEvaluatable(..)
+                | ty::PredicateKind::ConstEquate(..)
+                | ty::PredicateKind::Ambiguous
+                | ty::PredicateKind::TypeWellFormedFromEnv(..) => {}
+
+                // We need to search through *all* WellFormed predicates
+                ty::PredicateKind::WellFormed(arg) => {
+                    wf_args.push(arg);
+                }
+
+                // We need to register region relationships
+                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(
+                    r_a,
+                    r_b,
+                ))) => outlives_bounds.push(ty::OutlivesPredicate(r_a.into(), r_b)),
+
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                    ty_a,
+                    r_b,
+                ))) => outlives_bounds.push(ty::OutlivesPredicate(ty_a.into(), r_b)),
+            }
+        }
     }
 
     // This call to `select_all_or_error` is necessary to constrain inference variables, which we
