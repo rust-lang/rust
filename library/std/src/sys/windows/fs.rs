@@ -1398,10 +1398,13 @@ fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
         // FIXME: this conversion is very hacky
         let v = br"\??\";
         let v = v.iter().map(|x| *x as u16);
-        for c in v.chain(original.as_os_str().encode_wide()) {
+        // FIXME: Note that this uses for_each instead of a for loop because that
+        // sometimes mysteriously fails to write the buffer for some reason.
+        // See #107884
+        v.chain(original.as_os_str().encode_wide()).for_each(|c| {
             *buf.add(i) = c;
             i += 1;
-        }
+        });
         *buf.add(i) = 0;
         i += 1;
         (*db).ReparseTag = c::IO_REPARSE_TAG_MOUNT_POINT;
