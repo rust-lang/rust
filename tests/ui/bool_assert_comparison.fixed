@@ -86,7 +86,7 @@ fn main() {
     let b = ImplNotTraitWithBool;
 
     assert_eq!("a".len(), 1);
-    assert!("a".is_empty());
+    assert!(!"a".is_empty());
     assert!("".is_empty());
     assert!("".is_empty());
     assert_eq!(a!(), b!());
@@ -97,16 +97,16 @@ fn main() {
 
     assert_ne!("a".len(), 1);
     assert!("a".is_empty());
-    assert!("".is_empty());
-    assert!("".is_empty());
+    assert!(!"".is_empty());
+    assert!(!"".is_empty());
     assert_ne!(a!(), b!());
     assert_ne!(a!(), "".is_empty());
     assert_ne!("".is_empty(), b!());
     assert_ne!(a, true);
-    assert!(b);
+    assert!(!b);
 
     debug_assert_eq!("a".len(), 1);
-    debug_assert!("a".is_empty());
+    debug_assert!(!"a".is_empty());
     debug_assert!("".is_empty());
     debug_assert!("".is_empty());
     debug_assert_eq!(a!(), b!());
@@ -117,27 +117,27 @@ fn main() {
 
     debug_assert_ne!("a".len(), 1);
     debug_assert!("a".is_empty());
-    debug_assert!("".is_empty());
-    debug_assert!("".is_empty());
+    debug_assert!(!"".is_empty());
+    debug_assert!(!"".is_empty());
     debug_assert_ne!(a!(), b!());
     debug_assert_ne!(a!(), "".is_empty());
     debug_assert_ne!("".is_empty(), b!());
     debug_assert_ne!(a, true);
-    debug_assert!(b);
+    debug_assert!(!b);
 
     // assert with error messages
     assert_eq!("a".len(), 1, "tadam {}", 1);
     assert_eq!("a".len(), 1, "tadam {}", true);
-    assert!("a".is_empty(), "tadam {}", 1);
-    assert!("a".is_empty(), "tadam {}", true);
-    assert!("a".is_empty(), "tadam {}", true);
+    assert!(!"a".is_empty(), "tadam {}", 1);
+    assert!(!"a".is_empty(), "tadam {}", true);
+    assert!(!"a".is_empty(), "tadam {}", true);
     assert_eq!(a, true, "tadam {}", false);
 
     debug_assert_eq!("a".len(), 1, "tadam {}", 1);
     debug_assert_eq!("a".len(), 1, "tadam {}", true);
-    debug_assert!("a".is_empty(), "tadam {}", 1);
-    debug_assert!("a".is_empty(), "tadam {}", true);
-    debug_assert!("a".is_empty(), "tadam {}", true);
+    debug_assert!(!"a".is_empty(), "tadam {}", 1);
+    debug_assert!(!"a".is_empty(), "tadam {}", true);
+    debug_assert!(!"a".is_empty(), "tadam {}", true);
     debug_assert_eq!(a, true, "tadam {}", false);
 
     assert!(a!());
@@ -158,4 +158,14 @@ fn main() {
         }};
     }
     in_macro!(a);
+
+    assert!("".is_empty());
+    assert!("".is_empty());
+    assert!(!"requires negation".is_empty());
+    assert!(!"requires negation".is_empty());
+
+    debug_assert!("".is_empty());
+    debug_assert!("".is_empty());
+    debug_assert!(!"requires negation".is_empty());
+    debug_assert!(!"requires negation".is_empty());
 }

@@ -123,7 +123,7 @@ fn main() {
             Enum::A => (),
             Enum::B => (),
             Enum::C => (),
-            _ => (),
+            Enum::__Private => (),
         }
         match Enum::A {
             Enum::A => (),

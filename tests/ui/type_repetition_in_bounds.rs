@@ -1,4 +1,5 @@
 #![deny(clippy::type_repetition_in_bounds)]
+#![allow(clippy::extra_unused_type_parameters)]
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 

@@ -156,6 +156,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::exhaustive_items::EXHAUSTIVE_STRUCTS_INFO,
     crate::exit::EXIT_INFO,
     crate::explicit_write::EXPLICIT_WRITE_INFO,
+    crate::extra_unused_type_parameters::EXTRA_UNUSED_TYPE_PARAMETERS_INFO,
     crate::fallible_impl_from::FALLIBLE_IMPL_FROM_INFO,
     crate::float_literal::EXCESSIVE_PRECISION_INFO,
     crate::float_literal::LOSSY_FLOAT_LITERAL_INFO,
