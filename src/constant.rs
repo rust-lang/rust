@@ -290,7 +290,7 @@ fn data_id_for_static(
         };
 
         let data_id = match module.declare_data(
-            &*symbol_name,
+            symbol_name,
             linkage,
             is_mutable,
             attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
@@ -338,7 +338,7 @@ fn data_id_for_static(
     };
 
     let data_id = match module.declare_data(
-        &*symbol_name,
+        symbol_name,
         linkage,
         is_mutable,
         attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
