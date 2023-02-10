@@ -219,6 +219,7 @@ struct InternedStandardTypes {
     unknown: Ty,
     bool_: Ty,
     unit: Ty,
+    never: Ty,
 }
 
 impl Default for InternedStandardTypes {
@@ -227,6 +228,7 @@ impl Default for InternedStandardTypes {
             unknown: TyKind::Error.intern(Interner),
             bool_: TyKind::Scalar(Scalar::Bool).intern(Interner),
             unit: TyKind::Tuple(0, Substitution::empty(Interner)).intern(Interner),
+            never: TyKind::Never.intern(Interner),
         }
     }
 }
@@ -1024,6 +1026,7 @@ impl<'a> InferenceContext<'a> {
 pub(crate) enum Expectation {
     None,
     HasType(Ty),
+    #[allow(dead_code)]
     Castable(Ty),
     RValueLikeUnsized(Ty),
 }
@@ -1100,6 +1103,10 @@ impl Expectation {
                 None
             }
         }
+    }
+
+    fn coercion_target_type(&self, table: &mut unify::InferenceTable<'_>) -> Ty {
+        self.only_has_type(table).unwrap_or_else(|| table.new_type_var())
     }
 
     /// Comment copied from rustc:

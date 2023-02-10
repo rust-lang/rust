@@ -112,7 +112,7 @@ impl<'a> InferenceContext<'a> {
         let ty = TyBuilder::value_ty(self.db, typable, parent_substs)
             .fill(|x| {
                 it.next().unwrap_or_else(|| match x {
-                    ParamKind::Type => TyKind::Error.intern(Interner).cast(Interner),
+                    ParamKind::Type => self.result.standard_types.unknown.clone().cast(Interner),
                     ParamKind::Const(ty) => consteval::unknown_const_as_generic(ty.clone()),
                 })
             })

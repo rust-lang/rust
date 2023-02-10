@@ -51,7 +51,7 @@ impl InferenceContext<'_> {
                 .map(to_chalk_trait_id)
                 .collect();
 
-        let self_ty = TyKind::Error.intern(Interner);
+        let self_ty = self.result.standard_types.unknown.clone();
         let bounds = dyn_ty.bounds.clone().substitute(Interner, &[self_ty.cast(Interner)]);
         for bound in bounds.iter(Interner) {
             // NOTE(skip_binders): the extracted types are rebound by the returned `FnPointer`
@@ -67,7 +67,7 @@ impl InferenceContext<'_> {
                 let arg = projection.substitution.as_slice(Interner).get(1)?;
                 if let Some(subst) = arg.ty(Interner)?.as_tuple() {
                     let generic_args = subst.as_slice(Interner);
-                    let mut sig_tys = Vec::new();
+                    let mut sig_tys = Vec::with_capacity(generic_args.len() + 1);
                     for arg in generic_args {
                         sig_tys.push(arg.ty(Interner)?.clone());
                     }
