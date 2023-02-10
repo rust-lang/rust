@@ -98,6 +98,7 @@ impl<'tcx, 'a> GeneratorData<'tcx, 'a> {
     // obligation
     fn get_from_await_ty<F>(
         &self,
+        tcx: TyCtxt<'tcx>,
         visitor: AwaitsVisitor,
         hir: map::Map<'tcx>,
         ty_matches: F,
@@ -134,9 +135,7 @@ impl<'tcx, 'a> GeneratorData<'tcx, 'a> {
                                         .unwrap_or_else(|| {
                                             bug!(
                                                 "node_type: no type for node {}",
-                                                ty::tls::with(|tcx| tcx
-                                                    .hir()
-                                                    .node_to_string(await_expr.hir_id))
+                                                tcx.hir().node_to_string(await_expr.hir_id)
                                             )
                                         })
                                 },
@@ -2351,7 +2350,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let mut interior_or_upvar_span = None;
 
-        let from_awaited_ty = generator_data.get_from_await_ty(visitor, hir, ty_matches);
+        let from_awaited_ty = generator_data.get_from_await_ty(self.tcx, visitor, hir, ty_matches);
         debug!(?from_awaited_ty);
 
         // The generator interior types share the same binders

@@ -738,30 +738,16 @@ pub static DEFAULT_EXTERN_QUERY_PROVIDERS: LazyLock<ExternProviders> = LazyLock:
     extern_providers
 });
 
-pub struct QueryContext<'tcx> {
-    gcx: &'tcx GlobalCtxt<'tcx>,
-}
-
-impl<'tcx> QueryContext<'tcx> {
-    pub fn enter<F, R>(&mut self, f: F) -> R
-    where
-        F: FnOnce(TyCtxt<'tcx>) -> R,
-    {
-        let icx = ty::tls::ImplicitCtxt::new(self.gcx);
-        ty::tls::enter_context(&icx, |_| f(icx.tcx))
-    }
-}
-
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     lint_store: Lrc<LintStore>,
     dep_graph: DepGraph,
     untracked: Untracked,
     queries: &'tcx OnceCell<TcxQueries<'tcx>>,
-    global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
+    gcx_cell: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
     hir_arena: &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
-) -> QueryContext<'tcx> {
+) -> &'tcx GlobalCtxt<'tcx> {
     // We're constructing the HIR here; we don't care what we will
     // read, since we haven't even constructed the *input* to
     // incr. comp. yet.
@@ -785,8 +771,8 @@ pub fn create_global_ctxt<'tcx>(
         TcxQueries::new(local_providers, extern_providers, query_result_on_disk_cache)
     });
 
-    let gcx = sess.time("setup_global_ctxt", || {
-        global_ctxt.get_or_init(move || {
+    sess.time("setup_global_ctxt", || {
+        gcx_cell.get_or_init(move || {
             TyCtxt::create_global_ctxt(
                 sess,
                 lint_store,
@@ -799,9 +785,7 @@ pub fn create_global_ctxt<'tcx>(
                 rustc_query_impl::query_callbacks(arena),
             )
         })
-    });
-
-    QueryContext { gcx }
+    })
 }
 
 /// Runs the resolution, type-checking, region checking and other

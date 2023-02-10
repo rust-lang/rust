@@ -1,6 +1,6 @@
 use crate::errors::{FailedWritingFile, RustcErrorFatal, RustcErrorUnexpectedAnnotation};
 use crate::interface::{Compiler, Result};
-use crate::passes::{self, BoxedResolver, QueryContext};
+use crate::passes::{self, BoxedResolver};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -64,7 +64,7 @@ impl<'a, T> std::ops::DerefMut for QueryResult<'a, T> {
     }
 }
 
-impl<'a, 'tcx> QueryResult<'a, QueryContext<'tcx>> {
+impl<'a, 'tcx> QueryResult<'a, &'tcx GlobalCtxt<'tcx>> {
     pub fn enter<T>(&mut self, f: impl FnOnce(TyCtxt<'tcx>) -> T) -> T {
         (*self.0).get_mut().enter(f)
     }
@@ -78,7 +78,7 @@ impl<T> Default for Query<T> {
 
 pub struct Queries<'tcx> {
     compiler: &'tcx Compiler,
-    gcx: OnceCell<GlobalCtxt<'tcx>>,
+    gcx_cell: OnceCell<GlobalCtxt<'tcx>>,
     queries: OnceCell<TcxQueries<'tcx>>,
 
     arena: WorkerLocal<Arena<'tcx>>,
@@ -90,7 +90,8 @@ pub struct Queries<'tcx> {
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
     expansion: Query<(Lrc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
-    global_ctxt: Query<QueryContext<'tcx>>,
+    // This just points to what's in `gcx_cell`.
+    gcx: Query<&'tcx GlobalCtxt<'tcx>>,
     ongoing_codegen: Query<Box<dyn Any>>,
 }
 
@@ -98,7 +99,7 @@ impl<'tcx> Queries<'tcx> {
     pub fn new(compiler: &'tcx Compiler) -> Queries<'tcx> {
         Queries {
             compiler,
-            gcx: OnceCell::new(),
+            gcx_cell: OnceCell::new(),
             queries: OnceCell::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
             hir_arena: WorkerLocal::new(|_| rustc_hir::Arena::default()),
@@ -108,7 +109,7 @@ impl<'tcx> Queries<'tcx> {
             register_plugins: Default::default(),
             expansion: Default::default(),
             dep_graph: Default::default(),
-            global_ctxt: Default::default(),
+            gcx: Default::default(),
             ongoing_codegen: Default::default(),
         }
     }
@@ -207,8 +208,8 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, QueryContext<'tcx>>> {
-        self.global_ctxt.compute(|| {
+    pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
+        self.gcx.compute(|| {
             let crate_name = *self.crate_name()?.borrow();
             let (krate, resolver, lint_store) = self.expansion()?.steal();
 
@@ -218,18 +219,18 @@ impl<'tcx> Queries<'tcx> {
                 ast_lowering: untracked_resolver_for_lowering,
             } = BoxedResolver::to_resolver_outputs(resolver);
 
-            let mut qcx = passes::create_global_ctxt(
+            let gcx = passes::create_global_ctxt(
                 self.compiler,
                 lint_store,
                 self.dep_graph()?.steal(),
                 untracked,
                 &self.queries,
-                &self.gcx,
+                &self.gcx_cell,
                 &self.arena,
                 &self.hir_arena,
             );
 
-            qcx.enter(|tcx| {
+            gcx.enter(|tcx| {
                 let feed = tcx.feed_unit_query();
                 feed.resolver_for_lowering(
                     tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, krate))),
@@ -239,7 +240,7 @@ impl<'tcx> Queries<'tcx> {
                 let feed = tcx.feed_local_crate();
                 feed.crate_name(crate_name);
             });
-            Ok(qcx)
+            Ok(gcx)
         })
     }
 
@@ -387,7 +388,7 @@ impl Compiler {
 
         // NOTE: intentionally does not compute the global context if it hasn't been built yet,
         // since that likely means there was a parse error.
-        if let Some(Ok(gcx)) = &mut *queries.global_ctxt.result.borrow_mut() {
+        if let Some(Ok(gcx)) = &mut *queries.gcx.result.borrow_mut() {
             let gcx = gcx.get_mut();
             // We assume that no queries are run past here. If there are new queries
             // after this point, they'll show up as "<unknown>" in self-profiling data.

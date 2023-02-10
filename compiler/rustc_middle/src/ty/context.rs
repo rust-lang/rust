@@ -468,6 +468,18 @@ pub struct GlobalCtxt<'tcx> {
     pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
 }
 
+impl<'tcx> GlobalCtxt<'tcx> {
+    /// Installs `self` in a `TyCtxt` and `ImplicitCtxt` for the duration of
+    /// `f`.
+    pub fn enter<'a: 'tcx, F, R>(&'a self, f: F) -> R
+    where
+        F: FnOnce(TyCtxt<'tcx>) -> R,
+    {
+        let icx = tls::ImplicitCtxt::new(self);
+        tls::enter_context(&icx, || f(icx.tcx))
+    }
+}
+
 impl<'tcx> TyCtxt<'tcx> {
     /// Expects a body and returns its codegen attributes.
     ///

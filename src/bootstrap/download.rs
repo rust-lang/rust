@@ -229,10 +229,10 @@ impl Config {
             "--retry",
             "3",
             "-Sf",
-            "-o",
         ]);
-        curl.arg(tempfile);
         curl.arg(url);
+        let f = File::create(tempfile).unwrap();
+        curl.stdout(Stdio::from(f));
         if !self.check_run(&mut curl) {
             if self.build.contains("windows-msvc") {
                 println!("Fallback to PowerShell");
