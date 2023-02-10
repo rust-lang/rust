@@ -525,7 +525,9 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
 pub fn make_tests(config: &Config, tests: &mut Vec<test::TestDescAndFn>) {
     debug!("making tests from {:?}", config.src_base.display());
     let inputs = common_inputs_stamp(config);
-    let modified_tests = modified_tests(config, &config.src_base);
+    let modified_tests = modified_tests(config, &config.src_base).unwrap_or_else(|err| {
+        panic!("modified_tests got error from dir: {}, error: {}", config.src_base.display(), err)
+    });
     collect_tests_from_dir(
         config,
         &config.src_base,
@@ -573,13 +575,14 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
     stamp
 }
 
-fn modified_tests(config: &Config, dir: &Path) -> Vec<PathBuf> {
+fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
     if !config.only_modified {
-        return vec![];
+        return Ok(vec![]);
     }
-    let Ok(Some(files)) = get_git_modified_files(Some(dir), &vec!["rs", "stderr", "fixed"]) else { return vec![]; };
+    let files =
+        get_git_modified_files(Some(dir), &vec!["rs", "stderr", "fixed"])?.unwrap_or(vec![]);
     // Add new test cases to the list, it will be convenient in daily development.
-    let Ok(Some(untracked_files)) = get_git_untracked_files(None) else { return vec![]; };
+    let untracked_files = get_git_untracked_files(None)?.unwrap_or(vec![]);
 
     let all_paths = [&files[..], &untracked_files[..]].concat();
     let full_paths = {
@@ -591,7 +594,7 @@ fn modified_tests(config: &Config, dir: &Path) -> Vec<PathBuf> {
         full_paths.sort_unstable();
         full_paths
     };
-    full_paths
+    Ok(full_paths)
 }
 
 fn collect_tests_from_dir(
@@ -600,7 +603,7 @@ fn collect_tests_from_dir(
     relative_dir_path: &Path,
     inputs: &Stamp,
     tests: &mut Vec<test::TestDescAndFn>,
-    only_modified: &Vec<PathBuf>,
+    modified_tests: &Vec<PathBuf>,
 ) -> io::Result<()> {
     // Ignore directories that contain a file named `compiletest-ignore-dir`.
     if dir.join("compiletest-ignore-dir").exists() {
@@ -631,7 +634,7 @@ fn collect_tests_from_dir(
         let file = file?;
         let file_path = file.path();
         let file_name = file.file_name();
-        if is_test(&file_name) && (!config.only_modified || only_modified.contains(&file_path)) {
+        if is_test(&file_name) && (!config.only_modified || modified_tests.contains(&file_path)) {
             debug!("found test file: {:?}", file_path.display());
             let paths =
                 TestPaths { file: file_path, relative_dir: relative_dir_path.to_path_buf() };
@@ -647,7 +650,7 @@ fn collect_tests_from_dir(
                     &relative_file_path,
                     inputs,
                     tests,
-                    only_modified,
+                    modified_tests,
                 )?;
             }
         } else {

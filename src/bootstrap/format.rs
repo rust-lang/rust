@@ -157,7 +157,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                 ignore_fmt.add(&format!("!/{}", untracked_path)).expect(&untracked_path);
             }
             if !check && paths.is_empty() {
-                match get_modified_rs_files(&build) {
+                match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
                         for file in files {
                             println!("formatting modified file {file}");
