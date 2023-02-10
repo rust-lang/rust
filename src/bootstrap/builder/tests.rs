@@ -117,6 +117,16 @@ fn test_exclude() {
 }
 
 #[test]
+fn test_with_empty_host_and_empty_target() {
+    let config = configure("test", &[], &[]);
+    let cache = run_build(&[], config);
+
+    assert!(!cache.contains::<test::Tidy>());
+    assert!(!cache.contains::<test::Cargotest>());
+    assert!(!cache.contains::<test::RustdocUi>());
+}
+
+#[test]
 fn test_exclude_kind() {
     let path = PathBuf::from("src/tools/cargotest");
     let exclude = TaskPath::parse("test::src/tools/cargotest");
@@ -431,6 +441,16 @@ mod dist {
     }
 
     #[test]
+    fn dist_with_empty_host_and_empty_target() {
+        let config = configure(&[], &[]);
+        let mut cache = run_build(&[], config);
+
+        assert!(cache.all::<dist::Docs>().is_empty());
+        assert!(cache.all::<dist::Mingw>().is_empty());
+        assert!(cache.all::<dist::Std>().is_empty());
+    }
+
+    #[test]
     fn dist_with_same_targets_and_hosts() {
         let mut cache = run_build(&[], configure(&["A", "B"], &["A", "B"]));
 
@@ -539,6 +559,18 @@ mod dist {
             first(builder.cache.all::<compile::Rustc>()),
             &[rustc!(A => A, stage = 0), rustc!(A => A, stage = 1),]
         );
+    }
+
+    #[test]
+    fn build_with_empty_host_and_empty_target() {
+        let config = configure(&[], &[]);
+        let build = Build::new(config);
+        let mut builder = Builder::new(&build);
+        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
+
+        assert!(builder.cache.all::<compile::Std>().is_empty());
+        assert!(builder.cache.all::<compile::Assemble>().is_empty());
+        assert!(builder.cache.all::<compile::Rustc>().is_empty());
     }
 
     #[test]

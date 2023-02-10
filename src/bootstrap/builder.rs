@@ -284,18 +284,23 @@ impl StepDescription {
         }
     }
 
-    fn maybe_run(&self, builder: &Builder<'_>, pathsets: Vec<PathSet>) {
+    fn maybe_run(&self, builder: &Builder<'_>, pathsets: Vec<PathSet>) -> Option<()> {
         if pathsets.iter().any(|set| self.is_excluded(builder, set)) {
-            return;
+            return Some(());
         }
 
         // Determine the targets participating in this rule.
         let targets = if self.only_hosts { &builder.hosts } else { &builder.targets };
+        if targets.is_empty() && self.only_hosts {
+            return None;
+        }
 
         for target in targets {
             let run = RunConfig { builder, paths: pathsets.clone(), target: *target };
             (self.make_run)(run);
         }
+
+        Some(())
     }
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
@@ -327,19 +332,13 @@ impl StepDescription {
                 desc.name
             );
         }
-        // sanity checks on hosts
-        if builder.hosts.is_empty() {
-            eprintln!(
-                "`x.py {}` run with empty `host` parameter. Either set it or leave it out for default value.",
-                builder.kind.as_str()
-            );
-            crate::detail_exit(1);
-        }
 
+        let mut hosts_check = Vec::new();
         if paths.is_empty() || builder.config.include_default_paths {
             for (desc, should_run) in v.iter().zip(&should_runs) {
                 if desc.default && should_run.is_really_default() {
-                    desc.maybe_run(builder, should_run.paths.iter().cloned().collect());
+                    hosts_check
+                        .push(desc.maybe_run(builder, should_run.paths.iter().cloned().collect()));
                 }
             }
         }
@@ -353,7 +352,7 @@ impl StepDescription {
         paths.retain(|path| {
             for (desc, should_run) in v.iter().zip(&should_runs) {
                 if let Some(suite) = should_run.is_suite_path(&path) {
-                    desc.maybe_run(builder, vec![suite.clone()]);
+                    hosts_check.push(desc.maybe_run(builder, vec![suite.clone()]));
                     return false;
                 }
             }
@@ -368,8 +367,17 @@ impl StepDescription {
         for (desc, should_run) in v.iter().zip(&should_runs) {
             let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
             if !pathsets.is_empty() {
-                desc.maybe_run(builder, pathsets);
+                hosts_check.push(desc.maybe_run(builder, pathsets));
             }
+        }
+
+        // sanity checks on hosts
+        if !hosts_check.contains(&Some(())) {
+            eprintln!(
+                "`x.py {}` run with empty `host` parameter. Either set it or leave it out for default value.",
+                builder.kind.as_str()
+            );
+            crate::detail_exit(1);
         }
 
         if !paths.is_empty() {
