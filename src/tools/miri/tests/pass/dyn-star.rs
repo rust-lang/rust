@@ -1,5 +1,3 @@
-// Dyn* handling leads to some funky reentrancy in Stacked Borrows, for some reason
-//@compile-flags: -Zmiri-disable-stacked-borrows
 #![feature(dyn_star)]
 #![allow(incomplete_features)]
 
