@@ -100,11 +100,35 @@ macro_rules! TrivialTypeTraversalImpls {
     };
 
     ($($ty:ty,)+) => {
-        TrivialTypeTraversalImpls! {
-            for <'tcx> {
-                $($ty,)+
+        $(
+            impl<I: $crate::ty::Interner> $crate::ty::fold::ir::TypeFoldable<I> for $ty {
+                fn try_fold_with<F: $crate::ty::fold::ir::FallibleTypeFolder<I>>(
+                    self,
+                    _: &mut F,
+                ) -> ::std::result::Result<Self, F::Error> {
+                    Ok(self)
+                }
+
+                #[inline]
+                fn fold_with<F: $crate::ty::fold::ir::TypeFolder<I>>(
+                    self,
+                    _: &mut F,
+                ) -> Self {
+                    self
+                }
             }
-        }
+
+            impl<I: $crate::ty::Interner> $crate::ty::visit::ir::TypeVisitable<I> for $ty {
+                #[inline]
+                fn visit_with<F: $crate::ty::visit::ir::TypeVisitor<I>>(
+                    &self,
+                    _: &mut F)
+                    -> ::std::ops::ControlFlow<F::BreakTy>
+                {
+                    ::std::ops::ControlFlow::Continue(())
+                }
+            }
+        )+
     };
 }
 
@@ -121,10 +145,10 @@ macro_rules! EnumTypeTraversalImpl {
     (impl<$($p:tt),*> TypeFoldable<$tcx:tt> for $s:path {
         $($variants:tt)*
     } $(where $($wc:tt)*)*) => {
-        impl<$($p),*> $crate::ty::fold::ir::TypeFoldable<$crate::ty::TyCtxt<$tcx>> for $s
+        impl<$($p),*> $crate::ty::fold::ir::TypeFoldable<$tcx> for $s
             $(where $($wc)*)*
         {
-            fn try_fold_with<V: $crate::ty::fold::FallibleTypeFolder<$tcx>>(
+            fn try_fold_with<V: $crate::ty::fold::ir::FallibleTypeFolder<$tcx>>(
                 self,
                 folder: &mut V,
             ) -> ::std::result::Result<Self, V::Error> {
@@ -136,10 +160,10 @@ macro_rules! EnumTypeTraversalImpl {
     (impl<$($p:tt),*> TypeVisitable<$tcx:tt> for $s:path {
         $($variants:tt)*
     } $(where $($wc:tt)*)*) => {
-        impl<$($p),*> $crate::ty::visit::ir::TypeVisitable<$crate::ty::TyCtxt<$tcx>> for $s
+        impl<$($p),*> $crate::ty::visit::ir::TypeVisitable<$tcx> for $s
             $(where $($wc)*)*
         {
-            fn visit_with<V: $crate::ty::visit::TypeVisitor<$tcx>>(
+            fn visit_with<V: $crate::ty::visit::ir::TypeVisitor<$tcx>>(
                 &self,
                 visitor: &mut V,
             ) -> ::std::ops::ControlFlow<V::BreakTy> {
