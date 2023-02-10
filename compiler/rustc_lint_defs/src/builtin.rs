@@ -4103,3 +4103,33 @@ declare_lint! {
     };
     report_in_external_macro
 }
+
+declare_lint! {
+    /// The `invalid_macro_export_arguments` lint detects cases where `#[macro_export]` is being used with invalid arguments.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(invalid_macro_export_arguments)]
+    ///
+    /// #[macro_export(invalid_parameter)]
+    /// macro_rules! myMacro {
+    ///    () => {
+    ///         // [...]
+    ///    }
+    /// }
+    ///
+    /// #[macro_export(too, many, items)]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The only valid argument is `#[macro_export(local_inner_macros)]` or no argument (`#[macro_export]`).
+    /// You can't have multiple arguments in a `#[macro_export(..)]`, or mention arguments other than `local_inner_macros`.
+    ///
+    pub INVALID_MACRO_EXPORT_ARGUMENTS,
+    Warn,
+    "\"invalid_parameter\" isn't a valid argument for `#[macro_export]`",
+}
