@@ -385,20 +385,20 @@ void EnzymeGradientUtilsGetUncacheableArgs(GradientUtils *gutils,
 
   CallInst *call = cast<CallInst>(unwrap(orig));
 
-  auto found = gutils->uncacheable_args_map_ptr->find(call);
-  assert(found != gutils->uncacheable_args_map_ptr->end());
+  auto found = gutils->overwritten_args_map_ptr->find(call);
+  assert(found != gutils->overwritten_args_map_ptr->end());
 
-  const std::map<Argument *, bool> &uncacheable_args = found->second;
+  const std::vector<bool> &overwritten_args = found->second;
 
-  auto Fn = getFunctionFromCall(call);
-  assert(Fn);
-  size_t cur = 0;
-  for (auto &arg : Fn->args()) {
-    assert(cur < size);
-    auto found2 = uncacheable_args.find(&arg);
-    assert(found2 != uncacheable_args.end());
-    data[cur] = found2->second;
-    cur++;
+  if (size != overwritten_args.size()) {
+    llvm::errs() << " orig: " << *call << "\n";
+    llvm::errs() << " size: " << size
+                 << " overwritten_args.size(): " << overwritten_args.size()
+                 << "\n";
+  }
+  assert(size == overwritten_args.size());
+  for (uint64_t i = 0; i < size; i++) {
+    data[i] = overwritten_args[i];
   }
 }
 
@@ -435,48 +435,44 @@ LLVMValueRef EnzymeCreateForwardDiff(
     CDIFFE_TYPE *constant_args, size_t constant_args_size,
     EnzymeTypeAnalysisRef TA, uint8_t returnValue, CDerivativeMode mode,
     uint8_t freeMemory, unsigned width, LLVMTypeRef additionalArg,
-    CFnTypeInfo typeInfo, uint8_t *_uncacheable_args,
-    size_t uncacheable_args_size, EnzymeAugmentedReturnPtr augmented) {
+    CFnTypeInfo typeInfo, uint8_t *_overwritten_args,
+    size_t overwritten_args_size, EnzymeAugmentedReturnPtr augmented) {
   SmallVector<DIFFE_TYPE, 4> nconstant_args((DIFFE_TYPE *)constant_args,
                                             (DIFFE_TYPE *)constant_args +
                                                 constant_args_size);
-  std::map<llvm::Argument *, bool> uncacheable_args;
-  size_t argnum = 0;
-  for (auto &arg : cast<Function>(unwrap(todiff))->args()) {
-    assert(argnum < uncacheable_args_size);
-    uncacheable_args[&arg] = _uncacheable_args[argnum];
-    argnum++;
+  std::vector<bool> overwritten_args;
+  assert(overwritten_args_size == cast<Function>(unwrap(todiff))->arg_size());
+  for (uint64_t i = 0; i < overwritten_args_size; i++) {
+    overwritten_args.push_back(_overwritten_args[i]);
   }
   return wrap(eunwrap(Logic).CreateForwardDiff(
       cast<Function>(unwrap(todiff)), (DIFFE_TYPE)retType, nconstant_args,
       eunwrap(TA), returnValue, (DerivativeMode)mode, freeMemory, width,
       unwrap(additionalArg), eunwrap(typeInfo, cast<Function>(unwrap(todiff))),
-      uncacheable_args, eunwrap(augmented)));
+      overwritten_args, eunwrap(augmented)));
 }
 LLVMValueRef EnzymeCreatePrimalAndGradient(
     EnzymeLogicRef Logic, LLVMValueRef todiff, CDIFFE_TYPE retType,
     CDIFFE_TYPE *constant_args, size_t constant_args_size,
     EnzymeTypeAnalysisRef TA, uint8_t returnValue, uint8_t dretUsed,
     CDerivativeMode mode, unsigned width, uint8_t freeMemory,
-    LLVMTypeRef additionalArg, CFnTypeInfo typeInfo, uint8_t *_uncacheable_args,
-    size_t uncacheable_args_size, EnzymeAugmentedReturnPtr augmented,
+    LLVMTypeRef additionalArg, CFnTypeInfo typeInfo, uint8_t *_overwritten_args,
+    size_t overwritten_args_size, EnzymeAugmentedReturnPtr augmented,
     uint8_t AtomicAdd) {
   std::vector<DIFFE_TYPE> nconstant_args((DIFFE_TYPE *)constant_args,
                                          (DIFFE_TYPE *)constant_args +
                                              constant_args_size);
-  std::map<llvm::Argument *, bool> uncacheable_args;
-  size_t argnum = 0;
-  for (auto &arg : cast<Function>(unwrap(todiff))->args()) {
-    assert(argnum < uncacheable_args_size);
-    uncacheable_args[&arg] = _uncacheable_args[argnum];
-    argnum++;
+  std::vector<bool> overwritten_args;
+  assert(overwritten_args_size == cast<Function>(unwrap(todiff))->arg_size());
+  for (uint64_t i = 0; i < overwritten_args_size; i++) {
+    overwritten_args.push_back(_overwritten_args[i]);
   }
   return wrap(eunwrap(Logic).CreatePrimalAndGradient(
       (ReverseCacheKey){
           .todiff = cast<Function>(unwrap(todiff)),
           .retType = (DIFFE_TYPE)retType,
           .constant_args = nconstant_args,
-          .uncacheable_args = uncacheable_args,
+          .overwritten_args = overwritten_args,
           .returnUsed = (bool)returnValue,
           .shadowReturnUsed = (bool)dretUsed,
           .mode = (DerivativeMode)mode,
@@ -492,24 +488,22 @@ EnzymeAugmentedReturnPtr EnzymeCreateAugmentedPrimal(
     EnzymeLogicRef Logic, LLVMValueRef todiff, CDIFFE_TYPE retType,
     CDIFFE_TYPE *constant_args, size_t constant_args_size,
     EnzymeTypeAnalysisRef TA, uint8_t returnUsed, uint8_t shadowReturnUsed,
-    CFnTypeInfo typeInfo, uint8_t *_uncacheable_args,
-    size_t uncacheable_args_size, uint8_t forceAnonymousTape, unsigned width,
+    CFnTypeInfo typeInfo, uint8_t *_overwritten_args,
+    size_t overwritten_args_size, uint8_t forceAnonymousTape, unsigned width,
     uint8_t AtomicAdd) {
 
   SmallVector<DIFFE_TYPE, 4> nconstant_args((DIFFE_TYPE *)constant_args,
                                             (DIFFE_TYPE *)constant_args +
                                                 constant_args_size);
-  std::map<llvm::Argument *, bool> uncacheable_args;
-  size_t argnum = 0;
-  for (auto &arg : cast<Function>(unwrap(todiff))->args()) {
-    assert(argnum < uncacheable_args_size);
-    uncacheable_args[&arg] = _uncacheable_args[argnum];
-    argnum++;
+  std::vector<bool> overwritten_args;
+  assert(overwritten_args_size == cast<Function>(unwrap(todiff))->arg_size());
+  for (uint64_t i = 0; i < overwritten_args_size; i++) {
+    overwritten_args.push_back(_overwritten_args[i]);
   }
   return ewrap(eunwrap(Logic).CreateAugmentedPrimal(
       cast<Function>(unwrap(todiff)), (DIFFE_TYPE)retType, nconstant_args,
       eunwrap(TA), returnUsed, shadowReturnUsed,
-      eunwrap(typeInfo, cast<Function>(unwrap(todiff))), uncacheable_args,
+      eunwrap(typeInfo, cast<Function>(unwrap(todiff))), overwritten_args,
       forceAnonymousTape, width, AtomicAdd));
 }
 

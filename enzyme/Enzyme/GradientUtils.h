@@ -193,8 +193,7 @@ public:
   SmallPtrSet<Instruction *, 4> unnecessaryIntermediates;
 
   const std::map<Instruction *, bool> *can_modref_map;
-  const std::map<CallInst *, const std::map<Argument *, bool>>
-      *uncacheable_args_map_ptr;
+  const std::map<CallInst *, const std::vector<bool>> *overwritten_args_map_ptr;
   const SmallPtrSetImpl<const Value *> *unnecessaryValuesP;
 
   SmallVector<OperandBundleDef, 2>

@@ -109,7 +109,7 @@ struct CacheAnalysis {
   DominatorTree &OrigDT;
   TargetLibraryInfo &TLI;
   const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions;
-  const std::map<Argument *, bool> &uncacheable_args;
+  const std::vector<bool> &overwritten_args;
   DerivativeMode mode;
   std::map<Value *, bool> seen;
   bool omp;
@@ -121,13 +121,12 @@ struct CacheAnalysis {
       TypeResults &TR, AAResults &AA, Function *oldFunc, ScalarEvolution &SE,
       LoopInfo &OrigLI, DominatorTree &OrigDT, TargetLibraryInfo &TLI,
       const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-      const std::map<Argument *, bool> &uncacheable_args, DerivativeMode mode,
-      bool omp)
+      const std::vector<bool> &overwritten_args, DerivativeMode mode, bool omp)
       : allocationsWithGuaranteedFree(allocationsWithGuaranteedFree),
         rematerializableAllocations(rematerializableAllocations), TR(TR),
         AA(AA), oldFunc(oldFunc), SE(SE), OrigLI(OrigLI), OrigDT(OrigDT),
         TLI(TLI), unnecessaryInstructions(unnecessaryInstructions),
-        uncacheable_args(uncacheable_args), mode(mode), omp(omp) {}
+        overwritten_args(overwritten_args), mode(mode), omp(omp) {}
 
   bool is_value_mustcache_from_origin(Value *obj) {
     if (seen.find(obj) != seen.end())
@@ -143,19 +142,15 @@ struct CacheAnalysis {
     } else if (isa<UndefValue>(obj) || isa<ConstantPointerNull>(obj)) {
       return false;
     } else if (auto arg = dyn_cast<Argument>(obj)) {
-      auto found = uncacheable_args.find(arg);
-      if (found == uncacheable_args.end()) {
-        llvm::errs() << "uncacheable_args:\n";
-        for (auto &pair : uncacheable_args) {
-          llvm::errs() << " + " << *pair.first << ": " << pair.second
-                       << " of func " << pair.first->getParent()->getName()
-                       << "\n";
+      if (arg->getArgNo() < overwritten_args.size()) {
+        llvm::errs() << "overwritten_args:\n";
+        for (auto pair : overwritten_args) {
+          llvm::errs() << " + " << pair << "\n";
         }
         llvm::errs() << "could not find " << *arg << " of func "
                      << arg->getParent()->getName() << " in args_map\n";
       }
-      assert(found != uncacheable_args.end());
-      if (found->second) {
+      if (overwritten_args[arg->getArgNo()]) {
         mustcache = true;
         // EmitWarning("UncacheableOrigin", *arg,
         //            "origin arg may need caching ", *arg);
@@ -405,8 +400,8 @@ struct CacheAnalysis {
     return can_modref_map;
   }
 
-  std::map<Argument *, bool>
-  compute_uncacheable_args_for_one_callsite(CallInst *callsite_op) {
+  std::vector<bool>
+  compute_overwritten_args_for_one_callsite(CallInst *callsite_op) {
     Function *Fn = getFunctionFromCall(callsite_op);
     if (!Fn)
       return {};
@@ -550,7 +545,7 @@ struct CacheAnalysis {
       return false;
     });
 
-    std::map<Argument *, bool> uncacheable_args;
+    std::vector<bool> overwritten_args;
 
     if (funcName == "__kmpc_fork_call") {
       Value *op = callsite_op->getArgOperand(2);
@@ -569,45 +564,33 @@ struct CacheAnalysis {
         assert(0 && "unknown fork call arg");
       }
 
-      auto arg = task->arg_begin();
-
       // Global.tid is cacheable
-      uncacheable_args[arg] = false;
-      ++arg;
+      overwritten_args.push_back(false);
+
       // Bound.tid is cacheable
-      uncacheable_args[arg] = false;
-      ++arg;
+      overwritten_args.push_back(false);
 
       // Ignore first three arguments of fork call
       for (unsigned i = 3; i < args.size(); ++i) {
-        uncacheable_args[arg] = !args_safe[i];
-        ++arg;
-        if (arg == Fn->arg_end()) {
-          break;
-        }
+        overwritten_args.push_back(!args_safe[i]);
       }
     } else {
-      auto arg = Fn->arg_begin();
       for (unsigned i = 0; i < args.size(); ++i) {
-        uncacheable_args[arg] = !args_safe[i];
-        ++arg;
-        if (arg == Fn->arg_end()) {
-          break;
-        }
+        overwritten_args.push_back(!args_safe[i]);
       }
     }
 
-    return uncacheable_args;
+    return overwritten_args;
   }
 
   // Given a function and the arguments passed to it by its caller that are
-  // uncacheable (_uncacheable_args) compute
+  // uncacheable (_overwritten_args) compute
   //   the set of uncacheable arguments for each callsite inside the function. A
   //   pointer argument is uncacheable at a callsite if the memory pointed to
   //   might be modified after that callsite.
-  std::map<CallInst *, const std::map<Argument *, bool>>
-  compute_uncacheable_args_for_callsites() {
-    std::map<CallInst *, const std::map<Argument *, bool>> uncacheable_args_map;
+  std::map<CallInst *, const std::vector<bool>>
+  compute_overwritten_args_for_callsites() {
+    std::map<CallInst *, const std::vector<bool>> overwritten_args_map;
 
     for (inst_iterator I = inst_begin(*oldFunc), E = inst_end(*oldFunc); I != E;
          ++I) {
@@ -623,12 +606,12 @@ struct CacheAnalysis {
 
         // For all other calls, we compute the uncacheable args for this
         // callsite.
-        uncacheable_args_map.insert(
-            std::pair<CallInst *, const std::map<Argument *, bool>>(
-                op, compute_uncacheable_args_for_one_callsite(op)));
+        overwritten_args_map.insert(
+            std::pair<CallInst *, const std::vector<bool>>(
+                op, compute_overwritten_args_for_one_callsite(op)));
       }
     }
-    return uncacheable_args_map;
+    return overwritten_args_map;
   }
 };
 
@@ -985,12 +968,14 @@ void calculateUnusedStoresInFunction(
   });
 }
 
-std::string to_string(const std::map<Argument *, bool> &us) {
+std::string to_string(Function &F, const std::vector<bool> &us) {
   std::string s = "{";
-  for (auto y : us)
-    s += y.first->getName().str() + "@" +
-         y.first->getParent()->getName().str() + ":" +
-         std::to_string(y.second) + ",";
+  auto arg = F.arg_begin();
+  for (auto y : us) {
+    s += arg->getName().str() + "@" + F.getName().str() + ":" +
+         std::to_string(y) + ",";
+    arg++;
+  }
   return s + "}";
 }
 
@@ -1743,9 +1728,8 @@ void restoreCache(
 const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     Function *todiff, DIFFE_TYPE retType, ArrayRef<DIFFE_TYPE> constant_args,
     TypeAnalysis &TA, bool returnUsed, bool shadowReturnUsed,
-    const FnTypeInfo &oldTypeInfo_,
-    const std::map<Argument *, bool> _uncacheable_args, bool forceAnonymousTape,
-    unsigned width, bool AtomicAdd, bool omp) {
+    const FnTypeInfo &oldTypeInfo_, const std::vector<bool> _overwritten_args,
+    bool forceAnonymousTape, unsigned width, bool AtomicAdd, bool omp) {
   if (returnUsed)
     assert(!todiff->getReturnType()->isEmptyTy() &&
            !todiff->getReturnType()->isVoidTy());
@@ -1753,20 +1737,16 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     assert(!todiff->getReturnType()->isEmptyTy() &&
            !todiff->getReturnType()->isVoidTy());
 
+  assert(_overwritten_args.size() == todiff->arg_size());
+
   FnTypeInfo oldTypeInfo = preventTypeAnalysisLoops(oldTypeInfo_, todiff);
 
   assert(constant_args.size() == todiff->getFunctionType()->getNumParams());
-  AugmentedCacheKey tup = {todiff,
-                           retType,
-                           constant_args,
-                           std::map<Argument *, bool>(_uncacheable_args.begin(),
-                                                      _uncacheable_args.end()),
-                           returnUsed,
-                           shadowReturnUsed,
-                           oldTypeInfo,
-                           forceAnonymousTape,
-                           AtomicAdd,
-                           omp,
+  AugmentedCacheKey tup = {todiff,        retType,
+                           constant_args, _overwritten_args,
+                           returnUsed,    shadowReturnUsed,
+                           oldTypeInfo,   forceAnonymousTape,
+                           AtomicAdd,     omp,
                            width};
 
   auto found = AugmentedCachedFunctions.find(tup);
@@ -1829,7 +1809,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
       auto &aug = CreateAugmentedPrimal(
           todiff, retType, next_constant_args, TA, returnUsed, shadowReturnUsed,
-          oldTypeInfo_, _uncacheable_args, forceAnonymousTape, width, AtomicAdd,
+          oldTypeInfo_, _overwritten_args, forceAnonymousTape, width, AtomicAdd,
           omp);
 
       FunctionType *FTy =
@@ -1878,7 +1858,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       return insert_or_assign<AugmentedCacheKey, AugmentedReturn>(
                  AugmentedCachedFunctions, tup,
                  AugmentedReturn(NewF, aug.tapeType, aug.tapeIndices,
-                                 aug.returns, aug.uncacheable_args_map,
+                                 aug.returns, aug.overwritten_args_map,
                                  aug.can_modref_map))
           ->second;
     }
@@ -2114,21 +2094,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
   // Convert uncacheable args from the input function to the preprocessed
   // function
-  std::map<Argument *, bool> _uncacheable_argsPP;
-  {
-    auto in_arg = todiff->arg_begin();
-    auto pp_arg = gutils->oldFunc->arg_begin();
-    for (; pp_arg != gutils->oldFunc->arg_end();) {
-      if (_uncacheable_args.find(in_arg) == _uncacheable_args.end()) {
-        llvm::errs() << " todiff: " << *todiff << "\n";
-        llvm::errs() << " inargs: " << *in_arg << "\n";
-      }
-      assert(_uncacheable_args.find(in_arg) != _uncacheable_args.end());
-      _uncacheable_argsPP[pp_arg] = _uncacheable_args.find(in_arg)->second;
-      ++pp_arg;
-      ++in_arg;
-    }
-  }
+  std::vector<bool> _overwritten_argsPP = _overwritten_args;
 
   gutils->forceActiveDetection();
   gutils->forceAugmentedReturns();
@@ -2147,11 +2113,11 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
                    gutils->OrigAA, gutils->oldFunc,
                    PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
                    gutils->OrigLI, gutils->OrigDT, TLI,
-                   unnecessaryInstructionsTmp, _uncacheable_argsPP,
+                   unnecessaryInstructionsTmp, _overwritten_argsPP,
                    DerivativeMode::ReverseModePrimal, omp);
-  const std::map<CallInst *, const std::map<Argument *, bool>>
-      uncacheable_args_map = CA.compute_uncacheable_args_for_callsites();
-  gutils->uncacheable_args_map_ptr = &uncacheable_args_map;
+  const std::map<CallInst *, const std::vector<bool>> overwritten_args_map =
+      CA.compute_overwritten_args_for_callsites();
+  gutils->overwritten_args_map_ptr = &overwritten_args_map;
 
   const std::map<Instruction *, bool> can_modref_map =
       CA.compute_uncacheable_load_map();
@@ -2173,7 +2139,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
   insert_or_assign(AugmentedCachedFunctions, tup,
                    AugmentedReturn(gutils->newFunc, nullptr, {}, returnMapping,
-                                   uncacheable_args_map, can_modref_map));
+                                   overwritten_args_map, can_modref_map));
 
   auto getIndex = [&](Instruction *I, CacheType u) -> unsigned {
     return gutils->getIndex(
@@ -2216,7 +2182,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
   AdjointGenerator<AugmentedReturn *> maker(
       DerivativeMode::ReverseModePrimal, gutils, constant_args, retType,
-      getIndex, uncacheable_args_map, &returnuses,
+      getIndex, overwritten_args_map, &returnuses,
       &AugmentedCachedFunctions.find(tup)->second, nullptr, unnecessaryValues,
       unnecessaryInstructions, unnecessaryStores, guaranteedUnreachable,
       nullptr);
@@ -3292,6 +3258,8 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   if (key.retType != DIFFE_TYPE::CONSTANT)
     assert(!key.todiff->getReturnType()->isVoidTy());
 
+  assert(key.overwritten_args.size() == key.todiff->arg_size());
+
   Function *prevFunction = nullptr;
   if (ReverseCachedFunctions.find(key) != ReverseCachedFunctions.end()) {
     prevFunction = ReverseCachedFunctions.find(key)->second;
@@ -3354,7 +3322,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
       auto &aug = CreateAugmentedPrimal(
           key.todiff, key.retType, key.constant_args, TA, key.returnUsed,
-          key.shadowReturnUsed, key.typeInfo, key.uncacheable_args,
+          key.shadowReturnUsed, key.typeInfo, key.overwritten_args,
           /*forceAnonymousTape*/ false, key.width, key.AtomicAdd, omp);
 
       SmallVector<Value *, 4> fwdargs;
@@ -3402,7 +3370,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
           (ReverseCacheKey){.todiff = key.todiff,
                             .retType = key.retType,
                             .constant_args = key.constant_args,
-                            .uncacheable_args = key.uncacheable_args,
+                            .overwritten_args = key.overwritten_args,
                             .returnUsed = false,
                             .shadowReturnUsed = false,
                             .mode = DerivativeMode::ReverseModeGradient,
@@ -3481,7 +3449,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
           (ReverseCacheKey){.todiff = key.todiff,
                             .retType = key.retType,
                             .constant_args = next_constant_args,
-                            .uncacheable_args = key.uncacheable_args,
+                            .overwritten_args = key.overwritten_args,
                             .returnUsed = key.returnUsed,
                             .shadowReturnUsed = false,
                             .mode = DerivativeMode::ReverseModeGradient,
@@ -3724,16 +3692,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   // Convert uncacheable args from the input function to the preprocessed
   // function
-  std::map<Argument *, bool> _uncacheable_argsPP;
-  {
-    auto in_arg = key.todiff->arg_begin();
-    auto pp_arg = gutils->oldFunc->arg_begin();
-    for (; pp_arg != gutils->oldFunc->arg_end();) {
-      _uncacheable_argsPP[pp_arg] = key.uncacheable_args.find(in_arg)->second;
-      ++pp_arg;
-      ++in_arg;
-    }
-  }
+  const std::vector<bool> &_overwritten_argsPP = key.overwritten_args;
 
   gutils->forceActiveDetection();
   gutils->forceAugmentedReturns();
@@ -3752,13 +3711,12 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
                    gutils->OrigAA, gutils->oldFunc,
                    PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
                    gutils->OrigLI, gutils->OrigDT, TLI,
-                   unnecessaryInstructionsTmp, _uncacheable_argsPP, key.mode,
+                   unnecessaryInstructionsTmp, _overwritten_argsPP, key.mode,
                    omp);
-  const std::map<CallInst *, const std::map<Argument *, bool>>
-      uncacheable_args_map =
-          (augmenteddata) ? augmenteddata->uncacheable_args_map
-                          : CA.compute_uncacheable_args_for_callsites();
-  gutils->uncacheable_args_map_ptr = &uncacheable_args_map;
+  const std::map<CallInst *, const std::vector<bool>> overwritten_args_map =
+      (augmenteddata) ? augmenteddata->overwritten_args_map
+                      : CA.compute_overwritten_args_for_callsites();
+  gutils->overwritten_args_map_ptr = &overwritten_args_map;
 
   const std::map<Instruction *, bool> can_modref_map =
       augmenteddata ? augmenteddata->can_modref_map
@@ -3908,7 +3866,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   AdjointGenerator<const AugmentedReturn *> maker(
       key.mode, gutils, key.constant_args, key.retType, getIndex,
-      uncacheable_args_map,
+      overwritten_args_map,
       /*returnuses*/ nullptr, augmenteddata, &replacedReturns,
       unnecessaryValues, unnecessaryInstructions, unnecessaryStores,
       guaranteedUnreachable, dretAlloca);
@@ -4121,7 +4079,7 @@ Function *EnzymeLogic::CreateForwardDiff(
     Function *todiff, DIFFE_TYPE retType, ArrayRef<DIFFE_TYPE> constant_args,
     TypeAnalysis &TA, bool returnUsed, DerivativeMode mode, bool freeMemory,
     unsigned width, llvm::Type *additionalArg, const FnTypeInfo &oldTypeInfo_,
-    const std::map<Argument *, bool> _uncacheable_args,
+    const std::vector<bool> _overwritten_args,
     const AugmentedReturn *augmenteddata, bool omp) {
   assert(retType != DIFFE_TYPE::OUT_DIFF);
 
@@ -4133,15 +4091,11 @@ Function *EnzymeLogic::CreateForwardDiff(
   if (retType != DIFFE_TYPE::CONSTANT)
     assert(!todiff->getReturnType()->isVoidTy());
 
-  ForwardCacheKey tup = {todiff,
-                         retType,
-                         constant_args,
-                         std::map<Argument *, bool>(_uncacheable_args.begin(),
-                                                    _uncacheable_args.end()),
-                         returnUsed,
-                         mode,
-                         width,
-                         additionalArg,
+  if (mode != DerivativeMode::ForwardMode)
+    assert(_overwritten_args.size() == todiff->arg_size());
+
+  ForwardCacheKey tup = {todiff,     retType, constant_args, _overwritten_args,
+                         returnUsed, mode,    width,         additionalArg,
                          oldTypeInfo};
 
   if (ForwardCachedFunctions.find(tup) != ForwardCachedFunctions.end()) {
@@ -4367,16 +4321,7 @@ Function *EnzymeLogic::CreateForwardDiff(
 
   std::unique_ptr<const std::map<Instruction *, bool>> can_modref_map;
   if (mode == DerivativeMode::ForwardModeSplit) {
-    std::map<Argument *, bool> _uncacheable_argsPP;
-    {
-      auto in_arg = todiff->arg_begin();
-      auto pp_arg = gutils->oldFunc->arg_begin();
-      for (; pp_arg != gutils->oldFunc->arg_end();) {
-        _uncacheable_argsPP[pp_arg] = _uncacheable_args.find(in_arg)->second;
-        ++pp_arg;
-        ++in_arg;
-      }
-    }
+    std::vector<bool> _overwritten_argsPP = _overwritten_args;
 
     gutils->computeGuaranteedFrees();
     CacheAnalysis CA(
@@ -4385,10 +4330,10 @@ Function *EnzymeLogic::CreateForwardDiff(
         gutils->oldFunc,
         PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
         gutils->OrigLI, gutils->OrigDT, TLI, unnecessaryInstructionsTmp,
-        _uncacheable_argsPP, mode, omp);
-    const std::map<CallInst *, const std::map<Argument *, bool>>
-        uncacheable_args_map = CA.compute_uncacheable_args_for_callsites();
-    gutils->uncacheable_args_map_ptr = &uncacheable_args_map;
+        _overwritten_argsPP, mode, omp);
+    const std::map<CallInst *, const std::vector<bool>> overwritten_args_map =
+        CA.compute_overwritten_args_for_callsites();
+    gutils->overwritten_args_map_ptr = &overwritten_args_map;
     can_modref_map = std::make_unique<const std::map<Instruction *, bool>>(
         CA.compute_uncacheable_load_map());
     gutils->can_modref_map = can_modref_map.get();
@@ -4401,7 +4346,7 @@ Function *EnzymeLogic::CreateForwardDiff(
     gutils->computeMinCache();
 
     maker = new AdjointGenerator<const AugmentedReturn *>(
-        mode, gutils, constant_args, retType, getIndex, uncacheable_args_map,
+        mode, gutils, constant_args, retType, getIndex, overwritten_args_map,
         /*returnuses*/ nullptr, augmenteddata, nullptr, unnecessaryValues,
         unnecessaryInstructions, unnecessaryStores, guaranteedUnreachable,
         nullptr);

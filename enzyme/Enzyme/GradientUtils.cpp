@@ -282,7 +282,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
               } else {
                 // Note that this logic (original load must dominate or
                 // alternatively be in the reverse block) is only valid iff when
-                // applicable (here if in split mode), an uncacheable load
+                // applicable (here if in split mode), an overwritten load
                 // cannot be hoisted outside of a loop to be used as a loop
                 // limit. This optimization is currently done in the combined
                 // mode (e.g. if a load isn't modified between a prior insertion
@@ -3435,7 +3435,7 @@ bool GradientUtils::shouldRecompute(const Value *val,
         if (scopeMap.find(op) != scopeMap.end())
           continue;
 
-        // If the actually uncacheable operand is in a different loop scope
+        // If the actually overwritten operand is in a different loop scope
         // don't cache this value instead as it may require more memory
         LoopContext lc1;
         LoopContext lc2;
@@ -3588,7 +3588,7 @@ GradientUtils *GradientUtils::CreateFromClone(
       /*returnValue*/ returnValue, retType, prefix, &originalToNew,
       /*diffeReturnArg*/ false, /*additionalArg*/ nullptr);
 
-  // Convert uncacheable args from the input function to the preprocessed
+  // Convert overwritten args from the input function to the preprocessed
   // function
 
   FnTypeInfo typeInfo(oldFunc);
@@ -3747,7 +3747,7 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
       prefix + oldFunc->getName(), &originalToNew,
       /*diffeReturnArg*/ diffeReturnArg, additionalArg);
 
-  // Convert uncacheable args from the input function to the preprocessed
+  // Convert overwritten args from the input function to the preprocessed
   // function
 
   FnTypeInfo typeInfo(oldFunc);
@@ -3943,7 +3943,7 @@ Constant *GradientUtils::GetOrCreateShadowFunction(
         isRealloc = true;
     }
   }
-  std::map<Argument *, bool> uncacheable_args;
+  std::vector<bool> overwritten_args;
   FnTypeInfo type_args(fn);
   if (isRealloc) {
     llvm::errs() << "warning: assuming realloc only creates pointers\n";
@@ -3951,10 +3951,10 @@ Constant *GradientUtils::GetOrCreateShadowFunction(
   }
 
   // conservatively assume that we can only cache existing floating types
-  // (i.e. that all args are uncacheable)
+  // (i.e. that all args are overwritten)
   std::vector<DIFFE_TYPE> types;
   for (auto &a : fn->args()) {
-    uncacheable_args[&a] = !a.getType()->isFPOrFPVectorTy();
+    overwritten_args.push_back(!a.getType()->isFPOrFPVectorTy());
     TypeTree TT;
     if (a.getType()->isFPOrFPVectorTy())
       TT.insert({-1}, ConcreteType(a.getType()->getScalarType()));
@@ -4004,7 +4004,7 @@ Constant *GradientUtils::GetOrCreateShadowFunction(
   case DerivativeMode::ForwardMode: {
     Constant *newf = Logic.CreateForwardDiff(
         fn, retType, types, TA, false, mode, /*freeMemory*/ true, width,
-        nullptr, type_args, uncacheable_args, /*augmented*/ nullptr);
+        nullptr, type_args, overwritten_args, /*augmented*/ nullptr);
 
     assert(newf);
 
@@ -4030,11 +4030,11 @@ Constant *GradientUtils::GetOrCreateShadowFunction(
         fn, retType, /*constant_args*/ types, TA,
         /*returnUsed*/ !fn->getReturnType()->isEmptyTy() &&
             !fn->getReturnType()->isVoidTy(),
-        /*shadowReturnUsed*/ false, type_args, uncacheable_args,
+        /*shadowReturnUsed*/ false, type_args, overwritten_args,
         /*forceAnonymousTape*/ true, width, AtomicAdd);
     Constant *newf = Logic.CreateForwardDiff(
         fn, retType, types, TA, false, mode, /*freeMemory*/ true, width,
-        nullptr, type_args, uncacheable_args, /*augmented*/ &augdata);
+        nullptr, type_args, overwritten_args, /*augmented*/ &augdata);
 
     assert(newf);
 
@@ -4071,13 +4071,13 @@ Constant *GradientUtils::GetOrCreateShadowFunction(
                                            retType == DIFFE_TYPE::DUP_NONEED);
     auto &augdata = Logic.CreateAugmentedPrimal(
         fn, retType, /*constant_args*/ types, TA, returnUsed, shadowReturnUsed,
-        type_args, uncacheable_args, /*forceAnonymousTape*/ true, width,
+        type_args, overwritten_args, /*forceAnonymousTape*/ true, width,
         AtomicAdd);
     Constant *newf = Logic.CreatePrimalAndGradient(
         (ReverseCacheKey){.todiff = fn,
                           .retType = retType,
                           .constant_args = types,
-                          .uncacheable_args = uncacheable_args,
+                          .overwritten_args = overwritten_args,
                           .returnUsed = false,
                           .shadowReturnUsed = false,
                           .mode = DerivativeMode::ReverseModeGradient,

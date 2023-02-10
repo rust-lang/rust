@@ -1423,10 +1423,11 @@ public:
       return false;
     }
 
-    std::map<Argument *, bool> volatile_args;
+    std::vector<bool> overwritten_args;
     FnTypeInfo type_args(fn);
     for (auto &a : type_args.Function->args()) {
-      volatile_args[&a] = !(mode == DerivativeMode::ReverseModeCombined);
+      overwritten_args.push_back(
+          !(mode == DerivativeMode::ReverseModeCombined));
       TypeTree dt;
       if (a.getType()->isFPOrFPVectorTy()) {
         dt = ConcreteType(a.getType()->getScalarType());
@@ -1467,7 +1468,7 @@ public:
       newFunc = Logic.CreateForwardDiff(
           fn, retType, constants, TA,
           /*should return*/ false, mode, freeMemory, width,
-          /*addedType*/ nullptr, type_args, volatile_args,
+          /*addedType*/ nullptr, type_args, overwritten_args,
           /*augmented*/ nullptr);
       break;
     case DerivativeMode::ForwardModeSplit: {
@@ -1475,7 +1476,7 @@ public:
       aug = &Logic.CreateAugmentedPrimal(
           fn, retType, constants, TA,
           /*returnUsed*/ false, /*shadowReturnUsed*/ false, type_args,
-          volatile_args, forceAnonymousTape, width, /*atomicAdd*/ AtomicAdd);
+          overwritten_args, forceAnonymousTape, width, /*atomicAdd*/ AtomicAdd);
       auto &DL = fn->getParent()->getDataLayout();
       if (!forceAnonymousTape) {
         assert(!aug->tapeType);
@@ -1511,7 +1512,7 @@ public:
       newFunc = Logic.CreateForwardDiff(
           fn, retType, constants, TA,
           /*should return*/ false, mode, freeMemory, width,
-          /*addedType*/ tapeType, type_args, volatile_args, aug);
+          /*addedType*/ tapeType, type_args, overwritten_args, aug);
       break;
     }
     case DerivativeMode::ReverseModeCombined:
@@ -1520,7 +1521,7 @@ public:
           (ReverseCacheKey){.todiff = fn,
                             .retType = retType,
                             .constant_args = constants,
-                            .uncacheable_args = volatile_args,
+                            .overwritten_args = overwritten_args,
                             .returnUsed = false,
                             .shadowReturnUsed = false,
                             .mode = mode,
@@ -1538,7 +1539,7 @@ public:
                                              retType == DIFFE_TYPE::DUP_NONEED);
       aug = &Logic.CreateAugmentedPrimal(
           fn, retType, constants, TA, returnUsed, shadowReturnUsed, type_args,
-          volatile_args, forceAnonymousTape, width,
+          overwritten_args, forceAnonymousTape, width,
           /*atomicAdd*/ AtomicAdd);
       auto &DL = fn->getParent()->getDataLayout();
       if (!forceAnonymousTape) {
@@ -1579,7 +1580,7 @@ public:
             (ReverseCacheKey){.todiff = fn,
                               .retType = retType,
                               .constant_args = constants,
-                              .uncacheable_args = volatile_args,
+                              .overwritten_args = overwritten_args,
                               .returnUsed = false,
                               .shadowReturnUsed = false,
                               .mode = mode,

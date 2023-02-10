@@ -56,8 +56,7 @@ private:
   DIFFE_TYPE retType;
   TypeResults &TR = gutils->TR;
   std::function<unsigned(Instruction *, CacheType)> getIndex;
-  const std::map<CallInst *, const std::map<Argument *, bool>>
-      uncacheable_args_map;
+  const std::map<CallInst *, const std::vector<bool>> overwritten_args_map;
   const SmallPtrSetImpl<Instruction *> *returnuses;
   AugmentedReturnType augmentedReturn;
   const std::map<ReturnInst *, StoreInst *> *replacedReturns;
@@ -73,8 +72,7 @@ public:
       DerivativeMode Mode, GradientUtils *gutils,
       ArrayRef<DIFFE_TYPE> constant_args, DIFFE_TYPE retType,
       std::function<unsigned(Instruction *, CacheType)> getIndex,
-      const std::map<CallInst *, const std::map<Argument *, bool>>
-          uncacheable_args_map,
+      const std::map<CallInst *, const std::vector<bool>> overwritten_args_map,
       const SmallPtrSetImpl<Instruction *> *returnuses,
       AugmentedReturnType augmentedReturn,
       const std::map<ReturnInst *, StoreInst *> *replacedReturns,
@@ -85,7 +83,7 @@ public:
       AllocaInst *dretAlloca)
       : Mode(Mode), gutils(gutils), constant_args(constant_args),
         retType(retType), getIndex(getIndex),
-        uncacheable_args_map(uncacheable_args_map), returnuses(returnuses),
+        overwritten_args_map(overwritten_args_map), returnuses(returnuses),
         augmentedReturn(augmentedReturn), replacedReturns(replacedReturns),
         unnecessaryValues(unnecessaryValues),
         unnecessaryInstructions(unnecessaryInstructions),
@@ -4946,16 +4944,16 @@ public:
   void visitOMPCall(llvm::CallInst &call) {
     Function *kmpc = call.getCalledFunction();
 
-    if (uncacheable_args_map.find(&call) == uncacheable_args_map.end()) {
+    if (overwritten_args_map.find(&call) == overwritten_args_map.end()) {
       llvm::errs() << " call: " << call << "\n";
-      for (auto &pair : uncacheable_args_map) {
+      for (auto &pair : overwritten_args_map) {
         llvm::errs() << " + " << *pair.first << "\n";
       }
     }
 
-    assert(uncacheable_args_map.find(&call) != uncacheable_args_map.end());
-    const std::map<Argument *, bool> &uncacheable_args =
-        uncacheable_args_map.find(&call)->second;
+    assert(overwritten_args_map.find(&call) != overwritten_args_map.end());
+    const std::vector<bool> &overwritten_args =
+        overwritten_args_map.find(&call)->second;
 
     IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&call));
     BuilderZ.setFastMathFlags(getFast());
@@ -5103,7 +5101,7 @@ public:
         subdata = &gutils->Logic.CreateAugmentedPrimal(
             cast<Function>(called), subretType, argsInverted,
             TR.analyzer.interprocedural, /*return is used*/ false,
-            /*shadowReturnUsed*/ false, nextTypeInfo, uncacheable_args, false,
+            /*shadowReturnUsed*/ false, nextTypeInfo, overwritten_args, false,
             gutils->getWidth(),
             /*AtomicAdd*/ true,
             /*OpenMP*/ true);
@@ -5310,7 +5308,7 @@ public:
             (ReverseCacheKey){.todiff = cast<Function>(called),
                               .retType = subretType,
                               .constant_args = argsInverted,
-                              .uncacheable_args = uncacheable_args,
+                              .overwritten_args = overwritten_args,
                               .returnUsed = false,
                               .shadowReturnUsed = false,
                               .mode = DerivativeMode::ReverseModeGradient,
@@ -5708,7 +5706,7 @@ public:
 
   bool handleBLAS(llvm::CallInst &call, Function *called, StringRef funcName,
                   StringRef prefix, StringRef suffix,
-                  const std::map<Argument *, bool> &uncacheable_args) {
+                  const std::vector<bool> &overwritten_args) {
     CallInst *const newCall = cast<CallInst>(gutils->getNewFromOriginal(&call));
     IRBuilder<> BuilderZ(newCall);
     BuilderZ.setFastMathFlags(getFast());
@@ -5915,10 +5913,10 @@ public:
 
         bool xcache = !gutils->isConstantValue(call.getArgOperand(3)) &&
                       Mode != DerivativeMode::ForwardMode &&
-                      uncacheable_args.find(xfuncarg)->second;
+                      overwritten_args[1];
         bool ycache = !gutils->isConstantValue(call.getArgOperand(1)) &&
                       Mode != DerivativeMode::ForwardMode &&
-                      uncacheable_args.find(yfuncarg)->second;
+                      overwritten_args[3];
 
         bool countcache = false;
         bool xinccache = false;
@@ -5927,7 +5925,7 @@ public:
         SmallVector<Type *, 2> cacheTypes;
         if (byRef) {
           // count must be preserved if overwritten
-          if (uncacheable_args.find(countarg)->second) {
+          if (overwritten_args[0]) {
             cacheTypes.push_back(intType);
             countcache = true;
           }
@@ -5937,14 +5935,14 @@ public:
           //     a) x is active (for performing the shadow increment) or
           //     b) we're not caching x and need xinc to compute the derivative
           //        of y
-          if (uncacheable_args.find(xincarg)->second &&
+          if (overwritten_args[2] &&
               (!gutils->isConstantValue(call.getArgOperand(1)) ||
                (!xcache && !gutils->isConstantValue(call.getArgOperand(3))))) {
             cacheTypes.push_back(intType);
             xinccache = true;
           }
           // Similarly for yinc
-          if (uncacheable_args.find(yincarg)->second &&
+          if (overwritten_args[4] &&
               (!gutils->isConstantValue(call.getArgOperand(3)) ||
                (!ycache && !gutils->isConstantValue(call.getArgOperand(1))))) {
             cacheTypes.push_back(intType);
@@ -8795,20 +8793,20 @@ public:
     IRBuilder<> BuilderZ(newCall);
     BuilderZ.setFastMathFlags(getFast());
 
-    if (uncacheable_args_map.find(&call) == uncacheable_args_map.end() &&
+    if (overwritten_args_map.find(&call) == overwritten_args_map.end() &&
         Mode != DerivativeMode::ForwardMode) {
       llvm::errs() << " call: " << call << "\n";
-      for (auto &pair : uncacheable_args_map) {
+      for (auto &pair : overwritten_args_map) {
         llvm::errs() << " + " << *pair.first << "\n";
       }
     }
 
-    assert(uncacheable_args_map.find(&call) != uncacheable_args_map.end() ||
+    assert(overwritten_args_map.find(&call) != overwritten_args_map.end() ||
            Mode == DerivativeMode::ForwardMode);
-    const std::map<Argument *, bool> &uncacheable_args =
+    const std::vector<bool> &overwritten_args =
         Mode == DerivativeMode::ForwardMode
-            ? std::map<Argument *, bool>()
-            : uncacheable_args_map.find(&call)->second;
+            ? std::vector<bool>()
+            : overwritten_args_map.find(&call)->second;
 
     CallInst *orig = &call;
 
@@ -9020,7 +9018,7 @@ public:
       std::string prefix, suffix;
       std::string found = extractBLAS(funcName, prefix, suffix);
       if (found.size()) {
-        if (handleBLAS(call, called, found, prefix, suffix, uncacheable_args))
+        if (handleBLAS(call, called, found, prefix, suffix, overwritten_args))
           return;
       }
     }
@@ -11522,7 +11520,7 @@ public:
       }
 
       // If we need this value and it is illegal to recompute it (it writes or
-      // may load uncacheable data)
+      // may load overwritten data)
       //    Store and reload it
       if (Mode != DerivativeMode::ReverseModeCombined &&
           Mode != DerivativeMode::ForwardMode && subretused &&
@@ -11738,7 +11736,7 @@ public:
             cast<Function>(called), subretType, argsInverted,
             TR.analyzer.interprocedural, /*returnValue*/ subretused, Mode,
             ((DiffeGradientUtils *)gutils)->FreeMemory, gutils->getWidth(),
-            tape ? tape->getType() : nullptr, nextTypeInfo, uncacheable_args,
+            tape ? tape->getType() : nullptr, nextTypeInfo, overwritten_args,
             /*augmented*/ subdata);
         FT = cast<Function>(newcalled)->getFunctionType();
       } else {
@@ -12142,7 +12140,7 @@ public:
           subdata = &gutils->Logic.CreateAugmentedPrimal(
               cast<Function>(called), subretType, argsInverted,
               TR.analyzer.interprocedural, /*return is used*/ subretused,
-              shadowReturnUsed, nextTypeInfo, uncacheable_args, false,
+              shadowReturnUsed, nextTypeInfo, overwritten_args, false,
               gutils->getWidth(), gutils->AtomicAdd);
           if (Mode == DerivativeMode::ReverseModePrimal) {
             assert(augmentedReturn);
@@ -12503,7 +12501,7 @@ public:
           (ReverseCacheKey){.todiff = cast<Function>(called),
                             .retType = subretType,
                             .constant_args = argsInverted,
-                            .uncacheable_args = uncacheable_args,
+                            .overwritten_args = overwritten_args,
                             .returnUsed = replaceFunction && subretused,
                             .shadowReturnUsed =
                                 shadowReturnUsed && replaceFunction,
