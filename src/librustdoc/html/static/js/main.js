@@ -455,10 +455,7 @@ function loadCss(cssUrl) {
             const ul = document.createElement("ul");
             ul.className = "block " + shortty;
 
-            for (const item of filtered) {
-                const name = item[0];
-                const desc = item[1]; // can be null
-
+            for (const name of filtered) {
                 let path;
                 if (shortty === "mod") {
                     path = name + "/index.html";
@@ -468,7 +465,6 @@ function loadCss(cssUrl) {
                 const current_page = document.location.href.split("/").pop();
                 const link = document.createElement("a");
                 link.href = path;
-                link.title = desc;
                 if (path === current_page) {
                     link.className = "current";
                 }
