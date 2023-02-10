@@ -1,4 +1,5 @@
 use clippy_utils::get_attr;
+use hir::TraitItem;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -45,6 +46,18 @@ impl<'tcx> LateLintPass<'tcx> for DumpHir {
         }
         if has_attr(cx, stmt.hir_id) {
             println!("{stmt:#?}");
+        }
+    }
+
+    fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &TraitItem<'_>) {
+        if has_attr(cx, item.hir_id()) {
+            println!("{item:#?}");
+        }
+    }
+
+    fn check_impl_item(&mut self, cx: &LateContext<'_>, item: &hir::ImplItem<'_>) {
+        if has_attr(cx, item.hir_id()) {
+            println!("{item:#?}");
         }
     }
 }

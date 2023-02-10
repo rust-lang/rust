@@ -449,7 +449,7 @@ dependencies = [
 name = "cargo-miri"
 version = "0.1.0"
 dependencies = [
- "cargo_metadata 0.15.0",
+ "cargo_metadata 0.15.3",
  "directories",
  "rustc-build-sysroot",
  "rustc-workspace-hack",
@@ -540,15 +540,16 @@ dependencies = [
 
 [[package]]
 name = "cargo_metadata"
-version = "0.15.0"
+version = "0.15.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3abb7553d5b9b8421c6de7cb02606ff15e0c6eea7d8eadd75ef013fd636bec36"
+checksum = "08a1ec454bc3eead8719cb56e15dbbfecdbc14e4b3a3ae4936cc6e31f5fc0d07"
 dependencies = [
  "camino",
  "cargo-platform 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "semver",
  "serde",
  "serde_json",
+ "thiserror",
 ]
 
 [[package]]
@@ -732,6 +733,7 @@ dependencies = [
 name = "clippy"
 version = "0.1.69"
 dependencies = [
+ "clap 4.1.4",
  "clippy_lints",
  "clippy_utils",
  "compiletest_rs",
@@ -762,7 +764,7 @@ name = "clippy_dev"
 version = "0.0.1"
 dependencies = [
  "aho-corasick",
- "clap 3.2.20",
+ "clap 4.1.4",
  "indoc",
  "itertools",
  "opener",
@@ -774,7 +776,7 @@ dependencies = [
 name = "clippy_lints"
 version = "0.1.69"
 dependencies = [
- "cargo_metadata 0.14.0",
+ "cargo_metadata 0.15.3",
  "clippy_utils",
  "declare_clippy_lint",
  "if_chain",
@@ -5865,7 +5867,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54ddb6f31025943e2f9d59237f433711c461a43d9415974c3eb3a4902edc1c1f"
 dependencies = [
  "bstr 1.0.1",
- "cargo_metadata 0.15.0",
+ "cargo_metadata 0.15.3",
  "color-eyre",
  "colored",
  "crossbeam-channel",

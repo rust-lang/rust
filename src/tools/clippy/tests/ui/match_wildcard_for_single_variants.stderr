@@ -49,10 +49,16 @@ LL |         _ => (),
    |         ^ help: try this: `Color::Blue`
 
 error: wildcard matches only a single variant and will also match any future added variants
+  --> $DIR/match_wildcard_for_single_variants.rs:126:13
+   |
+LL |             _ => (),
+   |             ^ help: try this: `Enum::__Private`
+
+error: wildcard matches only a single variant and will also match any future added variants
   --> $DIR/match_wildcard_for_single_variants.rs:153:13
    |
 LL |             _ => 2,
    |             ^ help: try this: `Foo::B`
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 
