@@ -532,6 +532,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
                 return None;
             }
+            // We do not track pointers, and unsized lengths are handled by `NormalizeArrayLen`.
+            Rvalue::Cast(CastKind::Pointer(_), ..) => return None,
 
             // There's no other checking to do at this time.
             Rvalue::Aggregate(..)
