@@ -1800,11 +1800,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn intern_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
-        self.mk_ty(Tuple(self.intern_type_list(&ts)))
+        if ts.is_empty() { self.types.unit } else { self.mk_ty(Tuple(self.intern_type_list(&ts))) }
     }
 
     pub fn mk_tup<I: InternAs<Ty<'tcx>, Ty<'tcx>>>(self, iter: I) -> I::Output {
-        iter.intern_with(|ts| self.mk_ty(Tuple(self.intern_type_list(&ts))))
+        iter.intern_with(|ts| self.intern_tup(ts))
     }
 
     #[inline]
