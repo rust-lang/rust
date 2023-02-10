@@ -115,6 +115,7 @@ pub const STD_FS_CREATE_DIR: [&str; 3] = ["std", "fs", "create_dir"];
 pub const STD_IO_SEEK: [&str; 3] = ["std", "io", "Seek"];
 pub const STD_IO_SEEK_FROM_CURRENT: [&str; 4] = ["std", "io", "SeekFrom", "Current"];
 pub const STD_IO_SEEKFROM_START: [&str; 4] = ["std", "io", "SeekFrom", "Start"];
+pub const STD_PROCESS_COMMAND: [&str; 3] = ["std", "process", "Command"];
 pub const STRING_AS_MUT_STR: [&str; 4] = ["alloc", "string", "String", "as_mut_str"];
 pub const STRING_AS_STR: [&str; 4] = ["alloc", "string", "String", "as_str"];
 pub const STRING_NEW: [&str; 4] = ["alloc", "string", "String", "new"];

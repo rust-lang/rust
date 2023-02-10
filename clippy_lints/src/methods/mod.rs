@@ -80,6 +80,7 @@ mod skip_while_next;
 mod stable_sort_primitive;
 mod str_splitn;
 mod string_extend_chars;
+mod suspicious_command_arg_space;
 mod suspicious_map;
 mod suspicious_splitn;
 mod suspicious_to_owned;
@@ -3162,6 +3163,32 @@ declare_clippy_lint! {
     "collecting an iterator when collect is not needed"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `Command::arg()` invocations that look like they
+    /// should be multiple arguments instead, such as `arg("-t ext2")`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Arguments are not split by space. An argument like `arg("-t ext2")`
+    /// will be passed as a single argument to the command,
+    /// which is likely not what was intended.
+    ///
+    /// ### Example
+    /// ```rust
+    /// std::process::Command::new("echo").arg("-n hello").spawn().unwrap();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// std::process::Command::new("echo").args(["-n", "hello"]).spawn().unwrap();
+    /// ```
+    #[clippy::version = "1.67.0"]
+    pub SUSPICIOUS_COMMAND_ARG_SPACE,
+    suspicious,
+    "single command line argument that looks like it should be multiple arguments"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3496,6 +3523,9 @@ impl Methods {
                         unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
                     }
                 },
+                ("arg", [arg]) => {
+                    suspicious_command_arg_space::check(cx, recv, arg, span);
+                }
                 ("as_deref" | "as_deref_mut", []) => {
                     needless_option_as_deref::check(cx, expr, recv, name);
                 },
