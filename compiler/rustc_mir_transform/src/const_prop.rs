@@ -454,13 +454,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     /// Returns the value, if any, of evaluating `c`.
     fn eval_constant(&mut self, c: &Constant<'tcx>) -> Option<OpTy<'tcx>> {
-        // FIXME we need to revisit this for #67176
-        if c.needs_subst() {
-            return None;
-        }
-
         // No span, we don't want errors to be shown.
-        self.ecx.eval_mir_constant(&c.literal, None, None).ok()
+        let lit = self.tcx.try_normalize_erasing_regions(self.param_env, c.literal).ok()?;
+        self.ecx.eval_mir_constant(&lit, None, None).ok()
     }
 
     /// Returns the value, if any, of evaluating `place`.
@@ -550,10 +546,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             | Rvalue::CheckedBinaryOp(..) => {}
         }
 
-        // FIXME we need to revisit this for #67176
-        if rvalue.needs_subst() {
-            return None;
-        }
         if !rvalue
             .ty(&self.ecx.frame().body.local_decls, *self.ecx.tcx)
             .is_sized(*self.ecx.tcx, self.param_env)
