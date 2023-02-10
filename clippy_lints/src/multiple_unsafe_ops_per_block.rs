@@ -128,7 +128,7 @@ fn collect_unsafe_exprs<'tcx>(
                         ..
                     },
                 )) if kind.is_fn_like() => {
-                    let sig = cx.tcx.bound_fn_sig(*def_id);
+                    let sig = cx.tcx.fn_sig(*def_id);
                     if sig.0.unsafety() == Unsafety::Unsafe {
                         unsafe_ops.push(("unsafe function call occurs here", expr.span));
                     }
@@ -138,7 +138,7 @@ fn collect_unsafe_exprs<'tcx>(
                     if let Some(sig) = cx
                         .typeck_results()
                         .type_dependent_def_id(path_expr.hir_id)
-                        .map(|def_id| cx.tcx.bound_fn_sig(def_id))
+                        .map(|def_id| cx.tcx.fn_sig(def_id))
                     {
                         if sig.0.unsafety() == Unsafety::Unsafe {
                             unsafe_ops.push(("unsafe function call occurs here", expr.span));
@@ -153,7 +153,7 @@ fn collect_unsafe_exprs<'tcx>(
                 if let Some(sig) = cx
                     .typeck_results()
                     .type_dependent_def_id(expr.hir_id)
-                    .map(|def_id| cx.tcx.bound_fn_sig(def_id))
+                    .map(|def_id| cx.tcx.fn_sig(def_id))
                 {
                     if sig.0.unsafety() == Unsafety::Unsafe {
                         unsafe_ops.push(("unsafe method call occurs here", expr.span));

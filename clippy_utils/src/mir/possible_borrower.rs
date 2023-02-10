@@ -140,7 +140,7 @@ impl TypeVisitor<'_> for ContainsRegion {
     type BreakTy = ();
 
     fn visit_region(&mut self, _: ty::Region<'_>) -> ControlFlow<Self::BreakTy> {
-        ControlFlow::BREAK
+        ControlFlow::Break(())
     }
 }
 

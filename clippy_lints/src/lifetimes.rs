@@ -144,7 +144,7 @@ fn check_fn_inner<'tcx>(
         .filter(|param| matches!(param.kind, GenericParamKind::Type { .. }));
 
     for typ in types {
-        for pred in generics.bounds_for_param(cx.tcx.hir().local_def_id(typ.hir_id)) {
+        for pred in generics.bounds_for_param(typ.def_id) {
             if pred.origin == PredicateOrigin::WhereClause {
                 // has_where_lifetimes checked that this predicate contains no lifetime.
                 continue;

@@ -6,11 +6,12 @@ use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, HirId, LangItem, MatchSource, PatKind, QPath, StmtKind};
+use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, LangItem, MatchSource, PatKind, QPath, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::{BytePos, Pos};
 
@@ -152,7 +153,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
         _: &'tcx FnDecl<'tcx>,
         body: &'tcx Body<'tcx>,
         sp: Span,
-        _: HirId,
+        _: LocalDefId,
     ) {
         match kind {
             FnKind::Closure => {
@@ -290,6 +291,7 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
             && cx
                 .tcx
                 .fn_sig(def_id)
+                .subst_identity()
                 .skip_binder()
                 .output()
                 .walk()

@@ -327,7 +327,7 @@ fn is_assert_arg(cx: &LateContext<'_>, expr: &Expr<'_>, assert_expn: ExpnId) -> 
         } else {
             match cx.tcx.item_name(macro_call.def_id) {
                 // `cfg!(debug_assertions)` in `debug_assert!`
-                sym::cfg => ControlFlow::CONTINUE,
+                sym::cfg => ControlFlow::Continue(()),
                 // assert!(other_macro!(..))
                 _ => ControlFlow::Break(true),
             }
@@ -711,8 +711,8 @@ pub struct FormatSpec<'tcx> {
     pub fill: Option<char>,
     /// Optionally specified alignment.
     pub align: Alignment,
-    /// Packed version of various flags provided, see [`rustc_parse_format::Flag`].
-    pub flags: u32,
+    /// Whether all flag options are set to default (no flags specified).
+    pub no_flags: bool,
     /// Represents either the maximum width or the integer precision.
     pub precision: Count<'tcx>,
     /// The minimum width, will be padded according to `width`/`align`
@@ -728,7 +728,7 @@ impl<'tcx> FormatSpec<'tcx> {
         Some(Self {
             fill: spec.fill,
             align: spec.align,
-            flags: spec.flags,
+            no_flags: spec.sign.is_none() && !spec.alternate && !spec.zero_pad && spec.debug_hex.is_none(),
             precision: Count::new(
                 FormatParamUsage::Precision,
                 spec.precision,
@@ -770,10 +770,7 @@ impl<'tcx> FormatSpec<'tcx> {
     /// Has no other formatting specifiers than setting the format trait. returns true for `{}`,
     /// `{foo}`, `{:?}`, but false for `{foo:5}`, `{3:.5?}`
     pub fn is_default_for_trait(&self) -> bool {
-        self.width.is_implied()
-            && self.precision.is_implied()
-            && self.align == Alignment::AlignUnknown
-            && self.flags == 0
+        self.width.is_implied() && self.precision.is_implied() && self.align == Alignment::AlignUnknown && self.no_flags
     }
 }
 

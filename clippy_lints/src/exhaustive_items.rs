@@ -79,8 +79,7 @@ impl LateLintPass<'_> for ExhaustiveItems {
             then {
                 let (lint, msg) = if let ItemKind::Struct(ref v, ..) = item.kind {
                     if v.fields().iter().any(|f| {
-                        let def_id = cx.tcx.hir().local_def_id(f.hir_id);
-                        !cx.tcx.visibility(def_id).is_public()
+                        !cx.tcx.visibility(f.def_id).is_public()
                     }) {
                         // skip structs with private fields
                         return;
