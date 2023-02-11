@@ -67,28 +67,23 @@ fn should_not_display_type_hint(
         return true;
     }
 
-    if let Some(hir::Adt::Struct(s)) = pat_ty.as_adt() {
-        if s.fields(db).is_empty() && s.name(db).to_smol_str() == bind_pat.to_string() {
-            return true;
-        }
-    }
-
-    if config.hide_closure_initialization_hints {
-        if let Some(parent) = bind_pat.syntax().parent() {
-            if let Some(it) = ast::LetStmt::cast(parent) {
-                if let Some(ast::Expr::ClosureExpr(closure)) = it.initializer() {
-                    if closure_has_block_body(&closure) {
-                        return true;
-                    }
-                }
-            }
-        }
+    if sema.resolve_bind_pat_to_const(bind_pat).is_some() {
+        return true;
     }
 
     for node in bind_pat.syntax().ancestors() {
         match_ast! {
             match node {
-                ast::LetStmt(it) => return it.ty().is_some(),
+                ast::LetStmt(it) => {
+                    if config.hide_closure_initialization_hints {
+                        if let Some(ast::Expr::ClosureExpr(closure)) = it.initializer() {
+                            if closure_has_block_body(&closure) {
+                                return true;
+                            }
+                        }
+                    }
+                    return it.ty().is_some()
+                },
                 // FIXME: We might wanna show type hints in parameters for non-top level patterns as well
                 ast::Param(it) => return it.ty().is_some(),
                 ast::MatchArm(_) => return pat_is_enum_variant(db, bind_pat, pat_ty),
@@ -562,6 +557,21 @@ fn main() {
     match Ok(()) {
         Ok(_) => (),
         Err(SyntheticSyntax) => (),
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn const_pats_have_no_type_hints() {
+        check_types(
+            r#"
+const FOO: usize = 0;
+
+fn main() {
+    match 0 {
+        FOO => (),
+        _ => ()
     }
 }"#,
         );
