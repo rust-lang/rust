@@ -211,7 +211,7 @@ pub fn check_tied_features(
 /// Must express features in the way Rust understands them
 pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     let target_machine = create_informational_target_machine(sess);
-    let mut features: Vec<Symbol> = supported_target_features(sess)
+    supported_target_features(sess)
         .iter()
         .filter_map(|&(feature, gate)| {
             if sess.is_nightly_build() || allow_unstable || gate.is_none() {
@@ -231,16 +231,7 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
             true
         })
         .map(|feature| Symbol::intern(feature))
-        .collect();
-
-    // LLVM 14 changed the ABI for i128 arguments to __float/__fix builtins on Win64
-    // (see https://reviews.llvm.org/D110413). This unstable target feature is intended for use
-    // by compiler-builtins, to export the builtins with the expected, LLVM-version-dependent ABI.
-    // The target feature can be dropped once we no longer support older LLVM versions.
-    if sess.is_nightly_build() {
-        features.push(Symbol::intern("llvm14-builtins-abi"));
-    }
-    features
+        .collect()
 }
 
 pub fn print_version() {
