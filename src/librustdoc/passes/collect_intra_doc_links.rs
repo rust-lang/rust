@@ -297,7 +297,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         match ty_res {
             Res::Def(DefKind::Enum, did) => match tcx.type_of(did).kind() {
                 ty::Adt(def, _) if def.is_enum() => {
-                    if let Some(field) = def.all_fields().find(|f| f.name == variant_field_name) {
+                    if let Some(variant) = def.variants().iter().find(|v| v.name == variant_name)
+                        && let Some(field) = variant.fields.iter().find(|f| f.name == variant_field_name) {
                         Ok((ty_res, field.did))
                     } else {
                         Err(UnresolvedPath {
@@ -1716,15 +1717,35 @@ fn resolution_failure(
 
                     // Otherwise, it must be an associated item or variant
                     let res = partial_res.expect("None case was handled by `last_found_module`");
-                    let kind = match res {
-                        Res::Def(kind, _) => Some(kind),
+                    let kind_did = match res {
+                        Res::Def(kind, did) => Some((kind, did)),
                         Res::Primitive(_) => None,
                     };
-                    let path_description = if let Some(kind) = kind {
+                    let is_struct_variant = |did| {
+                        if let ty::Adt(def, _) = tcx.type_of(did).kind()
+                        && def.is_enum()
+                        && let Some(variant) = def.variants().iter().find(|v| v.name == res.name(tcx)) {
+                            // ctor is `None` if variant is a struct
+                            variant.ctor.is_none()
+                        } else {
+                            false
+                        }
+                    };
+                    let path_description = if let Some((kind, did)) = kind_did {
                         match kind {
                             Mod | ForeignMod => "inner item",
                             Struct => "field or associated item",
                             Enum | Union => "variant or associated item",
+                            Variant if is_struct_variant(did) => {
+                                let variant = res.name(tcx);
+                                let note = format!("variant `{variant}` has no such field");
+                                if let Some(span) = sp {
+                                    diag.span_label(span, &note);
+                                } else {
+                                    diag.note(&note);
+                                }
+                                return;
+                            }
                             Variant
                             | Field
                             | Closure
