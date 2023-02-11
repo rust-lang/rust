@@ -2675,7 +2675,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ParamToVarFolder<'a, 'tcx> {
-            fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+            fn interner(&self) -> TyCtxt<'tcx> {
                 self.infcx.tcx
             }
 

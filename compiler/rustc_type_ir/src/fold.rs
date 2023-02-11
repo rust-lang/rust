@@ -101,7 +101,7 @@ pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
 /// the infallible methods of this trait to ensure that the two APIs
 /// are coherent.
 pub trait TypeFolder<I: Interner>: FallibleTypeFolder<I, Error = !> {
-    fn tcx(&self) -> I;
+    fn interner(&self) -> I;
 
     fn fold_binder<T>(&mut self, t: I::Binder<T>) -> I::Binder<T>
     where
@@ -150,7 +150,7 @@ pub trait TypeFolder<I: Interner>: FallibleTypeFolder<I, Error = !> {
 pub trait FallibleTypeFolder<I: Interner>: Sized {
     type Error;
 
-    fn tcx<'a>(&'a self) -> I;
+    fn interner(&self) -> I;
 
     fn try_fold_binder<T>(&mut self, t: I::Binder<T>) -> Result<I::Binder<T>, Self::Error>
     where
@@ -197,8 +197,8 @@ where
 {
     type Error = !;
 
-    fn tcx<'a>(&'a self) -> I {
-        TypeFolder::tcx(self)
+    fn interner(&self) -> I {
+        TypeFolder::interner(self)
     }
 
     fn try_fold_binder<T>(&mut self, t: I::Binder<T>) -> Result<I::Binder<T>, !>

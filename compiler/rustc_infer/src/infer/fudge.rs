@@ -176,7 +176,7 @@ pub struct InferenceFudger<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

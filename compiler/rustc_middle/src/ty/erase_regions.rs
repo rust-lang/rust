@@ -35,7 +35,7 @@ struct RegionEraserVisitor<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserVisitor<'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

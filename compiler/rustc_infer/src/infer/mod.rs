@@ -1853,7 +1853,7 @@ struct InferenceLiteralEraser<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceLiteralEraser<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1871,7 +1871,7 @@ struct ShallowResolver<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ShallowResolver<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -2065,7 +2065,7 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
     }
 
     impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceParamAndInferWithPlaceholder<'tcx> {
-        fn tcx(&self) -> TyCtxt<'tcx> {
+        fn interner(&self) -> TyCtxt<'tcx> {
             self.tcx
         }
 

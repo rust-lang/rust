@@ -770,7 +770,7 @@ struct ReplaceOpaqueTyFolder<'tcx> {
 }
 
 impl<'tcx> ty::ir::TypeFolder<TyCtxt<'tcx>> for ReplaceOpaqueTyFolder<'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

@@ -4091,7 +4091,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceImplTraitFolder<'tcx> {
         t.super_fold_with(self)
     }
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }

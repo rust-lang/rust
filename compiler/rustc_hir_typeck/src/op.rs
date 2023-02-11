@@ -964,7 +964,7 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
 struct TypeParamEraser<'a, 'tcx>(&'a FnCtxt<'a, 'tcx>, Span);
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TypeParamEraser<'_, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.0.tcx
     }
 

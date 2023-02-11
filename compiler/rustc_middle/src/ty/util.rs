@@ -843,7 +843,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1343,7 +1343,7 @@ where
             for t in iter {
                 new_list.push(t.try_fold_with(folder)?)
             }
-            Ok(intern(folder.tcx(), &new_list))
+            Ok(intern(folder.interner(), &new_list))
         }
         Some((_, Err(err))) => {
             return Err(err);

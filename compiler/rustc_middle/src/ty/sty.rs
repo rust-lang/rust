@@ -1152,7 +1152,7 @@ struct SkipBindersAt<'tcx> {
 impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for SkipBindersAt<'tcx> {
     type Error = ();
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1173,7 +1173,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for SkipBindersAt<'tcx> {
             if index == self.index {
                 Err(())
             } else {
-                Ok(self.tcx().mk_bound(index.shifted_out(1), bv))
+                Ok(self.interner().mk_bound(index.shifted_out(1), bv))
             }
         } else {
             ty.try_super_fold_with(self)
@@ -1187,7 +1187,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for SkipBindersAt<'tcx> {
             if index == self.index {
                 Err(())
             } else {
-                Ok(self.tcx().mk_region(ty::ReLateBound(index.shifted_out(1), bv)))
+                Ok(self.interner().mk_region(ty::ReLateBound(index.shifted_out(1), bv)))
             }
         } else {
             r.try_super_fold_with(self)
@@ -1201,7 +1201,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for SkipBindersAt<'tcx> {
             if index == self.index {
                 Err(())
             } else {
-                Ok(self.tcx().mk_const(
+                Ok(self.interner().mk_const(
                     ty::ConstKind::Bound(index.shifted_out(1), bv),
                     ct.ty().try_fold_with(self)?,
                 ))

@@ -486,7 +486,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Foreign(..) => return Ok(self),
         };
 
-        Ok(if *self.kind() == kind { self } else { folder.tcx().mk_ty(kind) })
+        Ok(if *self.kind() == kind { self } else { folder.interner().mk_ty(kind) })
     }
 }
 
@@ -579,7 +579,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         let new = self.kind().try_fold_with(folder)?;
-        Ok(folder.tcx().reuse_or_mk_predicate(self, new))
+        Ok(folder.interner().reuse_or_mk_predicate(self, new))
     }
 }
 
@@ -615,7 +615,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
         let ty = self.ty().try_fold_with(folder)?;
         let kind = self.kind().try_fold_with(folder)?;
         if ty != self.ty() || kind != self.kind() {
-            Ok(folder.tcx().mk_const(kind, ty))
+            Ok(folder.interner().mk_const(kind, ty))
         } else {
             Ok(self)
         }

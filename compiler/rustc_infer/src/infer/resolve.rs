@@ -32,8 +32,8 @@ impl<'a, 'tcx> OpportunisticVarResolver<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticVarResolver<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
-        TypeFolder::tcx(&self.shallow_resolver)
+    fn interner(&self) -> TyCtxt<'tcx> {
+        TypeFolder::interner(&self.shallow_resolver)
     }
 
     #[inline]
@@ -74,7 +74,7 @@ impl<'a, 'tcx> OpportunisticRegionResolver<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticRegionResolver<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -95,7 +95,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticRegionResolver<'a, 'tcx
                     .borrow_mut()
                     .unwrap_region_constraints()
                     .opportunistic_resolve_var(rid);
-                TypeFolder::tcx(self).reuse_or_mk_region(r, ty::ReVar(resolved))
+                TypeFolder::interner(self).reuse_or_mk_region(r, ty::ReVar(resolved))
             }
             _ => r,
         }
@@ -214,7 +214,7 @@ struct FullTypeResolver<'a, 'tcx> {
 impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
     type Error = FixupError<'tcx>;
 
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

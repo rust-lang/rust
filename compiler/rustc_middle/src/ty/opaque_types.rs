@@ -94,7 +94,7 @@ impl<'tcx> ReverseMapper<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -143,7 +143,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                     )
                     .emit();
 
-                self.tcx().re_error(e)
+                self.interner().re_error(e)
             }
         }
     }
@@ -188,7 +188,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                                 .emit();
                         }
 
-                        self.tcx().ty_error()
+                        self.interner().ty_error()
                     }
                 }
             }
@@ -216,7 +216,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                             });
                         }
 
-                        self.tcx().const_error(ct.ty())
+                        self.interner().const_error(ct.ty())
                     }
                 }
             }

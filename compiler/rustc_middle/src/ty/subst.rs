@@ -486,7 +486,11 @@ impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for SubstsRef<'tcx> {
         match self.len() {
             1 => {
                 let param0 = self[0].try_fold_with(folder)?;
-                if param0 == self[0] { Ok(self) } else { Ok(folder.tcx().intern_substs(&[param0])) }
+                if param0 == self[0] {
+                    Ok(self)
+                } else {
+                    Ok(folder.interner().intern_substs(&[param0]))
+                }
             }
             2 => {
                 let param0 = self[0].try_fold_with(folder)?;
@@ -494,7 +498,7 @@ impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for SubstsRef<'tcx> {
                 if param0 == self[0] && param1 == self[1] {
                     Ok(self)
                 } else {
-                    Ok(folder.tcx().intern_substs(&[param0, param1]))
+                    Ok(folder.interner().intern_substs(&[param0, param1]))
                 }
             }
             0 => Ok(self),
@@ -527,7 +531,7 @@ impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
                 if param0 == self[0] && param1 == self[1] {
                     Ok(self)
                 } else {
-                    Ok(folder.tcx().intern_type_list(&[param0, param1]))
+                    Ok(folder.interner().intern_type_list(&[param0, param1]))
                 }
             }
             _ => ty::util::fold_list(self, folder, |tcx, v| tcx.intern_type_list(v)),
@@ -778,7 +782,7 @@ struct SubstFolder<'a, 'tcx> {
 
 impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for SubstFolder<'a, 'tcx> {
     #[inline]
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -987,7 +991,7 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
             return val;
         }
 
-        let result = ty::fold::shift_vars(TypeFolder::tcx(self), val, self.binders_passed);
+        let result = ty::fold::shift_vars(TypeFolder::interner(self), val, self.binders_passed);
         debug!("shift_vars: shifted result = {:?}", result);
 
         result

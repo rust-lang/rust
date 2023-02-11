@@ -327,7 +327,7 @@ struct Canonicalizer<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -738,7 +738,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         let var = self.canonical_var(info, r.into());
         let br = ty::BoundRegion { var, kind: ty::BrAnon(var.as_u32(), None) };
         let region = ty::ReLateBound(self.binder_index, br);
-        self.tcx().mk_region(region)
+        self.interner().mk_region(region)
     }
 
     /// Given a type variable `ty_var` of the given kind, first check
@@ -752,7 +752,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             self.fold_ty(bound_to)
         } else {
             let var = self.canonical_var(info, ty_var.into());
-            self.tcx().mk_bound(self.binder_index, var.into())
+            self.interner().mk_bound(self.binder_index, var.into())
         }
     }
 
@@ -771,7 +771,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             self.fold_const(bound_to)
         } else {
             let var = self.canonical_var(info, const_var.into());
-            self.tcx().mk_const(
+            self.interner().mk_const(
                 ty::ConstKind::Bound(self.binder_index, var),
                 self.fold_ty(const_var.ty()),
             )

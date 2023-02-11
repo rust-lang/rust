@@ -106,7 +106,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -124,13 +124,13 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
             | ty::ReError(_)
             | ty::ReErased => {
                 // replace all free regions with 'erased
-                self.tcx().lifetimes.re_erased
+                self.interner().lifetimes.re_erased
             }
             ty::ReStatic => {
                 if self.keep_static {
                     r
                 } else {
-                    self.tcx().lifetimes.re_erased
+                    self.interner().lifetimes.re_erased
                 }
             }
         }

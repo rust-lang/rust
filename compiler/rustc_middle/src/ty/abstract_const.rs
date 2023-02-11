@@ -53,7 +53,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Expander<'tcx> {
-            fn tcx(&self) -> TyCtxt<'tcx> {
+            fn interner(&self) -> TyCtxt<'tcx> {
                 self.tcx
             }
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {

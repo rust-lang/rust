@@ -173,7 +173,7 @@ struct QueryNormalizer<'cx, 'tcx> {
 impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> {
     type Error = NoSolution;
 
-    fn tcx<'c>(&'c self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -214,7 +214,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
 
                     Reveal::All => {
                         let substs = substs.try_fold_with(self)?;
-                        let recursion_limit = self.tcx().recursion_limit();
+                        let recursion_limit = self.interner().recursion_limit();
                         if !recursion_limit.value_within_limit(self.anon_depth) {
                             // A closure or generator may have itself as in its upvars.
                             // This should be checked handled by the recursion check for opaque
@@ -228,8 +228,8 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                             return ty.try_super_fold_with(self);
                         }
 
-                        let generic_ty = self.tcx().bound_type_of(def_id);
-                        let concrete_ty = generic_ty.subst(self.tcx(), substs);
+                        let generic_ty = self.interner().bound_type_of(def_id);
+                        let concrete_ty = generic_ty.subst(self.interner(), substs);
                         self.anon_depth += 1;
                         if concrete_ty == ty {
                             bug!(

@@ -190,7 +190,7 @@ struct EraseAllBoundRegions<'tcx> {
 // lead to unsoundness (we call `delay_span_bug` at the start
 // of `diagnostic_hir_wf_check`).
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseAllBoundRegions<'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {

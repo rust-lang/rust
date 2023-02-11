@@ -1008,7 +1008,7 @@ impl<'a, 'tcx> NamedBoundVarSubstitutor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for NamedBoundVarSubstitutor<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1064,7 +1064,7 @@ impl<'tcx> ParamsSubstitutor<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1140,7 +1140,7 @@ impl<'tcx> ReverseParamsSubstitutor<'tcx> {
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseParamsSubstitutor<'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

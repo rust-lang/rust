@@ -847,7 +847,7 @@ struct ConstInferUnifier<'cx, 'tcx> {
 impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ConstInferUnifier<'_, 'tcx> {
     type Error = TypeError<'tcx>;
 
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -875,7 +875,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ConstInferUnifier<'_, 'tcx> {
                             .borrow_mut()
                             .type_variables()
                             .new_var(self.for_universe, origin);
-                        Ok(self.tcx().mk_ty_var(new_var_id))
+                        Ok(self.interner().mk_ty_var(new_var_id))
                     }
                 }
             }
@@ -953,7 +953,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ConstInferUnifier<'_, 'tcx> {
                                         },
                                     },
                                 );
-                            Ok(self.tcx().mk_const(new_var_id, c.ty()))
+                            Ok(self.interner().mk_const(new_var_id, c.ty()))
                         }
                     }
                 }

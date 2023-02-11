@@ -2222,7 +2222,7 @@ struct RegionFolder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ty::ir::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
