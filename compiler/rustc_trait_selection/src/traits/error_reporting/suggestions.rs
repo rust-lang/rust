@@ -19,6 +19,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::is_range_literal;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_hir::{Expr, HirId};
@@ -1349,14 +1350,41 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             Applicability::MaybeIncorrect,
                         );
                     } else {
+                        // Issue #104961, we need to add parentheses properly for compond expressions
+                        // for example, `x.starts_with("hi".to_string() + "you")`
+                        // should be `x.starts_with(&("hi".to_string() + "you"))`
+                        let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else { return false; };
+                        let body = self.tcx.hir().body(body_id);
+                        let mut expr_finder = FindExprBySpan::new(span);
+                        expr_finder.visit_expr(body.value);
+                        let Some(expr) = expr_finder.result else { return false; };
+                        let needs_parens = match expr.kind {
+                            // parenthesize if needed (Issue #46756)
+                            hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
+                            // parenthesize borrows of range literals (Issue #54505)
+                            _ if is_range_literal(expr) => true,
+                            _ => false,
+                        };
+
                         let is_mut = mut_ref_self_ty_satisfies_pred || ref_inner_ty_mut;
-                        err.span_suggestion_verbose(
-                            span.shrink_to_lo(),
-                            &format!(
-                                "consider{} borrowing here",
-                                if is_mut { " mutably" } else { "" }
-                            ),
-                            format!("&{}", if is_mut { "mut " } else { "" }),
+                        let span = if needs_parens { span } else { span.shrink_to_lo() };
+                        let sugg_prefix = format!("&{}", if is_mut { "mut " } else { "" });
+                        let sugg_msg = &format!(
+                            "consider{} borrowing here",
+                            if is_mut { " mutably" } else { "" }
+                        );
+
+                        let suggestions = if !needs_parens {
+                            vec![(span.shrink_to_lo(), format!("{}", sugg_prefix))]
+                        } else {
+                            vec![
+                                (span.shrink_to_lo(), format!("{}(", sugg_prefix)),
+                                (span.shrink_to_hi(), ")".to_string()),
+                            ]
+                        };
+                        err.multipart_suggestion_verbose(
+                            sugg_msg,
+                            suggestions,
                             Applicability::MaybeIncorrect,
                         );
                     }
