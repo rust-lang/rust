@@ -566,12 +566,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // another crate (mostly core::num generic/#[inline] fns),
         // while the current crate doesn't use overflow checks.
         if !bx.cx().check_overflow() {
-            let unchecked_overflow = match msg {
+            let overflow_not_to_check = match msg {
                 AssertKind::OverflowNeg(..) => true,
                 AssertKind::Overflow(op, ..) => op.is_checkable(),
                 _ => false,
             };
-            if unchecked_overflow {
+            if overflow_not_to_check {
                 const_cond = Some(expected);
             }
         }
