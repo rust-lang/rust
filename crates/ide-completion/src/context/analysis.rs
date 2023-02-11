@@ -605,6 +605,26 @@ fn classify_name_ref(
                     },
                     _ => false,
                 };
+
+                let reciever_is_part_of_indivisible_expression = match &receiver {
+                    Some(ast::Expr::IfExpr(_)) => {
+                        let next_sibling = field.dot_token().and_then(|token| {
+                            let dot_token = original_file.covering_element(token.text_range());
+                            let next_sibling = dot_token.as_token().and_then(|t| t.next_token()).and_then(|t| next_non_trivia_sibling(t.into()));
+                            next_sibling
+                        });
+                        match next_sibling {
+                            Some(syntax::NodeOrToken::Node(n)) => n.first_child_or_token().map(|t| t.kind()) == Some(SyntaxKind::ELSE_KW),
+                            Some(syntax::NodeOrToken::Token(t)) => t.kind()  == SyntaxKind::ELSE_KW,
+                            None => false
+                        }
+                    },
+                    _ => false
+                };
+                if reciever_is_part_of_indivisible_expression {
+                    return None;
+                }
+
                 let kind = NameRefKind::DotAccess(DotAccess {
                     receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
                     kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal },
