@@ -1393,6 +1393,8 @@ fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
         let mut data = Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE]);
         let data_ptr = data.0.as_mut_ptr();
         let db = data_ptr.cast::<c::REPARSE_MOUNTPOINT_DATA_BUFFER>();
+        // Zero the header to ensure it's fully initialized, including reserved parameters.
+        *db = mem::zeroed();
         let buf = ptr::addr_of_mut!((*db).ReparseTarget).cast::<c::WCHAR>();
         let mut i = 0;
         // FIXME: this conversion is very hacky

@@ -83,9 +83,6 @@ use crate::scrape_examples::{CallData, CallLocation};
 use crate::try_none;
 use crate::DOC_RUST_LANG_ORG_CHANNEL;
 
-/// A pair of name and its optional document.
-pub(crate) type NameDoc = (String, Option<String>);
-
 pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
         if !v.ends_with('/') && !v.is_empty() { write!(f, "{}/", v) } else { f.write_str(v) }
