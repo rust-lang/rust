@@ -573,6 +573,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(Some((layout.size, layout.align.abi)));
         }
         match layout.ty.kind() {
+            // FIXME(str): Do we need this?
+            ty::Adt(def, _) if def.is_str() => {
+                let len = metadata.unwrap_meta().to_machine_usize(self)?;
+                let elem = layout.field(self, 0);
+
+                // Make sure the slice is not too big.
+                let size = elem.size.bytes().saturating_mul(len); // we rely on `max_size_of_val` being smaller than `u64::MAX`.
+                let size = Size::from_bytes(size);
+                if size > self.max_size_of_val() {
+                    throw_ub!(InvalidMeta("slice is bigger than largest supported object"));
+                }
+                Ok(Some((size, elem.align.abi)))
+            }
+
             ty::Adt(..) | ty::Tuple(..) => {
                 // First get the size of all statically known fields.
                 // Don't use type_of::sizing_type_of because that expects t to be sized,
@@ -638,7 +652,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok(Some(self.get_vtable_size_and_align(vtable)?))
             }
 
-            ty::Slice(_) | ty::Str => {
+            ty::Slice(_) => {
                 let len = metadata.unwrap_meta().to_machine_usize(self)?;
                 let elem = layout.field(self, 0);
 

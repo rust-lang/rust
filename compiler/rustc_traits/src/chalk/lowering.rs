@@ -301,7 +301,6 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 chalk_ir::TyKind::Adt(chalk_ir::AdtId(def), substs.lower_into(interner))
             }
             ty::Foreign(def_id) => chalk_ir::TyKind::Foreign(ForeignDefId(def_id)),
-            ty::Str => chalk_ir::TyKind::Str,
             ty::Array(ty, len) => {
                 chalk_ir::TyKind::Array(ty.lower_into(interner), len.lower_into(interner))
             }
@@ -443,7 +442,7 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                 ty.lower_into(interner),
                 mutbl.lower_into(interner),
             ),
-            TyKind::Str => ty::Str,
+            TyKind::Str => unreachable!("TyKind::Str should never be returned by chalk"),
             TyKind::OpaqueType(opaque_ty, substitution) => ty::Alias(
                 ty::Opaque,
                 interner.tcx.mk_alias_ty(opaque_ty.0, substitution.lower_into(interner)),

@@ -713,7 +713,7 @@ where
                         }
                     } else {
                         match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
-                            ty::Slice(_) | ty::Str => tcx.types.usize,
+                            ty::Slice(_) => tcx.types.usize,
                             ty::Dynamic(_, _, ty::Dyn) => mk_dyn_vtable(),
                             _ => bug!("TyAndLayout::field({:?}): not applicable", this),
                         }
@@ -724,7 +724,6 @@ where
 
                 // Arrays and slices.
                 ty::Array(element, _) | ty::Slice(element) => TyMaybeWithLayout::Ty(element),
-                ty::Str => TyMaybeWithLayout::Ty(tcx.types.u8),
 
                 // Tuples, generators and closures.
                 ty::Closure(_, ref substs) => field_ty_or_layout(

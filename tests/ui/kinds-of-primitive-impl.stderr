@@ -6,13 +6,17 @@ LL | impl u8 {
    |
    = help: consider using an extension trait instead
 
-error[E0390]: cannot define inherent `impl` for primitive types
-  --> $DIR/kinds-of-primitive-impl.rs:6:6
+error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
+  --> $DIR/kinds-of-primitive-impl.rs:6:1
    |
-LL | impl str {
-   |      ^^^
+LL | / impl str {
+LL | |
+LL | |     fn foo() {}
+LL | |     fn bar(self) {}
+LL | | }
+   | |_^ impl for type defined outside of crate.
    |
-   = help: consider using an extension trait instead
+   = note: define and implement a trait or new type instead
 
 error[E0390]: cannot define inherent `impl` for primitive types
   --> $DIR/kinds-of-primitive-impl.rs:12:6
@@ -33,4 +37,5 @@ LL | impl &MyType {
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0390`.
+Some errors have detailed explanations: E0116, E0390.
+For more information about an error, try `rustc --explain E0116`.

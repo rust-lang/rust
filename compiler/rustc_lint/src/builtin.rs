@@ -2920,7 +2920,7 @@ impl ClashingExternDeclarations {
                         | (Alias(ty::Opaque, ..), Alias(ty::Opaque, ..)) => false,
 
                         // These definitely should have been caught above.
-                        (Bool, Bool) | (Char, Char) | (Never, Never) | (Str, Str) => unreachable!(),
+                        (Bool, Bool) | (Char, Char) | (Never, Never) => unreachable!(),
 
                         // An Adt and a primitive or pointer type. This can be FFI-safe if non-null
                         // enum layout optimisation is being applied.

@@ -42,7 +42,7 @@ fn uncached_llvm_type<'a, 'tcx>(
         // FIXME(eddyb) producing readable type names for trait objects can result
         // in problematically distinct types due to HRTB and subtyping (see #47638).
         // ty::Dynamic(..) |
-        ty::Adt(..) | ty::Closure(..) | ty::Foreign(..) | ty::Generator(..) | ty::Str
+        ty::Adt(..) | ty::Closure(..) | ty::Foreign(..) | ty::Generator(..)
             // For performance reasons we use names only when emitting LLVM IR. Unless we are on
             // LLVM < 14, where the use of unnamed types resulted in various issues, e.g., #76213,
             // #79564, and #79246.

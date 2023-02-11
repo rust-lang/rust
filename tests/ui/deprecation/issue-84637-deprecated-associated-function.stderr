@@ -1,4 +1,4 @@
-error: use of deprecated associated function `core::str::<impl str>::trim_left`: superseded by `trim_start`
+error: use of deprecated associated function `str::trim_left`: superseded by `trim_start`
   --> $DIR/issue-84637-deprecated-associated-function.rs:6:21
    |
 LL |     let _foo = str::trim_left("   aoeu");
@@ -14,7 +14,7 @@ help: replace the use of the deprecated associated function
 LL |     let _foo = str::trim_start("   aoeu");
    |                     ~~~~~~~~~~
 
-error: use of deprecated associated function `core::str::<impl str>::trim_left`: superseded by `trim_start`
+error: use of deprecated associated function `str::trim_left`: superseded by `trim_start`
   --> $DIR/issue-84637-deprecated-associated-function.rs:8:26
    |
 LL |     let _bar = "   aoeu".trim_left();

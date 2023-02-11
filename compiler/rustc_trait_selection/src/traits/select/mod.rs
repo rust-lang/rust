@@ -2079,7 +2079,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Where(ty::Binder::dummy(Vec::new()))
             }
 
-            ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => None,
+            ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => None,
+            
+            // FIXME(str): We special case this impl for diagnostics reasons.
+            ty::Adt(def, _) if def.is_str() => None,
 
             ty::Tuple(tys) => Where(
                 obligation.predicate.rebind(tys.last().map_or_else(Vec::new, |&last| vec![last])),
@@ -2138,11 +2141,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::Dynamic(..)
-            | ty::Str
             | ty::Slice(..)
             | ty::Generator(_, _, hir::Movability::Static)
             | ty::Foreign(..)
             | ty::Ref(_, _, hir::Mutability::Mut) => None,
+
+            // FIXME(str): We special case this impl for diagnostics reasons.
+            ty::Adt(def, _) if def.is_str() => None,
 
             ty::Tuple(tys) => {
                 // (*) binder moved here
@@ -2250,7 +2255,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(_)
-            | ty::Str
             | ty::Error(_)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Never

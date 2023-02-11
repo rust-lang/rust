@@ -436,7 +436,6 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                     OpaqueType(opaque_ty_id, ..),
                 ) => def_id == opaque_ty_id.0,
                 (&ty::FnDef(def_id, ..), FnDef(fn_def_id, ..)) => def_id == fn_def_id.0,
-                (&ty::Str, Str) => true,
                 (&ty::Never, Never) => true,
                 (&ty::Closure(def_id, ..), Closure(closure_id, _)) => def_id == closure_id.0,
                 (&ty::Foreign(def_id), Foreign(foreign_def_id)) => def_id == foreign_def_id.0,

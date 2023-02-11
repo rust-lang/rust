@@ -18,9 +18,10 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
         // Don't go into the query for things that can't possibly have lifetimes.
         match key.value.ty.kind() {
             ty::Tuple(elems) if elems.is_empty() => Some(vec![]),
-            ty::Never | ty::Str | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
+            ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
                 Some(vec![])
             }
+            ty::Adt(def, _) if def.is_str() => Some(vec![]),
             _ => None,
         }
     }

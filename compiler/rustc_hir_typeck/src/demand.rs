@@ -1224,7 +1224,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match (&expr.kind, expected.kind(), checked_ty.kind()) {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (exp.kind(), check.kind()) {
-                (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
+                (&ty::Adt(def, _), &ty::Array(arr, _) | &ty::Slice(arr)) if def.is_str() && arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind
                         && let Ok(src) = sm.span_to_snippet(sp)
                         && replace_prefix(&src, "b\"", "\"").is_some()
@@ -1240,7 +1240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ));
                             }
                         }
-                (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
+                (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Adt(def, _)) if def.is_str() && arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind
                         && let Ok(src) = sm.span_to_snippet(sp)
                         && replace_prefix(&src, "\"", "b\"").is_some()

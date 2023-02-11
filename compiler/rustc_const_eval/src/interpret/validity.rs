@@ -347,7 +347,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 );
                 // FIXME: check if the type/trait match what ty::Dynamic says?
             }
-            ty::Slice(..) | ty::Str => {
+            ty::Slice(..) => {
                 let _len = meta.unwrap_meta().to_machine_usize(self.ecx)?;
                 // We do not check that `len * elem_size <= isize::MAX`:
                 // that is only required for references, and there it falls out of the
@@ -590,7 +590,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             | ty::Tuple(..)
             | ty::Array(..)
             | ty::Slice(..)
-            | ty::Str
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::Generator(..) => Ok(false),
@@ -813,15 +812,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         fields: impl Iterator<Item = InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
         match op.layout.ty.kind() {
-            ty::Str => {
-                let mplace = op.assert_mem_place(); // strings are unsized and hence never immediate
-                let len = mplace.len(self.ecx)?;
-                try_validation!(
-                    self.ecx.read_bytes_ptr_strip_provenance(mplace.ptr, Size::from_bytes(len)),
-                    self.path,
-                    InvalidUninitBytes(..) => { "uninitialized data in `str`" },
-                );
-            }
             ty::Array(tys, ..) | ty::Slice(tys)
                 // This optimization applies for types that can hold arbitrary bytes (such as
                 // integer and floating point types) or for structs or tuples with no fields.

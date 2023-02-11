@@ -88,7 +88,7 @@ impl<'tcx> ValTree<'tcx> {
         match ty.kind() {
             ty::Ref(_, inner_ty, _) => match inner_ty.kind() {
                 // `&str` can be interpreted as raw bytes
-                ty::Str => {}
+                ty::Adt(def, _) if def.is_str() => {}
                 // `&[u8]` can be interpreted as raw bytes
                 ty::Slice(slice_ty) if *slice_ty == tcx.types.u8 => {}
                 // other `&_` can't be interpreted as raw bytes

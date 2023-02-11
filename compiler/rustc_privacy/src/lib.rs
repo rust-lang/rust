@@ -261,7 +261,6 @@ where
             | ty::Int(..)
             | ty::Uint(..)
             | ty::Float(..)
-            | ty::Str
             | ty::Never
             | ty::Array(..)
             | ty::Slice(..)

@@ -894,6 +894,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 if def.is_phantom_data() {
                     return FfiPhantom(ty);
                 }
+                if def.is_str() {
+                    return FfiUnsafe {
+                        ty,
+                        reason: fluent::lint_improper_ctypes_str_reason,
+                        help: Some(fluent::lint_improper_ctypes_str_help),
+                    };
+                }
                 match def.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
                         if !def.repr().c() && !def.repr().transparent() {
@@ -1016,12 +1023,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::Dynamic(..) => {
                 FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_dyn, help: None }
             }
-
-            ty::Str => FfiUnsafe {
-                ty,
-                reason: fluent::lint_improper_ctypes_str_reason,
-                help: Some(fluent::lint_improper_ctypes_str_help),
-            },
 
             ty::Tuple(..) => FfiUnsafe {
                 ty,

@@ -2402,7 +2402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::RawPtr(..) => {
                 self.suggest_first_deref_field(&mut err, expr, base, ident);
             }
-            ty::Adt(def, _) if !def.is_enum() => {
+            ty::Adt(def, _) if !def.is_enum() && !def.is_str() => {
                 self.suggest_fields_on_recordish(&mut err, def, ident, expr.span);
             }
             ty::Param(param_ty) => {

@@ -146,7 +146,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 return simple();
             }
             _ if field.is_sized() => return simple(),
-            ty::Slice(..) | ty::Str | ty::Foreign(..) => return simple(),
+            ty::Slice(..) | ty::Foreign(..) => return simple(),
             ty::Adt(def, _) => {
                 if def.repr().packed() {
                     // FIXME(eddyb) generalize the adjustment when we

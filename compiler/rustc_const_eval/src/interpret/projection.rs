@@ -200,8 +200,9 @@ where
             }
             _ => span_bug!(
                 self.cur_span(),
-                "`mplace_index` called on non-array type {:?}",
-                base.layout.ty
+                "`mplace_index` called on non-array type {:?} with abi {:?}",
+                base.layout.ty,
+                base.layout.fields
             ),
         }
     }

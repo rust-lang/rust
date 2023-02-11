@@ -37,7 +37,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             (size, align)
         }
-        ty::Slice(_) | ty::Str => {
+        ty::Slice(_) => {
             let unit = layout.field(bx, 0);
             // The info in this case is the length of the str, so the size is that
             // times the unit size.

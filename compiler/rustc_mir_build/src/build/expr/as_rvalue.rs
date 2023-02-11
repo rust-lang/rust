@@ -304,7 +304,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //     to the same MIR as `let x = ();`.
 
                 // first process the set of fields
-                let el_ty = expr.ty.sequence_element_type(this.tcx);
+                let el_ty = expr.ty.sequence_element_type();
                 let fields: Vec<_> = fields
                     .into_iter()
                     .copied()

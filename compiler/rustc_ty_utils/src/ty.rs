@@ -17,8 +17,7 @@ fn sized_constraint_for_ty<'tcx>(
         Bool | Char | Int(..) | Uint(..) | Float(..) | RawPtr(..) | Ref(..) | FnDef(..)
         | FnPtr(_) | Array(..) | Closure(..) | Generator(..) | Never => vec![],
 
-        Str
-        | Dynamic(..)
+        Dynamic(..)
         | Slice(_)
         | Foreign(..)
         | Error(_)

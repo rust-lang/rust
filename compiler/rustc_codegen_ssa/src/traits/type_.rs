@@ -91,7 +91,7 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
         let tail = self.tcx().struct_tail_erasing_lifetimes(ty, param_env);
         match tail.kind() {
             ty::Foreign(..) => false,
-            ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
+            ty::Slice(..) | ty::Dynamic(..) => true,
             _ => bug!("unexpected unsized tail: {:?}", tail),
         }
     }

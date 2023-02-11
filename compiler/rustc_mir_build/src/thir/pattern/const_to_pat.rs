@@ -345,7 +345,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 }
                 // `&str` is represented as `ConstValue::Slice`, let's keep using this
                 // optimization for now.
-                ty::Str => PatKind::Constant { value: cv },
+                ty::Adt(def, _) if def.is_str() => PatKind::Constant { value: cv },
                 // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type when
                 // matching against references, you can only use byte string literals.
                 // The typechecker has a special case for byte string literals, by treating them

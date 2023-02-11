@@ -384,7 +384,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
                 ty::Error(e) => tcx.ty_error_with_guaranteed(*e),
 
-                ty::Str | ty::Slice(_) => tcx.types.usize,
+                ty::Slice(_) => tcx.types.usize,
 
                 ty::Dynamic(_, _, _) => {
                     let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);

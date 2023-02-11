@@ -10,13 +10,13 @@ error[E0412]: cannot find type `Missing` in this scope
 LL |     test: Missing
    |           ^^^^^^^ not found in this scope
 
-error[E0277]: the size for values of type `str` cannot be known at compilation time
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/issue-72590-type-error-sized.rs:15:19
    |
 LL |     async fn frob(self) {}
    |                   ^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Foo`, the trait `Sized` is not implemented for `str`
+   = help: within `Foo`, the trait `Sized` is not implemented for `[u8]`
 note: required because it appears within the type `Foo`
   --> $DIR/issue-72590-type-error-sized.rs:5:8
    |

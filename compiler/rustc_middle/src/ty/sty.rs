@@ -1816,7 +1816,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returns `true` if this type is a `str`.
     #[inline]
     pub fn is_str(self) -> bool {
-        *self.kind() == Str
+        self.ty_adt_def().map_or(false, |def| def.is_str())
     }
 
     #[inline]
@@ -1854,10 +1854,10 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    pub fn sequence_element_type(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+    // FIXME(str): Remove tcx from this
+    pub fn sequence_element_type(self) -> Ty<'tcx> {
         match self.kind() {
             Array(ty, _) | Slice(ty) => *ty,
-            Str => tcx.types.u8,
             _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
         }
     }
@@ -2203,7 +2203,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::Float(_)
             | ty::Adt(..)
             | ty::Foreign(_)
-            | ty::Str
             | ty::Array(..)
             | ty::Slice(_)
             | ty::RawPtr(_)
@@ -2263,7 +2262,7 @@ impl<'tcx> Ty<'tcx> {
             // a.k.a. unit type, which is Sized
             | ty::Tuple(..) => (tcx.types.unit, false),
 
-            ty::Str | ty::Slice(_) => (tcx.types.usize, false),
+            ty::Slice(_) => (tcx.types.usize, false),
             ty::Dynamic(..) => {
                 let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
                 (tcx.bound_type_of(dyn_metadata).subst(tcx, &[tail.into()]), false)
@@ -2342,7 +2341,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Never
             | ty::Error(_) => true,
 
-            ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
+            ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
 
             ty::Tuple(tys) => tys.iter().all(|ty| ty.is_trivially_sized(tcx)),
 
@@ -2372,8 +2371,8 @@ impl<'tcx> Ty<'tcx> {
         match self.kind() {
             ty::Bool | ty::Char | ty::Never => true,
 
-            // These aren't even `Clone`
-            ty::Str | ty::Slice(..) | ty::Foreign(..) | ty::Dynamic(..) => false,
+            // unsized types cannot be `Clone` or `Copy`
+            ty::Slice(..) | ty::Foreign(..) | ty::Dynamic(..) => false,
 
             ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
             | ty::Int(..)

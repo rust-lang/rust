@@ -176,7 +176,7 @@ fn layout_of_uncached<'tcx>(
                     ty::Foreign(..) => {
                         return Ok(tcx.intern_layout(LayoutS::scalar(cx, data_ptr)));
                     }
-                    ty::Slice(_) | ty::Str => scalar_unit(Int(dl.ptr_sized_integer(), false)),
+                    ty::Slice(_) => scalar_unit(Int(dl.ptr_sized_integer(), false)),
                     ty::Dynamic(..) => {
                         let mut vtable = scalar_unit(Pointer(AddressSpace::DATA));
                         vtable.valid_range_mut().start = 1;
@@ -241,14 +241,6 @@ fn layout_of_uncached<'tcx>(
                 size: Size::ZERO,
             })
         }
-        ty::Str => tcx.intern_layout(LayoutS {
-            variants: Variants::Single { index: VariantIdx::new(0) },
-            fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
-            abi: Abi::Aggregate { sized: false },
-            largest_niche: None,
-            align: dl.i8_align,
-            size: Size::ZERO,
-        }),
 
         // Odd unit types.
         ty::FnDef(..) => univariant(&[], &ReprOptions::default(), StructKind::AlwaysSized)?,

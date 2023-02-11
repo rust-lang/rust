@@ -1072,7 +1072,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
             let tail = tcx.struct_tail_erasing_lifetimes(ty, param_env);
             match tail.kind() {
                 ty::Foreign(..) => false,
-                ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
+                ty::Slice(..) | ty::Dynamic(..) => true,
                 _ => bug!("unexpected unsized tail: {:?}", tail),
             }
         };

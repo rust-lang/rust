@@ -22,7 +22,6 @@ fn may_contain_reference<'tcx>(ty: Ty<'tcx>, depth: u32, tcx: TyCtxt<'tcx>) -> b
         | ty::Uint(_)
         | ty::RawPtr(..)
         | ty::FnPtr(..)
-        | ty::Str
         | ty::FnDef(..)
         | ty::Never => false,
         // References

@@ -551,11 +551,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match (lhs_ty.kind(), rhs_ty.kind()) {
             (&Ref(_, l_ty, _), &Ref(_, r_ty, _)) // &str or &String + &str, &String or &&str
-                if (*l_ty.kind() == Str || is_std_string(l_ty))
-                    && (*r_ty.kind() == Str
+                if (l_ty.is_str() || is_std_string(l_ty))
+                    && (r_ty.is_str()
                         || is_std_string(r_ty)
                         || matches!(
-                            r_ty.kind(), Ref(_, inner_ty, _) if *inner_ty.kind() == Str
+                            r_ty.kind(), Ref(_, inner_ty, _) if inner_ty.is_str()
                         )) =>
             {
                 if let IsAssign::No = is_assign { // Do not supply this message if `&str += &str`
@@ -580,7 +580,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             (&Ref(_, l_ty, _), &Adt(..)) // Handle `&str` & `&String` + `String`
-                if (*l_ty.kind() == Str || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
+                if (l_ty.is_str() || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
             {
                 err.span_label(
                     op.span,
@@ -694,8 +694,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     );
                                 }
                             }
-                            Str | Never | Char | Tuple(_) | Array(_, _) => {}
-                            Ref(_, lty, _) if *lty.kind() == Str => {}
+                            Never | Char | Tuple(_) | Array(_, _) => {}
+                            ty::Adt(def, _) if def.is_str() => {}
+                            Ref(_, lty, _) if lty.is_str() => {}
                             _ => {
                                 self.note_unmet_impls_on_type(&mut err, errors);
                             }

@@ -2861,7 +2861,7 @@ fn pretty_print_const_value<'tcx>(
                             return Ok(());
                         }
                     }
-                    ty::Str => {
+                    ty::Adt(def, _) if def.is_str() => {
                         // The `inspect` here is okay since we checked the bounds, and `str` carries
                         // no provenance (we have an active `str` reference here). We don't use this
                         // result to affect interpreter execution.

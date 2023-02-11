@@ -110,3 +110,5 @@ print-type-size     discriminant: 1 bytes
 print-type-size     variant `Less`: 0 bytes
 print-type-size     variant `Equal`: 0 bytes
 print-type-size     variant `Greater`: 0 bytes
+print-type-size type: `str`: 0 bytes, alignment: 1 bytes
+print-type-size     field `.0`: 0 bytes

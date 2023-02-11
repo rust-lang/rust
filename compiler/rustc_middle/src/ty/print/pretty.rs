@@ -597,7 +597,6 @@ pub trait PrettyPrinter<'tcx>:
                 | ty::Foreign(_)
                 | ty::Bool
                 | ty::Char
-                | ty::Str
                 | ty::Int(_)
                 | ty::Uint(_)
                 | ty::Float(_) => {
@@ -707,6 +706,8 @@ pub trait PrettyPrinter<'tcx>:
                 }
                 ty::BoundTyKind::Param(_, s) => p!(write("{}", s)),
             },
+            // We need to special case this, because otherwise we'll call it `core::str::str`.
+            ty::Adt(def, _) if def.is_str() => p!("str"),
             ty::Adt(def, substs) => {
                 p!(print_def_path(def.did(), substs));
             }
@@ -778,7 +779,6 @@ pub trait PrettyPrinter<'tcx>:
                     }
                 }
             }
-            ty::Str => p!("str"),
             ty::Generator(did, substs, movability) => {
                 p!(write("["));
                 let generator_kind = self.tcx().generator_kind(did).unwrap();
@@ -1560,7 +1560,7 @@ pub trait PrettyPrinter<'tcx>:
                     });
                     return self.pretty_print_byte_str(bytes);
                 }
-                ty::Str => {
+                ty::Adt(def, _) if def.is_str() => {
                     let bytes = valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
                         bug!("expected to convert valtree to raw bytes for type {:?}", ty)
                     });

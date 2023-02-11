@@ -481,7 +481,7 @@ fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
-        ty::Str => {
+        ty::Adt(def, _) if def.is_str() => {
             // u3str as vendor extended type
             let mut s = String::from("u3str");
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
@@ -666,7 +666,6 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         | ty::Uint(..)
         | ty::Float(..)
         | ty::Char
-        | ty::Str
         | ty::Never
         | ty::Foreign(..)
         | ty::Dynamic(..) => {}

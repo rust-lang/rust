@@ -355,7 +355,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         let basic_type = match ty.kind() {
             ty::Bool => "b",
             ty::Char => "c",
-            ty::Str => "e",
+            ty::Adt(def, _) if def.is_str() => "e",
             ty::Tuple(_) if ty.is_unit() => "u",
             ty::Int(IntTy::I8) => "a",
             ty::Int(IntTy::I16) => "s",
@@ -390,7 +390,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
         match *ty.kind() {
             // Basic types, handled above.
-            ty::Bool | ty::Char | ty::Str | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Never => {
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Never => {
                 unreachable!()
             }
             ty::Tuple(_) if ty.is_unit() => unreachable!(),
@@ -622,43 +622,41 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                     hir::Mutability::Mut => "Q",
                 });
 
-                match inner_ty.kind() {
-                    ty::Str if mutbl.is_not() => {
-                        match ct.kind() {
-                            ty::ConstKind::Value(valtree) => {
-                                let slice =
-                                    valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
-                                        bug!(
+                if inner_ty.is_str() && mutbl.is_not() {
+                    match ct.kind() {
+                        ty::ConstKind::Value(valtree) => {
+                            let slice =
+                                valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
+                                    bug!(
                                         "expected to get raw bytes from valtree {:?} for type {:}",
-                                        valtree, ty
+                                        valtree,
+                                        ty
                                     )
-                                    });
-                                let s = std::str::from_utf8(slice).expect("non utf8 str from miri");
+                                });
+                            let s = std::str::from_utf8(slice).expect("non utf8 str from miri");
 
-                                self.push("e");
+                            self.push("e");
 
-                                // FIXME(eddyb) use a specialized hex-encoding loop.
-                                for byte in s.bytes() {
-                                    let _ = write!(self.out, "{byte:02x}");
-                                }
-
-                                self.push("_");
+                            // FIXME(eddyb) use a specialized hex-encoding loop.
+                            for byte in s.bytes() {
+                                let _ = write!(self.out, "{byte:02x}");
                             }
 
-                            _ => {
-                                bug!("symbol_names: unsupported `&str` constant: {:?}", ct);
-                            }
+                            self.push("_");
+                        }
+
+                        _ => {
+                            bug!("symbol_names: unsupported `&str` constant: {:?}", ct);
                         }
                     }
-                    _ => {
-                        let pointee_ty = ct
-                            .ty()
-                            .builtin_deref(true)
-                            .expect("tried to dereference on non-ptr type")
-                            .ty;
-                        let dereferenced_const = self.tcx.mk_const(ct.kind(), pointee_ty);
-                        self = dereferenced_const.print(self)?;
-                    }
+                } else {
+                    let pointee_ty = ct
+                        .ty()
+                        .builtin_deref(true)
+                        .expect("tried to dereference on non-ptr type")
+                        .ty;
+                    let dereferenced_const = self.tcx.mk_const(ct.kind(), pointee_ty);
+                    self = dereferenced_const.print(self)?;
                 }
             }
 

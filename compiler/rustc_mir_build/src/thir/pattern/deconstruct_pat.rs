@@ -1019,8 +1019,10 @@ impl<'tcx> SplitWildcard<'tcx> {
             }
             ty::Never => smallvec![],
             _ if cx.is_uninhabited(pcx.ty) => smallvec![],
+            // `str` is not exhaustive
+            ty::Adt(def, _) if def.is_str() => smallvec![NonExhaustive],
             ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => smallvec![Single],
-            // This type is one for which we cannot list constructors, like `str` or `f64`.
+            // This type is one for which we cannot list constructors, like `f64`.
             _ => smallvec![NonExhaustive],
         };
 

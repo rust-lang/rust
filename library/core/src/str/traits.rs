@@ -37,6 +37,14 @@ impl PartialEq for str {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for str {}
 
+#[cfg(not(bootstrap))]
+#[stable(feature = "str_type_impls", since = "CURRENT_VERSION")]
+impl crate::marker::StructuralPartialEq for str {}
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "str_type_impls", since = "CURRENT_VERSION")]
+impl crate::marker::StructuralEq for str {}
+
 /// Implements comparison operations on strings.
 ///
 /// Strings are compared [lexicographically](Ord#lexicographical-comparison) by their byte values. This compares Unicode code

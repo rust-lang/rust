@@ -18,7 +18,6 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::Float(_)
         | ty::FnDef(..)
         | ty::FnPtr(_)
-        | ty::Str
         | ty::Error(_)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Never
@@ -97,8 +96,7 @@ pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         | ty::Dynamic(_, _, ty::DynStar)
         | ty::Error(_) => Ok(vec![]),
 
-        ty::Str
-        | ty::Slice(_)
+        ty::Slice(_)
         | ty::Dynamic(..)
         | ty::Foreign(..)
         | ty::Alias(..)
@@ -145,7 +143,6 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         | ty::Array(..) => Err(NoSolution),
 
         ty::Dynamic(..)
-        | ty::Str
         | ty::Slice(_)
         | ty::Generator(_, _, Movability::Static)
         | ty::Foreign(..)
@@ -212,7 +209,6 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         | ty::Float(_)
         | ty::Adt(_, _)
         | ty::Foreign(_)
-        | ty::Str
         | ty::Array(_, _)
         | ty::Slice(_)
         | ty::RawPtr(_)

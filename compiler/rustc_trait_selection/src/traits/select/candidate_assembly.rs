@@ -753,7 +753,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Float(_)
             | ty::Infer(ty::IntVar(_))
             | ty::Infer(ty::FloatVar(_))
-            | ty::Str
             | ty::RawPtr(_)
             | ty::Ref(..)
             | ty::FnDef(..)
@@ -816,7 +815,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Float(_)
             | ty::Adt(_, _)
             | ty::Foreign(_)
-            | ty::Str
             | ty::Array(_, _)
             | ty::Slice(_)
             | ty::RawPtr(_)

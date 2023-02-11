@@ -29,7 +29,6 @@ impl<'tcx> Ty<'tcx> {
         matches!(
             self.kind(),
             Bool | Char
-                | Str
                 | Int(_)
                 | Uint(_)
                 | Float(_)
@@ -39,7 +38,9 @@ impl<'tcx> Ty<'tcx> {
                         | InferTy::FreshIntTy(_)
                         | InferTy::FreshFloatTy(_)
                 )
-        )
+        ) || matches!(self.kind(),
+            Adt(def, _) if def.is_str(),
+        ) // FIXME(str): Should we treat str as primitive?
     }
 
     /// Whether the type is succinctly representable as a type instead of just referred to with a
@@ -48,7 +49,6 @@ impl<'tcx> Ty<'tcx> {
         match self.kind() {
             Bool
             | Char
-            | Str
             | Int(_)
             | Uint(_)
             | Float(_)
@@ -60,6 +60,7 @@ impl<'tcx> Ty<'tcx> {
             ) => true,
             Ref(_, x, _) | Array(x, _) | Slice(x) => x.peel_refs().is_simple_ty(),
             Tuple(tys) if tys.is_empty() => true,
+            Adt(def, _) if def.is_str() => true,
             _ => false,
         }
     }

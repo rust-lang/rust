@@ -229,7 +229,10 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
         if self.layout.is_unsized() {
             // We need to consult `meta` metadata
             match self.layout.ty.kind() {
-                ty::Slice(..) | ty::Str => self.mplace.meta.unwrap_meta().to_machine_usize(cx),
+                ty::Slice(..) => self.mplace.meta.unwrap_meta().to_machine_usize(cx),
+                ty::Adt(adt, _) if adt.is_str() => {
+                    self.mplace.meta.unwrap_meta().to_machine_usize(cx)
+                }
                 _ => bug!("len not supported on unsized type {:?}", self.layout.ty),
             }
         } else {

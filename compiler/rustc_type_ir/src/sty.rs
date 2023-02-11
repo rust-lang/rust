@@ -76,9 +76,6 @@ pub enum TyKind<I: Interner> {
     /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
     Foreign(I::DefId),
 
-    /// The pointee of a string slice. Written as `str`.
-    Str,
-
     /// An array with the given length. Written as `[T; N]`.
     Array(I::Ty, I::Const),
 
@@ -248,7 +245,6 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Float(_) => 4,
         Adt(_, _) => 5,
         Foreign(_) => 6,
-        Str => 7,
         Array(_, _) => 8,
         Slice(_) => 9,
         RawPtr(_) => 10,
@@ -282,7 +278,6 @@ impl<I: Interner> Clone for TyKind<I> {
             Float(f) => Float(*f),
             Adt(d, s) => Adt(d.clone(), s.clone()),
             Foreign(d) => Foreign(d.clone()),
-            Str => Str,
             Array(t, c) => Array(t.clone(), c.clone()),
             Slice(t) => Slice(t.clone()),
             RawPtr(t) => RawPtr(t.clone()),
@@ -346,7 +341,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
             (Placeholder(a_p), Placeholder(b_p)) => a_p == b_p,
             (Infer(a_t), Infer(b_t)) => a_t == b_t,
             (Error(a_e), Error(b_e)) => a_e == b_e,
-            (Bool, Bool) | (Char, Char) | (Str, Str) | (Never, Never) => true,
+            (Bool, Bool) | (Char, Char) | (Never, Never) => true,
             _ => {
                 debug_assert!(
                     tykind_discriminant(self) != tykind_discriminant(other),
@@ -410,7 +405,7 @@ impl<I: Interner> Ord for TyKind<I> {
                 (Placeholder(a_p), Placeholder(b_p)) => a_p.cmp(b_p),
                 (Infer(a_t), Infer(b_t)) => a_t.cmp(b_t),
                 (Error(a_e), Error(b_e)) => a_e.cmp(b_e),
-                (Bool, Bool) | (Char, Char) | (Str, Str) | (Never, Never) => Ordering::Equal,
+                (Bool, Bool) | (Char, Char) | (Never, Never) => Ordering::Equal,
                 _ => {
                     debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}");
                     Ordering::Equal
@@ -481,7 +476,7 @@ impl<I: Interner> hash::Hash for TyKind<I> {
             Placeholder(p) => p.hash(state),
             Infer(t) => t.hash(state),
             Error(e) => e.hash(state),
-            Bool | Char | Str | Never => (),
+            Bool | Char | Never => (),
         }
     }
 }
@@ -497,7 +492,6 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             Float(float) => f.debug_tuple_field1_finish("Float", float),
             Adt(d, s) => f.debug_tuple_field2_finish("Adt", d, s),
             Foreign(d) => f.debug_tuple_field1_finish("Foreign", d),
-            Str => f.write_str("Str"),
             Array(t, c) => f.debug_tuple_field2_finish("Array", t, c),
             Slice(t) => f.debug_tuple_field1_finish("Slice", t),
             RawPtr(t) => f.debug_tuple_field1_finish("RawPtr", t),
@@ -567,7 +561,6 @@ where
             Foreign(def_id) => e.emit_enum_variant(disc, |e| {
                 def_id.encode(e);
             }),
-            Str => e.emit_enum_variant(disc, |_| {}),
             Array(t, c) => e.emit_enum_variant(disc, |e| {
                 t.encode(e);
                 c.encode(e);
@@ -674,7 +667,7 @@ where
             4 => Float(Decodable::decode(d)),
             5 => Adt(Decodable::decode(d), Decodable::decode(d)),
             6 => Foreign(Decodable::decode(d)),
-            7 => Str,
+            // 7: used to be Str, FIXME: move all these down
             8 => Array(Decodable::decode(d), Decodable::decode(d)),
             9 => Slice(Decodable::decode(d)),
             10 => RawPtr(Decodable::decode(d)),
@@ -755,7 +748,6 @@ where
             Foreign(def_id) => {
                 def_id.hash_stable(__hcx, __hasher);
             }
-            Str => {}
             Array(t, c) => {
                 t.hash_stable(__hcx, __hasher);
                 c.hash_stable(__hcx, __hasher);

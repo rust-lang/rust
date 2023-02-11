@@ -48,7 +48,9 @@ bitflags! {
         /// (i.e., this flag is never set unless this ADT is an enum).
         const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
         /// Indicates whether the type is `UnsafeCell`.
-        const IS_UNSAFE_CELL              = 1 << 9;
+        const IS_UNSAFE_CELL      = 1 << 9;
+        /// Indicates whether the type is `str`.
+        const IS_STR              = 1 << 10;
     }
 }
 
@@ -247,6 +249,9 @@ impl AdtDefData {
         if Some(did) == tcx.lang_items().unsafe_cell_type() {
             flags |= AdtFlags::IS_UNSAFE_CELL;
         }
+        if Some(did) == tcx.lang_items().str_type() {
+            flags |= AdtFlags::IS_STR;
+        }
 
         AdtDefData { did, variants, flags, repr }
     }
@@ -343,6 +348,11 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn is_manually_drop(self) -> bool {
         self.flags().contains(AdtFlags::IS_MANUALLY_DROP)
+    }
+
+    #[inline]
+    pub fn is_str(self) -> bool {
+        self.flags().contains(AdtFlags::IS_STR)
     }
 
     /// Returns `true` if this type has a destructor.

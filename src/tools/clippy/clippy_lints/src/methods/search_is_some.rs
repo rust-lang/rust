@@ -108,7 +108,7 @@ pub(super) fn check<'tcx>(
             if is_type_lang_item(cx, self_ty, hir::LangItem::String) {
                 true
             } else {
-                *self_ty.kind() == ty::Str
+                *self_ty.is_str()
             }
         };
         if_chain! {

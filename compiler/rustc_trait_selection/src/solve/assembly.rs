@@ -377,7 +377,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Float(_)
             | ty::Adt(_, _)
             | ty::Foreign(_)
-            | ty::Str
             | ty::Array(_, _)
             | ty::Slice(_)
             | ty::RawPtr(_)
@@ -425,7 +424,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Float(_)
             | ty::Adt(_, _)
             | ty::Foreign(_)
-            | ty::Str
             | ty::Array(_, _)
             | ty::Slice(_)
             | ty::RawPtr(_)

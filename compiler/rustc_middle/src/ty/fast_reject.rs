@@ -94,8 +94,9 @@ pub fn simplify_type<'tcx>(
         ty::Int(int_type) => Some(IntSimplifiedType(int_type)),
         ty::Uint(uint_type) => Some(UintSimplifiedType(uint_type)),
         ty::Float(float_type) => Some(FloatSimplifiedType(float_type)),
+        // FIXME(str): Do we need this? We could just treat it like an ADT.
+        ty::Adt(def, _) if def.is_str() => Some(StrSimplifiedType),
         ty::Adt(def, _) => Some(AdtSimplifiedType(def.did())),
-        ty::Str => Some(StrSimplifiedType),
         ty::Array(..) => Some(ArraySimplifiedType),
         ty::Slice(..) => Some(SliceSimplifiedType),
         ty::RawPtr(ptr) => Some(PtrSimplifiedType(ptr.mutbl)),
@@ -197,7 +198,6 @@ impl DeepRejectCtxt {
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Adt(..)
-            | ty::Str
             | ty::Array(..)
             | ty::Slice(..)
             | ty::RawPtr(..)
@@ -225,7 +225,6 @@ impl DeepRejectCtxt {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
-            | ty::Str
             | ty::Never
             | ty::Foreign(_) => obligation_ty == impl_ty,
             ty::Ref(_, obl_ty, obl_mutbl) => match k {

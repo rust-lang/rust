@@ -34,9 +34,11 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::GeneratorWitnessMIR(..)
         | ty::RawPtr(_)
         | ty::Ref(..)
-        | ty::Str
         | ty::Foreign(..)
         | ty::Error(_) => true,
+
+        // FIXME(str): Do we need this?
+        ty::Adt(def, _) if def.is_str() => true,
 
         // [T; N] and [T] have same properties as T.
         ty::Array(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, *ty),

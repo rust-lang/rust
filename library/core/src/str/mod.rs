@@ -76,6 +76,15 @@ use iter::MatchIndicesInternal;
 use iter::SplitInternal;
 use iter::{MatchesInternal, SplitNInternal};
 
+/// strang
+#[cfg(not(bootstrap))]
+#[allow(non_camel_case_types)]
+#[unstable(feature = "the_str_type_itself_in_all_its_glory", issue = "none")]
+#[rustc_has_incoherent_inherent_impls]
+#[lang = "str"]
+#[repr(transparent)]
+pub struct str([u8]);
+
 #[inline(never)]
 #[cold]
 #[track_caller]

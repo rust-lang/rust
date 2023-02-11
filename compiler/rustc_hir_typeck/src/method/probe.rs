@@ -689,7 +689,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
-            | ty::Str
             | ty::Array(..)
             | ty::Slice(_)
             | ty::RawPtr(_)

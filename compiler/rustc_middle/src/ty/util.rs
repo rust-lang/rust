@@ -949,13 +949,14 @@ impl<'tcx> Ty<'tcx> {
             | ty::Float(_)
             | ty::Bool
             | ty::Char
-            | ty::Str
             | ty::Never
             | ty::Ref(..)
             | ty::RawPtr(_)
             | ty::FnDef(..)
             | ty::Error(_)
             | ty::FnPtr(_) => true,
+            // FIXME(str): make sure this is true :^)
+            ty::Adt(def, _) if def.is_str() => true,
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_freeze),
             ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_freeze(),
             ty::Adt(..)
@@ -989,13 +990,14 @@ impl<'tcx> Ty<'tcx> {
             | ty::Float(_)
             | ty::Bool
             | ty::Char
-            | ty::Str
             | ty::Never
             | ty::Ref(..)
             | ty::RawPtr(_)
             | ty::FnDef(..)
             | ty::Error(_)
             | ty::FnPtr(_) => true,
+            // FIXME(str): make sure this is true :^)
+            ty::Adt(def, _) if def.is_str() => true,
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_unpin),
             ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_unpin(),
             ty::Adt(..)
@@ -1106,7 +1108,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Adt(..) => tcx.has_structural_eq_impls(self),
 
             // Primitive types that satisfy `Eq`.
-            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Str | ty::Never => true,
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Never => true,
 
             // Composite types that satisfy `Eq` when all of their fields do.
             //
@@ -1234,8 +1236,9 @@ pub fn needs_drop_components<'tcx>(
         | ty::GeneratorWitness(..)
         | ty::GeneratorWitnessMIR(..)
         | ty::RawPtr(_)
-        | ty::Ref(..)
-        | ty::Str => Ok(SmallVec::new()),
+        | ty::Ref(..) => Ok(SmallVec::new()),
+
+        ty::Adt(def, _) if def.is_str() => Ok(SmallVec::new()),
 
         // Foreign types can never have destructors.
         ty::Foreign(..) => Ok(SmallVec::new()),
@@ -1285,7 +1288,6 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
         | ty::Float(_)
         | ty::Infer(ty::IntVar(_))
         | ty::Infer(ty::FloatVar(_))
-        | ty::Str
         | ty::RawPtr(_)
         | ty::Ref(..)
         | ty::FnDef(..)

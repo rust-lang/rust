@@ -116,7 +116,7 @@ impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
                 // for empty array.
                 return ControlFlow::Continue(());
             }
-            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Str | ty::Never => {
+            ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Never => {
                 // These primitive types are always structural match.
                 //
                 // `Never` is kind of special here, but as it is not inhabitable, this should be fine.

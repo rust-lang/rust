@@ -406,7 +406,6 @@ fn build_slice_type_di_node<'ll, 'tcx>(
 ) -> DINodeCreationResult<'ll> {
     let element_type = match slice_type.kind() {
         ty::Slice(element_type) => *element_type,
-        ty::Str => cx.tcx.types.u8,
         _ => {
             bug!(
                 "Only ty::Slice is valid for build_slice_type_di_node(). Found {:?} instead.",
@@ -440,7 +439,7 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
         }
         ty::Tuple(elements) if elements.is_empty() => build_basic_type_di_node(cx, t),
         ty::Array(..) => build_fixed_size_array_di_node(cx, unique_type_id, t),
-        ty::Slice(_) | ty::Str => build_slice_type_di_node(cx, t, unique_type_id),
+        ty::Slice(_) => build_slice_type_di_node(cx, t, unique_type_id),
         ty::Dynamic(..) => build_dyn_type_di_node(cx, t, unique_type_id),
         ty::Foreign(..) => build_foreign_type_di_node(cx, t, unique_type_id),
         ty::RawPtr(ty::TypeAndMut { ty: pointee_type, .. }) | ty::Ref(_, pointee_type, _) => {

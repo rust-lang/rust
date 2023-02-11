@@ -111,9 +111,15 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
             const_to_valtree_inner(ecx, &derefd_place, num_nodes)
         }
 
-        ty::Str | ty::Slice(_) | ty::Array(_, _) => {
+        ty::Slice(_) | ty::Array(_, _) => {
             slice_branches(ecx, place, num_nodes)
         }
+
+        // FIXME(str): Do we need this?
+        ty::Adt(def, _) if def.is_str() => {
+            slice_branches(ecx, place, num_nodes)
+        }
+
         // Trait objects are not allowed in type level constants, as we have no concept for
         // resolving their backing type, even if we can do that at const eval time. We may
         // hypothetically be able to allow `dyn StructuralEq` trait objects in the future,
@@ -187,14 +193,7 @@ fn get_info_on_unsized_field<'tcx>(
     );
     let unsized_inner_ty = match tail.kind() {
         ty::Slice(t) => *t,
-        ty::Str => tail,
         _ => bug!("expected Slice or Str"),
-    };
-
-    // Have to adjust type for ty::Str
-    let unsized_inner_ty = match unsized_inner_ty.kind() {
-        ty::Str => tcx.mk_ty(ty::Uint(ty::UintTy::U8)),
-        _ => unsized_inner_ty,
     };
 
     // Get the number of elements in the unsized field
@@ -215,10 +214,6 @@ fn create_pointee_place<'tcx>(
         // We need to create `Allocation`s for custom DSTs
 
         let (unsized_inner_ty, num_elems) = get_info_on_unsized_field(ty, valtree, tcx);
-        let unsized_inner_ty = match unsized_inner_ty.kind() {
-            ty::Str => tcx.mk_ty(ty::Uint(ty::UintTy::U8)),
-            _ => unsized_inner_ty,
-        };
         let unsized_inner_ty_size =
             tcx.layout_of(ty::ParamEnv::empty().and(unsized_inner_ty)).unwrap().layout.size();
         debug!(?unsized_inner_ty, ?unsized_inner_ty_size, ?num_elems);
@@ -317,7 +312,6 @@ pub fn valtree_to_const_value<'tcx>(
         | ty::GeneratorWitnessMIR(..)
         | ty::FnPtr(_)
         | ty::RawPtr(_)
-        | ty::Str
         | ty::Slice(_)
         | ty::Dynamic(..) => bug!("no ValTree should have been created for type {:?}", ty.kind()),
     }
@@ -353,7 +347,16 @@ fn valtree_into_mplace<'tcx>(
             intern_const_alloc_recursive(ecx, InternKind::Constant, &pointee_place).unwrap();
 
             let imm = match inner_ty.kind() {
-                ty::Slice(_) | ty::Str => {
+                ty::Slice(_) => {
+                    let len = valtree.unwrap_branch().len();
+                    let len_scalar = Scalar::from_machine_usize(len as u64, &tcx);
+
+                    Immediate::ScalarPair(
+                        Scalar::from_maybe_pointer((*pointee_place).ptr, &tcx),
+                        len_scalar,
+                    )
+                }
+                ty::Adt(def, _) if def.is_str() => {
                     let len = valtree.unwrap_branch().len();
                     let len_scalar = Scalar::from_machine_usize(len as u64, &tcx);
 
@@ -368,7 +371,7 @@ fn valtree_into_mplace<'tcx>(
 
             ecx.write_immediate(imm, &place.into()).unwrap();
         }
-        ty::Adt(_, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Str | ty::Slice(_) => {
+        ty::Adt(_, _) | ty::Tuple(_) | ty::Array(_, _) | ty::Slice(_) => {
             let branches = valtree.unwrap_branch();
 
             // Need to downcast place for enums
@@ -396,7 +399,8 @@ fn valtree_into_mplace<'tcx>(
                 debug!(?i, ?inner_valtree);
 
                 let mut place_inner = match ty.kind() {
-                    ty::Str | ty::Slice(_) => ecx.mplace_index(&place, i as u64).unwrap(),
+                    ty::Adt(def, _) if def.is_str() => ecx.mplace_index(&place, i as u64).unwrap(),
+                    ty::Slice(_) => ecx.mplace_index(&place, i as u64).unwrap(),
                     _ if !ty.is_sized(*ecx.tcx, ty::ParamEnv::empty())
                         && i == branches.len() - 1 =>
                     {

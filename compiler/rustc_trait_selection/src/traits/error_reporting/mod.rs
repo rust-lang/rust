@@ -1911,8 +1911,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             match t.kind() {
                 ty::Bool => Some(0),
                 ty::Char => Some(1),
-                ty::Str => Some(2),
-                ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().string() => Some(2),
+                ty::Adt(def, _) if def.is_str() || Some(def.did()) == tcx.lang_items().string() => {
+                    Some(2)
+                }
                 ty::Int(..)
                 | ty::Uint(..)
                 | ty::Float(..)
@@ -1958,6 +1959,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             Some(CandidateSimilarity::Exact { ignoring_lifetimes })
         } else if cat_a == cat_b {
             match (a.kind(), b.kind()) {
+                // `str` are always equal to the other type in their category, `String`
+                (ty::Adt(def, _), _) | (_, ty::Adt(def, _)) if def.is_str() => true,
                 (ty::Adt(def_a, _), ty::Adt(def_b, _)) => def_a == def_b,
                 (ty::Foreign(def_a), ty::Foreign(def_b)) => def_a == def_b,
                 // Matching on references results in a lot of unhelpful

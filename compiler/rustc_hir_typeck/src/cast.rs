@@ -101,7 +101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         Ok(match *t.kind() {
-            ty::Slice(_) | ty::Str => Some(PointerKind::Length),
+            ty::Slice(_) => Some(PointerKind::Length),
             ty::Dynamic(ref tty, _, ty::Dyn) => Some(PointerKind::VTable(tty.principal_def_id())),
             ty::Adt(def, substs) if def.is_struct() => match def.non_enum_variant().fields.last() {
                 None => Some(PointerKind::Thin),
@@ -1101,7 +1101,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             let derefed = fcx
                 .autoderef(self.expr_span, self.expr_ty)
                 .silence_errors()
-                .find(|t| matches!(t.0.kind(), ty::Str | ty::Slice(..)));
+                .find(|t| matches!(t.0.kind(), ty::Slice(..)) || t.0.is_str());
 
             if let Some((deref_ty, _)) = derefed {
                 // Give a note about what the expr derefs to.

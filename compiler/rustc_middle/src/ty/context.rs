@@ -259,7 +259,6 @@ pub struct CommonTypes<'tcx> {
     pub u128: Ty<'tcx>,
     pub f32: Ty<'tcx>,
     pub f64: Ty<'tcx>,
-    pub str_: Ty<'tcx>,
     pub never: Ty<'tcx>,
     pub self_param: Ty<'tcx>,
 
@@ -308,7 +307,6 @@ impl<'tcx> CommonTypes<'tcx> {
             u128: mk(Uint(ty::UintTy::U128)),
             f32: mk(Float(ty::FloatTy::F32)),
             f64: mk(Float(ty::FloatTy::F64)),
-            str_: mk(Str),
             self_param: mk(ty::Param(ty::ParamTy { index: 0, name: kw::SelfUpper })),
 
             trait_object_dummy_self: mk(Infer(ty::FreshTy(0))),
@@ -1292,7 +1290,7 @@ macro_rules! sty_debug_print {
                 for &InternedInSet(t) in types {
                     let variant = match t.internee {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
-                            ty::Float(..) | ty::Str | ty::Never => continue,
+                            ty::Float(..) | ty::Never => continue,
                         ty::Error(_) => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
@@ -1899,7 +1897,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_str(self) -> Ty<'tcx> {
-        self.mk_ty(Str)
+        self.mk_adt(self.adt_def(self.require_lang_item(LangItem::Str, None)), List::empty())
     }
 
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {

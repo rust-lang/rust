@@ -414,7 +414,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let expected = self.resolve_vars_if_possible(expected);
             pat_ty = match expected.kind() {
                 ty::Adt(def, _) if Some(def.did()) == tcx.lang_items().string() => expected,
-                ty::Str => tcx.mk_static_str(),
+                ty::Adt(def, _) if def.is_str() => tcx.mk_static_str(),
                 _ => pat_ty,
             };
         }

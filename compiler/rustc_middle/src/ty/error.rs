@@ -290,8 +290,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Int(_)
             | ty::Uint(_)
             | ty::Float(_)
-            | ty::Str
             | ty::Never => "type".into(),
+            ty::Adt(def, _) if def.is_str() => "type".into(),
             ty::Tuple(ref tys) if tys.is_empty() => "unit type".into(),
             ty::Adt(def, _) => def.descr().into(),
             ty::Foreign(_) => "extern type".into(),
