@@ -671,6 +671,9 @@ pub enum TerminatorKind<'tcx> {
     /// as parameters, and `None` for the destination. Keep in mind that the `cleanup` path is not
     /// necessarily executed even in the case of a panic, for example in `-C panic=abort`. If the
     /// assertion does not fail, execution continues at the specified basic block.
+    ///
+    /// When overflow checking is disabled and we are generating run-time code, the `Overflow*`
+    /// variants of this terminator are codegened as simple `goto target`.
     Assert {
         cond: Operand<'tcx>,
         expected: bool,
