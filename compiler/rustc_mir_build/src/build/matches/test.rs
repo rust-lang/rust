@@ -245,7 +245,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     let re_erased = tcx.lifetimes.re_erased;
                     let ref_string = self.temp(tcx.mk_imm_ref(re_erased, ty), test.span);
-                    let ref_str_ty = tcx.mk_imm_ref(re_erased, tcx.types.str_);
+                    let ref_str_ty = tcx.mk_imm_ref(re_erased, tcx.mk_str());
                     let ref_str = self.temp(ref_str_ty, test.span);
                     let deref = tcx.require_lang_item(LangItem::Deref, None);
                     let method = trait_method(tcx, deref, sym::deref, [ty]);

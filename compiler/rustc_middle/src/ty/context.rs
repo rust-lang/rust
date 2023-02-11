@@ -1665,7 +1665,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_static_str(self) -> Ty<'tcx> {
-        self.mk_imm_ref(self.lifetimes.re_static, self.types.str_)
+        self.mk_imm_ref(self.lifetimes.re_static, self.mk_str())
     }
 
     #[inline]
@@ -1895,6 +1895,11 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_ty_param(self, index: u32, name: Symbol) -> Ty<'tcx> {
         self.mk_ty(Param(ParamTy { index, name }))
+    }
+
+    #[inline]
+    pub fn mk_str(self) -> Ty<'tcx> {
+        self.mk_ty(Str)
     }
 
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
