@@ -142,6 +142,18 @@ error: unresolved link to `T::h`
 LL | /// [T::h!]
    |      ^^^^^ the trait `T` has no macro named `h`
 
+error: unresolved link to `TestEnum::Variant1::field_name`
+  --> $DIR/errors.rs:107:6
+   |
+LL | ///[`TestEnum::Variant1::field_name`]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ variant `Variant1` has no such field
+
+error: unresolved link to `TestEnumNoFields::Variant1::field_name`
+  --> $DIR/errors.rs:115:6
+   |
+LL | ///[`TestEnumNoFields::Variant1::field_name`]
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Variant1` is a variant, not a module or type, and cannot have associated items
+
 error: unresolved link to `m`
   --> $DIR/errors.rs:98:6
    |
@@ -153,5 +165,5 @@ help: to link to the macro, add an exclamation mark
 LL | /// [m!()]
    |       +
 
-error: aborting due to 20 previous errors
+error: aborting due to 22 previous errors
 

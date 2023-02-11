@@ -1081,10 +1081,10 @@ fn item_typedef(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clea
     fn write_content(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Typedef) {
         wrap_item(w, |w| {
             render_attributes_in_pre(w, it, "");
-            write!(w, "{}", visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx));
             write!(
                 w,
-                "type {}{}{where_clause} = {type_};",
+                "{}type {}{}{where_clause} = {type_};",
+                visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
                 it.name.unwrap(),
                 t.generics.print(cx),
                 where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
@@ -1138,13 +1138,11 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
                      <a href=\"#{id}\" class=\"anchor field\">§</a>\
                      <code>{name}: {ty}</code>\
                  </span>",
-                id = id,
-                name = name,
                 shortty = ItemType::StructField,
                 ty = ty.print(cx),
             );
             if let Some(stability_class) = field.stability_class(cx.tcx()) {
-                write!(w, "<span class=\"stab {stab}\"></span>", stab = stability_class);
+                write!(w, "<span class=\"stab {stability_class}\"></span>");
             }
             document(w, cx, field, Some(it), HeadingOffset::H3);
         }
@@ -1242,7 +1240,6 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                 w,
                 "<section id=\"{id}\" class=\"variant\">\
                     <a href=\"#{id}\" class=\"anchor\">§</a>",
-                id = id,
             );
             render_stability_since_raw_with_extra(
                 w,
@@ -1280,8 +1277,11 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             if let Some((heading, fields)) = heading_and_fields {
                 let variant_id =
                     cx.derive_id(format!("{}.{}.fields", ItemType::Variant, variant.name.unwrap()));
-                write!(w, "<div class=\"sub-variant\" id=\"{id}\">", id = variant_id);
-                write!(w, "<h4>{heading}</h4>", heading = heading);
+                write!(
+                    w,
+                    "<div class=\"sub-variant\" id=\"{variant_id}\">\
+                        <h4>{heading}</h4>",
+                );
                 document_non_exhaustive(w, variant);
                 for field in fields {
                     match *field.kind {
@@ -1299,7 +1299,6 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                                      <a href=\"#{id}\" class=\"anchor field\">§</a>\
                                      <code>{f}: {t}</code>\
                                  </span>",
-                                id = id,
                                 f = field.name.unwrap(),
                                 t = ty.print(cx)
                             );
@@ -1450,11 +1449,9 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
                     w,
                     "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
                          <a href=\"#{id}\" class=\"anchor field\">§</a>\
-                         <code>{name}: {ty}</code>\
+                         <code>{field_name}: {ty}</code>\
                      </span>",
                     item_type = ItemType::StructField,
-                    id = id,
-                    name = field_name,
                     ty = ty.print(cx)
                 );
                 document(w, cx, field, Some(it), HeadingOffset::H3);
@@ -1840,8 +1837,8 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
         if layout.abi.is_unsized() {
             write!(w, "(unsized)");
         } else {
-            let bytes = layout.size.bytes() - tag_size;
-            write!(w, "{size} byte{pl}", size = bytes, pl = if bytes == 1 { "" } else { "s" },);
+            let size = layout.size.bytes() - tag_size;
+            write!(w, "{size} byte{pl}", pl = if size == 1 { "" } else { "s" },);
         }
     }
 
@@ -1896,7 +1893,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
 
                     for (index, layout) in variants.iter_enumerated() {
                         let name = adt.variant(index).name;
-                        write!(w, "<li><code>{name}</code>: ", name = name);
+                        write!(w, "<li><code>{name}</code>: ");
                         write_size_of_layout(w, layout, tag_size);
                         writeln!(w, "</li>");
                     }

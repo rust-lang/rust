@@ -2209,10 +2209,12 @@ fn clean_maybe_renamed_item<'tcx>(
         };
 
         let mut extra_attrs = Vec::new();
-        if let Some(hir::Node::Item(use_node)) =
-            import_id.and_then(|def_id| cx.tcx.hir().find_by_def_id(def_id))
+        if let Some(import_id) = import_id &&
+            let Some(hir::Node::Item(use_node)) = cx.tcx.hir().find_by_def_id(import_id)
         {
-            // We get all the various imports' attributes.
+            // First, we add the attributes from the current import.
+            extra_attrs.extend_from_slice(inline::load_attrs(cx, import_id.to_def_id()));
+            // Then we get all the various imports' attributes.
             get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut extra_attrs);
         }
 
