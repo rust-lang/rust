@@ -131,7 +131,8 @@ pub struct TryFromSliceError(());
 impl fmt::Display for TryFromSliceError {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self.__description(), f)
+        #[allow(deprecated)]
+        self.description().fmt(f)
     }
 }
 
@@ -139,20 +140,6 @@ impl fmt::Display for TryFromSliceError {
 impl Error for TryFromSliceError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
-        self.__description()
-    }
-}
-
-impl TryFromSliceError {
-    #[unstable(
-        feature = "array_error_internals",
-        reason = "available through Error trait and this method should not \
-                     be exposed publicly",
-        issue = "none"
-    )]
-    #[inline]
-    #[doc(hidden)]
-    pub fn __description(&self) -> &str {
         "could not convert slice to array"
     }
 }
