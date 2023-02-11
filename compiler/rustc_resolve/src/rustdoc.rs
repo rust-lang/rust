@@ -3,7 +3,7 @@ use rustc_ast as ast;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::def_id::DefId;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 use std::{cmp, mem};
 
@@ -337,6 +337,20 @@ pub fn strip_generics_from_path(path_str: &str) -> Result<Box<str>, MalformedGen
 /// FIXME(#78591): Support both inner and outer attributes on the same item.
 pub fn inner_docs(attrs: &[ast::Attribute]) -> bool {
     attrs.iter().find(|a| a.doc_str().is_some()).map_or(true, |a| a.style == ast::AttrStyle::Inner)
+}
+
+/// Has `#[doc(primitive)]` or `#[doc(keyword)]`.
+pub fn has_primitive_or_keyword_docs(attrs: &[ast::Attribute]) -> bool {
+    for attr in attrs {
+        if attr.has_name(sym::doc) && let Some(items) = attr.meta_item_list() {
+            for item in items {
+                if item.has_name(sym::primitive) || item.has_name(sym::keyword) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }
 
 /// Simplified version of the corresponding function in rustdoc.

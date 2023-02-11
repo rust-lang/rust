@@ -15,8 +15,8 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::Mutability;
 use rustc_middle::ty::{fast_reject::TreatProjections, Ty, TyCtxt};
 use rustc_middle::{bug, ty};
-use rustc_resolve::rustdoc::MalformedGenerics;
-use rustc_resolve::rustdoc::{prepare_to_doc_link_resolution, strip_generics_from_path};
+use rustc_resolve::rustdoc::{has_primitive_or_keyword_docs, prepare_to_doc_link_resolution};
+use rustc_resolve::rustdoc::{strip_generics_from_path, MalformedGenerics};
 use rustc_session::lint::Lint;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -899,6 +899,15 @@ fn preprocessed_markdown_links(s: &str) -> Vec<PreprocessedMarkdownLink> {
 
 impl LinkCollector<'_, '_> {
     fn resolve_links(&mut self, item: &Item) {
+        if !self.cx.render_options.document_private
+            && let Some(def_id) = item.item_id.as_def_id()
+            && let Some(def_id) = def_id.as_local()
+            && !self.cx.tcx.effective_visibilities(()).is_exported(def_id)
+            && !has_primitive_or_keyword_docs(&item.attrs.other_attrs) {
+            // Skip link resolution for non-exported items.
+            return;
+        }
+
         // We want to resolve in the lexical scope of the documentation.
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
