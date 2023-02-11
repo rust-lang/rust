@@ -80,7 +80,7 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
     );
 
     let bench_compile =
-        hyperfine_command(1, bench_runs, Some(&clean_cmd), &llvm_build_cmd, &clif_build_cmd);
+        hyperfine_command(1, bench_runs, Some(&clean_cmd), &[&llvm_build_cmd, &clif_build_cmd]);
 
     spawn_and_wait(bench_compile);
 
@@ -95,8 +95,10 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         0,
         bench_runs,
         None,
-        Path::new(".").join(get_file_name("raytracer_cg_llvm", "bin")).to_str().unwrap(),
-        Path::new(".").join(get_file_name("raytracer_cg_clif", "bin")).to_str().unwrap(),
+        &[
+            Path::new(".").join(get_file_name("raytracer_cg_llvm", "bin")).to_str().unwrap(),
+            Path::new(".").join(get_file_name("raytracer_cg_clif", "bin")).to_str().unwrap(),
+        ],
     );
     bench_run.current_dir(RelPath::BUILD.to_path(dirs));
     spawn_and_wait(bench_run);
