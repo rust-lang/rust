@@ -94,6 +94,27 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     this.changed
 }
 
+fn inline_threshold<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    callee_body: &Body<'tcx>,
+    callee_attrs: &CodegenFnAttrs,
+) -> usize {
+    let mut threshold = if callee_attrs.requests_inline() {
+        tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
+    } else {
+        tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(50)
+    };
+
+    // Give a bonus functions with a small number of blocks,
+    // We normally have two or three blocks for even
+    // very small functions.
+    if callee_body.basic_blocks.len() <= 3 {
+        threshold += threshold / 4;
+    }
+
+    threshold
+}
+
 struct Inliner<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
@@ -402,18 +423,7 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Result<(), &'static str> {
         let tcx = self.tcx;
 
-        let mut threshold = if callee_attrs.requests_inline() {
-            self.tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
-        } else {
-            self.tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(50)
-        };
-
-        // Give a bonus functions with a small number of blocks,
-        // We normally have two or three blocks for even
-        // very small functions.
-        if callee_body.basic_blocks.len() <= 3 {
-            threshold += threshold / 4;
-        }
+        let threshold = inline_threshold(tcx, callee_body, callee_attrs);
         debug!("    final inline threshold = {}", threshold);
 
         // FIXME: Give a bonus to functions with only a single caller
