@@ -56,7 +56,7 @@ pub fn check(
 /// Returns whether `ty` specializes `ToString`.
 /// Currently, these are `str`, `String`, and `Cow<'_, str>`.
 fn specializes_tostring(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    if let ty::Str = ty.kind() {
+    if ty.is_str() {
         return true;
     }
 

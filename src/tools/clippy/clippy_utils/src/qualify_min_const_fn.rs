@@ -159,7 +159,7 @@ fn check_rvalue<'tcx>(
                 return Err((span, "unsizing casts are only allowed for references right now".into()));
             };
             let unsized_ty = tcx.struct_tail_erasing_lifetimes(pointee_ty, tcx.param_env(def_id));
-            if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
+            if let ty::Slice(_) = unsized_ty.kind() {
                 check_operand(tcx, op, span, body)?;
                 // Casting/coercing things to slices is fine.
                 Ok(())

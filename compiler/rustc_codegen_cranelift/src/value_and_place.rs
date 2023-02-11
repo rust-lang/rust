@@ -23,7 +23,7 @@ fn codegen_field<'tcx>(
             return simple(fx);
         }
         match field_layout.ty.kind() {
-            ty::Slice(..) | ty::Str | ty::Foreign(..) => simple(fx),
+            ty::Slice(..) | ty::Foreign(..) => simple(fx),
             ty::Adt(def, _) if def.repr().packed() => {
                 assert_eq!(layout.align.abi.bytes(), 1);
                 simple(fx)

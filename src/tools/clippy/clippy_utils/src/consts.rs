@@ -627,7 +627,7 @@ pub fn miri_to_const<'tcx>(tcx: TyCtxt<'tcx>, result: mir::ConstantKind<'tcx>) -
         },
         mir::ConstantKind::Val(ConstValue::Slice { data, start, end }, _) => match result.ty().kind() {
             ty::Ref(_, tam, _) => match tam.kind() {
-                ty::Str => String::from_utf8(
+                ty::Adt(def, _) if def.is_str() => String::from_utf8(
                     data.inner()
                         .inspect_with_uninit_and_ptr_outside_interpreter(start..end)
                         .to_owned(),

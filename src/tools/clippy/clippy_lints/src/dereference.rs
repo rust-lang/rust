@@ -1413,7 +1413,7 @@ fn ty_auto_deref_stability<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, precedenc
             | ty::Float(_)
             | ty::RawPtr(..)
             | ty::FnPtr(_) => Position::DerefStable(precedence, true).into(),
-            ty::Str | ty::Slice(..) => Position::DerefStable(precedence, false).into(),
+            ty::Slice(..) => Position::DerefStable(precedence, false).into(),
             ty::Adt(..)
             | ty::Foreign(_)
             | ty::FnDef(..)

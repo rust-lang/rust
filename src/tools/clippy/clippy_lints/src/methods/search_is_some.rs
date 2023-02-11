@@ -8,7 +8,6 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::PatKind;
 use rustc_lint::LateContext;
-use rustc_middle::ty;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::sym;
 

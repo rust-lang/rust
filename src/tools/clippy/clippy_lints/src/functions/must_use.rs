@@ -188,7 +188,7 @@ static KNOWN_WRAPPER_TYS: &[Symbol] = &[sym::Rc, sym::Arc];
 fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, tys: &mut DefIdSet) -> bool {
     match *ty.kind() {
         // primitive types are never mutable
-        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
+        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => false,
         ty::Adt(adt, substs) => {
             tys.insert(adt.did()) && !ty.is_freeze(cx.tcx, cx.param_env)
                 || KNOWN_WRAPPER_TYS

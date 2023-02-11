@@ -22,7 +22,7 @@ enum CaseMethod {
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, scrutinee: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
     if_chain! {
         if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(scrutinee).kind();
-        if let ty::Str = ty.kind();
+        if ty.is_str();
         then {
             let mut visitor = MatchExprVisitor {
                 cx,
@@ -59,7 +59,7 @@ impl<'a, 'tcx> MatchExprVisitor<'a, 'tcx> {
         if let Some(case_method) = get_case_method(segment_ident) {
             let ty = self.cx.typeck_results().expr_ty(receiver).peel_refs();
 
-            if is_type_lang_item(self.cx, ty, LangItem::String) || ty.kind() == &ty::Str {
+            if is_type_lang_item(self.cx, ty, LangItem::String) || ty.is_str() {
                 self.case_method = Some(case_method);
                 return true;
             }

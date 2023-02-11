@@ -198,7 +198,7 @@ pub(crate) fn size_and_align_of_dst<'tcx>(
             // load size/align from vtable
             (crate::vtable::size_of_obj(fx, info), crate::vtable::min_align_of_obj(fx, info))
         }
-        ty::Slice(_) | ty::Str => {
+        ty::Slice(_) => {
             let unit = layout.field(fx, 0);
             // The info in this case is the length of the str, so the size is that
             // times the unit size.

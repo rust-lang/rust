@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_lint::Lint;
-use rustc_middle::ty::{self, DefIdTree};
+use rustc_middle::ty::DefIdTree;
 
 /// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints.
 pub(super) fn check(
@@ -25,7 +25,7 @@ pub(super) fn check(
             let mut applicability = Applicability::MachineApplicable;
             let self_ty = cx.typeck_results().expr_ty_adjusted(args[0].0).peel_refs();
 
-            if *self_ty.kind() != ty::Str {
+            if !self_ty.is_str() {
                 return false;
             }
 

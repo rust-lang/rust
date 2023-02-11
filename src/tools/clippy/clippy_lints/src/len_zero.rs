@@ -516,7 +516,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         }),
         ty::Alias(ty::Projection, ref proj) => has_is_empty_impl(cx, proj.def_id),
         ty::Adt(id, _) => has_is_empty_impl(cx, id.did()),
-        ty::Array(..) | ty::Slice(..) | ty::Str => true,
+        ty::Array(..) | ty::Slice(..) => true,
         _ => false,
     }
 }
