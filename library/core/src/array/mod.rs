@@ -23,7 +23,8 @@ mod iter;
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 pub use iter::IntoIter;
 
-/// Creates an array `[T; N]` where each array element `T` is returned by the `cb` call.
+/// Creates an array of type [T; N], where each element `T` is the returned value from `cb`
+/// using that element's index.
 ///
 /// # Arguments
 ///
@@ -32,8 +33,22 @@ pub use iter::IntoIter;
 /// # Example
 ///
 /// ```rust
+/// // type inference is helping us here, the way `from_fn` knows how many
+/// // elements to produce is the length of array down there: only arrays of
+/// // equal lengths can be compared, so the const generic parameter `N` is
+/// // inferred to be 5, thus creating array of 5 elements.
+///
 /// let array = core::array::from_fn(|i| i);
+/// // indexes are:    0  1  2  3  4
 /// assert_eq!(array, [0, 1, 2, 3, 4]);
+///
+/// let array2: [usize; 8] = core::array::from_fn(|i| i * 2);
+/// // indexes are:     0  1  2  3  4  5   6   7
+/// assert_eq!(array2, [0, 2, 4, 6, 8, 10, 12, 14]);
+///
+/// let bool_arr = core::array::from_fn::<_, 5, _>(|i| i % 2 == 0);
+/// // indexes are:       0     1      2     3      4
+/// assert_eq!(bool_arr, [true, false, true, false, true]);
 /// ```
 #[inline]
 #[stable(feature = "array_from_fn", since = "1.63.0")]
@@ -54,7 +69,7 @@ where
 /// if any element creation was unsuccessful.
 ///
 /// The return type of this function depends on the return type of the closure.
-/// If you return `Result<T, E>` from the closure, you'll get a `Result<[T; N]; E>`.
+/// If you return `Result<T, E>` from the closure, you'll get a `Result<[T; N], E>`.
 /// If you return `Option<T>` from the closure, you'll get an `Option<[T; N]>`.
 ///
 /// # Arguments
@@ -507,7 +522,7 @@ impl<T, const N: usize> [T; N] {
     /// return an array the same size as `self` or the first error encountered.
     ///
     /// The return type of this function depends on the return type of the closure.
-    /// If you return `Result<T, E>` from the closure, you'll get a `Result<[T; N]; E>`.
+    /// If you return `Result<T, E>` from the closure, you'll get a `Result<[T; N], E>`.
     /// If you return `Option<T>` from the closure, you'll get an `Option<[T; N]>`.
     ///
     /// # Examples
@@ -861,24 +876,6 @@ where
         return Ok(Try::from_output(unsafe { mem::zeroed() }));
     }
 
-    struct Guard<'a, T, const N: usize> {
-        array_mut: &'a mut [MaybeUninit<T>; N],
-        initialized: usize,
-    }
-
-    impl<T, const N: usize> Drop for Guard<'_, T, N> {
-        fn drop(&mut self) {
-            debug_assert!(self.initialized <= N);
-
-            // SAFETY: this slice will contain only initialized objects.
-            unsafe {
-                crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(
-                    &mut self.array_mut.get_unchecked_mut(..self.initialized),
-                ));
-            }
-        }
-    }
-
     let mut array = MaybeUninit::uninit_array::<N>();
     let mut guard = Guard { array_mut: &mut array, initialized: 0 };
 
@@ -892,13 +889,11 @@ where
                     ControlFlow::Continue(elem) => elem,
                 };
 
-                // SAFETY: `guard.initialized` starts at 0, is increased by one in the
-                // loop and the loop is aborted once it reaches N (which is
-                // `array.len()`).
+                // SAFETY: `guard.initialized` starts at 0, which means push can be called
+                // at most N times, which this loop does.
                 unsafe {
-                    guard.array_mut.get_unchecked_mut(guard.initialized).write(item);
+                    guard.push_unchecked(item);
                 }
-                guard.initialized += 1;
             }
             None => {
                 let alive = 0..guard.initialized;
@@ -912,8 +907,57 @@ where
 
     mem::forget(guard);
     // SAFETY: All elements of the array were populated in the loop above.
-    let output = unsafe { MaybeUninit::array_assume_init(array) };
+    let output = unsafe { array.transpose().assume_init() };
     Ok(Try::from_output(output))
+}
+
+/// Panic guard for incremental initialization of arrays.
+///
+/// Disarm the guard with `mem::forget` once the array has been initialized.
+///
+/// # Safety
+///
+/// All write accesses to this structure are unsafe and must maintain a correct
+/// count of `initialized` elements.
+///
+/// To minimize indirection fields are still pub but callers should at least use
+/// `push_unchecked` to signal that something unsafe is going on.
+pub(crate) struct Guard<'a, T, const N: usize> {
+    /// The array to be initialized.
+    pub array_mut: &'a mut [MaybeUninit<T>; N],
+    /// The number of items that have been initialized so far.
+    pub initialized: usize,
+}
+
+impl<T, const N: usize> Guard<'_, T, N> {
+    /// Adds an item to the array and updates the initialized item counter.
+    ///
+    /// # Safety
+    ///
+    /// No more than N elements must be initialized.
+    #[inline]
+    pub unsafe fn push_unchecked(&mut self, item: T) {
+        // SAFETY: If `initialized` was correct before and the caller does not
+        // invoke this method more than N times then writes will be in-bounds
+        // and slots will not be initialized more than once.
+        unsafe {
+            self.array_mut.get_unchecked_mut(self.initialized).write(item);
+            self.initialized = self.initialized.unchecked_add(1);
+        }
+    }
+}
+
+impl<T, const N: usize> Drop for Guard<'_, T, N> {
+    fn drop(&mut self) {
+        debug_assert!(self.initialized <= N);
+
+        // SAFETY: this slice will contain only initialized objects.
+        unsafe {
+            crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(
+                &mut self.array_mut.get_unchecked_mut(..self.initialized),
+            ));
+        }
+    }
 }
 
 /// Returns the next chunk of `N` items from the iterator or errors with an

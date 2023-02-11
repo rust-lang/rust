@@ -2,6 +2,7 @@ use byteorder::{BigEndian, ByteOrder};
 use std::env;
 #[cfg(unix)]
 use std::io::{self, BufRead};
+use std::path::PathBuf;
 
 fn main() {
     // Check env var set by `build.rs`.
@@ -21,12 +22,30 @@ fn main() {
     // If there were no arguments, access stdin and test working dir.
     // (We rely on the test runner to always disable isolation when passing no arguments.)
     if std::env::args().len() <= 1 {
+        fn host_to_target_path(path: String) -> PathBuf {
+            use std::ffi::{CStr, CString};
+
+            let path = CString::new(path).unwrap();
+            let mut out = Vec::with_capacity(1024);
+
+            unsafe {
+                extern "Rust" {
+                    fn miri_host_to_target_path(
+                        path: *const i8,
+                        out: *mut i8,
+                        out_size: usize,
+                    ) -> usize;
+                }
+                let ret = miri_host_to_target_path(path.as_ptr(), out.as_mut_ptr(), out.capacity());
+                assert_eq!(ret, 0);
+                let out = CStr::from_ptr(out.as_ptr()).to_str().unwrap();
+                PathBuf::from(out)
+            }
+        }
+
         // CWD should be crate root.
-        // We have to normalize slashes, as the env var might be set for a different target's conventions.
         let env_dir = env::current_dir().unwrap();
-        let env_dir = env_dir.to_string_lossy().replace("\\", "/");
-        let crate_dir = env::var_os("CARGO_MANIFEST_DIR").unwrap();
-        let crate_dir = crate_dir.to_string_lossy().replace("\\", "/");
+        let crate_dir = host_to_target_path(env::var("CARGO_MANIFEST_DIR").unwrap());
         assert_eq!(env_dir, crate_dir);
 
         #[cfg(unix)]

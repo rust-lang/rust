@@ -33,10 +33,13 @@ def normalize_stderr(str):
     return str
 
 def check_output(actual, path, name):
+    if 'MIRI_BLESS' in os.environ:
+        open(path, mode='w').write(actual)
+        return True
     expected = open(path).read()
     if expected == actual:
         return True
-    print(f"{path} did not match reference!")
+    print(f"{name} output did not match reference in {path}!")
     print(f"--- BEGIN diff {name} ---")
     for text in difflib.unified_diff(expected.split("\n"), actual.split("\n")):
         print(text)
@@ -130,7 +133,7 @@ def test_cargo_miri_test():
     test("`cargo miri test`",
         cargo_miri("test"),
         default_ref, "test.stderr-empty.ref",
-        env={'MIRIFLAGS': "-Zmiri-permissive-provenance -Zmiri-seed=feed"},
+        env={'MIRIFLAGS': "-Zmiri-permissive-provenance -Zmiri-seed=4242"},
     )
     test("`cargo miri test` (no isolation, no doctests)",
         cargo_miri("test") + ["--bins", "--tests"], # no `--lib`, we disabled that in `Cargo.toml`

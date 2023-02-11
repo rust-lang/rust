@@ -61,6 +61,8 @@
 //! "
 //! ```
 
+use std::iter;
+
 use rustc_hash::FxHashMap;
 use stdx::trim_indent;
 
@@ -76,6 +78,7 @@ pub struct Fixture {
     pub edition: Option<String>,
     pub env: FxHashMap<String, String>,
     pub introduce_new_source_root: Option<String>,
+    pub target_data_layout: Option<String>,
 }
 
 pub struct MiniCore {
@@ -132,11 +135,9 @@ impl Fixture {
             if line.contains("//-") {
                 assert!(
                     line.starts_with("//-"),
-                    "Metadata line {} has invalid indentation. \
+                    "Metadata line {ix} has invalid indentation. \
                      All metadata lines need to have the same indentation.\n\
-                     The offending line: {:?}",
-                    ix,
-                    line
+                     The offending line: {line:?}"
                 );
             }
 
@@ -150,7 +151,7 @@ impl Fixture {
                     && !line.contains('.')
                     && line.chars().all(|it| !it.is_uppercase())
                 {
-                    panic!("looks like invalid metadata line: {:?}", line);
+                    panic!("looks like invalid metadata line: {line:?}");
                 }
 
                 if let Some(entry) = res.last_mut() {
@@ -169,7 +170,7 @@ impl Fixture {
         let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
 
         let path = components[0].to_string();
-        assert!(path.starts_with('/'), "fixture path does not start with `/`: {:?}", path);
+        assert!(path.starts_with('/'), "fixture path does not start with `/`: {path:?}");
 
         let mut krate = None;
         let mut deps = Vec::new();
@@ -179,10 +180,10 @@ impl Fixture {
         let mut cfg_key_values = Vec::new();
         let mut env = FxHashMap::default();
         let mut introduce_new_source_root = None;
+        let mut target_data_layout = None;
         for component in components[1..].iter() {
-            let (key, value) = component
-                .split_once(':')
-                .unwrap_or_else(|| panic!("invalid meta line: {:?}", meta));
+            let (key, value) =
+                component.split_once(':').unwrap_or_else(|| panic!("invalid meta line: {meta:?}"));
             match key {
                 "crate" => krate = Some(value.to_string()),
                 "deps" => deps = value.split(',').map(|it| it.to_string()).collect(),
@@ -211,16 +212,15 @@ impl Fixture {
                     }
                 }
                 "new_source_root" => introduce_new_source_root = Some(value.to_string()),
-                _ => panic!("bad component: {:?}", component),
+                "target_data_layout" => target_data_layout = Some(value.to_string()),
+                _ => panic!("bad component: {component:?}"),
             }
         }
 
         for prelude_dep in extern_prelude.iter().flatten() {
             assert!(
                 deps.contains(prelude_dep),
-                "extern-prelude {:?} must be a subset of deps {:?}",
-                extern_prelude,
-                deps
+                "extern-prelude {extern_prelude:?} must be a subset of deps {deps:?}"
             );
         }
 
@@ -235,6 +235,7 @@ impl Fixture {
             edition,
             env,
             introduce_new_source_root,
+            target_data_layout,
         }
     }
 }
@@ -247,7 +248,7 @@ impl MiniCore {
     #[track_caller]
     fn assert_valid_flag(&self, flag: &str) {
         if !self.valid_flags.iter().any(|it| it == flag) {
-            panic!("invalid flag: {:?}, valid flags: {:?}", flag, self.valid_flags);
+            panic!("invalid flag: {flag:?}, valid flags: {:?}", self.valid_flags);
         }
     }
 
@@ -257,9 +258,9 @@ impl MiniCore {
         let line = line.strip_prefix("//- minicore:").unwrap().trim();
         for entry in line.split(", ") {
             if res.has_flag(entry) {
-                panic!("duplicate minicore flag: {:?}", entry);
+                panic!("duplicate minicore flag: {entry:?}");
             }
-            res.activated_flags.push(entry.to_string());
+            res.activated_flags.push(entry.to_owned());
         }
 
         res
@@ -273,35 +274,34 @@ impl MiniCore {
         let raw_mini_core = include_str!("./minicore.rs");
         let mut lines = raw_mini_core.split_inclusive('\n');
 
-        let mut parsing_flags = false;
         let mut implications = Vec::new();
 
         // Parse `//!` preamble and extract flags and dependencies.
-        for line in lines.by_ref() {
-            let line = match line.strip_prefix("//!") {
-                Some(it) => it,
-                None => {
-                    assert!(line.trim().is_empty());
-                    break;
-                }
-            };
-
-            if parsing_flags {
-                let (flag, deps) = line.split_once(':').unwrap();
-                let flag = flag.trim();
-                self.valid_flags.push(flag.to_string());
-                for dep in deps.split(", ") {
-                    let dep = dep.trim();
-                    if !dep.is_empty() {
-                        self.assert_valid_flag(dep);
-                        implications.push((flag, dep));
-                    }
-                }
+        let trim_doc: fn(&str) -> Option<&str> = |line| match line.strip_prefix("//!") {
+            Some(it) => Some(it),
+            None => {
+                assert!(line.trim().is_empty(), "expected empty line after minicore header");
+                None
             }
+        };
+        for line in lines
+            .by_ref()
+            .map_while(trim_doc)
+            .skip_while(|line| !line.contains("Available flags:"))
+            .skip(1)
+        {
+            let (flag, deps) = line.split_once(':').unwrap();
+            let flag = flag.trim();
 
-            if line.contains("Available flags:") {
-                parsing_flags = true;
-            }
+            self.valid_flags.push(flag.to_string());
+            implications.extend(
+                iter::repeat(flag)
+                    .zip(deps.split(", ").map(str::trim).filter(|dep| !dep.is_empty())),
+            );
+        }
+
+        for (_, dep) in &implications {
+            self.assert_valid_flag(dep);
         }
 
         for flag in &self.activated_flags {
@@ -332,7 +332,7 @@ impl MiniCore {
             }
             if let Some(region) = trimmed.strip_prefix("// endregion:") {
                 let prev = active_regions.pop().unwrap();
-                assert_eq!(prev, region);
+                assert_eq!(prev, region, "unbalanced region pairs");
                 continue;
             }
 
@@ -344,11 +344,7 @@ impl MiniCore {
 
             let mut keep = true;
             for &region in &active_regions {
-                assert!(
-                    !region.starts_with(' '),
-                    "region marker starts with a space: {:?}",
-                    region
-                );
+                assert!(!region.starts_with(' '), "region marker starts with a space: {region:?}");
                 self.assert_valid_flag(region);
                 seen_regions.push(region);
                 keep &= self.has_flag(region);
@@ -364,7 +360,7 @@ impl MiniCore {
 
         for flag in &self.valid_flags {
             if !seen_regions.iter().any(|it| it == flag) {
-                panic!("unused minicore flag: {:?}", flag);
+                panic!("unused minicore flag: {flag:?}");
             }
         }
         buf

@@ -1,5 +1,4 @@
-//@ignore-target-windows: Concurrency on Windows is not supported yet.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
 use std::thread;
 
 #[derive(Copy, Clone)]
@@ -22,4 +21,4 @@ fn race(local: i32) {
     // Deallocating the local (when `main` returns)
     // races with the read in the other thread.
     // Make sure the error points at this function's end, not just the call site.
-} //~ERROR: Data race detected between Deallocate on thread `main` and Read on thread `<unnamed>`
+} //~ERROR: Data race detected between (1) Read on thread `<unnamed>` and (2) Deallocate on thread `main`

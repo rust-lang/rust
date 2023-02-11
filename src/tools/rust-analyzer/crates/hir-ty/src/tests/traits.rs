@@ -1389,6 +1389,22 @@ fn foo<const C: u8, T>() -> (impl FnOnce(&str, T), impl Trait<u8>) {
 }
 
 #[test]
+fn return_pos_impl_trait_in_projection() {
+    // Note that the unused type param `X` is significant; see #13307.
+    check_no_mismatches(
+        r#"
+//- minicore: sized
+trait Future { type Output; }
+impl Future for () { type Output = i32; }
+type Foo<F> = (<F as Future>::Output, F);
+fn foo<X>() -> Foo<impl Future<Output = ()>> {
+    (0, ())
+}
+"#,
+    )
+}
+
+#[test]
 fn dyn_trait() {
     check_infer(
         r#"
@@ -1706,7 +1722,7 @@ fn where_clause_trait_in_scope_for_method_resolution() {
     check_types(
         r#"
 mod foo {
-    trait Trait {
+    pub trait Trait {
         fn foo(&self) -> u32 { 0 }
     }
 }
@@ -1723,7 +1739,7 @@ fn super_trait_method_resolution() {
     check_infer(
         r#"
 mod foo {
-    trait SuperTrait {
+    pub trait SuperTrait {
         fn foo(&self) -> u32 {}
     }
 }
@@ -1735,15 +1751,15 @@ fn test<T: Trait1, U: Trait2>(x: T, y: U) {
     y.foo();
 }"#,
         expect![[r#"
-            49..53 'self': &Self
-            62..64 '{}': u32
-            181..182 'x': T
-            187..188 'y': U
-            193..222 '{     ...o(); }': ()
-            199..200 'x': T
-            199..206 'x.foo()': u32
-            212..213 'y': U
-            212..219 'y.foo()': u32
+            53..57 'self': &Self
+            66..68 '{}': u32
+            185..186 'x': T
+            191..192 'y': U
+            197..226 '{     ...o(); }': ()
+            203..204 'x': T
+            203..210 'x.foo()': u32
+            216..217 'y': U
+            216..223 'y.foo()': u32
         "#]],
     );
 }
@@ -1754,7 +1770,7 @@ fn super_trait_impl_trait_method_resolution() {
         r#"
 //- minicore: sized
 mod foo {
-    trait SuperTrait {
+    pub trait SuperTrait {
         fn foo(&self) -> u32 {}
     }
 }
@@ -1764,12 +1780,12 @@ fn test(x: &impl Trait1) {
     x.foo();
 }"#,
         expect![[r#"
-            49..53 'self': &Self
-            62..64 '{}': u32
-            115..116 'x': &impl Trait1
-            132..148 '{     ...o(); }': ()
-            138..139 'x': &impl Trait1
-            138..145 'x.foo()': u32
+            53..57 'self': &Self
+            66..68 '{}': u32
+            119..120 'x': &impl Trait1
+            136..152 '{     ...o(); }': ()
+            142..143 'x': &impl Trait1
+            142..149 'x.foo()': u32
         "#]],
     );
 }
@@ -3961,5 +3977,191 @@ fn g(t: &(dyn T + Send)) {
     f(t);
 }
         "#,
+    );
+}
+
+#[test]
+fn gats_in_path() {
+    check_types(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+trait PointerFamily {
+    type Pointer<T>: Deref<Target = T>;
+}
+
+fn f<P: PointerFamily>(p: P::Pointer<i32>) {
+    let a = *p;
+      //^ i32
+}
+fn g<P: PointerFamily>(p: <P as PointerFamily>::Pointer<i32>) {
+    let a = *p;
+      //^ i32
+}
+        "#,
+    );
+}
+
+#[test]
+fn gats_with_impl_trait() {
+    // FIXME: the last function (`fn i()`) is not valid Rust as of this writing because you cannot
+    // specify the same associated type multiple times even if their arguments are different (c.f.
+    // `fn h()`, which is valid). Reconsider how to treat these invalid types.
+    check_types(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+
+trait Trait {
+    type Assoc<T>: Deref<Target = T>;
+    fn get<U>(&self) -> Self::Assoc<U>;
+}
+
+fn f<T>(v: impl Trait) {
+    let a = v.get::<i32>().deref();
+      //^ &i32
+    let a = v.get::<T>().deref();
+      //^ &T
+}
+fn g<'a, T: 'a>(v: impl Trait<Assoc<T> = &'a T>) {
+    let a = v.get::<T>();
+      //^ &T
+    let a = v.get::<()>();
+      //^ Trait::Assoc<(), impl Trait<Assoc<T> = &T>>
+}
+fn h<'a>(v: impl Trait<Assoc<i32> = &'a i32> + Trait<Assoc<i64> = &'a i64>) {
+    let a = v.get::<i32>();
+      //^ &i32
+    let a = v.get::<i64>();
+      //^ &i64
+}
+fn i<'a>(v: impl Trait<Assoc<i32> = &'a i32, Assoc<i64> = &'a i64>) {
+    let a = v.get::<i32>();
+      //^ &i32
+    let a = v.get::<i64>();
+      //^ &i64
+}
+    "#,
+    );
+}
+
+#[test]
+fn gats_with_dyn() {
+    // This test is here to keep track of how we infer things despite traits with GATs being not
+    // object-safe currently.
+    // FIXME: reconsider how to treat these invalid types.
+    check_infer_with_mismatches(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+
+trait Trait {
+    type Assoc<T>: Deref<Target = T>;
+    fn get<U>(&self) -> Self::Assoc<U>;
+}
+
+fn f<'a>(v: &dyn Trait<Assoc<i32> = &'a i32>) {
+    v.get::<i32>().deref();
+}
+    "#,
+        expect![[r#"
+            90..94 'self': &Self
+            127..128 'v': &(dyn Trait<Assoc<i32> = &i32>)
+            164..195 '{     ...f(); }': ()
+            170..171 'v': &(dyn Trait<Assoc<i32> = &i32>)
+            170..184 'v.get::<i32>()': &i32
+            170..192 'v.get:...eref()': &i32
+        "#]],
+    );
+}
+
+#[test]
+fn gats_in_associated_type_binding() {
+    check_types(
+        r#"
+trait Trait {
+    type Assoc<T>;
+    fn get<U>(&self) -> Self::Assoc<U>;
+}
+
+fn f<T>(t: T)
+where
+    T: Trait<Assoc<i32> = u32>,
+    T: Trait<Assoc<isize> = usize>,
+{
+    let a = t.get::<i32>();
+      //^ u32
+    let a = t.get::<isize>();
+      //^ usize
+    let a = t.get::<()>();
+      //^ Trait::Assoc<(), T>
+}
+
+    "#,
+    );
+}
+
+#[test]
+fn bin_op_with_scalar_fallback() {
+    // Extra impls are significant so that chalk doesn't give us definite guidances.
+    check_types(
+        r#"
+//- minicore: add
+use core::ops::Add;
+
+struct Vec2<T>(T, T);
+
+impl Add for Vec2<i32> {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output { loop {} }
+}
+impl Add for Vec2<u32> {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output { loop {} }
+}
+impl Add for Vec2<f32> {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output { loop {} }
+}
+impl Add for Vec2<f64> {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output { loop {} }
+}
+
+fn test() {
+    let a = Vec2(1, 2);
+    let b = Vec2(3, 4);
+    let c = a + b;
+      //^ Vec2<i32>
+    let a = Vec2(1., 2.);
+    let b = Vec2(3., 4.);
+    let c = a + b;
+      //^ Vec2<f64>
+}
+"#,
+    );
+}
+
+#[test]
+fn trait_method_with_scalar_fallback() {
+    check_types(
+        r#"
+trait Trait {
+    type Output;
+    fn foo(&self) -> Self::Output;
+}
+impl<T> Trait for T {
+    type Output = T;
+    fn foo(&self) -> Self::Output { loop {} }
+}
+fn test() {
+    let a = 42;
+    let b = a.foo();
+      //^ i32
+    let a = 3.14;
+    let b = a.foo();
+      //^ f64
+}
+"#,
     );
 }

@@ -7,6 +7,7 @@ edition = "2021"
 test = false
 
 [dependencies]
+ar_archive_writer = "0.1.1"
 bitflags = "1.2.1"
 cc = "1.0.69"
 itertools = "0.10.1"
@@ -14,7 +15,7 @@ tracing = "0.1"
 libc = "0.2.50"
 jobserver = "0.1.22"
 tempfile = "3.2"
-thorin-dwp = "0.3"
+thorin-dwp = "0.4"
 pathdiff = "0.2.0"
 serde_json = "1.0.59"
 snap = "1"
@@ -26,6 +27,7 @@ rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 rustc_middle = { path = "../rustc_middle" }
+rustc_type_ir = { path = "../rustc_type_ir" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_data_structures = { path = "../rustc_data_structures" }
@@ -39,9 +41,8 @@ rustc_metadata = { path = "../rustc_metadata" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_target = { path = "../rustc_target" }
 rustc_session = { path = "../rustc_session" }
-rustc_const_eval = { path = "../rustc_const_eval" }
 
 [dependencies.object]
-version = "0.29.0"
+version = "0.30.1"
 default-features = false
 features = ["read_core", "elf", "macho", "pe", "unaligned", "archive", "write"]

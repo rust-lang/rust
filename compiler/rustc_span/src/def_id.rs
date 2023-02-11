@@ -1,4 +1,4 @@
-use crate::HashStableContext;
+use crate::{HashStableContext, Symbol};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::AtomicRef;
@@ -10,10 +10,9 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 
 rustc_index::newtype_index! {
-    pub struct CrateNum {
-        ENCODABLE = custom
-        DEBUG_FORMAT = "crate{}"
-    }
+    #[custom_encodable]
+    #[debug_format = "crate{}"]
+    pub struct CrateNum {}
 }
 
 /// Item definitions in the currently-compiled crate would have the `CrateNum`
@@ -34,7 +33,7 @@ impl CrateNum {
 
 impl fmt::Display for CrateNum {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.private, f)
+        fmt::Display::fmt(&self.as_u32(), f)
     }
 }
 
@@ -120,6 +119,12 @@ impl DefPathHash {
     }
 }
 
+impl Default for DefPathHash {
+    fn default() -> Self {
+        DefPathHash(Fingerprint::ZERO)
+    }
+}
+
 impl Borrow<Fingerprint> for DefPathHash {
     #[inline]
     fn borrow(&self) -> &Fingerprint {
@@ -149,9 +154,11 @@ impl StableCrateId {
 
     /// Computes the stable ID for a crate with the given name and
     /// `-Cmetadata` arguments.
-    pub fn new(crate_name: &str, is_exe: bool, mut metadata: Vec<String>) -> StableCrateId {
+    pub fn new(crate_name: Symbol, is_exe: bool, mut metadata: Vec<String>) -> StableCrateId {
         let mut hasher = StableHasher::new();
-        crate_name.hash(&mut hasher);
+        // We must hash the string text of the crate name, not the id, as the id is not stable
+        // across builds.
+        crate_name.as_str().hash(&mut hasher);
 
         // We don't want the stable crate ID to depend on the order of
         // -C metadata arguments, so sort them:
@@ -192,13 +199,12 @@ rustc_index::newtype_index! {
     /// A DefIndex is an index into the hir-map for a crate, identifying a
     /// particular definition. It should really be considered an interned
     /// shorthand for a particular DefPath.
+    #[custom_encodable] // (only encodable in metadata)
+    #[debug_format = "DefIndex({})"]
     pub struct DefIndex {
-        ENCODABLE = custom // (only encodable in metadata)
-
-        DEBUG_FORMAT = "DefIndex({})",
         /// The crate root is always assigned index 0 by the AST Map code,
         /// thanks to `NodeCollector::new`.
-        const CRATE_DEF_INDEX = 0,
+        const CRATE_DEF_INDEX = 0;
     }
 }
 
@@ -274,7 +280,7 @@ impl Ord for DefId {
 impl PartialOrd for DefId {
     #[inline]
     fn partial_cmp(&self, other: &DefId) -> Option<std::cmp::Ordering> {
-        Some(Ord::cmp(self, other))
+        Some(self.cmp(other))
     }
 }
 
@@ -303,7 +309,7 @@ impl DefId {
         // i.e. don't use closures.
         match self.as_local() {
             Some(local_def_id) => local_def_id,
-            None => panic!("DefId::expect_local: `{:?}` isn't local", self),
+            None => panic!("DefId::expect_local: `{self:?}` isn't local"),
         }
     }
 

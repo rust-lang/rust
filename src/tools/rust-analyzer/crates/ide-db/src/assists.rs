@@ -88,7 +88,7 @@ impl FromStr for AssistKind {
             "RefactorExtract" => Ok(AssistKind::RefactorExtract),
             "RefactorInline" => Ok(AssistKind::RefactorInline),
             "RefactorRewrite" => Ok(AssistKind::RefactorRewrite),
-            unknown => Err(format!("Unknown AssistKind: '{}'", unknown)),
+            unknown => Err(format!("Unknown AssistKind: '{unknown}'")),
         }
     }
 }

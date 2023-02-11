@@ -95,10 +95,7 @@ pub trait ForestObligation: Clone + Debug {
 pub trait ObligationProcessor {
     type Obligation: ForestObligation;
     type Error: Debug;
-    type OUT: OutcomeTrait<
-        Obligation = Self::Obligation,
-        Error = Error<Self::Obligation, Self::Error>,
-    >;
+    type OUT: OutcomeTrait<Obligation = Self::Obligation, Error = Error<Self::Obligation, Self::Error>>;
 
     fn needs_process_obligation(&self, obligation: &Self::Obligation) -> bool;
 
@@ -139,8 +136,7 @@ pub enum ProcessResult<O, E> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 struct ObligationTreeId(usize);
 
-type ObligationTreeIdGenerator =
-    std::iter::Map<std::ops::RangeFrom<usize>, fn(usize) -> ObligationTreeId>;
+type ObligationTreeIdGenerator = impl Iterator<Item = ObligationTreeId>;
 
 pub struct ObligationForest<O: ForestObligation> {
     /// The list of obligations. In between calls to [Self::process_obligations],

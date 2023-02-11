@@ -8,7 +8,7 @@ use stdx::format_to;
 use vfs::{AbsPath, AbsPathBuf};
 
 use crate::{
-    global_state::GlobalStateSnapshot, line_index::OffsetEncoding, lsp_ext,
+    global_state::GlobalStateSnapshot, line_index::PositionEncoding, lsp_ext,
     to_proto::url_from_abs_path,
 };
 
@@ -66,17 +66,17 @@ fn location(
     let uri = url_from_abs_path(&file_name);
 
     let range = {
-        let offset_encoding = snap.config.offset_encoding();
+        let position_encoding = snap.config.position_encoding();
         lsp_types::Range::new(
-            position(&offset_encoding, span, span.line_start, span.column_start),
-            position(&offset_encoding, span, span.line_end, span.column_end),
+            position(&position_encoding, span, span.line_start, span.column_start),
+            position(&position_encoding, span, span.line_end, span.column_end),
         )
     };
     lsp_types::Location::new(uri, range)
 }
 
 fn position(
-    offset_encoding: &OffsetEncoding,
+    position_encoding: &PositionEncoding,
     span: &DiagnosticSpan,
     line_offset: usize,
     column_offset: usize,
@@ -93,9 +93,9 @@ fn position(
             };
         }
         let mut char_offset = 0;
-        let len_func = match offset_encoding {
-            OffsetEncoding::Utf8 => char::len_utf8,
-            OffsetEncoding::Utf16 => char::len_utf16,
+        let len_func = match position_encoding {
+            PositionEncoding::Utf8 => char::len_utf8,
+            PositionEncoding::Utf16 => char::len_utf16,
         };
         for c in line.text.chars() {
             char_offset += 1;
@@ -161,7 +161,7 @@ fn resolve_path(
         .iter()
         .find_map(|(from, to)| file_name.strip_prefix(from).map(|file_name| (to, file_name)))
     {
-        Some((to, file_name)) => workspace_root.join(format!("{}{}", to, file_name)),
+        Some((to, file_name)) => workspace_root.join(format!("{to}{file_name}")),
         None => workspace_root.join(file_name),
     }
 }
@@ -191,6 +191,7 @@ fn map_rust_child_diagnostic(
 
     let mut edit_map: HashMap<lsp_types::Url, Vec<lsp_types::TextEdit>> = HashMap::new();
     let mut suggested_replacements = Vec::new();
+    let mut is_preferred = true;
     for &span in &spans {
         if let Some(suggested_replacement) = &span.suggested_replacement {
             if !suggested_replacement.is_empty() {
@@ -209,6 +210,8 @@ fn map_rust_child_diagnostic(
             ) {
                 edit_map.entry(location.uri).or_default().push(edit);
             }
+            is_preferred &=
+                matches!(span.suggestion_applicability, Some(Applicability::MachineApplicable));
         }
     }
 
@@ -218,7 +221,7 @@ fn map_rust_child_diagnostic(
     if !suggested_replacements.is_empty() {
         message.push_str(": ");
         let suggestions =
-            suggested_replacements.iter().map(|suggestion| format!("`{}`", suggestion)).join(", ");
+            suggested_replacements.iter().map(|suggestion| format!("`{suggestion}`")).join(", ");
         message.push_str(&suggestions);
     }
 
@@ -251,7 +254,7 @@ fn map_rust_child_diagnostic(
                         document_changes: None,
                         change_annotations: None,
                     }),
-                    is_preferred: Some(true),
+                    is_preferred: Some(is_preferred),
                     data: None,
                     command: None,
                 },
@@ -359,14 +362,15 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         .iter()
         .flat_map(|primary_span| {
             let primary_location = primary_location(config, workspace_root, primary_span, snap);
-
-            let mut message = message.clone();
-            if needs_primary_span_label {
-                if let Some(primary_span_label) = &primary_span.label {
-                    format_to!(message, "\n{}", primary_span_label);
+            let message = {
+                let mut message = message.clone();
+                if needs_primary_span_label {
+                    if let Some(primary_span_label) = &primary_span.label {
+                        format_to!(message, "\n{}", primary_span_label);
+                    }
                 }
-            }
-
+                message
+            };
             // Each primary diagnostic span may result in multiple LSP diagnostics.
             let mut diagnostics = Vec::new();
 
@@ -417,7 +421,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                     message: message.clone(),
                     related_information: Some(information_for_additional_diagnostic),
                     tags: if tags.is_empty() { None } else { Some(tags.clone()) },
-                    data: None,
+                    data: Some(serde_json::json!({ "rendered": rd.rendered })),
                 };
                 diagnostics.push(MappedRustDiagnostic {
                     url: secondary_location.uri,
@@ -449,7 +453,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                         }
                     },
                     tags: if tags.is_empty() { None } else { Some(tags.clone()) },
-                    data: None,
+                    data: Some(serde_json::json!({ "rendered": rd.rendered })),
                 },
                 fix: None,
             });
@@ -492,7 +496,7 @@ fn rustc_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescripti
             && chars.next().is_none()
     })
     .and_then(|code| {
-        lsp_types::Url::parse(&format!("https://doc.rust-lang.org/error-index.html#{}", code))
+        lsp_types::Url::parse(&format!("https://doc.rust-lang.org/error-index.html#{code}"))
             .ok()
             .map(|href| lsp_types::CodeDescription { href })
     })
@@ -501,8 +505,7 @@ fn rustc_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescripti
 fn clippy_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescription> {
     code.and_then(|code| {
         lsp_types::Url::parse(&format!(
-            "https://rust-lang.github.io/rust-clippy/master/index.html#{}",
-            code
+            "https://rust-lang.github.io/rust-clippy/master/index.html#{code}"
         ))
         .ok()
         .map(|href| lsp_types::CodeDescription { href })
@@ -534,7 +537,8 @@ mod tests {
             Config::new(workspace_root.to_path_buf(), ClientCapabilities::default()),
         );
         let snap = state.snapshot();
-        let actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root, &snap);
+        let mut actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root, &snap);
+        actual.iter_mut().for_each(|diag| diag.diagnostic.data = None);
         expect.assert_debug_eq(&actual)
     }
 

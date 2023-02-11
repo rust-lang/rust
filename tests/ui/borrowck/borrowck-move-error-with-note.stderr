@@ -1,0 +1,60 @@
+error[E0507]: cannot move out of `f` as enum variant `Foo1` which is behind a shared reference
+  --> $DIR/borrowck-move-error-with-note.rs:13:11
+   |
+LL |     match *f {
+   |           ^^
+LL |         Foo::Foo1(num1,
+   |                   ---- data moved here
+LL |                   num2) => (),
+   |                   ---- ...and here
+LL |         Foo::Foo2(num) => (),
+   |                   --- ...and here
+   |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider removing the dereference here
+   |
+LL -     match *f {
+LL +     match f {
+   |
+
+error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
+  --> $DIR/borrowck-move-error-with-note.rs:30:11
+   |
+LL |     match (S {f: "foo".to_string(), g: "bar".to_string()}) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of here
+...
+LL |             f: _s,
+   |                -- data moved here
+LL |             g: _t
+   |                -- ...and here
+   |
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing the pattern binding
+   |
+LL |             f: ref _s,
+   |                +++
+help: consider borrowing the pattern binding
+   |
+LL |             g: ref _t
+   |                +++
+
+error[E0507]: cannot move out of `a.a` which is behind a shared reference
+  --> $DIR/borrowck-move-error-with-note.rs:48:11
+   |
+LL |     match a.a {
+   |           ^^^
+LL |         n => {
+   |         -
+   |         |
+   |         data moved here
+   |         move occurs because `n` has type `Box<isize>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |     match &a.a {
+   |           +
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0507, E0509.
+For more information about an error, try `rustc --explain E0507`.

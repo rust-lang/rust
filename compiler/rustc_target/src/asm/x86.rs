@@ -357,28 +357,28 @@ impl X86InlineAsmReg {
         if self as u32 <= Self::dx as u32 {
             let root = ['a', 'b', 'c', 'd'][self as usize - Self::ax as usize];
             match modifier.unwrap_or(reg_default_modifier) {
-                'l' => write!(out, "{}l", root),
-                'h' => write!(out, "{}h", root),
-                'x' => write!(out, "{}x", root),
-                'e' => write!(out, "e{}x", root),
-                'r' => write!(out, "r{}x", root),
+                'l' => write!(out, "{root}l"),
+                'h' => write!(out, "{root}h"),
+                'x' => write!(out, "{root}x"),
+                'e' => write!(out, "e{root}x"),
+                'r' => write!(out, "r{root}x"),
                 _ => unreachable!(),
             }
         } else if self as u32 <= Self::di as u32 {
             let root = self.name();
             match modifier.unwrap_or(reg_default_modifier) {
-                'l' => write!(out, "{}l", root),
-                'x' => write!(out, "{}", root),
-                'e' => write!(out, "e{}", root),
-                'r' => write!(out, "r{}", root),
+                'l' => write!(out, "{root}l"),
+                'x' => write!(out, "{root}"),
+                'e' => write!(out, "e{root}"),
+                'r' => write!(out, "r{root}"),
                 _ => unreachable!(),
             }
         } else if self as u32 <= Self::r15 as u32 {
             let root = self.name();
             match modifier.unwrap_or(reg_default_modifier) {
-                'l' => write!(out, "{}b", root),
-                'x' => write!(out, "{}w", root),
-                'e' => write!(out, "{}d", root),
+                'l' => write!(out, "{root}b"),
+                'x' => write!(out, "{root}w"),
+                'e' => write!(out, "{root}d"),
                 'r' => out.write_str(root),
                 _ => unreachable!(),
             }
@@ -387,15 +387,15 @@ impl X86InlineAsmReg {
         } else if self as u32 <= Self::xmm15 as u32 {
             let prefix = modifier.unwrap_or('x');
             let index = self as u32 - Self::xmm0 as u32;
-            write!(out, "{}{}", prefix, index)
+            write!(out, "{prefix}{index}")
         } else if self as u32 <= Self::ymm15 as u32 {
             let prefix = modifier.unwrap_or('y');
             let index = self as u32 - Self::ymm0 as u32;
-            write!(out, "{}{}", prefix, index)
+            write!(out, "{prefix}{index}")
         } else if self as u32 <= Self::zmm31 as u32 {
             let prefix = modifier.unwrap_or('z');
             let index = self as u32 - Self::zmm0 as u32;
-            write!(out, "{}{}", prefix, index)
+            write!(out, "{prefix}{index}")
         } else {
             out.write_str(self.name())
         }

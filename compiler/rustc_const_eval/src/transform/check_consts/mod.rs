@@ -8,7 +8,7 @@ use rustc_attr as attr;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, PolyFnSig, TyCtxt};
 use rustc_span::Symbol;
 
 pub use self::qualifs::Qualif;
@@ -62,7 +62,18 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
     }
 
     fn is_async(&self) -> bool {
-        self.tcx.asyncness(self.def_id()) == hir::IsAsync::Async
+        self.tcx.asyncness(self.def_id()).is_async()
+    }
+
+    pub fn fn_sig(&self) -> PolyFnSig<'tcx> {
+        let did = self.def_id().to_def_id();
+        if self.tcx.is_closure(did) {
+            let ty = self.tcx.type_of(did);
+            let ty::Closure(_, substs) = ty.kind() else { bug!("type_of closure not ty::Closure") };
+            substs.as_closure().sig()
+        } else {
+            self.tcx.fn_sig(did).subst_identity()
+        }
     }
 }
 
@@ -75,14 +86,14 @@ pub fn rustc_allow_const_fn_unstable(
     attr::rustc_allow_const_fn_unstable(&tcx.sess, attrs).any(|name| name == feature_gate)
 }
 
-// Returns `true` if the given `const fn` is "const-stable".
-//
-// Panics if the given `DefId` does not refer to a `const fn`.
-//
-// Const-stability is only relevant for `const fn` within a `staged_api` crate. Only "const-stable"
-// functions can be called in a const-context by users of the stable compiler. "const-stable"
-// functions are subject to more stringent restrictions than "const-unstable" functions: They
-// cannot use unstable features and can only call other "const-stable" functions.
+/// Returns `true` if the given `const fn` is "const-stable".
+///
+/// Panics if the given `DefId` does not refer to a `const fn`.
+///
+/// Const-stability is only relevant for `const fn` within a `staged_api` crate. Only "const-stable"
+/// functions can be called in a const-context by users of the stable compiler. "const-stable"
+/// functions are subject to more stringent restrictions than "const-unstable" functions: They
+/// cannot use unstable features and can only call other "const-stable" functions.
 pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     // A default body in a `#[const_trait]` is not const-stable because const
     // trait fns currently cannot be const-stable. We shouldn't
@@ -115,7 +126,7 @@ fn is_parent_const_stable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let local_def_id = def_id.expect_local();
     let hir_id = tcx.local_def_id_to_hir_id(local_def_id);
 
-    let Some(parent) = tcx.hir().find_parent_node(hir_id) else { return false };
+    let Some(parent) = tcx.hir().opt_parent_id(hir_id) else { return false };
     let parent_def = tcx.hir().get(parent);
 
     if !matches!(

@@ -21,17 +21,17 @@ use crate::{
     cargo_target_spec::CargoTargetSpec,
     config::{CallInfoConfig, Config},
     global_state::GlobalStateSnapshot,
-    line_index::{LineEndings, LineIndex, OffsetEncoding},
+    line_index::{LineEndings, LineIndex, PositionEncoding},
     lsp_ext,
     lsp_utils::invalid_params_error,
-    semantic_tokens, Result,
+    semantic_tokens,
 };
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
     let line_col = line_index.index.line_col(offset);
     match line_index.encoding {
-        OffsetEncoding::Utf8 => lsp_types::Position::new(line_col.line, line_col.col),
-        OffsetEncoding::Utf16 => {
+        PositionEncoding::Utf8 => lsp_types::Position::new(line_col.line, line_col.col),
+        PositionEncoding::Utf16 => {
             let line_col = line_index.index.to_utf16(line_col);
             lsp_types::Position::new(line_col.line, line_col.col)
         }
@@ -228,7 +228,7 @@ fn completion_item(
     max_relevance: u32,
     item: CompletionItem,
 ) {
-    let insert_replace_support = config.insert_replace_support().then(|| tdpp.position);
+    let insert_replace_support = config.insert_replace_support().then_some(tdpp.position);
     let mut additional_text_edits = Vec::new();
 
     // LSP does not allow arbitrary edits in completion, so we have to do a
@@ -258,7 +258,7 @@ fn completion_item(
         text_edit.unwrap()
     };
 
-    let insert_text_format = item.is_snippet().then(|| lsp_types::InsertTextFormat::SNIPPET);
+    let insert_text_format = item.is_snippet().then_some(lsp_types::InsertTextFormat::SNIPPET);
     let tags = item.deprecated().then(|| vec![lsp_types::CompletionItemTag::DEPRECATED]);
     let command = if item.trigger_call_info() && config.client_commands().trigger_parameter_hints {
         Some(command::trigger_parameter_hints())
@@ -342,7 +342,7 @@ fn completion_item(
         // by the client. Hex format is used because it is easier to
         // visually compare very large values, which the sort text
         // tends to be since it is the opposite of the score.
-        res.sort_text = Some(format!("{:08x}", sort_score));
+        res.sort_text = Some(format!("{sort_score:08x}"));
     }
 }
 
@@ -429,44 +429,57 @@ pub(crate) fn inlay_hint(
     line_index: &LineIndex,
     render_colons: bool,
     mut inlay_hint: InlayHint,
-) -> Result<lsp_types::InlayHint> {
+) -> Cancellable<lsp_types::InlayHint> {
     match inlay_hint.kind {
         InlayKind::ParameterHint if render_colons => inlay_hint.label.append_str(":"),
         InlayKind::TypeHint if render_colons => inlay_hint.label.prepend_str(": "),
         InlayKind::ClosureReturnTypeHint => inlay_hint.label.prepend_str(" -> "),
+        InlayKind::DiscriminantHint => inlay_hint.label.prepend_str(" = "),
         _ => {}
     }
 
     Ok(lsp_types::InlayHint {
         position: match inlay_hint.kind {
             // before annotated thing
-            InlayKind::ParameterHint
-            | InlayKind::ImplicitReborrowHint
+            InlayKind::OpeningParenthesis
+            | InlayKind::ParameterHint
+            | InlayKind::AdjustmentHint
             | InlayKind::BindingModeHint => position(line_index, inlay_hint.range.start()),
             // after annotated thing
             InlayKind::ClosureReturnTypeHint
             | InlayKind::TypeHint
+            | InlayKind::DiscriminantHint
             | InlayKind::ChainingHint
             | InlayKind::GenericParamListHint
+            | InlayKind::ClosingParenthesis
+            | InlayKind::AdjustmentHintPostfix
             | InlayKind::LifetimeHint
             | InlayKind::ClosingBraceHint => position(line_index, inlay_hint.range.end()),
         },
         padding_left: Some(match inlay_hint.kind {
             InlayKind::TypeHint => !render_colons,
             InlayKind::ChainingHint | InlayKind::ClosingBraceHint => true,
-            InlayKind::BindingModeHint
+            InlayKind::ClosingParenthesis
+            | InlayKind::DiscriminantHint
+            | InlayKind::OpeningParenthesis
+            | InlayKind::BindingModeHint
             | InlayKind::ClosureReturnTypeHint
             | InlayKind::GenericParamListHint
-            | InlayKind::ImplicitReborrowHint
+            | InlayKind::AdjustmentHint
+            | InlayKind::AdjustmentHintPostfix
             | InlayKind::LifetimeHint
             | InlayKind::ParameterHint => false,
         }),
         padding_right: Some(match inlay_hint.kind {
-            InlayKind::ChainingHint
+            InlayKind::ClosingParenthesis
+            | InlayKind::OpeningParenthesis
+            | InlayKind::ChainingHint
             | InlayKind::ClosureReturnTypeHint
             | InlayKind::GenericParamListHint
-            | InlayKind::ImplicitReborrowHint
+            | InlayKind::AdjustmentHint
+            | InlayKind::AdjustmentHintPostfix
             | InlayKind::TypeHint
+            | InlayKind::DiscriminantHint
             | InlayKind::ClosingBraceHint => false,
             InlayKind::BindingModeHint => inlay_hint.label.as_simple_str() != Some("&"),
             InlayKind::ParameterHint | InlayKind::LifetimeHint => true,
@@ -476,10 +489,14 @@ pub(crate) fn inlay_hint(
             InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
                 Some(lsp_types::InlayHintKind::TYPE)
             }
-            InlayKind::BindingModeHint
+            InlayKind::ClosingParenthesis
+            | InlayKind::DiscriminantHint
+            | InlayKind::OpeningParenthesis
+            | InlayKind::BindingModeHint
             | InlayKind::GenericParamListHint
             | InlayKind::LifetimeHint
-            | InlayKind::ImplicitReborrowHint
+            | InlayKind::AdjustmentHint
+            | InlayKind::AdjustmentHintPostfix
             | InlayKind::ClosingBraceHint => None,
         },
         text_edits: None,
@@ -488,7 +505,10 @@ pub(crate) fn inlay_hint(
                 let uri = url(snap, file_id);
                 let line_index = snap.file_line_index(file_id).ok()?;
 
-                let text_document = lsp_types::TextDocumentIdentifier { uri };
+                let text_document = lsp_types::VersionedTextDocumentIdentifier {
+                    version: snap.url_file_version(&uri)?,
+                    uri,
+                };
                 to_value(lsp_ext::InlayHintResolveData {
                     text_document,
                     position: lsp_ext::PositionOrRange::Position(position(&line_index, offset)),
@@ -497,7 +517,10 @@ pub(crate) fn inlay_hint(
             }
             Some(ide::InlayTooltip::HoverRanged(file_id, text_range)) => {
                 let uri = url(snap, file_id);
-                let text_document = lsp_types::TextDocumentIdentifier { uri };
+                let text_document = lsp_types::VersionedTextDocumentIdentifier {
+                    version: snap.url_file_version(&uri)?,
+                    uri,
+                };
                 let line_index = snap.file_line_index(file_id).ok()?;
                 to_value(lsp_ext::InlayHintResolveData {
                     text_document,
@@ -518,7 +541,7 @@ pub(crate) fn inlay_hint(
 fn inlay_hint_label(
     snap: &GlobalStateSnapshot,
     label: InlayHintLabel,
-) -> Result<lsp_types::InlayHintLabel> {
+) -> Cancellable<lsp_types::InlayHintLabel> {
     Ok(match label.as_simple_str() {
         Some(s) => lsp_types::InlayHintLabel::String(s.into()),
         None => lsp_types::InlayHintLabel::LabelParts(
@@ -536,7 +559,7 @@ fn inlay_hint_label(
                         command: None,
                     })
                 })
-                .collect::<Result<Vec<_>>>()?,
+                .collect::<Cancellable<Vec<_>>>()?,
         ),
     })
 }
@@ -794,7 +817,7 @@ pub(crate) fn optional_versioned_text_document_identifier(
 pub(crate) fn location(
     snap: &GlobalStateSnapshot,
     frange: FileRange,
-) -> Result<lsp_types::Location> {
+) -> Cancellable<lsp_types::Location> {
     let url = url(snap, frange.file_id);
     let line_index = snap.file_line_index(frange.file_id)?;
     let range = range(&line_index, frange.range);
@@ -806,7 +829,7 @@ pub(crate) fn location(
 pub(crate) fn location_from_nav(
     snap: &GlobalStateSnapshot,
     nav: NavigationTarget,
-) -> Result<lsp_types::Location> {
+) -> Cancellable<lsp_types::Location> {
     let url = url(snap, nav.file_id);
     let line_index = snap.file_line_index(nav.file_id)?;
     let range = range(&line_index, nav.full_range);
@@ -818,7 +841,7 @@ pub(crate) fn location_link(
     snap: &GlobalStateSnapshot,
     src: Option<FileRange>,
     target: NavigationTarget,
-) -> Result<lsp_types::LocationLink> {
+) -> Cancellable<lsp_types::LocationLink> {
     let origin_selection_range = match src {
         Some(src) => {
             let line_index = snap.file_line_index(src.file_id)?;
@@ -840,7 +863,7 @@ pub(crate) fn location_link(
 fn location_info(
     snap: &GlobalStateSnapshot,
     target: NavigationTarget,
-) -> Result<(lsp_types::Url, lsp_types::Range, lsp_types::Range)> {
+) -> Cancellable<(lsp_types::Url, lsp_types::Range, lsp_types::Range)> {
     let line_index = snap.file_line_index(target.file_id)?;
 
     let target_uri = url(snap, target.file_id);
@@ -854,12 +877,12 @@ pub(crate) fn goto_definition_response(
     snap: &GlobalStateSnapshot,
     src: Option<FileRange>,
     targets: Vec<NavigationTarget>,
-) -> Result<lsp_types::GotoDefinitionResponse> {
+) -> Cancellable<lsp_types::GotoDefinitionResponse> {
     if snap.config.location_link() {
         let links = targets
             .into_iter()
             .map(|nav| location_link(snap, src, nav))
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<Cancellable<Vec<_>>>()?;
         Ok(links.into())
     } else {
         let locations = targets
@@ -867,7 +890,7 @@ pub(crate) fn goto_definition_response(
             .map(|nav| {
                 location(snap, FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() })
             })
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<Cancellable<Vec<_>>>()?;
         Ok(locations.into())
     }
 }
@@ -881,7 +904,7 @@ pub(crate) fn snippet_text_document_edit(
     is_snippet: bool,
     file_id: FileId,
     edit: TextEdit,
-) -> Result<lsp_ext::SnippetTextDocumentEdit> {
+) -> Cancellable<lsp_ext::SnippetTextDocumentEdit> {
     let text_document = optional_versioned_text_document_identifier(snap, file_id);
     let line_index = snap.file_line_index(file_id)?;
     let mut edits: Vec<_> =
@@ -958,7 +981,7 @@ pub(crate) fn snippet_text_document_ops(
 pub(crate) fn snippet_workspace_edit(
     snap: &GlobalStateSnapshot,
     source_change: SourceChange,
-) -> Result<lsp_ext::SnippetWorkspaceEdit> {
+) -> Cancellable<lsp_ext::SnippetWorkspaceEdit> {
     let mut document_changes: Vec<lsp_ext::SnippetDocumentChangeOperation> = Vec::new();
 
     for op in source_change.file_system_edits {
@@ -995,7 +1018,7 @@ pub(crate) fn snippet_workspace_edit(
 pub(crate) fn workspace_edit(
     snap: &GlobalStateSnapshot,
     source_change: SourceChange,
-) -> Result<lsp_types::WorkspaceEdit> {
+) -> Cancellable<lsp_types::WorkspaceEdit> {
     assert!(!source_change.is_snippet);
     snippet_workspace_edit(snap, source_change).map(|it| it.into())
 }
@@ -1048,7 +1071,7 @@ impl From<lsp_ext::SnippetTextEdit>
 pub(crate) fn call_hierarchy_item(
     snap: &GlobalStateSnapshot,
     target: NavigationTarget,
-) -> Result<lsp_types::CallHierarchyItem> {
+) -> Cancellable<lsp_types::CallHierarchyItem> {
     let name = target.name.to_string();
     let detail = target.description.clone();
     let kind = target.kind.map(symbol_kind).unwrap_or(lsp_types::SymbolKind::FUNCTION);
@@ -1080,7 +1103,7 @@ pub(crate) fn code_action(
     snap: &GlobalStateSnapshot,
     assist: Assist,
     resolve_data: Option<(usize, lsp_types::CodeActionParams)>,
-) -> Result<lsp_ext::CodeAction> {
+) -> Cancellable<lsp_ext::CodeAction> {
     let mut res = lsp_ext::CodeAction {
         title: assist.label.to_string(),
         group: assist.group.filter(|_| snap.config.code_action_group()).map(|gr| gr.0),
@@ -1099,7 +1122,7 @@ pub(crate) fn code_action(
         (Some(it), _) => res.edit = Some(snippet_workspace_edit(snap, it)?),
         (None, Some((index, code_action_params))) => {
             res.data = Some(lsp_ext::CodeActionData {
-                id: format!("{}:{}:{}", assist.id.0, assist.id.1.name(), index),
+                id: format!("{}:{}:{index}", assist.id.0, assist.id.1.name()),
                 code_action_params,
             });
         }
@@ -1113,13 +1136,13 @@ pub(crate) fn code_action(
 pub(crate) fn runnable(
     snap: &GlobalStateSnapshot,
     runnable: Runnable,
-) -> Result<lsp_ext::Runnable> {
+) -> Cancellable<lsp_ext::Runnable> {
     let config = snap.config.runnables();
     let spec = CargoTargetSpec::for_file(snap, runnable.nav.file_id)?;
     let workspace_root = spec.as_ref().map(|it| it.workspace_root.clone());
     let target = spec.as_ref().map(|s| s.target.clone());
     let (cargo_args, executable_args) =
-        CargoTargetSpec::runnable_args(snap, spec, &runnable.kind, &runnable.cfg)?;
+        CargoTargetSpec::runnable_args(snap, spec, &runnable.kind, &runnable.cfg);
     let label = runnable.label(target);
     let location = location_link(snap, None, runnable.nav)?;
 
@@ -1142,7 +1165,7 @@ pub(crate) fn code_lens(
     acc: &mut Vec<lsp_types::CodeLens>,
     snap: &GlobalStateSnapshot,
     annotation: Annotation,
-) -> Result<()> {
+) -> Cancellable<()> {
     let client_commands_config = snap.config.client_commands();
     match annotation.kind {
         AnnotationKind::Runnable(run) => {
@@ -1160,7 +1183,10 @@ pub(crate) fn code_lens(
             let r = runnable(snap, run)?;
 
             let lens_config = snap.config.lens();
-            if lens_config.run && client_commands_config.run_single {
+            if lens_config.run
+                && client_commands_config.run_single
+                && r.args.workspace_root.is_some()
+            {
                 let command = command::run_single(&r, &title);
                 acc.push(lsp_types::CodeLens {
                     range: annotation_range,
@@ -1335,7 +1361,7 @@ pub(crate) fn implementation_title(count: usize) -> String {
     if count == 1 {
         "1 implementation".into()
     } else {
-        format!("{} implementations", count)
+        format!("{count} implementations")
     }
 }
 
@@ -1343,7 +1369,7 @@ pub(crate) fn reference_title(count: usize) -> String {
     if count == 1 {
         "1 reference".into()
     } else {
-        format!("{} references", count)
+        format!("{count} references")
     }
 }
 
@@ -1394,7 +1420,7 @@ fn main() {
         let line_index = LineIndex {
             index: Arc::new(ide::LineIndex::new(text)),
             endings: LineEndings::Unix,
-            encoding: OffsetEncoding::Utf16,
+            encoding: PositionEncoding::Utf16,
         };
         let converted: Vec<lsp_types::FoldingRange> =
             folds.into_iter().map(|it| folding_range(text, &line_index, true, it)).collect();

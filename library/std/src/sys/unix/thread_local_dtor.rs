@@ -11,12 +11,7 @@
 // Note, however, that we run on lots older linuxes, as well as cross
 // compiling from a newer linux to an older linux, so we also have a
 // fallback implementation to use as well.
-#[cfg(any(
-    target_os = "linux",
-    target_os = "fuchsia",
-    target_os = "redox",
-    target_os = "emscripten"
-))]
+#[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "redox"))]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     use crate::mem;
     use crate::sys_common::thread_local_dtor::register_dtor_fallback;
@@ -56,44 +51,40 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
 #[cfg(target_os = "macos")]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     use crate::cell::Cell;
+    use crate::mem;
     use crate::ptr;
 
     #[thread_local]
     static REGISTERED: Cell<bool> = Cell::new(false);
+
+    #[thread_local]
+    static mut DTORS: Vec<(*mut u8, unsafe extern "C" fn(*mut u8))> = Vec::new();
+
     if !REGISTERED.get() {
         _tlv_atexit(run_dtors, ptr::null_mut());
         REGISTERED.set(true);
-    }
-
-    type List = Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>;
-
-    #[thread_local]
-    static DTORS: Cell<*mut List> = Cell::new(ptr::null_mut());
-    if DTORS.get().is_null() {
-        let v: Box<List> = box Vec::new();
-        DTORS.set(Box::into_raw(v));
     }
 
     extern "C" {
         fn _tlv_atexit(dtor: unsafe extern "C" fn(*mut u8), arg: *mut u8);
     }
 
-    let list: &mut List = &mut *DTORS.get();
+    let list = &mut DTORS;
     list.push((t, dtor));
 
     unsafe extern "C" fn run_dtors(_: *mut u8) {
-        let mut ptr = DTORS.replace(ptr::null_mut());
-        while !ptr.is_null() {
-            let list = Box::from_raw(ptr);
-            for (ptr, dtor) in list.into_iter() {
+        let mut list = mem::take(&mut DTORS);
+        while !list.is_empty() {
+            for (ptr, dtor) in list {
                 dtor(ptr);
             }
-            ptr = DTORS.replace(ptr::null_mut());
+            list = mem::take(&mut DTORS);
         }
     }
 }
 
-#[cfg(any(target_os = "vxworks", target_os = "horizon"))]
+#[cfg(any(target_os = "vxworks", target_os = "horizon", target_os = "emscripten"))]
+#[cfg_attr(target_family = "wasm", allow(unused))] // might remain unused depending on target details (e.g. wasm32-unknown-emscripten)
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     use crate::sys_common::thread_local_dtor::register_dtor_fallback;
     register_dtor_fallback(t, dtor);

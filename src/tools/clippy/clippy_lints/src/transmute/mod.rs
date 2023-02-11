@@ -3,6 +3,7 @@ mod transmute_float_to_int;
 mod transmute_int_to_bool;
 mod transmute_int_to_char;
 mod transmute_int_to_float;
+mod transmute_null_to_fn;
 mod transmute_num_to_bytes;
 mod transmute_ptr_to_ptr;
 mod transmute_ptr_to_ref;
@@ -16,10 +17,10 @@ mod utils;
 mod wrong_transmute;
 
 use clippy_utils::in_constant;
+use clippy_utils::msrvs::Msrv;
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 
@@ -409,8 +410,36 @@ declare_clippy_lint! {
     "transmutes from a null pointer to a reference, which is undefined behavior"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for null function pointer creation through transmute.
+    ///
+    /// ### Why is this bad?
+    /// Creating a null function pointer is undefined behavior.
+    ///
+    /// More info: https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization
+    ///
+    /// ### Known problems
+    /// Not all cases can be detected at the moment of this writing.
+    /// For example, variables which hold a null pointer and are then fed to a `transmute`
+    /// call, aren't detectable yet.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let null_fn: fn() = unsafe { std::mem::transmute( std::ptr::null::<()>() ) };
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let null_fn: Option<fn()> = None;
+    /// ```
+    #[clippy::version = "1.67.0"]
+    pub TRANSMUTE_NULL_TO_FN,
+    correctness,
+    "transmute results in a null function pointer, which is undefined behavior"
+}
+
 pub struct Transmute {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 impl_lint_pass!(Transmute => [
     CROSSPOINTER_TRANSMUTE,
@@ -428,10 +457,11 @@ impl_lint_pass!(Transmute => [
     TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
     TRANSMUTE_UNDEFINED_REPR,
     TRANSMUTING_NULL,
+    TRANSMUTE_NULL_TO_FN,
 ]);
 impl Transmute {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -449,7 +479,10 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 // - char conversions (https://github.com/rust-lang/rust/issues/89259)
                 let const_context = in_constant(cx, e.hir_id);
 
-                let from_ty = cx.typeck_results().expr_ty_adjusted(arg);
+                let (from_ty, from_ty_adjusted) = match cx.typeck_results().expr_adjustments(arg) {
+                    [] => (cx.typeck_results().expr_ty(arg), false),
+                    [.., a] => (a.target, true),
+                };
                 // Adjustments for `to_ty` happen after the call to `transmute`, so don't use them.
                 let to_ty = cx.typeck_results().expr_ty(e);
 
@@ -461,7 +494,8 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 let linted = wrong_transmute::check(cx, e, from_ty, to_ty)
                     | crosspointer_transmute::check(cx, e, from_ty, to_ty)
                     | transmuting_null::check(cx, e, arg, to_ty)
-                    | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, self.msrv)
+                    | transmute_null_to_fn::check(cx, e, arg, to_ty)
+                    | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, &self.msrv)
                     | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg)
@@ -475,7 +509,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                     );
 
                 if !linted {
-                    transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, to_ty, arg);
+                    transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, from_ty_adjusted, to_ty, arg);
                 }
             }
         }

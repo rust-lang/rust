@@ -14,13 +14,14 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
+use thin_vec::ThinVec;
 
 use crate::clean;
 use crate::clean::GenericArgs as PP;
 use crate::clean::WherePredicate as WP;
 use crate::core::DocContext;
 
-pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
+pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> ThinVec<WP> {
     // First, partition the where clause into its separate components.
     //
     // We use `FxIndexMap` so that the insertion order is preserved to prevent messing up to
@@ -45,21 +46,18 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
 
     // Look for equality predicates on associated types that can be merged into
     // general bound predicates.
-    equalities.retain(|&(ref lhs, ref rhs, ref bound_params)| {
+    equalities.retain(|(lhs, rhs, bound_params)| {
         let Some((ty, trait_did, name)) = lhs.projection() else { return true; };
         let Some((bounds, _)) = tybounds.get_mut(ty) else { return true };
         let bound_params = bound_params
             .into_iter()
-            .map(|param| clean::GenericParamDef {
-                name: param.0,
-                kind: clean::GenericParamDefKind::Lifetime { outlives: Vec::new() },
-            })
+            .map(|param| clean::GenericParamDef::lifetime(param.0))
             .collect();
         merge_bounds(cx, bounds, bound_params, trait_did, name, rhs)
     });
 
     // And finally, let's reassemble everything
-    let mut clauses = Vec::new();
+    let mut clauses = ThinVec::with_capacity(lifetimes.len() + tybounds.len() + equalities.len());
     clauses.extend(
         lifetimes.into_iter().map(|(lt, bounds)| WP::RegionPredicate { lifetime: lt, bounds }),
     );
@@ -98,9 +96,8 @@ pub(crate) fn merge_bounds(
         let last = trait_ref.trait_.segments.last_mut().expect("segments were empty");
 
         trait_ref.generic_params.append(&mut bound_params);
-        // Since the parameters (probably) originate from `tcx.collect_*_late_bound_regions` which
-        // returns a hash set, sort them alphabetically to guarantee a stable and deterministic
-        // output (and to fully deduplicate them).
+        // Sort parameters (likely) originating from a hashset alphabetically to
+        // produce predictable output (and to allow for full deduplication).
         trait_ref.generic_params.sort_unstable_by(|p, q| p.name.as_str().cmp(q.name.as_str()));
         trait_ref.generic_params.dedup_by_key(|p| p.name);
 
@@ -135,7 +132,7 @@ fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId, trait_: DefId)
         .predicates
         .iter()
         .filter_map(|(pred, _)| {
-            if let ty::PredicateKind::Trait(pred) = pred.kind().skip_binder() {
+            if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) = pred.kind().skip_binder() {
                 if pred.trait_ref.self_ty() == self_ty { Some(pred.def_id()) } else { None }
             } else {
                 None

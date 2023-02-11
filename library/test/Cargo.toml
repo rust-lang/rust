@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["dylib", "rlib"]
 
 [dependencies]
-cfg-if = { version = "0.1.8", features = ['rustc-dep-of-std'] }
+cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 getopts = { version = "0.2.21", features = ['rustc-dep-of-std'] }
 std = { path = "../std" }
 core = { path = "../core" }

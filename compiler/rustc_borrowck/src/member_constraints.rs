@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
@@ -9,6 +11,7 @@ use std::ops::Index;
 
 /// Compactly stores a set of `R0 member of [R1...Rn]` constraints,
 /// indexed by the region `R0`.
+#[derive(Debug)]
 pub(crate) struct MemberConstraintSet<'tcx, R>
 where
     R: Copy + Eq,
@@ -29,6 +32,7 @@ where
 }
 
 /// Represents a `R0 member of [R1..Rn]` constraint
+#[derive(Debug)]
 pub(crate) struct NllMemberConstraint<'tcx> {
     next_constraint: Option<NllMemberConstraintIndex>,
 
@@ -51,9 +55,8 @@ pub(crate) struct NllMemberConstraint<'tcx> {
 }
 
 rustc_index::newtype_index! {
-    pub(crate) struct NllMemberConstraintIndex {
-        DEBUG_FORMAT = "MemberConstraintIndex({})"
-    }
+    #[debug_format = "MemberConstraintIndex({})"]
+    pub(crate) struct NllMemberConstraintIndex {}
 }
 
 impl Default for MemberConstraintSet<'_, ty::RegionVid> {
@@ -106,7 +109,7 @@ where
     R1: Copy + Hash + Eq,
 {
     /// Remap the "member region" key using `map_fn`, producing a new
-    /// member constraint set.  This is used in the NLL code to map from
+    /// member constraint set. This is used in the NLL code to map from
     /// the original `RegionVid` to an scc index. In some cases, we
     /// may have multiple `R1` values mapping to the same `R2` key -- that
     /// is ok, the two sets will be merged.
@@ -155,7 +158,7 @@ where
     }
 
     /// Iterate down the constraint indices associated with a given
-    /// peek-region.  You can then use `choice_regions` and other
+    /// peek-region. You can then use `choice_regions` and other
     /// methods to access data.
     pub(crate) fn indices(
         &self,

@@ -21,6 +21,9 @@
 #include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
+#if LLVM_VERSION_GE(17, 0)
+#include "llvm/Support/VirtualFileSystem.h"
+#endif
 #include "llvm/Support/Host.h"
 #if LLVM_VERSION_LT(14, 0)
 #include "llvm/Support/TargetRegistry.h"
@@ -69,7 +72,9 @@ extern "C" void LLVMInitializePasses() {
   initializeAnalysis(Registry);
   initializeTransformUtils(Registry);
   initializeInstCombine(Registry);
+#if LLVM_VERSION_LT(16, 0)
   initializeInstrumentation(Registry);
+#endif
   initializeTarget(Registry);
 }
 
@@ -203,7 +208,12 @@ enum class LLVMRustCodeModel {
   None,
 };
 
-static Optional<CodeModel::Model> fromRust(LLVMRustCodeModel Model) {
+#if LLVM_VERSION_LT(16, 0)
+static Optional<CodeModel::Model>
+#else
+static std::optional<CodeModel::Model>
+#endif
+fromRust(LLVMRustCodeModel Model) {
   switch (Model) {
   case LLVMRustCodeModel::Tiny:
     return CodeModel::Tiny;
@@ -216,7 +226,11 @@ static Optional<CodeModel::Model> fromRust(LLVMRustCodeModel Model) {
   case LLVMRustCodeModel::Large:
     return CodeModel::Large;
   case LLVMRustCodeModel::None:
+#if LLVM_VERSION_LT(16, 0)
     return None;
+#else
+    return std::nullopt;
+#endif
   default:
     report_fatal_error("Bad CodeModel.");
   }
@@ -450,7 +464,7 @@ extern "C" void LLVMRustAddLibraryInfo(LLVMPassManagerRef PMR, LLVMModuleRef M,
 
 extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   // Initializing the command-line options more than once is not allowed. So,
-  // check if they've already been initialized.  (This could happen if we're
+  // check if they've already been initialized. (This could happen if we're
   // being called from rustpkg, for example). If the arguments change, then
   // that's just kinda unfortunate.
   static bool Initialized = false;
@@ -625,28 +639,55 @@ LLVMRustOptimize(
   bool DebugPassManager = false;
 
   PassInstrumentationCallbacks PIC;
+#if LLVM_VERSION_LT(16, 0)
   StandardInstrumentations SI(DebugPassManager);
+#else
+  StandardInstrumentations SI(TheModule->getContext(), DebugPassManager);
+#endif
   SI.registerCallbacks(PIC);
 
   if (LlvmSelfProfiler){
     LLVMSelfProfileInitializeCallbacks(PIC,LlvmSelfProfiler,BeforePassCallback,AfterPassCallback);
   }
 
+#if LLVM_VERSION_LT(16, 0)
   Optional<PGOOptions> PGOOpt;
+#else
+  std::optional<PGOOptions> PGOOpt;
+#endif
+#if LLVM_VERSION_GE(17, 0)
+  auto FS = vfs::getRealFileSystem();
+#endif
   if (PGOGenPath) {
     assert(!PGOUsePath && !PGOSampleUsePath);
-    PGOOpt = PGOOptions(PGOGenPath, "", "", PGOOptions::IRInstr,
-                        PGOOptions::NoCSAction, DebugInfoForProfiling);
+    PGOOpt = PGOOptions(PGOGenPath, "", "",
+#if LLVM_VERSION_GE(17, 0)
+                        FS,
+#endif
+                        PGOOptions::IRInstr, PGOOptions::NoCSAction,
+                        DebugInfoForProfiling);
   } else if (PGOUsePath) {
     assert(!PGOSampleUsePath);
-    PGOOpt = PGOOptions(PGOUsePath, "", "", PGOOptions::IRUse,
-                        PGOOptions::NoCSAction, DebugInfoForProfiling);
+    PGOOpt = PGOOptions(PGOUsePath, "", "",
+#if LLVM_VERSION_GE(17, 0)
+                        FS,
+#endif
+                        PGOOptions::IRUse, PGOOptions::NoCSAction,
+                        DebugInfoForProfiling);
   } else if (PGOSampleUsePath) {
-    PGOOpt = PGOOptions(PGOSampleUsePath, "", "", PGOOptions::SampleUse,
-                        PGOOptions::NoCSAction, DebugInfoForProfiling);
+    PGOOpt = PGOOptions(PGOSampleUsePath, "", "",
+#if LLVM_VERSION_GE(17, 0)
+                        FS,
+#endif
+                        PGOOptions::SampleUse, PGOOptions::NoCSAction,
+                        DebugInfoForProfiling);
   } else if (DebugInfoForProfiling) {
-    PGOOpt = PGOOptions("", "", "", PGOOptions::NoAction,
-                        PGOOptions::NoCSAction, DebugInfoForProfiling);
+    PGOOpt = PGOOptions("", "", "",
+#if LLVM_VERSION_GE(17, 0)
+                        FS,
+#endif
+                        PGOOptions::NoAction, PGOOptions::NoCSAction,
+                        DebugInfoForProfiling);
   }
 
   PassBuilder PB(TM, PTO, PGOOpt, &PIC);
@@ -798,7 +839,7 @@ LLVMRustOptimize(
       auto Plugin = PassPlugin::Load(PluginPath.str());
       if (!Plugin) {
         LLVMRustSetLastError(("Failed to load pass plugin" + PluginPath.str()).c_str());
-        continue;
+        return LLVMRustResult::Failure;
       }
       Plugin->registerPassBuilderCallbacks(PB);
     }
@@ -1409,7 +1450,7 @@ LLVMRustThinLTOBufferLen(const LLVMRustThinLTOBuffer *Buffer) {
 }
 
 // This is what we used to parse upstream bitcode for actual ThinLTO
-// processing.  We'll call this once per module optimized through ThinLTO, and
+// processing. We'll call this once per module optimized through ThinLTO, and
 // it'll be called concurrently on many threads.
 extern "C" LLVMModuleRef
 LLVMRustParseBitcodeForLTO(LLVMContextRef Context,

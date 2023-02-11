@@ -42,16 +42,17 @@
 //! wildcards, see [`SplitWildcard`]; for integer ranges, see [`SplitIntRange`]; for slices, see
 //! [`SplitVarLenSlice`].
 
-use self::Constructor::*;
-use self::SliceKind::*;
+use std::cell::Cell;
+use std::cmp::{self, max, min, Ordering};
+use std::fmt;
+use std::iter::once;
+use std::ops::RangeInclusive;
 
-use super::compare_const_vals;
-use super::usefulness::{MatchCheckCtxt, PatCtxt};
+use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::captures::Captures;
-use rustc_index::vec::Idx;
-
 use rustc_hir::{HirId, RangeEnd};
+use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, Field};
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
@@ -61,12 +62,12 @@ use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, VariantIdx};
 
-use smallvec::{smallvec, SmallVec};
-use std::cell::Cell;
-use std::cmp::{self, max, min, Ordering};
-use std::fmt;
-use std::iter::{once, IntoIterator};
-use std::ops::RangeInclusive;
+use self::Constructor::*;
+use self::SliceKind::*;
+
+use super::compare_const_vals;
+use super::usefulness::{MatchCheckCtxt, PatCtxt};
+use crate::errors::{Overlap, OverlappingRangeEndpoints};
 
 /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
 fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
@@ -96,7 +97,7 @@ fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
 /// `IntRange` is never used to encode an empty range or a "range" that wraps
 /// around the (offset) space: i.e., `range.lo <= range.hi`.
 #[derive(Clone, PartialEq, Eq)]
-pub(super) struct IntRange {
+pub(crate) struct IntRange {
     range: RangeInclusive<u128>,
     /// Keeps the bias used for encoding the range. It depends on the type of the range and
     /// possibly the pointer size of the current architecture. The algorithm ensures we never
@@ -140,31 +141,22 @@ impl IntRange {
     ) -> Option<IntRange> {
         let ty = value.ty();
         if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, ty) {
-            let val = (|| {
-                match value {
-                    mir::ConstantKind::Val(ConstValue::Scalar(scalar), _) => {
-                        // For this specific pattern we can skip a lot of effort and go
-                        // straight to the result, after doing a bit of checking. (We
-                        // could remove this branch and just fall through, which
-                        // is more general but much slower.)
-                        if let Ok(Ok(bits)) = scalar.to_bits_or_ptr_internal(target_size) {
-                            return Some(bits);
-                        } else {
-                            return None;
-                        }
-                    }
-                    mir::ConstantKind::Ty(c) => match c.kind() {
-                        ty::ConstKind::Value(_) => bug!(
-                            "encountered ConstValue in mir::ConstantKind::Ty, whereas this is expected to be in ConstantKind::Val"
-                        ),
-                        _ => {}
-                    },
-                    _ => {}
+            let val = if let mir::ConstantKind::Val(ConstValue::Scalar(scalar), _) = value {
+                // For this specific pattern we can skip a lot of effort and go
+                // straight to the result, after doing a bit of checking. (We
+                // could remove this branch and just fall through, which
+                // is more general but much slower.)
+                scalar.to_bits_or_ptr_internal(target_size).unwrap().left()?
+            } else {
+                if let mir::ConstantKind::Ty(c) = value
+                    && let ty::ConstKind::Value(_) = c.kind()
+                {
+                    bug!("encountered ConstValue in mir::ConstantKind::Ty, whereas this is expected to be in ConstantKind::Val");
                 }
 
                 // This is a more general form of the previous case.
-                value.try_eval_bits(tcx, param_env, ty)
-            })()?;
+                value.try_eval_bits(tcx, param_env, ty)?
+            };
             let val = val ^ bias;
             Some(IntRange { range: val..=val, bias })
         } else {
@@ -288,32 +280,21 @@ impl IntRange {
             return;
         }
 
-        let overlaps: Vec<_> = pats
+        let overlap: Vec<_> = pats
             .filter_map(|pat| Some((pat.ctor().as_int_range()?, pat.span())))
             .filter(|(range, _)| self.suspicious_intersection(range))
-            .map(|(range, span)| (self.intersection(&range).unwrap(), span))
+            .map(|(range, span)| Overlap {
+                range: self.intersection(&range).unwrap().to_pat(pcx.cx.tcx, pcx.ty),
+                span,
+            })
             .collect();
 
-        if !overlaps.is_empty() {
-            pcx.cx.tcx.struct_span_lint_hir(
+        if !overlap.is_empty() {
+            pcx.cx.tcx.emit_spanned_lint(
                 lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
                 hir_id,
                 pcx.span,
-                "multiple patterns overlap on their endpoints",
-                |lint| {
-                    for (int_range, span) in overlaps {
-                        lint.span_label(
-                            span,
-                            &format!(
-                                "this range overlaps on `{}`...",
-                                int_range.to_pat(pcx.cx.tcx, pcx.ty)
-                            ),
-                        );
-                    }
-                    lint.span_label(pcx.span, "... with this range");
-                    lint.note("you likely meant to write mutually exclusive ranges");
-                    lint
-                },
+                OverlappingRangeEndpoints { overlap, range: pcx.span },
             );
         }
     }
@@ -408,7 +389,7 @@ impl SplitIntRange {
     }
 
     /// Iterate over the contained ranges.
-    fn iter<'a>(&'a self) -> impl Iterator<Item = IntRange> + Captures<'a> {
+    fn iter(&self) -> impl Iterator<Item = IntRange> + Captures<'_> {
         use IntBorder::*;
 
         let self_range = Self::to_borders(self.range.clone());
@@ -616,7 +597,7 @@ impl SplitVarLenSlice {
     }
 
     /// Iterate over the partition of this slice.
-    fn iter<'a>(&'a self) -> impl Iterator<Item = Slice> + Captures<'a> {
+    fn iter(&self) -> impl Iterator<Item = Slice> + Captures<'_> {
         let smaller_lengths = match self.array_len {
             // The only admissible fixed-length slice is one of the array size. Whether `max_slice`
             // is fixed-length or variable-length, it will be the only relevant slice to output
@@ -988,10 +969,12 @@ impl<'tcx> SplitWildcard<'tcx> {
                     .filter(|(_, v)| {
                         // If `exhaustive_patterns` is enabled, we exclude variants known to be
                         // uninhabited.
-                        let is_uninhabited = is_exhaustive_pat_feature
-                            && v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
-                                .contains(cx.tcx, cx.module);
-                        !is_uninhabited
+                        !is_exhaustive_pat_feature
+                            || v.inhabited_predicate(cx.tcx, *def).subst(cx.tcx, substs).apply(
+                                cx.tcx,
+                                cx.param_env,
+                                cx.module,
+                            )
                     })
                     .map(|(idx, _)| Variant(idx))
                     .collect();

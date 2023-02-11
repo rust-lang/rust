@@ -32,8 +32,9 @@ impl<'tcx> PlaceTy<'tcx> {
     /// not carry a `Ty` for `T`.)
     ///
     /// Note that the resulting type has not been normalized.
+    #[instrument(level = "debug", skip(tcx), ret)]
     pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: Field) -> Ty<'tcx> {
-        let answer = match self.ty.kind() {
+        match self.ty.kind() {
             ty::Adt(adt_def, substs) => {
                 let variant_def = match self.variant_index {
                     None => adt_def.non_enum_variant(),
@@ -47,9 +48,7 @@ impl<'tcx> PlaceTy<'tcx> {
             }
             ty::Tuple(tys) => tys[f.index()],
             _ => bug!("extracting field of non-tuple non-adt: {:?}", self),
-        };
-        debug!("field_ty self: {:?} f: {:?} yields: {:?}", self, f, answer);
-        answer
+        }
     }
 
     /// Convenience wrapper around `projection_ty_core` for
@@ -206,9 +205,9 @@ impl<'tcx> Rvalue<'tcx> {
                 AggregateKind::Adt(did, _, substs, _, _) => {
                     tcx.bound_type_of(did).subst(tcx, substs)
                 }
-                AggregateKind::Closure(did, substs) => tcx.mk_closure(did.to_def_id(), substs),
+                AggregateKind::Closure(did, substs) => tcx.mk_closure(did, substs),
                 AggregateKind::Generator(did, substs, movability) => {
-                    tcx.mk_generator(did.to_def_id(), substs, movability)
+                    tcx.mk_generator(did, substs, movability)
                 }
             },
             Rvalue::ShallowInitBox(_, ty) => tcx.mk_box(ty),
@@ -234,7 +233,7 @@ impl<'tcx> Operand<'tcx> {
     {
         match self {
             &Operand::Copy(ref l) | &Operand::Move(ref l) => l.ty(local_decls, tcx).ty,
-            &Operand::Constant(ref c) => c.literal.ty(),
+            Operand::Constant(c) => c.literal.ty(),
         }
     }
 }

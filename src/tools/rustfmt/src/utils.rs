@@ -263,7 +263,7 @@ fn is_skip(meta_item: &MetaItem) -> bool {
 fn is_skip_nested(meta_item: &NestedMetaItem) -> bool {
     match meta_item {
         NestedMetaItem::MetaItem(ref mi) => is_skip(mi),
-        NestedMetaItem::Literal(_) => false,
+        NestedMetaItem::Lit(_) => false,
     }
 }
 
@@ -384,14 +384,15 @@ macro_rules! skip_out_of_file_lines_range_visitor {
 // Wraps String in an Option. Returns Some when the string adheres to the
 // Rewrite constraints defined for the Rewrite trait and None otherwise.
 pub(crate) fn wrap_str(s: String, max_width: usize, shape: Shape) -> Option<String> {
-    if is_valid_str(&filter_normal_code(&s), max_width, shape) {
+    if filtered_str_fits(&s, max_width, shape) {
         Some(s)
     } else {
         None
     }
 }
 
-fn is_valid_str(snippet: &str, max_width: usize, shape: Shape) -> bool {
+pub(crate) fn filtered_str_fits(snippet: &str, max_width: usize, shape: Shape) -> bool {
+    let snippet = &filter_normal_code(snippet);
     if !snippet.is_empty() {
         // First line must fits with `shape.width`.
         if first_line_width(snippet) > shape.width {
@@ -462,6 +463,7 @@ pub(crate) fn first_line_ends_with(s: &str, c: char) -> bool {
 pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr: &str) -> bool {
     match expr.kind {
         ast::ExprKind::MacCall(..)
+        | ast::ExprKind::FormatArgs(..)
         | ast::ExprKind::Call(..)
         | ast::ExprKind::MethodCall(..)
         | ast::ExprKind::Array(..)
@@ -479,9 +481,9 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Binary(_, _, ref expr)
         | ast::ExprKind::Index(_, ref expr)
         | ast::ExprKind::Unary(_, ref expr)
-        | ast::ExprKind::Closure(_, _, _, _, _, ref expr, _)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Yield(Some(ref expr)) => is_block_expr(context, expr, repr),
+        ast::ExprKind::Closure(ref closure) => is_block_expr(context, &closure.body, repr),
         // This can only be a string lit
         ast::ExprKind::Lit(_) => {
             repr.contains('\n') && trimmed_last_line_width(repr) <= context.config.tab_spaces()
@@ -496,6 +498,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Continue(..)
         | ast::ExprKind::Err
         | ast::ExprKind::Field(..)
+        | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::InlineAsm(..)
         | ast::ExprKind::Let(..)
         | ast::ExprKind::Path(..)

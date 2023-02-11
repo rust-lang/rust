@@ -6,7 +6,7 @@ mod macros;
 use crate::cmp;
 use crate::cmp::Ordering;
 use crate::fmt;
-use crate::intrinsics::{assume, exact_div, unchecked_sub};
+use crate::intrinsics::assume;
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::marker::{PhantomData, Send, Sized, Sync};
 use crate::mem::{self, SizedTypeProperties};
@@ -35,12 +35,6 @@ impl<'a, T> IntoIterator for &'a mut [T] {
     }
 }
 
-// Macro helper functions
-#[inline(always)]
-fn size_from_ptr<T>(_: *const T) -> usize {
-    mem::size_of::<T>()
-}
-
 /// Immutable slice iterator
 ///
 /// This struct is created by the [`iter`] method on [slices].
@@ -65,7 +59,7 @@ fn size_from_ptr<T>(_: *const T) -> usize {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct Iter<'a, T: 'a> {
     ptr: NonNull<T>,
-    end: *const T, // If T is a ZST, this is actually ptr+len.  This encoding is picked so that
+    end: *const T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
     // ptr == end is a quick test for the Iterator being empty, that works
     // for both ZST and non-ZST.
     _marker: PhantomData<&'a T>,
@@ -186,7 +180,7 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct IterMut<'a, T: 'a> {
     ptr: NonNull<T>,
-    end: *mut T, // If T is a ZST, this is actually ptr+len.  This encoding is picked so that
+    end: *mut T, // If T is a ZST, this is actually ptr+len. This encoding is picked so that
     // ptr == end is a quick test for the Iterator being empty, that works
     // for both ZST and non-ZST.
     _marker: PhantomData<&'a mut T>,
@@ -1834,6 +1828,20 @@ impl<'a, T> ChunksExact<'a, T> {
     /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let mut iter = slice.chunks_exact(2);
+    /// assert_eq!(iter.remainder(), &['m'][..]);
+    /// assert_eq!(iter.next(), Some(&['l', 'o'][..]));
+    /// assert_eq!(iter.remainder(), &['m'][..]);
+    /// assert_eq!(iter.next(), Some(&['r', 'e'][..]));
+    /// assert_eq!(iter.remainder(), &['m'][..]);
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.remainder(), &['m'][..]);
+    /// ```
     #[must_use]
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     pub fn remainder(&self) -> &'a [T] {
@@ -2869,7 +2877,7 @@ unsafe impl<T> Sync for RChunksMut<'_, T> where T: Sync {}
 /// ```
 ///
 /// [`rchunks_exact`]: slice::rchunks_exact
-/// [`remainder`]: ChunksExact::remainder
+/// [`remainder`]: RChunksExact::remainder
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -2892,6 +2900,20 @@ impl<'a, T> RChunksExact<'a, T> {
     /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let mut iter = slice.rchunks_exact(2);
+    /// assert_eq!(iter.remainder(), &['l'][..]);
+    /// assert_eq!(iter.next(), Some(&['e', 'm'][..]));
+    /// assert_eq!(iter.remainder(), &['l'][..]);
+    /// assert_eq!(iter.next(), Some(&['o', 'r'][..]));
+    /// assert_eq!(iter.remainder(), &['l'][..]);
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.remainder(), &['l'][..]);
+    /// ```
     #[must_use]
     #[stable(feature = "rchunks", since = "1.31.0")]
     pub fn remainder(&self) -> &'a [T] {
@@ -3031,7 +3053,7 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksExact<'a, T> {
 /// ```
 ///
 /// [`rchunks_exact_mut`]: slice::rchunks_exact_mut
-/// [`into_remainder`]: ChunksExactMut::into_remainder
+/// [`into_remainder`]: RChunksExactMut::into_remainder
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]

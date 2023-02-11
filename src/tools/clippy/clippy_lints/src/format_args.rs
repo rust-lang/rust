@@ -1,18 +1,26 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::macros::FormatParamKind::{Implicit, Named, Numbered, Starred};
-use clippy_utils::macros::{is_format_macro, FormatArgsExpn, FormatParam, FormatParamUsage};
+use clippy_utils::is_diag_trait_item;
+use clippy_utils::macros::FormatParamKind::{Implicit, Named, NamedInline, Numbered, Starred};
+use clippy_utils::macros::{
+    is_assert_macro, is_format_macro, is_panic, root_macro_call, Count, FormatArg, FormatArgsExpn, FormatParam,
+    FormatParamUsage,
+};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_diag_trait_item, meets_msrv, msrvs};
+use clippy_utils::ty::{implements_trait, is_type_lang_item};
 use if_chain::if_chain;
 use itertools::Itertools;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, HirId, QPath};
+use rustc_errors::{
+    Applicability,
+    SuggestionStyle::{CompletelyHidden, ShowCode},
+};
+use rustc_hir::{Expr, ExprKind, HirId, LangItem, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::Ty;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::def_id::DefId;
+use rustc_span::edition::Edition::Edition2021;
 use rustc_span::{sym, ExpnData, ExpnKind, Span, Symbol};
 
 declare_clippy_lint! {
@@ -99,58 +107,103 @@ declare_clippy_lint! {
     /// format!("{var:.prec$}");
     /// ```
     ///
-    /// ### Known Problems
-    ///
-    /// There may be a false positive if the format string is expanded from certain proc macros:
-    ///
-    /// ```ignore
-    /// println!(indoc!("{}"), var);
+    /// If allow-mixed-uninlined-format-args is set to false in clippy.toml,
+    /// the following code will also trigger the lint:
+    /// ```rust
+    /// # let var = 42;
+    /// format!("{} {}", var, 1+2);
     /// ```
+    /// Use instead:
+    /// ```rust
+    /// # let var = 42;
+    /// format!("{var} {}", 1+2);
+    /// ```
+    ///
+    /// ### Known Problems
     ///
     /// If a format string contains a numbered argument that cannot be inlined
     /// nothing will be suggested, e.g. `println!("{0}={1}", var, 1+2)`.
-    #[clippy::version = "1.65.0"]
+    #[clippy::version = "1.66.0"]
     pub UNINLINED_FORMAT_ARGS,
     pedantic,
     "using non-inlined variables in `format!` calls"
 }
 
-impl_lint_pass!(FormatArgs => [FORMAT_IN_FORMAT_ARGS, UNINLINED_FORMAT_ARGS, TO_STRING_IN_FORMAT_ARGS]);
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects [formatting parameters] that have no effect on the output of
+    /// `format!()`, `println!()` or similar macros.
+    ///
+    /// ### Why is this bad?
+    /// Shorter format specifiers are easier to read, it may also indicate that
+    /// an expected formatting operation such as adding padding isn't happening.
+    ///
+    /// ### Example
+    /// ```rust
+    /// println!("{:.}", 1.0);
+    ///
+    /// println!("not padded: {:5}", format_args!("..."));
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// println!("{}", 1.0);
+    ///
+    /// println!("not padded: {}", format_args!("..."));
+    /// // OR
+    /// println!("padded: {:5}", format!("..."));
+    /// ```
+    ///
+    /// [formatting parameters]: https://doc.rust-lang.org/std/fmt/index.html#formatting-parameters
+    #[clippy::version = "1.66.0"]
+    pub UNUSED_FORMAT_SPECS,
+    complexity,
+    "use of a format specifier that has no effect"
+}
+
+impl_lint_pass!(FormatArgs => [
+    FORMAT_IN_FORMAT_ARGS,
+    TO_STRING_IN_FORMAT_ARGS,
+    UNINLINED_FORMAT_ARGS,
+    UNUSED_FORMAT_SPECS,
+]);
 
 pub struct FormatArgs {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
+    ignore_mixed: bool,
 }
 
 impl FormatArgs {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
-        Self { msrv }
+    pub fn new(msrv: Msrv, allow_mixed_uninlined_format_args: bool) -> Self {
+        Self {
+            msrv,
+            ignore_mixed: allow_mixed_uninlined_format_args,
+        }
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for FormatArgs {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if_chain! {
-            if let Some(format_args) = FormatArgsExpn::parse(cx, expr);
-            let expr_expn_data = expr.span.ctxt().outer_expn_data();
-            let outermost_expn_data = outermost_expn_data(expr_expn_data);
-            if let Some(macro_def_id) = outermost_expn_data.macro_def_id;
-            if is_format_macro(cx, macro_def_id);
-            if let ExpnKind::Macro(_, name) = outermost_expn_data.kind;
-            then {
-                for arg in &format_args.args {
-                    if !arg.format.is_default() {
-                        continue;
-                    }
-                    if is_aliased(&format_args, arg.param.value.hir_id) {
-                        continue;
-                    }
-                    check_format_in_format_args(cx, outermost_expn_data.call_site, name, arg.param.value);
-                    check_to_string_in_format_args(cx, name, arg.param.value);
+        if let Some(format_args) = FormatArgsExpn::parse(cx, expr)
+            && let expr_expn_data = expr.span.ctxt().outer_expn_data()
+            && let outermost_expn_data = outermost_expn_data(expr_expn_data)
+            && let Some(macro_def_id) = outermost_expn_data.macro_def_id
+            && is_format_macro(cx, macro_def_id)
+            && let ExpnKind::Macro(_, name) = outermost_expn_data.kind
+        {
+            for arg in &format_args.args {
+                check_unused_format_specifier(cx, arg);
+                if !arg.format.is_default() {
+                    continue;
                 }
-                if meets_msrv(self.msrv, msrvs::FORMAT_ARGS_CAPTURE) {
-                    check_uninlined_args(cx, &format_args, outermost_expn_data.call_site);
+                if is_aliased(&format_args, arg.param.value.hir_id) {
+                    continue;
                 }
+                check_format_in_format_args(cx, outermost_expn_data.call_site, name, arg.param.value);
+                check_to_string_in_format_args(cx, name, arg.param.value);
+            }
+            if self.msrv.meets(msrvs::FORMAT_ARGS_CAPTURE) {
+                check_uninlined_args(cx, &format_args, outermost_expn_data.call_site, macro_def_id, self.ignore_mixed);
             }
         }
     }
@@ -158,8 +211,89 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
     extract_msrv_attr!(LateContext);
 }
 
-fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_site: Span) {
+fn check_unused_format_specifier(cx: &LateContext<'_>, arg: &FormatArg<'_>) {
+    let param_ty = cx.typeck_results().expr_ty(arg.param.value).peel_refs();
+
+    if let Count::Implied(Some(mut span)) = arg.format.precision
+        && !span.is_empty()
+    {
+        span_lint_and_then(
+            cx,
+            UNUSED_FORMAT_SPECS,
+            span,
+            "empty precision specifier has no effect",
+            |diag| {
+                if param_ty.is_floating_point() {
+                    diag.note("a precision specifier is not required to format floats");
+                }
+
+                if arg.format.is_default() {
+                    // If there's no other specifiers remove the `:` too
+                    span = arg.format_span();
+                }
+
+                diag.span_suggestion_verbose(span, "remove the `.`", "", Applicability::MachineApplicable);
+            },
+        );
+    }
+
+    if is_type_lang_item(cx, param_ty, LangItem::FormatArguments) && !arg.format.is_default_for_trait() {
+        span_lint_and_then(
+            cx,
+            UNUSED_FORMAT_SPECS,
+            arg.span,
+            "format specifiers have no effect on `format_args!()`",
+            |diag| {
+                let mut suggest_format = |spec, span| {
+                    let message = format!("for the {spec} to apply consider using `format!()`");
+
+                    if let Some(mac_call) = root_macro_call(arg.param.value.span)
+                        && cx.tcx.is_diagnostic_item(sym::format_args_macro, mac_call.def_id)
+                        && arg.span.eq_ctxt(mac_call.span)
+                    {
+                        diag.span_suggestion(
+                            cx.sess().source_map().span_until_char(mac_call.span, '!'),
+                            message,
+                            "format",
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else if let Some(span) = span {
+                        diag.span_help(span, message);
+                    }
+                };
+
+                if !arg.format.width.is_implied() {
+                    suggest_format("width", arg.format.width.span());
+                }
+
+                if !arg.format.precision.is_implied() {
+                    suggest_format("precision", arg.format.precision.span());
+                }
+
+                diag.span_suggestion_verbose(
+                    arg.format_span(),
+                    "if the current behavior is intentional, remove the format specifiers",
+                    "",
+                    Applicability::MaybeIncorrect,
+                );
+            },
+        );
+    }
+}
+
+fn check_uninlined_args(
+    cx: &LateContext<'_>,
+    args: &FormatArgsExpn<'_>,
+    call_site: Span,
+    def_id: DefId,
+    ignore_mixed: bool,
+) {
     if args.format_string.span.from_expansion() {
+        return;
+    }
+    if call_site.edition() < Edition2021 && (is_panic(cx, def_id) || is_assert_macro(cx, def_id)) {
+        // panic!, assert!, and debug_assert! before 2021 edition considers a single string argument as
+        // non-format
         return;
     }
 
@@ -169,14 +303,17 @@ fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_si
     // we cannot remove any other arguments in the format string,
     // because the index numbers might be wrong after inlining.
     // Example of an un-inlinable format:  print!("{}{1}", foo, 2)
-    if !args.params().all(|p| check_one_arg(args, &p, &mut fixes)) || fixes.is_empty() {
+    if !args.params().all(|p| check_one_arg(args, &p, &mut fixes, ignore_mixed)) || fixes.is_empty() {
         return;
     }
 
-    // Temporarily ignore multiline spans: https://github.com/rust-lang/rust/pull/102729#discussion_r988704308
-    if fixes.iter().any(|(span, _)| cx.sess().source_map().is_multiline(*span)) {
-        return;
-    }
+    // multiline span display suggestion is sometimes broken: https://github.com/rust-lang/rust/pull/102729#discussion_r988704308
+    // in those cases, make the code suggestion hidden
+    let multiline_fix = fixes.iter().any(|(span, _)| cx.sess().source_map().is_multiline(*span));
+
+    // Suggest removing each argument only once, for example in `format!("{0} {0}", arg)`.
+    fixes.sort_unstable_by_key(|(span, _)| *span);
+    fixes.dedup_by_key(|(span, _)| *span);
 
     span_lint_and_then(
         cx,
@@ -184,12 +321,22 @@ fn check_uninlined_args(cx: &LateContext<'_>, args: &FormatArgsExpn<'_>, call_si
         call_site,
         "variables can be used directly in the `format!` string",
         |diag| {
-            diag.multipart_suggestion("change this to", fixes, Applicability::MachineApplicable);
+            diag.multipart_suggestion_with_style(
+                "change this to",
+                fixes,
+                Applicability::MachineApplicable,
+                if multiline_fix { CompletelyHidden } else { ShowCode },
+            );
         },
     );
 }
 
-fn check_one_arg(args: &FormatArgsExpn<'_>, param: &FormatParam<'_>, fixes: &mut Vec<(Span, String)>) -> bool {
+fn check_one_arg(
+    args: &FormatArgsExpn<'_>,
+    param: &FormatParam<'_>,
+    fixes: &mut Vec<(Span, String)>,
+    ignore_mixed: bool,
+) -> bool {
     if matches!(param.kind, Implicit | Starred | Named(_) | Numbered)
         && let ExprKind::Path(QPath::Resolved(None, path)) = param.value.kind
         && let [segment] = path.segments
@@ -204,8 +351,10 @@ fn check_one_arg(args: &FormatArgsExpn<'_>, param: &FormatParam<'_>, fixes: &mut
         fixes.push((arg_span, String::new()));
         true  // successful inlining, continue checking
     } else {
-        // if we can't inline a numbered argument, we can't continue
-        param.kind != Numbered
+        // Do not continue inlining (return false) in case
+        // * if we can't inline a numbered argument, e.g. `print!("{0} ...", foo.bar, ...)`
+        // * if allow_mixed_uninlined_format_args is false and this arg hasn't been inlined already
+        param.kind != Numbered && (!ignore_mixed || matches!(param.kind, NamedInline(_)))
     }
 }
 
@@ -237,7 +386,7 @@ fn check_format_in_format_args(
         call_site,
         &format!("`format!` in `{name}!` args"),
         |diag| {
-            diag.help(&format!(
+            diag.help(format!(
                 "combine the `format!(..)` arguments with the outer `{name}!(..)` call"
             ));
             diag.help("or consider changing `format!` to `format_args!`");
@@ -248,7 +397,7 @@ fn check_format_in_format_args(
 fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Expr<'_>) {
     if_chain! {
         if !value.span.from_expansion();
-        if let ExprKind::MethodCall(_, receiver, [], _) = value.kind;
+        if let ExprKind::MethodCall(_, receiver, [], to_string_span) = value.kind;
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(value.hir_id);
         if is_diag_trait_item(cx, method_def_id, sym::ToString);
         let receiver_ty = cx.typeck_results().expr_ty(receiver);
@@ -264,7 +413,7 @@ fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Ex
                 span_lint_and_sugg(
                     cx,
                     TO_STRING_IN_FORMAT_ARGS,
-                    value.span.with_lo(receiver.span.hi()),
+                    to_string_span.with_lo(receiver.span.hi()),
                     &format!(
                         "`to_string` applied to a type that implements `Display` in `{name}!` args"
                     ),

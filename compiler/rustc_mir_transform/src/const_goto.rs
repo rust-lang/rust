@@ -57,6 +57,15 @@ impl<'tcx> MirPass<'tcx> for ConstGoto {
 }
 
 impl<'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'_, 'tcx> {
+    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &BasicBlockData<'tcx>) {
+        if data.is_cleanup {
+            // Because of the restrictions around control flow in cleanup blocks, we don't perform
+            // this optimization at all in such blocks.
+            return;
+        }
+        self.super_basic_block_data(block, data);
+    }
+
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         let _: Option<_> = try {
             let target = terminator.kind.as_goto()?;
@@ -82,8 +91,9 @@ impl<'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'_, 'tcx> {
                 }
 
                 let target_bb_terminator = target_bb.terminator();
-                let (discr, switch_ty, targets) = target_bb_terminator.kind.as_switch()?;
+                let (discr, targets) = target_bb_terminator.kind.as_switch()?;
                 if discr.place() == Some(*place) {
+                    let switch_ty = place.ty(self.body.local_decls(), self.tcx).ty;
                     // We now know that the Switch matches on the const place, and it is statementless
                     // Now find which value in the Switch matches the const value.
                     let const_value =

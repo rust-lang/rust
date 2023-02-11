@@ -14,7 +14,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::DataTypeKind;
 use rustc_span::symbol::sym;
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{ReprOptions, VariantIdx};
 
 use std::cell::RefCell;
 use std::cmp::Ordering;
@@ -22,12 +22,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::str;
 
-use super::{
-    Destructor, FieldDef, GenericPredicates, ReprOptions, Ty, TyCtxt, VariantDef, VariantDiscr,
-};
-
-#[derive(Copy, Clone, HashStable, Debug)]
-pub struct AdtSizedConstraint<'tcx>(pub &'tcx [Ty<'tcx>]);
+use super::{Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr};
 
 bitflags! {
     #[derive(HashStable, TyEncodable, TyDecodable)]
@@ -193,7 +188,7 @@ impl<'tcx> AdtDef<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, HashStable, TyEncodable, TyDecodable)]
 pub enum AdtKind {
     Struct,
     Union,
@@ -233,7 +228,7 @@ impl AdtDefData {
             AdtKind::Struct => AdtFlags::IS_STRUCT,
         };
 
-        if kind == AdtKind::Struct && variants[VariantIdx::new(0)].ctor_def_id.is_some() {
+        if kind == AdtKind::Struct && variants[VariantIdx::new(0)].ctor.is_some() {
             flags |= AdtFlags::HAS_CTOR;
         }
 
@@ -389,11 +384,9 @@ impl<'tcx> AdtDef<'tcx> {
         //    Baz = 3,
         // }
         // ```
-        if self
-            .variants()
-            .iter()
-            .any(|v| matches!(v.discr, VariantDiscr::Explicit(_)) && v.ctor_kind != CtorKind::Const)
-        {
+        if self.variants().iter().any(|v| {
+            matches!(v.discr, VariantDiscr::Explicit(_)) && v.ctor_kind() != Some(CtorKind::Const)
+        }) {
             return false;
         }
         self.variants().iter().all(|v| v.fields.is_empty())
@@ -408,7 +401,7 @@ impl<'tcx> AdtDef<'tcx> {
     pub fn variant_with_ctor_id(self, cid: DefId) -> &'tcx VariantDef {
         self.variants()
             .iter()
-            .find(|v| v.ctor_def_id == Some(cid))
+            .find(|v| v.ctor_def_id() == Some(cid))
             .expect("variant_with_ctor_id: unknown variant")
     }
 
@@ -425,7 +418,7 @@ impl<'tcx> AdtDef<'tcx> {
     pub fn variant_index_with_ctor_id(self, cid: DefId) -> VariantIdx {
         self.variants()
             .iter_enumerated()
-            .find(|(_, v)| v.ctor_def_id == Some(cid))
+            .find(|(_, v)| v.ctor_def_id() == Some(cid))
             .expect("variant_index_with_ctor_id: unknown variant")
             .0
     }
@@ -466,9 +459,7 @@ impl<'tcx> AdtDef<'tcx> {
             }
             Err(err) => {
                 let msg = match err {
-                    ErrorHandled::Reported(_) | ErrorHandled::Linted => {
-                        "enum discriminant evaluation failed"
-                    }
+                    ErrorHandled::Reported(_) => "enum discriminant evaluation failed",
                     ErrorHandled::TooGeneric => "enum discriminant depends on generics",
                 };
                 tcx.sess.delay_span_bug(tcx.def_span(expr_did), msg);
@@ -563,7 +554,7 @@ impl<'tcx> AdtDef<'tcx> {
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer (e.g., issue #31299).
     pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> ty::EarlyBinder<&'tcx [Ty<'tcx>]> {
-        ty::EarlyBinder(tcx.adt_sized_constraint(self.did()).0)
+        ty::EarlyBinder(tcx.adt_sized_constraint(self.did()))
     }
 }
 

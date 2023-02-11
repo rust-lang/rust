@@ -81,8 +81,8 @@ pub use crate::{
     highlight_related::{HighlightRelatedConfig, HighlightedRange},
     hover::{HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult},
     inlay_hints::{
-        ClosureReturnTypeHints, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind,
-        InlayTooltip, LifetimeElisionHints, ReborrowHints,
+        AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints, InlayHint,
+        InlayHintLabel, InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints,
     },
     join_lines::JoinLinesConfig,
     markup::Markup,
@@ -236,6 +236,7 @@ impl Analysis {
             Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
+            None,
         );
         change.change_file(file_id, Some(Arc::new(text)));
         change.set_crate_graph(crate_graph);
@@ -367,7 +368,7 @@ impl Analysis {
         &self,
         config: &InlayHintsConfig,
         file_id: FileId,
-        range: Option<FileRange>,
+        range: Option<TextRange>,
     ) -> Cancellable<Vec<InlayHint>> {
         self.with_db(|db| inlay_hints::inlay_hints(db, file_id, range, config))
     }
@@ -482,8 +483,18 @@ impl Analysis {
     }
 
     /// Returns crates this file belongs too.
-    pub fn crate_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
-        self.with_db(|db| parent_module::crate_for(db, file_id))
+    pub fn crates_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
+        self.with_db(|db| parent_module::crates_for(db, file_id))
+    }
+
+    /// Returns crates this file belongs too.
+    pub fn transitive_rev_deps(&self, crate_id: CrateId) -> Cancellable<Vec<CrateId>> {
+        self.with_db(|db| db.crate_graph().transitive_rev_deps(crate_id).collect())
+    }
+
+    /// Returns crates this file *might* belong too.
+    pub fn relevant_crates_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
+        self.with_db(|db| db.relevant_crates(file_id).iter().copied().collect())
     }
 
     /// Returns the edition of the given crate.

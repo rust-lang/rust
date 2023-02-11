@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-106443-sugg-clone-for-arg.rs:11:9
+   |
+LL |     foo(s);
+   |     --- ^ expected `S`, found `&S`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/issue-106443-sugg-clone-for-arg.rs:7:4
+   |
+LL | fn foo(_: S) {}
+   |    ^^^ ----
+help: consider using clone here
+   |
+LL |     foo(s.clone());
+   |          ++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-106443-sugg-clone-for-arg.rs:17:9
+   |
+LL |     bar(t);
+   |     --- ^ expected `T`, found `&T`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/issue-106443-sugg-clone-for-arg.rs:14:4
+   |
+LL | fn bar(_: T) {}
+   |    ^^^ ----
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

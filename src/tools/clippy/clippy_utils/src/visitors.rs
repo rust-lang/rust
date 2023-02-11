@@ -170,22 +170,22 @@ where
         cb: F,
     }
 
-    struct WithStmtGuarg<'a, F> {
+    struct WithStmtGuard<'a, F> {
         val: &'a mut RetFinder<F>,
         prev_in_stmt: bool,
     }
 
     impl<F> RetFinder<F> {
-        fn inside_stmt(&mut self, in_stmt: bool) -> WithStmtGuarg<'_, F> {
+        fn inside_stmt(&mut self, in_stmt: bool) -> WithStmtGuard<'_, F> {
             let prev_in_stmt = std::mem::replace(&mut self.in_stmt, in_stmt);
-            WithStmtGuarg {
+            WithStmtGuard {
                 val: self,
                 prev_in_stmt,
             }
         }
     }
 
-    impl<F> std::ops::Deref for WithStmtGuarg<'_, F> {
+    impl<F> std::ops::Deref for WithStmtGuard<'_, F> {
         type Target = RetFinder<F>;
 
         fn deref(&self) -> &Self::Target {
@@ -193,13 +193,13 @@ where
         }
     }
 
-    impl<F> std::ops::DerefMut for WithStmtGuarg<'_, F> {
+    impl<F> std::ops::DerefMut for WithStmtGuard<'_, F> {
         fn deref_mut(&mut self) -> &mut Self::Target {
             self.val
         }
     }
 
-    impl<F> Drop for WithStmtGuarg<'_, F> {
+    impl<F> Drop for WithStmtGuard<'_, F> {
         fn drop(&mut self) {
             self.val.in_stmt = self.prev_in_stmt;
         }
@@ -392,12 +392,16 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
                         .cx
                         .typeck_results()
                         .type_dependent_def_id(e.hir_id)
-                        .map_or(false, |id| self.cx.tcx.fn_sig(id).unsafety() == Unsafety::Unsafe) =>
+                        .map_or(false, |id| {
+                            self.cx.tcx.fn_sig(id).skip_binder().unsafety() == Unsafety::Unsafe
+                        }) =>
                 {
                     self.is_unsafe = true;
                 },
                 ExprKind::Call(func, _) => match *self.cx.typeck_results().expr_ty(func).peel_refs().kind() {
-                    ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).unsafety() == Unsafety::Unsafe => self.is_unsafe = true,
+                    ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).skip_binder().unsafety() == Unsafety::Unsafe => {
+                        self.is_unsafe = true;
+                    },
                     ty::FnPtr(sig) if sig.unsafety() == Unsafety::Unsafe => self.is_unsafe = true,
                     _ => walk_expr(self, e),
                 },
@@ -723,4 +727,15 @@ pub fn for_each_local_assignment<'tcx, B>(
     } else {
         ControlFlow::Continue(())
     }
+}
+
+pub fn contains_break_or_continue(expr: &Expr<'_>) -> bool {
+    for_each_expr(expr, |e| {
+        if matches!(e.kind, ExprKind::Break(..) | ExprKind::Continue(..)) {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    })
+    .is_some()
 }

@@ -78,7 +78,7 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     .join(" | ")
             };
 
-            let arm = format!("{} => {},", pats, current_expr.syntax().text());
+            let arm = format!("{pats} => {current_expr},");
 
             if let [first, .., last] = &*arms_to_merge {
                 let start = first.syntax().text_range().start();

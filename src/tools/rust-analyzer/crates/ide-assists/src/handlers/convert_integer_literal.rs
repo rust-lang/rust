@@ -32,18 +32,18 @@ pub(crate) fn convert_integer_literal(acc: &mut Assists, ctx: &AssistContext<'_>
         }
 
         let mut converted = match target_radix {
-            Radix::Binary => format!("0b{:b}", value),
-            Radix::Octal => format!("0o{:o}", value),
+            Radix::Binary => format!("0b{value:b}"),
+            Radix::Octal => format!("0o{value:o}"),
             Radix::Decimal => value.to_string(),
-            Radix::Hexadecimal => format!("0x{:X}", value),
+            Radix::Hexadecimal => format!("0x{value:X}"),
         };
-
-        let label = format!("Convert {} to {}{}", literal, converted, suffix.unwrap_or_default());
 
         // Appends the type suffix back into the new literal if it exists.
         if let Some(suffix) = suffix {
             converted.push_str(suffix);
         }
+
+        let label = format!("Convert {literal} to {converted}");
 
         acc.add_group(
             &group_id,

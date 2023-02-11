@@ -1,7 +1,7 @@
 #![warn(clippy::integer_arithmetic)]
 
 mod backtrace;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub mod ffi_support;
 pub mod foreign_items;
 pub mod intrinsics;
@@ -80,7 +80,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(false);
         }
 
-        let req_align = this.read_scalar(align_op)?.to_machine_usize(this)?;
+        let req_align = this.read_machine_usize(align_op)?;
 
         // Stop if the alignment is not a power of two.
         if !req_align.is_power_of_two() {
@@ -89,6 +89,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         let ptr = this.read_pointer(ptr_op)?;
+        // If this carries no provenance, treat it like an integer.
+        if ptr.provenance.is_none() {
+            // Use actual implementation.
+            return Ok(false);
+        }
+
         if let Ok((alloc_id, _offset, _)) = this.ptr_try_get_alloc_id(ptr) {
             // Only do anything if we can identify the allocation this goes to.
             let (_size, cur_align, _kind) = this.get_alloc_info(alloc_id);

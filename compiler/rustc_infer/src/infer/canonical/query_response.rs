@@ -9,25 +9,24 @@
 
 use crate::infer::canonical::substitute::{substitute_value, CanonicalExt};
 use crate::infer::canonical::{
-    Canonical, CanonicalVarValues, CanonicalizedQueryResponse, Certainty, OriginalQueryValues,
+    Canonical, CanonicalQueryResponse, CanonicalVarValues, Certainty, OriginalQueryValues,
     QueryOutlivesConstraint, QueryRegionConstraints, QueryResponse,
 };
-use crate::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
+use crate::infer::nll_relate::{TypeRelating, TypeRelatingDelegate};
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
-use crate::traits::TraitEngine;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
+use crate::traits::{PredicateObligations, TraitEngine, TraitEngineExt};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, BoundVar, Const, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, BoundVar, ToPredicate, Ty, TyCtxt};
 use rustc_span::Span;
 use std::fmt::Debug;
 use std::iter;
@@ -58,7 +57,7 @@ impl<'tcx> InferCtxt<'tcx> {
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
-    ) -> Fallible<CanonicalizedQueryResponse<'tcx, T>>
+    ) -> Fallible<CanonicalQueryResponse<'tcx, T>>
     where
         T: Debug + TypeFoldable<'tcx>,
         Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
@@ -152,11 +151,12 @@ impl<'tcx> InferCtxt<'tcx> {
         })
     }
 
-    fn take_opaque_types_for_query_response(&self) -> Vec<(Ty<'tcx>, Ty<'tcx>)> {
-        self.inner
-            .borrow_mut()
-            .opaque_type_storage
-            .take_opaque_types()
+    /// FIXME: This method should only be used for canonical queries and therefore be private.
+    ///
+    /// As the new solver does canonicalization slightly differently, this is also used there
+    /// for now. This should hopefully change fairly soon.
+    pub fn take_opaque_types_for_query_response(&self) -> Vec<(Ty<'tcx>, Ty<'tcx>)> {
+        std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
             .into_iter()
             .map(|(k, v)| (self.tcx.mk_opaque(k.def_id.to_def_id(), k.substs), v.hidden_type.ty))
             .collect()
@@ -268,14 +268,12 @@ impl<'tcx> InferCtxt<'tcx> {
                 (GenericArgKind::Lifetime(v_o), GenericArgKind::Lifetime(v_r)) => {
                     // To make `v_o = v_r`, we emit `v_o: v_r` and `v_r: v_o`.
                     if v_o != v_r {
-                        output_query_region_constraints.outlives.push((
-                            ty::Binder::dummy(ty::OutlivesPredicate(v_o.into(), v_r)),
-                            constraint_category,
-                        ));
-                        output_query_region_constraints.outlives.push((
-                            ty::Binder::dummy(ty::OutlivesPredicate(v_r.into(), v_o)),
-                            constraint_category,
-                        ));
+                        output_query_region_constraints
+                            .outlives
+                            .push((ty::OutlivesPredicate(v_o.into(), v_r), constraint_category));
+                        output_query_region_constraints
+                            .outlives
+                            .push((ty::OutlivesPredicate(v_r.into(), v_o), constraint_category));
                     }
                 }
 
@@ -318,10 +316,8 @@ impl<'tcx> InferCtxt<'tcx> {
             query_response.value.region_constraints.outlives.iter().filter_map(|&r_c| {
                 let r_c = substitute_value(self.tcx, &result_subst, r_c);
 
-                // Screen out `'a: 'a` cases -- we skip the binder here but
-                // only compare the inner values to one another, so they are still at
-                // consistent binding levels.
-                let ty::OutlivesPredicate(k1, r2) = r_c.0.skip_binder();
+                // Screen out `'a: 'a` cases.
+                let ty::OutlivesPredicate(k1, r2) = r_c.0;
                 if k1 != r2.into() { Some(r_c) } else { None }
             }),
         );
@@ -482,11 +478,8 @@ impl<'tcx> InferCtxt<'tcx> {
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
         let result_subst = CanonicalVarValues {
-            var_values: query_response
-                .variables
-                .iter()
-                .enumerate()
-                .map(|(index, info)| {
+            var_values: self.tcx.mk_substs(query_response.variables.iter().enumerate().map(
+                |(index, info)| {
                     if info.is_existential() {
                         match opt_values[BoundVar::new(index)] {
                             Some(k) => k,
@@ -499,8 +492,8 @@ impl<'tcx> InferCtxt<'tcx> {
                             universe_map[u.as_usize()]
                         })
                     }
-                })
-                .collect(),
+                },
+            )),
         };
 
         let mut obligations = vec![];
@@ -509,7 +502,7 @@ impl<'tcx> InferCtxt<'tcx> {
         for &(a, b) in &query_response.value.opaque_types {
             let a = substitute_value(self.tcx, &result_subst, a);
             let b = substitute_value(self.tcx, &result_subst, b);
-            obligations.extend(self.handle_opaque_type(a, b, true, cause, param_env)?.obligations);
+            obligations.extend(self.at(cause, param_env).eq(a, b)?.obligations);
         }
 
         Ok(InferOk { value: result_subst, obligations })
@@ -562,18 +555,18 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn query_outlives_constraint_to_obligation(
         &self,
-        predicate: QueryOutlivesConstraint<'tcx>,
+        (predicate, _): QueryOutlivesConstraint<'tcx>,
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Obligation<'tcx, ty::Predicate<'tcx>> {
-        let ty::OutlivesPredicate(k1, r2) = predicate.0.skip_binder();
+        let ty::OutlivesPredicate(k1, r2) = predicate;
 
         let atom = match k1.unpack() {
             GenericArgKind::Lifetime(r1) => {
-                ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
+                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(r1, r2)))
             }
             GenericArgKind::Type(t1) => {
-                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t1, r2))
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(t1, r2)))
             }
             GenericArgKind::Const(..) => {
                 // Consts cannot outlive one another, so we don't expect to
@@ -581,9 +574,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 span_bug!(cause.span, "unexpected const outlives {:?}", predicate);
             }
         };
-        let predicate = predicate.0.rebind(atom).to_predicate(self.tcx);
+        let predicate = ty::Binder::dummy(atom);
 
-        Obligation::new(cause, param_env, predicate)
+        Obligation::new(self.tcx, cause, param_env, predicate)
     }
 
     /// Given two sets of values for the same set of canonical variables, unify them.
@@ -646,8 +639,7 @@ pub fn make_query_region_constraints<'tcx>(
     let outlives: Vec<_> = constraints
         .iter()
         .map(|(k, origin)| {
-            // no bound vars in the code above
-            let constraint = ty::Binder::dummy(match *k {
+            let constraint = match *k {
                 // Swap regions because we are going from sub (<=) to outlives
                 // (>=).
                 Constraint::VarSubVar(v1, v2) => ty::OutlivesPredicate(
@@ -661,16 +653,12 @@ pub fn make_query_region_constraints<'tcx>(
                     ty::OutlivesPredicate(tcx.mk_region(ty::ReVar(v2)).into(), r1)
                 }
                 Constraint::RegSubReg(r1, r2) => ty::OutlivesPredicate(r2.into(), r1),
-            });
+            };
             (constraint, origin.to_constraint_category())
         })
-        .chain(
-            outlives_obligations
-                // no bound vars in the code above
-                .map(|(ty, r, constraint_category)| {
-                    (ty::Binder::dummy(ty::OutlivesPredicate(ty.into(), r)), constraint_category)
-                }),
-        )
+        .chain(outlives_obligations.map(|(ty, r, constraint_category)| {
+            (ty::OutlivesPredicate(ty.into(), r), constraint_category)
+        }))
         .collect();
 
     QueryRegionConstraints { outlives, member_constraints: member_constraints.clone() }
@@ -721,37 +709,19 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         self.obligations.push(Obligation {
             cause: self.cause.clone(),
             param_env: self.param_env,
-            predicate: ty::Binder::dummy(ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
-                sup, sub,
+            predicate: ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                ty::OutlivesPredicate(sup, sub),
             )))
             .to_predicate(self.infcx.tcx),
             recursion_depth: 0,
         });
     }
 
-    fn const_equate(&mut self, _a: Const<'tcx>, _b: Const<'tcx>) {
-        span_bug!(self.cause.span(), "generic_const_exprs: unreachable `const_equate`");
-    }
-
-    fn normalization() -> NormalizationStrategy {
-        NormalizationStrategy::Eager
-    }
-
     fn forbid_inference_vars() -> bool {
         true
     }
 
-    fn register_opaque_type(
-        &mut self,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-        a_is_expected: bool,
-    ) -> Result<(), TypeError<'tcx>> {
-        self.obligations.extend(
-            self.infcx
-                .handle_opaque_type(a, b, a_is_expected, &self.cause, self.param_env)?
-                .obligations,
-        );
-        Ok(())
+    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
+        self.obligations.extend(obligations);
     }
 }

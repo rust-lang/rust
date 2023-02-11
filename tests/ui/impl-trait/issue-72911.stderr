@@ -1,0 +1,15 @@
+error[E0433]: failed to resolve: use of undeclared crate or module `foo`
+  --> $DIR/issue-72911.rs:11:33
+   |
+LL | fn gather_from_file(dir_entry: &foo::MissingItem) -> impl Iterator<Item = Lint> {
+   |                                 ^^^ use of undeclared crate or module `foo`
+
+error[E0433]: failed to resolve: use of undeclared crate or module `foo`
+  --> $DIR/issue-72911.rs:16:41
+   |
+LL | fn lint_files() -> impl Iterator<Item = foo::MissingItem> {
+   |                                         ^^^ use of undeclared crate or module `foo`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

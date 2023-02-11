@@ -104,7 +104,7 @@ pub struct RawWakerVTable {
     /// pointer.
     wake_by_ref: unsafe fn(*const ()),
 
-    /// This function gets called when a [`RawWaker`] gets dropped.
+    /// This function gets called when a [`Waker`] gets dropped.
     ///
     /// The implementation of this function must make sure to release any
     /// resources that are associated with this instance of a [`RawWaker`] and
@@ -151,7 +151,7 @@ impl RawWakerVTable {
     ///
     /// # `drop`
     ///
-    /// This function gets called when a [`RawWaker`] gets dropped.
+    /// This function gets called when a [`Waker`] gets dropped.
     ///
     /// The implementation of this function must make sure to release any
     /// resources that are associated with this instance of a [`RawWaker`] and
@@ -174,6 +174,7 @@ impl RawWakerVTable {
 /// Currently, `Context` only serves to provide access to a [`&Waker`](Waker)
 /// which can be used to wake the current task.
 #[stable(feature = "futures_api", since = "1.36.0")]
+#[lang = "Context"]
 pub struct Context<'a> {
     waker: &'a Waker,
     // Ensure we future-proof against variance changes by forcing
@@ -181,6 +182,9 @@ pub struct Context<'a> {
     // are contravariant while return-position lifetimes are
     // covariant).
     _marker: PhantomData<fn(&'a ()) -> &'a ()>,
+    // Ensure `Context` is `!Send` and `!Sync` in order to allow
+    // for future `!Send` and / or `!Sync` fields.
+    _marker2: PhantomData<*mut ()>,
 }
 
 impl<'a> Context<'a> {
@@ -190,7 +194,7 @@ impl<'a> Context<'a> {
     #[must_use]
     #[inline]
     pub const fn from_waker(waker: &'a Waker) -> Self {
-        Context { waker, _marker: PhantomData }
+        Context { waker, _marker: PhantomData, _marker2: PhantomData }
     }
 
     /// Returns a reference to the [`Waker`] for the current task.

@@ -1,0 +1,33 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-67037-pat-tup-scrut-ty-diff-less-fields.rs:19:9
+   |
+LL |     let P() = U {};
+   |         ^^^   ---- this expression has type `U`
+   |         |
+   |         expected `U`, found `P<_>`
+   |
+   = note: expected struct `U`
+              found struct `P<_>`
+
+error[E0023]: this pattern has 0 fields, but the corresponding tuple struct has 1 field
+  --> $DIR/issue-67037-pat-tup-scrut-ty-diff-less-fields.rs:19:9
+   |
+LL | struct P<T>(T); // 1 type parameter wanted
+   |             - tuple struct has 1 field
+...
+LL |     let P() = U {};
+   |         ^^^ expected 1 field, found 0
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |     let P(_) = U {};
+   |           +
+help: use `..` to ignore all fields
+   |
+LL |     let P(..) = U {};
+   |           ++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0023, E0308.
+For more information about an error, try `rustc --explain E0023`.

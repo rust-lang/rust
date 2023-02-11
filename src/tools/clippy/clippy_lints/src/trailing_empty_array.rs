@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_hir::{HirId, Item, ItemKind};
+use clippy_utils::has_repr_attr;
+use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Const;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -46,7 +46,7 @@ impl<'tcx> LateLintPass<'tcx> for TrailingEmptyArray {
                 None,
                 &format!(
                     "consider annotating `{}` with `#[repr(C)]` or another `repr` attribute",
-                    cx.tcx.def_path_str(item.def_id.to_def_id())
+                    cx.tcx.def_path_str(item.owner_id.to_def_id())
                 ),
             );
         }
@@ -61,8 +61,7 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'_>, item: &Item<'_
         if let rustc_hir::TyKind::Array(_, rustc_hir::ArrayLen::Body(length)) = last_field.ty.kind;
 
         // Then check if that that array zero-sized
-        let length_ldid = cx.tcx.hir().local_def_id(length.hir_id);
-        let length = Const::from_anon_const(cx.tcx, length_ldid);
+        let length = Const::from_anon_const(cx.tcx, length.def_id);
         let length = length.try_eval_usize(cx.tcx, cx.param_env);
         if let Some(length) = length;
         then {
@@ -71,8 +70,4 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'_>, item: &Item<'_
             false
         }
     }
-}
-
-fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    cx.tcx.hir().attrs(hir_id).iter().any(|attr| attr.has_name(sym::repr))
 }

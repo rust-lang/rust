@@ -45,3 +45,8 @@ impl RefOptTrait for u32 {
 fn main() {
     let x: &Option<&u32> = &None;
 }
+
+fn issue9682(arg: &Option<&mut String>) {
+    // Should not lint, as the inner ref is mutable making it non `Copy`
+    println!("{arg:?}");
+}

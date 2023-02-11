@@ -74,18 +74,26 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
                 ast::ArgList(arg_list) => {
                     let cursor_outside = arg_list.r_paren_token().as_ref() == Some(&token);
                     if cursor_outside {
-                        return None;
+                        continue;
                     }
-                    return signature_help_for_call(&sema, token);
+                    return signature_help_for_call(&sema, arg_list, token);
                 },
                 ast::GenericArgList(garg_list) => {
                     let cursor_outside = garg_list.r_angle_token().as_ref() == Some(&token);
                     if cursor_outside {
-                        return None;
+                        continue;
                     }
-                    return signature_help_for_generics(&sema, token);
+                    return signature_help_for_generics(&sema, garg_list, token);
                 },
                 _ => (),
+            }
+        }
+
+        // Stop at multi-line expressions, since the signature of the outer call is not very
+        // helpful inside them.
+        if let Some(expr) = ast::Expr::cast(node.clone()) {
+            if expr.syntax().text().contains_char('\n') {
+                return None;
             }
         }
     }
@@ -95,10 +103,11 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
 
 fn signature_help_for_call(
     sema: &Semantics<'_, RootDatabase>,
+    arg_list: ast::ArgList,
     token: SyntaxToken,
 ) -> Option<SignatureHelp> {
     // Find the calling expression and its NameRef
-    let mut node = token.parent()?;
+    let mut node = arg_list.syntax().parent()?;
     let calling_node = loop {
         if let Some(callable) = ast::CallableExpr::cast(node.clone()) {
             if callable
@@ -106,14 +115,6 @@ fn signature_help_for_call(
                 .map_or(false, |it| it.syntax().text_range().contains(token.text_range().start()))
             {
                 break callable;
-            }
-        }
-
-        // Stop at multi-line expressions, since the signature of the outer call is not very
-        // helpful inside them.
-        if let Some(expr) = ast::Expr::cast(node.clone()) {
-            if expr.syntax().text().contains_char('\n') {
-                return None;
             }
         }
 
@@ -149,7 +150,7 @@ fn signature_help_for_call(
                 variant.name(db)
             );
         }
-        hir::CallableKind::Closure | hir::CallableKind::FnPtr => (),
+        hir::CallableKind::Closure | hir::CallableKind::FnPtr | hir::CallableKind::Other => (),
     }
 
     res.signature.push('(');
@@ -189,9 +190,10 @@ fn signature_help_for_call(
         hir::CallableKind::Function(func) if callable.return_type().contains_unknown() => {
             render(func.ret_type(db))
         }
-        hir::CallableKind::Function(_) | hir::CallableKind::Closure | hir::CallableKind::FnPtr => {
-            render(callable.return_type())
-        }
+        hir::CallableKind::Function(_)
+        | hir::CallableKind::Closure
+        | hir::CallableKind::FnPtr
+        | hir::CallableKind::Other => render(callable.return_type()),
         hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => {}
     }
     Some(res)
@@ -199,10 +201,11 @@ fn signature_help_for_call(
 
 fn signature_help_for_generics(
     sema: &Semantics<'_, RootDatabase>,
+    garg_list: ast::GenericArgList,
     token: SyntaxToken,
 ) -> Option<SignatureHelp> {
-    let parent = token.parent()?;
-    let arg_list = parent
+    let arg_list = garg_list
+        .syntax()
         .ancestors()
         .filter_map(ast::GenericArgList::cast)
         .find(|list| list.syntax().text_range().contains(token.text_range().start()))?;
@@ -387,10 +390,9 @@ mod tests {
     }
 
     fn check(ra_fixture: &str, expect: Expect) {
-        // Implicitly add `Sized` to avoid noisy `T: ?Sized` in the results.
         let fixture = format!(
             r#"
-#[lang = "sized"] trait Sized {{}}
+//- minicore: sized, fn
 {ra_fixture}
             "#
         );
@@ -644,7 +646,7 @@ pub fn add_one(x: i32) -> i32 {
     x + 1
 }
 
-pub fn do() {
+pub fn r#do() {
     add_one($0
 }"#,
             expect![[r##"
@@ -769,6 +771,32 @@ fn f() {
 }
 "#,
             expect![[]],
+        );
+        check(
+            r#"
+fn foo(a: u8) -> u8 {a}
+fn bar(a: u8) -> u8 {a}
+fn f() {
+    foo(bar(123)$0)
+}
+"#,
+            expect![[r#"
+                fn foo(a: u8) -> u8
+                       ^^^^^
+            "#]],
+        );
+        check(
+            r#"
+struct Vec<T>(T);
+struct Vec2<T>(T);
+fn f() {
+    let _: Vec2<Vec<u8>$0>
+}
+"#,
+            expect![[r#"
+                struct Vec2<T>
+                            ^
+            "#]],
         );
     }
 
@@ -1328,6 +1356,52 @@ fn f() {
             expect![[r#"
                 fn foo(self: &Self, other: Self)
                        ^^^^^^^^^^^  -----------
+            "#]],
+        );
+    }
+
+    #[test]
+    fn help_for_generic_call() {
+        check(
+            r#"
+fn f<F: FnOnce(u8, u16) -> i32>(f: F) {
+    f($0)
+}
+"#,
+            expect![[r#"
+                (u8, u16) -> i32
+                 ^^  ---
+            "#]],
+        );
+        check(
+            r#"
+fn f<T, F: FnOnce(&T, u16) -> &T>(f: F) {
+    f($0)
+}
+"#,
+            expect![[r#"
+                (&T, u16) -> &T
+                 ^^  ---
+            "#]],
+        );
+    }
+
+    #[test]
+    fn regression_13579() {
+        check(
+            r#"
+fn f() {
+    take(2)($0);
+}
+
+fn take<C, Error>(
+    count: C
+) -> impl Fn() -> C  {
+    move || count
+}
+"#,
+            expect![[r#"
+                () -> i32
             "#]],
         );
     }

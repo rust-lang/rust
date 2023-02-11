@@ -12,6 +12,7 @@ pub fn target() -> Target {
         | SanitizerSet::LEAK
         | SanitizerSet::MEMORY
         | SanitizerSet::THREAD;
+    base.supports_xray = true;
 
     Target {
         llvm_target: "x86_64-unknown-linux-musl".into(),

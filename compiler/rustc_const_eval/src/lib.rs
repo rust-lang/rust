@@ -6,7 +6,6 @@ Rust MIR: a lowered representation of Rust.
 
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(control_flow_enum)]
 #![feature(decl_macro)]
 #![feature(exact_size_is_empty)]
 #![feature(let_chains)]
@@ -20,9 +19,9 @@ Rust MIR: a lowered representation of Rust.
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
+#![feature(if_let_guard)]
 #![feature(is_some_and)]
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate tracing;
@@ -59,7 +58,12 @@ pub fn provide(providers: &mut Providers) {
         let (param_env, value) = param_env_and_value.into_parts();
         const_eval::deref_mir_constant(tcx, param_env, value)
     };
-    providers.permits_uninit_init =
-        |tcx, ty| util::might_permit_raw_init(tcx, ty, InitKind::UninitMitigated0x01Fill);
-    providers.permits_zero_init = |tcx, ty| util::might_permit_raw_init(tcx, ty, InitKind::Zero);
+    providers.permits_uninit_init = |tcx, param_env_and_ty| {
+        let (param_env, ty) = param_env_and_ty.into_parts();
+        util::might_permit_raw_init(tcx, param_env, ty, InitKind::UninitMitigated0x01Fill)
+    };
+    providers.permits_zero_init = |tcx, param_env_and_ty| {
+        let (param_env, ty) = param_env_and_ty.into_parts();
+        util::might_permit_raw_init(tcx, param_env, ty, InitKind::Zero)
+    };
 }

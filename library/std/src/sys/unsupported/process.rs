@@ -75,6 +75,10 @@ impl Command {
     ) -> io::Result<(Process, StdioPipes)> {
         unsupported()
     }
+
+    pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+        unsupported()
+    }
 }
 
 impl From<AnonPipe> for Stdio {

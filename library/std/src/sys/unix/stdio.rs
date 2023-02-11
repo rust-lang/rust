@@ -1,6 +1,6 @@
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
-use crate::os::unix::io::{AsFd, BorrowedFd, FromRawFd};
+use crate::os::unix::io::FromRawFd;
 use crate::sys::fd::FileDesc;
 
 pub struct Stdin(());
@@ -90,52 +90,4 @@ pub const STDIN_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
 
 pub fn panic_output() -> Option<impl io::Write> {
     Some(Stderr::new())
-}
-
-#[stable(feature = "io_safety", since = "1.63.0")]
-impl AsFd for io::Stdin {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw(libc::STDIN_FILENO) }
-    }
-}
-
-#[stable(feature = "io_safety", since = "1.63.0")]
-impl<'a> AsFd for io::StdinLock<'a> {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw(libc::STDIN_FILENO) }
-    }
-}
-
-#[stable(feature = "io_safety", since = "1.63.0")]
-impl AsFd for io::Stdout {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw(libc::STDOUT_FILENO) }
-    }
-}
-
-#[stable(feature = "io_safety", since = "1.63.0")]
-impl<'a> AsFd for io::StdoutLock<'a> {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw(libc::STDOUT_FILENO) }
-    }
-}
-
-#[stable(feature = "io_safety", since = "1.63.0")]
-impl AsFd for io::Stderr {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw(libc::STDERR_FILENO) }
-    }
-}
-
-#[stable(feature = "io_safety", since = "1.63.0")]
-impl<'a> AsFd for io::StderrLock<'a> {
-    #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw(libc::STDERR_FILENO) }
-    }
 }

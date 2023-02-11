@@ -8,15 +8,17 @@ extern crate test;
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, TestPaths};
 use crate::util::logv;
+use build_helper::git::{get_git_modified_files, get_git_untracked_files};
+use core::panic;
 use getopts::Options;
 use lazycell::LazyCell;
-use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::SystemTime;
+use std::{env, vec};
 use test::ColorConfig;
 use tracing::*;
 use walkdir::WalkDir;
@@ -69,6 +71,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
         .reqopt("", "src-base", "directory to scan for test files", "PATH")
         .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
+        .reqopt("", "sysroot-base", "directory containing the compiler sysroot", "PATH")
         .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
         .reqopt(
             "",
@@ -144,9 +147,10 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "rustfix-coverage",
             "enable this to generate a Rustfix coverage file, which is saved in \
-                `./<build_base>/rustfix_missing_coverage.txt`",
+            `./<build_base>/rustfix_missing_coverage.txt`",
         )
         .optflag("", "force-rerun", "rerun tests even if the inputs are unchanged")
+        .optflag("", "only-modified", "only run tests that result been modified")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
         .optopt("", "edition", "default Rust edition", "EDITION");
@@ -200,7 +204,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
     let llvm_version =
-        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version);
+        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version).or_else(
+            || header::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
+        );
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
@@ -232,6 +238,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(PathBuf::from),
         src_base,
         build_base: opt_path(matches, "build-base"),
+        sysroot_base: opt_path(matches, "sysroot-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
         mode,
         suite: matches.opt_str("suite").unwrap(),
@@ -252,8 +259,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         }),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),
-        host_rustcflags: Some(matches.opt_strs("host-rustcflags").join(" ")),
-        target_rustcflags: Some(matches.opt_strs("target-rustcflags").join(" ")),
+        host_rustcflags: matches.opt_strs("host-rustcflags"),
+        target_rustcflags: matches.opt_strs("target-rustcflags"),
         optimize_tests: matches.opt_present("optimize-tests"),
         target,
         host: opt_str2(matches.opt_str("host")),
@@ -275,6 +282,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
         quiet: matches.opt_present("quiet"),
+        only_modified: matches.opt_present("only-modified"),
         color,
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
         compare_mode: matches.opt_str("compare-mode").map(CompareMode::parse),
@@ -320,8 +328,8 @@ pub fn log_config(config: &Config) {
         format!("force_pass_mode: {}", opt_str(&config.force_pass_mode.map(|m| format!("{}", m))),),
     );
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
-    logv(c, format!("host-rustcflags: {}", opt_str(&config.host_rustcflags)));
-    logv(c, format!("target-rustcflags: {}", opt_str(&config.target_rustcflags)));
+    logv(c, format!("host-rustcflags: {:?}", config.host_rustcflags));
+    logv(c, format!("target-rustcflags: {:?}", config.target_rustcflags));
     logv(c, format!("target: {}", config.target));
     logv(c, format!("host: {}", config.host));
     logv(c, format!("android-cross-path: {:?}", config.android_cross_path.display()));
@@ -394,6 +402,8 @@ pub fn run_tests(config: Config) {
     for c in &configs {
         make_tests(c, &mut tests);
     }
+
+    tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
 
     let res = test::run_tests_console(&opts, tests);
     match res {
@@ -508,14 +518,25 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         options: test::Options::new(),
         time_options: None,
         force_run_in_process: false,
+        fail_fast: std::env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
     }
 }
 
 pub fn make_tests(config: &Config, tests: &mut Vec<test::TestDescAndFn>) {
     debug!("making tests from {:?}", config.src_base.display());
     let inputs = common_inputs_stamp(config);
-    collect_tests_from_dir(config, &config.src_base, &PathBuf::new(), &inputs, tests)
-        .unwrap_or_else(|_| panic!("Could not read tests from {}", config.src_base.display()));
+    let modified_tests = modified_tests(config, &config.src_base).unwrap_or_else(|err| {
+        panic!("modified_tests got error from dir: {}, error: {}", config.src_base.display(), err)
+    });
+    collect_tests_from_dir(
+        config,
+        &config.src_base,
+        &PathBuf::new(),
+        &inputs,
+        tests,
+        &modified_tests,
+    )
+    .unwrap_or_else(|_| panic!("Could not read tests from {}", config.src_base.display()));
 }
 
 /// Returns a stamp constructed from input files common to all test cases.
@@ -554,12 +575,35 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
     stamp
 }
 
+fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
+    if !config.only_modified {
+        return Ok(vec![]);
+    }
+    let files =
+        get_git_modified_files(Some(dir), &vec!["rs", "stderr", "fixed"])?.unwrap_or(vec![]);
+    // Add new test cases to the list, it will be convenient in daily development.
+    let untracked_files = get_git_untracked_files(None)?.unwrap_or(vec![]);
+
+    let all_paths = [&files[..], &untracked_files[..]].concat();
+    let full_paths = {
+        let mut full_paths: Vec<PathBuf> = all_paths
+            .into_iter()
+            .map(|f| fs::canonicalize(&f).unwrap().with_extension("").with_extension("rs"))
+            .collect();
+        full_paths.dedup();
+        full_paths.sort_unstable();
+        full_paths
+    };
+    Ok(full_paths)
+}
+
 fn collect_tests_from_dir(
     config: &Config,
     dir: &Path,
     relative_dir_path: &Path,
     inputs: &Stamp,
     tests: &mut Vec<test::TestDescAndFn>,
+    modified_tests: &Vec<PathBuf>,
 ) -> io::Result<()> {
     // Ignore directories that contain a file named `compiletest-ignore-dir`.
     if dir.join("compiletest-ignore-dir").exists() {
@@ -590,7 +634,7 @@ fn collect_tests_from_dir(
         let file = file?;
         let file_path = file.path();
         let file_name = file.file_name();
-        if is_test(&file_name) {
+        if is_test(&file_name) && (!config.only_modified || modified_tests.contains(&file_path)) {
             debug!("found test file: {:?}", file_path.display());
             let paths =
                 TestPaths { file: file_path, relative_dir: relative_dir_path.to_path_buf() };
@@ -600,7 +644,14 @@ fn collect_tests_from_dir(
             let relative_file_path = relative_dir_path.join(file.file_name());
             if &file_name != "auxiliary" {
                 debug!("found directory: {:?}", file_path.display());
-                collect_tests_from_dir(config, &file_path, &relative_file_path, inputs, tests)?;
+                collect_tests_from_dir(
+                    config,
+                    &file_path,
+                    &relative_file_path,
+                    inputs,
+                    tests,
+                    modified_tests,
+                )?;
             }
         } else {
             debug!("found other file/directory: {:?}", file_path.display());
@@ -767,8 +818,8 @@ fn make_test_name(
     revision: Option<&String>,
 ) -> test::TestName {
     // Print the name of the file, relative to the repository root.
-    // `src_base` looks like `/path/to/rust/src/test/ui`
-    let root_directory = config.src_base.parent().unwrap().parent().unwrap().parent().unwrap();
+    // `src_base` looks like `/path/to/rust/tests/ui`
+    let root_directory = config.src_base.parent().unwrap().parent().unwrap();
     let path = testpaths.file.strip_prefix(root_directory).unwrap();
     let debugger = match config.debugger {
         Some(d) => format!("-{}", d),

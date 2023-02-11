@@ -462,7 +462,7 @@ impl InlineAsmRegClass {
     }
 
     /// Returns a suggested template modifier to use for this type and an
-    /// example of a  register named formatted with it.
+    /// example of a register named formatted with it.
     ///
     /// Such suggestions are useful if a type smaller than the full register
     /// size is used and a modifier can be used to point to the subregister of
@@ -679,13 +679,13 @@ impl fmt::Display for InlineAsmType {
             Self::I128 => f.write_str("i128"),
             Self::F32 => f.write_str("f32"),
             Self::F64 => f.write_str("f64"),
-            Self::VecI8(n) => write!(f, "i8x{}", n),
-            Self::VecI16(n) => write!(f, "i16x{}", n),
-            Self::VecI32(n) => write!(f, "i32x{}", n),
-            Self::VecI64(n) => write!(f, "i64x{}", n),
-            Self::VecI128(n) => write!(f, "i128x{}", n),
-            Self::VecF32(n) => write!(f, "f32x{}", n),
-            Self::VecF64(n) => write!(f, "f64x{}", n),
+            Self::VecI8(n) => write!(f, "i8x{n}"),
+            Self::VecI16(n) => write!(f, "i16x{n}"),
+            Self::VecI32(n) => write!(f, "i32x{n}"),
+            Self::VecI64(n) => write!(f, "i64x{n}"),
+            Self::VecI128(n) => write!(f, "i128x{n}"),
+            Self::VecF32(n) => write!(f, "f32x{n}"),
+            Self::VecF64(n) => write!(f, "f64x{n}"),
         }
     }
 }

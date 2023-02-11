@@ -1,6 +1,7 @@
 FROM ubuntu:20.04
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+  clang-11 \
   g++ \
   make \
   ninja-build \
@@ -16,10 +17,20 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
   pkg-config \
   xz-utils \
   wget \
-  patch
+  patch \
+  ovmf \
+  qemu-efi-aarch64 \
+  qemu-system-arm \
+  qemu-system-x86 \
+  && rm -rf /var/lib/apt/lists/*
 
 RUN curl -sL https://nodejs.org/dist/v15.14.0/node-v15.14.0-linux-x64.tar.xz | \
   tar -xJ
+
+# Install 32-bit OVMF files for the i686-unknown-uefi test. This package
+# is not available in ubuntu 20.04, so download a 22.04 package.
+RUN curl -sL --output ovmf-ia32.deb http://mirrors.kernel.org/ubuntu/pool/universe/e/edk2/ovmf-ia32_2022.02-3_all.deb
+RUN dpkg -i ovmf-ia32.deb && rm ovmf-ia32.deb
 
 WORKDIR /build/
 COPY scripts/musl-patch-configure.diff /build/
@@ -29,10 +40,6 @@ WORKDIR /
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-# We are disabling CI LLVM since this builder needs to build LLD, which is
-# currently unsupported when downloading pre-built LLVM.
-ENV NO_DOWNLOAD_CI_LLVM 1
 
 ENV RUST_CONFIGURE_ARGS \
   --musl-root-x86_64=/usr/local/x86_64-linux-musl \
@@ -48,20 +55,31 @@ ENV NO_OVERFLOW_CHECKS=1
 
 ENV WASM_TARGETS=wasm32-unknown-unknown
 ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_TARGETS \
-  src/test/run-make \
-  src/test/ui \
-  src/test/mir-opt \
-  src/test/codegen-units \
+  tests/run-make \
+  tests/ui \
+  tests/mir-opt \
+  tests/codegen-units \
   library/core
 
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
 ENV NVPTX_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $NVPTX_TARGETS \
-  src/test/run-make \
-  src/test/assembly
+  tests/run-make \
+  tests/assembly
 
 ENV MUSL_TARGETS=x86_64-unknown-linux-musl \
     CC_x86_64_unknown_linux_musl=x86_64-linux-musl-gcc \
     CXX_x86_64_unknown_linux_musl=x86_64-linux-musl-g++
 ENV MUSL_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $MUSL_TARGETS
 
-ENV SCRIPT $WASM_SCRIPT && $NVPTX_SCRIPT && $MUSL_SCRIPT
+COPY host-x86_64/test-various/uefi_qemu_test /uefi_qemu_test
+ENV UEFI_TARGETS=aarch64-unknown-uefi,i686-unknown-uefi,x86_64-unknown-uefi \
+    CC_aarch64_unknown_uefi=clang-11 \
+    CXX_aarch64_unknown_uefi=clang++-11 \
+    CC_i686_unknown_uefi=clang-11 \
+    CXX_i686_unknown_uefi=clang++-11 \
+    CC_x86_64_unknown_uefi=clang-11 \
+    CXX_x86_64_unknown_uefi=clang++-11
+ENV UEFI_SCRIPT python3 /checkout/x.py --stage 2 build --host='' --target $UEFI_TARGETS && \
+  python3 -u /uefi_qemu_test/run.py
+
+ENV SCRIPT $WASM_SCRIPT && $NVPTX_SCRIPT && $MUSL_SCRIPT && $UEFI_SCRIPT

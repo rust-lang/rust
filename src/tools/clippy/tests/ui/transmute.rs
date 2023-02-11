@@ -1,4 +1,4 @@
-#![allow(dead_code, clippy::borrow_as_ptr)]
+#![allow(dead_code, clippy::borrow_as_ptr, clippy::needless_lifetimes)]
 
 extern crate core;
 

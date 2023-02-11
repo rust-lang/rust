@@ -1,0 +1,14 @@
+error[E0507]: cannot move out of index of `Vec<String>`
+  --> $DIR/issue-40402-1.rs:9:13
+   |
+LL |     let e = f.v[0];
+   |             ^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |     let e = &f.v[0];
+   |             +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

@@ -1,7 +1,9 @@
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::ptr::get_spans;
 use clippy_utils::source::{snippet, snippet_opt};
-use clippy_utils::ty::{implements_trait, is_copy, is_type_diagnostic_item};
+use clippy_utils::ty::{
+    implements_trait, implements_trait_with_env, is_copy, is_type_diagnostic_item, is_type_lang_item,
+};
 use clippy_utils::{get_trait_def_id, is_self, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
@@ -11,18 +13,19 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Mutability, Node, PatKind, QPath, TyKind,
 };
-use rustc_hir::{HirIdMap, HirIdSet};
-use rustc_hir_analysis::expr_use_visitor as euv;
+use rustc_hir::{HirIdMap, HirIdSet, LangItem};
+use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, TypeVisitable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
-use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
-use rustc_trait_selection::traits::misc::can_type_implement_copy;
+use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -80,11 +83,13 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         span: Span,
-        hir_id: HirId,
+        fn_def_id: LocalDefId,
     ) {
         if span.from_expansion() {
             return;
         }
+
+        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(fn_def_id);
 
         match kind {
             FnKind::ItemFn(.., header) => {
@@ -98,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         }
 
         // Exclude non-inherent impls
-        if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
+        if let Some(Node::Item(item)) = cx.tcx.hir().find_parent(hir_id) {
             if matches!(
                 item.kind,
                 ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
@@ -117,14 +122,14 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());
 
-        let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
-
         let preds = traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds().iter())
             .filter(|p| !p.is_global())
             .filter_map(|obligation| {
                 // Note that we do not want to deal with qualified predicates here.
                 match obligation.predicate.kind().no_bound_vars() {
-                    Some(ty::PredicateKind::Trait(pred)) if pred.def_id() != sized_trait => Some(pred),
+                    Some(ty::PredicateKind::Clause(ty::Clause::Trait(pred))) if pred.def_id() != sized_trait => {
+                        Some(pred)
+                    },
                     _ => None,
                 }
             })
@@ -143,7 +148,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             ctx
         };
 
-        let fn_sig = cx.tcx.fn_sig(fn_def_id);
+        let fn_sig = cx.tcx.fn_sig(fn_def_id).subst_identity();
         let fn_sig = cx.tcx.erase_late_bound_regions(fn_sig);
 
         for (idx, ((input, &ty), arg)) in decl.inputs.iter().zip(fn_sig.inputs()).zip(body.params).enumerate() {
@@ -184,8 +189,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 if !is_self(arg);
                 if !ty.is_mutable_ptr();
                 if !is_copy(cx, ty);
-                if ty.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env);
-                if !allowed_traits.iter().any(|&t| implements_trait(cx, ty, t, &[]));
+                if ty.is_sized(cx.tcx, cx.param_env);
+                if !allowed_traits.iter().any(|&t| implements_trait_with_env(cx.tcx, cx.param_env, ty, t, [None]));
                 if !implements_borrow_trait;
                 if !all_borrowable_trait;
 
@@ -196,7 +201,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     let sugg = |diag: &mut Diagnostic| {
                         if let ty::Adt(def, ..) = ty.kind() {
                             if let Some(span) = cx.tcx.hir().span_if_local(def.did()) {
-                                if can_type_implement_copy(
+                                if type_allowed_to_implement_copy(
                                     cx.tcx,
                                     cx.param_env,
                                     ty,
@@ -249,7 +254,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                             }
                         }
 
-                        if is_type_diagnostic_item(cx, ty, sym::String) {
+                        if is_type_lang_item(cx, ty, LangItem::String) {
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")]) {
                                 diag.span_suggestion(
@@ -340,11 +345,5 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
 
     fn mutate(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId) {}
 
-    fn fake_read(
-        &mut self,
-        _: &rustc_hir_analysis::expr_use_visitor::PlaceWithHirId<'tcx>,
-        _: FakeReadCause,
-        _: HirId,
-    ) {
-    }
+    fn fake_read(&mut self, _: &rustc_hir_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }

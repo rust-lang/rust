@@ -29,13 +29,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Goto { target } => self.go_to_block(target),
 
-            SwitchInt { ref discr, ref targets, switch_ty } => {
+            SwitchInt { ref discr, ref targets } => {
                 let discr = self.read_immediate(&self.eval_operand(discr, None)?)?;
                 trace!("SwitchInt({:?})", *discr);
-                assert_eq!(discr.layout.ty, switch_ty);
 
                 // Branch to the `otherwise` case by default, if no match is found.
-                assert!(!targets.iter().is_empty());
                 let mut target_block = targets.otherwise();
 
                 for (const_int, target) in targets.iter() {
@@ -121,11 +119,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Drop { place, target, unwind } => {
-                let place = self.eval_place(place)?;
-                let ty = place.layout.ty;
-                trace!("TerminatorKind::drop: {:?}, type {}", place, ty);
-
+                let frame = self.frame();
+                let ty = place.ty(&frame.body.local_decls, *self.tcx).ty;
+                let ty = self.subst_from_frame_and_normalize_erasing_regions(frame, ty)?;
                 let instance = Instance::resolve_drop_in_place(*self.tcx, ty);
+                if let ty::InstanceDef::DropGlue(_, None) = instance.def {
+                    // This is the branch we enter if and only if the dropped type has no drop glue
+                    // whatsoever. This can happen as a result of monomorphizing a drop of a
+                    // generic. In order to make sure that generic and non-generic code behaves
+                    // roughly the same (and in keeping with Mir semantics) we do nothing here.
+                    self.go_to_block(target);
+                    return Ok(());
+                }
+                let place = self.eval_place(place)?;
+                trace!("TerminatorKind::drop: {:?}, type {}", place, ty);
                 self.drop_in_place(&place, instance, target, unwind)?;
             }
 
@@ -439,7 +446,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // they go to.
 
                     // For where they come from: If the ABI is RustCall, we untuple the
-                    // last incoming argument.  These two iterators do not have the same type,
+                    // last incoming argument. These two iterators do not have the same type,
                     // so to keep the code paths uniform we accept an allocation
                     // (for RustCall ABI only).
                     let caller_args: Cow<'_, [OpTy<'tcx, M::Provenance>]> =
@@ -474,7 +481,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .filter(|arg_and_abi| !matches!(arg_and_abi.1.mode, PassMode::Ignore));
 
                     // Now we have to spread them out across the callee's locals,
-                    // taking into account the `spread_arg`.  If we could write
+                    // taking into account the `spread_arg`. If we could write
                     // this is a single iterator (that handles `spread_arg`), then
                     // `pass_argument` would be the loop body. It takes care to
                     // not advance `caller_iter` for ZSTs.
@@ -641,8 +648,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         trace!("drop_in_place: {:?},\n  {:?}, {:?}", *place, place.layout.ty, instance);
-        // We take the address of the object.  This may well be unaligned, which is fine
-        // for us here.  However, unaligned accesses will probably make the actual drop
+        // We take the address of the object. This may well be unaligned, which is fine
+        // for us here. However, unaligned accesses will probably make the actual drop
         // implementation fail -- a problem shared by rustc.
         let place = self.force_allocation(place)?;
 

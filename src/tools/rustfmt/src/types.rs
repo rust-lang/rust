@@ -38,11 +38,11 @@ pub(crate) enum PathContext {
 pub(crate) fn rewrite_path(
     context: &RewriteContext<'_>,
     path_context: PathContext,
-    qself: Option<&ast::QSelf>,
+    qself: &Option<ptr::P<ast::QSelf>>,
     path: &ast::Path,
     shape: Shape,
 ) -> Option<String> {
-    let skip_count = qself.map_or(0, |x| x.position);
+    let skip_count = qself.as_ref().map_or(0, |x| x.position);
 
     let mut result = if path.is_global() && qself.is_none() && path_context != PathContext::Import {
         "::".to_owned()
@@ -655,7 +655,7 @@ impl Rewrite for ast::PolyTraitRef {
 
 impl Rewrite for ast::TraitRef {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        rewrite_path(context, PathContext::Type, None, &self.path, shape)
+        rewrite_path(context, PathContext::Type, &None, &self.path, shape)
     }
 }
 
@@ -688,7 +688,7 @@ impl Rewrite for ast::Ty {
 
                 rewrite_unary_prefix(context, prefix, &*mt.ty, shape)
             }
-            ast::TyKind::Rptr(ref lifetime, ref mt) => {
+            ast::TyKind::Ref(ref lifetime, ref mt) => {
                 let mut_str = format_mutability(mt.mutbl);
                 let mut_len = mut_str.len();
                 let mut result = String::with_capacity(128);
@@ -800,7 +800,7 @@ impl Rewrite for ast::Ty {
                 rewrite_tuple(context, items.iter(), self.span, shape, items.len() == 1)
             }
             ast::TyKind::Path(ref q_self, ref path) => {
-                rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)
+                rewrite_path(context, PathContext::Type, q_self, path, shape)
             }
             ast::TyKind::Array(ref ty, ref repeats) => rewrite_pair(
                 &**ty,
@@ -941,6 +941,28 @@ fn join_bounds_inner(
         ast::GenericBound::Trait(..) => last_line_extendable(s),
     };
 
+    // Whether a GenericBound item is a PathSegment segment that includes internal array
+    // that contains more than one item
+    let is_item_with_multi_items_array = |item: &ast::GenericBound| match item {
+        ast::GenericBound::Trait(ref poly_trait_ref, ..) => {
+            let segments = &poly_trait_ref.trait_ref.path.segments;
+            if segments.len() > 1 {
+                true
+            } else {
+                if let Some(args_in) = &segments[0].args {
+                    matches!(
+                        args_in.deref(),
+                        ast::GenericArgs::AngleBracketed(bracket_args)
+                            if bracket_args.args.len() > 1
+                    )
+                } else {
+                    false
+                }
+            }
+        }
+        _ => false,
+    };
+
     let result = items.iter().enumerate().try_fold(
         (String::new(), None, false),
         |(strs, prev_trailing_span, prev_extendable), (i, item)| {
@@ -1035,10 +1057,24 @@ fn join_bounds_inner(
         },
     )?;
 
-    if !force_newline
-        && items.len() > 1
-        && (result.0.contains('\n') || result.0.len() > shape.width)
-    {
+    // Whether to retry with a forced newline:
+    //   Only if result is not already multiline and did not exceed line width,
+    //   and either there is more than one item;
+    //       or the single item is of type `Trait`,
+    //          and any of the internal arrays contains more than one item;
+    let retry_with_force_newline = match context.config.version() {
+        Version::One => {
+            !force_newline
+                && items.len() > 1
+                && (result.0.contains('\n') || result.0.len() > shape.width)
+        }
+        Version::Two if force_newline => false,
+        Version::Two if (!result.0.contains('\n') && result.0.len() <= shape.width) => false,
+        Version::Two if items.len() > 1 => true,
+        Version::Two => is_item_with_multi_items_array(&items[0]),
+    };
+
+    if retry_with_force_newline {
         join_bounds_inner(context, shape, items, need_indent, true)
     } else {
         Some(result.0)
@@ -1059,7 +1095,7 @@ pub(crate) fn can_be_overflowed_type(
 ) -> bool {
     match ty.kind {
         ast::TyKind::Tup(..) => context.use_block_indent() && len == 1,
-        ast::TyKind::Rptr(_, ref mutty) | ast::TyKind::Ptr(ref mutty) => {
+        ast::TyKind::Ref(_, ref mutty) | ast::TyKind::Ptr(ref mutty) => {
             can_be_overflowed_type(context, &*mutty.ty, len)
         }
         _ => false,

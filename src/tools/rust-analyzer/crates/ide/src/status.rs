@@ -45,15 +45,15 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
 
     if let Some(file_id) = file_id {
         format_to!(buf, "\nFile info:\n");
-        let crates = crate::parent_module::crate_for(db, file_id);
+        let crates = crate::parent_module::crates_for(db, file_id);
         if crates.is_empty() {
             format_to!(buf, "Does not belong to any crate");
         }
         let crate_graph = db.crate_graph();
         for krate in crates {
             let display_crate = |krate: CrateId| match &crate_graph[krate].display_name {
-                Some(it) => format!("{}({:?})", it, krate),
-                None => format!("{:?}", krate),
+                Some(it) => format!("{it}({krate:?})"),
+                None => format!("{krate:?}"),
             };
             format_to!(buf, "Crate: {}\n", display_crate(krate));
             let deps = crate_graph[krate]

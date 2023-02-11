@@ -1,6 +1,6 @@
 //! Checks for uses of mutex where an atomic value could be used
 //!
-//! This lint is **warn** by default
+//! This lint is **allow** by default
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -19,6 +19,10 @@ declare_clippy_lint! {
     /// reference sequential is shooting flies with cannons.
     /// `std::sync::atomic::AtomicBool` and `std::sync::atomic::AtomicPtr` are leaner and
     /// faster.
+    ///
+    /// On the other hand, `Mutex`es are, in general, easier to
+    /// verify correctness. An atomic does not behave the same as
+    /// an equivalent mutex. See [this issue](https://github.com/rust-lang/rust-clippy/issues/4295)'s commentary for more details.
     ///
     /// ### Known problems
     /// This lint cannot detect if the mutex is actually used
@@ -39,8 +43,8 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub MUTEX_ATOMIC,
-    nursery,
-    "using a mutex where an atomic value could be used instead"
+    restriction,
+    "using a mutex where an atomic value could be used instead."
 }
 
 declare_clippy_lint! {

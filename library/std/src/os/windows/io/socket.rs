@@ -90,6 +90,7 @@ impl OwnedSocket {
     }
 
     // FIXME(strict_provenance_magic): we defined RawSocket to be a u64 ;-;
+    #[allow(fuzzy_provenance_casts)]
     #[cfg(not(target_vendor = "uwp"))]
     pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
         cvt(unsafe {

@@ -71,7 +71,7 @@ fn test_const() {
 
 #[test]
 fn test_os_packing() {
-    for code in -20i32..20i32 {
+    for code in -20..20 {
         let e = Error::from_raw_os_error(code);
         assert_eq!(e.raw_os_error(), Some(code));
         assert_matches!(
@@ -86,7 +86,7 @@ fn test_errorkind_packing() {
     assert_eq!(Error::from(ErrorKind::NotFound).kind(), ErrorKind::NotFound);
     assert_eq!(Error::from(ErrorKind::PermissionDenied).kind(), ErrorKind::PermissionDenied);
     assert_eq!(Error::from(ErrorKind::Uncategorized).kind(), ErrorKind::Uncategorized);
-    // Check that the innards look like like what we want.
+    // Check that the innards look like what we want.
     assert_matches!(
         Error::from(ErrorKind::OutOfMemory).repr.data(),
         ErrorData::Simple(ErrorKind::OutOfMemory),
@@ -190,5 +190,5 @@ fn test_std_io_error_downcast() {
     let io_error = io_error.downcast::<E>().unwrap_err();
 
     assert_eq!(SIMPLE_MESSAGE.kind, io_error.kind());
-    assert_eq!(SIMPLE_MESSAGE.message, &*format!("{io_error}"));
+    assert_eq!(SIMPLE_MESSAGE.message, format!("{io_error}"));
 }

@@ -15,6 +15,43 @@ lint_enum_intrinsics_mem_variant =
 
 lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
+    .rationale = {$rationale}
+
+lint_for_loops_over_fallibles =
+    for loop over {$article} `{$ty}`. This is more readably written as an `if let` statement
+    .suggestion = consider using `if let` to clear intent
+    .remove_next = to iterate over `{$recv_snip}` remove the call to `next`
+    .use_while_let = to check pattern in a loop use `while let`
+    .use_question_mark = consider unwrapping the `Result` with `?` to iterate over its contents
+
+lint_non_binding_let_on_sync_lock =
+    non-binding let on a synchronization lock
+
+lint_non_binding_let_on_drop_type =
+    non-binding let on a type that implements `Drop`
+
+lint_non_binding_let_suggestion =
+    consider binding to an unused variable to avoid immediately dropping the value
+
+lint_non_binding_let_multi_suggestion =
+    consider immediately dropping the value
+
+lint_deprecated_lint_name =
+    lint name `{$name}` is deprecated and may not have an effect in the future.
+    .suggestion = change it to
+
+lint_renamed_or_removed_lint = {$msg}
+    .suggestion = use the new name
+
+lint_unknown_lint =
+    unknown lint: `{$name}`
+    .suggestion = did you mean
+
+lint_ignored_unless_crate_specified = {$level}({$name}) is ignored unless specified at crate level
+
+lint_unknown_gated_lint =
+    unknown lint: `{$name}`
+    .note = the `{$name}` lint is unstable
 
 lint_hidden_unicode_codepoints = unicode codepoint changing visible direction of text present in {$label}
     .label = this {$label} contains {$count ->
@@ -55,11 +92,15 @@ lint_diag_out_of_impl =
 
 lint_untranslatable_diag = diagnostics should be created using translatable messages
 
+lint_bad_opt_access = {$msg}
+
 lint_cstring_ptr = getting the inner pointer of a temporary `CString`
     .as_ptr_label = this pointer will be invalid
     .unwrap_label = this `CString` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
     .note = pointers do not have a lifetime; when calling `as_ptr` the `CString` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
     .help = for more information, see https://doc.rust-lang.org/reference/destructors.html
+
+lint_multple_supertrait_upcastable = `{$ident}` is object-safe and has multiple supertraits
 
 lint_identifier_non_ascii_char = identifier contains non-ASCII characters
 
@@ -268,6 +309,7 @@ lint_unused_generator =
     .note = generators are lazy and do nothing unless resumed
 
 lint_unused_def = unused {$pre}`{$def}`{$post} that must be used
+    .suggestion = use `let _ = ...` to ignore the resulting value
 
 lint_path_statement_drop = path statement drops value
     .suggestion = use `drop` to clarify the intent
@@ -331,6 +373,8 @@ lint_builtin_anonymous_params = anonymous parameters are deprecated and will be 
     .suggestion = try naming the parameter or explicitly ignoring it
 
 lint_builtin_deprecated_attr_link = use of deprecated attribute `{$name}`: {$reason}. See {$link}
+    .msg_suggestion = {$msg}
+    .default_suggestion = remove this attribute
 lint_builtin_deprecated_attr_used = use of deprecated attribute `{$name}`: no longer used.
 lint_builtin_deprecated_attr_default_suggestion = remove this attribute
 
@@ -349,6 +393,9 @@ lint_builtin_mutable_transmutes =
     transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
 
 lint_builtin_unstable_features = unstable feature
+
+lint_ungated_async_fn_track_caller = `#[track_caller]` on async functions is a no-op
+     .label = this function will not propagate the caller location
 
 lint_builtin_unreachable_pub = unreachable `pub` {$what}
     .suggestion = consider restricting its visibility
@@ -388,10 +435,16 @@ lint_builtin_incomplete_features = the feature `{$name}` is incomplete and may n
     .note = see issue #{$n} <https://github.com/rust-lang/rust/issues/{$n}> for more information
     .help = consider using `min_{$name}` instead, which is more stable and complete
 
-lint_builtin_clashing_extern_same_name = `{$this_fi}` redeclared with a different signature
+lint_builtin_unpermitted_type_init_zeroed = the type `{$ty}` does not permit zero-initialization
+lint_builtin_unpermitted_type_init_unint = the type `{$ty}` does not permit being left uninitialized
+
+lint_builtin_unpermitted_type_init_label = this code causes undefined behavior when executed
+lint_builtin_unpermitted_type_init_label_suggestion = help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+
+lint_builtin_clashing_extern_same_name = `{$this}` redeclared with a different signature
     .previous_decl_label = `{$orig}` previously declared here
     .mismatch_label = this signature doesn't match the previous declaration
-lint_builtin_clashing_extern_diff_name = `{$this_fi}` redeclares `{$orig}` with a different signature
+lint_builtin_clashing_extern_diff_name = `{$this}` redeclares `{$orig}` with a different signature
     .previous_decl_label = `{$orig}` previously declared here
     .mismatch_label = this signature doesn't match the previous declaration
 
@@ -399,6 +452,16 @@ lint_builtin_deref_nullptr = dereferencing a null pointer
     .label = this code causes undefined behavior when executed
 
 lint_builtin_asm_labels = avoid using named labels in inline assembly
+
+lint_builtin_special_module_name_used_lib = found module declaration for lib.rs
+    .note = lib.rs is the root of this crate's library target
+    .help = to refer to it from other targets, use the library's name as the path
+
+lint_builtin_special_module_name_used_main = found module declaration for main.rs
+    .note = a binary crate cannot be used as library
+
+lint_supertrait_as_deref_target = `{$t}` implements `Deref` with supertrait `{$target_principal}` as target
+    .label = target type is set here
 
 lint_overruled_attribute = {$lint_level}({$lint_source}) incompatible with previous forbid
     .label = overruled by previous forbid

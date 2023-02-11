@@ -58,7 +58,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefPathHashMapRef<'static>
         let _ = d.read_raw_bytes(len);
 
         let inner = odht::HashTable::from_raw_bytes(o).unwrap_or_else(|e| {
-            panic!("decode error: {}", e);
+            panic!("decode error: {e}");
         });
         DefPathHashMapRef::OwnedFromMetadata(inner)
     }

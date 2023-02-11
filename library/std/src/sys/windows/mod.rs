@@ -29,19 +29,17 @@ pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod rand;
+pub mod stdio;
 pub mod thread;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
-pub mod thread_parker;
+pub mod thread_parking;
 pub mod time;
 cfg_if::cfg_if! {
     if #[cfg(not(target_vendor = "uwp"))] {
-        pub mod stdio;
         pub mod stack_overflow;
     } else {
-        pub mod stdio_uwp;
         pub mod stack_overflow_uwp;
-        pub use self::stdio_uwp as stdio;
         pub use self::stack_overflow_uwp as stack_overflow;
     }
 }

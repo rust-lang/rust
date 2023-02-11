@@ -209,7 +209,7 @@ impl<T: Idx> BitSet<T> {
             self.words[start_word_index] |= !(start_mask - 1);
             // And all trailing bits (i.e. from 0..=end) in the end word,
             // including the end.
-            self.words[end_word_index] |= end_mask | end_mask - 1;
+            self.words[end_word_index] |= end_mask | (end_mask - 1);
         } else {
             self.words[start_word_index] |= end_mask | (end_mask - start_mask);
         }
@@ -1091,7 +1091,7 @@ impl<T: Idx> ToString for BitSet<T> {
                 assert!(mask <= 0xFF);
                 let byte = word & mask;
 
-                result.push_str(&format!("{}{:02x}", sep, byte));
+                result.push_str(&format!("{sep}{byte:02x}"));
 
                 if remain <= 8 {
                     break;

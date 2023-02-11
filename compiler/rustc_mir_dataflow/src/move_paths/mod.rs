@@ -14,9 +14,8 @@ use self::abs_domain::{AbstractElem, Lift};
 mod abs_domain;
 
 rustc_index::newtype_index! {
-    pub struct MovePathIndex {
-        DEBUG_FORMAT = "mp{}"
-    }
+    #[debug_format = "mp{}"]
+    pub struct MovePathIndex {}
 }
 
 impl polonius_engine::Atom for MovePathIndex {
@@ -26,15 +25,13 @@ impl polonius_engine::Atom for MovePathIndex {
 }
 
 rustc_index::newtype_index! {
-    pub struct MoveOutIndex {
-        DEBUG_FORMAT = "mo{}"
-    }
+    #[debug_format = "mo{}"]
+    pub struct MoveOutIndex {}
 }
 
 rustc_index::newtype_index! {
-    pub struct InitIndex {
-        DEBUG_FORMAT = "in{}"
-    }
+    #[debug_format = "in{}"]
+    pub struct InitIndex {}
 }
 
 impl MoveOutIndex {
@@ -132,13 +129,13 @@ impl<'tcx> fmt::Debug for MovePath<'tcx> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(w, "MovePath {{")?;
         if let Some(parent) = self.parent {
-            write!(w, " parent: {:?},", parent)?;
+            write!(w, " parent: {parent:?},")?;
         }
         if let Some(first_child) = self.first_child {
-            write!(w, " first_child: {:?},", first_child)?;
+            write!(w, " first_child: {first_child:?},")?;
         }
         if let Some(next_sibling) = self.next_sibling {
-            write!(w, " next_sibling: {:?}", next_sibling)?;
+            write!(w, " next_sibling: {next_sibling:?}")?;
         }
         write!(w, " place: {:?} }}", self.place)
     }

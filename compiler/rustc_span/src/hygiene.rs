@@ -61,9 +61,8 @@ pub struct SyntaxContextData {
 
 rustc_index::newtype_index! {
     /// A unique ID associated with a macro invocation and expansion.
-    pub struct ExpnIndex {
-        ENCODABLE = custom
-    }
+    #[custom_encodable]
+    pub struct ExpnIndex {}
 }
 
 /// A unique ID associated with a macro invocation and expansion.
@@ -76,17 +75,16 @@ pub struct ExpnId {
 impl fmt::Debug for ExpnId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Generate crate_::{{expn_}}.
-        write!(f, "{:?}::{{{{expn{}}}}}", self.krate, self.local_id.private)
+        write!(f, "{:?}::{{{{expn{}}}}}", self.krate, self.local_id.as_u32())
     }
 }
 
 rustc_index::newtype_index! {
     /// A unique ID associated with a macro invocation and expansion.
-    pub struct LocalExpnId {
-        ENCODABLE = custom
-        ORD_IMPL = custom
-        DEBUG_FORMAT = "expn{}"
-    }
+    #[custom_encodable]
+    #[no_ord_impl]
+    #[debug_format = "expn{}"]
+    pub struct LocalExpnId {}
 }
 
 // To ensure correctness of incremental compilation,
@@ -106,9 +104,13 @@ fn assert_default_hashing_controls<CTX: HashStableContext>(ctx: &CTX, msg: &str)
         // `-Z incremental-ignore-spans` option. Normally, this option is disabled,
         // which will cause us to require that this method always be called with `Span` hashing
         // enabled.
+        //
+        // Span hashing can also be disabled without `-Z incremental-ignore-spans`.
+        // This is the case for instance when building a hash for name mangling.
+        // Such configuration must not be used for metadata.
         HashingControls { hash_spans }
             if hash_spans == !ctx.unstable_opts_incremental_ignore_spans() => {}
-        other => panic!("Attempted hashing of {msg} with non-default HashingControls: {:?}", other),
+        other => panic!("Attempted hashing of {msg} with non-default HashingControls: {other:?}"),
     }
 }
 
@@ -318,6 +320,7 @@ impl ExpnId {
             // Stop going up the backtrace once include! is encountered
             if expn_data.is_root()
                 || expn_data.kind == ExpnKind::Macro(MacroKind::Bang, sym::include)
+                || expn_data.kind == ExpnKind::Inlined
             {
                 break;
             }
@@ -335,7 +338,7 @@ pub struct HygieneData {
     /// first and then resolved later), so we use an `Option` here.
     local_expn_data: IndexVec<LocalExpnId, Option<ExpnData>>,
     local_expn_hashes: IndexVec<LocalExpnId, ExpnHash>,
-    /// Data and hash information from external crates.  We may eventually want to remove these
+    /// Data and hash information from external crates. We may eventually want to remove these
     /// maps, and fetch the information directly from the other crate's metadata like DefIds do.
     foreign_expn_data: FxHashMap<ExpnId, ExpnData>,
     foreign_expn_hashes: FxHashMap<ExpnId, ExpnHash>,
@@ -381,7 +384,7 @@ impl HygieneData {
     }
 
     pub fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
-        with_session_globals(|session_globals| f(&mut *session_globals.hygiene_data.borrow_mut()))
+        with_session_globals(|session_globals| f(&mut session_globals.hygiene_data.borrow_mut()))
     }
 
     #[inline]
@@ -626,7 +629,7 @@ pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symb
 pub fn debug_hygiene_data(verbose: bool) -> String {
     HygieneData::with(|data| {
         if verbose {
-            format!("{:#?}", data)
+            format!("{data:#?}")
         } else {
             let mut s = String::from("Expansions:");
             let mut debug_expn_data = |(id, expn_data): (&ExpnId, &ExpnData)| {
@@ -1064,9 +1067,9 @@ impl ExpnKind {
         match *self {
             ExpnKind::Root => kw::PathRoot.to_string(),
             ExpnKind::Macro(macro_kind, name) => match macro_kind {
-                MacroKind::Bang => format!("{}!", name),
-                MacroKind::Attr => format!("#[{}]", name),
-                MacroKind::Derive => format!("#[derive({})]", name),
+                MacroKind::Bang => format!("{name}!"),
+                MacroKind::Attr => format!("#[{name}]"),
+                MacroKind::Derive => format!("#[derive({name})]"),
             },
             ExpnKind::AstPass(kind) => kind.descr().to_string(),
             ExpnKind::Desugaring(kind) => format!("desugaring of {}", kind.descr()),
@@ -1463,11 +1466,7 @@ impl<D: Decoder> Decodable<D> for SyntaxContext {
 /// collisions are only possible between `ExpnId`s within the same crate.
 fn update_disambiguator(expn_data: &mut ExpnData, mut ctx: impl HashStableContext) -> ExpnHash {
     // This disambiguator should not have been set yet.
-    assert_eq!(
-        expn_data.disambiguator, 0,
-        "Already set disambiguator for ExpnData: {:?}",
-        expn_data
-    );
+    assert_eq!(expn_data.disambiguator, 0, "Already set disambiguator for ExpnData: {expn_data:?}");
     assert_default_hashing_controls(&ctx, "ExpnData (disambiguator)");
     let mut expn_hash = expn_data.hash_expn(&mut ctx);
 

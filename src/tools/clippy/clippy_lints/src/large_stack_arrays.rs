@@ -24,12 +24,12 @@ declare_clippy_lint! {
 }
 
 pub struct LargeStackArrays {
-    maximum_allowed_size: u64,
+    maximum_allowed_size: u128,
 }
 
 impl LargeStackArrays {
     #[must_use]
-    pub fn new(maximum_allowed_size: u64) -> Self {
+    pub fn new(maximum_allowed_size: u128) -> Self {
         Self { maximum_allowed_size }
     }
 }
@@ -45,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackArrays {
           && let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes())
           && !cx.tcx.hir().parent_iter(expr.hir_id)
               .any(|(_, node)| matches!(node, Node::Item(Item { kind: ItemKind::Static(..), .. })))
-          && self.maximum_allowed_size < element_count * element_size {
+          && self.maximum_allowed_size < u128::from(element_count) * u128::from(element_size) {
               span_lint_and_help(
                   cx,
                   LARGE_STACK_ARRAYS,

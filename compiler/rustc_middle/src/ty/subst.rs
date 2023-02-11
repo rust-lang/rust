@@ -1,16 +1,17 @@
 // Type substitutions.
 
-use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
 use crate::ty::visit::{TypeVisitable, TypeVisitor};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
-use rustc_data_structures::intern::{Interned, WithStableHash};
+use rustc_data_structures::intern::Interned;
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Encodable};
+use rustc_type_ir::WithCachedTypeInfo;
 use smallvec::SmallVec;
 
 use core::intrinsics;
@@ -19,7 +20,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
-use std::ops::ControlFlow;
+use std::ops::{ControlFlow, Deref};
 use std::slice;
 
 /// An entity in the Rust type system, which can be one of
@@ -34,6 +35,12 @@ use std::slice;
 pub struct GenericArg<'tcx> {
     ptr: NonZeroUsize,
     marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>)>,
+}
+
+impl<'tcx> IntoDiagnosticArg for GenericArg<'tcx> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
 }
 
 const TAG_MASK: usize = 0b11;
@@ -85,12 +92,12 @@ impl<'tcx> GenericArgKind<'tcx> {
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
-                (TYPE_TAG, ty.0.0 as *const WithStableHash<ty::TyS<'tcx>> as usize)
+                (TYPE_TAG, ty.0.0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
             }
             GenericArgKind::Const(ct) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
-                (CONST_TAG, ct.0.0 as *const ty::ConstS<'tcx> as usize)
+                (CONST_TAG, ct.0.0 as *const ty::ConstData<'tcx> as usize)
             }
         };
 
@@ -141,6 +148,15 @@ impl<'tcx> From<ty::Const<'tcx>> for GenericArg<'tcx> {
     }
 }
 
+impl<'tcx> From<ty::Term<'tcx>> for GenericArg<'tcx> {
+    fn from(value: ty::Term<'tcx>) -> Self {
+        match value.unpack() {
+            ty::TermKind::Ty(t) => t.into(),
+            ty::TermKind::Const(c) => c.into(),
+        }
+    }
+}
+
 impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn unpack(self) -> GenericArgKind<'tcx> {
@@ -154,10 +170,10 @@ impl<'tcx> GenericArg<'tcx> {
                     &*((ptr & !TAG_MASK) as *const ty::RegionKind<'tcx>),
                 ))),
                 TYPE_TAG => GenericArgKind::Type(Ty(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const WithStableHash<ty::TyS<'tcx>>),
+                    &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::TyKind<'tcx>>),
                 ))),
                 CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const ty::ConstS<'tcx>),
+                    &*((ptr & !TAG_MASK) as *const ty::ConstData<'tcx>),
                 ))),
                 _ => intrinsics::unreachable(),
             }
@@ -187,6 +203,14 @@ impl<'tcx> GenericArg<'tcx> {
         match self.unpack() {
             GenericArgKind::Const(c) => c,
             _ => bug!("expected a const, but found another kind"),
+        }
+    }
+
+    pub fn is_non_region_infer(self) -> bool {
+        match self.unpack() {
+            GenericArgKind::Lifetime(_) => false,
+            GenericArgKind::Type(ty) => ty.is_ty_or_numeric_infer(),
+            GenericArgKind::Const(ct) => ct.is_ct_infer(),
         }
     }
 }
@@ -235,7 +259,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for GenericArg<'tcx> {
     }
 }
 
-/// A substitution mapping generic parameters to new values.
+/// List of generic arguments that are gonna be used to substitute generic parameters.
 pub type InternalSubsts<'tcx> = List<GenericArg<'tcx>>;
 
 pub type SubstsRef<'tcx> = &'tcx InternalSubsts<'tcx>;
@@ -331,9 +355,25 @@ impl<'tcx> InternalSubsts<'tcx> {
         substs.reserve(defs.params.len());
         for param in &defs.params {
             let kind = mk_kind(param, substs);
-            assert_eq!(param.index as usize, substs.len());
+            assert_eq!(param.index as usize, substs.len(), "{substs:#?}, {defs:#?}");
             substs.push(kind);
         }
+    }
+
+    // Extend an `original_substs` list to the full number of substs expected by `def_id`,
+    // filling in the missing parameters with error ty/ct or 'static regions.
+    pub fn extend_with_error(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        original_substs: &[GenericArg<'tcx>],
+    ) -> SubstsRef<'tcx> {
+        ty::InternalSubsts::for_item(tcx, def_id, |def, substs| {
+            if let Some(subst) = original_substs.get(def.index as usize) {
+                *subst
+            } else {
+                def.to_error(tcx, substs)
+            }
+        })
     }
 
     #[inline]
@@ -367,6 +407,7 @@ impl<'tcx> InternalSubsts<'tcx> {
     }
 
     #[inline]
+    #[track_caller]
     pub fn type_at(&self, i: usize) -> Ty<'tcx> {
         if let GenericArgKind::Type(ty) = self[i].unpack() {
             ty
@@ -376,6 +417,7 @@ impl<'tcx> InternalSubsts<'tcx> {
     }
 
     #[inline]
+    #[track_caller]
     pub fn region_at(&self, i: usize) -> ty::Region<'tcx> {
         if let GenericArgKind::Lifetime(lt) = self[i].unpack() {
             lt
@@ -385,6 +427,7 @@ impl<'tcx> InternalSubsts<'tcx> {
     }
 
     #[inline]
+    #[track_caller]
     pub fn const_at(&self, i: usize) -> ty::Const<'tcx> {
         if let GenericArgKind::Const(ct) = self[i].unpack() {
             ct
@@ -394,6 +437,7 @@ impl<'tcx> InternalSubsts<'tcx> {
     }
 
     #[inline]
+    #[track_caller]
     pub fn type_for_def(&self, def: &ty::GenericParamDef) -> GenericArg<'tcx> {
         self.type_at(def.index as usize).into()
     }
@@ -498,6 +542,12 @@ impl<'tcx, T: TypeVisitable<'tcx>> TypeVisitable<'tcx> for &'tcx ty::List<T> {
     }
 }
 
+/// Similar to [`super::Binder`] except that it tracks early bound generics, i.e. `struct Foo<T>(T)`
+/// needs `T` substituted immediately. This type primarily exists to avoid forgetting to call
+/// `subst`.
+///
+/// If you don't have anything to `subst`, you may be looking for
+/// [`subst_identity`](EarlyBinder::subst_identity) or [`skip_binder`](EarlyBinder::skip_binder).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable)]
 pub struct EarlyBinder<T>(pub T);
@@ -537,6 +587,18 @@ impl<T> EarlyBinder<T> {
     pub fn rebind<U>(&self, value: U) -> EarlyBinder<U> {
         EarlyBinder(value)
     }
+
+    /// Skips the binder and returns the "bound" value.
+    /// This can be used to extract data that does not depend on generic parameters
+    /// (e.g., getting the `DefId` of the inner value or getting the number of
+    /// arguments of an `FnSig`). Otherwise, consider using
+    /// [`subst_identity`](EarlyBinder::subst_identity).
+    ///
+    /// See also [`Binder::skip_binder`](super::Binder::skip_binder), which is
+    /// the analogous operation on [`super::Binder`].
+    pub fn skip_binder(self) -> T {
+        self.0
+    }
 }
 
 impl<T> EarlyBinder<Option<T>> {
@@ -549,6 +611,112 @@ impl<T, U> EarlyBinder<(T, U)> {
     pub fn transpose_tuple2(self) -> (EarlyBinder<T>, EarlyBinder<U>) {
         (EarlyBinder(self.0.0), EarlyBinder(self.0.1))
     }
+}
+
+impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
+where
+    I::Item: TypeFoldable<'tcx>,
+{
+    pub fn subst_iter(
+        self,
+        tcx: TyCtxt<'tcx>,
+        substs: &'s [GenericArg<'tcx>],
+    ) -> SubstIter<'s, 'tcx, I> {
+        SubstIter { it: self.0.into_iter(), tcx, substs }
+    }
+}
+
+pub struct SubstIter<'s, 'tcx, I: IntoIterator> {
+    it: I::IntoIter,
+    tcx: TyCtxt<'tcx>,
+    substs: &'s [GenericArg<'tcx>],
+}
+
+impl<'tcx, I: IntoIterator> Iterator for SubstIter<'_, 'tcx, I>
+where
+    I::Item: TypeFoldable<'tcx>,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(EarlyBinder(self.it.next()?).subst(self.tcx, self.substs))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
+}
+
+impl<'tcx, I: IntoIterator> DoubleEndedIterator for SubstIter<'_, 'tcx, I>
+where
+    I::IntoIter: DoubleEndedIterator,
+    I::Item: TypeFoldable<'tcx>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        Some(EarlyBinder(self.it.next_back()?).subst(self.tcx, self.substs))
+    }
+}
+
+impl<'tcx, I: IntoIterator> ExactSizeIterator for SubstIter<'_, 'tcx, I>
+where
+    I::IntoIter: ExactSizeIterator,
+    I::Item: TypeFoldable<'tcx>,
+{
+}
+
+impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
+where
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+{
+    pub fn subst_iter_copied(
+        self,
+        tcx: TyCtxt<'tcx>,
+        substs: &'s [GenericArg<'tcx>],
+    ) -> SubstIterCopied<'s, 'tcx, I> {
+        SubstIterCopied { it: self.0.into_iter(), tcx, substs }
+    }
+}
+
+pub struct SubstIterCopied<'a, 'tcx, I: IntoIterator> {
+    it: I::IntoIter,
+    tcx: TyCtxt<'tcx>,
+    substs: &'a [GenericArg<'tcx>],
+}
+
+impl<'tcx, I: IntoIterator> Iterator for SubstIterCopied<'_, 'tcx, I>
+where
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+{
+    type Item = <I::Item as Deref>::Target;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(EarlyBinder(*self.it.next()?).subst(self.tcx, self.substs))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
+}
+
+impl<'tcx, I: IntoIterator> DoubleEndedIterator for SubstIterCopied<'_, 'tcx, I>
+where
+    I::IntoIter: DoubleEndedIterator,
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        Some(EarlyBinder(*self.it.next_back()?).subst(self.tcx, self.substs))
+    }
+}
+
+impl<'tcx, I: IntoIterator> ExactSizeIterator for SubstIterCopied<'_, 'tcx, I>
+where
+    I::IntoIter: ExactSizeIterator,
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+{
 }
 
 pub struct EarlyBinderIter<T> {
@@ -567,12 +735,33 @@ impl<T: Iterator> Iterator for EarlyBinderIter<T> {
     fn next(&mut self) -> Option<Self::Item> {
         self.t.next().map(|i| EarlyBinder(i))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.t.size_hint()
+    }
 }
 
 impl<'tcx, T: TypeFoldable<'tcx>> ty::EarlyBinder<T> {
     pub fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> T {
         let mut folder = SubstFolder { tcx, substs, binders_passed: 0 };
         self.0.fold_with(&mut folder)
+    }
+
+    /// Makes the identity substitution `T0 => T0, ..., TN => TN`.
+    /// Conceptually, this converts universally bound variables into placeholders
+    /// when inside of a given item.
+    ///
+    /// For example, consider `for<T> fn foo<T>(){ .. }`:
+    /// - Outside of `foo`, `T` is bound (represented by the presence of `EarlyBinder`).
+    /// - Inside of the body of `foo`, we treat `T` as a placeholder by calling
+    /// `subst_identity` to discharge the `EarlyBinder`.
+    pub fn subst_identity(self) -> T {
+        self.0
+    }
+
+    /// Returns the inner value, but only if it contains no bound vars.
+    pub fn no_bound_vars(self) -> Option<T> {
+        if !self.0.needs_subst() { Some(self.0) } else { None }
     }
 }
 
@@ -606,9 +795,21 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         #[cold]
         #[inline(never)]
-        fn region_param_out_of_range(data: ty::EarlyBoundRegion) -> ! {
+        fn region_param_out_of_range(data: ty::EarlyBoundRegion, substs: &[GenericArg<'_>]) -> ! {
             bug!(
-                "Region parameter out of range when substituting in region {} (index={})",
+                "Region parameter out of range when substituting in region {} (index={}, substs = {:?})",
+                data.name,
+                data.index,
+                substs,
+            )
+        }
+
+        #[cold]
+        #[inline(never)]
+        fn region_param_invalid(data: ty::EarlyBoundRegion, other: GenericArgKind<'_>) -> ! {
+            bug!(
+                "Unexpected parameter {:?} when substituting in region {} (index={})",
+                other,
                 data.name,
                 data.index
             )
@@ -624,7 +825,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                 let rk = self.substs.get(data.index as usize).map(|k| k.unpack());
                 match rk {
                     Some(GenericArgKind::Lifetime(lt)) => self.shift_region_through_binders(lt),
-                    _ => region_param_out_of_range(data),
+                    Some(other) => region_param_invalid(data, other),
+                    None => region_param_out_of_range(data, self.substs),
                 }
             }
             _ => r,
@@ -648,11 +850,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
         } else {
             c.super_fold_with(self)
         }
-    }
-
-    #[inline]
-    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
-        c.super_fold_with(self)
     }
 }
 

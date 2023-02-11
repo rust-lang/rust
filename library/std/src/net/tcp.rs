@@ -853,7 +853,7 @@ impl TcpListener {
     /// }
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    ///     let listener = TcpListener::bind("127.0.0.1:80")?;
     ///
     ///     for stream in listener.incoming() {
     ///         match stream {

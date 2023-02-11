@@ -12,17 +12,17 @@ use std::default::Default as D2;
 use std::string;
 
 fn main() {
-    let s1: String = std::string::String::default();
+    let s1: String = String::default();
 
     let s2 = String::default();
 
-    let s3: String = std::string::String::default();
+    let s3: String = String::default();
 
-    let s4: String = std::string::String::default();
+    let s4: String = String::default();
 
     let s5 = string::String::default();
 
-    let s6: String = std::string::String::default();
+    let s6: String = String::default();
 
     let s7 = std::string::String::default();
 

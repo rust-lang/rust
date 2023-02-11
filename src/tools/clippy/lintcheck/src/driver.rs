@@ -5,7 +5,7 @@ use std::net::TcpStream;
 use std::process::{self, Command, Stdio};
 use std::{env, mem};
 
-/// 1. Sends [DriverInfo] to the [crate::recursive::LintcheckServer] running on `addr`
+/// 1. Sends [`DriverInfo`] to the [`crate::recursive::LintcheckServer`] running on `addr`
 /// 2. Receives [bool] from the server, if `false` returns `None`
 /// 3. Otherwise sends the stderr of running `clippy-driver` to the server
 fn run_clippy(addr: &str) -> Option<i32> {

@@ -69,7 +69,7 @@ fn main() {
     });
 
     test(Some("align_offset: align is not a power-of-two"), |_old_val| {
-        (0usize as *const u8).align_offset(3);
+        let _ = (0usize as *const u8).align_offset(3);
         loop {}
     });
 

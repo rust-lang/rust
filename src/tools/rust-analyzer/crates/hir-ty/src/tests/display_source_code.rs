@@ -56,6 +56,28 @@ fn main() {
 }
 
 #[test]
+fn render_dyn_ty_independent_of_order() {
+    check_types_source_code(
+        r#"
+auto trait Send {}
+trait A {
+    type Assoc;
+}
+trait B: A {}
+
+fn test(
+    _: &(dyn A<Assoc = ()> + Send),
+  //^ &(dyn A<Assoc = ()> + Send)
+    _: &(dyn Send + A<Assoc = ()>),
+  //^ &(dyn A<Assoc = ()> + Send)
+    _: &dyn B<Assoc = ()>,
+  //^ &(dyn B<Assoc = ()>)
+) {}
+        "#,
+    );
+}
+
+#[test]
 fn render_dyn_for_ty() {
     // FIXME
     check_types_source_code(
@@ -172,5 +194,36 @@ fn test(
     c;
 } //^ fn(&impl Foo + ?Sized) -> &impl Foo + ?Sized
 "#,
+    );
+}
+
+#[test]
+fn projection_type_correct_arguments_order() {
+    check_types_source_code(
+        r#"
+trait Foo<T> {
+    type Assoc<U>;
+}
+fn f<T: Foo<i32>>(a: T::Assoc<usize>) {
+    a;
+  //^ <T as Foo<i32>>::Assoc<usize>
+}
+"#,
+    );
+}
+
+#[test]
+fn generic_associated_type_binding_in_impl_trait() {
+    check_types_source_code(
+        r#"
+//- minicore: sized
+trait Foo<T> {
+    type Assoc<U>;
+}
+fn f(a: impl Foo<i8, Assoc<i16> = i32>) {
+    a;
+  //^ impl Foo<i8, Assoc<i16> = i32>
+}
+        "#,
     );
 }

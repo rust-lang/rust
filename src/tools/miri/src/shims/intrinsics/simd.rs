@@ -437,13 +437,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let val = match (op.layout.ty.kind(), dest.layout.ty.kind()) {
                         // Int-to-(int|float): always safe
                         (ty::Int(_) | ty::Uint(_), ty::Int(_) | ty::Uint(_) | ty::Float(_)) =>
-                            this.misc_cast(&op, dest.layout.ty)?,
+                            this.int_to_int_or_float(&op, dest.layout.ty)?,
                         // Float-to-float: always safe
                         (ty::Float(_), ty::Float(_)) =>
-                            this.misc_cast(&op, dest.layout.ty)?,
+                            this.float_to_float_or_int(&op, dest.layout.ty)?,
                         // Float-to-int in safe mode
                         (ty::Float(_), ty::Int(_) | ty::Uint(_)) if safe_cast =>
-                            this.misc_cast(&op, dest.layout.ty)?,
+                            this.float_to_float_or_int(&op, dest.layout.ty)?,
                         // Float-to-int in unchecked mode
                         (ty::Float(FloatTy::F32), ty::Int(_) | ty::Uint(_)) if !safe_cast =>
                             this.float_to_int_unchecked(op.to_scalar().to_f32()?, dest.layout.ty)?.into(),

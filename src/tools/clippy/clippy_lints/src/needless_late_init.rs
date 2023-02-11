@@ -180,10 +180,13 @@ fn assignment_suggestions<'tcx>(
     let suggestions = assignments
         .iter()
         .flat_map(|assignment| {
-            [
-                assignment.span.until(assignment.rhs_span),
-                assignment.rhs_span.shrink_to_hi().with_hi(assignment.span.hi()),
-            ]
+            let mut spans = vec![assignment.span.until(assignment.rhs_span)];
+
+            if assignment.rhs_span.hi() != assignment.span.hi() {
+                spans.push(assignment.rhs_span.shrink_to_hi().with_hi(assignment.span.hi()));
+            }
+
+            spans
         })
         .map(|span| (span, String::new()))
         .collect::<Vec<(Span, String)>>();
@@ -281,7 +284,7 @@ fn check<'tcx>(
 
                     diag.span_suggestion(
                         assign.lhs_span,
-                        &format!("declare `{binding_name}` here"),
+                        format!("declare `{binding_name}` here"),
                         let_snippet,
                         Applicability::MachineApplicable,
                     );
@@ -301,7 +304,7 @@ fn check<'tcx>(
 
                     diag.span_suggestion_verbose(
                         usage.stmt.span.shrink_to_lo(),
-                        &format!("declare `{binding_name}` here"),
+                        format!("declare `{binding_name}` here"),
                         format!("{let_snippet} = "),
                         applicability,
                     );
@@ -332,7 +335,7 @@ fn check<'tcx>(
 
                     diag.span_suggestion_verbose(
                         usage.stmt.span.shrink_to_lo(),
-                        &format!("declare `{binding_name}` here"),
+                        format!("declare `{binding_name}` here"),
                         format!("{let_snippet} = "),
                         applicability,
                     );

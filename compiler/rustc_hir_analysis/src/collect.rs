@@ -17,31 +17,26 @@
 use crate::astconv::AstConv;
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
-use rustc_ast as ast;
-use rustc_ast::{MetaItemKind, NestedMetaItem};
-use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
+use hir::def::DefKind;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
-use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::weak_lang_items;
 use rustc_hir::{GenericParamKind, Node};
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
-use rustc_middle::mir::mono::Linkage;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::ReprOptions;
-use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, IsSuggestable, Ty, TyCtxt};
-use rustc_session::lint;
-use rustc_session::parse::feature_err;
+use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
-use rustc_target::spec::{abi, SanitizerSet};
+use rustc_target::spec::abi;
+use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
+use rustc_trait_selection::traits::ObligationCtxt;
 use std::iter;
 
 mod generics_of;
@@ -80,10 +75,8 @@ pub fn provide(providers: &mut Providers) {
         impl_polarity,
         is_foreign_item,
         generator_kind,
-        codegen_fn_attrs,
-        asm_target_features,
         collect_mod_item_types,
-        should_inherit_track_caller,
+        is_type_alias_impl_trait,
         ..*providers
     };
 }
@@ -100,13 +93,12 @@ pub fn provide(providers: &mut Providers) {
 /// It's also used for the bodies of items like structs where the body (the fields)
 /// are just signatures.
 ///
-/// This is in contrast to [`FnCtxt`], which is used to type-check bodies of
+/// This is in contrast to `FnCtxt`, which is used to type-check bodies of
 /// functions, closures, and `const`s -- anywhere that expressions and statements show up.
 ///
 /// An important thing to note is that `ItemCtxt` does no inference -- it has no [`InferCtxt`] --
 /// while `FnCtxt` does do inference.
 ///
-/// [`FnCtxt`]: crate::check::FnCtxt
 /// [`InferCtxt`]: rustc_infer::infer::InferCtxt
 ///
 /// # Trait predicates
@@ -222,7 +214,7 @@ pub(crate) fn placeholder_type_error_diag<'tcx>(
             is_fn = true;
 
             // Check if parent is const or static
-            let parent_id = tcx.hir().get_parent_node(hir_ty.hir_id);
+            let parent_id = tcx.hir().parent_id(hir_ty.hir_id);
             let parent_node = tcx.hir().get(parent_id);
 
             is_const_or_static = matches!(
@@ -292,18 +284,15 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => {}
                 hir::GenericParamKind::Type { default: Some(_), .. } => {
-                    let def_id = self.tcx.hir().local_def_id(param.hir_id);
-                    self.tcx.ensure().type_of(def_id);
+                    self.tcx.ensure().type_of(param.def_id);
                 }
                 hir::GenericParamKind::Type { .. } => {}
                 hir::GenericParamKind::Const { default, .. } => {
-                    let def_id = self.tcx.hir().local_def_id(param.hir_id);
-                    self.tcx.ensure().type_of(def_id);
+                    self.tcx.ensure().type_of(param.def_id);
                     if let Some(default) = default {
-                        let default_def_id = self.tcx.hir().local_def_id(default.hir_id);
                         // need to store default and type of default
-                        self.tcx.ensure().type_of(default_def_id);
-                        self.tcx.ensure().const_param_default(def_id);
+                        self.tcx.ensure().type_of(default.def_id);
+                        self.tcx.ensure().const_param_default(param.def_id);
                     }
                 }
             }
@@ -312,9 +301,9 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if let hir::ExprKind::Closure { .. } = expr.kind {
-            let def_id = self.tcx.hir().local_def_id(expr.hir_id);
-            self.tcx.ensure().generics_of(def_id);
+        if let hir::ExprKind::Closure(closure) = expr.kind {
+            self.tcx.ensure().generics_of(closure.def_id);
+            self.tcx.ensure().codegen_fn_attrs(closure.def_id);
             // We do not call `type_of` for closures here as that
             // depends on typecheck and would therefore hide
             // any further errors in case one typeck fails.
@@ -363,7 +352,7 @@ impl<'tcx> ItemCtxt<'tcx> {
     }
 
     pub fn to_ty(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
-        <dyn AstConv<'_>>::ast_ty_to_ty(self, ast_ty)
+        self.astconv().ast_ty_to_ty(ast_ty)
     }
 
     pub fn hir_id(&self) -> hir::HirId {
@@ -380,8 +369,8 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         self.tcx
     }
 
-    fn item_def_id(&self) -> Option<DefId> {
-        Some(self.item_def_id)
+    fn item_def_id(&self) -> DefId {
+        self.item_def_id
     }
 
     fn get_type_parameter_bounds(
@@ -425,8 +414,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx> {
         if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
-            let item_substs = <dyn AstConv<'tcx>>::create_substs_for_associated_item(
-                self,
+            let item_substs = self.astconv().create_substs_for_associated_item(
                 span,
                 item_def_id,
                 item_segment,
@@ -506,29 +494,32 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                         format!(
                             "{}::",
                             // Erase named lt, we want `<A as B<'_>::C`, not `<A as B<'a>::C`.
-                            self.tcx.anonymize_late_bound_regions(poly_trait_ref).skip_binder(),
+                            self.tcx.anonymize_bound_vars(poly_trait_ref).skip_binder(),
                         ),
                         Applicability::MaybeIncorrect,
                     );
                 }
                 _ => {}
             }
-            err.emit();
-            self.tcx().ty_error()
+            self.tcx().ty_error_with_guaranteed(err.emit())
         }
     }
 
-    fn normalize_ty(&self, _span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        // Types in item signatures are not normalized to avoid undue dependencies.
-        ty
+    fn probe_adt(&self, _span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {
+        // FIXME(#103640): Should we handle the case where `ty` is a projection?
+        ty.ty_adt_def()
     }
 
-    fn set_tainted_by_errors(&self) {
+    fn set_tainted_by_errors(&self, _: ErrorGuaranteed) {
         // There's no obvious place to track this, so just let it go.
     }
 
     fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
         // There's no place to record types from signatures?
+    }
+
+    fn infcx(&self) -> Option<&InferCtxt<'tcx>> {
+        None
     }
 }
 
@@ -572,9 +563,9 @@ fn get_new_lifetime_name<'tcx>(
 fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
     let it = tcx.hir().item(item_id);
     debug!("convert: item {} with id {}", it.ident, it.hir_id());
-    let def_id = item_id.def_id.def_id;
+    let def_id = item_id.owner_id.def_id;
 
-    match it.kind {
+    match &it.kind {
         // These don't define types.
         hir::ItemKind::ExternCrate(_)
         | hir::ItemKind::Use(..)
@@ -582,14 +573,18 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         | hir::ItemKind::Mod(_)
         | hir::ItemKind::GlobalAsm(_) => {}
         hir::ItemKind::ForeignMod { items, .. } => {
-            for item in items {
+            for item in *items {
                 let item = tcx.hir().foreign_item(item.id);
-                tcx.ensure().generics_of(item.def_id);
-                tcx.ensure().type_of(item.def_id);
-                tcx.ensure().predicates_of(item.def_id);
+                tcx.ensure().generics_of(item.owner_id);
+                tcx.ensure().type_of(item.owner_id);
+                tcx.ensure().predicates_of(item.owner_id);
                 match item.kind {
-                    hir::ForeignItemKind::Fn(..) => tcx.ensure().fn_sig(item.def_id),
+                    hir::ForeignItemKind::Fn(..) => {
+                        tcx.ensure().codegen_fn_attrs(item.owner_id);
+                        tcx.ensure().fn_sig(item.owner_id)
+                    }
                     hir::ForeignItemKind::Static(..) => {
+                        tcx.ensure().codegen_fn_attrs(item.owner_id);
                         let mut visitor = HirPlaceholderCollector::default();
                         visitor.visit_foreign_item(item);
                         placeholder_type_error(
@@ -605,11 +600,11 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                 }
             }
         }
-        hir::ItemKind::Enum(ref enum_definition, _) => {
+        hir::ItemKind::Enum(..) => {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
             tcx.ensure().predicates_of(def_id);
-            convert_enum_variant_types(tcx, def_id.to_def_id(), enum_definition.variants);
+            convert_enum_variant_types(tcx, def_id.to_def_id());
         }
         hir::ItemKind::Impl { .. } => {
             tcx.ensure().generics_of(def_id);
@@ -628,28 +623,21 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.at(it.span).super_predicates_of(def_id);
             tcx.ensure().predicates_of(def_id);
         }
-        hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
+        hir::ItemKind::Struct(struct_def, _) | hir::ItemKind::Union(struct_def, _) => {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
             tcx.ensure().predicates_of(def_id);
 
             for f in struct_def.fields() {
-                let def_id = tcx.hir().local_def_id(f.hir_id);
-                tcx.ensure().generics_of(def_id);
-                tcx.ensure().type_of(def_id);
-                tcx.ensure().predicates_of(def_id);
+                tcx.ensure().generics_of(f.def_id);
+                tcx.ensure().type_of(f.def_id);
+                tcx.ensure().predicates_of(f.def_id);
             }
 
-            if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
-                convert_variant_ctor(tcx, ctor_hir_id);
+            if let Some(ctor_def_id) = struct_def.ctor_def_id() {
+                convert_variant_ctor(tcx, ctor_def_id);
             }
         }
-
-        // Desugared from `impl Trait`, so visited by the function's return type.
-        hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-            origin: hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..),
-            ..
-        }) => {}
 
         // Don't call `type_of` on opaque types, since that depends on type
         // checking function bodies. `check_item_type` ensures that it's called
@@ -658,37 +646,44 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().predicates_of(def_id);
             tcx.ensure().explicit_item_bounds(def_id);
+            tcx.ensure().item_bounds(def_id);
         }
-        hir::ItemKind::TyAlias(..)
-        | hir::ItemKind::Static(..)
-        | hir::ItemKind::Const(..)
-        | hir::ItemKind::Fn(..) => {
+
+        hir::ItemKind::TyAlias(..) => {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
             tcx.ensure().predicates_of(def_id);
-            match it.kind {
-                hir::ItemKind::Fn(..) => tcx.ensure().fn_sig(def_id),
-                hir::ItemKind::OpaqueTy(..) => tcx.ensure().item_bounds(def_id),
-                hir::ItemKind::Const(ty, ..) | hir::ItemKind::Static(ty, ..) => {
-                    if !is_suggestable_infer_ty(ty) {
-                        let mut visitor = HirPlaceholderCollector::default();
-                        visitor.visit_item(it);
-                        placeholder_type_error(tcx, None, visitor.0, false, None, it.kind.descr());
-                    }
-                }
-                _ => (),
+        }
+
+        hir::ItemKind::Static(ty, ..) | hir::ItemKind::Const(ty, ..) => {
+            tcx.ensure().generics_of(def_id);
+            tcx.ensure().type_of(def_id);
+            tcx.ensure().predicates_of(def_id);
+            if !is_suggestable_infer_ty(ty) {
+                let mut visitor = HirPlaceholderCollector::default();
+                visitor.visit_item(it);
+                placeholder_type_error(tcx, None, visitor.0, false, None, it.kind.descr());
             }
+        }
+
+        hir::ItemKind::Fn(..) => {
+            tcx.ensure().generics_of(def_id);
+            tcx.ensure().type_of(def_id);
+            tcx.ensure().predicates_of(def_id);
+            tcx.ensure().fn_sig(def_id);
+            tcx.ensure().codegen_fn_attrs(def_id);
         }
     }
 }
 
 fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
     let trait_item = tcx.hir().trait_item(trait_item_id);
-    let def_id = trait_item_id.def_id;
+    let def_id = trait_item_id.owner_id;
     tcx.ensure().generics_of(def_id);
 
     match trait_item.kind {
         hir::TraitItemKind::Fn(..) => {
+            tcx.ensure().codegen_fn_attrs(def_id);
             tcx.ensure().type_of(def_id);
             tcx.ensure().fn_sig(def_id);
         }
@@ -731,13 +726,14 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 }
 
 fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
-    let def_id = impl_item_id.def_id;
+    let def_id = impl_item_id.owner_id;
     tcx.ensure().generics_of(def_id);
     tcx.ensure().type_of(def_id);
     tcx.ensure().predicates_of(def_id);
     let impl_item = tcx.hir().impl_item(impl_item_id);
     match impl_item.kind {
         hir::ImplItemKind::Fn(..) => {
+            tcx.ensure().codegen_fn_attrs(def_id);
             tcx.ensure().fn_sig(def_id);
         }
         hir::ImplItemKind::Type(_) => {
@@ -751,37 +747,34 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
     }
 }
 
-fn convert_variant_ctor(tcx: TyCtxt<'_>, ctor_id: hir::HirId) {
-    let def_id = tcx.hir().local_def_id(ctor_id);
+fn convert_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     tcx.ensure().generics_of(def_id);
     tcx.ensure().type_of(def_id);
     tcx.ensure().predicates_of(def_id);
 }
 
-fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId, variants: &[hir::Variant<'_>]) {
+fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr().discr_type();
     let initial = repr_type.initial_discriminant(tcx);
     let mut prev_discr = None::<Discr<'_>>;
 
     // fill the discriminant values and field types
-    for variant in variants {
+    for variant in def.variants() {
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
         prev_discr = Some(
-            if let Some(ref e) = variant.disr_expr {
-                let expr_did = tcx.hir().local_def_id(e.hir_id);
-                def.eval_explicit_discr(tcx, expr_did.to_def_id())
+            if let ty::VariantDiscr::Explicit(const_def_id) = variant.discr {
+                def.eval_explicit_discr(tcx, const_def_id)
             } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
                 Some(discr)
             } else {
-                struct_span_err!(tcx.sess, variant.span, E0370, "enum discriminant overflowed")
-                    .span_label(
-                        variant.span,
-                        format!("overflowed on value after {}", prev_discr.unwrap()),
-                    )
+                let span = tcx.def_span(variant.def_id);
+                struct_span_err!(tcx.sess, span, E0370, "enum discriminant overflowed")
+                    .span_label(span, format!("overflowed on value after {}", prev_discr.unwrap()))
                     .note(&format!(
                         "explicitly set `{} = {}` if that is desired outcome",
-                        variant.ident, wrapped_discr
+                        tcx.item_name(variant.def_id),
+                        wrapped_discr
                     ))
                     .emit();
                 None
@@ -789,17 +782,16 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId, variants: &[hir::V
             .unwrap_or(wrapped_discr),
         );
 
-        for f in variant.data.fields() {
-            let def_id = tcx.hir().local_def_id(f.hir_id);
-            tcx.ensure().generics_of(def_id);
-            tcx.ensure().type_of(def_id);
-            tcx.ensure().predicates_of(def_id);
+        for f in &variant.fields {
+            tcx.ensure().generics_of(f.did);
+            tcx.ensure().type_of(f.did);
+            tcx.ensure().predicates_of(f.did);
         }
 
         // Convert the ctor, if any. This also registers the variant as
         // an item.
-        if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
-            convert_variant_ctor(tcx, ctor_hir_id);
+        if let Some(ctor_def_id) = variant.ctor_def_id() {
+            convert_variant_ctor(tcx, ctor_def_id.expect_local());
         }
     }
 }
@@ -807,7 +799,6 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId, variants: &[hir::V
 fn convert_variant(
     tcx: TyCtxt<'_>,
     variant_did: Option<LocalDefId>,
-    ctor_did: Option<LocalDefId>,
     ident: Ident,
     discr: ty::VariantDiscr,
     def: &hir::VariantData<'_>,
@@ -819,7 +810,6 @@ fn convert_variant(
         .fields()
         .iter()
         .map(|f| {
-            let fid = tcx.hir().local_def_id(f.hir_id);
             let dup_span = seen_fields.get(&f.ident.normalize_to_macros_2_0()).cloned();
             if let Some(prev_span) = dup_span {
                 tcx.sess.emit_err(errors::FieldAlreadyDeclared {
@@ -831,7 +821,11 @@ fn convert_variant(
                 seen_fields.insert(f.ident.normalize_to_macros_2_0(), f.span);
             }
 
-            ty::FieldDef { did: fid.to_def_id(), name: f.ident.name, vis: tcx.visibility(fid) }
+            ty::FieldDef {
+                did: f.def_id.to_def_id(),
+                name: f.ident.name,
+                vis: tcx.visibility(f.def_id),
+            }
         })
         .collect();
     let recovered = match def {
@@ -841,10 +835,9 @@ fn convert_variant(
     ty::VariantDef::new(
         ident.name,
         variant_did.map(LocalDefId::to_def_id),
-        ctor_did.map(LocalDefId::to_def_id),
+        def.ctor().map(|(kind, _, def_id)| (kind, def_id.to_def_id())),
         discr,
         fields,
-        CtorKind::from_hir(def),
         adt_kind,
         parent_did.to_def_id(),
         recovered,
@@ -855,7 +848,7 @@ fn convert_variant(
     )
 }
 
-fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AdtDef<'tcx> {
+fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtDef<'_> {
     use rustc_hir::*;
 
     let def_id = def_id.expect_local();
@@ -864,21 +857,17 @@ fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AdtDef<'tcx> {
         bug!();
     };
 
-    let repr = ReprOptions::new(tcx, def_id.to_def_id());
-    let (kind, variants) = match item.kind {
-        ItemKind::Enum(ref def, _) => {
+    let repr = tcx.repr_options_of_def(def_id.to_def_id());
+    let (kind, variants) = match &item.kind {
+        ItemKind::Enum(def, _) => {
             let mut distance_from_explicit = 0;
             let variants = def
                 .variants
                 .iter()
                 .map(|v| {
-                    let variant_did = Some(tcx.hir().local_def_id(v.id));
-                    let ctor_did =
-                        v.data.ctor_hir_id().map(|hir_id| tcx.hir().local_def_id(hir_id));
-
-                    let discr = if let Some(ref e) = v.disr_expr {
+                    let discr = if let Some(e) = &v.disr_expr {
                         distance_from_explicit = 0;
-                        ty::VariantDiscr::Explicit(tcx.hir().local_def_id(e.hir_id).to_def_id())
+                        ty::VariantDiscr::Explicit(e.def_id.to_def_id())
                     } else {
                         ty::VariantDiscr::Relative(distance_from_explicit)
                     };
@@ -886,8 +875,7 @@ fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AdtDef<'tcx> {
 
                     convert_variant(
                         tcx,
-                        variant_did,
-                        ctor_did,
+                        Some(v.def_id),
                         v.ident,
                         discr,
                         &v.data,
@@ -899,41 +887,23 @@ fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AdtDef<'tcx> {
 
             (AdtKind::Enum, variants)
         }
-        ItemKind::Struct(ref def, _) => {
-            let variant_did = None::<LocalDefId>;
-            let ctor_did = def.ctor_hir_id().map(|hir_id| tcx.hir().local_def_id(hir_id));
-
+        ItemKind::Struct(def, _) | ItemKind::Union(def, _) => {
+            let adt_kind = match item.kind {
+                ItemKind::Struct(..) => AdtKind::Struct,
+                _ => AdtKind::Union,
+            };
             let variants = std::iter::once(convert_variant(
                 tcx,
-                variant_did,
-                ctor_did,
+                None,
                 item.ident,
                 ty::VariantDiscr::Relative(0),
                 def,
-                AdtKind::Struct,
+                adt_kind,
                 def_id,
             ))
             .collect();
 
-            (AdtKind::Struct, variants)
-        }
-        ItemKind::Union(ref def, _) => {
-            let variant_did = None;
-            let ctor_did = def.ctor_hir_id().map(|hir_id| tcx.hir().local_def_id(hir_id));
-
-            let variants = std::iter::once(convert_variant(
-                tcx,
-                variant_did,
-                ctor_did,
-                item.ident,
-                ty::VariantDiscr::Relative(0),
-                def,
-                AdtKind::Union,
-                def_id,
-            ))
-            .collect();
-
-            (AdtKind::Union, variants)
+            (adt_kind, variants)
         }
         _ => bug!(),
     };
@@ -983,7 +953,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
                     .struct_span_err(
                         attr.span,
                         "the `#[rustc_must_implement_one_of]` attribute must be \
-                        used with at least 2 args",
+                         used with at least 2 args",
                     )
                     .emit();
 
@@ -1011,11 +981,11 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
 
                 match item {
                     Some(item) if matches!(item.kind, hir::AssocItemKind::Fn { .. }) => {
-                        if !tcx.impl_defaultness(item.id.def_id).has_value() {
+                        if !tcx.impl_defaultness(item.id.owner_id).has_value() {
                             tcx.sess
                                 .struct_span_err(
                                     item.span,
-                                    "This function doesn't have a default implementation",
+                                    "function doesn't have a default implementation",
                                 )
                                 .span_note(attr_span, "required by this annotation")
                                 .emit();
@@ -1027,17 +997,17 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
                     }
                     Some(item) => {
                         tcx.sess
-                            .struct_span_err(item.span, "Not a function")
+                            .struct_span_err(item.span, "not a function")
                             .span_note(attr_span, "required by this annotation")
                             .note(
-                                "All `#[rustc_must_implement_one_of]` arguments \
-                            must be associated function names",
+                                "all `#[rustc_must_implement_one_of]` arguments must be associated \
+                                 function names",
                             )
                             .emit();
                     }
                     None => {
                         tcx.sess
-                            .struct_span_err(ident.span, "Function not found in this trait")
+                            .struct_span_err(ident.span, "function not found in this trait")
                             .emit();
                     }
                 }
@@ -1055,11 +1025,8 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
             for ident in &*list {
                 if let Some(dup) = set.insert(ident.name, ident.span) {
                     tcx.sess
-                        .struct_span_err(vec![dup, ident.span], "Functions names are duplicated")
-                        .note(
-                            "All `#[rustc_must_implement_one_of]` arguments \
-                            must be unique",
-                        )
+                        .struct_span_err(vec![dup, ident.span], "functions names are duplicated")
+                        .note("all `#[rustc_must_implement_one_of]` arguments must be unique")
                         .emit();
 
                     no_dups = false;
@@ -1101,7 +1068,7 @@ fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
             is_suggestable_infer_ty(ty) || matches!(length, hir::ArrayLen::Infer(_, _))
         }
         Tup(tys) => tys.iter().any(is_suggestable_infer_ty),
-        Ptr(mut_ty) | Rptr(_, mut_ty) => is_suggestable_infer_ty(mut_ty.ty),
+        Ptr(mut_ty) | Ref(_, mut_ty) => is_suggestable_infer_ty(mut_ty.ty),
         OpaqueDef(_, generic_args, _) => are_suggestable_generic_args(generic_args),
         Path(hir::QPath::TypeRelative(ty, segment)) => {
             is_suggestable_infer_ty(ty) || are_suggestable_generic_args(segment.args().args)
@@ -1124,7 +1091,7 @@ pub fn get_infer_ret_ty<'hir>(output: &'hir hir::FnRetTy<'hir>) -> Option<&'hir 
 }
 
 #[instrument(level = "debug", skip(tcx))]
-fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
+fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<ty::PolyFnSig<'_>> {
     use rustc_hir::Node::*;
     use rustc_hir::*;
 
@@ -1133,7 +1100,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
     let icx = ItemCtxt::new(tcx, def_id.to_def_id());
 
-    match tcx.hir().get(hir_id) {
+    let output = match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)),
             generics,
@@ -1144,13 +1111,12 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         }
 
         ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), generics, .. }) => {
-            // Do not try to inference the return type for a impl method coming from a trait
+            // Do not try to infer the return type for a impl method coming from a trait
             if let Item(hir::Item { kind: ItemKind::Impl(i), .. }) =
-                tcx.hir().get(tcx.hir().get_parent_node(hir_id))
+                tcx.hir().get_parent(hir_id)
                 && i.of_trait.is_some()
             {
-                <dyn AstConv<'_>>::ty_of_fn(
-                    &icx,
+                icx.astconv().ty_of_fn(
                     hir_id,
                     sig.header.unsafety,
                     sig.header.abi,
@@ -1167,25 +1133,18 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             kind: TraitItemKind::Fn(FnSig { header, decl, span: _ }, _),
             generics,
             ..
-        }) => <dyn AstConv<'_>>::ty_of_fn(
-            &icx,
-            hir_id,
-            header.unsafety,
-            header.abi,
-            decl,
-            Some(generics),
-            None,
-        ),
+        }) => {
+            icx.astconv().ty_of_fn(hir_id, header.unsafety, header.abi, decl, Some(generics), None)
+        }
 
         ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {
             let abi = tcx.hir().get_foreign_abi(hir_id);
             compute_sig_of_foreign_fn_decl(tcx, def_id.to_def_id(), fn_decl, abi)
         }
 
-        Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor_hir_id().is_some() => {
+        Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor().is_some() => {
             let ty = tcx.type_of(tcx.hir().get_parent_item(hir_id));
-            let inputs =
-                data.fields().iter().map(|f| tcx.type_of(tcx.hir().local_def_id(f.hir_id)));
+            let inputs = data.fields().iter().map(|f| tcx.type_of(f.def_id));
             ty::Binder::dummy(tcx.mk_fn_sig(
                 inputs,
                 ty,
@@ -1214,7 +1173,8 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         x => {
             bug!("unexpected sort of node in fn_sig(): {:?}", x);
         }
-    }
+    };
+    ty::EarlyBinder(output)
 }
 
 fn infer_return_ty_for_fn_sig<'tcx>(
@@ -1234,47 +1194,49 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                 ty::ReErased => tcx.lifetimes.re_static,
                 _ => r,
             });
-            let fn_sig = ty::Binder::dummy(fn_sig);
 
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_ty(ty);
             let mut diag = bad_placeholder(tcx, visitor.0, "return type");
-            let ret_ty = fn_sig.skip_binder().output();
-            if ret_ty.is_suggestable(tcx, false) {
+            let ret_ty = fn_sig.output();
+            if let Some(ret_ty) = ret_ty.make_suggestable(tcx, false) {
                 diag.span_suggestion(
                     ty.span,
                     "replace with the correct return type",
                     ret_ty,
                     Applicability::MachineApplicable,
                 );
-            } else if matches!(ret_ty.kind(), ty::FnDef(..)) {
-                let fn_sig = ret_ty.fn_sig(tcx);
-                if fn_sig
-                    .skip_binder()
-                    .inputs_and_output
-                    .iter()
-                    .all(|t| t.is_suggestable(tcx, false))
-                {
-                    diag.span_suggestion(
-                        ty.span,
-                        "replace with the correct return type",
-                        fn_sig,
-                        Applicability::MachineApplicable,
-                    );
-                }
+            } else if matches!(ret_ty.kind(), ty::FnDef(..))
+                && let Some(fn_sig) = ret_ty.fn_sig(tcx).make_suggestable(tcx, false)
+            {
+                diag.span_suggestion(
+                    ty.span,
+                    "replace with the correct return type",
+                    fn_sig,
+                    Applicability::MachineApplicable,
+                );
+            } else if let Some(sugg) = suggest_impl_trait(tcx, ret_ty, ty.span, hir_id, def_id) {
+                diag.span_suggestion(
+                    ty.span,
+                    "replace with an appropriate return type",
+                    sugg,
+                    Applicability::MachineApplicable,
+                );
             } else if ret_ty.is_closure() {
-                // We're dealing with a closure, so we should suggest using `impl Fn` or trait bounds
-                // to prevent the user from getting a papercut while trying to use the unique closure
-                // syntax (e.g. `[closure@src/lib.rs:2:5: 2:9]`).
                 diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
-                diag.note("for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html");
+            }
+            // Also note how `Fn` traits work just in case!
+            if ret_ty.is_closure() {
+                diag.note(
+                    "for more information on `Fn` traits and closure types, see \
+                     https://doc.rust-lang.org/book/ch13-01-closures.html",
+                );
             }
             diag.emit();
 
-            fn_sig
+            ty::Binder::dummy(fn_sig)
         }
-        None => <dyn AstConv<'_>>::ty_of_fn(
-            icx,
+        None => icx.astconv().ty_of_fn(
             hir_id,
             sig.header.unsafety,
             sig.header.abi,
@@ -1285,14 +1247,136 @@ fn infer_return_ty_for_fn_sig<'tcx>(
     }
 }
 
-fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
+// FIXME(vincenzopalazzo): remove the hir item when the refactoring is stable
+fn suggest_impl_trait<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ret_ty: Ty<'tcx>,
+    span: Span,
+    _hir_id: hir::HirId,
+    def_id: LocalDefId,
+) -> Option<String> {
+    let format_as_assoc: fn(_, _, _, _, _) -> _ =
+        |tcx: TyCtxt<'tcx>,
+         _: ty::SubstsRef<'tcx>,
+         trait_def_id: DefId,
+         assoc_item_def_id: DefId,
+         item_ty: Ty<'tcx>| {
+            let trait_name = tcx.item_name(trait_def_id);
+            let assoc_name = tcx.item_name(assoc_item_def_id);
+            Some(format!("impl {trait_name}<{assoc_name} = {item_ty}>"))
+        };
+    let format_as_parenthesized: fn(_, _, _, _, _) -> _ =
+        |tcx: TyCtxt<'tcx>,
+         substs: ty::SubstsRef<'tcx>,
+         trait_def_id: DefId,
+         _: DefId,
+         item_ty: Ty<'tcx>| {
+            let trait_name = tcx.item_name(trait_def_id);
+            let args_tuple = substs.type_at(1);
+            let ty::Tuple(types) = *args_tuple.kind() else { return None; };
+            let types = types.make_suggestable(tcx, false)?;
+            let maybe_ret =
+                if item_ty.is_unit() { String::new() } else { format!(" -> {item_ty}") };
+            Some(format!(
+                "impl {trait_name}({}){maybe_ret}",
+                types.iter().map(|ty| ty.to_string()).collect::<Vec<_>>().join(", ")
+            ))
+        };
+
+    for (trait_def_id, assoc_item_def_id, formatter) in [
+        (
+            tcx.get_diagnostic_item(sym::Iterator),
+            tcx.get_diagnostic_item(sym::IteratorItem),
+            format_as_assoc,
+        ),
+        (
+            tcx.lang_items().future_trait(),
+            tcx.get_diagnostic_item(sym::FutureOutput),
+            format_as_assoc,
+        ),
+        (tcx.lang_items().fn_trait(), tcx.lang_items().fn_once_output(), format_as_parenthesized),
+        (
+            tcx.lang_items().fn_mut_trait(),
+            tcx.lang_items().fn_once_output(),
+            format_as_parenthesized,
+        ),
+        (
+            tcx.lang_items().fn_once_trait(),
+            tcx.lang_items().fn_once_output(),
+            format_as_parenthesized,
+        ),
+    ] {
+        let Some(trait_def_id) = trait_def_id else { continue; };
+        let Some(assoc_item_def_id) = assoc_item_def_id else { continue; };
+        if tcx.def_kind(assoc_item_def_id) != DefKind::AssocTy {
+            continue;
+        }
+        let param_env = tcx.param_env(def_id);
+        let infcx = tcx.infer_ctxt().build();
+        let substs = ty::InternalSubsts::for_item(tcx, trait_def_id, |param, _| {
+            if param.index == 0 { ret_ty.into() } else { infcx.var_for_def(span, param) }
+        });
+        if !infcx.type_implements_trait(trait_def_id, substs, param_env).must_apply_modulo_regions()
+        {
+            continue;
+        }
+        let ocx = ObligationCtxt::new_in_snapshot(&infcx);
+        let item_ty = ocx.normalize(
+            &ObligationCause::misc(span, def_id),
+            param_env,
+            tcx.mk_projection(assoc_item_def_id, substs),
+        );
+        // FIXME(compiler-errors): We may benefit from resolving regions here.
+        if ocx.select_where_possible().is_empty()
+            && let item_ty = infcx.resolve_vars_if_possible(item_ty)
+            && let Some(item_ty) = item_ty.make_suggestable(tcx, false)
+            && let Some(sugg) = formatter(tcx, infcx.resolve_vars_if_possible(substs), trait_def_id, assoc_item_def_id, item_ty)
+        {
+            return Some(sugg);
+        }
+    }
+    None
+}
+
+fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::EarlyBinder<ty::TraitRef<'_>>> {
     let icx = ItemCtxt::new(tcx, def_id);
-    match tcx.hir().expect_item(def_id.expect_local()).kind {
-        hir::ItemKind::Impl(ref impl_) => impl_.of_trait.as_ref().map(|ast_trait_ref| {
+    let impl_ = tcx.hir().expect_item(def_id.expect_local()).expect_impl();
+    impl_
+        .of_trait
+        .as_ref()
+        .map(|ast_trait_ref| {
             let selfty = tcx.type_of(def_id);
-            <dyn AstConv<'_>>::instantiate_mono_trait_ref(&icx, ast_trait_ref, selfty)
-        }),
-        _ => bug!(),
+            icx.astconv().instantiate_mono_trait_ref(
+                ast_trait_ref,
+                selfty,
+                check_impl_constness(tcx, impl_.constness, ast_trait_ref),
+            )
+        })
+        .map(ty::EarlyBinder)
+}
+
+fn check_impl_constness(
+    tcx: TyCtxt<'_>,
+    constness: hir::Constness,
+    ast_trait_ref: &hir::TraitRef<'_>,
+) -> ty::BoundConstness {
+    match constness {
+        hir::Constness::Const => {
+            if let Some(trait_def_id) = ast_trait_ref.trait_def_id() && !tcx.has_attr(trait_def_id, sym::const_trait) {
+                let trait_name = tcx.item_name(trait_def_id).to_string();
+                tcx.sess.emit_err(errors::ConstImplForNonConstTrait {
+                    trait_ref_span: ast_trait_ref.path.span,
+                    trait_name,
+                    local_trait_span: trait_def_id.as_local().map(|_| tcx.def_span(trait_def_id).shrink_to_lo()),
+                    marking: (),
+                    adding: (),
+                });
+                ty::BoundConstness::NotConst
+            } else {
+                ty::BoundConstness::ConstIfConst
+            }
+        },
+        hir::Constness::NotConst => ty::BoundConstness::NotConst,
     }
 }
 
@@ -1364,12 +1448,14 @@ fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicate
             "predicates_defined_on: inferred_outlives_of({:?}) = {:?}",
             def_id, inferred_outlives,
         );
+        let inferred_outlives_iter =
+            inferred_outlives.iter().map(|(clause, span)| ((*clause).to_predicate(tcx), *span));
         if result.predicates.is_empty() {
-            result.predicates = inferred_outlives;
+            result.predicates = tcx.arena.alloc_from_iter(inferred_outlives_iter);
         } else {
-            result.predicates = tcx
-                .arena
-                .alloc_from_iter(result.predicates.iter().chain(inferred_outlives).copied());
+            result.predicates = tcx.arena.alloc_from_iter(
+                result.predicates.into_iter().copied().chain(inferred_outlives_iter),
+            );
         }
     }
 
@@ -1389,15 +1475,8 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         hir::Unsafety::Unsafe
     };
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-    let fty = <dyn AstConv<'_>>::ty_of_fn(
-        &ItemCtxt::new(tcx, def_id),
-        hir_id,
-        unsafety,
-        abi,
-        decl,
-        None,
-        None,
-    );
+    let fty =
+        ItemCtxt::new(tcx, def_id).astconv().ty_of_fn(hir_id, unsafety, abi, decl, None, None);
 
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw
@@ -1428,7 +1507,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {
             check(input, *ty)
         }
-        if let hir::FnRetTy::Return(ref ty) = decl.output {
+        if let hir::FnRetTy::Return(ty) = decl.output {
             check(ty, fty.output().skip_binder())
         }
     }
@@ -1455,786 +1534,12 @@ fn generator_kind(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::GeneratorKind> 
     }
 }
 
-fn from_target_feature(
-    tcx: TyCtxt<'_>,
-    attr: &ast::Attribute,
-    supported_target_features: &FxHashMap<String, Option<Symbol>>,
-    target_features: &mut Vec<Symbol>,
-) {
-    let Some(list) = attr.meta_item_list() else { return };
-    let bad_item = |span| {
-        let msg = "malformed `target_feature` attribute input";
-        let code = "enable = \"..\"";
-        tcx.sess
-            .struct_span_err(span, msg)
-            .span_suggestion(span, "must be of the form", code, Applicability::HasPlaceholders)
-            .emit();
-    };
-    let rust_features = tcx.features();
-    for item in list {
-        // Only `enable = ...` is accepted in the meta-item list.
-        if !item.has_name(sym::enable) {
-            bad_item(item.span());
-            continue;
+fn is_type_alias_impl_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+    match tcx.hir().get_if_local(def_id) {
+        Some(Node::Item(hir::Item { kind: hir::ItemKind::OpaqueTy(opaque), .. })) => {
+            matches!(opaque.origin, hir::OpaqueTyOrigin::TyAlias)
         }
-
-        // Must be of the form `enable = "..."` (a string).
-        let Some(value) = item.value_str() else {
-            bad_item(item.span());
-            continue;
-        };
-
-        // We allow comma separation to enable multiple features.
-        target_features.extend(value.as_str().split(',').filter_map(|feature| {
-            let Some(feature_gate) = supported_target_features.get(feature) else {
-                let msg =
-                    format!("the feature named `{}` is not valid for this target", feature);
-                let mut err = tcx.sess.struct_span_err(item.span(), &msg);
-                err.span_label(
-                    item.span(),
-                    format!("`{}` is not valid for this target", feature),
-                );
-                if let Some(stripped) = feature.strip_prefix('+') {
-                    let valid = supported_target_features.contains_key(stripped);
-                    if valid {
-                        err.help("consider removing the leading `+` in the feature name");
-                    }
-                }
-                err.emit();
-                return None;
-            };
-
-            // Only allow features whose feature gates have been enabled.
-            let allowed = match feature_gate.as_ref().copied() {
-                Some(sym::arm_target_feature) => rust_features.arm_target_feature,
-                Some(sym::hexagon_target_feature) => rust_features.hexagon_target_feature,
-                Some(sym::powerpc_target_feature) => rust_features.powerpc_target_feature,
-                Some(sym::mips_target_feature) => rust_features.mips_target_feature,
-                Some(sym::riscv_target_feature) => rust_features.riscv_target_feature,
-                Some(sym::avx512_target_feature) => rust_features.avx512_target_feature,
-                Some(sym::sse4a_target_feature) => rust_features.sse4a_target_feature,
-                Some(sym::tbm_target_feature) => rust_features.tbm_target_feature,
-                Some(sym::wasm_target_feature) => rust_features.wasm_target_feature,
-                Some(sym::cmpxchg16b_target_feature) => rust_features.cmpxchg16b_target_feature,
-                Some(sym::movbe_target_feature) => rust_features.movbe_target_feature,
-                Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
-                Some(sym::f16c_target_feature) => rust_features.f16c_target_feature,
-                Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,
-                Some(sym::bpf_target_feature) => rust_features.bpf_target_feature,
-                Some(sym::aarch64_ver_target_feature) => rust_features.aarch64_ver_target_feature,
-                Some(name) => bug!("unknown target feature gate {}", name),
-                None => true,
-            };
-            if !allowed {
-                feature_err(
-                    &tcx.sess.parse_sess,
-                    feature_gate.unwrap(),
-                    item.span(),
-                    &format!("the target feature `{}` is currently unstable", feature),
-                )
-                .emit();
-            }
-            Some(Symbol::intern(feature))
-        }));
-    }
-}
-
-fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
-    use rustc_middle::mir::mono::Linkage::*;
-
-    // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
-    // applicable to variable declarations and may not really make sense for
-    // Rust code in the first place but allow them anyway and trust that the
-    // user knows what they're doing. Who knows, unanticipated use cases may pop
-    // up in the future.
-    //
-    // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
-    // and don't have to be, LLVM treats them as no-ops.
-    match name {
-        "appending" => Appending,
-        "available_externally" => AvailableExternally,
-        "common" => Common,
-        "extern_weak" => ExternalWeak,
-        "external" => External,
-        "internal" => Internal,
-        "linkonce" => LinkOnceAny,
-        "linkonce_odr" => LinkOnceODR,
-        "private" => Private,
-        "weak" => WeakAny,
-        "weak_odr" => WeakODR,
-        _ => tcx.sess.span_fatal(tcx.def_span(def_id), "invalid linkage specified"),
-    }
-}
-
-fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
-    if cfg!(debug_assertions) {
-        let def_kind = tcx.def_kind(did);
-        assert!(
-            def_kind.has_codegen_attrs(),
-            "unexpected `def_kind` in `codegen_fn_attrs`: {def_kind:?}",
-        );
-    }
-
-    let did = did.expect_local();
-    let attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(did));
-    let mut codegen_fn_attrs = CodegenFnAttrs::new();
-    if tcx.should_inherit_track_caller(did) {
-        codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
-    }
-
-    // The panic_no_unwind function called by TerminatorKind::Abort will never
-    // unwind. If the panic handler that it invokes unwind then it will simply
-    // call the panic handler again.
-    if Some(did.to_def_id()) == tcx.lang_items().panic_no_unwind() {
-        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
-    }
-
-    let supported_target_features = tcx.supported_target_features(LOCAL_CRATE);
-
-    let mut inline_span = None;
-    let mut link_ordinal_span = None;
-    let mut no_sanitize_span = None;
-    for attr in attrs.iter() {
-        if attr.has_name(sym::cold) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
-        } else if attr.has_name(sym::rustc_allocator) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
-        } else if attr.has_name(sym::ffi_returns_twice) {
-            if tcx.is_foreign_item(did) {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
-            } else {
-                // `#[ffi_returns_twice]` is only allowed `extern fn`s.
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0724,
-                    "`#[ffi_returns_twice]` may only be used on foreign functions"
-                )
-                .emit();
-            }
-        } else if attr.has_name(sym::ffi_pure) {
-            if tcx.is_foreign_item(did) {
-                if attrs.iter().any(|a| a.has_name(sym::ffi_const)) {
-                    // `#[ffi_const]` functions cannot be `#[ffi_pure]`
-                    struct_span_err!(
-                        tcx.sess,
-                        attr.span,
-                        E0757,
-                        "`#[ffi_const]` function cannot be `#[ffi_pure]`"
-                    )
-                    .emit();
-                } else {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_PURE;
-                }
-            } else {
-                // `#[ffi_pure]` is only allowed on foreign functions
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0755,
-                    "`#[ffi_pure]` may only be used on foreign functions"
-                )
-                .emit();
-            }
-        } else if attr.has_name(sym::ffi_const) {
-            if tcx.is_foreign_item(did) {
-                codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST;
-            } else {
-                // `#[ffi_const]` is only allowed on foreign functions
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0756,
-                    "`#[ffi_const]` may only be used on foreign functions"
-                )
-                .emit();
-            }
-        } else if attr.has_name(sym::rustc_allocator_nounwind) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
-        } else if attr.has_name(sym::rustc_reallocator) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::REALLOCATOR;
-        } else if attr.has_name(sym::rustc_deallocator) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::DEALLOCATOR;
-        } else if attr.has_name(sym::rustc_allocator_zeroed) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED;
-        } else if attr.has_name(sym::naked) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED;
-        } else if attr.has_name(sym::no_mangle) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
-        } else if attr.has_name(sym::no_coverage) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE;
-        } else if attr.has_name(sym::rustc_std_internal_symbol) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
-        } else if attr.has_name(sym::used) {
-            let inner = attr.meta_item_list();
-            match inner.as_deref() {
-                Some([item]) if item.has_name(sym::linker) => {
-                    if !tcx.features().used_with_arg {
-                        feature_err(
-                            &tcx.sess.parse_sess,
-                            sym::used_with_arg,
-                            attr.span,
-                            "`#[used(linker)]` is currently unstable",
-                        )
-                        .emit();
-                    }
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER;
-                }
-                Some([item]) if item.has_name(sym::compiler) => {
-                    if !tcx.features().used_with_arg {
-                        feature_err(
-                            &tcx.sess.parse_sess,
-                            sym::used_with_arg,
-                            attr.span,
-                            "`#[used(compiler)]` is currently unstable",
-                        )
-                        .emit();
-                    }
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
-                }
-                Some(_) => {
-                    tcx.sess.emit_err(errors::ExpectedUsedSymbol { span: attr.span });
-                }
-                None => {
-                    // Unfortunately, unconditionally using `llvm.used` causes
-                    // issues in handling `.init_array` with the gold linker,
-                    // but using `llvm.compiler.used` caused a nontrival amount
-                    // of unintentional ecosystem breakage -- particularly on
-                    // Mach-O targets.
-                    //
-                    // As a result, we emit `llvm.compiler.used` only on ELF
-                    // targets. This is somewhat ad-hoc, but actually follows
-                    // our pre-LLVM 13 behavior (prior to the ecosystem
-                    // breakage), and seems to match `clang`'s behavior as well
-                    // (both before and after LLVM 13), possibly because they
-                    // have similar compatibility concerns to us. See
-                    // https://github.com/rust-lang/rust/issues/47384#issuecomment-1019080146
-                    // and following comments for some discussion of this, as
-                    // well as the comments in `rustc_codegen_llvm` where these
-                    // flags are handled.
-                    //
-                    // Anyway, to be clear: this is still up in the air
-                    // somewhat, and is subject to change in the future (which
-                    // is a good thing, because this would ideally be a bit
-                    // more firmed up).
-                    let is_like_elf = !(tcx.sess.target.is_like_osx
-                        || tcx.sess.target.is_like_windows
-                        || tcx.sess.target.is_like_wasm);
-                    codegen_fn_attrs.flags |= if is_like_elf {
-                        CodegenFnAttrFlags::USED
-                    } else {
-                        CodegenFnAttrFlags::USED_LINKER
-                    };
-                }
-            }
-        } else if attr.has_name(sym::cmse_nonsecure_entry) {
-            if !matches!(tcx.fn_sig(did).abi(), abi::Abi::C { .. }) {
-                struct_span_err!(
-                    tcx.sess,
-                    attr.span,
-                    E0776,
-                    "`#[cmse_nonsecure_entry]` requires C ABI"
-                )
-                .emit();
-            }
-            if !tcx.sess.target.llvm_target.contains("thumbv8m") {
-                struct_span_err!(tcx.sess, attr.span, E0775, "`#[cmse_nonsecure_entry]` is only valid for targets with the TrustZone-M extension")
-                    .emit();
-            }
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY;
-        } else if attr.has_name(sym::thread_local) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
-        } else if attr.has_name(sym::track_caller) {
-            if !tcx.is_closure(did.to_def_id()) && tcx.fn_sig(did).abi() != abi::Abi::Rust {
-                struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
-                    .emit();
-            }
-            if tcx.is_closure(did.to_def_id()) && !tcx.features().closure_track_caller {
-                feature_err(
-                    &tcx.sess.parse_sess,
-                    sym::closure_track_caller,
-                    attr.span,
-                    "`#[track_caller]` on closures is currently unstable",
-                )
-                .emit();
-            }
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
-        } else if attr.has_name(sym::export_name) {
-            if let Some(s) = attr.value_str() {
-                if s.as_str().contains('\0') {
-                    // `#[export_name = ...]` will be converted to a null-terminated string,
-                    // so it may not contain any null characters.
-                    struct_span_err!(
-                        tcx.sess,
-                        attr.span,
-                        E0648,
-                        "`export_name` may not contain null characters"
-                    )
-                    .emit();
-                }
-                codegen_fn_attrs.export_name = Some(s);
-            }
-        } else if attr.has_name(sym::target_feature) {
-            if !tcx.is_closure(did.to_def_id())
-                && tcx.fn_sig(did).unsafety() == hir::Unsafety::Normal
-            {
-                if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
-                    // The `#[target_feature]` attribute is allowed on
-                    // WebAssembly targets on all functions, including safe
-                    // ones. Other targets require that `#[target_feature]` is
-                    // only applied to unsafe functions (pending the
-                    // `target_feature_11` feature) because on most targets
-                    // execution of instructions that are not supported is
-                    // considered undefined behavior. For WebAssembly which is a
-                    // 100% safe target at execution time it's not possible to
-                    // execute undefined instructions, and even if a future
-                    // feature was added in some form for this it would be a
-                    // deterministic trap. There is no undefined behavior when
-                    // executing WebAssembly so `#[target_feature]` is allowed
-                    // on safe functions (but again, only for WebAssembly)
-                    //
-                    // Note that this is also allowed if `actually_rustdoc` so
-                    // if a target is documenting some wasm-specific code then
-                    // it's not spuriously denied.
-                } else if !tcx.features().target_feature_11 {
-                    let mut err = feature_err(
-                        &tcx.sess.parse_sess,
-                        sym::target_feature_11,
-                        attr.span,
-                        "`#[target_feature(..)]` can only be applied to `unsafe` functions",
-                    );
-                    err.span_label(tcx.def_span(did), "not an `unsafe` function");
-                    err.emit();
-                } else {
-                    check_target_feature_trait_unsafe(tcx, did, attr.span);
-                }
-            }
-            from_target_feature(
-                tcx,
-                attr,
-                supported_target_features,
-                &mut codegen_fn_attrs.target_features,
-            );
-        } else if attr.has_name(sym::linkage) {
-            if let Some(val) = attr.value_str() {
-                codegen_fn_attrs.linkage = Some(linkage_by_name(tcx, did, val.as_str()));
-            }
-        } else if attr.has_name(sym::link_section) {
-            if let Some(val) = attr.value_str() {
-                if val.as_str().bytes().any(|b| b == 0) {
-                    let msg = format!(
-                        "illegal null byte in link_section \
-                         value: `{}`",
-                        &val
-                    );
-                    tcx.sess.span_err(attr.span, &msg);
-                } else {
-                    codegen_fn_attrs.link_section = Some(val);
-                }
-            }
-        } else if attr.has_name(sym::link_name) {
-            codegen_fn_attrs.link_name = attr.value_str();
-        } else if attr.has_name(sym::link_ordinal) {
-            link_ordinal_span = Some(attr.span);
-            if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
-                codegen_fn_attrs.link_ordinal = ordinal;
-            }
-        } else if attr.has_name(sym::no_sanitize) {
-            no_sanitize_span = Some(attr.span);
-            if let Some(list) = attr.meta_item_list() {
-                for item in list.iter() {
-                    if item.has_name(sym::address) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::ADDRESS;
-                    } else if item.has_name(sym::cfi) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI;
-                    } else if item.has_name(sym::memory) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY;
-                    } else if item.has_name(sym::memtag) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG;
-                    } else if item.has_name(sym::shadow_call_stack) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::SHADOWCALLSTACK;
-                    } else if item.has_name(sym::thread) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD;
-                    } else if item.has_name(sym::hwaddress) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::HWADDRESS;
-                    } else {
-                        tcx.sess
-                            .struct_span_err(item.span(), "invalid argument for `no_sanitize`")
-                            .note("expected one of: `address`, `cfi`, `hwaddress`, `memory`, `memtag`, `shadow-call-stack`, or `thread`")
-                            .emit();
-                    }
-                }
-            }
-        } else if attr.has_name(sym::instruction_set) {
-            codegen_fn_attrs.instruction_set = match attr.meta_kind() {
-                Some(MetaItemKind::List(ref items)) => match items.as_slice() {
-                    [NestedMetaItem::MetaItem(set)] => {
-                        let segments =
-                            set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
-                        match segments.as_slice() {
-                            [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
-                                if !tcx.sess.target.has_thumb_interworking {
-                                    struct_span_err!(
-                                        tcx.sess.diagnostic(),
-                                        attr.span,
-                                        E0779,
-                                        "target does not support `#[instruction_set]`"
-                                    )
-                                    .emit();
-                                    None
-                                } else if segments[1] == sym::a32 {
-                                    Some(InstructionSetAttr::ArmA32)
-                                } else if segments[1] == sym::t32 {
-                                    Some(InstructionSetAttr::ArmT32)
-                                } else {
-                                    unreachable!()
-                                }
-                            }
-                            _ => {
-                                struct_span_err!(
-                                    tcx.sess.diagnostic(),
-                                    attr.span,
-                                    E0779,
-                                    "invalid instruction set specified",
-                                )
-                                .emit();
-                                None
-                            }
-                        }
-                    }
-                    [] => {
-                        struct_span_err!(
-                            tcx.sess.diagnostic(),
-                            attr.span,
-                            E0778,
-                            "`#[instruction_set]` requires an argument"
-                        )
-                        .emit();
-                        None
-                    }
-                    _ => {
-                        struct_span_err!(
-                            tcx.sess.diagnostic(),
-                            attr.span,
-                            E0779,
-                            "cannot specify more than one instruction set"
-                        )
-                        .emit();
-                        None
-                    }
-                },
-                _ => {
-                    struct_span_err!(
-                        tcx.sess.diagnostic(),
-                        attr.span,
-                        E0778,
-                        "must specify an instruction set"
-                    )
-                    .emit();
-                    None
-                }
-            };
-        } else if attr.has_name(sym::repr) {
-            codegen_fn_attrs.alignment = match attr.meta_item_list() {
-                Some(items) => match items.as_slice() {
-                    [item] => match item.name_value_literal() {
-                        Some((sym::align, literal)) => {
-                            let alignment = rustc_attr::parse_alignment(&literal.kind);
-
-                            match alignment {
-                                Ok(align) => Some(align),
-                                Err(msg) => {
-                                    struct_span_err!(
-                                        tcx.sess.diagnostic(),
-                                        attr.span,
-                                        E0589,
-                                        "invalid `repr(align)` attribute: {}",
-                                        msg
-                                    )
-                                    .emit();
-
-                                    None
-                                }
-                            }
-                        }
-                        _ => None,
-                    },
-                    [] => None,
-                    _ => None,
-                },
-                None => None,
-            };
-        }
-    }
-
-    codegen_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
-        if !attr.has_name(sym::inline) {
-            return ia;
-        }
-        match attr.meta_kind() {
-            Some(MetaItemKind::Word) => InlineAttr::Hint,
-            Some(MetaItemKind::List(ref items)) => {
-                inline_span = Some(attr.span);
-                if items.len() != 1 {
-                    struct_span_err!(
-                        tcx.sess.diagnostic(),
-                        attr.span,
-                        E0534,
-                        "expected one argument"
-                    )
-                    .emit();
-                    InlineAttr::None
-                } else if list_contains_name(&items, sym::always) {
-                    InlineAttr::Always
-                } else if list_contains_name(&items, sym::never) {
-                    InlineAttr::Never
-                } else {
-                    struct_span_err!(
-                        tcx.sess.diagnostic(),
-                        items[0].span(),
-                        E0535,
-                        "invalid argument"
-                    )
-                    .help("valid inline arguments are `always` and `never`")
-                    .emit();
-
-                    InlineAttr::None
-                }
-            }
-            Some(MetaItemKind::NameValue(_)) => ia,
-            None => ia,
-        }
-    });
-
-    codegen_fn_attrs.optimize = attrs.iter().fold(OptimizeAttr::None, |ia, attr| {
-        if !attr.has_name(sym::optimize) {
-            return ia;
-        }
-        let err = |sp, s| struct_span_err!(tcx.sess.diagnostic(), sp, E0722, "{}", s).emit();
-        match attr.meta_kind() {
-            Some(MetaItemKind::Word) => {
-                err(attr.span, "expected one argument");
-                ia
-            }
-            Some(MetaItemKind::List(ref items)) => {
-                inline_span = Some(attr.span);
-                if items.len() != 1 {
-                    err(attr.span, "expected one argument");
-                    OptimizeAttr::None
-                } else if list_contains_name(&items, sym::size) {
-                    OptimizeAttr::Size
-                } else if list_contains_name(&items, sym::speed) {
-                    OptimizeAttr::Speed
-                } else {
-                    err(items[0].span(), "invalid argument");
-                    OptimizeAttr::None
-                }
-            }
-            Some(MetaItemKind::NameValue(_)) => ia,
-            None => ia,
-        }
-    });
-
-    // #73631: closures inherit `#[target_feature]` annotations
-    if tcx.features().target_feature_11 && tcx.is_closure(did.to_def_id()) {
-        let owner_id = tcx.parent(did.to_def_id());
-        if tcx.def_kind(owner_id).has_codegen_attrs() {
-            codegen_fn_attrs
-                .target_features
-                .extend(tcx.codegen_fn_attrs(owner_id).target_features.iter().copied());
-        }
-    }
-
-    // If a function uses #[target_feature] it can't be inlined into general
-    // purpose functions as they wouldn't have the right target features
-    // enabled. For that reason we also forbid #[inline(always)] as it can't be
-    // respected.
-    if !codegen_fn_attrs.target_features.is_empty() {
-        if codegen_fn_attrs.inline == InlineAttr::Always {
-            if let Some(span) = inline_span {
-                tcx.sess.span_err(
-                    span,
-                    "cannot use `#[inline(always)]` with \
-                     `#[target_feature]`",
-                );
-            }
-        }
-    }
-
-    if !codegen_fn_attrs.no_sanitize.is_empty() {
-        if codegen_fn_attrs.inline == InlineAttr::Always {
-            if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
-                let hir_id = tcx.hir().local_def_id_to_hir_id(did);
-                tcx.struct_span_lint_hir(
-                    lint::builtin::INLINE_NO_SANITIZE,
-                    hir_id,
-                    no_sanitize_span,
-                    "`no_sanitize` will have no effect after inlining",
-                    |lint| lint.span_note(inline_span, "inlining requested here"),
-                )
-            }
-        }
-    }
-
-    // Weak lang items have the same semantics as "std internal" symbols in the
-    // sense that they're preserved through all our LTO passes and only
-    // strippable by the linker.
-    //
-    // Additionally weak lang items have predetermined symbol names.
-    if tcx.is_weak_lang_item(did.to_def_id()) {
-        codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
-    }
-    if let Some(name) = weak_lang_items::link_name(attrs) {
-        codegen_fn_attrs.export_name = Some(name);
-        codegen_fn_attrs.link_name = Some(name);
-    }
-    check_link_name_xor_ordinal(tcx, &codegen_fn_attrs, link_ordinal_span);
-
-    // Internal symbols to the standard library all have no_mangle semantics in
-    // that they have defined symbol names present in the function name. This
-    // also applies to weak symbols where they all have known symbol names.
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
-        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
-    }
-
-    // Any linkage to LLVM intrinsics for now forcibly marks them all as never
-    // unwinds since LLVM sometimes can't handle codegen which `invoke`s
-    // intrinsic functions.
-    if let Some(name) = &codegen_fn_attrs.link_name {
-        if name.as_str().starts_with("llvm.") {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
-        }
-    }
-
-    codegen_fn_attrs
-}
-
-/// Computes the set of target features used in a function for the purposes of
-/// inline assembly.
-fn asm_target_features<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx FxHashSet<Symbol> {
-    let mut target_features = tcx.sess.unstable_target_features.clone();
-    if tcx.def_kind(did).has_codegen_attrs() {
-        let attrs = tcx.codegen_fn_attrs(did);
-        target_features.extend(&attrs.target_features);
-        match attrs.instruction_set {
-            None => {}
-            Some(InstructionSetAttr::ArmA32) => {
-                target_features.remove(&sym::thumb_mode);
-            }
-            Some(InstructionSetAttr::ArmT32) => {
-                target_features.insert(sym::thumb_mode);
-            }
-        }
-    }
-
-    tcx.arena.alloc(target_features)
-}
-
-/// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller
-/// applied to the method prototype.
-fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    if let Some(impl_item) = tcx.opt_associated_item(def_id)
-        && let ty::AssocItemContainer::ImplContainer = impl_item.container
-        && let Some(trait_item) = impl_item.trait_item_def_id
-    {
-        return tcx
-            .codegen_fn_attrs(trait_item)
-            .flags
-            .intersects(CodegenFnAttrFlags::TRACK_CALLER);
-    }
-
-    false
-}
-
-fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
-    use rustc_ast::{Lit, LitIntType, LitKind};
-    if !tcx.features().raw_dylib && tcx.sess.target.arch == "x86" {
-        feature_err(
-            &tcx.sess.parse_sess,
-            sym::raw_dylib,
-            attr.span,
-            "`#[link_ordinal]` is unstable on x86",
-        )
-        .emit();
-    }
-    let meta_item_list = attr.meta_item_list();
-    let meta_item_list: Option<&[ast::NestedMetaItem]> = meta_item_list.as_ref().map(Vec::as_ref);
-    let sole_meta_list = match meta_item_list {
-        Some([item]) => item.literal(),
-        Some(_) => {
-            tcx.sess
-                .struct_span_err(attr.span, "incorrect number of arguments to `#[link_ordinal]`")
-                .note("the attribute requires exactly one argument")
-                .emit();
-            return None;
-        }
-        _ => None,
-    };
-    if let Some(Lit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) = sole_meta_list {
-        // According to the table at https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header,
-        // the ordinal must fit into 16 bits.  Similarly, the Ordinal field in COFFShortExport (defined
-        // in llvm/include/llvm/Object/COFFImportFile.h), which we use to communicate import information
-        // to LLVM for `#[link(kind = "raw-dylib"_])`, is also defined to be uint16_t.
-        //
-        // FIXME: should we allow an ordinal of 0?  The MSVC toolchain has inconsistent support for this:
-        // both LINK.EXE and LIB.EXE signal errors and abort when given a .DEF file that specifies
-        // a zero ordinal.  However, llvm-dlltool is perfectly happy to generate an import library
-        // for such a .DEF file, and MSVC's LINK.EXE is also perfectly happy to consume an import
-        // library produced by LLVM with an ordinal of 0, and it generates an .EXE.  (I don't know yet
-        // if the resulting EXE runs, as I haven't yet built the necessary DLL -- see earlier comment
-        // about LINK.EXE failing.)
-        if *ordinal <= u16::MAX as u128 {
-            Some(*ordinal as u16)
-        } else {
-            let msg = format!("ordinal value in `link_ordinal` is too large: `{}`", &ordinal);
-            tcx.sess
-                .struct_span_err(attr.span, &msg)
-                .note("the value may not exceed `u16::MAX`")
-                .emit();
-            None
-        }
-    } else {
-        tcx.sess
-            .struct_span_err(attr.span, "illegal ordinal format in `link_ordinal`")
-            .note("an unsuffixed integer value, e.g., `1`, is expected")
-            .emit();
-        None
-    }
-}
-
-fn check_link_name_xor_ordinal(
-    tcx: TyCtxt<'_>,
-    codegen_fn_attrs: &CodegenFnAttrs,
-    inline_span: Option<Span>,
-) {
-    if codegen_fn_attrs.link_name.is_none() || codegen_fn_attrs.link_ordinal.is_none() {
-        return;
-    }
-    let msg = "cannot use `#[link_name]` with `#[link_ordinal]`";
-    if let Some(span) = inline_span {
-        tcx.sess.span_err(span, msg);
-    } else {
-        tcx.sess.err(msg);
-    }
-}
-
-/// Checks the function annotated with `#[target_feature]` is not a safe
-/// trait method implementation, reporting an error if it is.
-fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span: Span) {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(id);
-    let node = tcx.hir().get(hir_id);
-    if let Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) = node {
-        let parent_id = tcx.hir().get_parent_item(hir_id);
-        let parent_item = tcx.hir().expect_item(parent_id.def_id);
-        if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = parent_item.kind {
-            tcx.sess
-                .struct_span_err(
-                    attr_span,
-                    "`#[target_feature(..)]` cannot be applied to safe trait method",
-                )
-                .span_label(attr_span, "cannot be applied to safe trait method")
-                .span_label(tcx.def_span(id), "not an `unsafe` function")
-                .emit();
-        }
+        Some(_) => bug!("tried getting opaque_ty_origin for non-opaque: {:?}", def_id),
+        _ => bug!("tried getting opaque_ty_origin for non-local def-id {:?}", def_id),
     }
 }

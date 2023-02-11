@@ -87,6 +87,7 @@ use self::VarKind::*;
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -107,15 +108,13 @@ use std::rc::Rc;
 mod rwu_table;
 
 rustc_index::newtype_index! {
-    pub struct Variable {
-        DEBUG_FORMAT = "v({})",
-    }
+    #[debug_format = "v({})"]
+    pub struct Variable {}
 }
 
 rustc_index::newtype_index! {
-    pub struct LiveNode {
-        DEBUG_FORMAT = "ln({})",
-    }
+    #[debug_format = "ln({})"]
+    pub struct LiveNode {}
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -192,9 +191,9 @@ pub fn provide(providers: &mut Providers) {
 // Creating ir_maps
 //
 // This is the first pass and the one that drives the main
-// computation.  It walks up and down the IR once.  On the way down,
+// computation. It walks up and down the IR once. On the way down,
 // we count for each function the number of variables as well as
-// liveness nodes.  A liveness node is basically an expression or
+// liveness nodes. A liveness node is basically an expression or
 // capture clause that does something of interest: either it has
 // interesting control flow or it uses/defines a local variable.
 //
@@ -204,11 +203,11 @@ pub fn provide(providers: &mut Providers) {
 // of live variables at each program point.
 //
 // Finally, we run back over the IR one last time and, using the
-// computed liveness, check various safety conditions.  For example,
+// computed liveness, check various safety conditions. For example,
 // there must be no live nodes at the definition site for a variable
-// unless it has an initializer.  Similarly, each non-mutable local
+// unless it has an initializer. Similarly, each non-mutable local
 // variable must not be assigned if there is some successor
-// assignment.  And so forth.
+// assignment. And so forth.
 
 struct CaptureInfo {
     ln: LiveNode,
@@ -412,18 +411,17 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 }
                 intravisit::walk_expr(self, expr);
             }
-            hir::ExprKind::Closure { .. } => {
+            hir::ExprKind::Closure(closure) => {
                 // Interesting control flow (for loops can contain labeled
                 // breaks or continues)
                 self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
 
                 // Make a live_node for each mentioned variable, with the span
-                // being the location that the variable is used.  This results
+                // being the location that the variable is used. This results
                 // in better error messages than just pointing at the closure
                 // construction site.
                 let mut call_caps = Vec::new();
-                let closure_def_id = self.tcx.hir().local_def_id(expr.hir_id);
-                if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
+                if let Some(upvars) = self.tcx.upvars_mentioned(closure.def_id) {
                     call_caps.extend(upvars.keys().map(|var_id| {
                         let upvar = upvars[var_id];
                         let upvar_ln = self.add_live_node(UpvarNode(upvar.span));
@@ -794,7 +792,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match stmt.kind {
             hir::StmtKind::Local(ref local) => {
                 // Note: we mark the variable as defined regardless of whether
-                // there is an initializer.  Initially I had thought to only mark
+                // there is an initializer. Initially I had thought to only mark
                 // the live variable as defined if it was initialized, and then we
                 // could check for uninit variables just by scanning what is live
                 // at the start of the function. But that doesn't work so well for
@@ -922,8 +920,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 //    v     v
                 //   (  succ  )
                 //
-                let else_ln =
-                    self.propagate_through_opt_expr(else_opt.as_ref().map(|e| &**e), succ);
+                let else_ln = self.propagate_through_opt_expr(else_opt.as_deref(), succ);
                 let then_ln = self.propagate_through_expr(&then, succ);
                 let ln = self.live_node(expr.hir_id, expr.span);
                 self.init_from_succ(ln, else_ln);
@@ -966,7 +963,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             hir::ExprKind::Ret(ref o_e) => {
                 // Ignore succ and subst exit_ln.
-                self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), self.exit_ln)
+                self.propagate_through_opt_expr(o_e.as_deref(), self.exit_ln)
             }
 
             hir::ExprKind::Break(label, ref opt_expr) => {
@@ -981,7 +978,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // look it up in the break loop nodes table
 
                 match target {
-                    Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
+                    Some(b) => self.propagate_through_opt_expr(opt_expr.as_deref(), b),
                     None => span_bug!(expr.span, "`break` to unknown label"),
                 }
             }
@@ -1026,7 +1023,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             hir::ExprKind::Array(ref exprs) => self.propagate_through_exprs(exprs, succ),
 
             hir::ExprKind::Struct(_, ref fields, ref with_expr) => {
-                let succ = self.propagate_through_opt_expr(with_expr.as_ref().map(|e| &**e), succ);
+                let succ = self.propagate_through_opt_expr(with_expr.as_deref(), succ);
                 fields
                     .iter()
                     .rev()
@@ -1172,24 +1169,24 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         //
         // # Tracked places
         //
-        // A tracked place is a local variable/argument `x`.  In
+        // A tracked place is a local variable/argument `x`. In
         // these cases, the link_node where the write occurs is linked
-        // to node id of `x`.  The `write_place()` routine generates
-        // the contents of this node.  There are no subcomponents to
+        // to node id of `x`. The `write_place()` routine generates
+        // the contents of this node. There are no subcomponents to
         // consider.
         //
         // # Non-tracked places
         //
-        // These are places like `x[5]` or `x.f`.  In that case, we
+        // These are places like `x[5]` or `x.f`. In that case, we
         // basically ignore the value which is written to but generate
-        // reads for the components---`x` in these two examples.  The
+        // reads for the components---`x` in these two examples. The
         // components reads are generated by
         // `propagate_through_place_components()` (this fn).
         //
         // # Illegal places
         //
         // It is still possible to observe assignments to non-places;
-        // these errors are detected in the later pass borrowck.  We
+        // these errors are detected in the later pass borrowck. We
         // just ignore such cases and treat them as reads.
 
         match expr.kind {
@@ -1207,7 +1204,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             // We do not track other places, so just propagate through
-            // to their subcomponents.  Also, it may happen that
+            // to their subcomponents. Also, it may happen that
             // non-places occur here, because those are detected in the
             // later pass borrowck.
             _ => succ,
@@ -1284,20 +1281,19 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_is_ty_uninhabited(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
         let ty = self.typeck_results.expr_ty(expr);
         let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
-        if self.ir.tcx.is_ty_uninhabited_from(m, ty, self.param_env) {
-            match self.ir.lnks[succ] {
-                LiveNodeKind::ExprNode(succ_span, succ_id) => {
-                    self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "expression");
-                }
-                LiveNodeKind::VarDefNode(succ_span, succ_id) => {
-                    self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "definition");
-                }
-                _ => {}
-            };
-            self.exit_ln
-        } else {
-            succ
+        if ty.is_inhabited_from(self.ir.tcx, m, self.param_env) {
+            return succ;
         }
+        match self.ir.lnks[succ] {
+            LiveNodeKind::ExprNode(succ_span, succ_id) => {
+                self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "expression");
+            }
+            LiveNodeKind::VarDefNode(succ_span, succ_id) => {
+                self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "definition");
+            }
+            _ => {}
+        };
+        self.exit_ln
     }
 
     fn warn_about_unreachable(
@@ -1550,7 +1546,13 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 .or_insert_with(|| (ln, var, vec![id_and_sp]));
         });
 
-        let can_remove = matches!(&pat.kind, hir::PatKind::Struct(_, _, true));
+        let can_remove = match pat.kind {
+            hir::PatKind::Struct(_, fields, true) => {
+                // if all fields are shorthand, remove the struct field, otherwise, mark with _ as prefix
+                fields.iter().all(|f| f.is_shorthand)
+            }
+            _ => false,
+        };
 
         for (_, (ln, var, hir_ids_and_spans)) in vars {
             if self.used_on_entry(ln, var) {
@@ -1690,7 +1692,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         &self,
         name: &str,
         opt_body: Option<&hir::Body<'_>>,
-        err: &mut rustc_errors::DiagnosticBuilder<'_, ()>,
+        err: &mut Diagnostic,
     ) -> bool {
         let mut has_litstring = false;
         let Some(opt_body) = opt_body else {return false;};

@@ -48,7 +48,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         // ```
                         //
                         // Here `outlived_region = 'a` and `kind = &'b
-                        // u32`.  Decomposing `&'b u32` into
+                        // u32`. Decomposing `&'b u32` into
                         // components would yield `'b`, and we add the
                         // where clause that `'b: 'a`.
                         insert_outlives_predicate(
@@ -71,7 +71,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         // ```
                         //
                         // Here `outlived_region = 'a` and `kind =
-                        // Vec<U>`.  Decomposing `Vec<U>` into
+                        // Vec<U>`. Decomposing `Vec<U>` into
                         // components would yield `U`, and we add the
                         // where clause that `U: 'a`.
                         let ty: Ty<'tcx> = param_ty.to_ty(tcx);
@@ -80,8 +80,8 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                             .or_insert(span);
                     }
 
-                    Component::Projection(proj_ty) => {
-                        // This would arise from something like:
+                    Component::Alias(alias_ty) => {
+                        // This would either arise from something like:
                         //
                         // ```
                         // struct Foo<'a, T: Iterator> {
@@ -89,15 +89,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         // }
                         // ```
                         //
-                        // Here we want to add an explicit `where <T as Iterator>::Item: 'a`.
-                        let ty: Ty<'tcx> = tcx.mk_projection(proj_ty.item_def_id, proj_ty.substs);
-                        required_predicates
-                            .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
-                            .or_insert(span);
-                    }
-
-                    Component::Opaque(def_id, substs) => {
-                        // This would arise from something like:
+                        // or:
                         //
                         // ```rust
                         // type Opaque<T> = impl Sized;
@@ -105,17 +97,17 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         // struct Ss<'a, T>(&'a Opaque<T>);
                         // ```
                         //
-                        // Here we want to have an implied bound `Opaque<T>: 'a`
-
-                        let ty = tcx.mk_opaque(def_id, substs);
+                        // Here we want to add an explicit `where <T as Iterator>::Item: 'a`
+                        // or `Opaque<T>: 'a` depending on the alias kind.
+                        let ty = alias_ty.to_ty(tcx);
                         required_predicates
                             .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
                             .or_insert(span);
                     }
 
-                    Component::EscapingProjection(_) => {
+                    Component::EscapingAlias(_) => {
                         // As above, but the projection involves
-                        // late-bound regions.  Therefore, the WF
+                        // late-bound regions. Therefore, the WF
                         // requirement is not checked in type definition
                         // but at fn call site, so ignore it.
                         //
@@ -175,8 +167,10 @@ fn is_free_region(region: Region<'_>) -> bool {
         //     }
         //
         // The type above might generate a `T: 'b` bound, but we can
-        // ignore it.  We can't put it on the struct header anyway.
+        // ignore it. We can't put it on the struct header anyway.
         ty::ReLateBound(..) => false,
+
+        ty::ReError(_) => false,
 
         // These regions don't appear in types from type declarations:
         ty::ReErased | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReFree(..) => {

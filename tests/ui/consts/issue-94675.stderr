@@ -1,0 +1,29 @@
+error[E0277]: the trait bound `Vec<usize>: ~const Index<_>` is not satisfied
+  --> $DIR/issue-94675.rs:9:9
+   |
+LL |         self.bar[0] = baz.len();
+   |         ^^^^^^^^^^^ vector indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `~const Index<_>` is not implemented for `Vec<usize>`
+note: the trait `Index<_>` is implemented for `Vec<usize>`, but that implementation is not `const`
+  --> $DIR/issue-94675.rs:9:9
+   |
+LL |         self.bar[0] = baz.len();
+   |         ^^^^^^^^^^^
+
+error[E0277]: the trait bound `Vec<usize>: ~const IndexMut<usize>` is not satisfied
+  --> $DIR/issue-94675.rs:9:9
+   |
+LL |         self.bar[0] = baz.len();
+   |         ^^^^^^^^^^^ vector indices are of type `usize` or ranges of `usize`
+   |
+   = help: the trait `~const IndexMut<usize>` is not implemented for `Vec<usize>`
+note: the trait `IndexMut<usize>` is implemented for `Vec<usize>`, but that implementation is not `const`
+  --> $DIR/issue-94675.rs:9:9
+   |
+LL |         self.bar[0] = baz.len();
+   |         ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

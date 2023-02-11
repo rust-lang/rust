@@ -59,9 +59,9 @@ struct ParameterCollector {
 impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *t.kind() {
-            ty::Projection(..) if !self.include_nonconstraining => {
+            ty::Alias(ty::Projection, ..) if !self.include_nonconstraining => {
                 // projections are not injective
-                return ControlFlow::CONTINUE;
+                return ControlFlow::Continue(());
             }
             ty::Param(data) => {
                 self.parameters.push(Parameter::from(data));
@@ -76,7 +76,7 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
         if let ty::ReEarlyBound(data) = *r {
             self.parameters.push(Parameter::from(data));
         }
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -187,7 +187,8 @@ pub fn setup_constraining_predicates<'tcx>(
         for j in i..predicates.len() {
             // Note that we don't have to care about binders here,
             // as the impl trait ref never contains any late-bound regions.
-            if let ty::PredicateKind::Projection(projection) = predicates[j].0.kind().skip_binder()
+            if let ty::PredicateKind::Clause(ty::Clause::Projection(projection)) =
+                predicates[j].0.kind().skip_binder()
             {
                 // Special case: watch out for some kind of sneaky attempt
                 // to project out an associated type defined by this very

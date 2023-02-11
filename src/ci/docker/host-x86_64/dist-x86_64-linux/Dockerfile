@@ -32,7 +32,8 @@ RUN yum upgrade -y && \
       wget \
       xz \
       zlib-devel.i686 \
-      zlib-devel.x86_64
+      zlib-devel.x86_64 \
+      && yum clean all
 
 RUN mkdir -p /rustroot/bin && ln -s /usr/bin/cmake3 /rustroot/bin/cmake
 
@@ -78,8 +79,9 @@ ENV RUST_CONFIGURE_ARGS \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
       --set rust.jemalloc \
-      --set rust.use-lld=true
-ENV SCRIPT ../src/ci/pgo.sh python3 ../x.py dist \
+      --set rust.use-lld=true \
+      --set rust.lto=thin
+ENV SCRIPT python3 ../src/ci/stage-build.py python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
     build-manifest bootstrap

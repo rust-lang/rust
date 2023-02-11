@@ -1,7 +1,4 @@
-use crate::mir;
-use crate::mir::interpret::Scalar;
-use crate::ty::{self, Ty, TyCtxt};
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 
 use super::{BasicBlock, InlineAsmOperand, Operand, SourceInfo, TerminatorKind};
 use rustc_ast::InlineAsmTemplatePiece;
@@ -77,7 +74,7 @@ impl SwitchTargets {
     }
 
     /// Finds the `BasicBlock` to which this `SwitchInt` will branch given the
-    /// specific value.  This cannot fail, as it'll return the `otherwise`
+    /// specific value. This cannot fail, as it'll return the `otherwise`
     /// branch if there's not a specific match for the value.
     pub fn target_for_value(&self, value: u128) -> BasicBlock {
         self.iter().find_map(|(v, t)| (v == value).then_some(t)).unwrap_or_else(|| self.otherwise())
@@ -131,17 +128,8 @@ impl<'tcx> Terminator<'tcx> {
 }
 
 impl<'tcx> TerminatorKind<'tcx> {
-    pub fn if_(
-        tcx: TyCtxt<'tcx>,
-        cond: Operand<'tcx>,
-        t: BasicBlock,
-        f: BasicBlock,
-    ) -> TerminatorKind<'tcx> {
-        TerminatorKind::SwitchInt {
-            discr: cond,
-            switch_ty: tcx.types.bool,
-            targets: SwitchTargets::static_if(0, f, t),
-        }
+    pub fn if_(cond: Operand<'tcx>, t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
+        TerminatorKind::SwitchInt { discr: cond, targets: SwitchTargets::static_if(0, f, t) }
     }
 
     pub fn successors(&self) -> Successors<'_> {
@@ -264,11 +252,9 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
-    pub fn as_switch(&self) -> Option<(&Operand<'tcx>, Ty<'tcx>, &SwitchTargets)> {
+    pub fn as_switch(&self) -> Option<(&Operand<'tcx>, &SwitchTargets)> {
         match self {
-            TerminatorKind::SwitchInt { discr, switch_ty, targets } => {
-                Some((discr, *switch_ty, targets))
-            }
+            TerminatorKind::SwitchInt { discr, targets } => Some((discr, targets)),
             _ => None,
         }
     }
@@ -403,21 +389,12 @@ impl<'tcx> TerminatorKind<'tcx> {
         match *self {
             Return | Resume | Abort | Unreachable | GeneratorDrop => vec![],
             Goto { .. } => vec!["".into()],
-            SwitchInt { ref targets, switch_ty, .. } => ty::tls::with(|tcx| {
-                let param_env = ty::ParamEnv::empty();
-                let switch_ty = tcx.lift(switch_ty).unwrap();
-                let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
-                targets
-                    .values
-                    .iter()
-                    .map(|&u| {
-                        mir::ConstantKind::from_scalar(tcx, Scalar::from_uint(u, size), switch_ty)
-                            .to_string()
-                            .into()
-                    })
-                    .chain(iter::once("otherwise".into()))
-                    .collect()
-            }),
+            SwitchInt { ref targets, .. } => targets
+                .values
+                .iter()
+                .map(|&u| Cow::Owned(u.to_string()))
+                .chain(iter::once("otherwise".into()))
+                .collect(),
             Call { target: Some(_), cleanup: Some(_), .. } => {
                 vec!["return".into(), "unwind".into()]
             }

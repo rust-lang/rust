@@ -105,7 +105,7 @@ impl LateLintPass<'_> for UpperCaseAcronyms {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &Item<'_>) {
         // do not lint public items or in macros
         if in_external_macro(cx.sess(), it.span)
-            || (self.avoid_breaking_exported_api && cx.access_levels.is_exported(it.def_id.def_id))
+            || (self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(it.owner_id.def_id))
         {
             return;
         }

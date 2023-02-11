@@ -5,6 +5,7 @@
 - [Installation](installation.md)
 - [Usage](usage.md)
 - [Configuration](configuration.md)
+    - [Lint Configuration](lint_configuration.md)
 - [Clippy's Lints](lints.md)
 - [Continuous Integration](continuous_integration/README.md)
     - [GitHub Actions](continuous_integration/github_actions.md)
@@ -21,3 +22,4 @@
         - [The Clippy Book](development/infrastructure/book.md)
     - [Proposals](development/proposals/README.md)
         - [Roadmap 2021](development/proposals/roadmap-2021.md)
+        - [Syntax Tree Patterns](development/proposals/syntax-tree-patterns.md)

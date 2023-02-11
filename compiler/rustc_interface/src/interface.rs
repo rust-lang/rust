@@ -14,10 +14,10 @@ use rustc_middle::ty;
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
 use rustc_session::config::{self, CheckCfg, ErrorOutputType, Input, OutputFilenames};
-use rustc_session::early_error;
 use rustc_session::lint;
 use rustc_session::parse::{CrateConfig, ParseSess};
-use rustc_session::{DiagnosticOutput, Session};
+use rustc_session::Session;
+use rustc_session::{early_error, CompilerIO};
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
 use std::path::PathBuf;
@@ -25,18 +25,16 @@ use std::result;
 
 pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 
-/// Represents a compiler session.
+/// Represents a compiler session. Note that every `Compiler` contains a
+/// `Session`, but `Compiler` also contains some things that cannot be in
+/// `Session`, due to `Session` being in a crate that has many fewer
+/// dependencies than this crate.
 ///
 /// Can be used to run `rustc_interface` queries.
 /// Created by passing [`Config`] to [`run_compiler`].
 pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
     codegen_backend: Lrc<Box<dyn CodegenBackend>>,
-    pub(crate) input: Input,
-    pub(crate) input_path: Option<PathBuf>,
-    pub(crate) output_dir: Option<PathBuf>,
-    pub(crate) output_file: Option<PathBuf>,
-    pub(crate) temps_dir: Option<PathBuf>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
     pub(crate) override_queries:
         Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::ExternProviders)>,
@@ -49,18 +47,6 @@ impl Compiler {
     pub fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
         &self.codegen_backend
     }
-    pub fn input(&self) -> &Input {
-        &self.input
-    }
-    pub fn output_dir(&self) -> &Option<PathBuf> {
-        &self.output_dir
-    }
-    pub fn output_file(&self) -> &Option<PathBuf> {
-        &self.output_file
-    }
-    pub fn temps_dir(&self) -> &Option<PathBuf> {
-        &self.temps_dir
-    }
     pub fn register_lints(&self) -> &Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>> {
         &self.register_lints
     }
@@ -69,14 +55,7 @@ impl Compiler {
         sess: &Session,
         attrs: &[ast::Attribute],
     ) -> OutputFilenames {
-        util::build_output_filenames(
-            &self.input,
-            &self.output_dir,
-            &self.output_file,
-            &self.temps_dir,
-            attrs,
-            sess,
-        )
+        util::build_output_filenames(attrs, sess)
     }
 }
 
@@ -87,8 +66,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
             .into_iter()
             .map(|s| {
                 let sess = ParseSess::with_silent_emitter(Some(format!(
-                    "this error occurred on the command line: `--cfg={}`",
-                    s
+                    "this error occurred on the command line: `--cfg={s}`"
                 )));
                 let filename = FileName::cfg_spec_source_code(&s);
 
@@ -147,8 +125,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
 
         'specs: for s in specs {
             let sess = ParseSess::with_silent_emitter(Some(format!(
-                "this error occurred on the command line: `--check-cfg={}`",
-                s
+                "this error occurred on the command line: `--check-cfg={s}`"
             )));
             let filename = FileName::cfg_spec_source_code(&s);
 
@@ -191,7 +168,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
 
                                         for val in values {
                                             if let Some(LitKind::Str(s, _)) =
-                                                val.literal().map(|lit| &lit.kind)
+                                                val.lit().map(|lit| &lit.kind)
                                             {
                                                 ident_values.insert(s.to_string());
                                             } else {
@@ -243,11 +220,9 @@ pub struct Config {
     pub crate_check_cfg: CheckCfg,
 
     pub input: Input,
-    pub input_path: Option<PathBuf>,
     pub output_dir: Option<PathBuf>,
     pub output_file: Option<PathBuf>,
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
-    pub diagnostic_output: DiagnosticOutput,
 
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
@@ -276,59 +251,6 @@ pub struct Config {
     pub registry: Registry,
 }
 
-pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R) -> R {
-    crate::callbacks::setup_callbacks();
-
-    let registry = &config.registry;
-    let (mut sess, codegen_backend) = util::create_session(
-        config.opts,
-        config.crate_cfg,
-        config.crate_check_cfg,
-        config.diagnostic_output,
-        config.file_loader,
-        config.input_path.clone(),
-        config.lint_caps,
-        config.make_codegen_backend,
-        registry.clone(),
-    );
-
-    if let Some(parse_sess_created) = config.parse_sess_created {
-        parse_sess_created(
-            &mut Lrc::get_mut(&mut sess)
-                .expect("create_session() should never share the returned session")
-                .parse_sess,
-        );
-    }
-
-    let temps_dir = sess.opts.unstable_opts.temps_dir.as_ref().map(|o| PathBuf::from(&o));
-
-    let compiler = Compiler {
-        sess,
-        codegen_backend,
-        input: config.input,
-        input_path: config.input_path,
-        output_dir: config.output_dir,
-        output_file: config.output_file,
-        temps_dir,
-        register_lints: config.register_lints,
-        override_queries: config.override_queries,
-    };
-
-    rustc_span::with_source_map(compiler.sess.parse_sess.clone_source_map(), move || {
-        let r = {
-            let _sess_abort_error = OnDrop(|| {
-                compiler.sess.finish_diagnostics(registry);
-            });
-
-            f(&compiler)
-        };
-
-        let prof = compiler.sess.prof.clone();
-        prof.generic_activity("drop_compiler").run(move || drop(compiler));
-        r
-    })
-}
-
 // JUSTIFICATION: before session exists, only config
 #[allow(rustc::bad_opt_access)]
 pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
@@ -336,7 +258,53 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     util::run_in_thread_pool_with_globals(
         config.opts.edition,
         config.opts.unstable_opts.threads,
-        || create_compiler_and_run(config, f),
+        || {
+            crate::callbacks::setup_callbacks();
+
+            let registry = &config.registry;
+
+            let temps_dir = config.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
+            let (mut sess, codegen_backend) = util::create_session(
+                config.opts,
+                config.crate_cfg,
+                config.crate_check_cfg,
+                config.file_loader,
+                CompilerIO {
+                    input: config.input,
+                    output_dir: config.output_dir,
+                    output_file: config.output_file,
+                    temps_dir,
+                },
+                config.lint_caps,
+                config.make_codegen_backend,
+                registry.clone(),
+            );
+
+            if let Some(parse_sess_created) = config.parse_sess_created {
+                parse_sess_created(&mut sess.parse_sess);
+            }
+
+            let compiler = Compiler {
+                sess: Lrc::new(sess),
+                codegen_backend: Lrc::new(codegen_backend),
+                register_lints: config.register_lints,
+                override_queries: config.override_queries,
+            };
+
+            rustc_span::with_source_map(compiler.sess.parse_sess.clone_source_map(), move || {
+                let r = {
+                    let _sess_abort_error = OnDrop(|| {
+                        compiler.sess.finish_diagnostics(registry);
+                    });
+
+                    f(&compiler)
+                };
+
+                let prof = compiler.sess.prof.clone();
+                prof.generic_activity("drop_compiler").run(move || drop(compiler));
+                r
+            })
+        },
     )
 }
 

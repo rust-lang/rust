@@ -81,7 +81,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => tcx.symbol_name(Instance::mono(tcx, def_id)),
             MonoItem::GlobalAsm(item_id) => {
-                SymbolName::new(tcx, &format!("global_asm_{:?}", item_id.def_id))
+                SymbolName::new(tcx, &format!("global_asm_{:?}", item_id.owner_id))
             }
         }
     }
@@ -182,7 +182,7 @@ impl<'tcx> MonoItem<'tcx> {
         match *self {
             MonoItem::Fn(Instance { def, .. }) => def.def_id().as_local(),
             MonoItem::Static(def_id) => def_id.as_local(),
-            MonoItem::GlobalAsm(item_id) => Some(item_id.def_id.def_id),
+            MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id),
         }
         .map(|def_id| tcx.def_span(def_id))
     }
@@ -198,6 +198,15 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(ref instance) => instance.def_id().krate,
             MonoItem::Static(def_id) => def_id.krate,
             MonoItem::GlobalAsm(..) => LOCAL_CRATE,
+        }
+    }
+
+    /// Returns the item's `DefId`
+    pub fn def_id(&self) -> DefId {
+        match *self {
+            MonoItem::Fn(Instance { def, .. }) => def.def_id(),
+            MonoItem::Static(def_id) => def_id,
+            MonoItem::GlobalAsm(item_id) => item_id.owner_id.to_def_id(),
         }
     }
 }
@@ -309,16 +318,19 @@ impl<'tcx> CodegenUnit<'tcx> {
         base_n::encode(hash, base_n::CASE_INSENSITIVE)
     }
 
-    pub fn estimate_size(&mut self, tcx: TyCtxt<'tcx>) {
+    pub fn create_size_estimate(&mut self, tcx: TyCtxt<'tcx>) {
         // Estimate the size of a codegen unit as (approximately) the number of MIR
         // statements it corresponds to.
         self.size_estimate = Some(self.items.keys().map(|mi| mi.size_estimate(tcx)).sum());
     }
 
     #[inline]
+    /// Should only be called if [`create_size_estimate`] has previously been called.
+    ///
+    /// [`create_size_estimate`]: Self::create_size_estimate
     pub fn size_estimate(&self) -> usize {
-        // Should only be called if `estimate_size` has previously been called.
-        self.size_estimate.expect("estimate_size must be called before getting a size_estimate")
+        self.size_estimate
+            .expect("create_size_estimate must be called before getting a size_estimate")
     }
 
     pub fn modify_size_estimate(&mut self, delta: usize) {
@@ -373,7 +385,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                         }
                     }
                     MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),
-                    MonoItem::GlobalAsm(item_id) => Some(item_id.def_id.def_id.index()),
+                    MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.index()),
                 },
                 item.symbol_name(tcx),
             )

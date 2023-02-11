@@ -1,6 +1,6 @@
 // revisions: edition2018 edition2021
-// [edition2018] edition:2018
-// [edition2021] edition:2021
+//[edition2018] edition:2018
+//[edition2021] edition:2021
 // run-rustfix
 
 #![warn(clippy::manual_assert)]
@@ -65,6 +65,11 @@ fn main() {
     }
     if a.is_empty() {
         panic!("with expansion {}", one!())
+    }
+    if a.is_empty() {
+        let _ = 0;
+    } else if a.len() == 1 {
+        panic!("panic6");
     }
 }
 

@@ -1,7 +1,7 @@
 use clippy_utils::consts::{constant_full_int, constant_simple, Constant, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{clip, unsext};
+use clippy_utils::{clip, peel_hir_expr_refs, unsext};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node};
 use rustc_lint::LateContext;
@@ -20,20 +20,76 @@ pub(crate) fn check<'tcx>(
     if !is_allowed(cx, op, left, right) {
         match op {
             BinOpKind::Add | BinOpKind::BitOr | BinOpKind::BitXor => {
-                check_op(cx, left, 0, expr.span, right.span, needs_parenthesis(cx, expr, right));
-                check_op(cx, right, 0, expr.span, left.span, Parens::Unneeded);
+                check_op(
+                    cx,
+                    left,
+                    0,
+                    expr.span,
+                    peel_hir_expr_refs(right).0.span,
+                    needs_parenthesis(cx, expr, right),
+                );
+                check_op(
+                    cx,
+                    right,
+                    0,
+                    expr.span,
+                    peel_hir_expr_refs(left).0.span,
+                    Parens::Unneeded,
+                );
             },
             BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub => {
-                check_op(cx, right, 0, expr.span, left.span, Parens::Unneeded);
+                check_op(
+                    cx,
+                    right,
+                    0,
+                    expr.span,
+                    peel_hir_expr_refs(left).0.span,
+                    Parens::Unneeded,
+                );
             },
             BinOpKind::Mul => {
-                check_op(cx, left, 1, expr.span, right.span, needs_parenthesis(cx, expr, right));
-                check_op(cx, right, 1, expr.span, left.span, Parens::Unneeded);
+                check_op(
+                    cx,
+                    left,
+                    1,
+                    expr.span,
+                    peel_hir_expr_refs(right).0.span,
+                    needs_parenthesis(cx, expr, right),
+                );
+                check_op(
+                    cx,
+                    right,
+                    1,
+                    expr.span,
+                    peel_hir_expr_refs(left).0.span,
+                    Parens::Unneeded,
+                );
             },
-            BinOpKind::Div => check_op(cx, right, 1, expr.span, left.span, Parens::Unneeded),
+            BinOpKind::Div => check_op(
+                cx,
+                right,
+                1,
+                expr.span,
+                peel_hir_expr_refs(left).0.span,
+                Parens::Unneeded,
+            ),
             BinOpKind::BitAnd => {
-                check_op(cx, left, -1, expr.span, right.span, needs_parenthesis(cx, expr, right));
-                check_op(cx, right, -1, expr.span, left.span, Parens::Unneeded);
+                check_op(
+                    cx,
+                    left,
+                    -1,
+                    expr.span,
+                    peel_hir_expr_refs(right).0.span,
+                    needs_parenthesis(cx, expr, right),
+                );
+                check_op(
+                    cx,
+                    right,
+                    -1,
+                    expr.span,
+                    peel_hir_expr_refs(left).0.span,
+                    Parens::Unneeded,
+                );
             },
             BinOpKind::Rem => check_remainder(cx, left, right, expr.span, left.span),
             _ => (),

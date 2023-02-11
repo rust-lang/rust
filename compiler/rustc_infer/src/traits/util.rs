@@ -1,7 +1,7 @@
 use smallvec::smallvec;
 
 use crate::infer::outlives::components::{push_outlives_components, Component};
-use crate::traits::{Obligation, ObligationCause, PredicateObligation};
+use crate::traits::{self, Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_middle::ty::{self, ToPredicate, TyCtxt};
 use rustc_span::symbol::Ident;
@@ -141,22 +141,36 @@ impl<'tcx> Elaborator<'tcx> {
 
         let bound_predicate = obligation.predicate.kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(data) => {
+            ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let obligations = predicates.predicates.iter().map(|&(mut pred, _)| {
-                    // when parent predicate is non-const, elaborate it to non-const predicates.
-                    if data.constness == ty::BoundConstness::NotConst {
-                        pred = pred.without_const(tcx);
-                    }
+                let obligations =
+                    predicates.predicates.iter().enumerate().map(|(index, &(mut pred, span))| {
+                        // when parent predicate is non-const, elaborate it to non-const predicates.
+                        if data.constness == ty::BoundConstness::NotConst {
+                            pred = pred.without_const(tcx);
+                        }
 
-                    predicate_obligation(
-                        pred.subst_supertrait(tcx, &bound_predicate.rebind(data.trait_ref)),
-                        obligation.param_env,
-                        obligation.cause.clone(),
-                    )
-                });
+                        let cause = obligation.cause.clone().derived_cause(
+                            bound_predicate.rebind(data),
+                            |derived| {
+                                traits::ImplDerivedObligation(Box::new(
+                                    traits::ImplDerivedObligationCause {
+                                        derived,
+                                        impl_def_id: data.def_id(),
+                                        impl_def_predicate_index: Some(index),
+                                        span,
+                                    },
+                                ))
+                            },
+                        );
+                        predicate_obligation(
+                            pred.subst_supertrait(tcx, &bound_predicate.rebind(data.trait_ref)),
+                            obligation.param_env,
+                            cause,
+                        )
+                    });
                 debug!(?data, ?obligations, "super_predicates");
 
                 // Only keep those bounds that we haven't already seen.
@@ -184,7 +198,7 @@ impl<'tcx> Elaborator<'tcx> {
                 // Currently, we do not "elaborate" predicates like `X -> Y`,
                 // though conceivably we might.
             }
-            ty::PredicateKind::Projection(..) => {
+            ty::PredicateKind::Clause(ty::Clause::Projection(..)) => {
                 // Nothing to elaborate in a projection predicate.
             }
             ty::PredicateKind::ClosureKind(..) => {
@@ -198,10 +212,13 @@ impl<'tcx> Elaborator<'tcx> {
                 // Currently, we do not elaborate const-equate
                 // predicates.
             }
-            ty::PredicateKind::RegionOutlives(..) => {
+            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..)) => {
                 // Nothing to elaborate from `'a: 'b`.
             }
-            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_max, r_min)) => {
+            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                ty_max,
+                r_min,
+            ))) => {
                 // We know that `T: 'a` for some type `T`. We can
                 // often elaborate this. For example, if we know that
                 // `[U]: 'a`, that implies that `U: 'a`. Similarly, if
@@ -231,39 +248,30 @@ impl<'tcx> Elaborator<'tcx> {
                                 if r.is_late_bound() {
                                     None
                                 } else {
-                                    Some(ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
-                                        r, r_min,
+                                    Some(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                                        ty::OutlivesPredicate(r, r_min),
                                     )))
                                 }
                             }
 
                             Component::Param(p) => {
                                 let ty = tcx.mk_ty_param(p.index, p.name);
-                                Some(ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
-                                    ty, r_min,
+                                Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
+                                    ty::OutlivesPredicate(ty, r_min),
                                 )))
                             }
 
                             Component::UnresolvedInferenceVariable(_) => None,
 
-                            Component::Opaque(def_id, substs) => {
-                                let ty = tcx.mk_opaque(def_id, substs);
-                                Some(ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
-                                    ty, r_min,
-                                )))
-                            }
-
-                            Component::Projection(projection) => {
+                            Component::Alias(alias_ty) => {
                                 // We might end up here if we have `Foo<<Bar as Baz>::Assoc>: 'a`.
                                 // With this, we can deduce that `<Bar as Baz>::Assoc: 'a`.
-                                let ty =
-                                    tcx.mk_projection(projection.item_def_id, projection.substs);
-                                Some(ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
-                                    ty, r_min,
+                                Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
+                                    ty::OutlivesPredicate(alias_ty.to_ty(tcx), r_min),
                                 )))
                             }
 
-                            Component::EscapingProjection(_) => {
+                            Component::EscapingAlias(_) => {
                                 // We might be able to do more here, but we don't
                                 // want to deal with escaping vars right now.
                                 None
@@ -284,6 +292,10 @@ impl<'tcx> Elaborator<'tcx> {
             }
             ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                 // Nothing to elaborate
+            }
+            ty::PredicateKind::Ambiguous => {}
+            ty::PredicateKind::AliasEq(..) => {
+                // No
             }
         }
     }
@@ -330,7 +342,7 @@ pub fn transitive_bounds<'tcx>(
 /// A specialized variant of `elaborate_trait_refs` that only elaborates trait references that may
 /// define the given associated type `assoc_name`. It uses the
 /// `super_predicates_that_define_assoc_type` query to avoid enumerating super-predicates that
-/// aren't related to `assoc_item`.  This is used when resolving types like `Self::Item` or
+/// aren't related to `assoc_item`. This is used when resolving types like `Self::Item` or
 /// `T::Item` and helps to avoid cycle errors (see e.g. #35237).
 pub fn transitive_bounds_that_define_assoc_type<'tcx>(
     tcx: TyCtxt<'tcx>,

@@ -1,12 +1,19 @@
-use crate::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use crate::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_ID};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
 use rustc_span::{def_id::DefPathHash, HashStableContext};
-use std::fmt;
+use std::fmt::{self, Debug};
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[derive(Encodable, Decodable)]
 pub struct OwnerId {
     pub def_id: LocalDefId,
+}
+
+impl Debug for OwnerId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Example: DefId(0:1 ~ aa[7697]::{use#0})
+        Debug::fmt(&self.def_id, f)
+    }
 }
 
 impl From<OwnerId> for HirId {
@@ -19,6 +26,18 @@ impl OwnerId {
     #[inline]
     pub fn to_def_id(self) -> DefId {
         self.def_id.to_def_id()
+    }
+}
+
+impl rustc_index::vec::Idx for OwnerId {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        OwnerId { def_id: LocalDefId { local_def_index: DefIndex::from_usize(idx) } }
+    }
+
+    #[inline]
+    fn index(self) -> usize {
+        self.def_id.local_def_index.as_usize()
     }
 }
 
@@ -48,12 +67,20 @@ impl<CTX: HashStableContext> ToStableHashKey<CTX> for OwnerId {
 /// the `local_id` part of the `HirId` changing, which is a very useful property in
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 #[rustc_pass_by_value]
 pub struct HirId {
     pub owner: OwnerId,
     pub local_id: ItemLocalId,
+}
+
+impl Debug for HirId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Example: HirId(DefId(0:1 ~ aa[7697]::{use#0}).10)
+        // Don't use debug_tuple to always keep this on one line.
+        write!(f, "HirId({:?}.{:?})", self.owner, self.local_id)
+    }
 }
 
 impl HirId {
@@ -92,7 +119,7 @@ impl HirId {
 
 impl fmt::Display for HirId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -104,7 +131,7 @@ impl Ord for HirId {
 
 impl PartialOrd for HirId {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 
@@ -121,18 +148,22 @@ rustc_index::newtype_index! {
     /// that is, within a `hir::Item`, `hir::TraitItem`, or `hir::ImplItem`. There is no
     /// guarantee that the numerical value of a given `ItemLocalId` corresponds to
     /// the node's position within the owning item in any way, but there is a
-    /// guarantee that the `LocalItemId`s within an owner occupy a dense range of
+    /// guarantee that the `ItemLocalId`s within an owner occupy a dense range of
     /// integers starting at zero, so a mapping that maps all or most nodes within
     /// an "item-like" to something else can be implemented by a `Vec` instead of a
     /// tree or hash map.
     #[derive(HashStable_Generic)]
-    pub struct ItemLocalId { .. }
+    pub struct ItemLocalId {}
 }
 
 impl ItemLocalId {
     /// Signal local id which should never be used.
     pub const INVALID: ItemLocalId = ItemLocalId::MAX;
 }
+
+// Safety: Ord is implement as just comparing the ItemLocalId's numerical
+// values and these are not changed by (de-)serialization.
+unsafe impl StableOrd for ItemLocalId {}
 
 /// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_ID`.
 pub const CRATE_HIR_ID: HirId =

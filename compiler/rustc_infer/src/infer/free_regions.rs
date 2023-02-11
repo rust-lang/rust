@@ -29,10 +29,10 @@ impl<'a, 'tcx> RegionRelations<'a, 'tcx> {
 
 #[derive(Clone, Debug)]
 pub struct FreeRegionMap<'tcx> {
-    // Stores the relation `a < b`, where `a` and `b` are regions.
-    //
-    // Invariant: only free regions like `'x` or `'static` are stored
-    // in this relation, not scopes.
+    /// Stores the relation `a < b`, where `a` and `b` are regions.
+    ///
+    /// Invariant: only free regions like `'x` or `'static` are stored
+    /// in this relation, not scopes.
     pub(crate) relation: TransitiveRelation<Region<'tcx>>,
 }
 

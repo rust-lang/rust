@@ -11,7 +11,7 @@ use rustc_hir::{Closure, Expr, ExprKind, Param, PatKind, Unsafety};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::binding::BindingMode;
-use rustc_middle::ty::{self, Ty, TypeVisitable};
+use rustc_middle::ty::{self, EarlyBinder, SubstsRef, Ty, TypeVisitable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
 
@@ -119,11 +119,18 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             let callee_ty_unadjusted = cx.typeck_results().expr_ty(callee).peel_refs();
             if !is_type_diagnostic_item(cx, callee_ty_unadjusted, sym::Arc);
             if !is_type_diagnostic_item(cx, callee_ty_unadjusted, sym::Rc);
+            if let ty::Closure(_, substs) = *closure_ty.kind();
             then {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
                     if let Some(mut snippet) = snippet_opt(cx, callee.span) {
                         if let Some(fn_mut_id) = cx.tcx.lang_items().fn_mut_trait()
-                            && implements_trait(cx, callee_ty.peel_refs(), fn_mut_id, &[])
+                            && let args = cx.tcx.erase_late_bound_regions(substs.as_closure().sig()).inputs()
+                            && implements_trait(
+                                   cx,
+                                   callee_ty.peel_refs(),
+                                   fn_mut_id,
+                                   &args.iter().copied().map(Into::into).collect::<Vec<_>>(),
+                               )
                             && path_to_local(callee).map_or(false, |l| local_used_after_expr(cx, l, expr))
                         {
                                 // Mutable closure is used after current expr; we cannot consume it.
@@ -150,7 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             if check_sig(cx, closure_ty, call_ty);
             then {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE_FOR_METHOD_CALLS, expr.span, "redundant closure", |diag| {
-                    let name = get_ufcs_type_name(cx, method_def_id);
+                    let name = get_ufcs_type_name(cx, method_def_id, substs);
                     diag.span_suggestion(
                         expr.span,
                         "replace the closure with the method itself",
@@ -213,15 +220,14 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, closure_ty: Ty<'tcx>, call_ty: Ty<'tc
     if !closure_ty.has_late_bound_regions() {
         return true;
     }
-    let substs = match closure_ty.kind() {
-        ty::Closure(_, substs) => substs,
-        _ => return false,
+    let ty::Closure(_, substs) = closure_ty.kind() else {
+        return false;
     };
     let closure_sig = cx.tcx.signature_unclosure(substs.as_closure().sig(), Unsafety::Normal);
     cx.tcx.erase_late_bound_regions(closure_sig) == cx.tcx.erase_late_bound_regions(call_sig)
 }
 
-fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: DefId) -> String {
+fn get_ufcs_type_name<'tcx>(cx: &LateContext<'tcx>, method_def_id: DefId, substs: SubstsRef<'tcx>) -> String {
     let assoc_item = cx.tcx.associated_item(method_def_id);
     let def_id = assoc_item.container_id(cx.tcx);
     match assoc_item.container {
@@ -230,6 +236,15 @@ fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: DefId) -> String {
             let ty = cx.tcx.type_of(def_id);
             match ty.kind() {
                 ty::Adt(adt, _) => cx.tcx.def_path_str(adt.did()),
+                ty::Array(..)
+                | ty::Dynamic(..)
+                | ty::Never
+                | ty::RawPtr(_)
+                | ty::Ref(..)
+                | ty::Slice(_)
+                | ty::Tuple(_) => {
+                    format!("<{}>", EarlyBinder(ty).subst(cx.tcx, substs))
+                },
                 _ => ty.to_string(),
             }
         },

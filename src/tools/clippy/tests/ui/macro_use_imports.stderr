@@ -1,8 +1,8 @@
 error: `macro_use` attributes are no longer needed in the Rust 2018 edition
-  --> $DIR/macro_use_imports.rs:23:5
+  --> $DIR/macro_use_imports.rs:25:5
    |
 LL |     #[macro_use]
-   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::{inner::foofoo, inner::try_err};`
+   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::inner::nested::string_add;`
    |
    = note: `-D clippy::macro-use-imports` implied by `-D warnings`
 
@@ -13,10 +13,10 @@ LL |     #[macro_use]
    |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mini_mac::ClippyMiniMacroTest;`
 
 error: `macro_use` attributes are no longer needed in the Rust 2018 edition
-  --> $DIR/macro_use_imports.rs:25:5
+  --> $DIR/macro_use_imports.rs:23:5
    |
 LL |     #[macro_use]
-   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::inner::nested::string_add;`
+   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::{inner::foofoo, inner::try_err};`
 
 error: `macro_use` attributes are no longer needed in the Rust 2018 edition
   --> $DIR/macro_use_imports.rs:19:5

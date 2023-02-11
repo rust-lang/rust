@@ -133,7 +133,7 @@ static FILTER: Lazy<RwLock<Filter>> = Lazy::new(Default::default);
 
 fn with_profile_stack<T>(f: impl FnOnce(&mut ProfileStack) -> T) -> T {
     thread_local!(static STACK: RefCell<ProfileStack> = RefCell::new(ProfileStack::new()));
-    STACK.with(|it| f(&mut *it.borrow_mut()))
+    STACK.with(|it| f(&mut it.borrow_mut()))
 }
 
 #[derive(Default, Clone, Debug)]
@@ -238,7 +238,7 @@ impl ProfileStack {
             self.heartbeat(frame.heartbeats);
             let avg_span = duration / (frame.heartbeats + 1);
             if avg_span > self.filter.heartbeat_longer_than {
-                eprintln!("Too few heartbeats {} ({}/{:?})?", label, frame.heartbeats, duration);
+                eprintln!("Too few heartbeats {label} ({}/{duration:?})?", frame.heartbeats);
             }
         }
 
@@ -275,7 +275,7 @@ fn print(
     out: &mut impl Write,
 ) {
     let current_indent = "    ".repeat(level as usize);
-    let detail = tree[curr].detail.as_ref().map(|it| format!(" @ {}", it)).unwrap_or_default();
+    let detail = tree[curr].detail.as_ref().map(|it| format!(" @ {it}")).unwrap_or_default();
     writeln!(
         out,
         "{}{} - {}{}",
@@ -302,13 +302,13 @@ fn print(
     }
 
     for (child_msg, (duration, count)) in &short_children {
-        writeln!(out, "    {}{} - {} ({} calls)", current_indent, ms(*duration), child_msg, count)
+        writeln!(out, "    {current_indent}{} - {child_msg} ({count} calls)", ms(*duration))
             .expect("printing profiling info");
     }
 
     let unaccounted = tree[curr].duration - accounted_for;
     if tree.children(curr).next().is_some() && unaccounted > longer_than {
-        writeln!(out, "    {}{} - ???", current_indent, ms(unaccounted))
+        writeln!(out, "    {current_indent}{} - ???", ms(unaccounted))
             .expect("printing profiling info");
     }
 }
@@ -320,7 +320,7 @@ impl fmt::Display for ms {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0.as_millis() {
             0 => f.write_str("    0  "),
-            n => write!(f, "{:5}ms", n),
+            n => write!(f, "{n:5}ms"),
         }
     }
 }

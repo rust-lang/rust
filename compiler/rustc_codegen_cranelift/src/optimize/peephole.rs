@@ -3,24 +3,11 @@
 use cranelift_codegen::ir::{condcodes::IntCC, InstructionData, Opcode, Value, ValueDef};
 use cranelift_frontend::FunctionBuilder;
 
-/// If the given value was produced by a `bint` instruction, return it's input, otherwise return the
-/// given value.
-pub(crate) fn maybe_unwrap_bint(bcx: &mut FunctionBuilder<'_>, arg: Value) -> Value {
-    if let ValueDef::Result(arg_inst, 0) = bcx.func.dfg.value_def(arg) {
-        match bcx.func.dfg[arg_inst] {
-            InstructionData::Unary { opcode: Opcode::Bint, arg } => arg,
-            _ => arg,
-        }
-    } else {
-        arg
-    }
-}
-
 /// If the given value was produced by the lowering of `Rvalue::Not` return the input and true,
 /// otherwise return the given value and false.
 pub(crate) fn maybe_unwrap_bool_not(bcx: &mut FunctionBuilder<'_>, arg: Value) -> (Value, bool) {
     if let ValueDef::Result(arg_inst, 0) = bcx.func.dfg.value_def(arg) {
-        match bcx.func.dfg[arg_inst] {
+        match bcx.func.dfg.insts[arg_inst] {
             // This is the lowering of `Rvalue::Not`
             InstructionData::IntCompareImm {
                 opcode: Opcode::IcmpImm,
@@ -47,14 +34,7 @@ pub(crate) fn maybe_known_branch_taken(
         return None;
     };
 
-    match bcx.func.dfg[arg_inst] {
-        InstructionData::UnaryBool { opcode: Opcode::Bconst, imm } => {
-            if test_zero {
-                Some(!imm)
-            } else {
-                Some(imm)
-            }
-        }
+    match bcx.func.dfg.insts[arg_inst] {
         InstructionData::UnaryImm { opcode: Opcode::Iconst, imm } => {
             if test_zero {
                 Some(imm.bits() == 0)

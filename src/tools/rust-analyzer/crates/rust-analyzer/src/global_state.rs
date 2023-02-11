@@ -64,7 +64,7 @@ pub(crate) struct GlobalState {
     pub(crate) source_root_config: SourceRootConfig,
     pub(crate) proc_macro_clients: Vec<Result<ProcMacroServer, String>>,
 
-    pub(crate) flycheck: Vec<FlycheckHandle>,
+    pub(crate) flycheck: Arc<[FlycheckHandle]>,
     pub(crate) flycheck_sender: Sender<flycheck::Message>,
     pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
 
@@ -100,7 +100,7 @@ pub(crate) struct GlobalState {
     /// the user just adds comments or whitespace to Cargo.toml, we do not want
     /// to invalidate any salsa caches.
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
-    pub(crate) fetch_workspaces_queue: OpQueue<Vec<anyhow::Result<ProjectWorkspace>>>,
+    pub(crate) fetch_workspaces_queue: OpQueue<Option<Vec<anyhow::Result<ProjectWorkspace>>>>,
     pub(crate) fetch_build_data_queue:
         OpQueue<(Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
 
@@ -117,6 +117,7 @@ pub(crate) struct GlobalStateSnapshot {
     vfs: Arc<RwLock<(vfs::Vfs, NoHashHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
     pub(crate) proc_macros_loaded: bool,
+    pub(crate) flycheck: Arc<[FlycheckHandle]>,
 }
 
 impl std::panic::UnwindSafe for GlobalStateSnapshot {}
@@ -133,7 +134,7 @@ impl GlobalState {
 
         let task_pool = {
             let (sender, receiver) = unbounded();
-            let handle = TaskPool::new(sender);
+            let handle = TaskPool::new_with_threads(sender, config.main_loop_num_threads());
             Handle { handle, receiver }
         };
 
@@ -155,7 +156,7 @@ impl GlobalState {
             source_root_config: SourceRootConfig::default(),
             proc_macro_clients: vec![],
 
-            flycheck: Vec::new(),
+            flycheck: Arc::new([]),
             flycheck_sender,
             flycheck_receiver,
 
@@ -295,6 +296,7 @@ impl GlobalState {
             mem_docs: self.mem_docs.clone(),
             semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
             proc_macros_loaded: !self.fetch_build_data_queue.last_op_result().0.is_empty(),
+            flycheck: self.flycheck.clone(),
         }
     }
 
@@ -381,7 +383,7 @@ impl GlobalStateSnapshot {
     pub(crate) fn file_line_index(&self, file_id: FileId) -> Cancellable<LineIndex> {
         let endings = self.vfs.read().1[&file_id];
         let index = self.analysis.file_line_index(file_id)?;
-        let res = LineIndex { index, endings, encoding: self.config.offset_encoding() };
+        let res = LineIndex { index, endings, encoding: self.config.position_encoding() };
         Ok(res)
     }
 
@@ -396,6 +398,10 @@ impl GlobalStateSnapshot {
         let path = base.join(&path.path).unwrap();
         let path = path.as_path().unwrap();
         url_from_abs_path(path)
+    }
+
+    pub(crate) fn file_id_to_file_path(&self, file_id: FileId) -> vfs::VfsPath {
+        self.vfs.read().0.file_path(file_id)
     }
 
     pub(crate) fn cargo_target_for_crate_root(
@@ -423,6 +429,6 @@ pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
 
 pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> Result<FileId> {
     let path = from_proto::vfs_path(url)?;
-    let res = vfs.file_id(&path).ok_or_else(|| format!("file not found: {}", path))?;
+    let res = vfs.file_id(&path).ok_or_else(|| format!("file not found: {path}"))?;
     Ok(res)
 }

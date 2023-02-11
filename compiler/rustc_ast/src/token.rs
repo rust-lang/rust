@@ -5,6 +5,7 @@ pub use TokenKind::*;
 
 use crate::ast;
 use crate::ptr::P;
+use crate::util::case::Case;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -58,13 +59,17 @@ pub enum Delimiter {
     Invisible,
 }
 
+// Note that the suffix is *not* considered when deciding the `LitKind` in this
+// type. This means that float literals like `1f32` are classified by this type
+// as `Int`. Only upon conversion to `ast::LitKind` will such a literal be
+// given the `Float` kind.
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum LitKind {
     Bool, // AST only, must never appear in a `Token`
     Byte,
     Char,
-    Integer,
-    Float,
+    Integer, // e.g. `1`, `1u8`, `1f32`
+    Float,   // e.g. `1.`, `1.0`, `1e3f32`
     Str,
     StrRaw(u8), // raw string delimited by `n` hash symbols
     ByteStr,
@@ -80,31 +85,67 @@ pub struct Lit {
     pub suffix: Option<Symbol>,
 }
 
+impl Lit {
+    pub fn new(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Lit {
+        Lit { kind, symbol, suffix }
+    }
+
+    /// Returns `true` if this is semantically a float literal. This includes
+    /// ones like `1f32` that have an `Integer` kind but a float suffix.
+    pub fn is_semantic_float(&self) -> bool {
+        match self.kind {
+            LitKind::Float => true,
+            LitKind::Integer => match self.suffix {
+                Some(sym) => sym == sym::f32 || sym == sym::f64,
+                None => false,
+            },
+            _ => false,
+        }
+    }
+
+    /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
+    pub fn from_token(token: &Token) -> Option<Lit> {
+        match token.uninterpolate().kind {
+            Ident(name, false) if name.is_bool_lit() => {
+                Some(Lit::new(Bool, name, None))
+            }
+            Literal(token_lit) => Some(token_lit),
+            Interpolated(ref nt)
+                if let NtExpr(expr) | NtLiteral(expr) = &**nt
+                && let ast::ExprKind::Lit(token_lit) = expr.kind =>
+            {
+                Some(token_lit)
+            }
+            _ => None,
+        }
+    }
+}
+
 impl fmt::Display for Lit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Lit { kind, symbol, suffix } = *self;
         match kind {
-            Byte => write!(f, "b'{}'", symbol)?,
-            Char => write!(f, "'{}'", symbol)?,
-            Str => write!(f, "\"{}\"", symbol)?,
+            Byte => write!(f, "b'{symbol}'")?,
+            Char => write!(f, "'{symbol}'")?,
+            Str => write!(f, "\"{symbol}\"")?,
             StrRaw(n) => write!(
                 f,
                 "r{delim}\"{string}\"{delim}",
                 delim = "#".repeat(n as usize),
                 string = symbol
             )?,
-            ByteStr => write!(f, "b\"{}\"", symbol)?,
+            ByteStr => write!(f, "b\"{symbol}\"")?,
             ByteStrRaw(n) => write!(
                 f,
                 "br{delim}\"{string}\"{delim}",
                 delim = "#".repeat(n as usize),
                 string = symbol
             )?,
-            Integer | Float | Bool | Err => write!(f, "{}", symbol)?,
+            Integer | Float | Bool | Err => write!(f, "{symbol}")?,
         }
 
         if let Some(suffix) = suffix {
-            write!(f, "{}", suffix)?;
+            write!(f, "{suffix}")?;
         }
 
         Ok(())
@@ -135,12 +176,6 @@ impl LitKind {
 
     pub(crate) fn may_have_suffix(self) -> bool {
         matches!(self, Integer | Float | Err)
-    }
-}
-
-impl Lit {
-    pub fn new(kind: LitKind, symbol: Symbol, suffix: Option<Symbol>) -> Lit {
-        Lit { kind, symbol, suffix }
     }
 }
 
@@ -267,9 +302,9 @@ impl TokenKind {
         Literal(Lit::new(kind, symbol, suffix))
     }
 
-    // An approximation to proc-macro-style single-character operators used by rustc parser.
-    // If the operator token can be broken into two tokens, the first of which is single-character,
-    // then this function performs that operation, otherwise it returns `None`.
+    /// An approximation to proc-macro-style single-character operators used by rustc parser.
+    /// If the operator token can be broken into two tokens, the first of which is single-character,
+    /// then this function performs that operation, otherwise it returns `None`.
     pub fn break_two_token_op(&self) -> Option<(TokenKind, TokenKind)> {
         Some(match *self {
             Le => (Lt, Eq),
@@ -342,6 +377,10 @@ impl Token {
             Interpolated(nt) => nt.span(),
             _ => self.span,
         }
+    }
+
+    pub fn is_range_separator(&self) -> bool {
+        [DotDot, DotDotDot, DotDotEq].contains(&self.kind)
     }
 
     pub fn is_op(&self) -> bool {
@@ -503,10 +542,10 @@ impl Token {
         }
     }
 
-    // A convenience function for matching on identifiers during parsing.
-    // Turns interpolated identifier (`$i: ident`) or lifetime (`$l: lifetime`) token
-    // into the regular identifier or lifetime token it refers to,
-    // otherwise returns the original token.
+    /// A convenience function for matching on identifiers during parsing.
+    /// Turns interpolated identifier (`$i: ident`) or lifetime (`$l: lifetime`) token
+    /// into the regular identifier or lifetime token it refers to,
+    /// otherwise returns the original token.
     pub fn uninterpolate(&self) -> Cow<'_, Token> {
         match &self.kind {
             Interpolated(nt) => match **nt {
@@ -566,9 +605,10 @@ impl Token {
 
     /// Returns `true` if the token is an interpolated path.
     fn is_path(&self) -> bool {
-        if let Interpolated(ref nt) = self.kind && let NtPath(..) = **nt {
+        if let Interpolated(nt) = &self.kind && let NtPath(..) = **nt {
             return true;
         }
+
         false
     }
 
@@ -576,7 +616,7 @@ impl Token {
     /// That is, is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
-        if let Interpolated(ref nt) = self.kind
+        if let Interpolated(nt) = &self.kind
             && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtBlock(_) = **nt
         {
             return true;
@@ -585,11 +625,12 @@ impl Token {
         false
     }
 
-    // Is the token an interpolated block (`$b:block`)?
+    /// Is the token an interpolated block (`$b:block`)?
     pub fn is_whole_block(&self) -> bool {
-        if let Interpolated(ref nt) = self.kind && let NtBlock(..) = **nt {
+        if let Interpolated(nt) = &self.kind && let NtBlock(..) = **nt {
             return true;
         }
+
         false
     }
 
@@ -615,12 +656,21 @@ impl Token {
         self.is_non_raw_ident_where(|id| id.name == kw)
     }
 
+    /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this token is an identifier equal to `kw` ignoring the case.
+    pub fn is_keyword_case(&self, kw: Symbol, case: Case) -> bool {
+        self.is_keyword(kw)
+            || (case == Case::Insensitive
+                && self.is_non_raw_ident_where(|id| {
+                    id.name.as_str().to_lowercase() == kw.as_str().to_lowercase()
+                }))
+    }
+
     pub fn is_path_segment_keyword(&self) -> bool {
         self.is_non_raw_ident_where(Ident::is_path_segment_keyword)
     }
 
-    // Returns true for reserved identifiers used internally for elided lifetimes,
-    // unnamed method parameters, crate root module, error recovery etc.
+    /// Returns true for reserved identifiers used internally for elided lifetimes,
+    /// unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special_ident(&self) -> bool {
         self.is_non_raw_ident_where(Ident::is_special)
     }
@@ -706,7 +756,7 @@ impl Token {
                 _ => return None,
             },
             SingleQuote => match joint.kind {
-                Ident(name, false) => Lifetime(Symbol::intern(&format!("'{}", name))),
+                Ident(name, false) => Lifetime(Symbol::intern(&format!("'{name}"))),
                 _ => return None,
             },
 
@@ -889,10 +939,11 @@ where
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(Lit, 12);
     static_assert_size!(LitKind, 2);
     static_assert_size!(Nonterminal, 16);
     static_assert_size!(Token, 24);
     static_assert_size!(TokenKind, 16);
+    // tidy-alphabetical-end
 }

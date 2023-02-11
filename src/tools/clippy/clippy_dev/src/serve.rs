@@ -49,7 +49,7 @@ fn mtime(path: impl AsRef<Path>) -> SystemTime {
             .into_iter()
             .flatten()
             .flatten()
-            .map(|entry| mtime(&entry.path()))
+            .map(|entry| mtime(entry.path()))
             .max()
             .unwrap_or(SystemTime::UNIX_EPOCH)
     } else {

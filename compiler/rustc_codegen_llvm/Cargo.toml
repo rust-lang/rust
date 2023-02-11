@@ -11,7 +11,10 @@ bitflags = "1.0"
 cstr = "0.2"
 libc = "0.2"
 measureme = "10.0.0"
-object = { version = "0.29.0", default-features = false, features = ["std", "read_core", "archive", "coff", "elf", "macho", "pe"] }
+object = { version = "0.30.1", default-features = false, features = [
+    "std",
+    "read",
+] }
 tracing = "0.1"
 rustc_middle = { path = "../rustc_middle" }
 rustc-demangle = "0.1.21"
@@ -27,7 +30,6 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_session = { path = "../rustc_session" }
-rustc_serialize = { path = "../rustc_serialize" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_target = { path = "../rustc_target" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }

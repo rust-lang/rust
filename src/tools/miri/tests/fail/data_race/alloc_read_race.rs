@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
 #![feature(new_uninit)]
 
 use std::mem::MaybeUninit;
@@ -37,7 +37,7 @@ pub fn main() {
             let pointer = &*ptr.0;
 
             // Note: could also error due to reading uninitialized memory, but the data-race detector triggers first.
-            *pointer.load(Ordering::Relaxed) //~ ERROR: Data race detected between Read on thread `<unnamed>` and Allocate on thread `<unnamed>`
+            *pointer.load(Ordering::Relaxed) //~ ERROR: Data race detected between (1) Allocate on thread `<unnamed>` and (2) Read on thread `<unnamed>`
         });
 
         j1.join().unwrap();

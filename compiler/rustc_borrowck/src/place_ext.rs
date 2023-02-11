@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::borrow_set::LocalsStateAtExit;
 use rustc_hir as hir;
 use rustc_middle::mir::ProjectionElem;
@@ -61,7 +63,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                     ty::RawPtr(..) | ty::Ref(_, _, hir::Mutability::Not) => {
                         // For both derefs of raw pointers and `&T`
                         // references, the original path is `Copy` and
-                        // therefore not significant.  In particular,
+                        // therefore not significant. In particular,
                         // there is nothing the user can do to the
                         // original path that would invalidate the
                         // newly created reference -- and if there

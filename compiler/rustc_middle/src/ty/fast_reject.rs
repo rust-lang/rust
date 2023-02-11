@@ -6,28 +6,18 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter;
 
-use self::SimplifiedTypeGen::*;
+use self::SimplifiedType::*;
 
-pub type SimplifiedType = SimplifiedTypeGen<DefId>;
-
-/// See `simplify_type`
-///
-/// Note that we keep this type generic over the type of identifier it uses
-/// because we sometimes need to use SimplifiedTypeGen values as stable sorting
-/// keys (in which case we use a DefPathHash as id-type) but in the general case
-/// the non-stable but fast to construct DefId-version is the better choice.
+/// See `simplify_type`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
-pub enum SimplifiedTypeGen<D>
-where
-    D: Copy + Debug + Eq,
-{
+pub enum SimplifiedType {
     BoolSimplifiedType,
     CharSimplifiedType,
     IntSimplifiedType(ty::IntTy),
     UintSimplifiedType(ty::UintTy),
     FloatSimplifiedType(ty::FloatTy),
-    AdtSimplifiedType(D),
-    ForeignSimplifiedType(D),
+    AdtSimplifiedType(DefId),
+    ForeignSimplifiedType(DefId),
     StrSimplifiedType,
     ArraySimplifiedType,
     SliceSimplifiedType,
@@ -38,11 +28,11 @@ where
     /// A trait object, all of whose components are markers
     /// (e.g., `dyn Send + Sync`).
     MarkerTraitObjectSimplifiedType,
-    TraitSimplifiedType(D),
-    ClosureSimplifiedType(D),
-    GeneratorSimplifiedType(D),
+    TraitSimplifiedType(DefId),
+    ClosureSimplifiedType(DefId),
+    GeneratorSimplifiedType(DefId),
     GeneratorWitnessSimplifiedType(usize),
-    OpaqueSimplifiedType(D),
+    GeneratorWitnessMIRSimplifiedType(DefId),
     FunctionSimplifiedType(usize),
     PlaceholderSimplifiedType,
 }
@@ -119,6 +109,7 @@ pub fn simplify_type<'tcx>(
         ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(ClosureSimplifiedType(def_id)),
         ty::Generator(def_id, _, _) => Some(GeneratorSimplifiedType(def_id)),
         ty::GeneratorWitness(tys) => Some(GeneratorWitnessSimplifiedType(tys.skip_binder().len())),
+        ty::GeneratorWitnessMIR(def_id, _) => Some(GeneratorWitnessMIRSimplifiedType(def_id)),
         ty::Never => Some(NeverSimplifiedType),
         ty::Tuple(tys) => Some(TupleSimplifiedType(tys.len())),
         ty::FnPtr(f) => Some(FunctionSimplifiedType(f.skip_binder().inputs().len())),
@@ -127,7 +118,7 @@ pub fn simplify_type<'tcx>(
             TreatParams::AsPlaceholder => Some(PlaceholderSimplifiedType),
             TreatParams::AsInfer => None,
         },
-        ty::Projection(_) => match treat_params {
+        ty::Alias(..) => match treat_params {
             // When treating `ty::Param` as a placeholder, projections also
             // don't unify with anything else as long as they are fully normalized.
             //
@@ -138,53 +129,21 @@ pub fn simplify_type<'tcx>(
             }
             TreatParams::AsPlaceholder | TreatParams::AsInfer => None,
         },
-        ty::Opaque(def_id, _) => Some(OpaqueSimplifiedType(def_id)),
         ty::Foreign(def_id) => Some(ForeignSimplifiedType(def_id)),
         ty::Bound(..) | ty::Infer(_) | ty::Error(_) => None,
     }
 }
 
-impl<D: Copy + Debug + Eq> SimplifiedTypeGen<D> {
-    pub fn def(self) -> Option<D> {
+impl SimplifiedType {
+    pub fn def(self) -> Option<DefId> {
         match self {
             AdtSimplifiedType(d)
             | ForeignSimplifiedType(d)
             | TraitSimplifiedType(d)
             | ClosureSimplifiedType(d)
             | GeneratorSimplifiedType(d)
-            | OpaqueSimplifiedType(d) => Some(d),
+            | GeneratorWitnessMIRSimplifiedType(d) => Some(d),
             _ => None,
-        }
-    }
-
-    pub fn map_def<U, F>(self, map: F) -> SimplifiedTypeGen<U>
-    where
-        F: Fn(D) -> U,
-        U: Copy + Debug + Eq,
-    {
-        match self {
-            BoolSimplifiedType => BoolSimplifiedType,
-            CharSimplifiedType => CharSimplifiedType,
-            IntSimplifiedType(t) => IntSimplifiedType(t),
-            UintSimplifiedType(t) => UintSimplifiedType(t),
-            FloatSimplifiedType(t) => FloatSimplifiedType(t),
-            AdtSimplifiedType(d) => AdtSimplifiedType(map(d)),
-            ForeignSimplifiedType(d) => ForeignSimplifiedType(map(d)),
-            StrSimplifiedType => StrSimplifiedType,
-            ArraySimplifiedType => ArraySimplifiedType,
-            SliceSimplifiedType => SliceSimplifiedType,
-            RefSimplifiedType(m) => RefSimplifiedType(m),
-            PtrSimplifiedType(m) => PtrSimplifiedType(m),
-            NeverSimplifiedType => NeverSimplifiedType,
-            MarkerTraitObjectSimplifiedType => MarkerTraitObjectSimplifiedType,
-            TupleSimplifiedType(n) => TupleSimplifiedType(n),
-            TraitSimplifiedType(d) => TraitSimplifiedType(map(d)),
-            ClosureSimplifiedType(d) => ClosureSimplifiedType(map(d)),
-            GeneratorSimplifiedType(d) => GeneratorSimplifiedType(map(d)),
-            GeneratorWitnessSimplifiedType(n) => GeneratorWitnessSimplifiedType(n),
-            OpaqueSimplifiedType(d) => OpaqueSimplifiedType(map(d)),
-            FunctionSimplifiedType(n) => FunctionSimplifiedType(n),
-            PlaceholderSimplifiedType => PlaceholderSimplifiedType,
         }
     }
 }
@@ -229,7 +188,7 @@ impl DeepRejectCtxt {
         match impl_ty.kind() {
             // Start by checking whether the type in the impl may unify with
             // pretty much everything. Just return `true` in that case.
-            ty::Param(_) | ty::Projection(_) | ty::Error(_) => return true,
+            ty::Param(_) | ty::Error(_) | ty::Alias(..) => return true,
             // These types only unify with inference variables or their own
             // variant.
             ty::Bool
@@ -247,12 +206,12 @@ impl DeepRejectCtxt {
             | ty::Never
             | ty::Tuple(..)
             | ty::FnPtr(..)
-            | ty::Foreign(..)
-            | ty::Opaque(..) => {}
+            | ty::Foreign(..) => {}
             ty::FnDef(..)
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Infer(_) => bug!("unexpected impl_ty: {impl_ty}"),
@@ -328,11 +287,6 @@ impl DeepRejectCtxt {
                 _ => false,
             },
 
-            // Opaque types in impls should be forbidden, but that doesn't
-            // stop compilation. So this match arm should never return true
-            // if compilation succeeds.
-            ty::Opaque(..) => matches!(k, ty::Opaque(..)),
-
             // Impls cannot contain these types as these cannot be named directly.
             ty::FnDef(..) | ty::Closure(..) | ty::Generator(..) => false,
 
@@ -352,11 +306,11 @@ impl DeepRejectCtxt {
             // projections can unify with other stuff.
             //
             // Looking forward to lazy normalization this is the safer strategy anyways.
-            ty::Projection(_) => true,
+            ty::Alias(..) => true,
 
             ty::Error(_) => true,
 
-            ty::GeneratorWitness(..) | ty::Bound(..) => {
+            ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) | ty::Bound(..) => {
                 bug!("unexpected obligation type: {:?}", obligation_ty)
             }
         }
@@ -364,7 +318,10 @@ impl DeepRejectCtxt {
 
     pub fn consts_may_unify(self, obligation_ct: ty::Const<'_>, impl_ct: ty::Const<'_>) -> bool {
         match impl_ct.kind() {
-            ty::ConstKind::Param(_) | ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => {
+            ty::ConstKind::Expr(_)
+            | ty::ConstKind::Param(_)
+            | ty::ConstKind::Unevaluated(_)
+            | ty::ConstKind::Error(_) => {
                 return true;
             }
             ty::ConstKind::Value(_) => {}
@@ -382,7 +339,9 @@ impl DeepRejectCtxt {
 
             // As we don't necessarily eagerly evaluate constants,
             // they might unify with any value.
-            ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => true,
+            ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) | ty::ConstKind::Error(_) => {
+                true
+            }
             ty::ConstKind::Value(obl) => match k {
                 ty::ConstKind::Value(imp) => obl == imp,
                 _ => true,

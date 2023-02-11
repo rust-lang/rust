@@ -213,13 +213,7 @@
 //! metadata::locator or metadata::creader for all the juicy details!
 
 use crate::creader::Library;
-use crate::errors::{
-    CannotFindCrate, CrateLocationUnknownType, DlError, ExternLocationNotExist,
-    ExternLocationNotFile, FoundStaticlib, IncompatibleRustc, InvalidMetadataFiles,
-    LibFilenameForm, MultipleCandidates, MultipleMatchingCrates, NewerCrateVersion,
-    NoCrateWithTriple, NoDylibPlugin, NonAsciiName, StableCrateIdCollision, SymbolConflictsCurrent,
-    SymbolConflictsOthers,
-};
+use crate::errors;
 use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -240,7 +234,6 @@ use rustc_target::spec::{Target, TargetTriple};
 
 use snap::read::FrameDecoder;
 use std::borrow::Cow;
-use std::fmt::Write as _;
 use std::io::{Read, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 use std::{cmp, fmt, fs};
@@ -482,7 +475,22 @@ impl<'a> CrateLocator<'a> {
         match libraries.len() {
             0 => Ok(None),
             1 => Ok(Some(libraries.into_iter().next().unwrap().1)),
-            _ => Err(CrateError::MultipleMatchingCrates(self.crate_name, libraries)),
+            _ => {
+                let mut libraries: Vec<_> = libraries.into_values().collect();
+
+                libraries.sort_by_cached_key(|lib| lib.source.paths().next().unwrap().clone());
+                let candidates = libraries
+                    .iter()
+                    .map(|lib| lib.source.paths().next().unwrap().clone())
+                    .collect::<Vec<_>>();
+
+                Err(CrateError::MultipleCandidates(
+                    self.crate_name,
+                    // these are the same for all candidates
+                    get_flavor_from_path(candidates.first().unwrap()),
+                    candidates,
+                ))
+            }
         }
     }
 
@@ -578,7 +586,7 @@ impl<'a> CrateLocator<'a> {
                     Err(MetadataError::LoadFailure(err)) => {
                         info!("no metadata found: {}", err);
                         // The file was present and created by the same compiler version, but we
-                        // couldn't load it for some reason.  Give a hard error instead of silently
+                        // couldn't load it for some reason. Give a hard error instead of silently
                         // ignoring it, but only if we would have given an error anyway.
                         self.crate_rejections
                             .via_invalid
@@ -703,6 +711,12 @@ impl<'a> CrateLocator<'a> {
         for loc in &self.exact_paths {
             if !loc.canonicalized().exists() {
                 return Err(CrateError::ExternLocationNotExist(
+                    self.crate_name,
+                    loc.original().clone(),
+                ));
+            }
+            if !loc.original().is_file() {
+                return Err(CrateError::ExternLocationNotFile(
                     self.crate_name,
                     loc.original().clone(),
                 ));
@@ -876,17 +890,22 @@ pub fn list_file_metadata(
     metadata_loader: &dyn MetadataLoader,
     out: &mut dyn Write,
 ) -> IoResult<()> {
+    let flavor = get_flavor_from_path(path);
+    match get_metadata_section(target, flavor, path, metadata_loader) {
+        Ok(metadata) => metadata.list_crate_metadata(out),
+        Err(msg) => write!(out, "{}\n", msg),
+    }
+}
+
+fn get_flavor_from_path(path: &Path) -> CrateFlavor {
     let filename = path.file_name().unwrap().to_str().unwrap();
-    let flavor = if filename.ends_with(".rlib") {
+
+    if filename.ends_with(".rlib") {
         CrateFlavor::Rlib
     } else if filename.ends_with(".rmeta") {
         CrateFlavor::Rmeta
     } else {
         CrateFlavor::Dylib
-    };
-    match get_metadata_section(target, flavor, path, metadata_loader) {
-        Ok(metadata) => metadata.list_crate_metadata(out),
-        Err(msg) => write!(out, "{}\n", msg),
     }
 }
 
@@ -925,9 +944,7 @@ pub(crate) enum CrateError {
     ExternLocationNotExist(Symbol, PathBuf),
     ExternLocationNotFile(Symbol, PathBuf),
     MultipleCandidates(Symbol, CrateFlavor, Vec<PathBuf>),
-    MultipleMatchingCrates(Symbol, FxHashMap<Svh, Library>),
     SymbolConflictsCurrent(Symbol),
-    SymbolConflictsOthers(Symbol),
     StableCrateIdCollision(Symbol, Symbol),
     DlOpen(String),
     DlSym(String),
@@ -957,62 +974,25 @@ impl CrateError {
     pub(crate) fn report(self, sess: &Session, span: Span, missing_core: bool) {
         match self {
             CrateError::NonAsciiName(crate_name) => {
-                sess.emit_err(NonAsciiName { span, crate_name });
+                sess.emit_err(errors::NonAsciiName { span, crate_name });
             }
             CrateError::ExternLocationNotExist(crate_name, loc) => {
-                sess.emit_err(ExternLocationNotExist { span, crate_name, location: &loc });
+                sess.emit_err(errors::ExternLocationNotExist { span, crate_name, location: &loc });
             }
             CrateError::ExternLocationNotFile(crate_name, loc) => {
-                sess.emit_err(ExternLocationNotFile { span, crate_name, location: &loc });
+                sess.emit_err(errors::ExternLocationNotFile { span, crate_name, location: &loc });
             }
             CrateError::MultipleCandidates(crate_name, flavor, candidates) => {
-                sess.emit_err(MultipleCandidates { span, flavor: flavor, crate_name, candidates });
-            }
-            CrateError::MultipleMatchingCrates(crate_name, libraries) => {
-                let mut libraries: Vec<_> = libraries.into_values().collect();
-                // Make ordering of candidates deterministic.
-                // This has to `clone()` to work around lifetime restrictions with `sort_by_key()`.
-                // `sort_by()` could be used instead, but this is in the error path,
-                // so the performance shouldn't matter.
-                libraries.sort_by_cached_key(|lib| lib.source.paths().next().unwrap().clone());
-                let candidates = libraries
-                    .iter()
-                    .map(|lib| {
-                        let crate_name = lib.metadata.get_root().name();
-                        let crate_name = crate_name.as_str();
-                        let mut paths = lib.source.paths();
-
-                        // This `unwrap()` should be okay because there has to be at least one
-                        // source file. `CrateSource`'s docs confirm that too.
-                        let mut s = format!(
-                            "\ncrate `{}`: {}",
-                            crate_name,
-                            paths.next().unwrap().display()
-                        );
-                        let padding = 8 + crate_name.len();
-                        for path in paths {
-                            write!(s, "\n{:>padding$}", path.display(), padding = padding).unwrap();
-                        }
-                        s
-                    })
-                    .collect::<String>();
-                sess.emit_err(MultipleMatchingCrates { span, crate_name, candidates });
+                sess.emit_err(errors::MultipleCandidates { span, crate_name, flavor, candidates });
             }
             CrateError::SymbolConflictsCurrent(root_name) => {
-                sess.emit_err(SymbolConflictsCurrent { span, crate_name: root_name });
-            }
-            CrateError::SymbolConflictsOthers(root_name) => {
-                sess.emit_err(SymbolConflictsOthers { span, crate_name: root_name });
+                sess.emit_err(errors::SymbolConflictsCurrent { span, crate_name: root_name });
             }
             CrateError::StableCrateIdCollision(crate_name0, crate_name1) => {
-                sess.emit_err(StableCrateIdCollision {
-                    span,
-                    crate_name0: crate_name0,
-                    crate_name1: crate_name1,
-                });
+                sess.emit_err(errors::StableCrateIdCollision { span, crate_name0, crate_name1 });
             }
             CrateError::DlOpen(s) | CrateError::DlSym(s) => {
-                sess.emit_err(DlError { span, err: s });
+                sess.emit_err(errors::DlError { span, err: s });
             }
             CrateError::LocatorCombined(locator) => {
                 let crate_name = locator.crate_name;
@@ -1020,12 +1000,15 @@ impl CrateError {
                     None => String::new(),
                     Some(r) => format!(" which `{}` depends on", r.name),
                 };
-                // FIXME: There are no tests for CrateLocationUnknownType or LibFilenameForm
                 if !locator.crate_rejections.via_filename.is_empty() {
                     let mismatches = locator.crate_rejections.via_filename.iter();
                     for CrateMismatch { path, .. } in mismatches {
-                        sess.emit_err(CrateLocationUnknownType { span, path: &path });
-                        sess.emit_err(LibFilenameForm {
+                        sess.emit_err(errors::CrateLocationUnknownType {
+                            span,
+                            path: &path,
+                            crate_name,
+                        });
+                        sess.emit_err(errors::LibFilenameForm {
                             span,
                             dll_prefix: &locator.dll_prefix,
                             dll_suffix: &locator.dll_suffix,
@@ -1051,7 +1034,7 @@ impl CrateError {
                             ));
                         }
                     }
-                    sess.emit_err(NewerCrateVersion {
+                    sess.emit_err(errors::NewerCrateVersion {
                         span,
                         crate_name: crate_name,
                         add_info,
@@ -1067,9 +1050,9 @@ impl CrateError {
                             path.display(),
                         ));
                     }
-                    sess.emit_err(NoCrateWithTriple {
+                    sess.emit_err(errors::NoCrateWithTriple {
                         span,
-                        crate_name: crate_name,
+                        crate_name,
                         locator_triple: locator.triple.triple(),
                         add_info,
                         found_crates,
@@ -1083,7 +1066,12 @@ impl CrateError {
                             path.display()
                         ));
                     }
-                    sess.emit_err(FoundStaticlib { span, crate_name, add_info, found_crates });
+                    sess.emit_err(errors::FoundStaticlib {
+                        span,
+                        crate_name,
+                        add_info,
+                        found_crates,
+                    });
                 } else if !locator.crate_rejections.via_version.is_empty() {
                     let mismatches = locator.crate_rejections.via_version.iter();
                     for CrateMismatch { path, got } in mismatches {
@@ -1094,7 +1082,7 @@ impl CrateError {
                             path.display(),
                         ));
                     }
-                    sess.emit_err(IncompatibleRustc {
+                    sess.emit_err(errors::IncompatibleRustc {
                         span,
                         crate_name,
                         add_info,
@@ -1106,14 +1094,14 @@ impl CrateError {
                     for CrateMismatch { path: _, got } in locator.crate_rejections.via_invalid {
                         crate_rejections.push(got);
                     }
-                    sess.emit_err(InvalidMetadataFiles {
+                    sess.emit_err(errors::InvalidMetadataFiles {
                         span,
                         crate_name,
                         add_info,
                         crate_rejections,
                     });
                 } else {
-                    sess.emit_err(CannotFindCrate {
+                    sess.emit_err(errors::CannotFindCrate {
                         span,
                         crate_name,
                         add_info,
@@ -1130,7 +1118,7 @@ impl CrateError {
                 }
             }
             CrateError::NonDylibPlugin(crate_name) => {
-                sess.emit_err(NoDylibPlugin { span, crate_name });
+                sess.emit_err(errors::NoDylibPlugin { span, crate_name });
             }
         }
     }

@@ -142,8 +142,29 @@ macro_rules! equatable_if_let {
 }
 
 #[macro_export]
-macro_rules! almost_complete_letter_range {
+macro_rules! almost_complete_range {
     () => {
         let _ = 'a'..'z';
+        let _ = 'A'..'Z';
+        let _ = '0'..'9';
+    };
+}
+
+#[macro_export]
+macro_rules! unsafe_macro {
+    () => {
+        unsafe {
+            *core::ptr::null::<()>();
+            *core::ptr::null::<()>();
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! needless_lifetime {
+    () => {
+        fn needless_lifetime<'a>(x: &'a u8) -> &'a u8 {
+            unimplemented!()
+        }
     };
 }

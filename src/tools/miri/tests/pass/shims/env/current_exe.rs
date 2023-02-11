@@ -1,4 +1,3 @@
-//@ignore-target-windows
 //@only-on-host: the Linux std implementation opens /proc/self/exe, which doesn't work cross-target
 //@compile-flags: -Zmiri-disable-isolation
 use std::env;

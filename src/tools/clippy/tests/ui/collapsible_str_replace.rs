@@ -1,5 +1,6 @@
 // run-rustfix
 
+#![allow(unused)]
 #![warn(clippy::collapsible_str_replace)]
 
 fn get_filter() -> char {
@@ -73,4 +74,14 @@ fn main() {
     let _ = "hesuo worpd"
         .replace('u', iter.next().unwrap())
         .replace('s', iter.next().unwrap());
+}
+
+#[clippy::msrv = "1.57"]
+fn msrv_1_57() {
+    let _ = "".replace('a', "1.57").replace('b', "1.57");
+}
+
+#[clippy::msrv = "1.58"]
+fn msrv_1_58() {
+    let _ = "".replace('a', "1.58").replace('b', "1.58");
 }

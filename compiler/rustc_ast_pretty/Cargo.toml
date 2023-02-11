@@ -6,5 +6,5 @@ edition = "2021"
 [lib]
 
 [dependencies]
-rustc_span = { path = "../rustc_span" }
 rustc_ast = { path = "../rustc_ast" }
+rustc_span = { path = "../rustc_span" }

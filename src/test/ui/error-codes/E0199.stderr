@@ -1,9 +1,0 @@
-error[E0199]: implementing the trait `Bar` is not unsafe
-  --> $DIR/E0199.rs:6:1
-   |
-LL | unsafe impl Bar for Foo { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0199`.

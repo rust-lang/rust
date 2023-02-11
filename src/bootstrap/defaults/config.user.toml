@@ -7,3 +7,7 @@ test-stage = 2
 doc-stage = 2
 # When compiling from source, you usually want all tools.
 extended = true
+
+[llvm]
+# Most users installing from source want to build all parts of the project from source, not just rustc itself.
+download-ci-llvm = false

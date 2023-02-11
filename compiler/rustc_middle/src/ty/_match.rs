@@ -36,12 +36,21 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
+
+    fn intercrate(&self) -> bool {
+        false
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
     fn a_is_expected(&self) -> bool {
         true
     } // irrelevant
+
+    fn mark_ambiguous(&mut self) {
+        bug!()
+    }
 
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
@@ -80,7 +89,9 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
                 Err(TypeError::Sorts(relate::expected_found(self, a, b)))
             }
 
-            (&ty::Error(_), _) | (_, &ty::Error(_)) => Ok(self.tcx().ty_error()),
+            (&ty::Error(guar), _) | (_, &ty::Error(guar)) => {
+                Ok(self.tcx().ty_error_with_guaranteed(guar))
+            }
 
             _ => relate::super_relate_tys(self, a, b),
         }

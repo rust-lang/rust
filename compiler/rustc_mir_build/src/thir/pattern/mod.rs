@@ -2,14 +2,16 @@
 
 mod check_match;
 mod const_to_pat;
-mod deconstruct_pat;
+pub(crate) mod deconstruct_pat;
 mod usefulness;
 
 pub(crate) use self::check_match::check_match;
+pub(crate) use self::usefulness::MatchCheckCtxt;
 
+use crate::errors::*;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
-use rustc_errors::struct_span_err;
+use rustc_errors::error_code;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
@@ -127,10 +129,20 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         hi: mir::ConstantKind<'tcx>,
         end: RangeEnd,
         span: Span,
+        lo_expr: Option<&hir::Expr<'tcx>>,
+        hi_expr: Option<&hir::Expr<'tcx>>,
     ) -> PatKind<'tcx> {
         assert_eq!(lo.ty(), ty);
         assert_eq!(hi.ty(), ty);
         let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env);
+        let max = || {
+            self.tcx
+                .layout_of(self.param_env.with_reveal_all_normalized(self.tcx).and(ty))
+                .ok()
+                .unwrap()
+                .size
+                .unsigned_int_max()
+        };
         match (end, cmp) {
             // `x..y` where `x < y`.
             // Non-empty because the range includes at least `x`.
@@ -139,13 +151,27 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
             // `x..y` where `x >= y`. The range is empty => error.
             (RangeEnd::Excluded, _) => {
-                struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0579,
-                    "lower range bound must be less than upper"
-                )
-                .emit();
+                let mut lower_overflow = false;
+                let mut higher_overflow = false;
+                if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = lo_expr
+                    && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
+                {
+                    if lo.eval_bits(self.tcx, self.param_env, ty) != val {
+                        lower_overflow = true;
+                        self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
+                    }
+                }
+                if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = hi_expr
+                    && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
+                {
+                    if hi.eval_bits(self.tcx, self.param_env, ty) != val {
+                        higher_overflow = true;
+                        self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
+                    }
+                }
+                if !lower_overflow && !higher_overflow {
+                    self.tcx.sess.emit_err(LowerRangeBoundMustBeLessThanUpper { span });
+                }
                 PatKind::Wild
             }
             // `x..=y` where `x == y`.
@@ -156,23 +182,34 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
             // `x..=y` where `x > y` hence the range is empty => error.
             (RangeEnd::Included, _) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0030,
-                    "lower range bound must be less than or equal to upper"
-                );
-                err.span_label(span, "lower bound larger than upper bound");
-                if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                    err.note(
-                        "When matching against a range, the compiler \
-                              verifies that the range is non-empty. Range \
-                              patterns include both end-points, so this is \
-                              equivalent to requiring the start of the range \
-                              to be less than or equal to the end of the range.",
-                    );
+                let mut lower_overflow = false;
+                let mut higher_overflow = false;
+                if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = lo_expr
+                    && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
+                {
+                    if lo.eval_bits(self.tcx, self.param_env, ty) != val {
+                        lower_overflow = true;
+                        self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
+                    }
                 }
-                err.emit();
+                if let Some(hir::Expr { kind: hir::ExprKind::Lit(lit), .. }) = hi_expr
+                    && let rustc_ast::ast::LitKind::Int(val, _) = lit.node
+                {
+                    if hi.eval_bits(self.tcx, self.param_env, ty) != val {
+                        higher_overflow = true;
+                        self.tcx.sess.emit_err(LiteralOutOfRange { span: lit.span, ty, max: max() });
+                    }
+                }
+                if !lower_overflow && !higher_overflow {
+                    self.tcx.sess.emit_err(LowerRangeBoundMustBeLessThanOrEqualToUpper {
+                        span,
+                        teach: if self.tcx.sess.teach(&error_code!(E0030)) {
+                            Some(())
+                        } else {
+                            None
+                        },
+                    });
+                }
                 PatKind::Wild
             }
         }
@@ -216,9 +253,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let lo = lo_expr.map(|e| self.lower_range_expr(e));
                 let hi = hi_expr.map(|e| self.lower_range_expr(e));
 
-                let (lp, hp) = (lo.as_ref().map(|x| &x.0), hi.as_ref().map(|x| &x.0));
+                let (lp, hp) = (lo.as_ref().map(|(x, _)| x), hi.as_ref().map(|(x, _)| x));
                 let mut kind = match self.normalize_range_pattern_ends(ty, lp, hp) {
-                    Some((lc, hc)) => self.lower_pattern_range(ty, lc, hc, end, lo_span),
+                    Some((lc, hc)) => {
+                        self.lower_pattern_range(ty, lc, hc, end, lo_span, lo_expr, hi_expr)
+                    }
                     None => {
                         let msg = &format!(
                             "found bad range pattern `{:?}` outside of error recovery",
@@ -321,7 +360,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let subpatterns = fields
                     .iter()
                     .map(|field| FieldPat {
-                        field: Field::new(self.tcx.field_index(field.hir_id, self.typeck_results)),
+                        field: Field::new(self.typeck_results.field_index(field.hir_id)),
                         pattern: self.lower_pattern(&field.pat),
                     })
                     .collect();
@@ -358,7 +397,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         &mut self,
         pat: &'tcx Option<&'tcx hir::Pat<'tcx>>,
     ) -> Option<Box<Pat<'tcx>>> {
-        pat.as_ref().map(|p| self.lower_pattern(p))
+        pat.map(|p| self.lower_pattern(p))
     }
 
     fn slice_or_array_pattern(
@@ -483,7 +522,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // Use `Reveal::All` here because patterns are always monomorphic even if their function
         // isn't.
         let param_env_reveal_all = self.param_env.with_reveal_all_normalized(self.tcx);
-        let substs = self.typeck_results.node_substs(id);
+        // N.B. There is no guarantee that substs collected in typeck results are fully normalized,
+        // so they need to be normalized in order to pass to `Instance::resolve`, which will ICE
+        // if given unnormalized types.
+        let substs = self
+            .tcx
+            .normalize_erasing_regions(param_env_reveal_all, self.typeck_results.node_substs(id));
         let instance = match ty::Instance::resolve(self.tcx, param_env_reveal_all, def_id, substs) {
             Ok(Some(i)) => i,
             Ok(None) => {
@@ -496,7 +540,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             Err(_) => {
-                self.tcx.sess.span_err(span, "could not evaluate constant pattern");
+                self.tcx.sess.emit_err(CouldNotEvalConstPattern { span });
                 return pat_from_kind(PatKind::Wild);
             }
         };
@@ -543,11 +587,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             Err(ErrorHandled::TooGeneric) => {
                 // While `Reported | Linted` cases will have diagnostics emitted already
                 // it is not true for TooGeneric case, so we need to give user more information.
-                self.tcx.sess.span_err(span, "constant pattern depends on a generic parameter");
+                self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
                 pat_from_kind(PatKind::Wild)
             }
             Err(_) => {
-                self.tcx.sess.span_err(span, "could not evaluate constant pattern");
+                self.tcx.sess.emit_err(CouldNotEvalConstPattern { span });
                 pat_from_kind(PatKind::Wild)
             }
         }
@@ -560,8 +604,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         id: hir::HirId,
         span: Span,
     ) -> PatKind<'tcx> {
-        let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
-        let value = mir::ConstantKind::from_inline_const(self.tcx, anon_const_def_id);
+        let value = mir::ConstantKind::from_inline_const(self.tcx, anon_const.def_id);
 
         // Evaluate early like we do in `lower_path`.
         let value = value.eval(self.tcx, self.param_env);
@@ -572,12 +615,15 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     self.errors.push(PatternError::ConstParamInPattern(span));
                     return PatKind::Wild;
                 }
+                ConstKind::Error(_) => {
+                    return PatKind::Wild;
+                }
                 _ => bug!("Expected ConstKind::Param"),
             },
             mir::ConstantKind::Val(_, _) => self.const_to_pat(value, id, span, false).kind,
             mir::ConstantKind::Unevaluated(..) => {
                 // If we land here it means the const can't be evaluated because it's `TooGeneric`.
-                self.tcx.sess.span_err(span, "constant pattern depends on a generic parameter");
+                self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
                 return PatKind::Wild;
             }
         }
@@ -609,7 +655,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
         match self.tcx.at(expr.span).lit_to_mir_constant(lit_input) {
             Ok(constant) => self.const_to_pat(constant, expr.hir_id, lit.span, false).kind,
-            Err(LitToConstError::Reported) => PatKind::Wild,
+            Err(LitToConstError::Reported(_)) => PatKind::Wild,
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }
     }

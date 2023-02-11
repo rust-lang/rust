@@ -17,7 +17,7 @@ pub(super) fn check_fn<'tcx>(
     kind: intravisit::FnKind<'tcx>,
     decl: &'tcx hir::FnDecl<'tcx>,
     body: &'tcx hir::Body<'tcx>,
-    hir_id: hir::HirId,
+    def_id: LocalDefId,
 ) {
     let unsafety = match kind {
         intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }) => unsafety,
@@ -25,13 +25,13 @@ pub(super) fn check_fn<'tcx>(
         intravisit::FnKind::Closure => return,
     };
 
-    check_raw_ptr(cx, unsafety, decl, body, cx.tcx.hir().local_def_id(hir_id));
+    check_raw_ptr(cx, unsafety, decl, body, def_id);
 }
 
 pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
     if let hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(eid)) = item.kind {
         let body = cx.tcx.hir().body(eid);
-        check_raw_ptr(cx, sig.header.unsafety, sig.decl, body, item.def_id.def_id);
+        check_raw_ptr(cx, sig.header.unsafety, sig.decl, body, item.owner_id.def_id);
     }
 }
 
@@ -42,7 +42,7 @@ fn check_raw_ptr<'tcx>(
     body: &'tcx hir::Body<'tcx>,
     def_id: LocalDefId,
 ) {
-    if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(def_id) {
+    if unsafety == hir::Unsafety::Normal && cx.effective_visibilities.is_exported(def_id) {
         let raw_ptrs = iter_input_pats(decl, body)
             .filter_map(|arg| raw_ptr_arg(cx, arg))
             .collect::<HirIdSet>();
@@ -58,7 +58,7 @@ fn check_raw_ptr<'tcx>(
                     },
                     hir::ExprKind::MethodCall(_, recv, args, _) => {
                         let def_id = typeck.type_dependent_def_id(e.hir_id).unwrap();
-                        if cx.tcx.fn_sig(def_id).skip_binder().unsafety == hir::Unsafety::Unsafe {
+                        if cx.tcx.fn_sig(def_id).skip_binder().skip_binder().unsafety == hir::Unsafety::Unsafe {
                             check_arg(cx, &raw_ptrs, recv);
                             for arg in args {
                                 check_arg(cx, &raw_ptrs, arg);

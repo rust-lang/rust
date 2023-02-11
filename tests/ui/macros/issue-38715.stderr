@@ -1,0 +1,25 @@
+error[E0428]: the name `foo` is defined multiple times
+  --> $DIR/issue-38715.rs:5:1
+   |
+LL | macro_rules! foo { () => {} }
+   | ---------------- previous definition of the macro `foo` here
+...
+LL | macro_rules! foo { () => {} }
+   | ^^^^^^^^^^^^^^^^ `foo` redefined here
+   |
+   = note: `foo` must be defined only once in the macro namespace of this module
+
+error[E0428]: the name `bar` is defined multiple times
+  --> $DIR/issue-38715.rs:14:5
+   |
+LL |     macro_rules! bar { () => {} }
+   |     ---------------- previous definition of the macro `bar` here
+...
+LL |     macro_rules! bar { () => {} }
+   |     ^^^^^^^^^^^^^^^^ `bar` redefined here
+   |
+   = note: `bar` must be defined only once in the macro namespace of this module
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0428`.

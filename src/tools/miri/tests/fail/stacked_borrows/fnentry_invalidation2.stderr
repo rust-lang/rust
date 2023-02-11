@@ -14,12 +14,12 @@ help: <TAG> was created by a SharedReadOnly retag at offsets [0x0..0xc]
    |
 LL |     let ptr = t.sli.as_ptr();
    |               ^^^^^^^^^^^^^^
-help: <TAG> was later invalidated at offsets [0x0..0xc] by a Unique FnEntry retag inside this call
+help: <TAG> was later invalidated at offsets [0x0..0xc] by a Unique function-entry retag inside this call
   --> $DIR/fnentry_invalidation2.rs:LL:CC
    |
 LL |     let _ = t.sli.as_mut_ptr();
    |             ^^^^^^^^^^^^^^^^^^
-   = note: BACKTRACE:
+   = note: BACKTRACE (of the first span):
    = note: inside `main` at $DIR/fnentry_invalidation2.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

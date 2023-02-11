@@ -1,7 +1,11 @@
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::Expr;
+use rustc_ast::{
+    Expr, ExprKind, FormatAlignment, FormatArgPosition, FormatArgPositionKind, FormatArgs,
+    FormatArgsPiece, FormatArgument, FormatArgumentKind, FormatArguments, FormatCount,
+    FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait,
+};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, Applicability, MultiSpan, PResult};
 use rustc_expand::base::{self, *};
@@ -12,21 +16,15 @@ use rustc_span::{BytePos, InnerSpan, Span};
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, LintId};
 
-mod ast;
-use ast::*;
-
-mod expand;
-use expand::expand_parsed_format_args;
-
 // The format_args!() macro is expanded in three steps:
 //  1. First, `parse_args` will parse the `(literal, arg, arg, name=arg, name=arg)` syntax,
 //     but doesn't parse the template (the literal) itself.
 //  2. Second, `make_format_args` will parse the template, the format options, resolve argument references,
-//     produce diagnostics, and turn the whole thing into a `FormatArgs` structure.
-//  3. Finally, `expand_parsed_format_args` will turn that `FormatArgs` structure
-//     into the expression that the macro expands to.
+//     produce diagnostics, and turn the whole thing into a `FormatArgs` AST node.
+//  3. Much later, in AST lowering (rustc_ast_lowering), that `FormatArgs` structure will be turned
+//     into the expression of type `core::fmt::Arguments`.
 
-// See format/ast.rs for the FormatArgs structure and glossary.
+// See rustc_ast/src/format.rs for the FormatArgs structure and glossary.
 
 // Only used in parse_args and report_invalid_references,
 // to indicate how a referred argument was used.
@@ -333,7 +331,7 @@ pub fn make_format_args(
             parse::Piece::String(s) => {
                 unfinished_literal.push_str(s);
             }
-            parse::Piece::NextArgument(parse::Argument { position, position_span, format }) => {
+            parse::Piece::NextArgument(box parse::Argument { position, position_span, format }) => {
                 if !unfinished_literal.is_empty() {
                     template.push(FormatArgsPiece::Literal(Symbol::intern(&unfinished_literal)));
                     unfinished_literal.clear();
@@ -437,7 +435,16 @@ pub fn make_format_args(
                     format_options: FormatOptions {
                         fill: format.fill,
                         alignment,
-                        flags: format.flags,
+                        sign: format.sign.map(|s| match s {
+                            parse::Sign::Plus => FormatSign::Plus,
+                            parse::Sign::Minus => FormatSign::Minus,
+                        }),
+                        alternate: format.alternate,
+                        zero_pad: format.zero_pad,
+                        debug_hex: format.debug_hex.map(|s| match s {
+                            parse::DebugHex::Lower => FormatDebugHex::Lower,
+                            parse::DebugHex::Upper => FormatDebugHex::Upper,
+                        }),
                         precision,
                         width,
                     },
@@ -583,7 +590,7 @@ fn report_missing_placeholders(
     if detect_foreign_fmt {
         use super::format_foreign as foreign;
 
-        // The set of foreign substitutions we've explained.  This prevents spamming the user
+        // The set of foreign substitutions we've explained. This prevents spamming the user
         // with `%d should be written as {}` over and over again.
         let mut explained = FxHashSet::default();
 
@@ -638,7 +645,7 @@ fn report_missing_placeholders(
                 if show_doc_note {
                     diag.note(concat!(
                         stringify!($kind),
-                        " formatting not supported; see the documentation for `std::fmt`",
+                        " formatting is not supported; see the documentation for `std::fmt`",
                     ));
                 }
                 if suggestions.len() > 0 {
@@ -850,7 +857,7 @@ fn expand_format_args_impl<'cx>(
     match parse_args(ecx, sp, tts) {
         Ok((efmt, args)) => {
             if let Ok(format_args) = make_format_args(ecx, efmt, args, nl) {
-                MacEager::expr(expand_parsed_format_args(ecx, format_args))
+                MacEager::expr(ecx.expr(sp, ExprKind::FormatArgs(P(format_args))))
             } else {
                 MacEager::expr(DummyResult::raw_expr(sp, true))
             }

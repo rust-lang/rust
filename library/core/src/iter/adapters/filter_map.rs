@@ -99,7 +99,7 @@ where
         ) -> impl FnMut((), T) -> ControlFlow<B> + '_ {
             move |(), x| match f(x) {
                 Some(x) => ControlFlow::Break(x),
-                None => ControlFlow::CONTINUE,
+                None => ControlFlow::Continue(()),
             }
         }
 

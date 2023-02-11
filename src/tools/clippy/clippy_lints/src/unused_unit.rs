@@ -1,8 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{position_before_rarrow, snippet_opt};
 use if_chain::if_chain;
-use rustc_ast::ast;
-use rustc_ast::visit::FnKind;
+use rustc_ast::{ast, visit::FnKind, ClosureBinder};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -43,6 +42,11 @@ impl EarlyLintPass for UnusedUnit {
             if let ast::TyKind::Tup(ref vals) = ty.kind;
             if vals.is_empty() && !ty.span.from_expansion() && get_def(span) == get_def(ty.span);
             then {
+                // implicit types in closure signatures are forbidden when `for<...>` is present
+                if let FnKind::Closure(&ClosureBinder::For { .. }, ..) = kind {
+                    return;
+                }
+
                 lint_unneeded_unit_return(cx, ty, span);
             }
         }

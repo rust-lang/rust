@@ -324,7 +324,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
 
 macro_rules! make_value_visitor {
     ($visitor_trait:ident, $value_trait:ident, $($mutability:ident)?) => {
-        // How to traverse a value and what to do when we are at the leaves.
+        /// How to traverse a value and what to do when we are at the leaves.
         pub trait $visitor_trait<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
             type V: $value_trait<'mir, 'tcx, M>;
 
@@ -481,12 +481,12 @@ macro_rules! make_value_visitor {
                 };
 
                 // Visit the fields of this value.
-                match v.layout().fields {
+                match &v.layout().fields {
                     FieldsShape::Primitive => {}
-                    FieldsShape::Union(fields) => {
+                    &FieldsShape::Union(fields) => {
                         self.visit_union(v, fields)?;
                     }
-                    FieldsShape::Arbitrary { ref offsets, .. } => {
+                    FieldsShape::Arbitrary { offsets, .. } => {
                         // FIXME: We collect in a vec because otherwise there are lifetime
                         // errors: Projecting to a field needs access to `ecx`.
                         let fields: Vec<InterpResult<'tcx, Self::V>> =

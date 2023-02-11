@@ -6,7 +6,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(let_chains)]
-#![feature(control_flow_enum)]
 #![feature(never_type)]
 #![feature(box_patterns)]
 #![recursion_limit = "256"]
@@ -29,6 +28,7 @@ mod layout;
 mod layout_sanity_check;
 mod needs_drop;
 pub mod representability;
+mod structural_match;
 mod ty;
 
 pub fn provide(providers: &mut Providers) {
@@ -42,4 +42,5 @@ pub fn provide(providers: &mut Providers) {
     representability::provide(providers);
     ty::provide(providers);
     instance::provide(providers);
+    structural_match::provide(providers);
 }

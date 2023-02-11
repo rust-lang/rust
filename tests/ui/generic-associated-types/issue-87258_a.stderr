@@ -1,0 +1,10 @@
+error: unconstrained opaque type
+  --> $DIR/issue-87258_a.rs:17:26
+   |
+LL |     type FooFuture<'a> = impl Trait1;
+   |                          ^^^^^^^^^^^
+   |
+   = note: `FooFuture` must be used in combination with a concrete type within the same impl
+
+error: aborting due to previous error
+

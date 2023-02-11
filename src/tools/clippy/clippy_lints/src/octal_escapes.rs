@@ -56,11 +56,11 @@ impl EarlyLintPass for OctalEscapes {
             return;
         }
 
-        if let ExprKind::Lit(lit) = &expr.kind {
-            if matches!(lit.token_lit.kind, LitKind::Str) {
-                check_lit(cx, &lit.token_lit, lit.span, true);
-            } else if matches!(lit.token_lit.kind, LitKind::ByteStr) {
-                check_lit(cx, &lit.token_lit, lit.span, false);
+        if let ExprKind::Lit(token_lit) = &expr.kind {
+            if matches!(token_lit.kind, LitKind::Str) {
+                check_lit(cx, token_lit, expr.span, true);
+            } else if matches!(token_lit.kind, LitKind::ByteStr) {
+                check_lit(cx, token_lit, expr.span, false);
             }
         }
     }
@@ -125,7 +125,7 @@ fn check_lit(cx: &EarlyContext<'_>, lit: &Lit, span: Span, is_string: bool) {
             if is_string { "string" } else { "byte string" }
         ),
         |diag| {
-            diag.help(&format!(
+            diag.help(format!(
                 "octal escapes are not supported, `\\0` is always a null {}",
                 if is_string { "character" } else { "byte" }
             ));
@@ -139,7 +139,7 @@ fn check_lit(cx: &EarlyContext<'_>, lit: &Lit, span: Span, is_string: bool) {
             // suggestion 2: unambiguous null byte
             diag.span_suggestion(
                 span,
-                &format!(
+                format!(
                     "if the null {} is intended, disambiguate using",
                     if is_string { "character" } else { "byte" }
                 ),

@@ -149,7 +149,7 @@ impl<T: Write + Send> Terminal for TerminfoTerminal<T> {
         // are there any terminals that have color/attrs and not sgr0?
         // Try falling back to sgr, then op
         let cmd = match ["sgr0", "sgr", "op"].iter().find_map(|cap| self.ti.strings.get(*cap)) {
-            Some(op) => match expand(&op, &[], &mut Variables::new()) {
+            Some(op) => match expand(op, &[], &mut Variables::new()) {
                 Ok(cmd) => cmd,
                 Err(e) => return Err(io::Error::new(io::ErrorKind::InvalidData, e)),
             },
@@ -180,12 +180,12 @@ impl<T: Write + Send> TerminfoTerminal<T> {
     }
 
     fn dim_if_necessary(&self, color: color::Color) -> color::Color {
-        if color >= self.num_colors && color >= 8 && color < 16 { color - 8 } else { color }
+        if color >= self.num_colors && (8..16).contains(&color) { color - 8 } else { color }
     }
 
     fn apply_cap(&mut self, cmd: &str, params: &[Param]) -> io::Result<bool> {
         match self.ti.strings.get(cmd) {
-            Some(cmd) => match expand(&cmd, params, &mut Variables::new()) {
+            Some(cmd) => match expand(cmd, params, &mut Variables::new()) {
                 Ok(s) => self.out.write_all(&s).and(Ok(true)),
                 Err(e) => Err(io::Error::new(io::ErrorKind::InvalidData, e)),
             },

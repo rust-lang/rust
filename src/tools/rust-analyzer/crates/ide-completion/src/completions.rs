@@ -19,6 +19,7 @@ pub(crate) mod snippet;
 pub(crate) mod r#type;
 pub(crate) mod use_;
 pub(crate) mod vis;
+pub(crate) mod env_vars;
 
 use std::iter;
 
@@ -132,7 +133,7 @@ impl Completions {
                 if incomplete_let && snippet.ends_with('}') {
                     // complete block expression snippets with a trailing semicolon, if inside an incomplete let
                     cov_mark::hit!(let_semi);
-                    item.insert_snippet(cap, format!("{};", snippet));
+                    item.insert_snippet(cap, format!("{snippet};"));
                 } else {
                     item.insert_snippet(cap, snippet);
                 }
@@ -493,7 +494,7 @@ impl Completions {
             pattern_ctx,
             path_ctx,
             variant,
-            local_name.clone(),
+            local_name,
             None,
         ));
     }

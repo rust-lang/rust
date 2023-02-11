@@ -16,6 +16,7 @@ use ide_db::{
     search::{ReferenceCategory, SearchScope, UsageSearchResult},
     RootDatabase,
 };
+use itertools::Itertools;
 use stdx::hash::NoHashHashMap;
 use syntax::{
     algo::find_node_at_offset,
@@ -86,6 +87,7 @@ pub(crate) fn find_all_refs(
                         file_id,
                         refs.into_iter()
                             .map(|file_ref| (file_ref.range, file_ref.category))
+                            .unique()
                             .collect(),
                     )
                 })

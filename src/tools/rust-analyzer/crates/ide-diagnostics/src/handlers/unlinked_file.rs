@@ -64,7 +64,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, file_id: FileId) -> Option<Vec<Assist>> {
         // `submod/bla.rs` -> `submod.rs`
         let parent_mod = (|| {
             let (name, _) = parent.name_and_extension()?;
-            parent.parent()?.join(&format!("{}.rs", name))
+            parent.parent()?.join(&format!("{name}.rs"))
         })();
         paths.extend(parent_mod);
         paths
@@ -99,8 +99,8 @@ fn make_fixes(
         matches!(item, ast::Item::Module(m) if m.item_list().is_none())
     }
 
-    let mod_decl = format!("mod {};", new_mod_name);
-    let pub_mod_decl = format!("pub mod {};", new_mod_name);
+    let mod_decl = format!("mod {new_mod_name};");
+    let pub_mod_decl = format!("pub mod {new_mod_name};");
 
     let ast: ast::SourceFile = db.parse(parent_file_id).tree();
 
@@ -125,8 +125,8 @@ fn make_fixes(
         Some(last) => {
             cov_mark::hit!(unlinked_file_append_to_existing_mods);
             let offset = last.syntax().text_range().end();
-            mod_decl_builder.insert(offset, format!("\n{}", mod_decl));
-            pub_mod_decl_builder.insert(offset, format!("\n{}", pub_mod_decl));
+            mod_decl_builder.insert(offset, format!("\n{mod_decl}"));
+            pub_mod_decl_builder.insert(offset, format!("\n{pub_mod_decl}"));
         }
         None => {
             // Prepend before the first item in the file.
@@ -134,15 +134,15 @@ fn make_fixes(
                 Some(item) => {
                     cov_mark::hit!(unlinked_file_prepend_before_first_item);
                     let offset = item.syntax().text_range().start();
-                    mod_decl_builder.insert(offset, format!("{}\n\n", mod_decl));
-                    pub_mod_decl_builder.insert(offset, format!("{}\n\n", pub_mod_decl));
+                    mod_decl_builder.insert(offset, format!("{mod_decl}\n\n"));
+                    pub_mod_decl_builder.insert(offset, format!("{pub_mod_decl}\n\n"));
                 }
                 None => {
                     // No items in the file, so just append at the end.
                     cov_mark::hit!(unlinked_file_empty_file);
                     let offset = ast.syntax().text_range().end();
-                    mod_decl_builder.insert(offset, format!("{}\n", mod_decl));
-                    pub_mod_decl_builder.insert(offset, format!("{}\n", pub_mod_decl));
+                    mod_decl_builder.insert(offset, format!("{mod_decl}\n"));
+                    pub_mod_decl_builder.insert(offset, format!("{pub_mod_decl}\n"));
                 }
             }
         }
@@ -152,13 +152,13 @@ fn make_fixes(
     Some(vec![
         fix(
             "add_mod_declaration",
-            &format!("Insert `{}`", mod_decl),
+            &format!("Insert `{mod_decl}`"),
             SourceChange::from_text_edit(parent_file_id, mod_decl_builder.finish()),
             trigger_range,
         ),
         fix(
             "add_pub_mod_declaration",
-            &format!("Insert `{}`", pub_mod_decl),
+            &format!("Insert `{pub_mod_decl}`"),
             SourceChange::from_text_edit(parent_file_id, pub_mod_decl_builder.finish()),
             trigger_range,
         ),

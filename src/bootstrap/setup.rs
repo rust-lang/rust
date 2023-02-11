@@ -1,17 +1,20 @@
+use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::Config;
 use crate::{t, VERSION};
-use crate::{Config, TargetSelection};
+use sha2::Digest;
 use std::env::consts::EXE_SUFFIX;
 use std::fmt::Write as _;
 use std::fs::File;
+use std::io::Write;
 use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 use std::process::Command;
 use std::str::FromStr;
-use std::{
-    env, fmt, fs,
-    io::{self, Write},
-};
+use std::{fmt, fs, io};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg(test)]
+mod tests;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Profile {
     Compiler,
     Codegen,
@@ -19,6 +22,15 @@ pub enum Profile {
     Tools,
     User,
 }
+
+/// A list of historical hashes of `src/etc/vscode_settings.json`.
+/// New entries should be appended whenever this is updated so we can detect
+/// outdated vs. user-modified settings files.
+static SETTINGS_HASHES: &[&str] = &[
+    "ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8",
+    "56e7bf011c71c5d81e0bf42e84938111847a810eee69d906bba494ea90b51922",
+];
+static VSCODE_SETTINGS: &str = include_str!("../etc/vscode_settings.json");
 
 impl Profile {
     fn include_path(&self, src_path: &Path) -> PathBuf {
@@ -50,6 +62,16 @@ impl Profile {
         }
         out
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Profile::Compiler => "compiler",
+            Profile::Codegen => "codegen",
+            Profile::Library => "library",
+            Profile::Tools => "tools",
+            Profile::User => "user",
+        }
+    }
 }
 
 impl FromStr for Profile {
@@ -71,20 +93,104 @@ impl FromStr for Profile {
 
 impl fmt::Display for Profile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Profile::Compiler => write!(f, "compiler"),
-            Profile::Codegen => write!(f, "codegen"),
-            Profile::Library => write!(f, "library"),
-            Profile::User => write!(f, "user"),
-            Profile::Tools => write!(f, "tools"),
+        f.write_str(self.as_str())
+    }
+}
+
+impl Step for Profile {
+    type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
+        for choice in Profile::all() {
+            run = run.alias(choice.as_str());
         }
+        run
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        if run.builder.config.dry_run() {
+            return;
+        }
+
+        // for Profile, `run.paths` will have 1 and only 1 element
+        // this is because we only accept at most 1 path from user input.
+        // If user calls `x.py setup` without arguments, the interactive TUI
+        // will guide user to provide one.
+        let profile = if run.paths.len() > 1 {
+            // HACK: `builder` runs this step with all paths if no path was passed.
+            t!(interactive_path())
+        } else {
+            run.paths
+                .first()
+                .unwrap()
+                .assert_single_path()
+                .path
+                .as_path()
+                .as_os_str()
+                .to_str()
+                .unwrap()
+                .parse()
+                .unwrap()
+        };
+
+        run.builder.ensure(profile);
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        setup(&builder.build.config, self)
     }
 }
 
 pub fn setup(config: &Config, profile: Profile) {
-    let path = &config.config;
+    let stage_path =
+        ["build", config.build.rustc_target_arg(), "stage1"].join(&MAIN_SEPARATOR.to_string());
 
+    if !rustup_installed() && profile != Profile::User {
+        eprintln!("`rustup` is not installed; cannot link `stage1` toolchain");
+    } else if stage_dir_exists(&stage_path[..]) && !config.dry_run() {
+        attempt_toolchain_link(&stage_path[..]);
+    }
+
+    let suggestions = match profile {
+        Profile::Codegen | Profile::Compiler => &["check", "build", "test"][..],
+        Profile::Tools => &[
+            "check",
+            "build",
+            "test tests/rustdoc*",
+            "test src/tools/clippy",
+            "test src/tools/miri",
+            "test src/tools/rustfmt",
+        ],
+        Profile::Library => &["check", "build", "test library/std", "doc"],
+        Profile::User => &["dist", "build"],
+    };
+
+    if !config.dry_run() {
+        t!(install_git_hook_maybe(&config));
+        t!(create_vscode_settings_maybe(&config));
+    }
+
+    println!();
+
+    println!("To get started, try one of the following commands:");
+    for cmd in suggestions {
+        println!("- `x.py {}`", cmd);
+    }
+
+    if profile != Profile::User {
+        println!(
+            "For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggested.html"
+        );
+    }
+
+    let path = &config.config.clone().unwrap_or(PathBuf::from("config.toml"));
+    setup_config_toml(path, profile, config);
+}
+
+fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
     if path.exists() {
+        eprintln!();
         eprintln!(
             "error: you asked `x.py` to setup a new config file, but one already exists at `{}`",
             path.display()
@@ -103,53 +209,11 @@ pub fn setup(config: &Config, profile: Profile) {
     changelog-seen = {}\n",
         profile, VERSION
     );
+
     t!(fs::write(path, settings));
 
     let include_path = profile.include_path(&config.src);
     println!("`x.py` will now use the configuration at {}", include_path.display());
-
-    let build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
-    let stage_path =
-        ["build", build.rustc_target_arg(), "stage1"].join(&MAIN_SEPARATOR.to_string());
-
-    println!();
-
-    if !rustup_installed() && profile != Profile::User {
-        eprintln!("`rustup` is not installed; cannot link `stage1` toolchain");
-    } else if stage_dir_exists(&stage_path[..]) {
-        attempt_toolchain_link(&stage_path[..]);
-    }
-
-    let suggestions = match profile {
-        Profile::Codegen | Profile::Compiler => &["check", "build", "test"][..],
-        Profile::Tools => &[
-            "check",
-            "build",
-            "test src/test/rustdoc*",
-            "test src/tools/clippy",
-            "test src/tools/miri",
-            "test src/tools/rustfmt",
-        ],
-        Profile::Library => &["check", "build", "test library/std", "doc"],
-        Profile::User => &["dist", "build"],
-    };
-
-    println!();
-
-    t!(install_git_hook_maybe(&config));
-
-    println!();
-
-    println!("To get started, try one of the following commands:");
-    for cmd in suggestions {
-        println!("- `x.py {}`", cmd);
-    }
-
-    if profile != Profile::User {
-        println!(
-            "For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggested.html"
-        );
-    }
 }
 
 fn rustup_installed() -> bool {
@@ -301,50 +365,138 @@ pub fn interactive_path() -> io::Result<Profile> {
     Ok(template)
 }
 
-// install a git hook to automatically run tidy --bless, if they want
-fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
+#[derive(PartialEq)]
+enum PromptResult {
+    Yes,   // y/Y/yes
+    No,    // n/N/no
+    Print, // p/P/print
+}
+
+/// Prompt a user for a answer, looping until they enter an accepted input or nothing
+fn prompt_user(prompt: &str) -> io::Result<Option<PromptResult>> {
     let mut input = String::new();
+    loop {
+        print!("{prompt} ");
+        io::stdout().flush()?;
+        input.clear();
+        io::stdin().read_line(&mut input)?;
+        match input.trim().to_lowercase().as_str() {
+            "y" | "yes" => return Ok(Some(PromptResult::Yes)),
+            "n" | "no" => return Ok(Some(PromptResult::No)),
+            "p" | "print" => return Ok(Some(PromptResult::Print)),
+            "" => return Ok(None),
+            _ => {
+                eprintln!("error: unrecognized option '{}'", input.trim());
+                eprintln!("note: press Ctrl+C to exit");
+            }
+        };
+    }
+}
+
+// install a git hook to automatically run tidy, if they want
+fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
+    let git = t!(config.git().args(&["rev-parse", "--git-common-dir"]).output().map(|output| {
+        assert!(output.status.success(), "failed to run `git`");
+        PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
+    }));
+    let dst = git.join("hooks").join("pre-push");
+    if dst.exists() {
+        // The git hook has already been set up, or the user already has a custom hook.
+        return Ok(());
+    }
+
     println!(
-        "Rust's CI will automatically fail if it doesn't pass `tidy`, the internal tool for ensuring code quality.
-If you'd like, x.py can install a git hook for you that will automatically run `tidy --bless` before
+        "\nRust's CI will automatically fail if it doesn't pass `tidy`, the internal tool for ensuring code quality.
+If you'd like, x.py can install a git hook for you that will automatically run `test tidy` before
 pushing your code to ensure your code is up to par. If you decide later that this behavior is
 undesirable, simply delete the `pre-push` file from .git/hooks."
     );
 
-    let should_install = loop {
-        print!("Would you like to install the git hook?: [y/N] ");
-        io::stdout().flush()?;
-        input.clear();
-        io::stdin().read_line(&mut input)?;
-        break match input.trim().to_lowercase().as_str() {
-            "y" | "yes" => true,
-            "n" | "no" | "" => false,
-            _ => {
-                eprintln!("error: unrecognized option '{}'", input.trim());
-                eprintln!("note: press Ctrl+C to exit");
-                continue;
-            }
-        };
-    };
-
-    if should_install {
-        let src = config.src.join("src").join("etc").join("pre-push.sh");
-        let git =
-            t!(config.git().args(&["rev-parse", "--git-common-dir"]).output().map(|output| {
-                assert!(output.status.success(), "failed to run `git`");
-                PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
-            }));
-        let dst = git.join("hooks").join("pre-push");
-        match fs::hard_link(src, &dst) {
-            Err(e) => eprintln!(
+    if prompt_user("Would you like to install the git hook?: [y/N]")? != Some(PromptResult::Yes) {
+        println!("Ok, skipping installation!");
+        return Ok(());
+    }
+    let src = config.src.join("src").join("etc").join("pre-push.sh");
+    match fs::hard_link(src, &dst) {
+        Err(e) => {
+            eprintln!(
                 "error: could not create hook {}: do you already have the git hook installed?\n{}",
                 dst.display(),
                 e
-            ),
-            Ok(_) => println!("Linked `src/etc/pre-push.sh` to `.git/hooks/pre-push`"),
+            );
+            return Err(e);
+        }
+        Ok(_) => println!("Linked `src/etc/pre-push.sh` to `.git/hooks/pre-push`"),
+    };
+    Ok(())
+}
+
+/// Create a `.vscode/settings.json` file for rustc development, or just print it
+fn create_vscode_settings_maybe(config: &Config) -> io::Result<()> {
+    let (current_hash, historical_hashes) = SETTINGS_HASHES.split_last().unwrap();
+    let vscode_settings = config.src.join(".vscode").join("settings.json");
+    // If None, no settings.json exists
+    // If Some(true), is a previous version of settings.json
+    // If Some(false), is not a previous version (i.e. user modified)
+    // If it's up to date we can just skip this
+    let mut mismatched_settings = None;
+    if let Ok(current) = fs::read_to_string(&vscode_settings) {
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(&current);
+        let hash = hex::encode(hasher.finalize().as_slice());
+        if hash == *current_hash {
+            return Ok(());
+        } else if historical_hashes.contains(&hash.as_str()) {
+            mismatched_settings = Some(true);
+        } else {
+            mismatched_settings = Some(false);
+        }
+    }
+    println!(
+        "\nx.py can automatically install the recommended `.vscode/settings.json` file for rustc development"
+    );
+    match mismatched_settings {
+        Some(true) => eprintln!(
+            "warning: existing `.vscode/settings.json` is out of date, x.py will update it"
+        ),
+        Some(false) => eprintln!(
+            "warning: existing `.vscode/settings.json` has been modified by user, x.py will back it up and replace it"
+        ),
+        _ => (),
+    }
+    let should_create = match prompt_user(
+        "Would you like to create/update `settings.json`, or only print suggested settings?: [y/p/N]",
+    )? {
+        Some(PromptResult::Yes) => true,
+        Some(PromptResult::Print) => false,
+        _ => {
+            println!("Ok, skipping settings!");
+            return Ok(());
+        }
+    };
+    if should_create {
+        let path = config.src.join(".vscode");
+        if !path.exists() {
+            fs::create_dir(&path)?;
+        }
+        let verb = match mismatched_settings {
+            // exists but outdated, we can replace this
+            Some(true) => "Updated",
+            // exists but user modified, back it up
+            Some(false) => {
+                // exists and is not current version or outdated, so back it up
+                let mut backup = vscode_settings.clone();
+                backup.set_extension("bak");
+                eprintln!("warning: copying `settings.json` to `settings.json.bak`");
+                fs::copy(&vscode_settings, &backup)?;
+                "Updated"
+            }
+            _ => "Created",
         };
+        fs::write(&vscode_settings, &VSCODE_SETTINGS)?;
+        println!("{verb} `.vscode/settings.json`");
     } else {
-        println!("Ok, skipping installation!");
+        println!("\n{VSCODE_SETTINGS}");
     }
     Ok(())
 }

@@ -1,10 +1,11 @@
 use super::*;
+use crate::testing::crash_test::{CrashTestDummy, Panic};
 use crate::vec::Vec;
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::thread;
 
-use rand::{thread_rng, RngCore};
+use rand::RngCore;
 
 #[test]
 fn test_basic() {
@@ -480,12 +481,12 @@ fn test_split_off_2() {
     }
 }
 
-fn fuzz_test(sz: i32) {
+fn fuzz_test(sz: i32, rng: &mut impl RngCore) {
     let mut m: LinkedList<_> = LinkedList::new();
     let mut v = vec![];
     for i in 0..sz {
         check_links(&m);
-        let r: u8 = thread_rng().next_u32() as u8;
+        let r: u8 = rng.next_u32() as u8;
         match r % 6 {
             0 => {
                 m.pop_back();
@@ -520,11 +521,12 @@ fn fuzz_test(sz: i32) {
 
 #[test]
 fn test_fuzz() {
+    let mut rng = crate::test_helpers::test_rng();
     for _ in 0..25 {
-        fuzz_test(3);
-        fuzz_test(16);
+        fuzz_test(3, &mut rng);
+        fuzz_test(16, &mut rng);
         #[cfg(not(miri))] // Miri is too slow
-        fuzz_test(189);
+        fuzz_test(189, &mut rng);
     }
 }
 
@@ -984,35 +986,34 @@ fn drain_filter_complex() {
 
 #[test]
 fn drain_filter_drop_panic_leak() {
-    static mut DROPS: i32 = 0;
-
-    struct D(bool);
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-
-            if self.0 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
-
+    let d0 = CrashTestDummy::new(0);
+    let d1 = CrashTestDummy::new(1);
+    let d2 = CrashTestDummy::new(2);
+    let d3 = CrashTestDummy::new(3);
+    let d4 = CrashTestDummy::new(4);
+    let d5 = CrashTestDummy::new(5);
+    let d6 = CrashTestDummy::new(6);
+    let d7 = CrashTestDummy::new(7);
     let mut q = LinkedList::new();
-    q.push_back(D(false));
-    q.push_back(D(false));
-    q.push_back(D(false));
-    q.push_back(D(false));
-    q.push_back(D(false));
-    q.push_front(D(false));
-    q.push_front(D(true));
-    q.push_front(D(false));
+    q.push_back(d3.spawn(Panic::Never));
+    q.push_back(d4.spawn(Panic::Never));
+    q.push_back(d5.spawn(Panic::Never));
+    q.push_back(d6.spawn(Panic::Never));
+    q.push_back(d7.spawn(Panic::Never));
+    q.push_front(d2.spawn(Panic::Never));
+    q.push_front(d1.spawn(Panic::InDrop));
+    q.push_front(d0.spawn(Panic::Never));
 
-    catch_unwind(AssertUnwindSafe(|| drop(q.drain_filter(|_| true)))).ok();
+    catch_unwind(AssertUnwindSafe(|| drop(q.drain_filter(|_| true)))).unwrap_err();
 
-    assert_eq!(unsafe { DROPS }, 8);
+    assert_eq!(d0.dropped(), 1);
+    assert_eq!(d1.dropped(), 1);
+    assert_eq!(d2.dropped(), 1);
+    assert_eq!(d3.dropped(), 1);
+    assert_eq!(d4.dropped(), 1);
+    assert_eq!(d5.dropped(), 1);
+    assert_eq!(d6.dropped(), 1);
+    assert_eq!(d7.dropped(), 1);
     assert!(q.is_empty());
 }
 

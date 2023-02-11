@@ -10,14 +10,11 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
-use rustc_middle::ty::{Binder, TraitPredicate, TraitRef, TypeVisitable};
+use rustc_middle::ty::{Binder, TraitRef, TypeVisitable};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
-use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{
-    self, ObligationCauseCode, SelectionContext, TraitEngine, TraitEngineExt,
-};
+use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
 
 use std::mem;
 use std::ops::Deref;
@@ -245,7 +242,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             // impl trait is gone in MIR, so check the return type of a const fn by its signature
             // instead of the type of the return place.
             self.span = body.local_decls[RETURN_PLACE].source_info.span;
-            let return_ty = tcx.fn_sig(def_id).output();
+            let return_ty = self.ccx.fn_sig().output();
             self.check_local_or_return_ty(return_ty.skip_binder(), RETURN_PLACE);
         }
 
@@ -445,18 +442,24 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
         self.super_rvalue(rvalue, location);
 
-        match *rvalue {
+        match rvalue {
             Rvalue::ThreadLocalRef(_) => self.check_op(ops::ThreadLocalAccess),
 
             Rvalue::Use(_)
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
             | Rvalue::Discriminant(..)
-            | Rvalue::Len(_)
-            | Rvalue::Aggregate(..) => {}
+            | Rvalue::Len(_) => {}
 
-            Rvalue::Ref(_, kind @ BorrowKind::Mut { .. }, ref place)
-            | Rvalue::Ref(_, kind @ BorrowKind::Unique, ref place) => {
+            Rvalue::Aggregate(kind, ..) => {
+                if let AggregateKind::Generator(def_id, ..) = kind.as_ref()
+                    && let Some(generator_kind @ hir::GeneratorKind::Async(..)) = self.tcx.generator_kind(def_id)
+                {
+                    self.check_op(ops::Generator(generator_kind));
+                }
+            }
+
+            Rvalue::Ref(_, kind @ (BorrowKind::Mut { .. } | BorrowKind::Unique), place) => {
                 let ty = place.ty(self.body, self.tcx).ty;
                 let is_allowed = match ty.kind() {
                     // Inside a `static mut`, `&mut [...]` is allowed.
@@ -485,12 +488,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::AddressOf(Mutability::Mut, ref place) => {
+            Rvalue::AddressOf(Mutability::Mut, place) => {
                 self.check_mut_borrow(place.local, hir::BorrowKind::Raw)
             }
 
-            Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Shallow, ref place)
-            | Rvalue::AddressOf(Mutability::Not, ref place) => {
+            Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Shallow, place)
+            | Rvalue::AddressOf(Mutability::Not, place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     &self.ccx,
                     &mut |local| self.qualifs.has_mut_interior(self.ccx, local, location),
@@ -558,7 +561,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
-            Rvalue::UnaryOp(_, ref operand) => {
+            Rvalue::UnaryOp(_, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
                 if is_int_bool_or_char(ty) {
                     // Int, bool, and char operations are fine.
@@ -569,8 +572,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, box (ref lhs, ref rhs))
-            | Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs)) => {
+            Rvalue::BinaryOp(op, box (lhs, rhs))
+            | Rvalue::CheckedBinaryOp(op, box (lhs, rhs)) => {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 
@@ -579,13 +582,16 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 } else if lhs_ty.is_fn_ptr() || lhs_ty.is_unsafe_ptr() {
                     assert_eq!(lhs_ty, rhs_ty);
                     assert!(
-                        op == BinOp::Eq
-                            || op == BinOp::Ne
-                            || op == BinOp::Le
-                            || op == BinOp::Lt
-                            || op == BinOp::Ge
-                            || op == BinOp::Gt
-                            || op == BinOp::Offset
+                        matches!(
+                            op,
+                            BinOp::Eq
+                            | BinOp::Ne
+                            | BinOp::Le
+                            | BinOp::Lt
+                            | BinOp::Ge
+                            | BinOp::Gt
+                            | BinOp::Offset
+                        )
                     );
 
                     self.check_op(ops::RawPtrComparison);
@@ -687,6 +693,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
+            | StatementKind::ConstEvalCounter
             | StatementKind::Nop => {}
         }
     }
@@ -724,18 +731,16 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             substs,
                             span: *fn_span,
                             from_hir_call: *from_hir_call,
+                            feature: Some(sym::const_trait_impl),
                         });
                         return;
                     }
 
                     let trait_ref = TraitRef::from_method(tcx, trait_id, substs);
-                    let poly_trait_pred = Binder::dummy(TraitPredicate {
-                        trait_ref,
-                        constness: ty::BoundConstness::ConstIfConst,
-                        polarity: ty::ImplPolarity::Positive,
-                    });
+                    let poly_trait_pred =
+                        Binder::dummy(trait_ref).with_constness(ty::BoundConstness::ConstIfConst);
                     let obligation =
-                        Obligation::new(ObligationCause::dummy(), param_env, poly_trait_pred);
+                        Obligation::new(tcx, ObligationCause::dummy(), param_env, poly_trait_pred);
 
                     let implsrc = {
                         let infcx = tcx.infer_ctxt().build();
@@ -747,37 +752,24 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // "non-const" check. This is required for correctness here.
                     {
                         let infcx = tcx.infer_ctxt().build();
-                        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
-                        let predicates = tcx.predicates_of(callee).instantiate(tcx, substs);
-                        let hir_id = tcx
-                            .hir()
-                            .local_def_id_to_hir_id(self.body.source.def_id().expect_local());
-                        let cause = || {
-                            ObligationCause::new(
-                                terminator.source_info.span,
-                                hir_id,
-                                ObligationCauseCode::ItemObligation(callee),
-                            )
-                        };
-                        let normalized = infcx.partially_normalize_associated_types_in(
-                            cause(),
-                            param_env,
-                            predicates,
-                        );
+                        let ocx = ObligationCtxt::new(&infcx);
 
-                        for p in normalized.obligations {
-                            fulfill_cx.register_predicate_obligation(&infcx, p);
-                        }
-                        for obligation in traits::predicates_for_generics(
-                            |_, _| cause(),
+                        let predicates = tcx.predicates_of(callee).instantiate(tcx, substs);
+                        let cause = ObligationCause::new(
+                            terminator.source_info.span,
+                            self.body.source.def_id().expect_local(),
+                            ObligationCauseCode::ItemObligation(callee),
+                        );
+                        let normalized_predicates = ocx.normalize(&cause, param_env, predicates);
+                        ocx.register_obligations(traits::predicates_for_generics(
+                            |_, _| cause.clone(),
                             self.param_env,
-                            normalized.value,
-                        ) {
-                            fulfill_cx.register_predicate_obligation(&infcx, obligation);
-                        }
-                        let errors = fulfill_cx.select_all_or_error(&infcx);
+                            normalized_predicates,
+                        ));
+
+                        let errors = ocx.select_all_or_error();
                         if !errors.is_empty() {
-                            infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+                            infcx.err_ctxt().report_fulfillment_errors(&errors, None);
                         }
                     }
 
@@ -788,6 +780,20 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 trait_ref, param_env
                             );
                             return;
+                        }
+                        Ok(Some(ImplSource::Closure(data))) => {
+                            if !tcx.is_const_fn_raw(data.closure_def_id) {
+                                self.check_op(ops::FnCallNonConst {
+                                    caller,
+                                    callee,
+                                    substs,
+                                    span: *fn_span,
+                                    from_hir_call: *from_hir_call,
+                                    feature: None,
+                                });
+
+                                return;
+                            }
                         }
                         Ok(Some(ImplSource::UserDefined(data))) => {
                             let callee_name = tcx.item_name(callee);
@@ -809,6 +815,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     substs,
                                     span: *fn_span,
                                     from_hir_call: *from_hir_call,
+                                    feature: None,
                                 });
                                 return;
                             }
@@ -828,11 +835,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                             if !nonconst_call_permission {
                                 let obligation = Obligation::new(
+                                    tcx,
                                     ObligationCause::dummy_with_span(*fn_span),
                                     param_env,
-                                    tcx.mk_predicate(
-                                        poly_trait_pred.map_bound(ty::PredicateKind::Trait),
-                                    ),
+                                    poly_trait_pred,
                                 );
 
                                 // improve diagnostics by showing what failed. Our requirements are stricter this time
@@ -843,7 +849,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                         obligation.clone(),
                                         &obligation,
                                         &e,
-                                        false,
                                     );
                                 }
 
@@ -853,6 +858,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     substs,
                                     span: *fn_span,
                                     from_hir_call: *from_hir_call,
+                                    feature: None,
                                 });
                                 return;
                             }
@@ -901,16 +907,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     return;
                 }
 
-                // `async` blocks get lowered to `std::future::from_generator(/* a closure */)`.
-                let is_async_block = Some(callee) == tcx.lang_items().from_generator_fn();
-                if is_async_block {
-                    let kind = hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block);
-                    self.check_op(ops::Generator(kind));
-                    return;
-                }
-
-                let is_intrinsic = tcx.is_intrinsic(callee);
-
                 if !tcx.is_const_fn_raw(callee) {
                     if !tcx.is_const_default_method(callee) {
                         // To get to here we must have already found a const impl for the
@@ -922,6 +918,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             substs,
                             span: *fn_span,
                             from_hir_call: *from_hir_call,
+                            feature: None,
                         });
                         return;
                     }
@@ -970,7 +967,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
                     // `extern` functions, and these have no way to get marked `const`. So instead we
                     // use `rustc_const_(un)stable` attributes to mean that the intrinsic is `const`
-                    if self.ccx.is_const_stable_const_fn() || is_intrinsic {
+                    if self.ccx.is_const_stable_const_fn() || tcx.is_intrinsic(callee) {
                         self.check_op(ops::FnCallUnstable(callee, None));
                         return;
                     }

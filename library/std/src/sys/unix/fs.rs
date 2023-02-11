@@ -1,9 +1,21 @@
+// miri has some special hacks here that make things unused.
+#![cfg_attr(miri, allow(unused))]
+
 use crate::os::unix::prelude::*;
 
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
+#[cfg(any(
+    target_os = "android",
+    target_os = "linux",
+    target_os = "solaris",
+    target_os = "fuchsia",
+    target_os = "redox",
+    target_os = "illumos"
+))]
+use crate::mem::MaybeUninit;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
@@ -137,12 +149,13 @@ cfg_has_statx! {{
     ) -> Option<io::Result<FileAttr>> {
         use crate::sync::atomic::{AtomicU8, Ordering};
 
-        // Linux kernel prior to 4.11 or glibc prior to glibc 2.28 don't support `statx`
-        // We store the availability in global to avoid unnecessary syscalls.
-        // 0: Unknown
-        // 1: Not available
-        // 2: Available
-        static STATX_STATE: AtomicU8 = AtomicU8::new(0);
+        // Linux kernel prior to 4.11 or glibc prior to glibc 2.28 don't support `statx`.
+        // We check for it on first failure and remember availability to avoid having to
+        // do it again.
+        #[repr(u8)]
+        enum STATX_STATE{ Unknown = 0, Present, Unavailable }
+        static STATX_SAVED_STATE: AtomicU8 = AtomicU8::new(STATX_STATE::Unknown as u8);
+
         syscall! {
             fn statx(
                 fd: c_int,
@@ -153,31 +166,44 @@ cfg_has_statx! {{
             ) -> c_int
         }
 
-        match STATX_STATE.load(Ordering::Relaxed) {
-            0 => {
-                // It is a trick to call `statx` with null pointers to check if the syscall
-                // is available. According to the manual, it is expected to fail with EFAULT.
-                // We do this mainly for performance, since it is nearly hundreds times
-                // faster than a normal successful call.
-                let err = cvt(statx(0, ptr::null(), 0, libc::STATX_ALL, ptr::null_mut()))
-                    .err()
-                    .and_then(|e| e.raw_os_error());
-                // We don't check `err == Some(libc::ENOSYS)` because the syscall may be limited
-                // and returns `EPERM`. Listing all possible errors seems not a good idea.
-                // See: https://github.com/rust-lang/rust/issues/65662
-                if err != Some(libc::EFAULT) {
-                    STATX_STATE.store(1, Ordering::Relaxed);
-                    return None;
-                }
-                STATX_STATE.store(2, Ordering::Relaxed);
-            }
-            1 => return None,
-            _ => {}
+        if STATX_SAVED_STATE.load(Ordering::Relaxed) == STATX_STATE::Unavailable as u8 {
+            return None;
         }
 
         let mut buf: libc::statx = mem::zeroed();
         if let Err(err) = cvt(statx(fd, path, flags, mask, &mut buf)) {
-            return Some(Err(err));
+            if STATX_SAVED_STATE.load(Ordering::Relaxed) == STATX_STATE::Present as u8 {
+                return Some(Err(err));
+            }
+
+            // Availability not checked yet.
+            //
+            // First try the cheap way.
+            if err.raw_os_error() == Some(libc::ENOSYS) {
+                STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
+                return None;
+            }
+
+            // Error other than `ENOSYS` is not a good enough indicator -- it is
+            // known that `EPERM` can be returned as a result of using seccomp to
+            // block the syscall.
+            // Availability is checked by performing a call which expects `EFAULT`
+            // if the syscall is usable.
+            // See: https://github.com/rust-lang/rust/issues/65662
+            // FIXME this can probably just do the call if `EPERM` was received, but
+            // previous iteration of the code checked it for all errors and for now
+            // this is retained.
+            // FIXME what about transient conditions like `ENOMEM`?
+            let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_ALL, ptr::null_mut()))
+                .err()
+                .and_then(|e| e.raw_os_error());
+            if err2 == Some(libc::EFAULT) {
+                STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
+                return Some(Err(err));
+            } else {
+                STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
+                return None;
+            }
         }
 
         // We cannot fill `stat64` exhaustively because of private padding fields.
@@ -231,15 +257,13 @@ struct InnerReadDir {
 
 pub struct ReadDir {
     inner: Arc<InnerReadDir>,
-    #[cfg(not(any(
-        target_os = "android",
-        target_os = "linux",
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "fuchsia",
-        target_os = "redox",
-    )))]
     end_of_stream: bool,
+}
+
+impl ReadDir {
+    fn new(inner: InnerReadDir) -> Self {
+        Self { inner: Arc::new(inner), end_of_stream: false }
+    }
 }
 
 struct Dir(*mut libc::DIR);
@@ -320,9 +344,21 @@ pub struct FileTimes {
     modified: Option<SystemTime>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, Eq, Debug)]
 pub struct FileType {
     mode: mode_t,
+}
+
+impl PartialEq for FileType {
+    fn eq(&self, other: &Self) -> bool {
+        self.masked() == other.masked()
+    }
+}
+
+impl core::hash::Hash for FileType {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.masked().hash(state);
+    }
 }
 
 #[derive(Debug)]
@@ -536,7 +572,11 @@ impl FileType {
     }
 
     pub fn is(&self, mode: mode_t) -> bool {
-        self.mode & libc::S_IFMT == mode
+        self.masked() == mode
+    }
+
+    fn masked(&self) -> mode_t {
+        self.mode & libc::S_IFMT
     }
 }
 
@@ -566,51 +606,95 @@ impl Iterator for ReadDir {
         target_os = "illumos"
     ))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
+        if self.end_of_stream {
+            return None;
+        }
+
         unsafe {
             loop {
                 // As of POSIX.1-2017, readdir() is not required to be thread safe; only
                 // readdir_r() is. However, readdir_r() cannot correctly handle platforms
-                // with unlimited or variable NAME_MAX.  Many modern platforms guarantee
+                // with unlimited or variable NAME_MAX. Many modern platforms guarantee
                 // thread safety for readdir() as long an individual DIR* is not accessed
                 // concurrently, which is sufficient for Rust.
                 super::os::set_errno(0);
                 let entry_ptr = readdir64(self.inner.dirp.0);
                 if entry_ptr.is_null() {
-                    // null can mean either the end is reached or an error occurred.
-                    // So we had to clear errno beforehand to check for an error now.
+                    // We either encountered an error, or reached the end. Either way,
+                    // the next call to next() should return None.
+                    self.end_of_stream = true;
+
+                    // To distinguish between errors and end-of-directory, we had to clear
+                    // errno beforehand to check for an error now.
                     return match super::os::errno() {
                         0 => None,
                         e => Some(Err(Error::from_raw_os_error(e))),
                     };
                 }
 
-                // Only d_reclen bytes of *entry_ptr are valid, so we can't just copy the
-                // whole thing (#93384).  Instead, copy everything except the name.
-                let mut copy: dirent64 = mem::zeroed();
-                // Can't dereference entry_ptr, so use the local entry to get
-                // offsetof(struct dirent, d_name)
-                let copy_bytes = &mut copy as *mut _ as *mut u8;
-                let copy_name = &mut copy.d_name as *mut _ as *mut u8;
-                let name_offset = copy_name.offset_from(copy_bytes) as usize;
-                let entry_bytes = entry_ptr as *const u8;
-                let entry_name = entry_bytes.add(name_offset);
-                ptr::copy_nonoverlapping(entry_bytes, copy_bytes, name_offset);
+                // The dirent64 struct is a weird imaginary thing that isn't ever supposed
+                // to be worked with by value. Its trailing d_name field is declared
+                // variously as [c_char; 256] or [c_char; 1] on different systems but
+                // either way that size is meaningless; only the offset of d_name is
+                // meaningful. The dirent64 pointers that libc returns from readdir64 are
+                // allowed to point to allocations smaller _or_ LARGER than implied by the
+                // definition of the struct.
+                //
+                // As such, we need to be even more careful with dirent64 than if its
+                // contents were "simply" partially initialized data.
+                //
+                // Like for uninitialized contents, converting entry_ptr to `&dirent64`
+                // would not be legal. However, unique to dirent64 is that we don't even
+                // get to use `addr_of!((*entry_ptr).d_name)` because that operation
+                // requires the full extent of *entry_ptr to be in bounds of the same
+                // allocation, which is not necessarily the case here.
+                //
+                // Absent any other way to obtain a pointer to `(*entry_ptr).d_name`
+                // legally in Rust analogously to how it would be done in C, we instead
+                // need to make our own non-libc allocation that conforms to the weird
+                // imaginary definition of dirent64, and use that for a field offset
+                // computation.
+                macro_rules! offset_ptr {
+                    ($entry_ptr:expr, $field:ident) => {{
+                        const OFFSET: isize = {
+                            let delusion = MaybeUninit::<dirent64>::uninit();
+                            let entry_ptr = delusion.as_ptr();
+                            unsafe {
+                                ptr::addr_of!((*entry_ptr).$field)
+                                    .cast::<u8>()
+                                    .offset_from(entry_ptr.cast::<u8>())
+                            }
+                        };
+                        if true {
+                            // Cast to the same type determined by the else branch.
+                            $entry_ptr.byte_offset(OFFSET).cast::<_>()
+                        } else {
+                            #[allow(deref_nullptr)]
+                            {
+                                ptr::addr_of!((*ptr::null::<dirent64>()).$field)
+                            }
+                        }
+                    }};
+                }
+
+                // d_name is guaranteed to be null-terminated.
+                let name = CStr::from_ptr(offset_ptr!(entry_ptr, d_name).cast());
+                let name_bytes = name.to_bytes();
+                if name_bytes == b"." || name_bytes == b".." {
+                    continue;
+                }
 
                 let entry = dirent64_min {
-                    d_ino: copy.d_ino as u64,
+                    d_ino: *offset_ptr!(entry_ptr, d_ino) as u64,
                     #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
-                    d_type: copy.d_type as u8,
+                    d_type: *offset_ptr!(entry_ptr, d_type) as u8,
                 };
 
-                let ret = DirEntry {
+                return Some(Ok(DirEntry {
                     entry,
-                    // d_name is guaranteed to be null-terminated.
-                    name: CStr::from_ptr(entry_name as *const _).to_owned(),
+                    name: name.to_owned(),
                     dir: Arc::clone(&self.inner),
-                };
-                if ret.name_bytes() != b"." && ret.name_bytes() != b".." {
-                    return Some(Ok(ret));
-                }
+                }));
             }
         }
     }
@@ -674,7 +758,10 @@ impl DirEntry {
         self.file_name_os_str().to_os_string()
     }
 
-    #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
+    #[cfg(all(
+        any(target_os = "linux", target_os = "emscripten", target_os = "android"),
+        not(miri)
+    ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
         let name = self.name_cstr().as_ptr();
@@ -695,7 +782,10 @@ impl DirEntry {
         Ok(FileAttr::from_stat64(stat))
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "emscripten", target_os = "android")))]
+    #[cfg(any(
+        not(any(target_os = "linux", target_os = "emscripten", target_os = "android")),
+        miri
+    ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         lstat(&self.path())
     }
@@ -799,7 +889,6 @@ impl DirEntry {
         target_os = "fuchsia",
         target_os = "redox"
     )))]
-    #[cfg_attr(miri, allow(unused))]
     fn name_cstr(&self) -> &CStr {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }
     }
@@ -811,7 +900,6 @@ impl DirEntry {
         target_os = "fuchsia",
         target_os = "redox"
     ))]
-    #[cfg_attr(miri, allow(unused))]
     fn name_cstr(&self) -> &CStr {
         &self.name
     }
@@ -1295,18 +1383,7 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
     } else {
         let root = path.to_path_buf();
         let inner = InnerReadDir { dirp: Dir(ptr), root };
-        Ok(ReadDir {
-            inner: Arc::new(inner),
-            #[cfg(not(any(
-                target_os = "android",
-                target_os = "linux",
-                target_os = "solaris",
-                target_os = "illumos",
-                target_os = "fuchsia",
-                target_os = "redox",
-            )))]
-            end_of_stream: false,
-        })
+        Ok(ReadDir::new(inner))
     }
 }
 
@@ -1687,12 +1764,16 @@ mod remove_dir_impl {
     use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
     use crate::os::unix::prelude::{OwnedFd, RawFd};
     use crate::path::{Path, PathBuf};
-    use crate::sync::Arc;
     use crate::sys::common::small_c_string::run_path_with_cstr;
     use crate::sys::{cvt, cvt_r};
 
-    #[cfg(not(all(target_os = "macos", not(target_arch = "aarch64")),))]
+    #[cfg(not(any(
+        all(target_os = "linux", target_env = "gnu"),
+        all(target_os = "macos", not(target_arch = "aarch64"))
+    )))]
     use libc::{fdopendir, openat, unlinkat};
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    use libc::{fdopendir, openat64 as openat, unlinkat};
     #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
     use macos_weak::{fdopendir, openat, unlinkat};
 
@@ -1759,21 +1840,8 @@ mod remove_dir_impl {
         // a valid root is not needed because we do not call any functions involving the full path
         // of the DirEntrys.
         let dummy_root = PathBuf::new();
-        Ok((
-            ReadDir {
-                inner: Arc::new(InnerReadDir { dirp, root: dummy_root }),
-                #[cfg(not(any(
-                    target_os = "android",
-                    target_os = "linux",
-                    target_os = "solaris",
-                    target_os = "illumos",
-                    target_os = "fuchsia",
-                    target_os = "redox",
-                )))]
-                end_of_stream: false,
-            },
-            new_parent_fd,
-        ))
+        let inner = InnerReadDir { dirp, root: dummy_root };
+        Ok((ReadDir::new(inner), new_parent_fd))
     }
 
     #[cfg(any(

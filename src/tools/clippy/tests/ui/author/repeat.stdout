@@ -1,12 +1,10 @@
-if_chain! {
-    if let ExprKind::Repeat(value, length) = expr.kind;
-    if let ExprKind::Lit(ref lit) = value.kind;
-    if let LitKind::Int(1, LitIntType::Unsigned(UintTy::U8)) = lit.node;
-    if let ArrayLen::Body(anon_const) = length;
-    let expr1 = &cx.tcx.hir().body(anon_const.body).value;
-    if let ExprKind::Lit(ref lit1) = expr1.kind;
-    if let LitKind::Int(5, LitIntType::Unsuffixed) = lit1.node;
-    then {
-        // report your lint here
-    }
+if let ExprKind::Repeat(value, length) = expr.kind
+    && let ExprKind::Lit(ref lit) = value.kind
+    && let LitKind::Int(1, LitIntType::Unsigned(UintTy::U8)) = lit.node
+    && let ArrayLen::Body(anon_const) = length
+    && expr1 = &cx.tcx.hir().body(anon_const.body).value
+    && let ExprKind::Lit(ref lit1) = expr1.kind
+    && let LitKind::Int(5, LitIntType::Unsuffixed) = lit1.node
+{
+    // report your lint here
 }

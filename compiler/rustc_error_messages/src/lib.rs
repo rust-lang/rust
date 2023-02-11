@@ -10,6 +10,7 @@ extern crate tracing;
 
 use fluent_bundle::FluentResource;
 use fluent_syntax::parser::ParserError;
+use icu_provider_adapters::fallback::{LocaleFallbackProvider, LocaleFallbacker};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::{fluent_messages, Decodable, Encodable};
 use rustc_span::Span;
@@ -30,40 +31,48 @@ use intl_memoizer::concurrent::IntlLangMemoizer;
 #[cfg(not(parallel_compiler))]
 use intl_memoizer::IntlLangMemoizer;
 
-pub use fluent_bundle::{FluentArgs, FluentError, FluentValue};
+pub use fluent_bundle::{self, types::FluentType, FluentArgs, FluentError, FluentValue};
 pub use unic_langid::{langid, LanguageIdentifier};
 
 // Generates `DEFAULT_LOCALE_RESOURCES` static and `fluent_generated` module.
 fluent_messages! {
+    // tidy-alphabetical-start
     ast_lowering => "../locales/en-US/ast_lowering.ftl",
     ast_passes => "../locales/en-US/ast_passes.ftl",
     attr => "../locales/en-US/attr.ftl",
     borrowck => "../locales/en-US/borrowck.ftl",
     builtin_macros => "../locales/en-US/builtin_macros.ftl",
     codegen_gcc => "../locales/en-US/codegen_gcc.ftl",
+    codegen_llvm => "../locales/en-US/codegen_llvm.ftl",
     codegen_ssa => "../locales/en-US/codegen_ssa.ftl",
     compiletest => "../locales/en-US/compiletest.ftl",
     const_eval => "../locales/en-US/const_eval.ftl",
     driver => "../locales/en-US/driver.ftl",
+    errors => "../locales/en-US/errors.ftl",
     expand => "../locales/en-US/expand.ftl",
     hir_analysis => "../locales/en-US/hir_analysis.ftl",
+    hir_typeck => "../locales/en-US/hir_typeck.ftl",
+    incremental => "../locales/en-US/incremental.ftl",
     infer => "../locales/en-US/infer.ftl",
     interface => "../locales/en-US/interface.ftl",
     lint => "../locales/en-US/lint.ftl",
     metadata => "../locales/en-US/metadata.ftl",
     middle => "../locales/en-US/middle.ftl",
+    mir_build => "../locales/en-US/mir_build.ftl",
     mir_dataflow => "../locales/en-US/mir_dataflow.ftl",
     monomorphize => "../locales/en-US/monomorphize.ftl",
-    parser => "../locales/en-US/parser.ftl",
+    parse => "../locales/en-US/parse.ftl",
     passes => "../locales/en-US/passes.ftl",
     plugin_impl => "../locales/en-US/plugin_impl.ftl",
     privacy => "../locales/en-US/privacy.ftl",
     query_system => "../locales/en-US/query_system.ftl",
+    resolve => "../locales/en-US/resolve.ftl",
     save_analysis => "../locales/en-US/save_analysis.ftl",
     session => "../locales/en-US/session.ftl",
     symbol_mangling => "../locales/en-US/symbol_mangling.ftl",
     trait_selection => "../locales/en-US/trait_selection.ftl",
     ty_utils => "../locales/en-US/ty_utils.ftl",
+    // tidy-alphabetical-end
 }
 
 pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};
@@ -174,6 +183,9 @@ pub fn fluent_bundle(
     trace!(?locale);
     let mut bundle = new_bundle(vec![locale]);
 
+    // Add convenience functions available to ftl authors.
+    register_functions(&mut bundle);
+
     // Fluent diagnostics can insert directionality isolation markers around interpolated variables
     // indicating that there may be a shift from right-to-left to left-to-right text (or
     // vice-versa). These are disabled because they are sometimes visible in the error output, but
@@ -236,6 +248,15 @@ pub fn fluent_bundle(
     Ok(Some(bundle))
 }
 
+fn register_functions(bundle: &mut FluentBundle) {
+    bundle
+        .add_function("STREQ", |positional, _named| match positional {
+            [FluentValue::String(a), FluentValue::String(b)] => format!("{}", (a == b)).into(),
+            _ => FluentValue::Error,
+        })
+        .expect("Failed to add a function to the bundle.");
+}
+
 /// Type alias for the result of `fallback_fluent_bundle` - a reference-counted pointer to a lazily
 /// evaluated fluent bundle.
 pub type LazyFallbackBundle = Lrc<Lazy<FluentBundle, impl FnOnce() -> FluentBundle>>;
@@ -248,6 +269,9 @@ pub fn fallback_fluent_bundle(
 ) -> LazyFallbackBundle {
     Lrc::new(Lazy::new(move || {
         let mut fallback_bundle = new_bundle(vec![langid!("en-US")]);
+
+        register_functions(&mut fallback_bundle);
+
         // See comment in `fluent_bundle`.
         fallback_bundle.set_use_isolating(with_directionality_markers);
 
@@ -277,6 +301,18 @@ pub enum SubdiagnosticMessage {
     /// Non-translatable diagnostic message.
     // FIXME(davidtwco): can a `Cow<'static, str>` be used here?
     Str(String),
+    /// Translatable message which has already been translated eagerly.
+    ///
+    /// Some diagnostics have repeated subdiagnostics where the same interpolated variables would
+    /// be instantiated multiple times with different values. As translation normally happens
+    /// immediately prior to emission, after the diagnostic and subdiagnostic derive logic has run,
+    /// the setting of diagnostic arguments in the derived code will overwrite previous variable
+    /// values and only the final value will be set when translation occurs - resulting in
+    /// incorrect diagnostics. Eager translation results in translation for a subdiagnostic
+    /// happening immediately after the subdiagnostic derive's logic has been run. This variant
+    /// stores messages which have been translated eagerly.
+    // FIXME(#100717): can a `Cow<'static, str>` be used here?
+    Eager(String),
     /// Identifier of a Fluent message. Instances of this variant are generated by the
     /// `Subdiagnostic` derive.
     FluentIdentifier(FluentId),
@@ -304,8 +340,20 @@ impl<S: Into<String>> From<S> for SubdiagnosticMessage {
 #[rustc_diagnostic_item = "DiagnosticMessage"]
 pub enum DiagnosticMessage {
     /// Non-translatable diagnostic message.
-    // FIXME(davidtwco): can a `Cow<'static, str>` be used here?
+    // FIXME(#100717): can a `Cow<'static, str>` be used here?
     Str(String),
+    /// Translatable message which has already been translated eagerly.
+    ///
+    /// Some diagnostics have repeated subdiagnostics where the same interpolated variables would
+    /// be instantiated multiple times with different values. As translation normally happens
+    /// immediately prior to emission, after the diagnostic and subdiagnostic derive logic has run,
+    /// the setting of diagnostic arguments in the derived code will overwrite previous variable
+    /// values and only the final value will be set when translation occurs - resulting in
+    /// incorrect diagnostics. Eager translation results in translation for a subdiagnostic
+    /// happening immediately after the subdiagnostic derive's logic has been run. This variant
+    /// stores messages which have been translated eagerly.
+    // FIXME(#100717): can a `Cow<'static, str>` be used here?
+    Eager(String),
     /// Identifier for a Fluent message (with optional attribute) corresponding to the diagnostic
     /// message.
     ///
@@ -324,6 +372,7 @@ impl DiagnosticMessage {
     pub fn with_subdiagnostic_message(&self, sub: SubdiagnosticMessage) -> Self {
         let attr = match sub {
             SubdiagnosticMessage::Str(s) => return DiagnosticMessage::Str(s),
+            SubdiagnosticMessage::Eager(s) => return DiagnosticMessage::Eager(s),
             SubdiagnosticMessage::FluentIdentifier(id) => {
                 return DiagnosticMessage::FluentIdentifier(id, None);
             }
@@ -332,6 +381,7 @@ impl DiagnosticMessage {
 
         match self {
             DiagnosticMessage::Str(s) => DiagnosticMessage::Str(s.clone()),
+            DiagnosticMessage::Eager(s) => DiagnosticMessage::Eager(s.clone()),
             DiagnosticMessage::FluentIdentifier(id, _) => {
                 DiagnosticMessage::FluentIdentifier(id.clone(), Some(attr))
             }
@@ -347,7 +397,7 @@ impl<S: Into<String>> From<S> for DiagnosticMessage {
     }
 }
 
-/// A workaround for "good path" ICEs when formatting types in disables lints.
+/// A workaround for "good path" ICEs when formatting types in disabled lints.
 ///
 /// Delays formatting until `.into(): DiagnosticMessage` is used.
 pub struct DelayDm<F>(pub F);
@@ -367,6 +417,7 @@ impl Into<SubdiagnosticMessage> for DiagnosticMessage {
     fn into(self) -> SubdiagnosticMessage {
         match self {
             DiagnosticMessage::Str(s) => SubdiagnosticMessage::Str(s),
+            DiagnosticMessage::Eager(s) => SubdiagnosticMessage::Eager(s),
             DiagnosticMessage::FluentIdentifier(id, None) => {
                 SubdiagnosticMessage::FluentIdentifier(id)
             }
@@ -508,4 +559,91 @@ impl From<Vec<Span>> for MultiSpan {
     fn from(spans: Vec<Span>) -> MultiSpan {
         MultiSpan::from_spans(spans)
     }
+}
+
+fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locid::Locale> {
+    icu_locid::Locale::try_from_bytes(lang.to_string().as_bytes()).ok()
+}
+
+pub fn fluent_value_from_str_list_sep_by_and(l: Vec<Cow<'_, str>>) -> FluentValue<'_> {
+    // Fluent requires 'static value here for its AnyEq usages.
+    #[derive(Clone, PartialEq, Debug)]
+    struct FluentStrListSepByAnd(Vec<String>);
+
+    impl FluentType for FluentStrListSepByAnd {
+        fn duplicate(&self) -> Box<dyn FluentType + Send> {
+            Box::new(self.clone())
+        }
+
+        fn as_string(&self, intls: &intl_memoizer::IntlLangMemoizer) -> Cow<'static, str> {
+            let result = intls
+                .with_try_get::<MemoizableListFormatter, _, _>((), |list_formatter| {
+                    list_formatter.format_to_string(self.0.iter())
+                })
+                .unwrap();
+            Cow::Owned(result)
+        }
+
+        #[cfg(not(parallel_compiler))]
+        fn as_string_threadsafe(
+            &self,
+            _intls: &intl_memoizer::concurrent::IntlLangMemoizer,
+        ) -> Cow<'static, str> {
+            unreachable!("`as_string_threadsafe` is not used in non-parallel rustc")
+        }
+
+        #[cfg(parallel_compiler)]
+        fn as_string_threadsafe(
+            &self,
+            intls: &intl_memoizer::concurrent::IntlLangMemoizer,
+        ) -> Cow<'static, str> {
+            let result = intls
+                .with_try_get::<MemoizableListFormatter, _, _>((), |list_formatter| {
+                    list_formatter.format_to_string(self.0.iter())
+                })
+                .unwrap();
+            Cow::Owned(result)
+        }
+    }
+
+    struct MemoizableListFormatter(icu_list::ListFormatter);
+
+    impl std::ops::Deref for MemoizableListFormatter {
+        type Target = icu_list::ListFormatter;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl intl_memoizer::Memoizable for MemoizableListFormatter {
+        type Args = ();
+        type Error = ();
+
+        fn construct(lang: LanguageIdentifier, _args: Self::Args) -> Result<Self, Self::Error>
+        where
+            Self: Sized,
+        {
+            let baked_data_provider = rustc_baked_icu_data::baked_data_provider();
+            let locale_fallbacker =
+                LocaleFallbacker::try_new_with_any_provider(&baked_data_provider)
+                    .expect("Failed to create fallback provider");
+            let data_provider =
+                LocaleFallbackProvider::new_with_fallbacker(baked_data_provider, locale_fallbacker);
+            let locale = icu_locale_from_unic_langid(lang)
+                .unwrap_or_else(|| rustc_baked_icu_data::supported_locales::EN);
+            let list_formatter =
+                icu_list::ListFormatter::try_new_and_with_length_with_any_provider(
+                    &data_provider,
+                    &locale.into(),
+                    icu_list::ListLength::Wide,
+                )
+                .expect("Failed to create list formatter");
+
+            Ok(MemoizableListFormatter(list_formatter))
+        }
+    }
+
+    let l = l.into_iter().map(|x| x.into_owned()).collect();
+
+    FluentValue::Custom(Box::new(FluentStrListSepByAnd(l)))
 }

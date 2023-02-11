@@ -13,12 +13,12 @@ use syntax::SmolStr;
 
 use crate::{
     db::HirDatabase, infer::unify::InferenceTable, AliasEq, AliasTy, Canonical, DomainGoal, Goal,
-    Guidance, InEnvironment, Interner, ProjectionTy, Solution, TraitRefExt, Ty, TyKind,
-    WhereClause,
+    Guidance, InEnvironment, Interner, ProjectionTy, ProjectionTyExt, Solution, TraitRefExt, Ty,
+    TyKind, WhereClause,
 };
 
 /// This controls how much 'time' we give the Chalk solver before giving up.
-const CHALK_SOLVER_FUEL: i32 = 100;
+const CHALK_SOLVER_FUEL: i32 = 1000;
 
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct ChalkContext<'a> {
@@ -55,13 +55,10 @@ impl TraitEnvironment {
         }
     }
 
-    pub fn traits_in_scope_from_clauses<'a>(
-        &'a self,
-        ty: Ty,
-    ) -> impl Iterator<Item = TraitId> + 'a {
+    pub fn traits_in_scope_from_clauses(&self, ty: Ty) -> impl Iterator<Item = TraitId> + '_ {
         self.traits_from_clauses
             .iter()
-            .filter_map(move |(self_ty, trait_id)| (*self_ty == ty).then(|| *trait_id))
+            .filter_map(move |(self_ty, trait_id)| (*self_ty == ty).then_some(*trait_id))
     }
 }
 
@@ -95,7 +92,7 @@ pub(crate) fn trait_solve_query(
         ..
     }))) = &goal.value.goal.data(Interner)
     {
-        if let TyKind::BoundVar(_) = projection_ty.self_type_parameter(Interner).kind(Interner) {
+        if let TyKind::BoundVar(_) = projection_ty.self_type_parameter(db).kind(Interner) {
             // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible
             return Some(Solution::Ambig(Guidance::Unknown));
         }
@@ -130,7 +127,7 @@ fn solve(
 
     let mut solve = || {
         let _ctx = if is_chalk_debug() || is_chalk_print() {
-            Some(panic_context::enter(format!("solving {:?}", goal)))
+            Some(panic_context::enter(format!("solving {goal:?}")))
         } else {
             None
         };

@@ -77,7 +77,7 @@ impl<'a> LowerCtx<'a> {
 pub(super) fn lower(
     db: &dyn DefDatabase,
     expander: Expander,
-    params: Option<ast::ParamList>,
+    params: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
     ExprCollector {
@@ -119,11 +119,13 @@ struct ExprCollector<'a> {
 impl ExprCollector<'_> {
     fn collect(
         mut self,
-        param_list: Option<ast::ParamList>,
+        param_list: Option<(ast::ParamList, impl Iterator<Item = bool>)>,
         body: Option<ast::Expr>,
     ) -> (Body, BodySourceMap) {
-        if let Some(param_list) = param_list {
-            if let Some(self_param) = param_list.self_param() {
+        if let Some((param_list, mut attr_enabled)) = param_list {
+            if let Some(self_param) =
+                param_list.self_param().filter(|_| attr_enabled.next().unwrap_or(false))
+            {
                 let ptr = AstPtr::new(&self_param);
                 let param_pat = self.alloc_pat(
                     Pat::Bind {
@@ -139,7 +141,11 @@ impl ExprCollector<'_> {
                 self.body.params.push(param_pat);
             }
 
-            for pat in param_list.params().filter_map(|param| param.pat()) {
+            for pat in param_list
+                .params()
+                .zip(attr_enabled)
+                .filter_map(|(param, enabled)| param.pat().filter(|_| enabled))
+            {
                 let param_pat = self.collect_pat(pat);
                 self.body.params.push(param_pat);
             }
@@ -364,6 +370,10 @@ impl ExprCollector<'_> {
                 self.is_lowering_generator = true;
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(Expr::Yield { expr }, syntax_ptr)
+            }
+            ast::Expr::YeetExpr(e) => {
+                let expr = e.expr().map(|e| self.collect_expr(e));
+                self.alloc_expr(Expr::Yeet { expr }, syntax_ptr)
             }
             ast::Expr::RecordExpr(e) => {
                 let path =

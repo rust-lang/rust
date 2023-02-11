@@ -1,0 +1,60 @@
+all_shared
+exclusive waiter 0 locked
+exclusive waiter 1 locked
+exclusive waiter 2 locked
+exclusive waiter 3 locked
+exclusive waiter 4 locked
+reader 0 locked
+reader 1 locked
+reader 2 locked
+reader 3 locked
+reader 4 locked
+exclusive waiter 0 reacquired lock
+exclusive waiter 1 reacquired lock
+exclusive waiter 2 reacquired lock
+exclusive waiter 3 reacquired lock
+exclusive waiter 4 reacquired lock
+reader 0 unlocked
+reader 1 unlocked
+reader 2 unlocked
+reader 3 unlocked
+reader 4 unlocked
+shared_sleep_and_exclusive_lock
+shared waiter 0 locked
+shared waiter 1 locked
+shared waiter 2 locked
+shared waiter 3 locked
+shared waiter 4 locked
+main locked
+main unlocked
+shared waiter 0 reacquired lock
+shared waiter 1 reacquired lock
+shared waiter 2 reacquired lock
+shared waiter 3 reacquired lock
+shared waiter 4 reacquired lock
+exclusive_sleep_and_shared_lock
+exclusive waiter 0 locked
+exclusive waiter 1 locked
+exclusive waiter 2 locked
+exclusive waiter 3 locked
+exclusive waiter 4 locked
+reader 0 locked
+reader 1 locked
+reader 2 locked
+reader 3 locked
+reader 4 locked
+reader 0 unlocked
+reader 1 unlocked
+reader 2 unlocked
+reader 3 unlocked
+reader 4 unlocked
+exclusive waiter 0 reacquired lock
+exclusive waiter 0 unlocked
+exclusive waiter 1 reacquired lock
+exclusive waiter 1 unlocked
+exclusive waiter 2 reacquired lock
+exclusive waiter 2 unlocked
+exclusive waiter 3 reacquired lock
+exclusive waiter 3 unlocked
+exclusive waiter 4 reacquired lock
+exclusive waiter 4 unlocked

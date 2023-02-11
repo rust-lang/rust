@@ -140,3 +140,25 @@ fn issue_8723() {
 
     let _ = val;
 }
+
+#[allow(dead_code)]
+fn issue_9575() {
+    fn side_effects() {}
+    let _ = || match side_effects() {
+        _ => println!("Needs curlies"),
+    };
+}
+
+#[allow(dead_code)]
+fn issue_9725(r: Option<u32>) {
+    match r {
+        x => match x {
+            Some(_) => {
+                println!("Some");
+            },
+            None => {
+                println!("None");
+            },
+        },
+    };
+}

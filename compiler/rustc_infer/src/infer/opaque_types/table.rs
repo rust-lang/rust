@@ -9,10 +9,10 @@ use super::{OpaqueTypeDecl, OpaqueTypeMap};
 
 #[derive(Default, Debug, Clone)]
 pub struct OpaqueTypeStorage<'tcx> {
-    // Opaque types found in explicit return types and their
-    // associated fresh inference variable. Writeback resolves these
-    // variables to get the concrete type, which can be used to
-    // 'de-opaque' OpaqueTypeDecl, after typeck is done with all functions.
+    /// Opaque types found in explicit return types and their
+    /// associated fresh inference variable. Writeback resolves these
+    /// variables to get the concrete type, which can be used to
+    /// 'de-opaque' OpaqueTypeDecl, after typeck is done with all functions.
     pub opaque_types: OpaqueTypeMap<'tcx>,
 }
 
@@ -27,11 +27,6 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
                 Some(_) => {}
             }
         }
-    }
-
-    #[instrument(level = "debug", ret)]
-    pub fn take_opaque_types(&mut self) -> OpaqueTypeMap<'tcx> {
-        std::mem::take(&mut self.opaque_types)
     }
 
     #[inline]

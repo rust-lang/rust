@@ -1,14 +1,14 @@
 //! The data that we will serialize and deserialize.
 //!
 //! The dep-graph is serialized as a sequence of NodeInfo, with the dependencies
-//! specified inline.  The total number of nodes and edges are stored as the last
+//! specified inline. The total number of nodes and edges are stored as the last
 //! 16 bytes of the file, so we can find them easily at decoding time.
 //!
 //! The serialisation is performed on-demand when each node is emitted. Using this
 //! scheme, we do not need to keep the current graph in memory.
 //!
 //! The deserialization is performed manually, in order to convert from the stored
-//! sequence of NodeInfos to the different arrays in SerializedDepGraph.  Since the
+//! sequence of NodeInfos to the different arrays in SerializedDepGraph. Since the
 //! node and edge count are stored at the end of the file, all the arrays can be
 //! pre-allocated with the right length.
 
@@ -22,15 +22,13 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable};
 use smallvec::SmallVec;
-use std::convert::TryInto;
 
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
 // unused so that we can store multiple index types in `CompressedHybridIndex`,
 // and use those bits to encode which index type it contains.
 rustc_index::newtype_index! {
-    pub struct SerializedDepNodeIndex {
-        MAX = 0x7FFF_FFFF
-    }
+    #[max = 0x7FFF_FFFF]
+    pub struct SerializedDepNodeIndex {}
 }
 
 /// Data for use when recompiling the **current crate**.
@@ -272,17 +270,14 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
 
             eprintln!("[incremental]");
             eprintln!("[incremental] DepGraph Statistics");
-            eprintln!("{}", SEPARATOR);
+            eprintln!("{SEPARATOR}");
             eprintln!("[incremental]");
             eprintln!("[incremental] Total Node Count: {}", status.total_node_count);
             eprintln!("[incremental] Total Edge Count: {}", status.total_edge_count);
 
             if cfg!(debug_assertions) {
-                eprintln!("[incremental] Total Edge Reads: {}", total_read_count);
-                eprintln!(
-                    "[incremental] Total Duplicate Edge Reads: {}",
-                    total_duplicate_read_count
-                );
+                eprintln!("[incremental] Total Edge Reads: {total_read_count}");
+                eprintln!("[incremental] Total Duplicate Edge Reads: {total_duplicate_read_count}");
             }
 
             eprintln!("[incremental]");
@@ -290,7 +285,7 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
                 "[incremental]  {:<36}| {:<17}| {:<12}| {:<17}|",
                 "Node Kind", "Node Frequency", "Node Count", "Avg. Edge Count"
             );
-            eprintln!("{}", SEPARATOR);
+            eprintln!("{SEPARATOR}");
 
             for stat in stats {
                 let node_kind_ratio =
@@ -306,7 +301,7 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
                 );
             }
 
-            eprintln!("{}", SEPARATOR);
+            eprintln!("{SEPARATOR}");
             eprintln!("[incremental]");
         }
     }

@@ -10,9 +10,9 @@ window.currentTheme = document.getElementById("themeStyle");
 window.mainTheme = document.getElementById("mainThemeStyle");
 
 // WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
-// If you update this line, then you also need to update the two media queries with the same
+// If you update this line, then you also need to update the media query with the same
 // warning in rustdoc.css
-window.RUSTDOC_MOBILE_BREAKPOINT = 701;
+window.RUSTDOC_MOBILE_BREAKPOINT = 700;
 
 const settingsDataset = (function() {
     const settingsElement = document.getElementById("default-settings");
@@ -51,7 +51,6 @@ function hasClass(elem, className) {
     return elem && elem.classList && elem.classList.contains(className);
 }
 
-// eslint-disable-next-line no-unused-vars
 function addClass(elem, className) {
     if (!elem || !elem.classList) {
         return;
@@ -126,110 +125,101 @@ function getCurrentValue(name) {
     }
 }
 
-function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
-    const newHref = mainStyleElem.href.replace(
-        /\/rustdoc([^/]*)\.css/, "/" + newTheme + "$1" + ".css");
-
+function switchTheme(styleElem, mainStyleElem, newThemeName, saveTheme) {
     // If this new value comes from a system setting or from the previously
     // saved theme, no need to save it.
     if (saveTheme) {
-        updateLocalStorage("theme", newTheme);
+        updateLocalStorage("theme", newThemeName);
     }
 
-    if (styleElem.href === newHref) {
-        return;
-    }
-
-    let found = false;
     if (savedHref.length === 0) {
         onEachLazy(document.getElementsByTagName("link"), el => {
             savedHref.push(el.href);
         });
     }
-    onEach(savedHref, el => {
-        if (el === newHref) {
-            found = true;
+    const newHref = savedHref.find(url => {
+        const m = url.match(/static\.files\/(.*)-[a-f0-9]{16}\.css$/);
+        if (m && m[1] === newThemeName) {
+            return true;
+        }
+        const m2 = url.match(/\/([^/]*)\.css$/);
+        if (m2 && m2[1].startsWith(newThemeName)) {
             return true;
         }
     });
-    if (found) {
+    if (newHref && newHref !== styleElem.href) {
         styleElem.href = newHref;
     }
 }
 
-// This function is called from "main.js".
-// eslint-disable-next-line no-unused-vars
-function useSystemTheme(value) {
-    if (value === undefined) {
-        value = true;
-    }
-
-    updateLocalStorage("use-system-theme", value);
-
-    // update the toggle if we're on the settings page
-    const toggle = document.getElementById("use-system-theme");
-    if (toggle && toggle instanceof HTMLInputElement) {
-        toggle.checked = value;
-    }
-}
-
-const updateSystemTheme = (function() {
-    if (!window.matchMedia) {
-        // fallback to the CSS computed value
-        return () => {
-            const cssTheme = getComputedStyle(document.documentElement)
-                .getPropertyValue("content");
-
-            switchTheme(
-                window.currentTheme,
-                window.mainTheme,
-                JSON.parse(cssTheme) || "light",
-                true
-            );
+const updateTheme = (function() {
+    /**
+     * Update the current theme to match whatever the current combination of
+     * * the preference for using the system theme
+     *   (if this is the case, the value of preferred-light-theme, if the
+     *   system theme is light, otherwise if dark, the value of
+     *   preferred-dark-theme.)
+     * * the preferred theme
+     * … dictates that it should be.
+     */
+    function updateTheme() {
+        const use = (theme, saveTheme) => {
+            switchTheme(window.currentTheme, window.mainTheme, theme, saveTheme);
         };
-    }
 
-    // only listen to (prefers-color-scheme: dark) because light is the default
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-
-    function handlePreferenceChange(mql) {
-        const use = theme => {
-            switchTheme(window.currentTheme, window.mainTheme, theme, true);
-        };
         // maybe the user has disabled the setting in the meantime!
         if (getSettingValue("use-system-theme") !== "false") {
             const lightTheme = getSettingValue("preferred-light-theme") || "light";
             const darkTheme = getSettingValue("preferred-dark-theme") || "dark";
 
-            if (mql.matches) {
-                use(darkTheme);
+            if (isDarkMode()) {
+                use(darkTheme, true);
             } else {
                 // prefers a light theme, or has no preference
-                use(lightTheme);
+                use(lightTheme, true);
             }
             // note: we save the theme so that it doesn't suddenly change when
             // the user disables "use-system-theme" and reloads the page or
             // navigates to another page
         } else {
-            use(getSettingValue("theme"));
+            use(getSettingValue("theme"), false);
         }
     }
 
-    mql.addListener(handlePreferenceChange);
+    // This is always updated below to a function () => bool.
+    let isDarkMode;
 
-    return () => {
-        handlePreferenceChange(mql);
-    };
+    // Determine the function for isDarkMode, and if we have
+    // `window.matchMedia`, set up an event listener on the preferred color
+    // scheme.
+    //
+    // Otherwise, fall back to the prefers-color-scheme value CSS captured in
+    // the "content" property.
+    if (window.matchMedia) {
+        // only listen to (prefers-color-scheme: dark) because light is the default
+        const mql = window.matchMedia("(prefers-color-scheme: dark)");
+
+        isDarkMode = () => mql.matches;
+
+        if (mql.addEventListener) {
+            mql.addEventListener("change", updateTheme);
+        } else {
+            // This is deprecated, see:
+            // https://developer.mozilla.org/en-US/docs/Web/API/MediaQueryList/addListener
+            mql.addListener(updateTheme);
+        }
+    } else {
+        // fallback to the CSS computed value
+        const cssContent = getComputedStyle(document.documentElement)
+            .getPropertyValue("content");
+        // (Note: the double-quotes come from that this is a CSS value, which
+        // might be a length, string, etc.)
+        const cssColorScheme = cssContent || "\"light\"";
+        isDarkMode = () => (cssColorScheme === "\"dark\"");
+    }
+
+    return updateTheme;
 })();
-
-function switchToSavedTheme() {
-    switchTheme(
-        window.currentTheme,
-        window.mainTheme,
-        getSettingValue("theme") || "light",
-        false
-    );
-}
 
 if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
     // update the preferred dark theme if the user is already using a dark theme
@@ -239,12 +229,9 @@ if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
         && darkThemes.indexOf(localStoredTheme) >= 0) {
         updateLocalStorage("preferred-dark-theme", localStoredTheme);
     }
-
-    // call the function to initialize the theme at least once!
-    updateSystemTheme();
-} else {
-    switchToSavedTheme();
 }
+
+updateTheme();
 
 if (getSettingValue("source-sidebar-show") === "true") {
     // At this point in page load, `document.body` is not available yet.
@@ -263,6 +250,6 @@ if (getSettingValue("source-sidebar-show") === "true") {
 // specifically when talking to a remote website with no caching.
 window.addEventListener("pageshow", ev => {
     if (ev.persisted) {
-        setTimeout(switchToSavedTheme, 0);
+        setTimeout(updateTheme, 0);
     }
 });

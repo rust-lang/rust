@@ -86,9 +86,9 @@ use crate::fx::FxHashMap;
 
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
-use std::convert::Into;
 use std::error::Error;
 use std::fs;
+use std::intrinsics::unlikely;
 use std::path::Path;
 use std::process;
 use std::sync::Arc;
@@ -192,7 +192,7 @@ impl SelfProfilerRef {
             F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
         {
             let profiler = profiler_ref.profiler.as_ref().unwrap();
-            f(&**profiler)
+            f(profiler)
         }
 
         if self.event_filter_mask.contains(event_filter) {
@@ -206,10 +206,7 @@ impl SelfProfilerRef {
     /// VerboseTimingGuard returned from this call is dropped. In addition to recording
     /// a measureme event, "verbose" generic activities also print a timing entry to
     /// stderr if the compiler is invoked with -Ztime-passes.
-    pub fn verbose_generic_activity<'a>(
-        &'a self,
-        event_label: &'static str,
-    ) -> VerboseTimingGuard<'a> {
+    pub fn verbose_generic_activity(&self, event_label: &'static str) -> VerboseTimingGuard<'_> {
         let message =
             if self.print_verbose_generic_activities { Some(event_label.to_owned()) } else { None };
 
@@ -217,11 +214,11 @@ impl SelfProfilerRef {
     }
 
     /// Like `verbose_generic_activity`, but with an extra arg.
-    pub fn verbose_generic_activity_with_arg<'a, A>(
-        &'a self,
+    pub fn verbose_generic_activity_with_arg<A>(
+        &self,
         event_label: &'static str,
         event_arg: A,
-    ) -> VerboseTimingGuard<'a>
+    ) -> VerboseTimingGuard<'_>
     where
         A: Borrow<str> + Into<String>,
     {
@@ -399,11 +396,18 @@ impl SelfProfilerRef {
     /// Record a query in-memory cache hit.
     #[inline(always)]
     pub fn query_cache_hit(&self, query_invocation_id: QueryInvocationId) {
-        self.instant_query_event(
-            |profiler| profiler.query_cache_hit_event_kind,
-            query_invocation_id,
-            EventFilter::QUERY_CACHE_HITS,
-        );
+        #[inline(never)]
+        #[cold]
+        fn cold_call(profiler_ref: &SelfProfilerRef, query_invocation_id: QueryInvocationId) {
+            profiler_ref.instant_query_event(
+                |profiler| profiler.query_cache_hit_event_kind,
+                query_invocation_id,
+            );
+        }
+
+        if unlikely(self.event_filter_mask.contains(EventFilter::QUERY_CACHE_HITS)) {
+            cold_call(self, query_invocation_id);
+        }
     }
 
     /// Start profiling a query being blocked on a concurrent execution.
@@ -448,25 +452,20 @@ impl SelfProfilerRef {
         &self,
         event_kind: fn(&SelfProfiler) -> StringId,
         query_invocation_id: QueryInvocationId,
-        event_filter: EventFilter,
     ) {
-        drop(self.exec(event_filter, |profiler| {
-            let event_id = StringId::new_virtual(query_invocation_id.0);
-            let thread_id = get_thread_id();
-
-            profiler.profiler.record_instant_event(
-                event_kind(profiler),
-                EventId::from_virtual(event_id),
-                thread_id,
-            );
-
-            TimingGuard::none()
-        }));
+        let event_id = StringId::new_virtual(query_invocation_id.0);
+        let thread_id = get_thread_id();
+        let profiler = self.profiler.as_ref().unwrap();
+        profiler.profiler.record_instant_event(
+            event_kind(profiler),
+            EventId::from_virtual(event_id),
+            thread_id,
+        );
     }
 
     pub fn with_profiler(&self, f: impl FnOnce(&SelfProfiler)) {
         if let Some(profiler) = &self.profiler {
-            f(&profiler)
+            f(profiler)
         }
     }
 
@@ -549,7 +548,7 @@ impl SelfProfiler {
         // length can behave as a source of entropy for heap addresses, when
         // ASLR is disabled and the heap is otherwise determinic.
         let pid: u32 = process::id();
-        let filename = format!("{}-{:07}.rustc_profile", crate_name, pid);
+        let filename = format!("{crate_name}-{pid:07}.rustc_profile");
         let path = output_directory.join(&filename);
         let profiler =
             Profiler::with_counter(&path, measureme::counters::Counter::by_name(counter_name)?)?;
@@ -733,7 +732,7 @@ impl Drop for VerboseTimingGuard<'_> {
         if let Some((start_time, start_rss, ref message)) = self.start_and_message {
             let end_rss = get_resident_set_size();
             let dur = start_time.elapsed();
-            print_time_passes_entry(&message, dur, start_rss, end_rss);
+            print_time_passes_entry(message, dur, start_rss, end_rss);
         }
     }
 }

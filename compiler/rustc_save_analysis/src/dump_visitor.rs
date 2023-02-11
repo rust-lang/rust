@@ -57,7 +57,7 @@ macro_rules! access_from {
     ($save_ctxt:expr, $id:expr) => {
         Access {
             public: $save_ctxt.tcx.visibility($id).is_public(),
-            reachable: $save_ctxt.access_levels.is_reachable($id),
+            reachable: $save_ctxt.effective_visibilities.is_reachable($id),
         }
     };
 }
@@ -111,10 +111,8 @@ impl<'tcx> DumpVisitor<'tcx> {
         self.save_ctxt.lookup_def_id(ref_id)
     }
 
-    pub fn dump_crate_info(&mut self, name: &str) {
-        let source_file = self.tcx.sess.local_crate_source_file.as_ref();
-        let crate_root = source_file.map(|source_file| {
-            let source_file = Path::new(source_file);
+    pub fn dump_crate_info(&mut self, name: Symbol) {
+        let crate_root = self.tcx.sess.local_crate_source_file().map(|source_file| {
             match source_file.file_name() {
                 Some(_) => source_file.parent().unwrap().display(),
                 None => source_file.display(),
@@ -124,7 +122,7 @@ impl<'tcx> DumpVisitor<'tcx> {
 
         let data = CratePreludeData {
             crate_id: GlobalCrateId {
-                name: name.into(),
+                name: name.to_string(),
                 disambiguator: (self.tcx.sess.local_stable_crate_id().to_u64(), 0),
             },
             crate_root: crate_root.unwrap_or_else(|| "<no source>".to_owned()),
@@ -135,7 +133,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         self.dumper.crate_prelude(data);
     }
 
-    pub fn dump_compilation_options(&mut self, input: &Input, crate_name: &str) {
+    pub fn dump_compilation_options(&mut self, input: &Input, crate_name: Symbol) {
         // Apply possible `remap-path-prefix` remapping to the input source file
         // (and don't include remapping args anymore)
         let (program, arguments) = {
@@ -157,10 +155,14 @@ impl<'tcx> DumpVisitor<'tcx> {
                 .enumerate()
                 .filter(|(i, _)| !remap_arg_indices.contains(i))
                 .map(|(_, arg)| match input {
-                    Input::File(ref path) if path == Path::new(&arg) => {
-                        let mapped = &self.tcx.sess.local_crate_source_file;
-                        mapped.as_ref().unwrap().to_string_lossy().into()
-                    }
+                    Input::File(ref path) if path == Path::new(&arg) => self
+                        .tcx
+                        .sess
+                        .local_crate_source_file()
+                        .as_ref()
+                        .unwrap()
+                        .to_string_lossy()
+                        .into(),
                     _ => arg,
                 });
 
@@ -185,13 +187,13 @@ impl<'tcx> DumpVisitor<'tcx> {
         }
     }
 
-    fn write_sub_paths(&mut self, path: &'tcx hir::Path<'tcx>) {
+    fn write_sub_paths<R>(&mut self, path: &'tcx hir::Path<'tcx, R>) {
         self.write_segments(path.segments)
     }
 
     // As write_sub_paths, but does not process the last ident in the path (assuming it
     // will be processed elsewhere). See note on write_sub_paths about global.
-    fn write_sub_paths_truncated(&mut self, path: &'tcx hir::Path<'tcx>) {
+    fn write_sub_paths_truncated<R>(&mut self, path: &'tcx hir::Path<'tcx, R>) {
         if let [segments @ .., _] = path.segments {
             self.write_segments(segments)
         }
@@ -209,7 +211,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     None => continue,
                 };
                 if !self.span.filter_generated(ident.span) {
-                    let id = id_from_hir_id(hir_id, &self.save_ctxt);
+                    let id = id_from_hir_id(hir_id);
                     let span = self.span_from_span(ident.span);
 
                     self.dumper.dump_def(
@@ -238,17 +240,17 @@ impl<'tcx> DumpVisitor<'tcx> {
         &mut self,
         sig: &'tcx hir::FnSig<'tcx>,
         body: Option<hir::BodyId>,
-        def_id: LocalDefId,
+        owner_id: hir::OwnerId,
         ident: Ident,
         generics: &'tcx hir::Generics<'tcx>,
         span: Span,
     ) {
-        debug!("process_method: {:?}:{}", def_id, ident);
+        debug!("process_method: {:?}:{}", owner_id, ident);
 
         let map = self.tcx.hir();
-        let hir_id = map.local_def_id_to_hir_id(def_id);
-        self.nest_typeck_results(def_id, |v| {
-            if let Some(mut method_data) = v.save_ctxt.get_method_data(hir_id, ident, span) {
+        let hir_id: hir::HirId = owner_id.into();
+        self.nest_typeck_results(owner_id.def_id, |v| {
+            if let Some(mut method_data) = v.save_ctxt.get_method_data(owner_id, ident, span) {
                 if let Some(body) = body {
                     v.process_formals(map.body(body).params, &method_data.qualname);
                 }
@@ -256,9 +258,10 @@ impl<'tcx> DumpVisitor<'tcx> {
 
                 method_data.value =
                     fn_to_string(sig.decl, sig.header, Some(ident.name), generics, &[], None);
-                method_data.sig = sig::method_signature(hir_id, ident, generics, sig, &v.save_ctxt);
+                method_data.sig =
+                    sig::method_signature(owner_id, ident, generics, sig, &v.save_ctxt);
 
-                v.dumper.dump_def(&access_from!(v.save_ctxt, def_id), method_data);
+                v.dumper.dump_def(&access_from!(v.save_ctxt, owner_id.def_id), method_data);
             }
 
             // walk arg and return types
@@ -280,14 +283,11 @@ impl<'tcx> DumpVisitor<'tcx> {
     fn process_struct_field_def(
         &mut self,
         field: &'tcx hir::FieldDef<'tcx>,
-        parent_id: hir::HirId,
+        parent_id: LocalDefId,
     ) {
         let field_data = self.save_ctxt.get_field_data(field, parent_id);
         if let Some(field_data) = field_data {
-            self.dumper.dump_def(
-                &access_from!(self.save_ctxt, self.tcx.hir().local_def_id(field.hir_id)),
-                field_data,
-            );
+            self.dumper.dump_def(&access_from!(self.save_ctxt, field.def_id), field_data);
         }
     }
 
@@ -307,7 +307,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     // Append $id to name to make sure each one is unique.
                     let qualname = format!("{}::{}${}", prefix, name, id);
                     if !self.span.filter_generated(param_ss) {
-                        let id = id_from_hir_id(param.hir_id, &self.save_ctxt);
+                        let id = id_from_def_id(param.def_id.to_def_id());
                         let span = self.span_from_span(param_ss);
 
                         self.dumper.dump_def(
@@ -345,14 +345,14 @@ impl<'tcx> DumpVisitor<'tcx> {
         body: hir::BodyId,
     ) {
         let map = self.tcx.hir();
-        self.nest_typeck_results(item.def_id.def_id, |v| {
+        self.nest_typeck_results(item.owner_id.def_id, |v| {
             let body = map.body(body);
             if let Some(fn_data) = v.save_ctxt.get_item_data(item) {
                 down_cast_data!(fn_data, DefData, item.span);
                 v.process_formals(body.params, &fn_data.qualname);
                 v.process_generic_params(ty_params, &fn_data.qualname, item.hir_id());
 
-                v.dumper.dump_def(&access_from!(v.save_ctxt, item.def_id.def_id), fn_data);
+                v.dumper.dump_def(&access_from!(v.save_ctxt, item.owner_id.def_id), fn_data);
             }
 
             for arg in decl.inputs {
@@ -373,10 +373,10 @@ impl<'tcx> DumpVisitor<'tcx> {
         typ: &'tcx hir::Ty<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
     ) {
-        self.nest_typeck_results(item.def_id.def_id, |v| {
+        self.nest_typeck_results(item.owner_id.def_id, |v| {
             if let Some(var_data) = v.save_ctxt.get_item_data(item) {
                 down_cast_data!(var_data, DefData, item.span);
-                v.dumper.dump_def(&access_from!(v.save_ctxt, item.def_id.def_id), var_data);
+                v.dumper.dump_def(&access_from!(v.save_ctxt, item.owner_id.def_id), var_data);
             }
             v.visit_ty(&typ);
             v.visit_expr(expr);
@@ -385,25 +385,24 @@ impl<'tcx> DumpVisitor<'tcx> {
 
     fn process_assoc_const(
         &mut self,
-        def_id: LocalDefId,
+        owner_id: hir::OwnerId,
         ident: Ident,
         typ: &'tcx hir::Ty<'tcx>,
         expr: Option<&'tcx hir::Expr<'tcx>>,
         parent_id: DefId,
         attrs: &'tcx [ast::Attribute],
     ) {
-        let qualname = format!("::{}", self.tcx.def_path_str(def_id.to_def_id()));
+        let qualname = format!("::{}", self.tcx.def_path_str(owner_id.to_def_id()));
 
         if !self.span.filter_generated(ident.span) {
-            let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-            let sig = sig::assoc_const_signature(hir_id, ident.name, typ, expr, &self.save_ctxt);
+            let sig = sig::assoc_const_signature(owner_id, ident.name, typ, expr, &self.save_ctxt);
             let span = self.span_from_span(ident.span);
 
             self.dumper.dump_def(
-                &access_from!(self.save_ctxt, def_id),
+                &access_from!(self.save_ctxt, owner_id.def_id),
                 Def {
                     kind: DefKind::Const,
-                    id: id_from_hir_id(hir_id, &self.save_ctxt),
+                    id: id_from_def_id(owner_id.to_def_id()),
                     span,
                     name: ident.name.to_string(),
                     qualname,
@@ -419,7 +418,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         }
 
         // walk type and init value
-        self.nest_typeck_results(def_id, |v| {
+        self.nest_typeck_results(owner_id.def_id, |v| {
             v.visit_ty(typ);
             if let Some(expr) = expr {
                 v.visit_expr(expr);
@@ -436,7 +435,7 @@ impl<'tcx> DumpVisitor<'tcx> {
     ) {
         debug!("process_struct {:?} {:?}", item, item.span);
         let name = item.ident.to_string();
-        let qualname = format!("::{}", self.tcx.def_path_str(item.def_id.to_def_id()));
+        let qualname = format!("::{}", self.tcx.def_path_str(item.owner_id.to_def_id()));
 
         let kind = match item.kind {
             hir::ItemKind::Struct(_, _) => DefKind::Struct,
@@ -454,8 +453,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                         if include_priv_fields {
                             return Some(f.ident.to_string());
                         }
-                        let def_id = self.save_ctxt.tcx.hir().local_def_id(f.hir_id);
-                        if self.save_ctxt.tcx.visibility(def_id).is_public() {
+                        if self.save_ctxt.tcx.visibility(f.def_id).is_public() {
                             Some(f.ident.to_string())
                         } else {
                             None
@@ -464,7 +462,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     .collect::<Vec<_>>()
                     .join(", ");
                 let value = format!("{} {{ {} }}", name, fields_str);
-                (value, fields.iter().map(|f| id_from_hir_id(f.hir_id, &self.save_ctxt)).collect())
+                (value, fields.iter().map(|f| id_from_def_id(f.def_id.to_def_id())).collect())
             }
             _ => (String::new(), vec![]),
         };
@@ -473,10 +471,10 @@ impl<'tcx> DumpVisitor<'tcx> {
             let span = self.span_from_span(item.ident.span);
             let attrs = self.tcx.hir().attrs(item.hir_id());
             self.dumper.dump_def(
-                &access_from!(self.save_ctxt, item.def_id.def_id),
+                &access_from!(self.save_ctxt, item.owner_id.def_id),
                 Def {
                     kind,
-                    id: id_from_def_id(item.def_id.to_def_id()),
+                    id: id_from_def_id(item.owner_id.to_def_id()),
                     span,
                     name,
                     qualname: qualname.clone(),
@@ -491,9 +489,9 @@ impl<'tcx> DumpVisitor<'tcx> {
             );
         }
 
-        self.nest_typeck_results(item.def_id.def_id, |v| {
+        self.nest_typeck_results(item.owner_id.def_id, |v| {
             for field in def.fields() {
-                v.process_struct_field_def(field, item.hir_id());
+                v.process_struct_field_def(field, item.owner_id.def_id);
                 v.visit_ty(&field.ty);
             }
 
@@ -513,7 +511,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         };
         down_cast_data!(enum_data, DefData, item.span);
 
-        let access = access_from!(self.save_ctxt, item.def_id.def_id);
+        let access = access_from!(self.save_ctxt, item.owner_id.def_id);
 
         for variant in enum_definition.variants {
             let name = variant.ident.name.to_string();
@@ -527,9 +525,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                     let value = format!("{}::{} {{ {} }}", enum_data.name, name, fields_str);
                     if !self.span.filter_generated(name_span) {
                         let span = self.span_from_span(name_span);
-                        let id = id_from_hir_id(variant.id, &self.save_ctxt);
-                        let parent = Some(id_from_def_id(item.def_id.to_def_id()));
-                        let attrs = self.tcx.hir().attrs(variant.id);
+                        let id = id_from_def_id(variant.def_id.to_def_id());
+                        let parent = Some(id_from_def_id(item.owner_id.to_def_id()));
+                        let attrs = self.tcx.hir().attrs(variant.hir_id);
 
                         self.dumper.dump_def(
                             &access,
@@ -552,7 +550,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 }
                 ref v => {
                     let mut value = format!("{}::{}", enum_data.name, name);
-                    if let hir::VariantData::Tuple(fields, _) = v {
+                    if let hir::VariantData::Tuple(fields, _, _) = v {
                         value.push('(');
                         value.push_str(
                             &fields
@@ -565,9 +563,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                     }
                     if !self.span.filter_generated(name_span) {
                         let span = self.span_from_span(name_span);
-                        let id = id_from_hir_id(variant.id, &self.save_ctxt);
-                        let parent = Some(id_from_def_id(item.def_id.to_def_id()));
-                        let attrs = self.tcx.hir().attrs(variant.id);
+                        let id = id_from_def_id(variant.def_id.to_def_id());
+                        let parent = Some(id_from_def_id(item.owner_id.to_def_id()));
+                        let attrs = self.tcx.hir().attrs(variant.hir_id);
 
                         self.dumper.dump_def(
                             &access,
@@ -591,7 +589,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             }
 
             for field in variant.data.fields() {
-                self.process_struct_field_def(field, variant.id);
+                self.process_struct_field_def(field, variant.def_id);
                 self.visit_ty(field.ty);
             }
         }
@@ -612,14 +610,14 @@ impl<'tcx> DumpVisitor<'tcx> {
         }
 
         let map = self.tcx.hir();
-        self.nest_typeck_results(item.def_id.def_id, |v| {
+        self.nest_typeck_results(item.owner_id.def_id, |v| {
             v.visit_ty(&impl_.self_ty);
             if let Some(trait_ref) = &impl_.of_trait {
                 v.process_path(trait_ref.hir_ref_id, &hir::QPath::Resolved(None, &trait_ref.path));
             }
             v.process_generic_params(&impl_.generics, "", item.hir_id());
             for impl_item in impl_.items {
-                v.process_impl_item(map.impl_item(impl_item.id), item.def_id.to_def_id());
+                v.process_impl_item(map.impl_item(impl_item.id), item.owner_id.to_def_id());
             }
         });
     }
@@ -632,7 +630,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         methods: &'tcx [hir::TraitItemRef],
     ) {
         let name = item.ident.to_string();
-        let qualname = format!("::{}", self.tcx.def_path_str(item.def_id.to_def_id()));
+        let qualname = format!("::{}", self.tcx.def_path_str(item.owner_id.to_def_id()));
         let mut val = name.clone();
         if !generics.params.is_empty() {
             val.push_str(&generic_params_to_string(generics.params));
@@ -642,13 +640,13 @@ impl<'tcx> DumpVisitor<'tcx> {
             val.push_str(&bounds_to_string(trait_refs));
         }
         if !self.span.filter_generated(item.ident.span) {
-            let id = id_from_def_id(item.def_id.to_def_id());
+            let id = id_from_def_id(item.owner_id.to_def_id());
             let span = self.span_from_span(item.ident.span);
             let children =
-                methods.iter().map(|i| id_from_def_id(i.id.def_id.to_def_id())).collect();
+                methods.iter().map(|i| id_from_def_id(i.id.owner_id.to_def_id())).collect();
             let attrs = self.tcx.hir().attrs(item.hir_id());
             self.dumper.dump_def(
-                &access_from!(self.save_ctxt, item.def_id.def_id),
+                &access_from!(self.save_ctxt, item.owner_id.def_id),
                 Def {
                     kind: DefKind::Trait,
                     id,
@@ -692,7 +690,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                         kind: RelationKind::SuperTrait,
                         span,
                         from: id_from_def_id(id),
-                        to: id_from_def_id(item.def_id.to_def_id()),
+                        to: id_from_def_id(item.owner_id.to_def_id()),
                     });
                 }
             }
@@ -702,7 +700,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         self.process_generic_params(generics, &qualname, item.hir_id());
         for method in methods {
             let map = self.tcx.hir();
-            self.process_trait_item(map.trait_item(method.id), item.def_id.to_def_id())
+            self.process_trait_item(map.trait_item(method.id), item.owner_id.to_def_id())
         }
     }
 
@@ -710,7 +708,7 @@ impl<'tcx> DumpVisitor<'tcx> {
     fn process_mod(&mut self, item: &'tcx hir::Item<'tcx>) {
         if let Some(mod_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(mod_data, DefData, item.span);
-            self.dumper.dump_def(&access_from!(self.save_ctxt, item.def_id.def_id), mod_data);
+            self.dumper.dump_def(&access_from!(self.save_ctxt, item.owner_id.def_id), mod_data);
         }
     }
 
@@ -881,7 +879,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     // Rust uses the id of the pattern for var lookups, so we'll use it too.
                     if !self.span.filter_generated(ident.span) {
                         let qualname = format!("{}${}", ident, hir_id);
-                        let id = id_from_hir_id(hir_id, &self.save_ctxt);
+                        let id = id_from_hir_id(hir_id);
                         let span = self.span_from_span(ident.span);
 
                         self.dumper.dump_def(
@@ -981,7 +979,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 let body = body.map(|b| self.tcx.hir().body(b).value);
                 let attrs = self.tcx.hir().attrs(trait_item.hir_id());
                 self.process_assoc_const(
-                    trait_item.def_id.def_id,
+                    trait_item.owner_id,
                     trait_item.ident,
                     &ty,
                     body,
@@ -995,7 +993,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 self.process_method(
                     sig,
                     body,
-                    trait_item.def_id.def_id,
+                    trait_item.owner_id,
                     trait_item.ident,
                     &trait_item.generics,
                     trait_item.span,
@@ -1005,11 +1003,11 @@ impl<'tcx> DumpVisitor<'tcx> {
                 // FIXME do something with _bounds (for type refs)
                 let name = trait_item.ident.name.to_string();
                 let qualname =
-                    format!("::{}", self.tcx.def_path_str(trait_item.def_id.to_def_id()));
+                    format!("::{}", self.tcx.def_path_str(trait_item.owner_id.to_def_id()));
 
                 if !self.span.filter_generated(trait_item.ident.span) {
                     let span = self.span_from_span(trait_item.ident.span);
-                    let id = id_from_def_id(trait_item.def_id.to_def_id());
+                    let id = id_from_def_id(trait_item.owner_id.to_def_id());
                     let attrs = self.tcx.hir().attrs(trait_item.hir_id());
 
                     self.dumper.dump_def(
@@ -1026,10 +1024,10 @@ impl<'tcx> DumpVisitor<'tcx> {
                             decl_id: None,
                             docs: self.save_ctxt.docs_for_attrs(attrs),
                             sig: sig::assoc_type_signature(
-                                trait_item.hir_id(),
+                                trait_item.owner_id,
                                 trait_item.ident,
                                 Some(bounds),
-                                default_ty.as_ref().map(|ty| &**ty),
+                                default_ty.as_deref(),
                                 &self.save_ctxt,
                             ),
                             attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),
@@ -1051,7 +1049,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 let body = self.tcx.hir().body(body);
                 let attrs = self.tcx.hir().attrs(impl_item.hir_id());
                 self.process_assoc_const(
-                    impl_item.def_id.def_id,
+                    impl_item.owner_id,
                     impl_item.ident,
                     &ty,
                     Some(&body.value),
@@ -1063,7 +1061,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 self.process_method(
                     sig,
                     Some(body),
-                    impl_item.def_id.def_id,
+                    impl_item.owner_id,
                     impl_item.ident,
                     &impl_item.generics,
                     impl_item.span,
@@ -1079,18 +1077,16 @@ impl<'tcx> DumpVisitor<'tcx> {
     }
 
     pub(crate) fn process_crate(&mut self) {
-        let id = hir::CRATE_HIR_ID;
-        let qualname =
-            format!("::{}", self.tcx.def_path_str(self.tcx.hir().local_def_id(id).to_def_id()));
+        let qualname = format!("::{}", self.tcx.def_path_str(CRATE_DEF_ID.to_def_id()));
 
         let sm = self.tcx.sess.source_map();
         let krate_mod = self.tcx.hir().root_module();
         let filename = sm.span_to_filename(krate_mod.spans.inner_span);
-        let data_id = id_from_hir_id(id, &self.save_ctxt);
+        let data_id = id_from_def_id(CRATE_DEF_ID.to_def_id());
         let children =
-            krate_mod.item_ids.iter().map(|i| id_from_def_id(i.def_id.to_def_id())).collect();
+            krate_mod.item_ids.iter().map(|i| id_from_def_id(i.owner_id.to_def_id())).collect();
         let span = self.span_from_span(krate_mod.spans.inner_span);
-        let attrs = self.tcx.hir().attrs(id);
+        let attrs = self.tcx.hir().attrs(hir::CRATE_HIR_ID);
 
         self.dumper.dump_def(
             &Access { public: true, reachable: true },
@@ -1137,10 +1133,10 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
             hir::ItemKind::Use(path, hir::UseKind::Single) => {
                 let sub_span = path.segments.last().unwrap().ident.span;
                 if !self.span.filter_generated(sub_span) {
-                    let access = access_from!(self.save_ctxt, item.def_id.def_id);
+                    let access = access_from!(self.save_ctxt, item.owner_id.def_id);
                     let ref_id = self.lookup_def_id(item.hir_id()).map(id_from_def_id);
                     let span = self.span_from_span(sub_span);
-                    let parent = self.save_ctxt.tcx.local_parent(item.def_id.def_id);
+                    let parent = self.save_ctxt.tcx.local_parent(item.owner_id.def_id);
                     self.dumper.import(
                         &access,
                         Import {
@@ -1158,16 +1154,16 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
             }
             hir::ItemKind::Use(path, hir::UseKind::Glob) => {
                 // Make a comma-separated list of names of imported modules.
-                let names = self.tcx.names_imported_by_glob_use(item.def_id.def_id);
+                let names = self.tcx.names_imported_by_glob_use(item.owner_id.def_id);
                 let names: Vec<_> = names.iter().map(|n| n.to_string()).collect();
 
                 // Otherwise it's a span with wrong macro expansion info, which
                 // we don't want to track anyway, since it's probably macro-internal `use`
                 if let Some(sub_span) = self.span.sub_span_of_star(item.span) {
                     if !self.span.filter_generated(item.span) {
-                        let access = access_from!(self.save_ctxt, item.def_id.def_id);
+                        let access = access_from!(self.save_ctxt, item.owner_id.def_id);
                         let span = self.span_from_span(sub_span);
-                        let parent = self.save_ctxt.tcx.local_parent(item.def_id.def_id);
+                        let parent = self.save_ctxt.tcx.local_parent(item.owner_id.def_id);
                         self.dumper.import(
                             &access,
                             Import {
@@ -1188,7 +1184,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 let name_span = item.ident.span;
                 if !self.span.filter_generated(name_span) {
                     let span = self.span_from_span(name_span);
-                    let parent = self.save_ctxt.tcx.local_parent(item.def_id.def_id);
+                    let parent = self.save_ctxt.tcx.local_parent(item.owner_id.def_id);
                     self.dumper.import(
                         &Access { public: false, reachable: false },
                         Import {
@@ -1228,15 +1224,15 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 intravisit::walk_mod(self, m, item.hir_id());
             }
             hir::ItemKind::TyAlias(ty, ref generics) => {
-                let qualname = format!("::{}", self.tcx.def_path_str(item.def_id.to_def_id()));
+                let qualname = format!("::{}", self.tcx.def_path_str(item.owner_id.to_def_id()));
                 let value = ty_to_string(&ty);
                 if !self.span.filter_generated(item.ident.span) {
                     let span = self.span_from_span(item.ident.span);
-                    let id = id_from_def_id(item.def_id.to_def_id());
+                    let id = id_from_def_id(item.owner_id.to_def_id());
                     let attrs = self.tcx.hir().attrs(item.hir_id());
 
                     self.dumper.dump_def(
-                        &access_from!(self.save_ctxt, item.def_id.def_id),
+                        &access_from!(self.save_ctxt, item.owner_id.def_id),
                         Def {
                             kind: DefKind::Type,
                             id,
@@ -1317,14 +1313,14 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     // output the inferred type here? :shrug:
                     hir::ArrayLen::Infer(..) => {}
                     hir::ArrayLen::Body(anon_const) => self
-                        .nest_typeck_results(self.tcx.hir().local_def_id(anon_const.hir_id), |v| {
+                        .nest_typeck_results(anon_const.def_id, |v| {
                             v.visit_expr(&map.body(anon_const.body).value)
                         }),
                 }
             }
             hir::TyKind::OpaqueDef(item_id, _, _) => {
                 let item = self.tcx.hir().item(item_id);
-                self.nest_typeck_results(item_id.def_id.def_id, |v| v.visit_item(item));
+                self.nest_typeck_results(item_id.owner_id.def_id, |v| v.visit_item(item));
             }
             _ => intravisit::walk_ty(self, t),
         }
@@ -1359,7 +1355,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     }
                 }
             }
-            hir::ExprKind::Closure(&hir::Closure { ref fn_decl, body, .. }) => {
+            hir::ExprKind::Closure(&hir::Closure { ref fn_decl, body, def_id, .. }) => {
                 let id = format!("${}", ex.hir_id);
 
                 // walk arg and return types
@@ -1373,7 +1369,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
 
                 // walk the body
                 let map = self.tcx.hir();
-                self.nest_typeck_results(self.tcx.hir().local_def_id(ex.hir_id), |v| {
+                self.nest_typeck_results(def_id, |v| {
                     let body = map.body(body);
                     v.process_formals(body.params, &id);
                     v.visit_expr(&body.value)
@@ -1387,7 +1383,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     // output the inferred type here? :shrug:
                     hir::ArrayLen::Infer(..) => {}
                     hir::ArrayLen::Body(anon_const) => self
-                        .nest_typeck_results(self.tcx.hir().local_def_id(anon_const.hir_id), |v| {
+                        .nest_typeck_results(anon_const.def_id, |v| {
                             v.visit_expr(&map.body(anon_const.body).value)
                         }),
                 }
@@ -1431,7 +1427,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
-        let access = access_from!(self.save_ctxt, item.def_id.def_id);
+        let access = access_from!(self.save_ctxt, item.owner_id.def_id);
 
         match item.kind {
             hir::ForeignItemKind::Fn(decl, _, ref generics) => {

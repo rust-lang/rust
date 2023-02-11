@@ -3,7 +3,7 @@ use rustc_middle::ty::{ParamEnv, TyCtxt};
 use rustc_session::Limit;
 use rustc_target::abi::{Abi, FieldsShape, InitKind, Scalar, Variants};
 
-use crate::const_eval::CompileTimeInterpreter;
+use crate::const_eval::{CheckAlignment, CompileTimeInterpreter};
 use crate::interpret::{InterpCx, MemoryKind, OpTy};
 
 /// Determines if this type permits "raw" initialization by just transmuting some memory into an
@@ -20,13 +20,14 @@ use crate::interpret::{InterpCx, MemoryKind, OpTy};
 /// to the full uninit check).
 pub fn might_permit_raw_init<'tcx>(
     tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
     ty: TyAndLayout<'tcx>,
     kind: InitKind,
 ) -> bool {
     if tcx.sess.opts.unstable_opts.strict_init_checks {
         might_permit_raw_init_strict(ty, tcx, kind)
     } else {
-        let layout_cx = LayoutCx { tcx, param_env: ParamEnv::reveal_all() };
+        let layout_cx = LayoutCx { tcx, param_env };
         might_permit_raw_init_lax(ty, &layout_cx, kind)
     }
 }
@@ -41,7 +42,7 @@ fn might_permit_raw_init_strict<'tcx>(
     let machine = CompileTimeInterpreter::new(
         Limit::new(0),
         /*can_access_statics:*/ false,
-        /*check_alignment:*/ true,
+        CheckAlignment::Error,
     );
 
     let mut cx = InterpCx::new(tcx, rustc_span::DUMMY_SP, ParamEnv::reveal_all(), machine);

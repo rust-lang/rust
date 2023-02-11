@@ -101,7 +101,7 @@ pub const unsafe fn unreachable_unchecked() -> ! {
     // SAFETY: the safety contract for `intrinsics::unreachable` must
     // be upheld by the caller.
     unsafe {
-        intrinsics::assert_unsafe_precondition!(() => false);
+        intrinsics::assert_unsafe_precondition!("hint::unreachable_unchecked must never be reached", () => false);
         intrinsics::unreachable()
     }
 }
@@ -160,7 +160,7 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 /// ```
 ///
 /// [`thread::yield_now`]: ../../std/thread/fn.yield_now.html
-#[inline]
+#[inline(always)]
 #[stable(feature = "renamed_spin_loop", since = "1.49.0")]
 pub fn spin_loop() {
     #[cfg(target_arch = "x86")]
@@ -219,8 +219,77 @@ pub fn spin_loop() {
 /// backend used. Programs cannot rely on `black_box` for *correctness* in any way.
 ///
 /// [`std::convert::identity`]: crate::convert::identity
+///
+/// # When is this useful?
+///
+/// First and foremost: `black_box` does _not_ guarantee any exact behavior and, in some cases, may
+/// do nothing at all. As such, it **must not be relied upon to control critical program behavior.**
+/// This _immediately_ precludes any direct use of this function for cryptographic or security
+/// purposes.
+///
+/// While not suitable in those mission-critical cases, `back_box`'s functionality can generally be
+/// relied upon for benchmarking, and should be used there. It will try to ensure that the
+/// compiler doesn't optimize away part of the intended test code based on context. For
+/// example:
+///
+/// ```
+/// fn contains(haystack: &[&str], needle: &str) -> bool {
+///     haystack.iter().any(|x| x == &needle)
+/// }
+///
+/// pub fn benchmark() {
+///     let haystack = vec!["abc", "def", "ghi", "jkl", "mno"];
+///     let needle = "ghi";
+///     for _ in 0..10 {
+///         contains(&haystack, needle);
+///     }
+/// }
+/// ```
+///
+/// The compiler could theoretically make optimizations like the following:
+///
+/// - `needle` and `haystack` are always the same, move the call to `contains` outside the loop and
+///   delete the loop
+/// - Inline `contains`
+/// - `needle` and `haystack` have values known at compile time, `contains` is always true. Remove
+///   the call and replace with `true`
+/// - Nothing is done with the result of `contains`: delete this function call entirely
+/// - `benchmark` now has no purpose: delete this function
+///
+/// It is not likely that all of the above happens, but the compiler is definitely able to make some
+/// optimizations that could result in a very inaccurate benchmark. This is where `black_box` comes
+/// in:
+///
+/// ```
+/// use std::hint::black_box;
+///
+/// // Same `contains` function
+/// fn contains(haystack: &[&str], needle: &str) -> bool {
+///     haystack.iter().any(|x| x == &needle)
+/// }
+///
+/// pub fn benchmark() {
+///     let haystack = vec!["abc", "def", "ghi", "jkl", "mno"];
+///     let needle = "ghi";
+///     for _ in 0..10 {
+///         // Adjust our benchmark loop contents
+///         black_box(contains(black_box(&haystack), black_box(needle)));
+///     }
+/// }
+/// ```
+///
+/// This essentially tells the compiler to block optimizations across any calls to `black_box`. So,
+/// it now:
+///
+/// - Treats both arguments to `contains` as unpredictable: the body of `contains` can no longer be
+///   optimized based on argument values
+/// - Treats the call to `contains` and its result as volatile: the body of `benchmark` cannot
+///   optimize this away
+///
+/// This makes our benchmark much more realistic to how the function would be used in situ, where
+/// arguments are usually not known at compile time and the result is used in some way.
 #[inline]
-#[stable(feature = "bench_black_box", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "bench_black_box", since = "1.66.0")]
 #[rustc_const_unstable(feature = "const_black_box", issue = "none")]
 pub const fn black_box<T>(dummy: T) -> T {
     crate::intrinsics::black_box(dummy)
@@ -345,6 +414,7 @@ pub const fn black_box<T>(dummy: T) -> T {
 #[unstable(feature = "hint_must_use", issue = "94745")]
 #[rustc_const_unstable(feature = "hint_must_use", issue = "94745")]
 #[must_use] // <-- :)
+#[inline(always)]
 pub const fn must_use<T>(value: T) -> T {
     value
 }

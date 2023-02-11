@@ -1,11 +1,11 @@
-// Error messages for EXXXX errors.  Each message should start and end with a
-// new line, and be wrapped to 80 characters.  In vim you can `:set tw=80` and
+// Error messages for EXXXX errors. Each message should start and end with a
+// new line, and be wrapped to 80 characters. In vim you can `:set tw=80` and
 // use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
 //
 // /!\ IMPORTANT /!\
 //
 // Error messages' format must follow the RFC 1567 available here:
-// https://github.com/rust-lang/rfcs/pull/1567
+// https://rust-lang.github.io/rfcs/1567-long-error-codes-explanation-normalization.html
 
 register_diagnostics! {
 E0001: include_str!("./error_codes/E0001.md"),
@@ -110,6 +110,7 @@ E0204: include_str!("./error_codes/E0204.md"),
 E0205: include_str!("./error_codes/E0205.md"),
 E0206: include_str!("./error_codes/E0206.md"),
 E0207: include_str!("./error_codes/E0207.md"),
+E0208: include_str!("./error_codes/E0208.md"),
 E0210: include_str!("./error_codes/E0210.md"),
 E0211: include_str!("./error_codes/E0211.md"),
 E0212: include_str!("./error_codes/E0212.md"),
@@ -163,6 +164,7 @@ E0311: include_str!("./error_codes/E0311.md"),
 E0312: include_str!("./error_codes/E0312.md"),
 E0316: include_str!("./error_codes/E0316.md"),
 E0317: include_str!("./error_codes/E0317.md"),
+E0320: include_str!("./error_codes/E0320.md"),
 E0321: include_str!("./error_codes/E0321.md"),
 E0322: include_str!("./error_codes/E0322.md"),
 E0323: include_str!("./error_codes/E0323.md"),
@@ -183,6 +185,7 @@ E0373: include_str!("./error_codes/E0373.md"),
 E0374: include_str!("./error_codes/E0374.md"),
 E0375: include_str!("./error_codes/E0375.md"),
 E0376: include_str!("./error_codes/E0376.md"),
+E0377: include_str!("./error_codes/E0377.md"),
 E0378: include_str!("./error_codes/E0378.md"),
 E0379: include_str!("./error_codes/E0379.md"),
 E0380: include_str!("./error_codes/E0380.md"),
@@ -238,13 +241,18 @@ E0452: include_str!("./error_codes/E0452.md"),
 E0453: include_str!("./error_codes/E0453.md"),
 E0454: include_str!("./error_codes/E0454.md"),
 E0455: include_str!("./error_codes/E0455.md"),
+E0457: include_str!("./error_codes/E0457.md"),
 E0458: include_str!("./error_codes/E0458.md"),
 E0459: include_str!("./error_codes/E0459.md"),
+E0460: include_str!("./error_codes/E0460.md"),
+E0461: include_str!("./error_codes/E0461.md"),
+E0462: include_str!("./error_codes/E0462.md"),
 E0463: include_str!("./error_codes/E0463.md"),
 E0464: include_str!("./error_codes/E0464.md"),
 E0466: include_str!("./error_codes/E0466.md"),
 E0468: include_str!("./error_codes/E0468.md"),
 E0469: include_str!("./error_codes/E0469.md"),
+E0472: include_str!("./error_codes/E0472.md"),
 E0477: include_str!("./error_codes/E0477.md"),
 E0478: include_str!("./error_codes/E0478.md"),
 E0482: include_str!("./error_codes/E0482.md"),
@@ -269,13 +277,16 @@ E0509: include_str!("./error_codes/E0509.md"),
 E0510: include_str!("./error_codes/E0510.md"),
 E0511: include_str!("./error_codes/E0511.md"),
 E0512: include_str!("./error_codes/E0512.md"),
+E0514: include_str!("./error_codes/E0514.md"),
 E0515: include_str!("./error_codes/E0515.md"),
 E0516: include_str!("./error_codes/E0516.md"),
 E0517: include_str!("./error_codes/E0517.md"),
 E0518: include_str!("./error_codes/E0518.md"),
+E0519: include_str!("./error_codes/E0519.md"),
 E0520: include_str!("./error_codes/E0520.md"),
 E0521: include_str!("./error_codes/E0521.md"),
 E0522: include_str!("./error_codes/E0522.md"),
+E0523: include_str!("./error_codes/E0523.md"),
 E0524: include_str!("./error_codes/E0524.md"),
 E0525: include_str!("./error_codes/E0525.md"),
 E0527: include_str!("./error_codes/E0527.md"),
@@ -378,6 +389,7 @@ E0636: include_str!("./error_codes/E0636.md"),
 E0637: include_str!("./error_codes/E0637.md"),
 E0638: include_str!("./error_codes/E0638.md"),
 E0639: include_str!("./error_codes/E0639.md"),
+E0640: include_str!("./error_codes/E0640.md"),
 E0641: include_str!("./error_codes/E0641.md"),
 E0642: include_str!("./error_codes/E0642.md"),
 E0643: include_str!("./error_codes/E0643.md"),
@@ -425,6 +437,8 @@ E0713: include_str!("./error_codes/E0713.md"),
 E0714: include_str!("./error_codes/E0714.md"),
 E0715: include_str!("./error_codes/E0715.md"),
 E0716: include_str!("./error_codes/E0716.md"),
+E0711: include_str!("./error_codes/E0711.md"),
+E0717: include_str!("./error_codes/E0717.md"),
 E0718: include_str!("./error_codes/E0718.md"),
 E0719: include_str!("./error_codes/E0719.md"),
 E0720: include_str!("./error_codes/E0720.md"),
@@ -493,7 +507,11 @@ E0785: include_str!("./error_codes/E0785.md"),
 E0786: include_str!("./error_codes/E0786.md"),
 E0787: include_str!("./error_codes/E0787.md"),
 E0788: include_str!("./error_codes/E0788.md"),
+E0789: include_str!("./error_codes/E0789.md"),
 E0790: include_str!("./error_codes/E0790.md"),
+E0791: include_str!("./error_codes/E0791.md"),
+E0792: include_str!("./error_codes/E0792.md"),
+E0793: include_str!("./error_codes/E0793.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
@@ -530,7 +548,6 @@ E0790: include_str!("./error_codes/E0790.md"),
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
 //  E0194, // merged into E0403
 //  E0196, // cannot determine a type for this closure
-    E0208, // internal error code
 //  E0209, // builtin traits can only be implemented on structs or enums
 //  E0213, // associated types are not accepted in this context
 //  E0215, // angle-bracket notation is not stable with `Fn`
@@ -561,7 +578,7 @@ E0790: include_str!("./error_codes/E0790.md"),
 //  E0274, // on_unimplemented #2
 //  E0278, // requirement is not satisfied
 //  E0279,
-    E0280, // requirement is not satisfied
+//  E0280, // changed to ICE
 //  E0285, // overflow evaluation builtin bounds
 //  E0296, // replaced with a generic attribute input check
 //  E0298, // cannot compare constants
@@ -569,15 +586,11 @@ E0790: include_str!("./error_codes/E0790.md"),
 //  E0300, // unexpanded macro
 //  E0304, // expected signed integer constant
 //  E0305, // expected constant
-    E0313, // lifetime of borrowed pointer outlives lifetime of captured
-           // variable
+//  E0313, // removed: found unreachable
 //  E0314, // closure outlives stack frame
 //  E0315, // cannot invoke closure outside of its lifetime
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
-    E0320, // recursive overflow during dropck
 //  E0372, // coherence not object safe
-    E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
-           // between structures with the same definition
 //  E0385, // {} in an aliasable location
 //  E0402, // cannot use an outer type parameter in this context
 //  E0406, // merged into 420
@@ -591,15 +604,10 @@ E0790: include_str!("./error_codes/E0790.md"),
 //  E0421, // merged into 531
 //  E0427, // merged into 530
 //  E0456, // plugin `..` is not available for triple `..`
-    E0457, // plugin `..` only found in rlib format, but must be available...
-    E0460, // found possibly newer version of crate `..`
-    E0461, // couldn't find crate `..` with expected target triple ..
-    E0462, // found staticlib `..` instead of rlib or dylib
-    E0465, // multiple .. candidates for `..` found
+//  E0465, // removed: merged with E0464
 //  E0467, // removed
 //  E0470, // removed
 //  E0471, // constant evaluation error (in pattern)
-    E0472, // llvm_asm! is unsupported on this target
 //  E0473, // dereference of reference outside its lifetime
 //  E0474, // captured variable `..` does not outlive the enclosing closure
 //  E0475, // index of slice outside its lifetime
@@ -614,10 +622,7 @@ E0790: include_str!("./error_codes/E0790.md"),
 //  E0487, // unsafe use of destructor: destructor might be called while...
 //  E0488, // lifetime of variable does not enclose its declaration
 //  E0489, // type/lifetime parameter not in scope here
-    E0490, // a value of type `..` is borrowed for too long
-    E0514, // metadata version mismatch
-    E0519, // local crate and dependency have same (crate-name, disambiguator)
-    E0523, // two dependencies have same (crate-name, disambiguator) but different SVH
+//  E0490, // removed: unreachable
 //  E0526, // shuffle indices are not constant
 //  E0540, // multiple rustc_deprecated attributes
 //  E0548, // replaced with a generic attribute input check
@@ -634,16 +639,12 @@ E0790: include_str!("./error_codes/E0790.md"),
 //  E0629, // missing 'feature' (rustc_const_unstable)
 //  E0630, // rustc_const_unstable attribute must be paired with stable/unstable
            // attribute
-    E0640, // infer outlives requirements, internal error code
 //  E0645, // trait aliases not finished
 //  E0694, // an unknown tool name found in scoped attributes
 //  E0702, // replaced with a generic attribute input check
 //  E0707, // multiple elided lifetimes used in arguments of `async fn`
 //  E0709, // multiple different lifetimes used in arguments of `async fn`
-    E0711, // a feature has been declared with conflicting stability attributes, internal error code
-    E0717, // rustc_promotable without stability attribute, internal error code
 //  E0721, // `await` keyword
 //  E0723, // unstable feature in `const` context
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
-    E0789, // rustc_allowed_through_unstable_modules without stability attribute
 }

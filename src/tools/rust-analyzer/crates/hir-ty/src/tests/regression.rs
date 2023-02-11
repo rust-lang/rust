@@ -1707,3 +1707,40 @@ impl<T, const N: usize> Trait for [T; N] {
         "#,
     );
 }
+
+#[test]
+fn unsize_array_with_inference_variable() {
+    check_types(
+        r#"
+//- minicore: try, slice
+use core::ops::ControlFlow;
+fn foo() -> ControlFlow<(), [usize; 1]> { loop {} }
+fn bar() -> ControlFlow<(), ()> {
+    let a = foo()?.len();
+      //^ usize
+    ControlFlow::Continue(())
+}
+"#,
+    );
+}
+
+#[test]
+fn assoc_type_shorthand_with_gats_in_binders() {
+    // c.f. test `issue_4885()`
+    check_no_mismatches(
+        r#"
+trait Gats {
+    type Assoc<T>;
+}
+trait Foo<T> {}
+
+struct Bar<'a, B: Gats, A> {
+    field: &'a dyn Foo<B::Assoc<A>>,
+}
+
+fn foo(b: Bar) {
+    let _ = b.field;
+}
+"#,
+    );
+}

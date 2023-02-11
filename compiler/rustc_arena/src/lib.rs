@@ -28,7 +28,7 @@ use smallvec::SmallVec;
 use std::alloc::Layout;
 use std::cell::{Cell, RefCell};
 use std::cmp;
-use std::marker::{PhantomData, Send};
+use std::marker::PhantomData;
 use std::mem::{self, MaybeUninit};
 use std::ptr::{self, NonNull};
 use std::slice;

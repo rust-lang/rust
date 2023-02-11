@@ -1,0 +1,20 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_panic_track_caller.rs:15:5
+   |
+LL |     b()
+   |     ^^^ the evaluated program panicked at 'hey', $DIR/const_panic_track_caller.rs:15:5
+   |
+note: inside `c`
+  --> $DIR/const_panic_track_caller.rs:15:5
+   |
+LL |     b()
+   |     ^^^
+note: inside `X`
+  --> $DIR/const_panic_track_caller.rs:21:16
+   |
+LL | const X: u32 = c();
+   |                ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

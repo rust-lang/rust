@@ -13,7 +13,9 @@ use syntax::{AstNode, SyntaxKind::*, SyntaxToken, TextRange, T};
 
 use crate::{
     hover::hover_for_definition,
-    moniker::{crate_for_file, def_to_moniker, MonikerResult},
+    inlay_hints::AdjustmentHintsMode,
+    moniker::{def_to_moniker, MonikerResult},
+    parent_module::crates_for,
     Analysis, Fold, HoverConfig, HoverDocFormat, HoverResult, InlayHint, InlayHintsConfig,
     TryToNav,
 };
@@ -99,19 +101,23 @@ fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
 
 impl StaticIndex<'_> {
     fn add_file(&mut self, file_id: FileId) {
-        let current_crate = crate_for_file(self.db, file_id);
+        let current_crate = crates_for(self.db, file_id).pop().map(Into::into);
         let folds = self.analysis.folding_ranges(file_id).unwrap();
         let inlay_hints = self
             .analysis
             .inlay_hints(
                 &InlayHintsConfig {
+                    location_links: true,
                     render_colons: true,
+                    discriminant_hints: crate::DiscriminantHints::Fieldless,
                     type_hints: true,
                     parameter_hints: true,
                     chaining_hints: true,
                     closure_return_type_hints: crate::ClosureReturnTypeHints::WithBlock,
                     lifetime_elision_hints: crate::LifetimeElisionHints::Never,
-                    reborrow_hints: crate::ReborrowHints::Never,
+                    adjustment_hints: crate::AdjustmentHints::Never,
+                    adjustment_hints_mode: AdjustmentHintsMode::Prefix,
+                    adjustment_hints_hide_outside_unsafe: false,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
                     param_names_for_lifetime_elision_hints: false,
@@ -210,9 +216,7 @@ fn get_definition(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> Opt
         let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops);
         if let Some(&[x]) = def.as_deref() {
             return Some(x);
-        } else {
-            continue;
-        };
+        }
     }
     None
 }
@@ -232,13 +236,13 @@ mod tests {
             for (range, _) in f.tokens {
                 let x = FileRange { file_id: f.file_id, range };
                 if !range_set.contains(&x) {
-                    panic!("additional range {:?}", x);
+                    panic!("additional range {x:?}");
                 }
                 range_set.remove(&x);
             }
         }
         if !range_set.is_empty() {
-            panic!("unfound ranges {:?}", range_set);
+            panic!("unfound ranges {range_set:?}");
         }
     }
 
@@ -253,13 +257,13 @@ mod tests {
                     continue;
                 }
                 if !range_set.contains(&x) {
-                    panic!("additional definition {:?}", x);
+                    panic!("additional definition {x:?}");
                 }
                 range_set.remove(&x);
             }
         }
         if !range_set.is_empty() {
-            panic!("unfound definitions {:?}", range_set);
+            panic!("unfound definitions {range_set:?}");
         }
     }
 

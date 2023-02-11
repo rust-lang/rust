@@ -26,7 +26,7 @@ use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVari
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArg;
-use rustc_middle::ty::{self, BoundVar, List};
+use rustc_middle::ty::{self, List};
 use rustc_span::source_map::Span;
 
 pub use rustc_middle::infer::canonical::*;
@@ -41,9 +41,9 @@ impl<'tcx> InferCtxt<'tcx> {
     /// inference variables and applies it to the canonical value.
     /// Returns both the instantiated result *and* the substitution S.
     ///
-    /// This is only meant to be invoked as part of constructing an
+    /// This can be invoked as part of constructing an
     /// inference context at the start of a query (see
-    /// `InferCtxtBuilder::enter_with_canonical`). It basically
+    /// `InferCtxtBuilder::build_with_canonical`). It basically
     /// brings the canonical value "into scope" within your new infcx.
     ///
     /// At the end of processing, the substitution S (once
@@ -63,8 +63,11 @@ impl<'tcx> InferCtxt<'tcx> {
         // in them, so this code has no effect, but it is looking
         // forward to the day when we *do* want to carry universes
         // through into queries.
-        let universes: IndexVec<ty::UniverseIndex, _> = std::iter::once(ty::UniverseIndex::ROOT)
-            .chain((0..canonical.max_universe.as_u32()).map(|_| self.create_next_universe()))
+        //
+        // Instantiate the root-universe content into the current universe,
+        // and create fresh universes for the higher universes.
+        let universes: IndexVec<ty::UniverseIndex, _> = std::iter::once(self.universe())
+            .chain((1..=canonical.max_universe.as_u32()).map(|_| self.create_next_universe()))
             .collect();
 
         let canonical_inference_vars =
@@ -84,12 +87,13 @@ impl<'tcx> InferCtxt<'tcx> {
         variables: &List<CanonicalVarInfo<'tcx>>,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> CanonicalVarValues<'tcx> {
-        let var_values: IndexVec<BoundVar, GenericArg<'tcx>> = variables
-            .iter()
-            .map(|info| self.instantiate_canonical_var(span, info, &universe_map))
-            .collect();
-
-        CanonicalVarValues { var_values }
+        CanonicalVarValues {
+            var_values: self.tcx.mk_substs(
+                variables
+                    .iter()
+                    .map(|info| self.instantiate_canonical_var(span, info, &universe_map)),
+            ),
+        }
     }
 
     /// Given the "info" about a canonical variable, creates a fresh
@@ -147,12 +151,7 @@ impl<'tcx> InferCtxt<'tcx> {
             CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, name }, ty) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, name };
-                self.tcx
-                    .mk_const(ty::ConstS {
-                        kind: ty::ConstKind::Placeholder(placeholder_mapped),
-                        ty,
-                    })
-                    .into()
+                self.tcx.mk_const(placeholder_mapped, ty).into()
             }
         }
     }

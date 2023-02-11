@@ -8,11 +8,21 @@ basic `variable = value` mapping eg.
 ```toml
 avoid-breaking-exported-api = false
 disallowed-names = ["toto", "tata", "titi"]
-cognitive-complexity-threshold = 30
 ```
 
-See the [list of lints](https://rust-lang.github.io/rust-clippy/master/index.html) for more information about which
-lints can be configured and the meaning of the variables.
+The [table of configurations](./lint_configuration.md)
+contains all config values, their default, and a list of lints they affect.
+Each [configurable lint](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration)
+, also contains information about these values.
+
+For configurations that are a list type with default values such as
+[disallowed-names](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names),
+you can use the unique value `".."` to extend the default values instead of replacing them.
+
+```toml
+# default of disallowed-names is ["foo", "baz", "quux"]
+disallowed-names = ["bar", ".."] # -> ["bar", "foo", "baz", "quux"]
+```
 
 To deactivate the "for further information visit *lint-link*" message you can define the `CLIPPY_DISABLE_DOCS_LINKS`
 environment variable.
@@ -72,7 +82,7 @@ minimum supported Rust version (MSRV) in the clippy configuration file.
 msrv = "1.30.0"
 ```
 
-The MSRV can also be specified as an inner attribute, like below.
+The MSRV can also be specified as an attribute, like below.
 
 ```rust
 #![feature(custom_inner_attributes)]

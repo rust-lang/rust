@@ -1,9 +1,0 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-52475.rs:6:17
-   |
-LL |             n = (n + 1) % 5;
-   |                 ^^^^^^^^^^^ exceeded interpreter step limit (see `#[const_eval_limit]`)
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0080`.

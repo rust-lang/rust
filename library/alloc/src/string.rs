@@ -67,7 +67,7 @@ use core::str::Utf8Chunks;
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
-use crate::str::{self, Chars, Utf8Error};
+use crate::str::{self, from_utf8_unchecked_mut, Chars, Utf8Error};
 #[cfg(not(no_global_oom_handling))]
 use crate::str::{from_boxed_utf8_unchecked, FromStr};
 use crate::vec::Vec;
@@ -362,8 +362,8 @@ use crate::vec::Vec;
 /// [`Deref`]: core::ops::Deref "ops::Deref"
 /// [`as_str()`]: String::as_str
 #[derive(PartialOrd, Eq, Ord)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "String")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), lang = "String")]
 pub struct String {
     vec: Vec<u8>,
 }
@@ -928,12 +928,12 @@ impl String {
 
     /// Copies elements from `src` range to the end of the string.
     ///
-    /// ## Panics
+    /// # Panics
     ///
     /// Panics if the starting point or end point do not lie on a [`char`]
     /// boundary, or if they're out of bounds.
     ///
-    /// ## Examples
+    /// # Examples
     ///
     /// ```
     /// #![feature(string_extend_from_within)]
@@ -949,7 +949,7 @@ impl String {
     /// assert_eq!(string, "abcdecdeabecde");
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "string_extend_from_within", issue = "none")]
+    #[unstable(feature = "string_extend_from_within", issue = "103806")]
     pub fn extend_from_within<R>(&mut self, src: R)
     where
         R: RangeBounds<usize>,
@@ -1849,6 +1849,35 @@ impl String {
         let slice = self.vec.into_boxed_slice();
         unsafe { from_boxed_utf8_unchecked(slice) }
     }
+
+    /// Consumes and leaks the `String`, returning a mutable reference to the contents,
+    /// `&'static mut str`.
+    ///
+    /// This is mainly useful for data that lives for the remainder of
+    /// the program's life. Dropping the returned reference will cause a memory
+    /// leak.
+    ///
+    /// It does not reallocate or shrink the `String`,
+    /// so the leaked allocation may include unused capacity that is not part
+    /// of the returned slice.
+    ///
+    /// # Examples
+    ///
+    /// Simple usage:
+    ///
+    /// ```
+    /// #![feature(string_leak)]
+    ///
+    /// let x = String::from("bucket");
+    /// let static_ref: &'static mut str = x.leak();
+    /// assert_eq!(static_ref, "bucket");
+    /// ```
+    #[unstable(feature = "string_leak", issue = "102929")]
+    #[inline]
+    pub fn leak(self) -> &'static mut str {
+        let slice = self.vec.leak();
+        unsafe { from_utf8_unchecked_mut(slice) }
+    }
 }
 
 impl FromUtf8Error {
@@ -2520,6 +2549,15 @@ impl ToString for char {
 }
 
 #[cfg(not(no_global_oom_handling))]
+#[stable(feature = "bool_to_string_specialization", since = "1.68.0")]
+impl ToString for bool {
+    #[inline]
+    fn to_string(&self) -> String {
+        String::from(if *self { "true" } else { "false" })
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "u8_to_string_specialization", since = "1.54.0")]
 impl ToString for u8 {
     #[inline]
@@ -2649,7 +2687,7 @@ impl From<&String> for String {
     }
 }
 
-// note: test pulls in libstd, which causes errors here
+// note: test pulls in std, which causes errors here
 #[cfg(not(test))]
 #[stable(feature = "string_from_box", since = "1.18.0")]
 impl From<Box<str>> for String {

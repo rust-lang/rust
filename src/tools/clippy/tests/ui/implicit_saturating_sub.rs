@@ -2,6 +2,21 @@
 #![allow(unused_assignments, unused_mut, clippy::assign_op_pattern)]
 #![warn(clippy::implicit_saturating_sub)]
 
+use std::cmp::PartialEq;
+use std::ops::SubAssign;
+// Mock type
+struct Mock;
+
+impl PartialEq<u32> for Mock {
+    fn eq(&self, _: &u32) -> bool {
+        true
+    }
+}
+
+impl SubAssign<u32> for Mock {
+    fn sub_assign(&mut self, _: u32) {}
+}
+
 fn main() {
     // Tests for unsigned integers
 
@@ -210,5 +225,40 @@ fn main() {
         u_32 -= 1;
     } else {
         println!("side effect");
+    }
+
+    // Extended tests
+    let mut m = Mock;
+    let mut u_32 = 3000;
+    let a = 200;
+    let mut _b = 8;
+
+    if m != 0 {
+        m -= 1;
+    }
+
+    if a > 0 {
+        _b -= 1;
+    }
+
+    if 0 > a {
+        _b -= 1;
+    }
+
+    if u_32 > 0 {
+        u_32 -= 1;
+    } else {
+        println!("don't lint this");
+    }
+
+    if u_32 > 0 {
+        println!("don't lint this");
+        u_32 -= 1;
+    }
+
+    if u_32 > 42 {
+        println!("brace yourself!");
+    } else if u_32 > 0 {
+        u_32 -= 1;
     }
 }

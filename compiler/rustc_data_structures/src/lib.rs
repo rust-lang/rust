@@ -11,7 +11,7 @@
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
 #![feature(cell_leak)]
-#![feature(control_flow_enum)]
+#![feature(core_intrinsics)]
 #![feature(extend_one)]
 #![feature(hash_raw_entry)]
 #![feature(hasher_prefixfree_extras)]
@@ -22,6 +22,7 @@
 #![feature(new_uninit)]
 #![feature(once_cell)]
 #![feature(rustc_attrs)]
+#![feature(negative_impls)]
 #![feature(test)]
 #![feature(thread_id_value)]
 #![feature(vec_into_raw_parts)]
@@ -86,6 +87,7 @@ pub mod steal;
 pub mod tagged_ptr;
 pub mod temp_dir;
 pub mod unhash;
+pub mod unord;
 
 pub use ena::undo_log;
 pub use ena::unify;

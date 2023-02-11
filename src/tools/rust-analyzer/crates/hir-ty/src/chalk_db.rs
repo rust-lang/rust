@@ -568,6 +568,7 @@ fn well_known_trait_from_lang_attr(name: &str) -> Option<WellKnownTrait> {
         "sized" => WellKnownTrait::Sized,
         "unpin" => WellKnownTrait::Unpin,
         "unsize" => WellKnownTrait::Unsize,
+        "tuple_trait" => WellKnownTrait::Tuple,
         _ => return None,
     })
 }
@@ -585,6 +586,7 @@ fn lang_attr_from_well_known_trait(attr: WellKnownTrait) -> &'static str {
         WellKnownTrait::FnOnce => "fn_once",
         WellKnownTrait::Generator => "generator",
         WellKnownTrait::Sized => "sized",
+        WellKnownTrait::Tuple => "tuple_trait",
         WellKnownTrait::Unpin => "unpin",
         WellKnownTrait::Unsize => "unsize",
     }
@@ -823,10 +825,10 @@ pub(super) fn generic_predicate_to_inline_bound(
             Some(chalk_ir::Binders::new(binders, rust_ir::InlineBound::TraitBound(trait_bound)))
         }
         WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
-            if projection_ty.self_type_parameter(Interner) != self_ty_shifted_in {
+            let trait_ = projection_ty.trait_(db);
+            if projection_ty.self_type_parameter(db) != self_ty_shifted_in {
                 return None;
             }
-            let trait_ = projection_ty.trait_(db);
             let args_no_self = projection_ty.substitution.as_slice(Interner)[1..]
                 .iter()
                 .map(|ty| ty.clone().cast(Interner))

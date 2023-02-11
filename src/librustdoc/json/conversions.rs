@@ -8,8 +8,9 @@ use std::convert::From;
 use std::fmt;
 
 use rustc_ast::ast;
-use rustc_hir::{def::CtorKind, def_id::DefId};
+use rustc_hir::{def::CtorKind, def::DefKind, def_id::DefId};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::symbol::sym;
 use rustc_span::{Pos, Symbol};
 use rustc_target::spec::abi::Abi as RustcAbi;
 
@@ -48,7 +49,8 @@ impl JsonRenderer<'_> {
             .map(rustc_ast_pretty::pprust::attribute_to_string)
             .collect();
         let span = item.span(self.tcx);
-        let clean::Item { name, attrs: _, kind: _, visibility, item_id, cfg: _ } = item;
+        let visibility = item.visibility(self.tcx);
+        let clean::Item { name, attrs: _, kind: _, item_id, cfg: _, .. } = item;
         let inner = match *item.kind {
             clean::KeywordItem => return None,
             clean::StrippedItem(ref inner) => {
@@ -99,13 +101,12 @@ impl JsonRenderer<'_> {
         }
     }
 
-    fn convert_visibility(&self, v: clean::Visibility) -> Visibility {
-        use clean::Visibility::*;
+    fn convert_visibility(&self, v: Option<ty::Visibility<DefId>>) -> Visibility {
         match v {
-            Public => Visibility::Public,
-            Inherited => Visibility::Default,
-            Restricted(did) if did.is_crate_root() => Visibility::Crate,
-            Restricted(did) => Visibility::Restricted {
+            None => Visibility::Default,
+            Some(ty::Visibility::Public) => Visibility::Public,
+            Some(ty::Visibility::Restricted(did)) if did.is_crate_root() => Visibility::Crate,
+            Some(ty::Visibility::Restricted(did)) => Visibility::Restricted {
                 parent: from_item_id(did.into(), self.tcx),
                 path: self.tcx.def_path(did).to_string_no_crate_verbose(),
             },
@@ -217,13 +218,27 @@ pub(crate) fn from_item_id_with_name(item_id: ItemId, tcx: TyCtxt<'_>, name: Opt
 
     impl<'a> fmt::Display for DisplayDefId<'a> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let name = match self.2 {
+            let DisplayDefId(def_id, tcx, name) = self;
+            let name = match name {
                 Some(name) => format!(":{}", name.as_u32()),
-                None => self
-                    .1
-                    .opt_item_name(self.0)
-                    .map(|n| format!(":{}", n.as_u32()))
-                    .unwrap_or_default(),
+                None => {
+                    // We need this workaround because primitive types' DefId actually refers to
+                    // their parent module, which isn't present in the output JSON items. So
+                    // instead, we directly get the primitive symbol and convert it to u32 to
+                    // generate the ID.
+                    if matches!(tcx.def_kind(def_id), DefKind::Mod) &&
+                        let Some(prim) = tcx.get_attrs(*def_id, sym::doc)
+                            .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
+                            .filter(|attr| attr.has_name(sym::primitive))
+                            .find_map(|attr| attr.value_str()) {
+                        format!(":{}", prim.as_u32())
+                    } else {
+                        tcx
+                        .opt_item_name(*def_id)
+                        .map(|n| format!(":{}", n.as_u32()))
+                        .unwrap_or_default()
+                    }
+                }
             };
             write!(f, "{}:{}{}", self.0.krate.as_u32(), u32::from(self.0.index), name)
         }
@@ -237,7 +252,6 @@ pub(crate) fn from_item_id_with_name(item_id: ItemId, tcx: TyCtxt<'_>, name: Opt
         ItemId::Auto { for_, trait_ } => {
             Id(format!("a:{}-{}", DisplayDefId(trait_, tcx, None), DisplayDefId(for_, tcx, name)))
         }
-        ItemId::Primitive(ty, krate) => Id(format!("p:{}:{}", krate.as_u32(), ty.as_sym())),
     }
 }
 
@@ -257,12 +271,12 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         StructFieldItem(f) => ItemEnum::StructField(f.into_tcx(tcx)),
         EnumItem(e) => ItemEnum::Enum(e.into_tcx(tcx)),
         VariantItem(v) => ItemEnum::Variant(v.into_tcx(tcx)),
-        FunctionItem(f) => ItemEnum::Function(from_function(f, header.unwrap(), tcx)),
-        ForeignFunctionItem(f) => ItemEnum::Function(from_function(f, header.unwrap(), tcx)),
+        FunctionItem(f) => ItemEnum::Function(from_function(f, true, header.unwrap(), tcx)),
+        ForeignFunctionItem(f) => ItemEnum::Function(from_function(f, false, header.unwrap(), tcx)),
         TraitItem(t) => ItemEnum::Trait((*t).into_tcx(tcx)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_tcx(tcx)),
-        MethodItem(m, _) => ItemEnum::Method(from_function_method(m, true, header.unwrap(), tcx)),
-        TyMethodItem(m) => ItemEnum::Method(from_function_method(m, false, header.unwrap(), tcx)),
+        MethodItem(m, _) => ItemEnum::Function(from_function(m, true, header.unwrap(), tcx)),
+        TyMethodItem(m) => ItemEnum::Function(from_function(m, false, header.unwrap(), tcx)),
         ImplItem(i) => ItemEnum::Impl((*i).into_tcx(tcx)),
         StaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignStaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
@@ -283,7 +297,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
             ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: Some(default.expr(tcx)) }
         }
         TyAssocTypeItem(g, b) => ItemEnum::AssocType {
-            generics: (*g).into_tcx(tcx),
+            generics: g.into_tcx(tcx),
             bounds: b.into_tcx(tcx),
             default: None,
         },
@@ -315,15 +329,15 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
 impl FromWithTcx<clean::Struct> for Struct {
     fn from_tcx(struct_: clean::Struct, tcx: TyCtxt<'_>) -> Self {
         let fields_stripped = struct_.has_stripped_entries();
-        let clean::Struct { struct_type, generics, fields } = struct_;
+        let clean::Struct { ctor_kind, generics, fields } = struct_;
 
-        let kind = match struct_type {
-            CtorKind::Fn => StructKind::Tuple(ids_keeping_stripped(fields, tcx)),
-            CtorKind::Const => {
+        let kind = match ctor_kind {
+            Some(CtorKind::Fn) => StructKind::Tuple(ids_keeping_stripped(fields, tcx)),
+            Some(CtorKind::Const) => {
                 assert!(fields.is_empty());
                 StructKind::Unit
             }
-            CtorKind::Fictive => StructKind::Plain { fields: ids(fields, tcx), fields_stripped },
+            None => StructKind::Plain { fields: ids(fields, tcx), fields_stripped },
         };
 
         Struct {
@@ -485,7 +499,7 @@ impl FromWithTcx<clean::Type> for Type {
             BareFunction(f) => Type::FunctionPointer(Box::new((*f).into_tcx(tcx))),
             Tuple(t) => Type::Tuple(t.into_tcx(tcx)),
             Slice(t) => Type::Slice(Box::new((*t).into_tcx(tcx))),
-            Array(t, s) => Type::Array { type_: Box::new((*t).into_tcx(tcx)), len: s },
+            Array(t, s) => Type::Array { type_: Box::new((*t).into_tcx(tcx)), len: s.to_string() },
             ImplTrait(g) => Type::ImplTrait(g.into_tcx(tcx)),
             Infer => Type::Infer,
             RawPointer(mutability, type_) => Type::RawPointer {
@@ -618,25 +632,12 @@ impl FromWithTcx<clean::Impl> for Impl {
 
 pub(crate) fn from_function(
     function: Box<clean::Function>,
+    has_body: bool,
     header: rustc_hir::FnHeader,
     tcx: TyCtxt<'_>,
 ) -> Function {
     let clean::Function { decl, generics } = *function;
     Function {
-        decl: decl.into_tcx(tcx),
-        generics: generics.into_tcx(tcx),
-        header: from_fn_header(&header),
-    }
-}
-
-pub(crate) fn from_function_method(
-    function: Box<clean::Function>,
-    has_body: bool,
-    header: rustc_hir::FnHeader,
-    tcx: TyCtxt<'_>,
-) -> Method {
-    let clean::Function { decl, generics } = *function;
-    Method {
         decl: decl.into_tcx(tcx),
         generics: generics.into_tcx(tcx),
         header: from_fn_header(&header),
@@ -659,22 +660,27 @@ impl FromWithTcx<clean::Enum> for Enum {
 
 impl FromWithTcx<clean::Variant> for Variant {
     fn from_tcx(variant: clean::Variant, tcx: TyCtxt<'_>) -> Self {
-        use clean::Variant::*;
-        match variant {
-            CLike(disr) => Variant::Plain(disr.map(|disr| disr.into_tcx(tcx))),
-            Tuple(fields) => Variant::Tuple(ids_keeping_stripped(fields, tcx)),
-            Struct(s) => Variant::Struct {
+        use clean::VariantKind::*;
+
+        let discriminant = variant.discriminant.map(|d| d.into_tcx(tcx));
+
+        let kind = match variant.kind {
+            CLike => VariantKind::Plain,
+            Tuple(fields) => VariantKind::Tuple(ids_keeping_stripped(fields, tcx)),
+            Struct(s) => VariantKind::Struct {
                 fields_stripped: s.has_stripped_entries(),
                 fields: ids(s.fields, tcx),
             },
-        }
+        };
+
+        Variant { kind, discriminant }
     }
 }
 
 impl FromWithTcx<clean::Discriminant> for Discriminant {
     fn from_tcx(disr: clean::Discriminant, tcx: TyCtxt<'_>) -> Self {
         Discriminant {
-            // expr is only none if going throught the inlineing path, which gets
+            // expr is only none if going through the inlineing path, which gets
             // `rustc_middle` types, not `rustc_hir`, but because JSON never inlines
             // the expr is always some.
             expr: disr.expr(tcx).unwrap(),
@@ -759,14 +765,13 @@ impl FromWithTcx<ItemType> for ItemKind {
             Struct => ItemKind::Struct,
             Union => ItemKind::Union,
             Enum => ItemKind::Enum,
-            Function => ItemKind::Function,
+            Function | TyMethod | Method => ItemKind::Function,
             Typedef => ItemKind::Typedef,
             OpaqueTy => ItemKind::OpaqueTy,
             Static => ItemKind::Static,
             Constant => ItemKind::Constant,
             Trait => ItemKind::Trait,
             Impl => ItemKind::Impl,
-            TyMethod | Method => ItemKind::Method,
             StructField => ItemKind::StructField,
             Variant => ItemKind::Variant,
             Macro => ItemKind::Macro,

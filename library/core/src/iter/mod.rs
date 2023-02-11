@@ -362,15 +362,13 @@ macro_rules! impl_fold_via_try_fold {
     };
     (@internal $fold:ident -> $try_fold:ident) => {
         #[inline]
-        fn $fold<AAA, FFF>(mut self, init: AAA, mut fold: FFF) -> AAA
+        fn $fold<AAA, FFF>(mut self, init: AAA, fold: FFF) -> AAA
         where
             FFF: FnMut(AAA, Self::Item) -> AAA,
         {
-            use crate::const_closure::ConstFnMutClosure;
             use crate::ops::NeverShortCircuit;
 
-            let fold = ConstFnMutClosure::new(&mut fold, NeverShortCircuit::wrap_mut_2_imp);
-            self.$try_fold(init, fold).0
+            self.$try_fold(init, NeverShortCircuit::wrap_mut_2(fold)).0
         }
     };
 }
@@ -401,6 +399,8 @@ pub use self::sources::{once, Once};
 pub use self::sources::{once_with, OnceWith};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::sources::{repeat, Repeat};
+#[unstable(feature = "iter_repeat_n", issue = "104434")]
+pub use self::sources::{repeat_n, RepeatN};
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
 pub use self::sources::{repeat_with, RepeatWith};
 #[stable(feature = "iter_successors", since = "1.34.0")]

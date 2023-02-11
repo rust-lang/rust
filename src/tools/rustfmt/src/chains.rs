@@ -70,9 +70,63 @@ use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::utils::{
-    self, first_line_width, last_line_extendable, last_line_width, mk_sp, rewrite_ident,
-    trimmed_last_line_width, wrap_str,
+    self, filtered_str_fits, first_line_width, last_line_extendable, last_line_width, mk_sp,
+    rewrite_ident, trimmed_last_line_width, wrap_str,
 };
+
+/// Provides the original input contents from the span
+/// of a chain element with trailing spaces trimmed.
+fn format_overflow_style(span: Span, context: &RewriteContext<'_>) -> Option<String> {
+    context.snippet_provider.span_to_snippet(span).map(|s| {
+        s.lines()
+            .map(|l| l.trim_end())
+            .collect::<Vec<_>>()
+            .join("\n")
+    })
+}
+
+fn format_chain_item(
+    item: &ChainItem,
+    context: &RewriteContext<'_>,
+    rewrite_shape: Shape,
+    allow_overflow: bool,
+) -> Option<String> {
+    if allow_overflow {
+        item.rewrite(context, rewrite_shape)
+            .or_else(|| format_overflow_style(item.span, context))
+    } else {
+        item.rewrite(context, rewrite_shape)
+    }
+}
+
+fn get_block_child_shape(
+    prev_ends_with_block: bool,
+    context: &RewriteContext<'_>,
+    shape: Shape,
+) -> Shape {
+    if prev_ends_with_block {
+        shape.block_indent(0)
+    } else {
+        shape.block_indent(context.config.tab_spaces())
+    }
+    .with_max_width(context.config)
+}
+
+fn get_visual_style_child_shape(
+    context: &RewriteContext<'_>,
+    shape: Shape,
+    offset: usize,
+    parent_overflowing: bool,
+) -> Option<Shape> {
+    if !parent_overflowing {
+        shape
+            .with_max_width(context.config)
+            .offset_left(offset)
+            .map(|s| s.visual_indent(0))
+    } else {
+        Some(shape.visual_indent(offset))
+    }
+}
 
 pub(crate) fn rewrite_chain(
     expr: &ast::Expr,
@@ -145,8 +199,8 @@ impl ChainItemKind {
 
     fn from_ast(context: &RewriteContext<'_>, expr: &ast::Expr) -> (ChainItemKind, Span) {
         let (kind, span) = match expr.kind {
-            ast::ExprKind::MethodCall(ref segment, ref receiver, ref expressions, _) => {
-                let types = if let Some(ref generic_args) = segment.args {
+            ast::ExprKind::MethodCall(ref call) => {
+                let types = if let Some(ref generic_args) = call.seg.args {
                     if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
                         data.args
                             .iter()
@@ -163,8 +217,8 @@ impl ChainItemKind {
                 } else {
                     vec![]
                 };
-                let span = mk_sp(receiver.span.hi(), expr.span.hi());
-                let kind = ChainItemKind::MethodCall(segment.clone(), types, expressions.clone());
+                let span = mk_sp(call.receiver.span.hi(), expr.span.hi());
+                let kind = ChainItemKind::MethodCall(call.seg.clone(), types, call.args.clone());
                 (kind, span)
             }
             ast::ExprKind::Field(ref nested, field) => {
@@ -400,9 +454,7 @@ impl Chain {
     // is a try! macro, we'll convert it to shorthand when the option is set.
     fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext<'_>) -> Option<ast::Expr> {
         match expr.kind {
-            ast::ExprKind::MethodCall(_, ref receiver, _, _) => {
-                Some(Self::convert_try(&receiver, context))
-            }
+            ast::ExprKind::MethodCall(ref call) => Some(Self::convert_try(&call.receiver, context)),
             ast::ExprKind::Field(ref subexpr, _)
             | ast::ExprKind::Try(ref subexpr)
             | ast::ExprKind::Await(ref subexpr) => Some(Self::convert_try(subexpr, context)),
@@ -498,6 +550,8 @@ struct ChainFormatterShared<'a> {
     // The number of children in the chain. This is not equal to `self.children.len()`
     // because `self.children` will change size as we process the chain.
     child_count: usize,
+    // Whether elements are allowed to overflow past the max_width limit
+    allow_overflow: bool,
 }
 
 impl<'a> ChainFormatterShared<'a> {
@@ -507,6 +561,8 @@ impl<'a> ChainFormatterShared<'a> {
             rewrites: Vec::with_capacity(chain.children.len() + 1),
             fits_single_line: false,
             child_count: chain.children.len(),
+            // TODO(calebcartwright)
+            allow_overflow: false,
         }
     }
 
@@ -517,6 +573,14 @@ impl<'a> ChainFormatterShared<'a> {
         } else {
             None
         }
+    }
+
+    fn format_children(&mut self, context: &RewriteContext<'_>, child_shape: Shape) -> Option<()> {
+        for item in &self.children[..self.children.len() - 1] {
+            let rewrite = format_chain_item(item, context, child_shape, self.allow_overflow)?;
+            self.rewrites.push(rewrite);
+        }
+        Some(())
     }
 
     // Rewrite the last child. The last child of a chain requires special treatment. We need to
@@ -731,22 +795,12 @@ impl<'a> ChainFormatter for ChainFormatterBlock<'a> {
     }
 
     fn child_shape(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<Shape> {
-        Some(
-            if self.root_ends_with_block {
-                shape.block_indent(0)
-            } else {
-                shape.block_indent(context.config.tab_spaces())
-            }
-            .with_max_width(context.config),
-        )
+        let block_end = self.root_ends_with_block;
+        Some(get_block_child_shape(block_end, context, shape))
     }
 
     fn format_children(&mut self, context: &RewriteContext<'_>, child_shape: Shape) -> Option<()> {
-        for item in &self.shared.children[..self.shared.children.len() - 1] {
-            let rewrite = item.rewrite(context, child_shape)?;
-            self.shared.rewrites.push(rewrite);
-        }
-        Some(())
+        self.shared.format_children(context, child_shape)
     }
 
     fn format_last_child(
@@ -810,15 +864,14 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
                 .visual_indent(self.offset)
                 .sub_width(self.offset)?;
             let rewrite = item.rewrite(context, child_shape)?;
-            match wrap_str(rewrite, context.config.max_width(), shape) {
-                Some(rewrite) => root_rewrite.push_str(&rewrite),
-                None => {
-                    // We couldn't fit in at the visual indent, try the last
-                    // indent.
-                    let rewrite = item.rewrite(context, parent_shape)?;
-                    root_rewrite.push_str(&rewrite);
-                    self.offset = 0;
-                }
+            if filtered_str_fits(&rewrite, context.config.max_width(), shape) {
+                root_rewrite.push_str(&rewrite);
+            } else {
+                // We couldn't fit in at the visual indent, try the last
+                // indent.
+                let rewrite = item.rewrite(context, parent_shape)?;
+                root_rewrite.push_str(&rewrite);
+                self.offset = 0;
             }
 
             self.shared.children = &self.shared.children[1..];
@@ -829,18 +882,17 @@ impl<'a> ChainFormatter for ChainFormatterVisual<'a> {
     }
 
     fn child_shape(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<Shape> {
-        shape
-            .with_max_width(context.config)
-            .offset_left(self.offset)
-            .map(|s| s.visual_indent(0))
+        get_visual_style_child_shape(
+            context,
+            shape,
+            self.offset,
+            // TODO(calebcartwright): self.shared.permissibly_overflowing_parent,
+            false,
+        )
     }
 
     fn format_children(&mut self, context: &RewriteContext<'_>, child_shape: Shape) -> Option<()> {
-        for item in &self.shared.children[..self.shared.children.len() - 1] {
-            let rewrite = item.rewrite(context, child_shape)?;
-            self.shared.rewrites.push(rewrite);
-        }
-        Some(())
+        self.shared.format_children(context, child_shape)
     }
 
     fn format_last_child(

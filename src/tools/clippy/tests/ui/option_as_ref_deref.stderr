@@ -106,5 +106,11 @@ error: called `.as_ref().map(std::ops::Deref::deref)` on an Option value. This c
 LL |     let _ = opt.as_ref().map(std::ops::Deref::deref);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using as_deref instead: `opt.as_deref()`
 
-error: aborting due to 17 previous errors
+error: called `.as_ref().map(String::as_str)` on an Option value. This can be done more directly by calling `opt.as_deref()` instead
+  --> $DIR/option_as_ref_deref.rs:58:13
+   |
+LL |     let _ = opt.as_ref().map(String::as_str);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using as_deref instead: `opt.as_deref()`
+
+error: aborting due to 18 previous errors
 

@@ -87,16 +87,10 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
 
 /// The combined undo log for all the various unification tables. For each change to the storage
 /// for any kind of inference variable, we record an UndoLog entry in the vector here.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub(crate) struct InferCtxtUndoLogs<'tcx> {
     logs: Vec<UndoLog<'tcx>>,
     num_open_snapshots: usize,
-}
-
-impl Default for InferCtxtUndoLogs<'_> {
-    fn default() -> Self {
-        Self { logs: Default::default(), num_open_snapshots: Default::default() }
-    }
 }
 
 /// The UndoLogs trait defines how we undo a particular kind of action (of type T). We can undo any

@@ -27,6 +27,8 @@ pub mod display;
 pub mod method_resolution;
 pub mod primitive;
 pub mod traits;
+pub mod layout;
+pub mod lang_items;
 
 #[cfg(test)]
 mod tests;
@@ -41,17 +43,21 @@ use chalk_ir::{
     NoSolution,
 };
 use hir_def::{expr::ExprId, type_ref::Rawness, TypeOrConstParamId};
+use hir_expand::name;
 use itertools::Either;
+use traits::FnTrait;
 use utils::Generics;
 
-use crate::{consteval::unknown_const, db::HirDatabase, utils::generics};
+use crate::{
+    consteval::unknown_const, db::HirDatabase, infer::unify::InferenceTable, utils::generics,
+};
 
 pub use autoderef::autoderef;
 pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
 pub use infer::{
     could_coerce, could_unify, Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic,
-    InferenceResult,
+    InferenceResult, OverloadedDeref, PointerCast,
 };
 pub use interner::Interner;
 pub use lower::{
@@ -81,7 +87,20 @@ pub type PlaceholderIndex = chalk_ir::PlaceholderIndex;
 pub type VariableKind = chalk_ir::VariableKind<Interner>;
 pub type VariableKinds = chalk_ir::VariableKinds<Interner>;
 pub type CanonicalVarKinds = chalk_ir::CanonicalVarKinds<Interner>;
+/// Represents generic parameters and an item bound by them. When the item has parent, the binders
+/// also contain the generic parameters for its parent. See chalk's documentation for details.
+///
+/// One thing to keep in mind when working with `Binders` (and `Substitution`s, which represent
+/// generic arguments) in rust-analyzer is that the ordering within *is* significant - the generic
+/// parameters/arguments for an item MUST come before those for its parent. This is to facilitate
+/// the integration with chalk-solve, which mildly puts constraints as such. See #13335 for its
+/// motivation in detail.
 pub type Binders<T> = chalk_ir::Binders<T>;
+/// Interned list of generic arguments for an item. When an item has parent, the `Substitution` for
+/// it contains generic arguments for both its parent and itself. See chalk's documentation for
+/// details.
+///
+/// See `Binders` for the constraint on the ordering.
 pub type Substitution = chalk_ir::Substitution<Interner>;
 pub type GenericArg = chalk_ir::GenericArg<Interner>;
 pub type GenericArgData = chalk_ir::GenericArgData<Interner>;
@@ -123,14 +142,6 @@ pub type Solution = chalk_solve::Solution<Interner>;
 pub type ConstrainedSubst = chalk_ir::ConstrainedSubst<Interner>;
 pub type Guidance = chalk_solve::Guidance<Interner>;
 pub type WhereClause = chalk_ir::WhereClause<Interner>;
-
-// FIXME: get rid of this
-pub fn subst_prefix(s: &Substitution, n: usize) -> Substitution {
-    Substitution::from_iter(
-        Interner,
-        s.as_slice(Interner)[..std::cmp::min(s.len(Interner), n)].iter().cloned(),
-    )
-}
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {
@@ -203,6 +214,7 @@ pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
 pub struct CallableSig {
     params_and_return: Arc<[Ty]>,
     is_varargs: bool,
+    safety: Safety,
 }
 
 has_interner!(CallableSig);
@@ -211,9 +223,14 @@ has_interner!(CallableSig);
 pub type PolyFnSig = Binders<CallableSig>;
 
 impl CallableSig {
-    pub fn from_params_and_return(mut params: Vec<Ty>, ret: Ty, is_varargs: bool) -> CallableSig {
+    pub fn from_params_and_return(
+        mut params: Vec<Ty>,
+        ret: Ty,
+        is_varargs: bool,
+        safety: Safety,
+    ) -> CallableSig {
         params.push(ret);
-        CallableSig { params_and_return: params.into(), is_varargs }
+        CallableSig { params_and_return: params.into(), is_varargs, safety }
     }
 
     pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
@@ -230,13 +247,14 @@ impl CallableSig {
                 .map(|arg| arg.assert_ty_ref(Interner).clone())
                 .collect(),
             is_varargs: fn_ptr.sig.variadic,
+            safety: fn_ptr.sig.safety,
         }
     }
 
     pub fn to_fn_ptr(&self) -> FnPointer {
         FnPointer {
             num_binders: 0,
-            sig: FnSig { abi: (), safety: Safety::Safe, variadic: self.is_varargs },
+            sig: FnSig { abi: (), safety: self.safety, variadic: self.is_varargs },
             substitution: FnSubst(Substitution::from_iter(
                 Interner,
                 self.params_and_return.iter().cloned(),
@@ -254,14 +272,18 @@ impl CallableSig {
 }
 
 impl TypeFoldable<Interner> for CallableSig {
-    fn fold_with<E>(
+    fn try_fold_with<E>(
         self,
-        folder: &mut dyn chalk_ir::fold::TypeFolder<Interner, Error = E>,
+        folder: &mut dyn chalk_ir::fold::FallibleTypeFolder<Interner, Error = E>,
         outer_binder: DebruijnIndex,
     ) -> Result<Self, E> {
         let vec = self.params_and_return.to_vec();
-        let folded = vec.fold_with(folder, outer_binder)?;
-        Ok(CallableSig { params_and_return: folded.into(), is_varargs: self.is_varargs })
+        let folded = vec.try_fold_with(folder, outer_binder)?;
+        Ok(CallableSig {
+            params_and_return: folded.into(),
+            is_varargs: self.is_varargs,
+            safety: self.safety,
+        })
     }
 }
 
@@ -292,16 +314,19 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<
     for_ty: impl FnMut(BoundVar, DebruijnIndex) -> Ty,
     for_const: impl FnMut(Ty, BoundVar, DebruijnIndex) -> Const,
 ) -> T {
-    use chalk_ir::{fold::TypeFolder, Fallible};
-    struct FreeVarFolder<F1, F2>(F1, F2);
+    use chalk_ir::fold::TypeFolder;
+
+    #[derive(chalk_derive::FallibleTypeFolder)]
+    #[has_interner(Interner)]
+    struct FreeVarFolder<
+        F1: FnMut(BoundVar, DebruijnIndex) -> Ty,
+        F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const,
+    >(F1, F2);
     impl<
-            'i,
-            F1: FnMut(BoundVar, DebruijnIndex) -> Ty + 'i,
-            F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const + 'i,
+            F1: FnMut(BoundVar, DebruijnIndex) -> Ty,
+            F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const,
         > TypeFolder<Interner> for FreeVarFolder<F1, F2>
     {
-        type Error = NoSolution;
-
         fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
             self
         }
@@ -310,12 +335,8 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<
             Interner
         }
 
-        fn fold_free_var_ty(
-            &mut self,
-            bound_var: BoundVar,
-            outer_binder: DebruijnIndex,
-        ) -> Fallible<Ty> {
-            Ok(self.0(bound_var, outer_binder))
+        fn fold_free_var_ty(&mut self, bound_var: BoundVar, outer_binder: DebruijnIndex) -> Ty {
+            self.0(bound_var, outer_binder)
         }
 
         fn fold_free_var_const(
@@ -323,12 +344,11 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<
             ty: Ty,
             bound_var: BoundVar,
             outer_binder: DebruijnIndex,
-        ) -> Fallible<Const> {
-            Ok(self.1(ty, bound_var, outer_binder))
+        ) -> Const {
+            self.1(ty, bound_var, outer_binder)
         }
     }
     t.fold_with(&mut FreeVarFolder(for_ty, for_const), DebruijnIndex::INNERMOST)
-        .expect("fold failed unexpectedly")
 }
 
 pub(crate) fn fold_tys<T: HasInterner<Interner = Interner> + TypeFoldable<Interner>>(
@@ -351,16 +371,13 @@ pub(crate) fn fold_tys_and_consts<T: HasInterner<Interner = Interner> + TypeFold
     f: impl FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>,
     binders: DebruijnIndex,
 ) -> T {
-    use chalk_ir::{
-        fold::{TypeFolder, TypeSuperFoldable},
-        Fallible,
-    };
-    struct TyFolder<F>(F);
-    impl<'i, F: FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const> + 'i>
-        TypeFolder<Interner> for TyFolder<F>
+    use chalk_ir::fold::{TypeFolder, TypeSuperFoldable};
+    #[derive(chalk_derive::FallibleTypeFolder)]
+    #[has_interner(Interner)]
+    struct TyFolder<F: FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>>(F);
+    impl<F: FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>> TypeFolder<Interner>
+        for TyFolder<F>
     {
-        type Error = NoSolution;
-
         fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
             self
         }
@@ -369,16 +386,16 @@ pub(crate) fn fold_tys_and_consts<T: HasInterner<Interner = Interner> + TypeFold
             Interner
         }
 
-        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Fallible<Ty> {
-            let ty = ty.super_fold_with(self.as_dyn(), outer_binder)?;
-            Ok(self.0(Either::Left(ty), outer_binder).left().unwrap())
+        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Ty {
+            let ty = ty.super_fold_with(self.as_dyn(), outer_binder);
+            self.0(Either::Left(ty), outer_binder).left().unwrap()
         }
 
-        fn fold_const(&mut self, c: Const, outer_binder: DebruijnIndex) -> Fallible<Const> {
-            Ok(self.0(Either::Right(c), outer_binder).right().unwrap())
+        fn fold_const(&mut self, c: Const, outer_binder: DebruijnIndex) -> Const {
+            self.0(Either::Right(c), outer_binder).right().unwrap()
         }
     }
-    t.fold_with(&mut TyFolder(f), binders).expect("fold failed unexpectedly")
+    t.fold_with(&mut TyFolder(f), binders)
 }
 
 /// 'Canonicalizes' the `t` by replacing any errors with new variables. Also
@@ -387,19 +404,18 @@ pub(crate) fn fold_tys_and_consts<T: HasInterner<Interner = Interner> + TypeFold
 pub fn replace_errors_with_variables<T>(t: &T) -> Canonical<T>
 where
     T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + Clone,
-    T: HasInterner<Interner = Interner>,
 {
     use chalk_ir::{
-        fold::{TypeFolder, TypeSuperFoldable},
+        fold::{FallibleTypeFolder, TypeSuperFoldable},
         Fallible,
     };
     struct ErrorReplacer {
         vars: usize,
     }
-    impl TypeFolder<Interner> for ErrorReplacer {
+    impl FallibleTypeFolder<Interner> for ErrorReplacer {
         type Error = NoSolution;
 
-        fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner, Error = Self::Error> {
+        fn as_dyn(&mut self) -> &mut dyn FallibleTypeFolder<Interner, Error = Self::Error> {
             self
         }
 
@@ -407,18 +423,17 @@ where
             Interner
         }
 
-        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Fallible<Ty> {
+        fn try_fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Fallible<Ty> {
             if let TyKind::Error = ty.kind(Interner) {
                 let index = self.vars;
                 self.vars += 1;
                 Ok(TyKind::BoundVar(BoundVar::new(outer_binder, index)).intern(Interner))
             } else {
-                let ty = ty.super_fold_with(self.as_dyn(), outer_binder)?;
-                Ok(ty)
+                ty.try_super_fold_with(self.as_dyn(), outer_binder)
             }
         }
 
-        fn fold_inference_ty(
+        fn try_fold_inference_ty(
             &mut self,
             _var: InferenceVar,
             _kind: TyVariableKind,
@@ -433,7 +448,7 @@ where
             }
         }
 
-        fn fold_free_var_ty(
+        fn try_fold_free_var_ty(
             &mut self,
             _bound_var: BoundVar,
             _outer_binder: DebruijnIndex,
@@ -447,7 +462,7 @@ where
             }
         }
 
-        fn fold_inference_const(
+        fn try_fold_inference_const(
             &mut self,
             ty: Ty,
             _var: InferenceVar,
@@ -460,7 +475,7 @@ where
             }
         }
 
-        fn fold_free_var_const(
+        fn try_fold_free_var_const(
             &mut self,
             ty: Ty,
             _bound_var: BoundVar,
@@ -473,7 +488,7 @@ where
             }
         }
 
-        fn fold_inference_lifetime(
+        fn try_fold_inference_lifetime(
             &mut self,
             _var: InferenceVar,
             _outer_binder: DebruijnIndex,
@@ -485,7 +500,7 @@ where
             }
         }
 
-        fn fold_free_var_lifetime(
+        fn try_fold_free_var_lifetime(
             &mut self,
             _bound_var: BoundVar,
             _outer_binder: DebruijnIndex,
@@ -498,9 +513,9 @@ where
         }
     }
     let mut error_replacer = ErrorReplacer { vars: 0 };
-    let value = match t.clone().fold_with(&mut error_replacer, DebruijnIndex::INNERMOST) {
+    let value = match t.clone().try_fold_with(&mut error_replacer, DebruijnIndex::INNERMOST) {
         Ok(t) => t,
-        Err(_) => panic!("Encountered unbound or inference vars in {:?}", t),
+        Err(_) => panic!("Encountered unbound or inference vars in {t:?}"),
     };
     let kinds = (0..error_replacer.vars).map(|_| {
         chalk_ir::CanonicalVarKind::new(
@@ -509,4 +524,42 @@ where
         )
     });
     Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(Interner, kinds) }
+}
+
+pub fn callable_sig_from_fnonce(
+    self_ty: &Ty,
+    env: Arc<TraitEnvironment>,
+    db: &dyn HirDatabase,
+) -> Option<CallableSig> {
+    let krate = env.krate;
+    let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
+    let output_assoc_type = db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
+
+    let mut table = InferenceTable::new(db, env.clone());
+    let b = TyBuilder::trait_ref(db, fn_once_trait);
+    if b.remaining() != 2 {
+        return None;
+    }
+
+    // Register two obligations:
+    // - Self: FnOnce<?args_ty>
+    // - <Self as FnOnce<?args_ty>>::Output == ?ret_ty
+    let args_ty = table.new_type_var();
+    let trait_ref = b.push(self_ty.clone()).push(args_ty.clone()).build();
+    let projection = TyBuilder::assoc_type_projection(
+        db,
+        output_assoc_type,
+        Some(trait_ref.substitution.clone()),
+    )
+    .build();
+    table.register_obligation(trait_ref.cast(Interner));
+    let ret_ty = table.normalize_projection_ty(projection);
+
+    let ret_ty = table.resolve_completely(ret_ty);
+    let args_ty = table.resolve_completely(args_ty);
+
+    let params =
+        args_ty.as_tuple()?.iter(Interner).map(|it| it.assert_ty_ref(Interner)).cloned().collect();
+
+    Some(CallableSig::from_params_and_return(params, ret_ty, false, Safety::Safe))
 }

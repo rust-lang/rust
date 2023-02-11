@@ -6,6 +6,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
+use rustc_index::bit_set::FiniteBitSet;
 use rustc_macros::HashStable;
 use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::Symbol;
@@ -276,28 +277,45 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 }
 
+fn fmt_instance(
+    f: &mut fmt::Formatter<'_>,
+    instance: &Instance<'_>,
+    type_length: rustc_session::Limit,
+) -> fmt::Result {
+    ty::tls::with(|tcx| {
+        let substs = tcx.lift(instance.substs).expect("could not lift for printing");
+
+        let s = FmtPrinter::new_with_limit(tcx, Namespace::ValueNS, type_length)
+            .print_def_path(instance.def_id(), substs)?
+            .into_buffer();
+        f.write_str(&s)
+    })?;
+
+    match instance.def {
+        InstanceDef::Item(_) => Ok(()),
+        InstanceDef::VTableShim(_) => write!(f, " - shim(vtable)"),
+        InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
+        InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
+        InstanceDef::Virtual(_, num) => write!(f, " - virtual#{}", num),
+        InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({})", ty),
+        InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
+        InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
+        InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({}))", ty),
+        InstanceDef::CloneShim(_, ty) => write!(f, " - shim({})", ty),
+    }
+}
+
+pub struct ShortInstance<'a, 'tcx>(pub &'a Instance<'tcx>, pub usize);
+
+impl<'a, 'tcx> fmt::Display for ShortInstance<'a, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt_instance(f, self.0, rustc_session::Limit(self.1))
+    }
+}
+
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| {
-            let substs = tcx.lift(self.substs).expect("could not lift for printing");
-            let s = FmtPrinter::new(tcx, Namespace::ValueNS)
-                .print_def_path(self.def_id(), substs)?
-                .into_buffer();
-            f.write_str(&s)
-        })?;
-
-        match self.def {
-            InstanceDef::Item(_) => Ok(()),
-            InstanceDef::VTableShim(_) => write!(f, " - shim(vtable)"),
-            InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
-            InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
-            InstanceDef::Virtual(_, num) => write!(f, " - virtual#{}", num),
-            InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({})", ty),
-            InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
-            InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
-            InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({}))", ty),
-            InstanceDef::CloneShim(_, ty) => write!(f, " - shim({})", ty),
-        }
+        ty::tls::with(|tcx| fmt_instance(f, self, tcx.type_length_limit()))
     }
 }
 
@@ -368,6 +386,21 @@ impl<'tcx> Instance<'tcx> {
         )
     }
 
+    pub fn expect_resolve(
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> Instance<'tcx> {
+        match ty::Instance::resolve(tcx, param_env, def_id, substs) {
+            Ok(Some(instance)) => instance,
+            _ => bug!(
+                "failed to resolve instance for {}",
+                tcx.def_path_str_with_substs(def_id, substs)
+            ),
+        }
+    }
+
     // This should be kept up to date with `resolve`.
     pub fn resolve_opt_const_arg(
         tcx: TyCtxt<'tcx>,
@@ -426,7 +459,7 @@ impl<'tcx> Instance<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
         debug!("resolve_for_vtable(def_id={:?}, substs={:?})", def_id, substs);
-        let fn_sig = tcx.fn_sig(def_id);
+        let fn_sig = tcx.fn_sig(def_id).subst_identity();
         let is_vtable_shim = !fn_sig.inputs().skip_binder().is_empty()
             && fn_sig.input(0).skip_binder().is_param(0)
             && tcx.generics_of(def_id).has_self;
@@ -508,15 +541,15 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
         let substs = tcx.intern_substs(&[ty.into()]);
-        Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap().unwrap()
+        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs)
     }
 
+    #[instrument(level = "debug", skip(tcx), ret)]
     pub fn fn_once_adapter_instance(
         tcx: TyCtxt<'tcx>,
         closure_did: DefId,
         substs: ty::SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
-        debug!("fn_once_adapter_shim({:?}, {:?})", closure_did, substs);
         let fn_once = tcx.require_lang_item(LangItem::FnOnce, None);
         let call_once = tcx
             .associated_items(fn_once)
@@ -534,9 +567,9 @@ impl<'tcx> Instance<'tcx> {
         let sig =
             tcx.try_normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig).ok()?;
         assert_eq!(sig.inputs().len(), 1);
-        let substs = tcx.mk_substs_trait(self_ty, &[sig.inputs()[0].into()]);
+        let substs = tcx.mk_substs_trait(self_ty, [sig.inputs()[0].into()]);
 
-        debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
+        debug!(?self_ty, ?sig);
         Some(Instance { def, substs })
     }
 
@@ -679,7 +712,7 @@ fn polymorphize<'tcx>(
     }
 
     InternalSubsts::for_item(tcx, def_id, |param, _| {
-        let is_unused = unused.contains(param.index).unwrap_or(false);
+        let is_unused = unused.is_unused(param.index);
         debug!("polymorphize: param={:?} is_unused={:?}", param, is_unused);
         match param.kind {
             // Upvar case: If parameter is a type parameter..
@@ -701,7 +734,7 @@ fn polymorphize<'tcx>(
             // Simple case: If parameter is a const or type parameter..
             ty::GenericParamDefKind::Const { .. } | ty::GenericParamDefKind::Type { .. } if
                 // ..and is within range and unused..
-                unused.contains(param.index).unwrap_or(false) =>
+                unused.is_unused(param.index) =>
                     // ..then use the identity for this parameter.
                     tcx.mk_param_from_def(param),
 
@@ -723,14 +756,14 @@ fn needs_fn_once_adapter_shim(
             Ok(false)
         }
         (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
-            // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
+            // The closure fn `llfn` is a `fn(&self, ...)`. We want a
             // `fn(&mut self, ...)`. In fact, at codegen time, these are
             // basically the same thing, so we can just return llfn.
             Ok(false)
         }
         (ty::ClosureKind::Fn | ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
             // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
-            // self, ...)`.  We want a `fn(self, ...)`. We can produce
+            // self, ...)`. We want a `fn(self, ...)`. We can produce
             // this by doing something like:
             //
             //     fn call_once(self, ...) { call_mut(&self, ...) }
@@ -740,5 +773,38 @@ fn needs_fn_once_adapter_shim(
             Ok(true)
         }
         (ty::ClosureKind::FnMut | ty::ClosureKind::FnOnce, _) => Err(()),
+    }
+}
+
+// Set bits represent unused generic parameters.
+// An empty set indicates that all parameters are used.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Decodable, Encodable, HashStable)]
+pub struct UnusedGenericParams(FiniteBitSet<u32>);
+
+impl UnusedGenericParams {
+    pub fn new_all_unused(amount: u32) -> Self {
+        let mut bitset = FiniteBitSet::new_empty();
+        bitset.set_range(0..amount);
+        Self(bitset)
+    }
+
+    pub fn new_all_used() -> Self {
+        Self(FiniteBitSet::new_empty())
+    }
+
+    pub fn mark_used(&mut self, idx: u32) {
+        self.0.clear(idx);
+    }
+
+    pub fn is_unused(&self, idx: u32) -> bool {
+        self.0.contains(idx).unwrap_or(false)
+    }
+
+    pub fn is_used(&self, idx: u32) -> bool {
+        !self.is_unused(idx)
+    }
+
+    pub fn all_used(&self) -> bool {
+        self.0.is_empty()
     }
 }

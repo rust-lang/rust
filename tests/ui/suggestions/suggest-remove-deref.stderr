@@ -1,0 +1,43 @@
+error[E0308]: mismatched types
+  --> $DIR/suggest-remove-deref.rs:13:9
+   |
+LL |     foo(*hello);
+   |     --- ^^^^^^ expected `&_`, found `S`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&_`
+                 found struct `S`
+note: function defined here
+  --> $DIR/suggest-remove-deref.rs:10:4
+   |
+LL | fn foo<T: X>(_: &T) {}
+   |    ^^^       -----
+help: consider removing deref here
+   |
+LL -     foo(*hello);
+LL +     foo(hello);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-remove-deref.rs:21:9
+   |
+LL |     bar(*s);
+   |     --- ^^ expected `&String`, found `String`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/suggest-remove-deref.rs:17:4
+   |
+LL | fn bar(_: &String) {}
+   |    ^^^ ----------
+help: consider removing deref here
+   |
+LL -     bar(*s);
+LL +     bar(s);
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

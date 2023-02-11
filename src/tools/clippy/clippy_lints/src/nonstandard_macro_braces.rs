@@ -266,7 +266,7 @@ impl<'de> Deserialize<'de> for MacroMatcher {
                         .iter()
                         .find(|b| b.0 == brace)
                         .map(|(o, c)| ((*o).to_owned(), (*c).to_owned()))
-                        .ok_or_else(|| de::Error::custom(&format!("expected one of `(`, `{{`, `[` found `{brace}`")))?,
+                        .ok_or_else(|| de::Error::custom(format!("expected one of `(`, `{{`, `[` found `{brace}`")))?,
                 })
             }
         }

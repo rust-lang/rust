@@ -26,6 +26,7 @@ use rustc_session::config::{BranchProtection, CFGuard, CFProtection};
 use rustc_session::config::{CrateType, DebugInfo, PAuthKey, PacRet};
 use rustc_session::Session;
 use rustc_span::source_map::Span;
+use rustc_span::source_map::Spanned;
 use rustc_target::abi::{
     call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx,
 };
@@ -149,14 +150,15 @@ pub unsafe fn create_module<'ll>(
             target_data_layout =
                 "e-m:x-p:32:32-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:32-n8:16:32-a:0:32-S32"
                     .to_string();
-        }
-        if sess.target.arch == "wasm32" {
+        } else if sess.target.arch == "wasm32" {
             target_data_layout = target_data_layout.replace("-p10:8:8-p20:8:8", "");
         }
     }
     if llvm_version < (16, 0, 0) {
         if sess.target.arch == "s390x" {
             target_data_layout = target_data_layout.replace("-v128:64", "");
+        } else if sess.target.arch == "riscv64" {
+            target_data_layout = target_data_layout.replace("-n32:64-", "-n64-");
         }
     }
 
@@ -186,7 +188,7 @@ pub unsafe fn create_module<'ll>(
         //
         // FIXME(#34960)
         let cfg_llvm_root = option_env!("CFG_LLVM_ROOT").unwrap_or("");
-        let custom_llvm_used = cfg_llvm_root.trim() != "";
+        let custom_llvm_used = !cfg_llvm_root.trim().is_empty();
 
         if !custom_llvm_used && target_data_layout != llvm_data_layout {
             bug!(
@@ -244,6 +246,11 @@ pub unsafe fn create_module<'ll>(
         );
     }
 
+    if sess.is_sanitizer_kcfi_enabled() {
+        let kcfi = "kcfi\0".as_ptr().cast();
+        llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Override, kcfi, 1);
+    }
+
     // Control Flow Guard is currently only supported by the MSVC linker on Windows.
     if sess.target.is_like_msvc {
         match sess.opts.cg.control_flow_guard {
@@ -270,33 +277,42 @@ pub unsafe fn create_module<'ll>(
     }
 
     if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
-        if sess.target.arch != "aarch64" {
-            sess.err("-Zbranch-protection is only supported on aarch64");
+        let behavior = if llvm_version >= (15, 0, 0) {
+            llvm::LLVMModFlagBehavior::Min
         } else {
+            llvm::LLVMModFlagBehavior::Error
+        };
+
+        if sess.target.arch == "aarch64" {
             llvm::LLVMRustAddModuleFlag(
                 llmod,
-                llvm::LLVMModFlagBehavior::Error,
+                behavior,
                 "branch-target-enforcement\0".as_ptr().cast(),
                 bti.into(),
             );
             llvm::LLVMRustAddModuleFlag(
                 llmod,
-                llvm::LLVMModFlagBehavior::Error,
+                behavior,
                 "sign-return-address\0".as_ptr().cast(),
                 pac_ret.is_some().into(),
             );
             let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
             llvm::LLVMRustAddModuleFlag(
                 llmod,
-                llvm::LLVMModFlagBehavior::Error,
+                behavior,
                 "sign-return-address-all\0".as_ptr().cast(),
                 pac_opts.leaf.into(),
             );
             llvm::LLVMRustAddModuleFlag(
                 llmod,
-                llvm::LLVMModFlagBehavior::Error,
+                behavior,
                 "sign-return-address-with-bkey\0".as_ptr().cast(),
                 u32::from(pac_opts.key == PAuthKey::B),
+            );
+        } else {
+            bug!(
+                "branch-protection used on non-AArch64 target; \
+                  this should be checked in rustc_session."
             );
         }
     }
@@ -570,8 +586,14 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
-        if self.get_declared_value("main").is_none() {
-            Some(self.declare_cfn("main", llvm::UnnamedAddr::Global, fn_type))
+        let entry_name = self.sess().target.entry_name.as_ref();
+        if self.get_declared_value(entry_name).is_none() {
+            Some(self.declare_entry_fn(
+                entry_name,
+                self.sess().target.entry_abi.into(),
+                llvm::UnnamedAddr::Global,
+                fn_type,
+            ))
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote
             // #[no_mangle] extern "C" fn main(..) {..}
@@ -947,7 +969,7 @@ impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) = err {
-            self.sess().span_fatal(span, &err.to_string())
+            self.sess().emit_fatal(Spanned { span, node: err })
         } else {
             span_bug!(span, "failed to get layout for `{}`: {}", ty, err)
         }
@@ -965,7 +987,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.sess().span_fatal(span, &err.to_string())
+            self.sess().emit_fatal(Spanned { span, node: err })
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {

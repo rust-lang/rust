@@ -1,0 +1,36 @@
+// The goal of this test is to check the color of the "no result" links.
+goto: "file://" + |DOC_PATH| + "/lib2/index.html?search=sdkfskjfsdks"
+show-text: true
+
+define-function: (
+    "check-no-result",
+    (theme, link, link_hover),
+    block {
+        // Changing theme.
+        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        reload:
+        wait-for: "#results"
+        assert: ".search-failed.active"
+        assert-css: ("#results a", {"color": |link|}, ALL)
+        move-cursor-to: "#results a"
+        assert-css: ("#results a:hover", {"color": |link_hover|})
+        // Moving the cursor to some other place to not create issues with next function run.
+        move-cursor-to: ".search-input"
+    },
+)
+
+call-function: ("check-no-result", {
+    "theme": "ayu",
+    "link": "rgb(57, 175, 215)",
+    "link_hover": "rgb(57, 175, 215)",
+})
+call-function: ("check-no-result", {
+    "theme": "dark",
+    "link": "rgb(210, 153, 29)",
+    "link_hover": "rgb(210, 153, 29)",
+})
+call-function: ("check-no-result", {
+    "theme": "light",
+    "link": "rgb(56, 115, 173)",
+    "link_hover": "rgb(56, 115, 173)",
+})

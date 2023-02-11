@@ -1,5 +1,5 @@
 // We want to control preemption here.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
 
 use std::thread::spawn;
 
@@ -19,7 +19,7 @@ pub fn main() {
         });
 
         let j2 = spawn(move || {
-            *c.0 = 64; //~ ERROR: Data race detected between Write on thread `<unnamed>` and Write on thread `<unnamed>`
+            *c.0 = 64; //~ ERROR: Data race detected between (1) Write on thread `<unnamed>` and (2) Write on thread `<unnamed>`
         });
 
         j1.join().unwrap();

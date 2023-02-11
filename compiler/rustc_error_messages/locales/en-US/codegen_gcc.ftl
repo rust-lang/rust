@@ -1,9 +1,3 @@
-codegen_gcc_ranlib_failure =
-    Ranlib exited with code {$exit_code}
-
-codegen_gcc_linkage_const_or_mut_type =
-    must have type `*const T` or `*mut T` due to `#[linkage]` attribute
-
 codegen_gcc_unwinding_inline_asm =
     GCC backend does not support unwinding from inline asm
 
@@ -29,7 +23,7 @@ codegen_gcc_invalid_monomorphization_unsupported_element =
     invalid monomorphization of `{$name}` intrinsic: unsupported {$name} from `{$in_ty}` with element `{$elem_ty}` to `{$ret_ty}`
 
 codegen_gcc_invalid_monomorphization_invalid_bitmask =
-    invalid monomorphization of `{$name}` intrinsic: invalid bitmask `{ty}`, expected `u{$expected_int_bits}` or `[u8; {$expected_bytes}]`
+    invalid monomorphization of `{$name}` intrinsic: invalid bitmask `{$ty}`, expected `u{$expected_int_bits}` or `[u8; {$expected_bytes}]`
 
 codegen_gcc_invalid_monomorphization_simd_shuffle =
     invalid monomorphization of `{$name}` intrinsic: simd_shuffle index must be an array of `u32`, got `{$ty}`

@@ -27,10 +27,10 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_hir::HirId;
 use rustc_middle::ty::TyCtxt;
+pub(crate) use rustc_resolve::rustdoc::main_body_opts;
 use rustc_span::edition::Edition;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 use once_cell::sync::Lazy;
 use std::borrow::Cow;
@@ -47,6 +47,7 @@ use crate::html::escape::Escape;
 use crate::html::format::Buffer;
 use crate::html::highlight;
 use crate::html::length_limit::HtmlWithLimit;
+use crate::html::render::small_url_encode;
 use crate::html::toc::TocBuilder;
 
 use pulldown_cmark::{
@@ -57,15 +58,6 @@ use pulldown_cmark::{
 mod tests;
 
 const MAX_HEADER_LEVEL: u32 = 6;
-
-/// Options for rendering Markdown in the main body of documentation.
-pub(crate) fn main_body_opts() -> Options {
-    Options::ENABLE_TABLES
-        | Options::ENABLE_FOOTNOTES
-        | Options::ENABLE_STRIKETHROUGH
-        | Options::ENABLE_TASKLISTS
-        | Options::ENABLE_SMART_PUNCTUATION
-}
 
 /// Options for rendering Markdown in summaries (e.g., in search results).
 pub(crate) fn summary_opts() -> Options {
@@ -103,14 +95,14 @@ pub struct Markdown<'a> {
     /// E.g. if `heading_offset: HeadingOffset::H2`, then `# something` renders an `<h2>`.
     pub heading_offset: HeadingOffset,
 }
-/// A tuple struct like `Markdown` that renders the markdown with a table of contents.
-pub(crate) struct MarkdownWithToc<'a>(
-    pub(crate) &'a str,
-    pub(crate) &'a mut IdMap,
-    pub(crate) ErrorCodes,
-    pub(crate) Edition,
-    pub(crate) &'a Option<Playground>,
-);
+/// A struct like `Markdown` that renders the markdown with a table of contents.
+pub(crate) struct MarkdownWithToc<'a> {
+    pub(crate) content: &'a str,
+    pub(crate) ids: &'a mut IdMap,
+    pub(crate) error_codes: ErrorCodes,
+    pub(crate) edition: Edition,
+    pub(crate) playground: &'a Option<Playground>,
+}
 /// A tuple struct like `Markdown` that renders the markdown escaping HTML tags
 /// and includes no paragraph tags.
 pub(crate) struct MarkdownItemInfo<'a>(pub(crate) &'a str, pub(crate) &'a mut IdMap);
@@ -198,7 +190,7 @@ fn slugify(c: char) -> Option<char> {
 
 #[derive(Clone, Debug)]
 pub struct Playground {
-    pub crate_name: Option<String>,
+    pub crate_name: Option<Symbol>,
     pub url: String,
 }
 
@@ -236,18 +228,16 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             return event;
         };
 
-        let mut origtext = String::new();
+        let mut original_text = String::new();
         for event in &mut self.inner {
             match event {
                 Event::End(Tag::CodeBlock(..)) => break,
                 Event::Text(ref s) => {
-                    origtext.push_str(s);
+                    original_text.push_str(s);
                 }
                 _ => {}
             }
         }
-        let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
-        let text = lines.intersperse("\n".into()).collect::<String>();
 
         let parse_result = match kind {
             CodeBlockKind::Fenced(ref lang) => {
@@ -260,7 +250,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                                  <pre class=\"language-{}\"><code>{}</code></pre>\
                              </div>",
                             lang,
-                            Escape(&text),
+                            Escape(&original_text),
                         )
                         .into(),
                     ));
@@ -269,6 +259,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             }
             CodeBlockKind::Indented => Default::default(),
         };
+
+        let lines = original_text.lines().filter_map(|l| map_line(l).for_html());
+        let text = lines.intersperse("\n".into()).collect::<String>();
 
         compile_fail = parse_result.compile_fail;
         should_panic = parse_result.should_panic;
@@ -284,40 +277,17 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             if url.is_empty() {
                 return None;
             }
-            let test = origtext
+            let test = original_text
                 .lines()
                 .map(|l| map_line(l).for_code())
                 .intersperse("\n".into())
                 .collect::<String>();
-            let krate = krate.as_ref().map(|s| &**s);
+            let krate = krate.as_ref().map(|s| s.as_str());
             let (test, _, _) =
                 doctest::make_test(&test, krate, false, &Default::default(), edition, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
-            // These characters don't need to be escaped in a URI.
-            // FIXME: use a library function for percent encoding.
-            fn dont_escape(c: u8) -> bool {
-                (b'a' <= c && c <= b'z')
-                    || (b'A' <= c && c <= b'Z')
-                    || (b'0' <= c && c <= b'9')
-                    || c == b'-'
-                    || c == b'_'
-                    || c == b'.'
-                    || c == b'~'
-                    || c == b'!'
-                    || c == b'\''
-                    || c == b'('
-                    || c == b')'
-                    || c == b'*'
-            }
-            let mut test_escaped = String::new();
-            for b in test.bytes() {
-                if dont_escape(b) {
-                    test_escaped.push(char::from(b));
-                } else {
-                    write!(test_escaped, "%{:02X}", b).unwrap();
-                }
-            }
+            let test_escaped = small_url_encode(test);
             Some(format!(
                 r#"<a class="test-arrow" target="_blank" href="{}?code={}{}&amp;edition={}">Run</a>"#,
                 url, test_escaped, channel, edition,
@@ -566,11 +536,12 @@ struct SummaryLine<'a, I: Iterator<Item = Event<'a>>> {
     inner: I,
     started: bool,
     depth: u32,
+    skipped_tags: u32,
 }
 
 impl<'a, I: Iterator<Item = Event<'a>>> SummaryLine<'a, I> {
     fn new(iter: I) -> Self {
-        SummaryLine { inner: iter, started: false, depth: 0 }
+        SummaryLine { inner: iter, started: false, depth: 0, skipped_tags: 0 }
     }
 }
 
@@ -600,6 +571,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
             let is_allowed_tag = match event {
                 Event::Start(ref c) => {
                     if is_forbidden_tag(c) {
+                        self.skipped_tags += 1;
                         return None;
                     }
                     self.depth += 1;
@@ -607,6 +579,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
                 }
                 Event::End(ref c) => {
                     if is_forbidden_tag(c) {
+                        self.skipped_tags += 1;
                         return None;
                     }
                     self.depth -= 1;
@@ -615,6 +588,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
                 }
                 _ => true,
             };
+            if !is_allowed_tag {
+                self.skipped_tags += 1;
+            }
             return if !is_allowed_tag {
                 if is_start {
                     Some(Event::Start(Tag::Paragraph))
@@ -764,11 +740,7 @@ pub(crate) fn find_testable_code<T: doctest::Tester>(
             }
             Event::Text(ref s) if register_header.is_some() => {
                 let level = register_header.unwrap();
-                if s.is_empty() {
-                    tests.register_header("", level);
-                } else {
-                    tests.register_header(s, level);
-                }
+                tests.register_header(s, level);
                 register_header = None;
             }
             _ => {}
@@ -777,45 +749,26 @@ pub(crate) fn find_testable_code<T: doctest::Tester>(
 }
 
 pub(crate) struct ExtraInfo<'tcx> {
-    id: ExtraInfoId,
+    def_id: DefId,
     sp: Span,
     tcx: TyCtxt<'tcx>,
 }
 
-enum ExtraInfoId {
-    Hir(HirId),
-    Def(DefId),
-}
-
 impl<'tcx> ExtraInfo<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, hir_id: HirId, sp: Span) -> ExtraInfo<'tcx> {
-        ExtraInfo { id: ExtraInfoId::Hir(hir_id), sp, tcx }
-    }
-
-    pub(crate) fn new_did(tcx: TyCtxt<'tcx>, did: DefId, sp: Span) -> ExtraInfo<'tcx> {
-        ExtraInfo { id: ExtraInfoId::Def(did), sp, tcx }
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: DefId, sp: Span) -> ExtraInfo<'tcx> {
+        ExtraInfo { def_id, sp, tcx }
     }
 
     fn error_invalid_codeblock_attr(&self, msg: &str, help: &str) {
-        let hir_id = match self.id {
-            ExtraInfoId::Hir(hir_id) => hir_id,
-            ExtraInfoId::Def(item_did) => {
-                match item_did.as_local() {
-                    Some(item_did) => self.tcx.hir().local_def_id_to_hir_id(item_did),
-                    None => {
-                        // If non-local, no need to check anything.
-                        return;
-                    }
-                }
-            }
-        };
-        self.tcx.struct_span_lint_hir(
-            crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
-            hir_id,
-            self.sp,
-            msg,
-            |lint| lint.help(help),
-        );
+        if let Some(def_id) = self.def_id.as_local() {
+            self.tcx.struct_span_lint_hir(
+                crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
+                self.tcx.hir().local_def_id_to_hir_id(def_id),
+                self.sp,
+                msg,
+                |lint| lint.help(help),
+            );
+        }
     }
 }
 
@@ -1044,7 +997,7 @@ impl Markdown<'_> {
 
 impl MarkdownWithToc<'_> {
     pub(crate) fn into_string(self) -> String {
-        let MarkdownWithToc(md, ids, codes, edition, playground) = self;
+        let MarkdownWithToc { content: md, ids, error_codes: codes, edition, playground } = self;
 
         let p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
 
@@ -1095,11 +1048,11 @@ impl MarkdownItemInfo<'_> {
 }
 
 impl MarkdownSummaryLine<'_> {
-    pub(crate) fn into_string(self) -> String {
+    pub(crate) fn into_string_with_has_more_content(self) -> (String, bool) {
         let MarkdownSummaryLine(md, links) = self;
         // This is actually common enough to special-case
         if md.is_empty() {
-            return String::new();
+            return (String::new(), false);
         }
 
         let mut replacer = |broken_link: BrokenLink<'_>| {
@@ -1109,17 +1062,26 @@ impl MarkdownSummaryLine<'_> {
                 .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
         };
 
-        let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
+        let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer))
+            .peekable();
+        let mut summary = SummaryLine::new(p);
 
         let mut s = String::new();
 
-        let without_paragraphs = LinkReplacer::new(SummaryLine::new(p), links).filter(|event| {
+        let without_paragraphs = LinkReplacer::new(&mut summary, links).filter(|event| {
             !matches!(event, Event::Start(Tag::Paragraph) | Event::End(Tag::Paragraph))
         });
 
         html::push_html(&mut s, without_paragraphs);
 
-        s
+        let has_more_content =
+            matches!(summary.inner.peek(), Some(Event::Start(_))) || summary.skipped_tags > 0;
+
+        (s, has_more_content)
+    }
+
+    pub(crate) fn into_string(self) -> String {
+        self.into_string_with_has_more_content().0
     }
 }
 
@@ -1175,18 +1137,18 @@ fn markdown_summary_with_limit(
             Event::Start(tag) => match tag {
                 Tag::Emphasis => buf.open_tag("em"),
                 Tag::Strong => buf.open_tag("strong"),
-                Tag::CodeBlock(..) => return ControlFlow::BREAK,
+                Tag::CodeBlock(..) => return ControlFlow::Break(()),
                 _ => {}
             },
             Event::End(tag) => match tag {
                 Tag::Emphasis | Tag::Strong => buf.close_tag(),
-                Tag::Paragraph | Tag::Heading(..) => return ControlFlow::BREAK,
+                Tag::Paragraph | Tag::Heading(..) => return ControlFlow::Break(()),
                 _ => {}
             },
             Event::HardBreak | Event::SoftBreak => buf.push(" ")?,
             _ => {}
         };
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     });
 
     (buf.finish(), stopped_early)
@@ -1433,6 +1395,7 @@ static DEFAULT_ID_MAP: Lazy<FxHashMap<Cow<'static, str>, usize>> = Lazy::new(|| 
 fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     let mut map = FxHashMap::default();
     // This is the list of IDs used in Javascript.
+    map.insert("help".into(), 1);
     map.insert("settings".into(), 1);
     map.insert("not-displayed".into(), 1);
     map.insert("alternative-display".into(), 1);

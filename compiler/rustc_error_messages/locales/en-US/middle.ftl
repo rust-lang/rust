@@ -18,3 +18,19 @@ middle_limit_invalid =
 
 middle_const_eval_non_int =
     constant evaluation of enum discriminant resulted in non-integer
+
+middle_unknown_layout =
+    the type `{$ty}` has an unknown layout
+
+middle_values_too_big =
+    values of the type `{$ty}` are too big for the current architecture
+
+middle_cannot_be_normalized =
+    unable to determine layout for `{$ty}` because `{$failure_ty}` cannot be normalized
+
+middle_strict_coherence_needs_negative_coherence =
+    to use `strict_coherence` on this trait, the `with_negative_coherence` feature must be enabled
+    .label = due to this attribute
+
+middle_const_not_used_in_type_alias =
+    const parameter `{$ct}` is part of concrete type but not used in parameter list for the `impl Trait` type alias

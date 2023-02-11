@@ -7,13 +7,15 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
-use rustc_infer::infer;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{self, RegionResolutionError};
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitable};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
-use rustc_trait_selection::traits::misc::{can_type_implement_copy, CopyImplementationError};
+use rustc_trait_selection::traits::misc::{
+    type_allowed_to_implement_copy, CopyImplementationError, InfringingFieldsReason,
+};
 use rustc_trait_selection::traits::predicate_for_trait_def;
 use rustc_trait_selection::traits::{self, ObligationCause};
 use std::collections::BTreeMap;
@@ -54,18 +56,13 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
         _ => {}
     }
 
-    let sp = match tcx.hir().expect_item(impl_did).kind {
-        ItemKind::Impl(ref impl_) => impl_.self_ty.span,
-        _ => bug!("expected Drop impl item"),
-    };
+    let impl_ = tcx.hir().expect_item(impl_did).expect_impl();
 
-    tcx.sess.emit_err(DropImplOnWrongItem { span: sp });
+    tcx.sess.emit_err(DropImplOnWrongItem { span: impl_.self_ty.span });
 }
 
 fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
-
-    let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_did);
 
     let self_type = tcx.type_of(impl_did);
     debug!("visit_implementation_of_copy: self_type={:?} (bound)", self_type);
@@ -81,8 +78,8 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
         _ => bug!("expected Copy impl item"),
     };
 
-    let cause = traits::ObligationCause::misc(span, impl_hir_id);
-    match can_type_implement_copy(tcx, param_env, self_type, cause) {
+    let cause = traits::ObligationCause::misc(span, impl_did);
+    match type_allowed_to_implement_copy(tcx, param_env, self_type, cause) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
             let mut err = struct_span_err!(
@@ -97,50 +94,70 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
             let mut errors: BTreeMap<_, Vec<_>> = Default::default();
             let mut bounds = vec![];
 
-            for (field, ty) in fields {
+            for (field, ty, reason) in fields {
                 let field_span = tcx.def_span(field.did);
-                let field_ty_span = match tcx.hir().get_if_local(field.did) {
-                    Some(hir::Node::Field(field_def)) => field_def.ty.span,
-                    _ => field_span,
-                };
                 err.span_label(field_span, "this field does not implement `Copy`");
-                // Spin up a new FulfillmentContext, so we can get the _precise_ reason
-                // why this field does not implement Copy. This is useful because sometimes
-                // it is not immediately clear why Copy is not implemented for a field, since
-                // all we point at is the field itself.
-                let infcx = tcx.infer_ctxt().ignoring_regions().build();
-                for error in traits::fully_solve_bound(
-                    &infcx,
-                    traits::ObligationCause::dummy_with_span(field_ty_span),
-                    param_env,
-                    ty,
-                    tcx.lang_items().copy_trait().unwrap(),
-                ) {
-                    let error_predicate = error.obligation.predicate;
-                    // Only note if it's not the root obligation, otherwise it's trivial and
-                    // should be self-explanatory (i.e. a field literally doesn't implement Copy).
 
-                    // FIXME: This error could be more descriptive, especially if the error_predicate
-                    // contains a foreign type or if it's a deeply nested type...
-                    if error_predicate != error.root_obligation.predicate {
-                        errors
-                            .entry((ty.to_string(), error_predicate.to_string()))
-                            .or_default()
-                            .push(error.obligation.cause.span);
+                match reason {
+                    InfringingFieldsReason::Fulfill(fulfillment_errors) => {
+                        for error in fulfillment_errors {
+                            let error_predicate = error.obligation.predicate;
+                            // Only note if it's not the root obligation, otherwise it's trivial and
+                            // should be self-explanatory (i.e. a field literally doesn't implement Copy).
+
+                            // FIXME: This error could be more descriptive, especially if the error_predicate
+                            // contains a foreign type or if it's a deeply nested type...
+                            if error_predicate != error.root_obligation.predicate {
+                                errors
+                                    .entry((ty.to_string(), error_predicate.to_string()))
+                                    .or_default()
+                                    .push(error.obligation.cause.span);
+                            }
+                            if let ty::PredicateKind::Clause(ty::Clause::Trait(
+                                ty::TraitPredicate {
+                                    trait_ref,
+                                    polarity: ty::ImplPolarity::Positive,
+                                    ..
+                                },
+                            )) = error_predicate.kind().skip_binder()
+                            {
+                                let ty = trait_ref.self_ty();
+                                if let ty::Param(_) = ty.kind() {
+                                    bounds.push((
+                                        format!("{ty}"),
+                                        trait_ref.print_only_trait_path().to_string(),
+                                        Some(trait_ref.def_id),
+                                    ));
+                                }
+                            }
+                        }
                     }
-                    if let ty::PredicateKind::Trait(ty::TraitPredicate {
-                        trait_ref,
-                        polarity: ty::ImplPolarity::Positive,
-                        ..
-                    }) = error_predicate.kind().skip_binder()
-                    {
-                        let ty = trait_ref.self_ty();
-                        if let ty::Param(_) = ty.kind() {
-                            bounds.push((
-                                format!("{ty}"),
-                                trait_ref.print_only_trait_path().to_string(),
-                                Some(trait_ref.def_id),
-                            ));
+                    InfringingFieldsReason::Regions(region_errors) => {
+                        for error in region_errors {
+                            let ty = ty.to_string();
+                            match error {
+                                RegionResolutionError::ConcreteFailure(origin, a, b) => {
+                                    let predicate = format!("{b}: {a}");
+                                    errors
+                                        .entry((ty.clone(), predicate.clone()))
+                                        .or_default()
+                                        .push(origin.span());
+                                    if let ty::RegionKind::ReEarlyBound(ebr) = *b && ebr.has_name() {
+                                        bounds.push((b.to_string(), a.to_string(), None));
+                                    }
+                                }
+                                RegionResolutionError::GenericBoundFailure(origin, a, b) => {
+                                    let predicate = format!("{a}: {b}");
+                                    errors
+                                        .entry((ty.clone(), predicate.clone()))
+                                        .or_default()
+                                        .push(origin.span());
+                                    if let infer::region_constraints::GenericKind::Param(_) = a {
+                                        bounds.push((a.to_string(), b.to_string(), None));
+                                    }
+                                }
+                                _ => continue,
+                            }
                         }
                     }
                 }
@@ -159,6 +176,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                 bounds.iter().map(|(param, constraint, def_id)| {
                     (param.as_str(), constraint.as_str(), *def_id)
                 }),
+                None,
             );
             err.emit();
         }
@@ -171,7 +189,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     }
 }
 
-fn visit_implementation_of_coerce_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) {
+fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_coerce_unsized: impl_did={:?}", impl_did);
 
     // Just compute this for the side-effects, in particular reporting
@@ -181,7 +199,7 @@ fn visit_implementation_of_coerce_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_did: Loc
     tcx.at(span).coerce_unsized_info(impl_did);
 }
 
-fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) {
+fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}", impl_did);
 
     let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_did);
@@ -192,7 +210,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
     let source = tcx.type_of(impl_did);
     assert!(!source.has_escaping_bound_vars());
     let target = {
-        let trait_ref = tcx.impl_trait_ref(impl_did).unwrap();
+        let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().subst_identity();
         assert_eq!(trait_ref.def_id, dispatch_from_dyn_trait);
 
         trait_ref.substs.type_at(1)
@@ -205,7 +223,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
     let create_err = |msg: &str| struct_span_err!(tcx.sess, span, E0378, "{}", msg);
 
     let infcx = tcx.infer_ctxt().build();
-    let cause = ObligationCause::misc(span, impl_hir_id);
+    let cause = ObligationCause::misc(span, impl_did);
 
     use rustc_type_ir::sty::TyKind::*;
     match (source.kind(), target.kind()) {
@@ -315,18 +333,19 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
                             cause.clone(),
                             dispatch_from_dyn_trait,
                             0,
-                            field.ty(tcx, substs_a),
-                            &[field.ty(tcx, substs_b).into()],
+                            [field.ty(tcx, substs_a), field.ty(tcx, substs_b)],
                         )
                     }),
                 );
                 if !errors.is_empty() {
-                    infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+                    infcx.err_ctxt().report_fulfillment_errors(&errors, None);
                 }
 
                 // Finally, resolve all regions.
                 let outlives_env = OutlivesEnvironment::new(param_env);
-                infcx.check_region_obligations_and_report_errors(impl_did, &outlives_env);
+                let _ = infcx
+                    .err_ctxt()
+                    .check_region_obligations_and_report_errors(impl_did, &outlives_env);
             }
         }
         _ => {
@@ -353,7 +372,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
     });
 
     let source = tcx.type_of(impl_did);
-    let trait_ref = tcx.impl_trait_ref(impl_did).unwrap();
+    let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().subst_identity();
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
     let target = trait_ref.substs.type_at(1);
     debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (bound)", source, target);
@@ -366,12 +385,11 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
     debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (free)", source, target);
 
     let infcx = tcx.infer_ctxt().build();
-    let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_did);
-    let cause = ObligationCause::misc(span, impl_hir_id);
+    let cause = ObligationCause::misc(span, impl_did);
     let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>,
                        mt_b: ty::TypeAndMut<'tcx>,
                        mk_ptr: &dyn Fn(Ty<'tcx>) -> Ty<'tcx>| {
-        if (mt_a.mutbl, mt_b.mutbl) == (hir::Mutability::Not, hir::Mutability::Mut) {
+        if mt_a.mutbl < mt_b.mutbl {
             infcx
                 .err_ctxt()
                 .report_mismatched_types(
@@ -437,7 +455,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
             // when this coercion occurs, we would be changing the
             // field `ptr` from a thin pointer of type `*mut [i32;
             // 3]` to a fat pointer of type `*mut [i32]` (with
-            // extra data `3`).  **The purpose of this check is to
+            // extra data `3`). **The purpose of this check is to
             // make sure that we know how to do this conversion.**
             //
             // To check if this impl is legal, we would walk down
@@ -504,12 +522,11 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                 return err_info;
             } else if diff_fields.len() > 1 {
                 let item = tcx.hir().expect_item(impl_did);
-                let span =
-                    if let ItemKind::Impl(hir::Impl { of_trait: Some(ref t), .. }) = item.kind {
-                        t.path.span
-                    } else {
-                        tcx.def_span(impl_did)
-                    };
+                let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(t), .. }) = &item.kind {
+                    t.path.span
+                } else {
+                    tcx.def_span(impl_did)
+                };
 
                 struct_span_err!(
                     tcx.sess,
@@ -556,17 +573,17 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
     };
 
     // Register an obligation for `A: Trait<B>`.
-    let cause = traits::ObligationCause::misc(span, impl_hir_id);
+    let cause = traits::ObligationCause::misc(span, impl_did);
     let predicate =
-        predicate_for_trait_def(tcx, param_env, cause, trait_def_id, 0, source, &[target.into()]);
+        predicate_for_trait_def(tcx, param_env, cause, trait_def_id, 0, [source, target]);
     let errors = traits::fully_solve_obligation(&infcx, predicate);
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
+        infcx.err_ctxt().report_fulfillment_errors(&errors, None);
     }
 
     // Finally, resolve all regions.
     let outlives_env = OutlivesEnvironment::new(param_env);
-    infcx.check_region_obligations_and_report_errors(impl_did, &outlives_env);
+    let _ = infcx.err_ctxt().check_region_obligations_and_report_errors(impl_did, &outlives_env);
 
     CoerceUnsizedInfo { custom_kind: kind }
 }

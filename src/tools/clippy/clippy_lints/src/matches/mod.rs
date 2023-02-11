@@ -1,7 +1,9 @@
 mod collapsible_match;
 mod infallible_destructuring_match;
+mod manual_filter;
 mod manual_map;
 mod manual_unwrap_or;
+mod manual_utils;
 mod match_as_ref;
 mod match_bool;
 mod match_like_matches;
@@ -21,13 +23,13 @@ mod single_match;
 mod try_err;
 mod wild_in_or_pats;
 
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet_opt, walk_span_to_context};
-use clippy_utils::{higher, in_constant, is_span_match, meets_msrv, msrvs};
+use clippy_utils::{higher, in_constant, is_span_match};
 use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{Span, SpanData, SyntaxContext};
 
@@ -898,15 +900,43 @@ declare_clippy_lint! {
     "reimplementation of `map`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usages of `match` which could be implemented using `filter`
+    ///
+    /// ### Why is this bad?
+    /// Using the `filter` method is clearer and more concise.
+    ///
+    /// ### Example
+    /// ```rust
+    /// match Some(0) {
+    ///     Some(x) => if x % 2 == 0 {
+    ///                     Some(x)
+    ///                } else {
+    ///                     None
+    ///                 },
+    ///     None => None,
+    /// };
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// Some(0).filter(|&x| x % 2 == 0);
+    /// ```
+    #[clippy::version = "1.66.0"]
+    pub MANUAL_FILTER,
+    complexity,
+    "reimplentation of `filter`"
+}
+
 #[derive(Default)]
 pub struct Matches {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
     infallible_destructuring_match_linted: bool,
 }
 
 impl Matches {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self {
             msrv,
             ..Matches::default()
@@ -939,6 +969,7 @@ impl_lint_pass!(Matches => [
     SIGNIFICANT_DROP_IN_SCRUTINEE,
     TRY_ERR,
     MANUAL_MAP,
+    MANUAL_FILTER,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
@@ -969,9 +1000,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
 
             if !from_expansion && !contains_cfg_arm(cx, expr, ex, arms) {
                 if source == MatchSource::Normal {
-                    if !(meets_msrv(self.msrv, msrvs::MATCHES_MACRO)
-                        && match_like_matches::check_match(cx, expr, ex, arms))
-                    {
+                    if !(self.msrv.meets(msrvs::MATCHES_MACRO) && match_like_matches::check_match(cx, expr, ex, arms)) {
                         match_same_arms::check(cx, arms);
                     }
 
@@ -988,6 +1017,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     if !in_constant(cx, expr.hir_id) {
                         manual_unwrap_or::check(cx, expr, ex, arms);
                         manual_map::check_match(cx, expr, ex, arms);
+                        manual_filter::check_match(cx, ex, arms, expr);
                     }
 
                     if self.infallible_destructuring_match_linted {
@@ -1002,7 +1032,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             collapsible_match::check_if_let(cx, if_let.let_pat, if_let.if_then, if_let.if_else);
             if !from_expansion {
                 if let Some(else_expr) = if_let.if_else {
-                    if meets_msrv(self.msrv, msrvs::MATCHES_MACRO) {
+                    if self.msrv.meets(msrvs::MATCHES_MACRO) {
                         match_like_matches::check_if_let(
                             cx,
                             expr,
@@ -1014,6 +1044,14 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     }
                     if !in_constant(cx, expr.hir_id) {
                         manual_map::check_if_let(cx, expr, if_let.let_pat, if_let.let_expr, if_let.if_then, else_expr);
+                        manual_filter::check_if_let(
+                            cx,
+                            expr,
+                            if_let.let_pat,
+                            if_let.let_expr,
+                            if_let.if_then,
+                            else_expr,
+                        );
                     }
                 }
                 redundant_pattern_match::check_if_let(

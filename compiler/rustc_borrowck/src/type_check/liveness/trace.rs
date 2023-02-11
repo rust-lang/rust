@@ -328,7 +328,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         debug_assert!(self.drop_live_at.contains(term_point));
 
         // Otherwise, scan backwards through the statements in the
-        // block.  One of them may be either a definition or use
+        // block. One of them may be either a definition or use
         // live point.
         let term_location = self.cx.elements.to_location(term_point);
         debug_assert_eq!(self.cx.body.terminator_loc(term_location.block), term_location,);

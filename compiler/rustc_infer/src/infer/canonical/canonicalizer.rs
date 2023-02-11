@@ -6,8 +6,7 @@
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::infer::canonical::{
-    Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, Canonicalized,
-    OriginalQueryValues,
+    Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, OriginalQueryValues,
 };
 use crate::infer::InferCtxt;
 use rustc_middle::ty::flags::FlagComputation;
@@ -40,7 +39,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         value: V,
         query_state: &mut OriginalQueryValues<'tcx>,
-    ) -> Canonicalized<'tcx, V>
+    ) -> Canonical<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
     {
@@ -59,7 +58,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         value: V,
         query_state: &mut OriginalQueryValues<'tcx>,
-    ) -> Canonicalized<'tcx, V>
+    ) -> Canonical<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
     {
@@ -99,7 +98,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// out the [chapter in the rustc dev guide][c].
     ///
     /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#canonicalizing-the-query-result
-    pub fn canonicalize_response<V>(&self, value: V) -> Canonicalized<'tcx, V>
+    pub fn canonicalize_response<V>(&self, value: V) -> Canonical<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
     {
@@ -113,7 +112,7 @@ impl<'tcx> InferCtxt<'tcx> {
         )
     }
 
-    pub fn canonicalize_user_type_annotation<V>(&self, value: V) -> Canonicalized<'tcx, V>
+    pub fn canonicalize_user_type_annotation<V>(&self, value: V) -> Canonical<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
     {
@@ -135,7 +134,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         value: V,
         query_state: &mut OriginalQueryValues<'tcx>,
-    ) -> Canonicalized<'tcx, V>
+    ) -> Canonical<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
     {
@@ -204,12 +203,10 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
                 // rust-lang/rust#57464: `impl Trait` can leak local
                 // scopes (in manner violating typeck). Therefore, use
                 // `delay_span_bug` to allow type error over an ICE.
-                ty::tls::with(|tcx| {
-                    tcx.sess.delay_span_bug(
-                        rustc_span::DUMMY_SP,
-                        &format!("unexpected region in query response: `{:?}`", r),
-                    );
-                });
+                canonicalizer.tcx.sess.delay_span_bug(
+                    rustc_span::DUMMY_SP,
+                    &format!("unexpected region in query response: `{:?}`", r),
+                );
                 r
             }
         }
@@ -372,6 +369,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
 
             ty::ReStatic
             | ty::ReEarlyBound(..)
+            | ty::ReError(_)
             | ty::ReFree(_)
             | ty::RePlaceholder(..)
             | ty::ReErased => self.canonicalize_mode.canonicalize_free_region(self, r),
@@ -436,6 +434,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Bool
             | ty::Char
             | ty::Int(..)
@@ -453,10 +452,9 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             | ty::Dynamic(..)
             | ty::Never
             | ty::Tuple(..)
-            | ty::Projection(..)
+            | ty::Alias(..)
             | ty::Foreign(..)
-            | ty::Param(..)
-            | ty::Opaque(..) => {
+            | ty::Param(..) => {
                 if t.flags().intersects(self.needs_canonical_flags) {
                     t.super_fold_with(self)
                 } else {
@@ -495,7 +493,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             }
             ty::ConstKind::Bound(debruijn, _) => {
                 if debruijn >= self.binder_index {
-                    bug!("escaping bound type during canonicalization")
+                    bug!("escaping bound const during canonicalization")
                 } else {
                     return ct;
                 }
@@ -525,7 +523,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         tcx: TyCtxt<'tcx>,
         canonicalize_region_mode: &dyn CanonicalizeMode,
         query_state: &mut OriginalQueryValues<'tcx>,
-    ) -> Canonicalized<'tcx, V>
+    ) -> Canonical<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
     {
@@ -738,7 +736,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
-        let br = ty::BoundRegion { var, kind: ty::BrAnon(var.as_u32()) };
+        let br = ty::BoundRegion { var, kind: ty::BrAnon(var.as_u32(), None) };
         let region = ty::ReLateBound(self.binder_index, br);
         self.tcx().mk_region(region)
     }
@@ -773,10 +771,10 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             self.fold_const(bound_to)
         } else {
             let var = self.canonical_var(info, const_var.into());
-            self.tcx().mk_const(ty::ConstS {
-                kind: ty::ConstKind::Bound(self.binder_index, var),
-                ty: self.fold_ty(const_var.ty()),
-            })
+            self.tcx().mk_const(
+                ty::ConstKind::Bound(self.binder_index, var),
+                self.fold_ty(const_var.ty()),
+            )
         }
     }
 }

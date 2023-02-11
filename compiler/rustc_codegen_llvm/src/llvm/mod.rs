@@ -185,6 +185,13 @@ impl AttributeKind {
     }
 }
 
+impl MemoryEffects {
+    /// Create an LLVM Attribute with these memory effects.
+    pub fn create_attr(self, llcx: &Context) -> &Attribute {
+        unsafe { LLVMRustCreateMemoryEffectsAttr(llcx, self) }
+    }
+}
+
 pub fn set_section(llglobal: &Value, section_name: &str) {
     let section_name_cstr = CString::new(section_name).expect("unexpected CString error");
     unsafe {

@@ -65,13 +65,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         global
     }
 
-    pub fn declare_cfn(&self, name: &str, _fn_type: Type<'gcc>) -> RValue<'gcc> {
+    pub fn declare_entry_fn(&self, name: &str, _fn_type: Type<'gcc>, callconv: () /*llvm::CCallConv*/) -> RValue<'gcc> {
         // TODO(antoyo): use the fn_type parameter.
         let const_string = self.context.new_type::<u8>().make_pointer().make_pointer();
         let return_type = self.type_i32();
         let variadic = false;
         self.linkage.set(FunctionType::Exported);
-        let func = declare_raw_fn(self, name, () /*llvm::CCallConv*/, return_type, &[self.type_i32(), const_string], variadic);
+        let func = declare_raw_fn(self, name, callconv, return_type, &[self.type_i32(), const_string], variadic);
         // NOTE: it is needed to set the current_func here as well, because get_fn() is not called
         // for the main function.
         *self.current_func.borrow_mut() = Some(func);

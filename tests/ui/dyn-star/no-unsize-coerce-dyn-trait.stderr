@@ -1,0 +1,23 @@
+warning: the feature `dyn_star` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/no-unsize-coerce-dyn-trait.rs:1:12
+   |
+LL | #![feature(dyn_star, trait_upcasting)]
+   |            ^^^^^^^^
+   |
+   = note: see issue #102425 <https://github.com/rust-lang/rust/issues/102425> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/no-unsize-coerce-dyn-trait.rs:11:26
+   |
+LL |     let y: Box<dyn* B> = x;
+   |            -----------   ^ expected trait `B`, found trait `A`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Box<dyn* B>`
+              found struct `Box<dyn* A>`
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

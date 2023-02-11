@@ -1,0 +1,34 @@
+error[E0277]: `Sender<i32>` cannot be shared between threads safely
+  --> $DIR/issue-70935-complex-spans.rs:13:45
+   |
+LL | fn foo(tx: std::sync::mpsc::Sender<i32>) -> impl Future + Send {
+   |                                             ^^^^^^^^^^^^^^^^^^ `Sender<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `Sender<i32>`
+   = note: required for `&Sender<i32>` to implement `Send`
+note: required because it's used within this closure
+  --> $DIR/issue-70935-complex-spans.rs:17:13
+   |
+LL |         baz(|| async{
+   |             ^^
+note: required because it's used within this `async fn` body
+  --> $DIR/issue-70935-complex-spans.rs:10:67
+   |
+LL |   async fn baz<T>(_c: impl FnMut() -> T) where T: Future<Output=()> {
+   |  ___________________________________________________________________^
+LL | | }
+   | |_^
+   = note: required because it captures the following types: `impl Future<Output = ()>`
+note: required because it's used within this `async` block
+  --> $DIR/issue-70935-complex-spans.rs:16:5
+   |
+LL | /     async move {
+LL | |         baz(|| async{
+LL | |             foo(tx.clone());
+LL | |         }).await;
+LL | |     }
+   | |_____^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,5 +1,8 @@
-use crate::{LateContext, LateLintPass, LintContext};
-use rustc_errors::{Applicability, DiagnosticBuilder, MultiSpan};
+use crate::{
+    lints::{NonBindingLet, NonBindingLetSub},
+    LateContext, LateLintPass, LintContext,
+};
+use rustc_errors::MultiSpan;
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_span::Symbol;
@@ -11,7 +14,8 @@ declare_lint! {
     /// scope.
     ///
     /// ### Example
-    /// ```
+    ///
+    /// ```rust
     /// struct SomeStruct;
     /// impl Drop for SomeStruct {
     ///     fn drop(&mut self) {
@@ -56,7 +60,7 @@ declare_lint! {
     /// of at end of scope, which is typically incorrect.
     ///
     /// ### Example
-    /// ```compile_fail
+    /// ```rust,compile_fail
     /// use std::sync::{Arc, Mutex};
     /// use std::thread;
     /// let data = Arc::new(Mutex::new(0));
@@ -118,6 +122,11 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                 _ => false,
             };
 
+            let sub = NonBindingLetSub {
+                suggestion: local.pat.span,
+                multi_suggestion_start: local.span.until(init.span),
+                multi_suggestion_end: init.span.shrink_to_hi(),
+            };
             if is_sync_lock {
                 let mut span = MultiSpan::from_spans(vec![local.pat.span, init.span]);
                 span.push_span_label(
@@ -128,41 +137,14 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     init.span,
                     "this binding will immediately drop the value assigned to it".to_string(),
                 );
-                cx.struct_span_lint(
-                    LET_UNDERSCORE_LOCK,
-                    span,
-                    "non-binding let on a synchronization lock",
-                    |lint| build_lint(lint, local, init.span),
-                )
+                cx.emit_spanned_lint(LET_UNDERSCORE_LOCK, span, NonBindingLet::SyncLock { sub });
             } else {
-                cx.struct_span_lint(
+                cx.emit_spanned_lint(
                     LET_UNDERSCORE_DROP,
                     local.span,
-                    "non-binding let on a type that implements `Drop`",
-                    |lint| build_lint(lint, local, init.span),
-                )
+                    NonBindingLet::DropType { sub },
+                );
             }
         }
     }
-}
-
-fn build_lint<'a, 'b>(
-    lint: &'a mut DiagnosticBuilder<'b, ()>,
-    local: &hir::Local<'_>,
-    init_span: rustc_span::Span,
-) -> &'a mut DiagnosticBuilder<'b, ()> {
-    lint.span_suggestion_verbose(
-        local.pat.span,
-        "consider binding to an unused variable to avoid immediately dropping the value",
-        "_unused",
-        Applicability::MachineApplicable,
-    )
-    .multipart_suggestion(
-        "consider immediately dropping the value",
-        vec![
-            (local.span.until(init_span), "drop(".to_string()),
-            (init_span.shrink_to_hi(), ")".to_string()),
-        ],
-        Applicability::MachineApplicable,
-    )
 }

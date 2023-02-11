@@ -371,5 +371,20 @@ LL | |     }
    |
    = note: clamp will panic if max < min
 
-error: aborting due to 34 previous errors
+error: clamp-like pattern without using clamp function
+  --> $DIR/manual_clamp.rs:321:13
+   |
+LL |       let _ = if input < min {
+   |  _____________^
+LL | |         min
+LL | |     } else if input > max {
+LL | |         max
+LL | |     } else {
+LL | |         input
+LL | |     };
+   | |_____^ help: replace with clamp: `input.clamp(min, max)`
+   |
+   = note: clamp will panic if max < min
+
+error: aborting due to 35 previous errors
 

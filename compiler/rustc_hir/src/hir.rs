@@ -29,15 +29,16 @@ use std::fmt;
 #[derive(Debug, Copy, Clone, Encodable, HashStable_Generic)]
 pub struct Lifetime {
     pub hir_id: HirId,
-    pub span: Span,
 
     /// Either "`'a`", referring to a named lifetime definition,
-    /// or "``" (i.e., `kw::Empty`), for elision placeholders.
+    /// `'_` referring to an anonymous lifetime (either explicitly `'_` or `&type`),
+    /// or "``" (i.e., `kw::Empty`) when appearing in path.
     ///
-    /// HIR lowering inserts these placeholders in type paths that
-    /// refer to type definitions needing lifetime parameters,
-    /// `&T` and `&mut T`, and trait objects without `... + 'a`.
-    pub name: LifetimeName,
+    /// See `Lifetime::suggestion_position` for practical use.
+    pub ident: Ident,
+
+    /// Semantics of this lifetime.
+    pub res: LifetimeName,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Encodable, Hash, Copy)]
@@ -88,12 +89,12 @@ impl ParamName {
 #[derive(HashStable_Generic)]
 pub enum LifetimeName {
     /// User-given names or fresh (synthetic) names.
-    Param(LocalDefId, ParamName),
+    Param(LocalDefId),
 
     /// Implicit lifetime in a context like `dyn Foo`. This is
     /// distinguished from implicit lifetimes elsewhere because the
     /// lifetime that they default to must appear elsewhere within the
-    /// enclosing type.  This means that, in an `impl Trait` context, we
+    /// enclosing type. This means that, in an `impl Trait` context, we
     /// don't have to create a parameter for them. That is, `impl
     /// Trait<Item = &u32>` expands to an opaque type like `type
     /// Foo<'a> = impl Trait<Item = &'a u32>`, but `impl Trait<item =
@@ -116,25 +117,6 @@ pub enum LifetimeName {
 }
 
 impl LifetimeName {
-    pub fn ident(&self) -> Ident {
-        match *self {
-            LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Error => Ident::empty(),
-            LifetimeName::Infer => Ident::with_dummy_span(kw::UnderscoreLifetime),
-            LifetimeName::Static => Ident::with_dummy_span(kw::StaticLifetime),
-            LifetimeName::Param(_, param_name) => param_name.ident(),
-        }
-    }
-
-    pub fn is_anonymous(&self) -> bool {
-        match *self {
-            LifetimeName::ImplicitObjectLifetimeDefault
-            | LifetimeName::Infer
-            | LifetimeName::Param(_, ParamName::Fresh)
-            | LifetimeName::Error => true,
-            LifetimeName::Static | LifetimeName::Param(..) => false,
-        }
-    }
-
     pub fn is_elided(&self) -> bool {
         match self {
             LifetimeName::ImplicitObjectLifetimeDefault | LifetimeName::Infer => true,
@@ -146,34 +128,54 @@ impl LifetimeName {
             LifetimeName::Error | LifetimeName::Param(..) | LifetimeName::Static => false,
         }
     }
-
-    fn is_static(&self) -> bool {
-        self == &LifetimeName::Static
-    }
-
-    pub fn normalize_to_macros_2_0(&self) -> LifetimeName {
-        match *self {
-            LifetimeName::Param(def_id, param_name) => {
-                LifetimeName::Param(def_id, param_name.normalize_to_macros_2_0())
-            }
-            lifetime_name => lifetime_name,
-        }
-    }
 }
 
 impl fmt::Display for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.name.ident().fmt(f)
+        if self.ident.name != kw::Empty { self.ident.name.fmt(f) } else { "'_".fmt(f) }
     }
+}
+
+pub enum LifetimeSuggestionPosition {
+    /// The user wrote `'a` or `'_`.
+    Normal,
+    /// The user wrote `&type` or `&mut type`.
+    Ampersand,
+    /// The user wrote `Path` and omitted the `<'_>`.
+    ElidedPath,
+    /// The user wrote `Path<T>`, and omitted the `'_,`.
+    ElidedPathArgument,
+    /// The user wrote `dyn Trait` and omitted the `+ '_`.
+    ObjectDefault,
 }
 
 impl Lifetime {
     pub fn is_elided(&self) -> bool {
-        self.name.is_elided()
+        self.res.is_elided()
+    }
+
+    pub fn is_anonymous(&self) -> bool {
+        self.ident.name == kw::Empty || self.ident.name == kw::UnderscoreLifetime
+    }
+
+    pub fn suggestion_position(&self) -> (LifetimeSuggestionPosition, Span) {
+        if self.ident.name == kw::Empty {
+            if self.ident.span.is_empty() {
+                (LifetimeSuggestionPosition::ElidedPathArgument, self.ident.span)
+            } else {
+                (LifetimeSuggestionPosition::ElidedPath, self.ident.span.shrink_to_hi())
+            }
+        } else if self.res == LifetimeName::ImplicitObjectLifetimeDefault {
+            (LifetimeSuggestionPosition::ObjectDefault, self.ident.span)
+        } else if self.ident.span.is_empty() {
+            (LifetimeSuggestionPosition::Ampersand, self.ident.span)
+        } else {
+            (LifetimeSuggestionPosition::Normal, self.ident.span)
+        }
     }
 
     pub fn is_static(&self) -> bool {
-        self.name.is_static()
+        self.res == LifetimeName::Static
     }
 }
 
@@ -181,13 +183,16 @@ impl Lifetime {
 /// `std::cmp::PartialEq`. It's represented as a sequence of identifiers,
 /// along with a bunch of supporting information.
 #[derive(Debug, HashStable_Generic)]
-pub struct Path<'hir> {
+pub struct Path<'hir, R = Res> {
     pub span: Span,
     /// The resolution for the path.
-    pub res: Res,
+    pub res: R,
     /// The segments in the path: the things separated by `::`.
     pub segments: &'hir [PathSegment<'hir>],
 }
+
+/// Up to three resolutions for type, value and macro namespaces.
+pub type UsePath<'hir> = Path<'hir, SmallVec<[Res; 3]>>;
 
 impl Path<'_> {
     pub fn is_global(&self) -> bool {
@@ -267,7 +272,7 @@ pub enum GenericArg<'hir> {
 impl GenericArg<'_> {
     pub fn span(&self) -> Span {
         match self {
-            GenericArg::Lifetime(l) => l.span,
+            GenericArg::Lifetime(l) => l.ident.span,
             GenericArg::Type(t) => t.span,
             GenericArg::Const(c) => c.span,
             GenericArg::Infer(i) => i.span,
@@ -284,7 +289,7 @@ impl GenericArg<'_> {
     }
 
     pub fn is_synthetic(&self) -> bool {
-        matches!(self, GenericArg::Lifetime(lifetime) if lifetime.name.ident() == Ident::empty())
+        matches!(self, GenericArg::Lifetime(lifetime) if lifetime.ident == Ident::empty())
     }
 
     pub fn descr(&self) -> &'static str {
@@ -388,6 +393,8 @@ impl<'hir> GenericArgs<'hir> {
     }
 
     #[inline]
+    /// This function returns the number of type and const generic params.
+    /// It should only be used for diagnostics.
     pub fn num_generic_params(&self) -> usize {
         self.args.iter().filter(|arg| !matches!(arg, GenericArg::Lifetime(_))).count()
     }
@@ -444,7 +451,7 @@ impl GenericBound<'_> {
         match self {
             GenericBound::Trait(t, ..) => t.span,
             GenericBound::LangItemTrait(_, span, ..) => *span,
-            GenericBound::Outlives(l) => l.span,
+            GenericBound::Outlives(l) => l.ident.span,
         }
     }
 }
@@ -485,6 +492,7 @@ pub enum GenericParamKind<'hir> {
 #[derive(Debug, HashStable_Generic)]
 pub struct GenericParam<'hir> {
     pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub name: ParamName,
     pub span: Span,
     pub pure_wrt_drop: bool,
@@ -540,12 +548,7 @@ impl<'hir> Generics<'hir> {
     }
 
     pub fn get_named(&self, name: Symbol) -> Option<&GenericParam<'hir>> {
-        for param in self.params {
-            if name == param.name.ident().name {
-                return Some(param);
-            }
-        }
-        None
+        self.params.iter().find(|&param| name == param.name.ident().name)
     }
 
     pub fn spans(&self) -> MultiSpan {
@@ -553,6 +556,19 @@ impl<'hir> Generics<'hir> {
             self.span.into()
         } else {
             self.params.iter().map(|p| p.span).collect::<Vec<Span>>().into()
+        }
+    }
+
+    /// If there are generic parameters, return where to introduce a new one.
+    pub fn span_for_lifetime_suggestion(&self) -> Option<Span> {
+        if let Some(first) = self.params.first()
+            && self.span.contains(first.span)
+        {
+            // `fn foo<A>(t: impl Trait)`
+            //         ^ suggest `'a, ` here
+            Some(first.span.shrink_to_lo())
+        } else {
+            None
         }
     }
 
@@ -762,10 +778,7 @@ pub struct WhereRegionPredicate<'hir> {
 impl<'hir> WhereRegionPredicate<'hir> {
     /// Returns `true` if `param_def_id` matches the `lifetime` of this predicate.
     pub fn is_param_bound(&self, param_def_id: LocalDefId) -> bool {
-        match self.lifetime.name {
-            LifetimeName::Param(id, _) => id == param_def_id,
-            _ => false,
-        }
+        self.lifetime.res == LifetimeName::Param(param_def_id)
     }
 }
 
@@ -809,17 +822,15 @@ impl<'tcx> AttributeMap<'tcx> {
 pub struct OwnerNodes<'tcx> {
     /// Pre-computed hash of the full HIR.
     pub hash_including_bodies: Fingerprint,
-    /// Pre-computed hash of the item signature, sithout recursing into the body.
+    /// Pre-computed hash of the item signature, without recursing into the body.
     pub hash_without_bodies: Fingerprint,
     /// Full HIR for the current owner.
     // The zeroth node's parent should never be accessed: the owner's parent is computed by the
-    // hir_owner_parent query.  It is set to `ItemLocalId::INVALID` to force an ICE if accidentally
+    // hir_owner_parent query. It is set to `ItemLocalId::INVALID` to force an ICE if accidentally
     // used.
     pub nodes: IndexVec<ItemLocalId, Option<ParentedNode<'tcx>>>,
     /// Content of local bodies.
     pub bodies: SortedMap<ItemLocalId, &'tcx Body<'tcx>>,
-    /// Non-owning definitions contained in this owner.
-    pub local_id_to_def_id: SortedMap<ItemLocalId, LocalDefId>,
 }
 
 impl<'tcx> OwnerNodes<'tcx> {
@@ -841,11 +852,14 @@ impl fmt::Debug for OwnerNodes<'_> {
                 &self
                     .nodes
                     .iter_enumerated()
-                    .map(|(id, parented_node)| (id, parented_node.as_ref().map(|node| node.parent)))
+                    .map(|(id, parented_node)| {
+                        let parented_node = parented_node.as_ref().map(|node| node.parent);
+
+                        debug_fn(move |f| write!(f, "({id:?}, {parented_node:?})"))
+                    })
                     .collect::<Vec<_>>(),
             )
             .field("bodies", &self.bodies)
-            .field("local_id_to_def_id", &self.local_id_to_def_id)
             .field("hash_without_bodies", &self.hash_without_bodies)
             .field("hash_including_bodies", &self.hash_including_bodies)
             .finish()
@@ -919,12 +933,17 @@ pub struct Crate<'hir> {
 
 #[derive(Debug, HashStable_Generic)]
 pub struct Closure<'hir> {
+    pub def_id: LocalDefId,
     pub binder: ClosureBinder,
+    pub constness: Constness,
     pub capture_clause: CaptureBy,
     pub bound_generic_params: &'hir [GenericParam<'hir>],
     pub fn_decl: &'hir FnDecl<'hir>,
     pub body: BodyId,
+    /// The span of the declaration block: 'move |...| -> ...'
     pub fn_decl_span: Span,
+    /// The span of the argument block `|...|`
+    pub fn_arg_span: Option<Span>,
     pub movability: Option<Movability>,
 }
 
@@ -965,8 +984,8 @@ pub struct Pat<'hir> {
     pub hir_id: HirId,
     pub kind: PatKind<'hir>,
     pub span: Span,
-    // Whether to use default binding modes.
-    // At present, this is false only for destructuring assignment.
+    /// Whether to use default binding modes.
+    /// At present, this is false only for destructuring assignment.
     pub default_binding_modes: bool,
 }
 
@@ -1074,7 +1093,7 @@ impl fmt::Display for RangeEnd {
 pub struct DotDotPos(u32);
 
 impl DotDotPos {
-    // Panics if n >= u32::MAX.
+    /// Panics if n >= u32::MAX.
     pub fn new(n: Option<usize>) -> Self {
         match n {
             Some(n) => {
@@ -1510,9 +1529,9 @@ pub enum AsyncGeneratorKind {
 impl fmt::Display for AsyncGeneratorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            AsyncGeneratorKind::Block => "`async` block",
-            AsyncGeneratorKind::Closure => "`async` closure body",
-            AsyncGeneratorKind::Fn => "`async fn` body",
+            AsyncGeneratorKind::Block => "async block",
+            AsyncGeneratorKind::Closure => "async closure body",
+            AsyncGeneratorKind::Fn => "async fn body",
         })
     }
 }
@@ -1613,7 +1632,7 @@ pub enum ArrayLen {
 impl ArrayLen {
     pub fn hir_id(&self) -> HirId {
         match self {
-            &ArrayLen::Infer(hir_id, _) | &ArrayLen::Body(AnonConst { hir_id, body: _ }) => hir_id,
+            &ArrayLen::Infer(hir_id, _) | &ArrayLen::Body(AnonConst { hir_id, .. }) => hir_id,
         }
     }
 }
@@ -1625,10 +1644,11 @@ impl ArrayLen {
 /// explicit discriminant values for enum variants.
 ///
 /// You can check if this anon const is a default in a const param
-/// `const N: usize = { ... }` with `tcx.hir().opt_const_param_default_param_hir_id(..)`
+/// `const N: usize = { ... }` with `tcx.hir().opt_const_param_default_param_def_id(..)`
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic)]
 pub struct AnonConst {
     pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub body: BodyId,
 }
 
@@ -1677,10 +1697,10 @@ impl Expr<'_> {
         }
     }
 
-    // Whether this looks like a place expr, without checking for deref
-    // adjustments.
-    // This will return `true` in some potentially surprising cases such as
-    // `CONSTANT.field`.
+    /// Whether this looks like a place expr, without checking for deref
+    /// adjustments.
+    /// This will return `true` in some potentially surprising cases such as
+    /// `CONSTANT.field`.
     pub fn is_syntactic_place_expr(&self) -> bool {
         self.is_place_expr(|_| true)
     }
@@ -1764,6 +1784,14 @@ impl Expr<'_> {
         expr
     }
 
+    pub fn peel_borrows(&self) -> &Self {
+        let mut expr = self;
+        while let ExprKind::AddrOf(.., inner) = &expr.kind {
+            expr = inner;
+        }
+        expr
+    }
+
     pub fn can_have_side_effects(&self) -> bool {
         match self.peel_drop_temps().kind {
             ExprKind::Path(_) | ExprKind::Lit(_) => false,
@@ -1821,7 +1849,7 @@ impl Expr<'_> {
         }
     }
 
-    // To a first-order approximation, is this a pattern
+    /// To a first-order approximation, is this a pattern?
     pub fn is_approximately_pattern(&self) -> bool {
         match &self.kind {
             ExprKind::Box(_)
@@ -2075,8 +2103,8 @@ pub enum LocalSource {
 }
 
 /// Hints at the original code for a `match _ { .. }`.
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Hash, Debug)]
-#[derive(HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum MatchSource {
     /// A `match _ { .. }`.
     Normal,
@@ -2086,6 +2114,8 @@ pub enum MatchSource {
     TryDesugar,
     /// A desugared `<expr>.await`.
     AwaitDesugar,
+    /// A desugared `format_args!()`.
+    FormatArgs,
 }
 
 impl MatchSource {
@@ -2097,6 +2127,7 @@ impl MatchSource {
             ForLoopDesugar => "for",
             TryDesugar => "?",
             AwaitDesugar => ".await",
+            FormatArgs => "format_args!()",
         }
     }
 }
@@ -2143,11 +2174,11 @@ impl fmt::Display for LoopIdError {
 
 #[derive(Copy, Clone, Encodable, Debug, HashStable_Generic)]
 pub struct Destination {
-    // This is `Some(_)` iff there is an explicit user-specified `label
+    /// This is `Some(_)` iff there is an explicit user-specified 'label
     pub label: Option<Label>,
 
-    // These errors are caught and then reported during the diagnostics pass in
-    // librustc_passes/loops.rs
+    /// These errors are caught and then reported during the diagnostics pass in
+    /// `librustc_passes/loops.rs`
     pub target_id: Result<HirId, LoopIdError>,
 }
 
@@ -2207,14 +2238,14 @@ pub struct FnSig<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct TraitItemId {
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
 }
 
 impl TraitItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 }
 
@@ -2225,22 +2256,48 @@ impl TraitItemId {
 #[derive(Debug, HashStable_Generic)]
 pub struct TraitItem<'hir> {
     pub ident: Ident,
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
     pub generics: &'hir Generics<'hir>,
     pub kind: TraitItemKind<'hir>,
     pub span: Span,
     pub defaultness: Defaultness,
 }
 
-impl TraitItem<'_> {
+impl<'hir> TraitItem<'hir> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 
     pub fn trait_item_id(&self) -> TraitItemId {
-        TraitItemId { def_id: self.def_id }
+        TraitItemId { owner_id: self.owner_id }
+    }
+
+    /// Expect an [`TraitItemKind::Const`] or panic.
+    #[track_caller]
+    pub fn expect_const(&self) -> (&'hir Ty<'hir>, Option<BodyId>) {
+        let TraitItemKind::Const(ty, body) = self.kind else { self.expect_failed("a constant") };
+        (ty, body)
+    }
+
+    /// Expect an [`TraitItemKind::Fn`] or panic.
+    #[track_caller]
+    pub fn expect_fn(&self) -> (&FnSig<'hir>, &TraitFn<'hir>) {
+        let TraitItemKind::Fn(ty, trfn) = &self.kind else { self.expect_failed("a function") };
+        (ty, trfn)
+    }
+
+    /// Expect an [`TraitItemKind::Type`] or panic.
+    #[track_caller]
+    pub fn expect_type(&self) -> (GenericBounds<'hir>, Option<&'hir Ty<'hir>>) {
+        let TraitItemKind::Type(bounds, ty) = self.kind else { self.expect_failed("a type") };
+        (bounds, ty)
+    }
+
+    #[track_caller]
+    fn expect_failed(&self, expected: &'static str) -> ! {
+        panic!("expected {expected} item, found {self:?}")
     }
 }
 
@@ -2271,14 +2328,14 @@ pub enum TraitItemKind<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct ImplItemId {
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
 }
 
 impl ImplItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 }
 
@@ -2286,7 +2343,7 @@ impl ImplItemId {
 #[derive(Debug, HashStable_Generic)]
 pub struct ImplItem<'hir> {
     pub ident: Ident,
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
     pub generics: &'hir Generics<'hir>,
     pub kind: ImplItemKind<'hir>,
     pub defaultness: Defaultness,
@@ -2294,15 +2351,41 @@ pub struct ImplItem<'hir> {
     pub vis_span: Span,
 }
 
-impl ImplItem<'_> {
+impl<'hir> ImplItem<'hir> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 
     pub fn impl_item_id(&self) -> ImplItemId {
-        ImplItemId { def_id: self.def_id }
+        ImplItemId { owner_id: self.owner_id }
+    }
+
+    /// Expect an [`ImplItemKind::Const`] or panic.
+    #[track_caller]
+    pub fn expect_const(&self) -> (&'hir Ty<'hir>, BodyId) {
+        let ImplItemKind::Const(ty, body) = self.kind else { self.expect_failed("a constant") };
+        (ty, body)
+    }
+
+    /// Expect an [`ImplItemKind::Fn`] or panic.
+    #[track_caller]
+    pub fn expect_fn(&self) -> (&FnSig<'hir>, BodyId) {
+        let ImplItemKind::Fn(ty, body) = &self.kind else { self.expect_failed("a function") };
+        (ty, *body)
+    }
+
+    /// Expect an [`ImplItemKind::Type`] or panic.
+    #[track_caller]
+    pub fn expect_type(&self) -> &'hir Ty<'hir> {
+        let ImplItemKind::Type(ty) = self.kind else { self.expect_failed("a type") };
+        ty
+    }
+
+    #[track_caller]
+    fn expect_failed(&self, expected: &'static str) -> ! {
+        panic!("expected {expected} item, found {self:?}")
     }
 }
 
@@ -2318,7 +2401,7 @@ pub enum ImplItemKind<'hir> {
     Type(&'hir Ty<'hir>),
 }
 
-// The name of the associated type for `Fn` return types.
+/// The name of the associated type for `Fn` return types.
 pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 
 /// Bind a type to an associated type (i.e., `A = Foo`).
@@ -2413,10 +2496,34 @@ impl<'hir> Ty<'hir> {
 
     pub fn peel_refs(&self) -> &Self {
         let mut final_ty = self;
-        while let TyKind::Rptr(_, MutTy { ty, .. }) = &final_ty.kind {
-            final_ty = &ty;
+        while let TyKind::Ref(_, MutTy { ty, .. }) = &final_ty.kind {
+            final_ty = ty;
         }
         final_ty
+    }
+
+    pub fn find_self_aliases(&self) -> Vec<Span> {
+        use crate::intravisit::Visitor;
+        struct MyVisitor(Vec<Span>);
+        impl<'v> Visitor<'v> for MyVisitor {
+            fn visit_ty(&mut self, t: &'v Ty<'v>) {
+                if matches!(
+                    &t.kind,
+                    TyKind::Path(QPath::Resolved(
+                        _,
+                        Path { res: crate::def::Res::SelfTyAlias { .. }, .. },
+                    ))
+                ) {
+                    self.0.push(t.span);
+                    return;
+                }
+                crate::intravisit::walk_ty(self, t);
+            }
+        }
+
+        let mut my_visitor = MyVisitor(vec![]);
+        my_visitor.visit_ty(self);
+        my_visitor.0
     }
 }
 
@@ -2546,7 +2653,7 @@ pub enum TyKind<'hir> {
     /// A raw pointer (i.e., `*const T` or `*mut T`).
     Ptr(MutTy<'hir>),
     /// A reference (i.e., `&'a T` or `&'a mut T`).
-    Rptr(&'hir Lifetime, MutTy<'hir>),
+    Ref(&'hir Lifetime, MutTy<'hir>),
     /// A bare function (e.g., `fn(usize) -> bool`).
     BareFn(&'hir BareFnTy<'hir>),
     /// The never type (`!`).
@@ -2659,6 +2766,8 @@ pub struct FnDecl<'hir> {
     pub c_variadic: bool,
     /// Does the function have an implicit self?
     pub implicit_self: ImplicitSelfKind,
+    /// Is lifetime elision allowed.
+    pub lifetime_elision_allowed: bool,
 }
 
 /// Represents what type of implicit self a function has, if any.
@@ -2689,6 +2798,12 @@ impl ImplicitSelfKind {
 pub enum IsAsync {
     Async,
     NotAsync,
+}
+
+impl IsAsync {
+    pub fn is_async(self) -> bool {
+        self == IsAsync::Async
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
@@ -2772,7 +2887,8 @@ pub struct Variant<'hir> {
     /// Name of the variant.
     pub ident: Ident,
     /// Id of the variant (not the constructor, see `VariantData::ctor_hir_id()`).
-    pub id: HirId,
+    pub hir_id: HirId,
+    pub def_id: LocalDefId,
     /// Fields and constructor id of the variant.
     pub data: VariantData<'hir>,
     /// Explicit discriminant (e.g., `Foo = 1`).
@@ -2839,6 +2955,7 @@ pub struct FieldDef<'hir> {
     pub vis_span: Span,
     pub ident: Ident,
     pub hir_id: HirId,
+    pub def_id: LocalDefId,
     pub ty: &'hir Ty<'hir>,
 }
 
@@ -2860,11 +2977,11 @@ pub enum VariantData<'hir> {
     /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(&'hir [FieldDef<'hir>], HirId),
+    Tuple(&'hir [FieldDef<'hir>], HirId, LocalDefId),
     /// A unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
-    Unit(HirId),
+    Unit(HirId, LocalDefId),
 }
 
 impl<'hir> VariantData<'hir> {
@@ -2876,12 +2993,29 @@ impl<'hir> VariantData<'hir> {
         }
     }
 
-    /// Return the `HirId` of this variant's constructor, if it has one.
-    pub fn ctor_hir_id(&self) -> Option<HirId> {
+    pub fn ctor(&self) -> Option<(CtorKind, HirId, LocalDefId)> {
         match *self {
-            VariantData::Struct(_, _) => None,
-            VariantData::Tuple(_, hir_id) | VariantData::Unit(hir_id) => Some(hir_id),
+            VariantData::Tuple(_, hir_id, def_id) => Some((CtorKind::Fn, hir_id, def_id)),
+            VariantData::Unit(hir_id, def_id) => Some((CtorKind::Const, hir_id, def_id)),
+            VariantData::Struct(..) => None,
         }
+    }
+
+    #[inline]
+    pub fn ctor_kind(&self) -> Option<CtorKind> {
+        self.ctor().map(|(kind, ..)| kind)
+    }
+
+    /// Return the `HirId` of this variant's constructor, if it has one.
+    #[inline]
+    pub fn ctor_hir_id(&self) -> Option<HirId> {
+        self.ctor().map(|(_, hir_id, _)| hir_id)
+    }
+
+    /// Return the `LocalDefId` of this variant's constructor, if it has one.
+    #[inline]
+    pub fn ctor_def_id(&self) -> Option<LocalDefId> {
+        self.ctor().map(|(.., def_id)| def_id)
     }
 }
 
@@ -2890,14 +3024,14 @@ impl<'hir> VariantData<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, Hash, HashStable_Generic)]
 pub struct ItemId {
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
 }
 
 impl ItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 }
 
@@ -2907,21 +3041,147 @@ impl ItemId {
 #[derive(Debug, HashStable_Generic)]
 pub struct Item<'hir> {
     pub ident: Ident,
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
     pub kind: ItemKind<'hir>,
     pub span: Span,
     pub vis_span: Span,
 }
 
-impl Item<'_> {
+impl<'hir> Item<'hir> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 
     pub fn item_id(&self) -> ItemId {
-        ItemId { def_id: self.def_id }
+        ItemId { owner_id: self.owner_id }
+    }
+
+    /// Expect an [`ItemKind::ExternCrate`] or panic.
+    #[track_caller]
+    pub fn expect_extern_crate(&self) -> Option<Symbol> {
+        let ItemKind::ExternCrate(s) = self.kind else { self.expect_failed("an extern crate") };
+        s
+    }
+
+    /// Expect an [`ItemKind::Use`] or panic.
+    #[track_caller]
+    pub fn expect_use(&self) -> (&'hir UsePath<'hir>, UseKind) {
+        let ItemKind::Use(p, uk) = self.kind else { self.expect_failed("a use") };
+        (p, uk)
+    }
+
+    /// Expect an [`ItemKind::Static`] or panic.
+    #[track_caller]
+    pub fn expect_static(&self) -> (&'hir Ty<'hir>, Mutability, BodyId) {
+        let ItemKind::Static(ty, mutbl, body) = self.kind else { self.expect_failed("a static") };
+        (ty, mutbl, body)
+    }
+    /// Expect an [`ItemKind::Const`] or panic.
+    #[track_caller]
+    pub fn expect_const(&self) -> (&'hir Ty<'hir>, BodyId) {
+        let ItemKind::Const(ty, body) = self.kind else { self.expect_failed("a constant") };
+        (ty, body)
+    }
+    /// Expect an [`ItemKind::Fn`] or panic.
+    #[track_caller]
+    pub fn expect_fn(&self) -> (&FnSig<'hir>, &'hir Generics<'hir>, BodyId) {
+        let ItemKind::Fn(sig, gen, body) = &self.kind else { self.expect_failed("a function") };
+        (sig, gen, *body)
+    }
+
+    /// Expect an [`ItemKind::Macro`] or panic.
+    #[track_caller]
+    pub fn expect_macro(&self) -> (&ast::MacroDef, MacroKind) {
+        let ItemKind::Macro(def, mk) = &self.kind else { self.expect_failed("a macro") };
+        (def, *mk)
+    }
+
+    /// Expect an [`ItemKind::Mod`] or panic.
+    #[track_caller]
+    pub fn expect_mod(&self) -> &'hir Mod<'hir> {
+        let ItemKind::Mod(m) = self.kind else { self.expect_failed("a module") };
+        m
+    }
+
+    /// Expect an [`ItemKind::ForeignMod`] or panic.
+    #[track_caller]
+    pub fn expect_foreign_mod(&self) -> (Abi, &'hir [ForeignItemRef]) {
+        let ItemKind::ForeignMod { abi, items } = self.kind else { self.expect_failed("a foreign module") };
+        (abi, items)
+    }
+
+    /// Expect an [`ItemKind::GlobalAsm`] or panic.
+    #[track_caller]
+    pub fn expect_global_asm(&self) -> &'hir InlineAsm<'hir> {
+        let ItemKind::GlobalAsm(asm) = self.kind else { self.expect_failed("a global asm") };
+        asm
+    }
+
+    /// Expect an [`ItemKind::TyAlias`] or panic.
+    #[track_caller]
+    pub fn expect_ty_alias(&self) -> (&'hir Ty<'hir>, &'hir Generics<'hir>) {
+        let ItemKind::TyAlias(ty, gen) = self.kind else { self.expect_failed("a type alias") };
+        (ty, gen)
+    }
+
+    /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`.
+    /// Expect an [`ItemKind::OpaqueTy`] or panic.
+    #[track_caller]
+    pub fn expect_opaque_ty(&self) -> &OpaqueTy<'hir> {
+        let ItemKind::OpaqueTy(ty) = &self.kind else { self.expect_failed("an opaque type") };
+        ty
+    }
+
+    /// Expect an [`ItemKind::Enum`] or panic.
+    #[track_caller]
+    pub fn expect_enum(&self) -> (&EnumDef<'hir>, &'hir Generics<'hir>) {
+        let ItemKind::Enum(def, gen) = &self.kind else { self.expect_failed("an enum") };
+        (def, gen)
+    }
+
+    /// Expect an [`ItemKind::Struct`] or panic.
+    #[track_caller]
+    pub fn expect_struct(&self) -> (&VariantData<'hir>, &'hir Generics<'hir>) {
+        let ItemKind::Struct(data, gen) = &self.kind else { self.expect_failed("a struct") };
+        (data, gen)
+    }
+
+    /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
+    /// Expect an [`ItemKind::Union`] or panic.
+    #[track_caller]
+    pub fn expect_union(&self) -> (&VariantData<'hir>, &'hir Generics<'hir>) {
+        let ItemKind::Union(data, gen) = &self.kind else { self.expect_failed("a union") };
+        (data, gen)
+    }
+
+    /// Expect an [`ItemKind::Trait`] or panic.
+    #[track_caller]
+    pub fn expect_trait(
+        self,
+    ) -> (IsAuto, Unsafety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]) {
+        let ItemKind::Trait(is_auto, unsafety, gen, bounds, items) = self.kind else { self.expect_failed("a trait") };
+        (is_auto, unsafety, gen, bounds, items)
+    }
+
+    /// Expect an [`ItemKind::TraitAlias`] or panic.
+    #[track_caller]
+    pub fn expect_trait_alias(&self) -> (&'hir Generics<'hir>, GenericBounds<'hir>) {
+        let ItemKind::TraitAlias(gen, bounds) = self.kind else { self.expect_failed("a trait alias") };
+        (gen, bounds)
+    }
+
+    /// Expect an [`ItemKind::Impl`] or panic.
+    #[track_caller]
+    pub fn expect_impl(&self) -> &'hir Impl<'hir> {
+        let ItemKind::Impl(imp) = self.kind else { self.expect_failed("an impl") };
+        imp
+    }
+
+    #[track_caller]
+    fn expect_failed(&self, expected: &'static str) -> ! {
+        panic!("expected {expected} item, found {self:?}")
     }
 }
 
@@ -3000,7 +3260,7 @@ pub enum ItemKind<'hir> {
     /// or just
     ///
     /// `use foo::bar::baz;` (with `as baz` implicitly on the right).
-    Use(&'hir Path<'hir>, UseKind),
+    Use(&'hir UsePath<'hir>, UseKind),
 
     /// A `static` item.
     Static(&'hir Ty<'hir>, Mutability, BodyId),
@@ -3134,14 +3394,14 @@ pub enum AssocItemKind {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct ForeignItemId {
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
 }
 
 impl ForeignItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 }
 
@@ -3162,7 +3422,7 @@ pub struct ForeignItemRef {
 pub struct ForeignItem<'hir> {
     pub ident: Ident,
     pub kind: ForeignItemKind<'hir>,
-    pub def_id: OwnerId,
+    pub owner_id: OwnerId,
     pub span: Span,
     pub vis_span: Span,
 }
@@ -3171,11 +3431,11 @@ impl ForeignItem<'_> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id.def_id)
+        HirId::make_owner(self.owner_id.def_id)
     }
 
     pub fn foreign_item_id(&self) -> ForeignItemId {
-        ForeignItemId { def_id: self.def_id }
+        ForeignItemId { owner_id: self.owner_id }
     }
 }
 
@@ -3193,7 +3453,7 @@ pub enum ForeignItemKind<'hir> {
 /// A variable captured by a closure.
 #[derive(Debug, Copy, Clone, Encodable, HashStable_Generic)]
 pub struct Upvar {
-    // First span where it is accessed (there can be multiple).
+    /// First span where it is accessed (there can be multiple).
     pub span: Span,
 }
 
@@ -3267,10 +3527,10 @@ impl<'hir> OwnerNode<'hir> {
 
     pub fn def_id(self) -> OwnerId {
         match self {
-            OwnerNode::Item(Item { def_id, .. })
-            | OwnerNode::TraitItem(TraitItem { def_id, .. })
-            | OwnerNode::ImplItem(ImplItem { def_id, .. })
-            | OwnerNode::ForeignItem(ForeignItem { def_id, .. }) => *def_id,
+            OwnerNode::Item(Item { owner_id, .. })
+            | OwnerNode::TraitItem(TraitItem { owner_id, .. })
+            | OwnerNode::ImplItem(ImplItem { owner_id, .. })
+            | OwnerNode::ForeignItem(ForeignItem { owner_id, .. }) => *owner_id,
             OwnerNode::Crate(..) => crate::CRATE_HIR_ID.owner,
         }
     }
@@ -3387,7 +3647,7 @@ impl<'hir> Node<'hir> {
     /// ```ignore (illustrative)
     /// ctor
     ///     .ctor_hir_id()
-    ///     .and_then(|ctor_id| tcx.hir().find(tcx.hir().get_parent_node(ctor_id)))
+    ///     .and_then(|ctor_id| tcx.hir().find_parent(ctor_id))
     ///     .and_then(|parent| parent.ident())
     /// ```
     pub fn ident(&self) -> Option<Ident> {
@@ -3399,7 +3659,7 @@ impl<'hir> Node<'hir> {
             | Node::Variant(Variant { ident, .. })
             | Node::Item(Item { ident, .. })
             | Node::PathSegment(PathSegment { ident, .. }) => Some(*ident),
-            Node::Lifetime(lt) => Some(lt.name.ident()),
+            Node::Lifetime(lt) => Some(lt.ident),
             Node::GenericParam(p) => Some(p.name.ident()),
             Node::TypeBinding(b) => Some(b.ident),
             Node::Param(..)
@@ -3438,6 +3698,13 @@ impl<'hir> Node<'hir> {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
             | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig),
+            _ => None,
+        }
+    }
+
+    pub fn alias_ty(self) -> Option<&'hir Ty<'hir>> {
+        match self {
+            Node::Item(Item { kind: ItemKind::TyAlias(ty, ..), .. }) => Some(ty),
             _ => None,
         }
     }
@@ -3506,7 +3773,186 @@ impl<'hir> Node<'hir> {
     /// Get the fields for the tuple-constructor,
     /// if this node is a tuple constructor, otherwise None
     pub fn tuple_fields(&self) -> Option<&'hir [FieldDef<'hir>]> {
-        if let Node::Ctor(&VariantData::Tuple(fields, _)) = self { Some(fields) } else { None }
+        if let Node::Ctor(&VariantData::Tuple(fields, _, _)) = self { Some(fields) } else { None }
+    }
+
+    /// Expect a [`Node::Param`] or panic.
+    #[track_caller]
+    pub fn expect_param(self) -> &'hir Param<'hir> {
+        let Node::Param(this) = self else { self.expect_failed("a parameter") };
+        this
+    }
+
+    /// Expect a [`Node::Item`] or panic.
+    #[track_caller]
+    pub fn expect_item(self) -> &'hir Item<'hir> {
+        let Node::Item(this) = self else { self.expect_failed("a item") };
+        this
+    }
+
+    /// Expect a [`Node::ForeignItem`] or panic.
+    #[track_caller]
+    pub fn expect_foreign_item(self) -> &'hir ForeignItem<'hir> {
+        let Node::ForeignItem(this) = self else { self.expect_failed("a foreign item") };
+        this
+    }
+
+    /// Expect a [`Node::TraitItem`] or panic.
+    #[track_caller]
+    pub fn expect_trait_item(self) -> &'hir TraitItem<'hir> {
+        let Node::TraitItem(this) = self else { self.expect_failed("a trait item") };
+        this
+    }
+
+    /// Expect a [`Node::ImplItem`] or panic.
+    #[track_caller]
+    pub fn expect_impl_item(self) -> &'hir ImplItem<'hir> {
+        let Node::ImplItem(this) = self else { self.expect_failed("an implementation item") };
+        this
+    }
+
+    /// Expect a [`Node::Variant`] or panic.
+    #[track_caller]
+    pub fn expect_variant(self) -> &'hir Variant<'hir> {
+        let Node::Variant(this) = self else { self.expect_failed("a variant") };
+        this
+    }
+
+    /// Expect a [`Node::Field`] or panic.
+    #[track_caller]
+    pub fn expect_field(self) -> &'hir FieldDef<'hir> {
+        let Node::Field(this) = self else { self.expect_failed("a field definition") };
+        this
+    }
+
+    /// Expect a [`Node::AnonConst`] or panic.
+    #[track_caller]
+    pub fn expect_anon_const(self) -> &'hir AnonConst {
+        let Node::AnonConst(this) = self else { self.expect_failed("an anonymous constant") };
+        this
+    }
+
+    /// Expect a [`Node::Expr`] or panic.
+    #[track_caller]
+    pub fn expect_expr(self) -> &'hir Expr<'hir> {
+        let Node::Expr(this) = self else { self.expect_failed("an expression") };
+        this
+    }
+    /// Expect a [`Node::ExprField`] or panic.
+    #[track_caller]
+    pub fn expect_expr_field(self) -> &'hir ExprField<'hir> {
+        let Node::ExprField(this) = self else { self.expect_failed("an expression field") };
+        this
+    }
+
+    /// Expect a [`Node::Stmt`] or panic.
+    #[track_caller]
+    pub fn expect_stmt(self) -> &'hir Stmt<'hir> {
+        let Node::Stmt(this) = self else { self.expect_failed("a statement") };
+        this
+    }
+
+    /// Expect a [`Node::PathSegment`] or panic.
+    #[track_caller]
+    pub fn expect_path_segment(self) -> &'hir PathSegment<'hir> {
+        let Node::PathSegment(this) = self else { self.expect_failed("a path segment") };
+        this
+    }
+
+    /// Expect a [`Node::Ty`] or panic.
+    #[track_caller]
+    pub fn expect_ty(self) -> &'hir Ty<'hir> {
+        let Node::Ty(this) = self else { self.expect_failed("a type") };
+        this
+    }
+
+    /// Expect a [`Node::TypeBinding`] or panic.
+    #[track_caller]
+    pub fn expect_type_binding(self) -> &'hir TypeBinding<'hir> {
+        let Node::TypeBinding(this) = self else { self.expect_failed("a type binding") };
+        this
+    }
+
+    /// Expect a [`Node::TraitRef`] or panic.
+    #[track_caller]
+    pub fn expect_trait_ref(self) -> &'hir TraitRef<'hir> {
+        let Node::TraitRef(this) = self else { self.expect_failed("a trait reference") };
+        this
+    }
+
+    /// Expect a [`Node::Pat`] or panic.
+    #[track_caller]
+    pub fn expect_pat(self) -> &'hir Pat<'hir> {
+        let Node::Pat(this) = self else { self.expect_failed("a pattern") };
+        this
+    }
+
+    /// Expect a [`Node::PatField`] or panic.
+    #[track_caller]
+    pub fn expect_pat_field(self) -> &'hir PatField<'hir> {
+        let Node::PatField(this) = self else { self.expect_failed("a pattern field") };
+        this
+    }
+
+    /// Expect a [`Node::Arm`] or panic.
+    #[track_caller]
+    pub fn expect_arm(self) -> &'hir Arm<'hir> {
+        let Node::Arm(this) = self else { self.expect_failed("an arm") };
+        this
+    }
+
+    /// Expect a [`Node::Block`] or panic.
+    #[track_caller]
+    pub fn expect_block(self) -> &'hir Block<'hir> {
+        let Node::Block(this) = self else { self.expect_failed("a block") };
+        this
+    }
+
+    /// Expect a [`Node::Local`] or panic.
+    #[track_caller]
+    pub fn expect_local(self) -> &'hir Local<'hir> {
+        let Node::Local(this) = self else { self.expect_failed("a local") };
+        this
+    }
+
+    /// Expect a [`Node::Ctor`] or panic.
+    #[track_caller]
+    pub fn expect_ctor(self) -> &'hir VariantData<'hir> {
+        let Node::Ctor(this) = self else { self.expect_failed("a constructor") };
+        this
+    }
+
+    /// Expect a [`Node::Lifetime`] or panic.
+    #[track_caller]
+    pub fn expect_lifetime(self) -> &'hir Lifetime {
+        let Node::Lifetime(this) = self else { self.expect_failed("a lifetime") };
+        this
+    }
+
+    /// Expect a [`Node::GenericParam`] or panic.
+    #[track_caller]
+    pub fn expect_generic_param(self) -> &'hir GenericParam<'hir> {
+        let Node::GenericParam(this) = self else { self.expect_failed("a generic parameter") };
+        this
+    }
+
+    /// Expect a [`Node::Crate`] or panic.
+    #[track_caller]
+    pub fn expect_crate(self) -> &'hir Mod<'hir> {
+        let Node::Crate(this) = self else { self.expect_failed("a crate") };
+        this
+    }
+
+    /// Expect a [`Node::Infer`] or panic.
+    #[track_caller]
+    pub fn expect_infer(self) -> &'hir InferArg {
+        let Node::Infer(this) = self else { self.expect_failed("an infer") };
+        this
+    }
+
+    #[track_caller]
+    fn expect_failed(&self, expected: &'static str) -> ! {
+        panic!("expected {expected} node, found {self:?}")
     }
 }
 
@@ -3514,7 +3960,7 @@ impl<'hir> Node<'hir> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(Block<'_>, 48);
     static_assert_size!(Body<'_>, 32);
     static_assert_size!(Expr<'_>, 64);
@@ -3522,7 +3968,7 @@ mod size_asserts {
     static_assert_size!(FnDecl<'_>, 40);
     static_assert_size!(ForeignItem<'_>, 72);
     static_assert_size!(ForeignItemKind<'_>, 40);
-    static_assert_size!(GenericArg<'_>, 24);
+    static_assert_size!(GenericArg<'_>, 32);
     static_assert_size!(GenericBound<'_>, 48);
     static_assert_size!(Generics<'_>, 56);
     static_assert_size!(Impl<'_>, 80);
@@ -3533,15 +3979,26 @@ mod size_asserts {
     static_assert_size!(Local<'_>, 64);
     static_assert_size!(Param<'_>, 32);
     static_assert_size!(Pat<'_>, 72);
-    static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(Path<'_>, 40);
     static_assert_size!(PathSegment<'_>, 48);
+    static_assert_size!(PatKind<'_>, 48);
     static_assert_size!(QPath<'_>, 24);
     static_assert_size!(Res, 12);
     static_assert_size!(Stmt<'_>, 32);
     static_assert_size!(StmtKind<'_>, 16);
-    static_assert_size!(TraitItem<'_>, 88);
-    static_assert_size!(TraitItemKind<'_>, 48);
+    static_assert_size!(TraitItem<'_>, 80);
+    static_assert_size!(TraitItemKind<'_>, 40);
     static_assert_size!(Ty<'_>, 48);
     static_assert_size!(TyKind<'_>, 32);
+    // tidy-alphabetical-end
+}
+
+fn debug_fn(f: impl Fn(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl fmt::Debug {
+    struct DebugFn<F>(F);
+    impl<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result> fmt::Debug for DebugFn<F> {
+        fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+            (self.0)(fmt)
+        }
+    }
+    DebugFn(f)
 }

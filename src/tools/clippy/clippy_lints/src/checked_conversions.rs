@@ -1,14 +1,14 @@
 //! lint on manually implemented checked conversions that could be transformed into `try_from`
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{in_constant, is_integer_literal, meets_msrv, msrvs, SpanlessEq};
+use clippy_utils::{in_constant, is_integer_literal, SpanlessEq};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
@@ -37,12 +37,12 @@ declare_clippy_lint! {
 }
 
 pub struct CheckedConversions {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl CheckedConversions {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -51,7 +51,7 @@ impl_lint_pass!(CheckedConversions => [CHECKED_CONVERSIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
     fn check_expr(&mut self, cx: &LateContext<'_>, item: &Expr<'_>) {
-        if !meets_msrv(self.msrv, msrvs::TRY_FROM) {
+        if !self.msrv.meets(msrvs::TRY_FROM) {
             return;
         }
 

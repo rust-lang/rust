@@ -1,3 +1,0 @@
-goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
-click: ".srclink"
-assert-count: (".src-line-numbers", 1)

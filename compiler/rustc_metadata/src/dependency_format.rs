@@ -54,7 +54,7 @@
 use crate::creader::CStore;
 use crate::errors::{
     BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy, LibRequired,
-    RequiredPanicStrategy, RlibRequired, TwoPanicRuntimes,
+    RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -113,37 +113,37 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         CrateType::Staticlib => Linkage::Static,
     };
 
-    if preferred_linkage == Linkage::NotLinked {
+    match preferred_linkage {
         // If the crate is not linked, there are no link-time dependencies.
-        return Vec::new();
-    }
-
-    if preferred_linkage == Linkage::Static {
-        // Attempt static linkage first. For dylibs and executables, we may be
-        // able to retry below with dynamic linkage.
-        if let Some(v) = attempt_static(tcx) {
-            return v;
-        }
-
-        // Staticlibs and static executables must have all static dependencies.
-        // If any are not found, generate some nice pretty errors.
-        if ty == CrateType::Staticlib
-            || (ty == CrateType::Executable
-                && sess.crt_static(Some(ty))
-                && !sess.target.crt_static_allows_dylibs)
-        {
-            for &cnum in tcx.crates(()).iter() {
-                if tcx.dep_kind(cnum).macros_only() {
-                    continue;
-                }
-                let src = tcx.used_crate_source(cnum);
-                if src.rlib.is_some() {
-                    continue;
-                }
-                sess.emit_err(RlibRequired { crate_name: tcx.crate_name(cnum) });
+        Linkage::NotLinked => return Vec::new(),
+        Linkage::Static => {
+            // Attempt static linkage first. For dylibs and executables, we may be
+            // able to retry below with dynamic linkage.
+            if let Some(v) = attempt_static(tcx) {
+                return v;
             }
-            return Vec::new();
+
+            // Staticlibs and static executables must have all static dependencies.
+            // If any are not found, generate some nice pretty errors.
+            if ty == CrateType::Staticlib
+                || (ty == CrateType::Executable
+                    && sess.crt_static(Some(ty))
+                    && !sess.target.crt_static_allows_dylibs)
+            {
+                for &cnum in tcx.crates(()).iter() {
+                    if tcx.dep_kind(cnum).macros_only() {
+                        continue;
+                    }
+                    let src = tcx.used_crate_source(cnum);
+                    if src.rlib.is_some() {
+                        continue;
+                    }
+                    sess.emit_err(RlibRequired { crate_name: tcx.crate_name(cnum) });
+                }
+                return Vec::new();
+            }
         }
+        Linkage::Dynamic | Linkage::IncludedFromDylib => {}
     }
 
     let mut formats = FxHashMap::default();
@@ -224,7 +224,12 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
                     Linkage::Static => "rlib",
                     _ => "dylib",
                 };
-                sess.emit_err(LibRequired { crate_name: tcx.crate_name(cnum), kind: kind });
+                let crate_name = tcx.crate_name(cnum);
+                if crate_name.as_str().starts_with("rustc_") {
+                    sess.emit_err(RustcLibRequired { crate_name, kind });
+                } else {
+                    sess.emit_err(LibRequired { crate_name, kind });
+                }
             }
         }
     }
@@ -278,12 +283,9 @@ fn attempt_static(tcx: TyCtxt<'_>) -> Option<DependencyList> {
     let mut ret = tcx
         .crates(())
         .iter()
-        .map(|&cnum| {
-            if tcx.dep_kind(cnum) == CrateDepKind::Explicit {
-                Linkage::Static
-            } else {
-                Linkage::NotLinked
-            }
+        .map(|&cnum| match tcx.dep_kind(cnum) {
+            CrateDepKind::Explicit => Linkage::Static,
+            CrateDepKind::MacrosOnly | CrateDepKind::Implicit => Linkage::NotLinked,
         })
         .collect::<Vec<_>>();
 

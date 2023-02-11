@@ -1,0 +1,11 @@
+error[E0700]: hidden type for `Opaque<'a, T>` captures lifetime that does not appear in bounds
+  --> $DIR/missing_lifetime_bound.rs:4:47
+   |
+LL | fn defining<'a, T>(x: &'a i32) -> Opaque<T> { x }
+   |             --                                ^
+   |             |
+   |             hidden type `&'a i32` captures the lifetime `'a` as defined here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0700`.

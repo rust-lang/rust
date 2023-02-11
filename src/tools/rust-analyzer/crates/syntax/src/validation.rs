@@ -5,9 +5,7 @@
 mod block;
 
 use rowan::Direction;
-use rustc_lexer::unescape::{
-    self, unescape_byte, unescape_byte_literal, unescape_char, unescape_literal, Mode,
-};
+use rustc_lexer::unescape::{self, unescape_byte, unescape_char, unescape_literal, Mode};
 
 use crate::{
     algo,
@@ -143,7 +141,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::ByteString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_byte_literal(without_quotes, Mode::ByteStr, &mut |range, char| {
+                    unescape_literal(without_quotes, Mode::ByteStr, &mut |range, char| {
                         if let Err(err) = char {
                             push_err(2, (range.start, err));
                         }
@@ -198,7 +196,7 @@ pub(crate) fn validate_block_structure(root: &SyntaxNode) {
 
 fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<SyntaxError>) {
     if let Some(int_token) = int_token(name_ref) {
-        if int_token.text().chars().any(|c| !c.is_digit(10)) {
+        if int_token.text().chars().any(|c| !c.is_ascii_digit()) {
             errors.push(SyntaxError::new(
                 "Tuple (struct) field access is only allowed through \
                 decimal integers with no underscores or suffix",

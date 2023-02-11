@@ -1,13 +1,15 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
+use either::{Either, Left, Right};
+
 use rustc_hir::def::Namespace;
-use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
-use rustc_middle::ty::{ConstInt, DelaySpanBugEmitted, Ty};
+use rustc_middle::ty::{ConstInt, Ty, ValTree};
 use rustc_middle::{mir, ty};
-use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, TagEncoding};
-use rustc_target::abi::{VariantIdx, Variants};
+use rustc_span::Span;
+use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size};
 
 use super::{
     alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, Frame, GlobalId,
@@ -36,7 +38,7 @@ pub enum Immediate<Prov: Provenance = AllocId> {
 impl<Prov: Provenance> From<Scalar<Prov>> for Immediate<Prov> {
     #[inline(always)]
     fn from(val: Scalar<Prov>) -> Self {
-        Immediate::Scalar(val.into())
+        Immediate::Scalar(val)
     }
 }
 
@@ -50,7 +52,7 @@ impl<Prov: Provenance> Immediate<Prov> {
     }
 
     pub fn new_slice(val: Scalar<Prov>, len: u64, cx: &impl HasDataLayout) -> Self {
-        Immediate::ScalarPair(val.into(), Scalar::from_machine_usize(len, cx).into())
+        Immediate::ScalarPair(val, Scalar::from_machine_usize(len, cx))
     }
 
     pub fn new_dyn_trait(
@@ -58,7 +60,7 @@ impl<Prov: Provenance> Immediate<Prov> {
         vtable: Pointer<Option<Prov>>,
         cx: &impl HasDataLayout,
     ) -> Self {
-        Immediate::ScalarPair(val.into(), Scalar::from_maybe_pointer(vtable, cx))
+        Immediate::ScalarPair(val, Scalar::from_maybe_pointer(vtable, cx))
     }
 
     #[inline]
@@ -260,9 +262,9 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
         layout: TyAndLayout<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
-        match self.try_as_mplace() {
-            Ok(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, cx)?.into()),
-            Err(imm) => {
+        match self.as_mplace_or_imm() {
+            Left(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, cx)?.into()),
+            Right(imm) => {
                 assert!(
                     matches!(*imm, Immediate::Uninit),
                     "Scalar/ScalarPair cannot be offset into"
@@ -280,7 +282,7 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
         layout: TyAndLayout<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         self.offset_with_meta(offset, MemPlaceMeta::None, layout, cx)
     }
 }
@@ -316,7 +318,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert_eq!(size, mplace.layout.size, "abi::Scalar size does not match layout size");
                 let scalar = alloc.read_scalar(
                     alloc_range(Size::ZERO, size),
-                    /*read_provenance*/ s.is_ptr(),
+                    /*read_provenance*/ matches!(s, abi::Pointer(_)),
                 )?;
                 Some(ImmTy { imm: scalar.into(), layout: mplace.layout })
             }
@@ -332,16 +334,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(b_offset.bytes() > 0); // in `operand_field` we use the offset to tell apart the fields
                 let a_val = alloc.read_scalar(
                     alloc_range(Size::ZERO, a_size),
-                    /*read_provenance*/ a.is_ptr(),
+                    /*read_provenance*/ matches!(a, abi::Pointer(_)),
                 )?;
                 let b_val = alloc.read_scalar(
                     alloc_range(b_offset, b_size),
-                    /*read_provenance*/ b.is_ptr(),
+                    /*read_provenance*/ matches!(b, abi::Pointer(_)),
                 )?;
-                Some(ImmTy {
-                    imm: Immediate::ScalarPair(a_val.into(), b_val.into()),
-                    layout: mplace.layout,
-                })
+                Some(ImmTy { imm: Immediate::ScalarPair(a_val, b_val), layout: mplace.layout })
             }
             _ => {
                 // Neither a scalar nor scalar pair.
@@ -352,8 +351,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Try returning an immediate for the operand. If the layout does not permit loading this as an
     /// immediate, return where in memory we can find the data.
-    /// Note that for a given layout, this operation will either always fail or always
-    /// succeed!  Whether it succeeds depends on whether the layout can be represented
+    /// Note that for a given layout, this operation will either always return Left or Right!
+    /// succeed!  Whether it returns Left depends on whether the layout can be represented
     /// in an `Immediate`, not on which data is stored there currently.
     ///
     /// This is an internal function that should not usually be used; call `read_immediate` instead.
@@ -361,22 +360,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn read_immediate_raw(
         &self,
         src: &OpTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, Result<ImmTy<'tcx, M::Provenance>, MPlaceTy<'tcx, M::Provenance>>> {
-        Ok(match src.try_as_mplace() {
-            Ok(ref mplace) => {
+    ) -> InterpResult<'tcx, Either<MPlaceTy<'tcx, M::Provenance>, ImmTy<'tcx, M::Provenance>>> {
+        Ok(match src.as_mplace_or_imm() {
+            Left(ref mplace) => {
                 if let Some(val) = self.read_immediate_from_mplace_raw(mplace)? {
-                    Ok(val)
+                    Right(val)
                 } else {
-                    Err(*mplace)
+                    Left(*mplace)
                 }
             }
-            Err(val) => Ok(val),
+            Right(val) => Right(val),
         })
     }
 
     /// Read an immediate from a place, asserting that that is possible with the given layout.
     ///
-    /// If this suceeds, the `ImmTy` is never `Uninit`.
+    /// If this succeeds, the `ImmTy` is never `Uninit`.
     #[inline(always)]
     pub fn read_immediate(
         &self,
@@ -389,7 +388,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ) {
             span_bug!(self.cur_span(), "primitive read not possible for type: {:?}", op.layout.ty);
         }
-        let imm = self.read_immediate_raw(op)?.unwrap();
+        let imm = self.read_immediate_raw(op)?.right().unwrap();
         if matches!(*imm, Immediate::Uninit) {
             throw_ub!(InvalidUninitBytes(None));
         }
@@ -404,12 +403,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(self.read_immediate(op)?.to_scalar())
     }
 
+    // Pointer-sized reads are fairly common and need target layout access, so we wrap them in
+    // convenience functions.
+
     /// Read a pointer from a place.
     pub fn read_pointer(
         &self,
         op: &OpTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
         self.read_scalar(op)?.to_pointer(self)
+    }
+    /// Read a pointer-sized unsigned integer from a place.
+    pub fn read_machine_usize(&self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx, u64> {
+        self.read_scalar(op)?.to_machine_usize(self)
+    }
+    /// Read a pointer-sized signed integer from a place.
+    pub fn read_machine_isize(&self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx, i64> {
+        self.read_scalar(op)?.to_machine_isize(self)
     }
 
     /// Turn the wide MPlace into a string (must already be dereferenced!)
@@ -431,9 +441,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Basically we just transmute this place into an array following simd_size_and_type.
         // This only works in memory, but repr(simd) types should never be immediates anyway.
         assert!(op.layout.ty.is_simd());
-        match op.try_as_mplace() {
-            Ok(mplace) => self.mplace_to_simd(&mplace),
-            Err(imm) => match *imm {
+        match op.as_mplace_or_imm() {
+            Left(mplace) => self.mplace_to_simd(&mplace),
+            Right(imm) => match *imm {
                 Immediate::Uninit => {
                     throw_ub!(InvalidUninitBytes(None))
                 }
@@ -477,7 +487,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(OpTy { op, layout: place.layout, align: Some(place.align) })
     }
 
-    /// Evaluate a place with the goal of reading from it.  This lets us sometimes
+    /// Evaluate a place with the goal of reading from it. This lets us sometimes
     /// avoid allocations.
     pub fn eval_place_to_op(
         &self,
@@ -522,19 +532,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         use rustc_middle::mir::Operand::*;
-        let op = match *mir_op {
+        let op = match mir_op {
             // FIXME: do some more logic on `move` to invalidate the old location
-            Copy(place) | Move(place) => self.eval_place_to_op(place, layout)?,
+            &Copy(place) | &Move(place) => self.eval_place_to_op(place, layout)?,
 
-            Constant(ref constant) => {
-                let val =
+            Constant(constant) => {
+                let c =
                     self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal)?;
 
                 // This can still fail:
                 // * During ConstProp, with `TooGeneric` or since the `required_consts` were not all
                 //   checked yet.
                 // * During CTFE, since promoteds in `const`/`static` initializer bodies can fail.
-                self.const_to_op(&val, layout)?
+                self.eval_mir_constant(&c, Some(constant.span), layout)?
             }
         };
         trace!("{:?}: {:?}", mir_op, *op);
@@ -549,51 +559,64 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ops.iter().map(|op| self.eval_operand(op, None)).collect()
     }
 
-    pub fn const_to_op(
+    fn eval_ty_constant(
+        &self,
+        val: ty::Const<'tcx>,
+        span: Option<Span>,
+    ) -> InterpResult<'tcx, ValTree<'tcx>> {
+        Ok(match val.kind() {
+            ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(..) => {
+                throw_inval!(TooGeneric)
+            }
+            // FIXME(generic_const_exprs): `ConstKind::Expr` should be able to be evaluated
+            ty::ConstKind::Expr(_) => throw_inval!(TooGeneric),
+            ty::ConstKind::Error(reported) => {
+                throw_inval!(AlreadyReported(reported))
+            }
+            ty::ConstKind::Unevaluated(uv) => {
+                let instance = self.resolve(uv.def, uv.substs)?;
+                let cid = GlobalId { instance, promoted: None };
+                self.ctfe_query(span, |tcx| {
+                    tcx.eval_to_valtree(self.param_env.with_const().and(cid))
+                })?
+                .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"))
+            }
+            ty::ConstKind::Bound(..) | ty::ConstKind::Infer(..) => {
+                span_bug!(self.cur_span(), "unexpected ConstKind in ctfe: {val:?}")
+            }
+            ty::ConstKind::Value(valtree) => valtree,
+        })
+    }
+
+    pub fn eval_mir_constant(
         &self,
         val: &mir::ConstantKind<'tcx>,
+        span: Option<Span>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        // FIXME(const_prop): normalization needed b/c const prop lint in
+        // `mir_drops_elaborated_and_const_checked`, which happens before
+        // optimized MIR. Only after optimizing the MIR can we guarantee
+        // that the `RevealAll` pass has happened and that the body's consts
+        // are normalized, so any call to resolve before that needs to be
+        // manually normalized.
+        let val = self.tcx.normalize_erasing_regions(self.param_env, *val);
         match val {
             mir::ConstantKind::Ty(ct) => {
-                match ct.kind() {
-                    ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(..) => {
-                        throw_inval!(TooGeneric)
-                    }
-                    ty::ConstKind::Error(DelaySpanBugEmitted { reported, .. }) => {
-                        throw_inval!(AlreadyReported(reported))
-                    }
-                    ty::ConstKind::Unevaluated(uv) => {
-                        // NOTE: We evaluate to a `ValTree` here as a check to ensure
-                        // we're working with valid constants, even though we never need it.
-                        let instance = self.resolve(uv.def, uv.substs)?;
-                        let cid = GlobalId { instance, promoted: None };
-                        let _valtree = self
-                            .tcx
-                            .eval_to_valtree(self.param_env.and(cid))?
-                            .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"));
-
-                        Ok(self.eval_to_allocation(cid)?.into())
-                    }
-                    ty::ConstKind::Bound(..) | ty::ConstKind::Infer(..) => {
-                        span_bug!(self.cur_span(), "unexpected ConstKind in ctfe: {ct:?}")
-                    }
-                    ty::ConstKind::Value(valtree) => {
-                        let ty = ct.ty();
-                        let const_val = self.tcx.valtree_to_const_val((ty, valtree));
-                        self.const_val_to_op(const_val, ty, layout)
-                    }
-                }
+                let ty = ct.ty();
+                let valtree = self.eval_ty_constant(ct, span)?;
+                let const_val = self.tcx.valtree_to_const_val((ty, valtree));
+                self.const_val_to_op(const_val, ty, layout)
             }
-            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, *ty, layout),
+            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(val, ty, layout),
             mir::ConstantKind::Unevaluated(uv, _) => {
                 let instance = self.resolve(uv.def, uv.substs)?;
-                Ok(self.eval_to_allocation(GlobalId { instance, promoted: uv.promoted })?.into())
+                Ok(self.eval_global(GlobalId { instance, promoted: uv.promoted }, span)?.into())
             }
         }
     }
 
-    pub(crate) fn const_val_to_op(
+    pub(super) fn const_val_to_op(
         &self,
         val_val: ConstValue<'tcx>,
         ty: Ty<'tcx>,
@@ -633,154 +656,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         Ok(OpTy { op, layout, align: Some(layout.align.abi) })
     }
-
-    /// Read discriminant, return the runtime value as well as the variant index.
-    /// Can also legally be called on non-enums (e.g. through the discriminant_value intrinsic)!
-    pub fn read_discriminant(
-        &self,
-        op: &OpTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, (Scalar<M::Provenance>, VariantIdx)> {
-        trace!("read_discriminant_value {:#?}", op.layout);
-        // Get type and layout of the discriminant.
-        let discr_layout = self.layout_of(op.layout.ty.discriminant_ty(*self.tcx))?;
-        trace!("discriminant type: {:?}", discr_layout.ty);
-
-        // We use "discriminant" to refer to the value associated with a particular enum variant.
-        // This is not to be confused with its "variant index", which is just determining its position in the
-        // declared list of variants -- they can differ with explicitly assigned discriminants.
-        // We use "tag" to refer to how the discriminant is encoded in memory, which can be either
-        // straight-forward (`TagEncoding::Direct`) or with a niche (`TagEncoding::Niche`).
-        let (tag_scalar_layout, tag_encoding, tag_field) = match op.layout.variants {
-            Variants::Single { index } => {
-                let discr = match op.layout.ty.discriminant_for_variant(*self.tcx, index) {
-                    Some(discr) => {
-                        // This type actually has discriminants.
-                        assert_eq!(discr.ty, discr_layout.ty);
-                        Scalar::from_uint(discr.val, discr_layout.size)
-                    }
-                    None => {
-                        // On a type without actual discriminants, variant is 0.
-                        assert_eq!(index.as_u32(), 0);
-                        Scalar::from_uint(index.as_u32(), discr_layout.size)
-                    }
-                };
-                return Ok((discr, index));
-            }
-            Variants::Multiple { tag, ref tag_encoding, tag_field, .. } => {
-                (tag, tag_encoding, tag_field)
-            }
-        };
-
-        // There are *three* layouts that come into play here:
-        // - The discriminant has a type for typechecking. This is `discr_layout`, and is used for
-        //   the `Scalar` we return.
-        // - The tag (encoded discriminant) has layout `tag_layout`. This is always an integer type,
-        //   and used to interpret the value we read from the tag field.
-        //   For the return value, a cast to `discr_layout` is performed.
-        // - The field storing the tag has a layout, which is very similar to `tag_layout` but
-        //   may be a pointer. This is `tag_val.layout`; we just use it for sanity checks.
-
-        // Get layout for tag.
-        let tag_layout = self.layout_of(tag_scalar_layout.primitive().to_int_ty(*self.tcx))?;
-
-        // Read tag and sanity-check `tag_layout`.
-        let tag_val = self.read_immediate(&self.operand_field(op, tag_field)?)?;
-        assert_eq!(tag_layout.size, tag_val.layout.size);
-        assert_eq!(tag_layout.abi.is_signed(), tag_val.layout.abi.is_signed());
-        trace!("tag value: {}", tag_val);
-
-        // Figure out which discriminant and variant this corresponds to.
-        Ok(match *tag_encoding {
-            TagEncoding::Direct => {
-                let scalar = tag_val.to_scalar();
-                // Generate a specific error if `tag_val` is not an integer.
-                // (`tag_bits` itself is only used for error messages below.)
-                let tag_bits = scalar
-                    .try_to_int()
-                    .map_err(|dbg_val| err_ub!(InvalidTag(dbg_val)))?
-                    .assert_bits(tag_layout.size);
-                // Cast bits from tag layout to discriminant layout.
-                // After the checks we did above, this cannot fail, as
-                // discriminants are int-like.
-                let discr_val =
-                    self.cast_from_int_like(scalar, tag_val.layout, discr_layout.ty).unwrap();
-                let discr_bits = discr_val.assert_bits(discr_layout.size);
-                // Convert discriminant to variant index, and catch invalid discriminants.
-                let index = match *op.layout.ty.kind() {
-                    ty::Adt(adt, _) => {
-                        adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits)
-                    }
-                    ty::Generator(def_id, substs, _) => {
-                        let substs = substs.as_generator();
-                        substs
-                            .discriminants(def_id, *self.tcx)
-                            .find(|(_, var)| var.val == discr_bits)
-                    }
-                    _ => span_bug!(self.cur_span(), "tagged layout for non-adt non-generator"),
-                }
-                .ok_or_else(|| err_ub!(InvalidTag(Scalar::from_uint(tag_bits, tag_layout.size))))?;
-                // Return the cast value, and the index.
-                (discr_val, index.0)
-            }
-            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
-                let tag_val = tag_val.to_scalar();
-                // Compute the variant this niche value/"tag" corresponds to. With niche layout,
-                // discriminant (encoded in niche/tag) and variant index are the same.
-                let variants_start = niche_variants.start().as_u32();
-                let variants_end = niche_variants.end().as_u32();
-                let variant = match tag_val.try_to_int() {
-                    Err(dbg_val) => {
-                        // So this is a pointer then, and casting to an int failed.
-                        // Can only happen during CTFE.
-                        // The niche must be just 0, and the ptr not null, then we know this is
-                        // okay. Everything else, we conservatively reject.
-                        let ptr_valid = niche_start == 0
-                            && variants_start == variants_end
-                            && !self.scalar_may_be_null(tag_val)?;
-                        if !ptr_valid {
-                            throw_ub!(InvalidTag(dbg_val))
-                        }
-                        untagged_variant
-                    }
-                    Ok(tag_bits) => {
-                        let tag_bits = tag_bits.assert_bits(tag_layout.size);
-                        // We need to use machine arithmetic to get the relative variant idx:
-                        // variant_index_relative = tag_val - niche_start_val
-                        let tag_val = ImmTy::from_uint(tag_bits, tag_layout);
-                        let niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
-                        let variant_index_relative_val =
-                            self.binary_op(mir::BinOp::Sub, &tag_val, &niche_start_val)?;
-                        let variant_index_relative =
-                            variant_index_relative_val.to_scalar().assert_bits(tag_val.layout.size);
-                        // Check if this is in the range that indicates an actual discriminant.
-                        if variant_index_relative <= u128::from(variants_end - variants_start) {
-                            let variant_index_relative = u32::try_from(variant_index_relative)
-                                .expect("we checked that this fits into a u32");
-                            // Then computing the absolute variant idx should not overflow any more.
-                            let variant_index = variants_start
-                                .checked_add(variant_index_relative)
-                                .expect("overflow computing absolute variant idx");
-                            let variants_len = op
-                                .layout
-                                .ty
-                                .ty_adt_def()
-                                .expect("tagged layout for non adt")
-                                .variants()
-                                .len();
-                            assert!(usize::try_from(variant_index).unwrap() < variants_len);
-                            VariantIdx::from_u32(variant_index)
-                        } else {
-                            untagged_variant
-                        }
-                    }
-                };
-                // Compute the size of the scalar we need to return.
-                // No need to cast, because the variant index directly serves as discriminant and is
-                // encoded in the tag.
-                (Scalar::from_uint(variant.as_u32(), discr_layout.size), variant)
-            }
-        })
-    }
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
@@ -788,9 +663,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(Immediate, 48);
     static_assert_size!(ImmTy<'_>, 64);
     static_assert_size!(Operand, 56);
     static_assert_size!(OpTy<'_>, 80);
+    // tidy-alphabetical-end
 }

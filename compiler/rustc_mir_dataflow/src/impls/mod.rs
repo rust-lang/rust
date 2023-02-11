@@ -19,13 +19,11 @@ use crate::{drop_flag_effects, on_all_children_bits};
 use crate::{lattice, AnalysisDomain, GenKill, GenKillAnalysis};
 
 mod borrowed_locals;
-mod init_locals;
 mod liveness;
 mod storage_liveness;
 
 pub use self::borrowed_locals::borrowed_locals;
 pub use self::borrowed_locals::MaybeBorrowedLocals;
-pub use self::init_locals::MaybeInitializedLocals;
 pub use self::liveness::MaybeLiveLocals;
 pub use self::liveness::MaybeTransitiveLiveLocals;
 pub use self::storage_liveness::{MaybeRequiresStorage, MaybeStorageLive};
@@ -752,7 +750,7 @@ where
 
 /// Calls `f` for each mutable borrow or raw reference in the program.
 ///
-/// This DOES NOT call `f` for a shared borrow of a type with interior mutability.  That's okay for
+/// This DOES NOT call `f` for a shared borrow of a type with interior mutability. That's okay for
 /// initializedness, because we cannot move from an `UnsafeCell` (outside of `core::cell`), but
 /// other analyses will likely need to check for `!Freeze`.
 fn for_each_mut_borrow<'tcx>(

@@ -104,14 +104,13 @@ impl<T, const N: usize> IntoIter<T, N> {
     ///
     /// ```
     /// #![feature(array_into_iter_constructors)]
-    ///
-    /// #![feature(maybe_uninit_array_assume_init)]
+    /// #![feature(maybe_uninit_uninit_array_transpose)]
     /// #![feature(maybe_uninit_uninit_array)]
     /// use std::array::IntoIter;
     /// use std::mem::MaybeUninit;
     ///
-    /// # // Hi!  Thanks for reading the code.  This is restricted to `Copy` because
-    /// # // otherwise it could leak.  A fully-general version this would need a drop
+    /// # // Hi!  Thanks for reading the code. This is restricted to `Copy` because
+    /// # // otherwise it could leak. A fully-general version this would need a drop
     /// # // guard to handle panics from the iterator, but this works for an example.
     /// fn next_chunk<T: Copy, const N: usize>(
     ///     it: &mut impl Iterator<Item = T>,
@@ -134,7 +133,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     ///     }
     ///
     ///     // SAFETY: We've initialized all N items
-    ///     unsafe { Ok(MaybeUninit::array_assume_init(buffer)) }
+    ///     unsafe { Ok(buffer.transpose().assume_init()) }
     /// }
     ///
     /// let r: [_; 4] = next_chunk(&mut (10..16)).unwrap();
@@ -212,7 +211,7 @@ impl<T, const N: usize> IntoIter<T, N> {
         let initialized = 0..0;
 
         // SAFETY: We're telling it that none of the elements are initialized,
-        // which is trivially true.  And ∀N: usize, 0 <= N.
+        // which is trivially true. And ∀N: usize, 0 <= N.
         unsafe { Self::new_unchecked(buffer, initialized) }
     }
 

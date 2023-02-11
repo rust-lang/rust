@@ -18,14 +18,11 @@ borrowck_generic_does_not_live_long_enough =
     `{$kind}` does not live long enough
 
 borrowck_move_borrowed =
-    cannot move out of `{$desc}` beacause it is borrowed
+    cannot move out of `{$desc}` because it is borrowed
 
 borrowck_var_does_not_need_mut =
     variable does not need to be mutable
     .suggestion = remove this `mut`
-
-borrowck_const_not_used_in_type_alias =
-    const parameter `{$ct}` is part of concrete type but not used in parameter list for the `impl Trait` type alias
 
 borrowck_var_cannot_escape_closure =
     captured variable cannot escape `FnMut` closure body
@@ -36,7 +33,7 @@ borrowck_var_here_defined = variable defined here
 
 borrowck_var_here_captured = variable captured here
 
-borrowck_closure_inferred_mut =  inferred to be a `FnMut` closure
+borrowck_closure_inferred_mut = inferred to be a `FnMut` closure
 
 borrowck_returned_closure_escaped =
     returns a closure that contains a reference to a captured variable, which then escapes the closure body
@@ -58,3 +55,75 @@ borrowck_returned_lifetime_short =
 
 borrowck_used_impl_require_static =
     the used `impl` has a `'static` requirement
+
+borrowck_capture_kind_label =
+    capture is {$kind_desc} because of use here
+
+borrowck_var_borrow_by_use_place_in_generator =
+    borrow occurs due to use of {$place} in closure in generator
+
+borrowck_var_borrow_by_use_place_in_closure =
+    borrow occurs due to use of {$place} in closure
+
+borrowck_var_borrow_by_use_place =
+    borrow occurs due to use of {$place}
+
+borrowck_borrow_due_to_use_generator =
+    borrow occurs due to use in generator
+
+borrowck_use_due_to_use_generator =
+    use occurs due to use in generator
+
+borrowck_assign_due_to_use_generator =
+    assign occurs due to use in generator
+
+borrowck_assign_part_due_to_use_generator =
+    assign to part occurs due to use in generator
+
+borrowck_borrow_due_to_use_closure =
+    borrow occurs due to use in closure
+
+borrowck_use_due_to_use_closure =
+    use occurs due to use in closure
+
+borrowck_assign_due_to_use_closure =
+    assignment occurs due to use in closure
+
+borrowck_assign_part_due_to_use_closure =
+    assignment to part occurs due to use in closure
+
+borrowck_capture_immute =
+    capture is immutable because of use here
+
+borrowck_capture_mut =
+    capture is mutable because of use here
+
+borrowck_capture_move =
+    capture is moved because of use here
+
+borrowck_var_move_by_use_place_in_generator =
+    move occurs due to use of {$place} in generator
+
+borrowck_var_move_by_use_place_in_closure =
+    move occurs due to use of {$place} in closure
+
+borrowck_cannot_move_when_borrowed =
+    cannot move out of {$place ->
+        [value] value
+        *[other] {$place}
+    } because it is borrowed
+    .label = borrow of {$borrow_place ->
+        [value] value
+        *[other] {$borrow_place}
+    } occurs here
+    .move_label = move out of {$value_place ->
+        [value] value
+        *[other] {$value_place}
+    } occurs here
+
+borrowck_opaque_type_non_generic_param =
+    expected generic {$kind} parameter, found `{$ty}`
+    .label = {STREQ($ty, "'static") ->
+        [true] cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+        *[other] this generic parameter must be used with a generic {$kind} parameter
+    }

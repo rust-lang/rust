@@ -18,7 +18,6 @@ pub(super) const fn from_u32(i: u32) -> Option<char> {
 }
 
 /// Converts a `u32` to a `char`, ignoring validity. See [`char::from_u32_unchecked`].
-#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
 #[inline]
 #[must_use]
 pub(super) const unsafe fn from_u32_unchecked(i: u32) -> char {

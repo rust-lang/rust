@@ -302,3 +302,27 @@ fn dont_tell_me_what_to_do() {
 fn cmp_min_max(input: i32) -> i32 {
     input * 3
 }
+
+#[clippy::msrv = "1.49"]
+fn msrv_1_49() {
+    let (input, min, max) = (0, -1, 2);
+    let _ = if input < min {
+        min
+    } else if input > max {
+        max
+    } else {
+        input
+    };
+}
+
+#[clippy::msrv = "1.50"]
+fn msrv_1_50() {
+    let (input, min, max) = (0, -1, 2);
+    let _ = if input < min {
+        min
+    } else if input > max {
+        max
+    } else {
+        input
+    };
+}

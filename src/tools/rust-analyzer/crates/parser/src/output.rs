@@ -54,7 +54,7 @@ impl Output {
     }
 
     pub(crate) fn token(&mut self, kind: SyntaxKind, n_tokens: u8) {
-        let e = ((kind as u16 as u32) << 16) | ((n_tokens as u32) << 8) | (0 << 4) | 1;
+        let e = ((kind as u16 as u32) << 16) | ((n_tokens as u32) << 8) | 1;
         self.event.push(e)
     }
 

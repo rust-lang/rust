@@ -1,0 +1,30 @@
+error[E0432]: unresolved import `super::super::C::D::AA`
+  --> $DIR/bad-import-in-nested.rs:10:21
+   |
+LL |         use super::{super::C::D::AA, AA as _};
+   |                     ^^^^^^^^^^^^^^^ no `AA` in `C::D`
+   |
+   = help: consider importing this type alias instead:
+           crate::A::AA
+
+error[E0432]: unresolved import `crate::C::AA`
+  --> $DIR/bad-import-in-nested.rs:20:26
+   |
+LL |     use crate::C::{self, AA};
+   |                          ^^ no `AA` in `C`
+   |
+   = help: consider importing this type alias instead:
+           crate::A::AA
+
+error[E0432]: unresolved import `crate::C::BB`
+  --> $DIR/bad-import-in-nested.rs:23:20
+   |
+LL |     use crate::{A, C::BB};
+   |                    ^^^^^ no `BB` in `C`
+   |
+   = help: consider importing this type alias instead:
+           crate::A::BB
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

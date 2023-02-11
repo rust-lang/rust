@@ -1,0 +1,4 @@
+error: values of the type `[u8; usize::MAX]` are too big for the current architecture
+
+error: aborting due to previous error
+

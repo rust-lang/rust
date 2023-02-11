@@ -1,0 +1,17 @@
+error[E0597]: `person` does not live long enough
+  --> $DIR/coercion-generic-regions.rs:17:24
+   |
+LL |     let person = "Fred".to_string();
+   |         ------ binding `person` declared here
+LL |     let person: &str = &person;
+   |                        ^^^^^^^
+   |                        |
+   |                        borrowed value does not live long enough
+   |                        assignment requires that `person` is borrowed for `'static`
+LL |     let s: Box<dyn Trait<&'static str>> = Box::new(Struct { person: person });
+LL | }
+   | - `person` dropped here while still borrowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

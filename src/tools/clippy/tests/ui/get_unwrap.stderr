@@ -10,7 +10,7 @@ note: the lint level is defined here
 LL | #![deny(clippy::get_unwrap)]
    |         ^^^^^^^^^^^^^^^^^^
 
-error: used `unwrap()` on `an Option` value
+error: used `unwrap()` on an `Option` value
   --> $DIR/get_unwrap.rs:35:17
    |
 LL |         let _ = boxed_slice.get(1).unwrap();
@@ -25,7 +25,7 @@ error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more co
 LL |         let _ = some_slice.get(0).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_slice[0]`
 
-error: used `unwrap()` on `an Option` value
+error: used `unwrap()` on an `Option` value
   --> $DIR/get_unwrap.rs:36:17
    |
 LL |         let _ = some_slice.get(0).unwrap();
@@ -39,7 +39,7 @@ error: called `.get().unwrap()` on a Vec. Using `[]` is more clear and more conc
 LL |         let _ = some_vec.get(0).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_vec[0]`
 
-error: used `unwrap()` on `an Option` value
+error: used `unwrap()` on an `Option` value
   --> $DIR/get_unwrap.rs:37:17
    |
 LL |         let _ = some_vec.get(0).unwrap();
@@ -53,7 +53,7 @@ error: called `.get().unwrap()` on a VecDeque. Using `[]` is more clear and more
 LL |         let _ = some_vecdeque.get(0).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_vecdeque[0]`
 
-error: used `unwrap()` on `an Option` value
+error: used `unwrap()` on an `Option` value
   --> $DIR/get_unwrap.rs:38:17
    |
 LL |         let _ = some_vecdeque.get(0).unwrap();
@@ -67,7 +67,7 @@ error: called `.get().unwrap()` on a HashMap. Using `[]` is more clear and more 
 LL |         let _ = some_hashmap.get(&1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_hashmap[&1]`
 
-error: used `unwrap()` on `an Option` value
+error: used `unwrap()` on an `Option` value
   --> $DIR/get_unwrap.rs:39:17
    |
 LL |         let _ = some_hashmap.get(&1).unwrap();
@@ -81,7 +81,7 @@ error: called `.get().unwrap()` on a BTreeMap. Using `[]` is more clear and more
 LL |         let _ = some_btreemap.get(&1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&some_btreemap[&1]`
 
-error: used `unwrap()` on `an Option` value
+error: used `unwrap()` on an `Option` value
   --> $DIR/get_unwrap.rs:40:17
    |
 LL |         let _ = some_btreemap.get(&1).unwrap();
@@ -95,7 +95,7 @@ error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more co
 LL |         let _: u8 = *boxed_slice.get(1).unwrap();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `boxed_slice[1]`
 
-error: used `unwrap()` on `an Option` value
+error: used `unwrap()` on an `Option` value
   --> $DIR/get_unwrap.rs:44:22
    |
 LL |         let _: u8 = *boxed_slice.get(1).unwrap();
@@ -109,7 +109,7 @@ error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and mor
 LL |         *boxed_slice.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `boxed_slice[0]`
 
-error: used `unwrap()` on `an Option` value
+error: used `unwrap()` on an `Option` value
   --> $DIR/get_unwrap.rs:49:10
    |
 LL |         *boxed_slice.get_mut(0).unwrap() = 1;
@@ -123,7 +123,7 @@ error: called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and mor
 LL |         *some_slice.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_slice[0]`
 
-error: used `unwrap()` on `an Option` value
+error: used `unwrap()` on an `Option` value
   --> $DIR/get_unwrap.rs:50:10
    |
 LL |         *some_slice.get_mut(0).unwrap() = 1;
@@ -137,7 +137,7 @@ error: called `.get_mut().unwrap()` on a Vec. Using `[]` is more clear and more 
 LL |         *some_vec.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_vec[0]`
 
-error: used `unwrap()` on `an Option` value
+error: used `unwrap()` on an `Option` value
   --> $DIR/get_unwrap.rs:51:10
    |
 LL |         *some_vec.get_mut(0).unwrap() = 1;
@@ -151,7 +151,7 @@ error: called `.get_mut().unwrap()` on a VecDeque. Using `[]` is more clear and 
 LL |         *some_vecdeque.get_mut(0).unwrap() = 1;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_vecdeque[0]`
 
-error: used `unwrap()` on `an Option` value
+error: used `unwrap()` on an `Option` value
   --> $DIR/get_unwrap.rs:52:10
    |
 LL |         *some_vecdeque.get_mut(0).unwrap() = 1;
@@ -165,7 +165,7 @@ error: called `.get().unwrap()` on a Vec. Using `[]` is more clear and more conc
 LL |         let _ = some_vec.get(0..1).unwrap().to_vec();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_vec[0..1]`
 
-error: used `unwrap()` on `an Option` value
+error: used `unwrap()` on an `Option` value
   --> $DIR/get_unwrap.rs:64:17
    |
 LL |         let _ = some_vec.get(0..1).unwrap().to_vec();
@@ -179,7 +179,7 @@ error: called `.get_mut().unwrap()` on a Vec. Using `[]` is more clear and more 
 LL |         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `some_vec[0..1]`
 
-error: used `unwrap()` on `an Option` value
+error: used `unwrap()` on an `Option` value
   --> $DIR/get_unwrap.rs:65:17
    |
 LL |         let _ = some_vec.get_mut(0..1).unwrap().to_vec();

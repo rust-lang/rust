@@ -1,0 +1,12 @@
+error[E0271]: type mismatch resolving `<&i32 as Deref>::Target == String`
+  --> $DIR/default-body-type-err.rs:7:22
+   |
+LL |     fn lol(&self) -> impl Deref<Target = String> {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `String`
+LL |
+LL |         &1i32
+   |         ----- return type was inferred to be `&i32` here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0271`.

@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 import argparse
 import contextlib
 import datetime
-import distutils.version
 import hashlib
 import json
 import os
@@ -13,17 +12,17 @@ import sys
 import tarfile
 import tempfile
 
-from time import time, sleep
+from time import time
 
-def support_xz():
-    try:
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_path = temp_file.name
-        with tarfile.open(temp_path, "w:xz"):
-            pass
-        return True
-    except tarfile.CompressionError:
-        return False
+try:
+    import lzma
+except ImportError:
+    lzma = None
+
+if sys.platform == 'win32':
+    EXE_SUFFIX = ".exe"
+else:
+    EXE_SUFFIX = ""
 
 def get(base, url, path, checksums, verbose=False):
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -61,7 +60,7 @@ def get(base, url, path, checksums, verbose=False):
 
 
 def download(path, url, probably_big, verbose):
-    for _ in range(0, 4):
+    for _ in range(4):
         try:
             _download(path, url, probably_big, verbose, True)
             return
@@ -88,14 +87,16 @@ def _download(path, url, probably_big, verbose, exception):
         # If curl is not present on Win32, we should not sys.exit
         #   but raise `CalledProcessError` or `OSError` instead
         require(["curl", "--version"], exception=platform_is_win32)
-        run(["curl", option,
-             "-L", # Follow redirect.
-             "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
-             "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
-             "--retry", "3", "-Sf", "-o", path, url],
-            verbose=verbose,
-            exception=True, # Will raise RuntimeError on failure
-        )
+        with open(path, "wb") as outfile:
+            run(["curl", option,
+                "-L", # Follow redirect.
+                "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
+                "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
+                "--retry", "3", "-Sf", url],
+                stdout=outfile,    #Implements cli redirect operator '>'
+                verbose=verbose,
+                exception=True, # Will raise RuntimeError on failure
+            )
     except (subprocess.CalledProcessError, OSError, RuntimeError):
         # see http://serverfault.com/questions/301128/how-to-download
         if platform_is_win32:
@@ -395,17 +396,18 @@ class RustBuild(object):
     def __init__(self):
         self.checksums_sha256 = {}
         self.stage0_compiler = None
-        self._download_url = ''
+        self.download_url = ''
         self.build = ''
         self.build_dir = ''
         self.clean = False
         self.config_toml = ''
         self.rust_root = ''
-        self.use_locked_deps = ''
-        self.use_vendored_sources = ''
+        self.use_locked_deps = False
+        self.use_vendored_sources = False
         self.verbose = False
         self.git_version = None
         self.nix_deps_dir = None
+        self._should_fix_bins_and_dylibs = None
 
     def download_toolchain(self):
         """Fetch the build system for Rust, written in Rust
@@ -426,7 +428,7 @@ class RustBuild(object):
                  self.program_out_of_date(self.rustc_stamp(), key)):
             if os.path.exists(bin_root):
                 shutil.rmtree(bin_root)
-            tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
+            tarball_suffix = '.tar.gz' if lzma is None else '.tar.xz'
             filename = "rust-std-{}-{}{}".format(
                 rustc_channel, self.build, tarball_suffix)
             pattern = "rust-std-{}".format(self.build)
@@ -437,14 +439,17 @@ class RustBuild(object):
             filename = "cargo-{}-{}{}".format(rustc_channel, self.build,
                                             tarball_suffix)
             self._download_component_helper(filename, "cargo", tarball_suffix)
-            self.fix_bin_or_dylib("{}/bin/cargo".format(bin_root))
+            if self.should_fix_bins_and_dylibs():
+                self.fix_bin_or_dylib("{}/bin/cargo".format(bin_root))
 
-            self.fix_bin_or_dylib("{}/bin/rustc".format(bin_root))
-            self.fix_bin_or_dylib("{}/bin/rustdoc".format(bin_root))
-            lib_dir = "{}/lib".format(bin_root)
-            for lib in os.listdir(lib_dir):
-                if lib.endswith(".so"):
-                    self.fix_bin_or_dylib(os.path.join(lib_dir, lib))
+                self.fix_bin_or_dylib("{}/bin/rustc".format(bin_root))
+                self.fix_bin_or_dylib("{}/bin/rustdoc".format(bin_root))
+                self.fix_bin_or_dylib("{}/libexec/rust-analyzer-proc-macro-srv".format(bin_root))
+                lib_dir = "{}/lib".format(bin_root)
+                for lib in os.listdir(lib_dir):
+                    if lib.endswith(".so"):
+                        self.fix_bin_or_dylib(os.path.join(lib_dir, lib))
+
             with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(key)
 
@@ -457,18 +462,61 @@ class RustBuild(object):
         if not os.path.exists(rustc_cache):
             os.makedirs(rustc_cache)
 
-        base = self._download_url
-        url = "dist/{}".format(key)
         tarball = os.path.join(rustc_cache, filename)
         if not os.path.exists(tarball):
             get(
-                base,
-                "{}/{}".format(url, filename),
+                self.download_url,
+                "dist/{}/{}".format(key, filename),
                 tarball,
                 self.checksums_sha256,
                 verbose=self.verbose,
             )
         unpack(tarball, tarball_suffix, self.bin_root(), match=pattern, verbose=self.verbose)
+
+    def should_fix_bins_and_dylibs(self):
+        """Whether or not `fix_bin_or_dylib` needs to be run; can only be True
+        on NixOS.
+        """
+        if self._should_fix_bins_and_dylibs is not None:
+            return self._should_fix_bins_and_dylibs
+
+        def get_answer():
+            default_encoding = sys.getdefaultencoding()
+            try:
+                ostype = subprocess.check_output(
+                    ['uname', '-s']).strip().decode(default_encoding)
+            except subprocess.CalledProcessError:
+                return False
+            except OSError as reason:
+                if getattr(reason, 'winerror', None) is not None:
+                    return False
+                raise reason
+
+            if ostype != "Linux":
+                return False
+
+            # If the user has asked binaries to be patched for Nix, then
+            # don't check for NixOS or `/lib`.
+            if self.get_toml("patch-binaries-for-nix", "build") == "true":
+                return True
+
+            # Use `/etc/os-release` instead of `/etc/NIXOS`.
+            # The latter one does not exist on NixOS when using tmpfs as root.
+            try:
+                with open("/etc/os-release", "r") as f:
+                    if not any(l.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"') for l in f):
+                        return False
+            except FileNotFoundError:
+                return False
+            if os.path.exists("/lib"):
+                return False
+
+            return True
+
+        answer = self._should_fix_bins_and_dylibs = get_answer()
+        if answer:
+            print("info: You seem to be using Nix.")
+        return answer
 
     def fix_bin_or_dylib(self, fname):
         """Modifies the interpreter section of 'fname' to fix the dynamic linker,
@@ -479,38 +527,8 @@ class RustBuild(object):
 
         Please see https://nixos.org/patchelf.html for more information
         """
-        default_encoding = sys.getdefaultencoding()
-        try:
-            ostype = subprocess.check_output(
-                ['uname', '-s']).strip().decode(default_encoding)
-        except subprocess.CalledProcessError:
-            return
-        except OSError as reason:
-            if getattr(reason, 'winerror', None) is not None:
-                return
-            raise reason
-
-        if ostype != "Linux":
-            return
-
-        # If the user has asked binaries to be patched for Nix, then
-        # don't check for NixOS or `/lib`, just continue to the patching.
-        if self.get_toml('patch-binaries-for-nix', 'build') != 'true':
-            # Use `/etc/os-release` instead of `/etc/NIXOS`.
-            # The latter one does not exist on NixOS when using tmpfs as root.
-            try:
-                with open("/etc/os-release", "r") as f:
-                    if not any(l.strip() in ["ID=nixos", "ID='nixos'", 'ID="nixos"'] for l in f):
-                        return
-            except FileNotFoundError:
-                return
-            if os.path.exists("/lib"):
-                return
-
-        # At this point we're pretty sure the user is running NixOS or
-        # using Nix
-        nix_os_msg = "info: you seem to be using Nix. Attempting to patch"
-        print(nix_os_msg, fname)
+        assert self._should_fix_bins_and_dylibs is True
+        print("attempting to patch", fname)
 
         # Only build `.nix-deps` once.
         nix_deps_dir = self.nix_deps_dir
@@ -665,8 +683,7 @@ class RustBuild(object):
         config = self.get_toml(program)
         if config:
             return os.path.expanduser(config)
-        return os.path.join(self.bin_root(), "bin", "{}{}".format(
-            program, self.exe_suffix()))
+        return os.path.join(self.bin_root(), "bin", "{}{}".format(program, EXE_SUFFIX))
 
     @staticmethod
     def get_string(line):
@@ -691,13 +708,6 @@ class RustBuild(object):
             return line[start + 1:end]
         return None
 
-    @staticmethod
-    def exe_suffix():
-        """Return a suffix for executables"""
-        if sys.platform == 'win32':
-            return '.exe'
-        return ''
-
     def bootstrap_binary(self):
         """Return the path of the bootstrap binary
 
@@ -709,9 +719,9 @@ class RustBuild(object):
         """
         return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
 
-    def build_bootstrap(self, color):
+    def build_bootstrap(self, color, verbose_count):
         """Build bootstrap"""
-        print("Building rustbuild")
+        print("Building bootstrap")
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
@@ -752,8 +762,10 @@ class RustBuild(object):
             target_features += ["-crt-static"]
         if target_features:
             env["RUSTFLAGS"] += " -C target-feature=" + (",".join(target_features))
+        target_linker = self.get_toml("linker", build_section)
+        if target_linker is not None:
+            env["RUSTFLAGS"] += " -C linker=" + target_linker
         env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes"
-        env["RUSTFLAGS"] += " -Wsemicolon_in_expressions_from_macros"
         if self.get_toml("deny-warnings", "rust") != "false":
             env["RUSTFLAGS"] += " -Dwarnings"
 
@@ -764,8 +776,7 @@ class RustBuild(object):
                 self.cargo()))
         args = [self.cargo(), "build", "--manifest-path",
                 os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
-        for _ in range(0, self.verbose):
-            args.append("--verbose")
+        args.extend("--verbose" for _ in range(verbose_count))
         if self.use_locked_deps:
             args.append("--locked")
         if self.use_vendored_sources:
@@ -773,6 +784,8 @@ class RustBuild(object):
         if self.get_toml("metrics", "build"):
             args.append("--features")
             args.append("build-metrics")
+        if self.json_output:
+            args.append("--message-format=json")
         if color == "always":
             args.append("--color=always")
         elif color == "never":
@@ -788,16 +801,7 @@ class RustBuild(object):
         so use `self.build` where possible.
         """
         config = self.get_toml('build')
-        if config:
-            return config
-        return default_build_triple(self.verbose)
-
-    def set_dist_environment(self, url):
-        """Set download URL for normal environment"""
-        if 'RUSTUP_DIST_SERVER' in os.environ:
-            self._download_url = os.environ['RUSTUP_DIST_SERVER']
-        else:
-            self._download_url = url
+        return config or default_build_triple(self.verbose)
 
     def check_vendored_status(self):
         """Check that vendoring is configured properly"""
@@ -830,32 +834,28 @@ class RustBuild(object):
             if os.path.exists(cargo_dir):
                 shutil.rmtree(cargo_dir)
 
-def bootstrap(help_triggered):
-    """Configure, fetch, build and run the initial bootstrap"""
-
-    # If the user is asking for help, let them know that the whole download-and-build
-    # process has to happen before anything is printed out.
-    if help_triggered:
-        print("info: Downloading and building bootstrap before processing --help")
-        print("      command. See src/bootstrap/README.md for help with common")
-        print("      commands.")
-
-    parser = argparse.ArgumentParser(description='Build rust')
+def parse_args():
+    """Parse the command line arguments that the python script needs."""
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument('-h', '--help', action='store_true')
     parser.add_argument('--config')
     parser.add_argument('--build-dir')
     parser.add_argument('--build')
     parser.add_argument('--color', choices=['always', 'never', 'auto'])
     parser.add_argument('--clean', action='store_true')
+    parser.add_argument('--json-output', action='store_true')
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
-    args = [a for a in sys.argv if a != '-h' and a != '--help']
-    args, _ = parser.parse_known_args(args)
+    return parser.parse_known_args(sys.argv)[0]
 
+def bootstrap(args):
+    """Configure, fetch, build and run the initial bootstrap"""
     # Configure initial bootstrap
     build = RustBuild()
     build.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
-    build.verbose = args.verbose
+    build.verbose = args.verbose != 0
     build.clean = args.clean
+    build.json_output = args.json_output
 
     # Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`,
     # then `config.toml` in the root directory.
@@ -882,12 +882,12 @@ def bootstrap(help_triggered):
         with open(include_path) as included_toml:
             build.config_toml += os.linesep + included_toml.read()
 
-    config_verbose = build.get_toml('verbose', 'build')
-    if config_verbose is not None:
-        build.verbose = max(build.verbose, int(config_verbose))
+    verbose_count = args.verbose
+    config_verbose_count = build.get_toml('verbose', 'build')
+    if config_verbose_count is not None:
+        verbose_count = max(args.verbose, int(config_verbose_count))
 
     build.use_vendored_sources = build.get_toml('vendor', 'build') == 'true'
-
     build.use_locked_deps = build.get_toml('locked-deps', 'build') == 'true'
 
     build.check_vendored_status()
@@ -899,8 +899,7 @@ def bootstrap(help_triggered):
         data = json.load(f)
     build.checksums_sha256 = data["checksums_sha256"]
     build.stage0_compiler = Stage0Toolchain(data["compiler"])
-
-    build.set_dist_environment(data["config"]["dist_server"])
+    build.download_url = os.getenv("RUSTUP_DIST_SERVER") or data["config"]["dist_server"]
 
     build.build = args.build or build.build_triple()
 
@@ -910,7 +909,7 @@ def bootstrap(help_triggered):
     # Fetch/build the bootstrap
     build.download_toolchain()
     sys.stdout.flush()
-    build.build_bootstrap(args.color)
+    build.build_bootstrap(args.color, verbose_count)
     sys.stdout.flush()
 
     # Run the bootstrap
@@ -928,25 +927,34 @@ def main():
 
     # x.py help <cmd> ...
     if len(sys.argv) > 1 and sys.argv[1] == 'help':
-        sys.argv = [sys.argv[0], '-h'] + sys.argv[2:]
+        sys.argv[1] = '-h'
 
-    help_triggered = (
-        '-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
+    args = parse_args()
+    help_triggered = args.help or len(sys.argv) == 1
+
+    # If the user is asking for help, let them know that the whole download-and-build
+    # process has to happen before anything is printed out.
+    if help_triggered:
+        print(
+            "info: Downloading and building bootstrap before processing --help command.\n"
+            "      See src/bootstrap/README.md for help with common commands."
+        )
+
+    exit_code = 0
+    success_word = "successfully"
     try:
-        bootstrap(help_triggered)
-        if not help_triggered:
-            print("Build completed successfully in {}".format(
-                format_build_time(time() - start_time)))
+        bootstrap(args)
     except (SystemExit, KeyboardInterrupt) as error:
         if hasattr(error, 'code') and isinstance(error.code, int):
             exit_code = error.code
         else:
             exit_code = 1
             print(error)
-        if not help_triggered:
-            print("Build completed unsuccessfully in {}".format(
-                format_build_time(time() - start_time)))
-        sys.exit(exit_code)
+        success_word = "unsuccessfully"
+
+    if not help_triggered:
+        print("Build completed", success_word, "in", format_build_time(time() - start_time))
+    sys.exit(exit_code)
 
 
 if __name__ == '__main__':

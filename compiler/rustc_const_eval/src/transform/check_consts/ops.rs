@@ -1,7 +1,7 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use hir::def_id::LocalDefId;
-use hir::ConstContext;
+use hir::{ConstContext, LangItem};
 use rustc_errors::{
     error_code, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
 };
@@ -13,23 +13,16 @@ use rustc_middle::mir;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
-    suggest_constraining_type_param, Adt, Closure, DefIdTree, FnDef, FnPtr, Param, TraitPredicate,
-    Ty,
+    suggest_constraining_type_param, Adt, Closure, DefIdTree, FnDef, FnPtr, Param, Ty,
 };
-use rustc_middle::ty::{Binder, BoundConstness, ImplPolarity, TraitRef};
+use rustc_middle::ty::{Binder, TraitRef};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
 use rustc_trait_selection::traits::SelectionContext;
 
 use super::ConstCx;
-use crate::errors::{
-    InteriorMutabilityBorrow, InteriorMutableDataRefer, MutDerefErr, NonConstFmtMacroCall,
-    NonConstFnCall, NonConstOpErr, PanicNonStrErr, RawPtrToIntErr, StaticAccessErr,
-    TransientMutBorrowErr, TransientMutBorrowErrRaw, UnallowedFnPointerCall,
-    UnallowedHeapAllocations, UnallowedInlineAsm, UnallowedMutableRefs, UnallowedMutableRefsRaw,
-    UnallowedOpInConstContext, UnstableConstFn,
-};
+use crate::errors;
 use crate::util::{call_kind, CallDesugaringKind, CallKind};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -100,7 +93,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx.sess.create_err(UnallowedFnPointerCall { span, kind: ccx.const_kind() })
+        ccx.tcx.sess.create_err(errors::UnallowedFnPointerCall { span, kind: ccx.const_kind() })
     }
 }
 
@@ -112,6 +105,7 @@ pub struct FnCallNonConst<'tcx> {
     pub substs: SubstsRef<'tcx>,
     pub span: Span,
     pub from_hir_call: bool,
+    pub feature: Option<Symbol>,
 }
 
 impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
@@ -120,7 +114,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         ccx: &ConstCx<'_, 'tcx>,
         _: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let FnCallNonConst { caller, callee, substs, span, from_hir_call } = *self;
+        let FnCallNonConst { caller, callee, substs, span, from_hir_call, feature } = *self;
         let ConstCx { tcx, param_env, .. } = *ccx;
 
         let diag_trait = |err, self_ty: Ty<'_>, trait_id| {
@@ -142,18 +136,16 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                             &param_ty.name.as_str(),
                             &constraint,
                             None,
+                            None,
                         );
                     }
                 }
                 Adt(..) => {
                     let obligation = Obligation::new(
+                        tcx,
                         ObligationCause::dummy(),
                         param_env,
-                        Binder::dummy(TraitPredicate {
-                            trait_ref,
-                            constness: BoundConstness::NotConst,
-                            polarity: ImplPolarity::Positive,
-                        }),
+                        Binder::dummy(trait_ref),
                     );
 
                     let infcx = tcx.infer_ctxt().build();
@@ -303,13 +295,14 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     err.span_note(deref_target, "deref defined here");
                 }
 
-                diag_trait(&mut err, self_ty, tcx.lang_items().deref_trait().unwrap());
+                diag_trait(&mut err, self_ty, tcx.require_lang_item(LangItem::Deref, Some(span)));
                 err
             }
-            _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::ArgumentV1Methods) => {
-                ccx.tcx.sess.create_err(NonConstFmtMacroCall { span, kind: ccx.const_kind() })
-            }
-            _ => ccx.tcx.sess.create_err(NonConstFnCall {
+            _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::ArgumentV1Methods) => ccx
+                .tcx
+                .sess
+                .create_err(errors::NonConstFmtMacroCall { span, kind: ccx.const_kind() }),
+            _ => ccx.tcx.sess.create_err(errors::NonConstFnCall {
                 span,
                 def_path_str: ccx.tcx.def_path_str_with_substs(callee, substs),
                 kind: ccx.const_kind(),
@@ -321,6 +314,13 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
              tuple structs and tuple variants",
             ccx.const_kind(),
         ));
+
+        if let Some(feature) = feature && ccx.tcx.sess.is_nightly_build() {
+            err.help(&format!(
+                "add `#![feature({})]` to the crate attributes to enable",
+                feature,
+            ));
+        }
 
         if let ConstContext::Static(_) = ccx.const_kind() {
             err.note("consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell");
@@ -347,7 +347,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
         let mut err = ccx
             .tcx
             .sess
-            .create_err(UnstableConstFn { span, def_path: ccx.tcx.def_path_str(def_id) });
+            .create_err(errors::UnstableConstFn { span, def_path: ccx.tcx.def_path_str(def_id) });
 
         if ccx.is_const_stable_const_fn() {
             err.help("const-stable functions can only call other const-stable functions");
@@ -380,14 +380,14 @@ impl<'tcx> NonConstOp<'tcx> for Generator {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let msg = format!("{}s are not allowed in {}s", self.0, ccx.const_kind());
+        let msg = format!("{}s are not allowed in {}s", self.0.descr(), ccx.const_kind());
         if let hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) = self.0 {
             ccx.tcx.sess.create_feature_err(
-                UnallowedOpInConstContext { span, msg },
+                errors::UnallowedOpInConstContext { span, msg },
                 sym::const_async_blocks,
             )
         } else {
-            ccx.tcx.sess.create_err(UnallowedOpInConstContext { span, msg })
+            ccx.tcx.sess.create_err(errors::UnallowedOpInConstContext { span, msg })
         }
     }
 }
@@ -400,7 +400,7 @@ impl<'tcx> NonConstOp<'tcx> for HeapAllocation {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx.sess.create_err(UnallowedHeapAllocations {
+        ccx.tcx.sess.create_err(errors::UnallowedHeapAllocations {
             span,
             kind: ccx.const_kind(),
             teach: ccx.tcx.sess.teach(&error_code!(E0010)).then_some(()),
@@ -416,7 +416,7 @@ impl<'tcx> NonConstOp<'tcx> for InlineAsm {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx.sess.create_err(UnallowedInlineAsm { span, kind: ccx.const_kind() })
+        ccx.tcx.sess.create_err(errors::UnallowedInlineAsm { span, kind: ccx.const_kind() })
     }
 }
 
@@ -467,7 +467,9 @@ impl<'tcx> NonConstOp<'tcx> for TransientCellBorrow {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx.sess.create_feature_err(InteriorMutabilityBorrow { span }, sym::const_refs_to_cell)
+        ccx.tcx
+            .sess
+            .create_feature_err(errors::InteriorMutabilityBorrow { span }, sym::const_refs_to_cell)
     }
 }
 
@@ -484,14 +486,14 @@ impl<'tcx> NonConstOp<'tcx> for CellBorrow {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         // FIXME: Maybe a more elegant solution to this if else case
         if let hir::ConstContext::Static(_) = ccx.const_kind() {
-            ccx.tcx.sess.create_err(InteriorMutableDataRefer {
+            ccx.tcx.sess.create_err(errors::InteriorMutableDataRefer {
                 span,
                 opt_help: Some(()),
                 kind: ccx.const_kind(),
                 teach: ccx.tcx.sess.teach(&error_code!(E0492)).then_some(()),
             })
         } else {
-            ccx.tcx.sess.create_err(InteriorMutableDataRefer {
+            ccx.tcx.sess.create_err(errors::InteriorMutableDataRefer {
                 span,
                 opt_help: None,
                 kind: ccx.const_kind(),
@@ -524,12 +526,12 @@ impl<'tcx> NonConstOp<'tcx> for MutBorrow {
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         match self.0 {
-            hir::BorrowKind::Raw => ccx.tcx.sess.create_err(UnallowedMutableRefsRaw {
+            hir::BorrowKind::Raw => ccx.tcx.sess.create_err(errors::UnallowedMutableRefsRaw {
                 span,
                 kind: ccx.const_kind(),
                 teach: ccx.tcx.sess.teach(&error_code!(E0764)).then_some(()),
             }),
-            hir::BorrowKind::Ref => ccx.tcx.sess.create_err(UnallowedMutableRefs {
+            hir::BorrowKind::Ref => ccx.tcx.sess.create_err(errors::UnallowedMutableRefs {
                 span,
                 kind: ccx.const_kind(),
                 teach: ccx.tcx.sess.teach(&error_code!(E0764)).then_some(()),
@@ -553,14 +555,14 @@ impl<'tcx> NonConstOp<'tcx> for TransientMutBorrow {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let kind = ccx.const_kind();
         match self.0 {
-            hir::BorrowKind::Raw => ccx
-                .tcx
-                .sess
-                .create_feature_err(TransientMutBorrowErrRaw { span, kind }, sym::const_mut_refs),
-            hir::BorrowKind::Ref => ccx
-                .tcx
-                .sess
-                .create_feature_err(TransientMutBorrowErr { span, kind }, sym::const_mut_refs),
+            hir::BorrowKind::Raw => ccx.tcx.sess.create_feature_err(
+                errors::TransientMutBorrowErrRaw { span, kind },
+                sym::const_mut_refs,
+            ),
+            hir::BorrowKind::Ref => ccx.tcx.sess.create_feature_err(
+                errors::TransientMutBorrowErr { span, kind },
+                sym::const_mut_refs,
+            ),
         }
     }
 }
@@ -582,9 +584,10 @@ impl<'tcx> NonConstOp<'tcx> for MutDeref {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx
-            .sess
-            .create_feature_err(MutDerefErr { span, kind: ccx.const_kind() }, sym::const_mut_refs)
+        ccx.tcx.sess.create_feature_err(
+            errors::MutDerefErr { span, kind: ccx.const_kind() },
+            sym::const_mut_refs,
+        )
     }
 }
 
@@ -597,7 +600,7 @@ impl<'tcx> NonConstOp<'tcx> for PanicNonStr {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx.sess.create_err(PanicNonStrErr { span })
+        ccx.tcx.sess.create_err(errors::PanicNonStrErr { span })
     }
 }
 
@@ -648,7 +651,7 @@ impl<'tcx> NonConstOp<'tcx> for RawPtrToIntCast {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx.sess.create_err(RawPtrToIntErr { span })
+        ccx.tcx.sess.create_err(errors::RawPtrToIntErr { span })
     }
 }
 
@@ -669,7 +672,7 @@ impl<'tcx> NonConstOp<'tcx> for StaticAccess {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx.sess.create_err(StaticAccessErr {
+        ccx.tcx.sess.create_err(errors::StaticAccessErr {
             span,
             kind: ccx.const_kind(),
             teach: ccx.tcx.sess.teach(&error_code!(E0013)).then_some(()),
@@ -686,11 +689,11 @@ impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        ccx.tcx.sess.create_err(NonConstOpErr { span })
+        ccx.tcx.sess.create_err(errors::NonConstOpErr { span })
     }
 }
 
-// Types that cannot appear in the signature or locals of a `const fn`.
+/// Types that cannot appear in the signature or locals of a `const fn`.
 pub mod ty {
     use super::*;
 

@@ -2,6 +2,7 @@
 
 use rustc_index::vec::Idx;
 use rustc_middle::ty::util::IntTypeExt;
+use rustc_target::abi::{Abi, Primitive};
 
 use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::category::{Category, RvalueFunc};
@@ -141,7 +142,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let exchange_malloc = Operand::function_handle(
                     tcx,
                     tcx.require_lang_item(LangItem::ExchangeMalloc, Some(expr_span)),
-                    ty::List::empty(),
+                    [],
                     expr_span,
                 );
                 let storage = this.temp(tcx.mk_mut_ptr(tcx.types.u8), expr_span);
@@ -197,16 +198,64 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // create all the steps directly in MIR with operations all backends need to support anyway.
                 let (source, ty) = if let ty::Adt(adt_def, ..) = source.ty.kind() && adt_def.is_enum() {
                     let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
-                    let place = unpack!(block = this.as_place(block, source));
+                    let temp = unpack!(block = this.as_temp(block, scope, source, Mutability::Not));
+                    let layout = this.tcx.layout_of(this.param_env.and(source.ty));
                     let discr = this.temp(discr_ty, source.span);
                     this.cfg.push_assign(
                         block,
                         source_info,
                         discr,
-                        Rvalue::Discriminant(place),
+                        Rvalue::Discriminant(temp.into()),
                     );
+                    let (op,ty) = (Operand::Move(discr), discr_ty);
 
-                    (Operand::Move(discr), discr_ty)
+                    if let Abi::Scalar(scalar) = layout.unwrap().abi{
+                        if let Primitive::Int(_, signed) = scalar.primitive() {
+                            let range = scalar.valid_range(&this.tcx);
+                            // FIXME: Handle wraparound cases too.
+                            if range.end >= range.start {
+                                let mut assumer = |range: u128, bin_op: BinOp| {
+                                    // We will be overwriting this val if our scalar is signed value
+                                    // because sign extension on unsigned types might cause unintended things
+                                    let mut range_val =
+                                        ConstantKind::from_bits(this.tcx, range, ty::ParamEnv::empty().and(discr_ty));
+                                    let bool_ty = this.tcx.types.bool;
+                                    if signed {
+                                        let scalar_size_extend = scalar.size(&this.tcx).sign_extend(range);
+                                        let discr_layout = this.tcx.layout_of(this.param_env.and(discr_ty));
+                                        let truncated_val = discr_layout.unwrap().size.truncate(scalar_size_extend);
+                                        range_val = ConstantKind::from_bits(
+                                            this.tcx,
+                                            truncated_val,
+                                            ty::ParamEnv::empty().and(discr_ty),
+                                        );
+                                    }
+                                    let lit_op = this.literal_operand(expr.span, range_val);
+                                    let is_bin_op = this.temp(bool_ty, expr_span);
+                                    this.cfg.push_assign(
+                                        block,
+                                        source_info,
+                                        is_bin_op,
+                                        Rvalue::BinaryOp(bin_op, Box::new(((lit_op), (Operand::Copy(discr))))),
+                                    );
+                                    this.cfg.push(
+                                        block,
+                                        Statement {
+                                            source_info,
+                                            kind: StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(
+                                                Operand::Copy(is_bin_op),
+                                            ))),
+                                        },
+                                    )
+                                };
+                                assumer(range.end, BinOp::Ge);
+                                assumer(range.start, BinOp::Le);
+                            }
+                        }
+                    }
+
+                    (op,ty)
+
                 } else {
                     let ty = source.ty;
                     let source = unpack!(
@@ -320,8 +369,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let place_builder =
                         unpack!(block = this.as_place_builder(block, &this.thir[*thir_place]));
 
-                    if let Ok(place_builder_resolved) = place_builder.try_upvars_resolved(this) {
-                        let mir_place = place_builder_resolved.into_place(this);
+                    if let Some(mir_place) = place_builder.try_to_place(this) {
                         this.cfg.push_fake_read(
                             block,
                             this.source_info(this.tcx.hir().span(*hir_id)),
@@ -391,10 +439,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // We implicitly set the discriminant to 0. See
                         // librustc_mir/transform/deaggregator.rs for details.
                         let movability = movability.unwrap();
-                        Box::new(AggregateKind::Generator(closure_id, substs, movability))
+                        Box::new(AggregateKind::Generator(
+                            closure_id.to_def_id(),
+                            substs,
+                            movability,
+                        ))
                     }
                     UpvarSubsts::Closure(substs) => {
-                        Box::new(AggregateKind::Closure(closure_id, substs))
+                        Box::new(AggregateKind::Closure(closure_id.to_def_id(), substs))
                     }
                 };
                 block.and(Rvalue::Aggregate(result, operands))
@@ -612,7 +664,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // by the parent itself. The mutability of the current capture
             // is same as that of the capture in the parent closure.
             PlaceBase::Upvar { .. } => {
-                let enclosing_upvars_resolved = arg_place_builder.clone().into_place(this);
+                let enclosing_upvars_resolved = arg_place_builder.to_place(this);
 
                 match enclosing_upvars_resolved.as_ref() {
                     PlaceRef {
@@ -649,7 +701,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
         };
 
-        let arg_place = arg_place_builder.into_place(this);
+        let arg_place = arg_place_builder.to_place(this);
 
         this.cfg.push_assign(
             block,

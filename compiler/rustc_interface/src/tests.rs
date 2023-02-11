@@ -3,29 +3,32 @@ use crate::interface::parse_cfgspecs;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
-use rustc_session::config::InstrumentCoverage;
-use rustc_session::config::Strip;
+use rustc_session::config::rustc_optgroups;
+use rustc_session::config::Input;
+use rustc_session::config::InstrumentXRay;
+use rustc_session::config::TraitSolver;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
-use rustc_session::config::{
-    rustc_optgroups, ErrorOutputType, ExternLocation, LocationDetail, Options, Passes,
-};
 use rustc_session::config::{
     BranchProtection, Externs, OomStrategy, OutputType, OutputTypes, PAuthKey, PacRet,
     ProcMacroExecutionStrategy, SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
+use rustc_session::config::{DumpMonoStatsFormat, MirSpanview};
+use rustc_session::config::{ErrorOutputType, ExternLocation, LocationDetail, Options, Strip};
+use rustc_session::config::{InstrumentCoverage, Passes};
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use rustc_session::{build_session, getopts, DiagnosticOutput, Session};
+use rustc_session::CompilerIO;
+use rustc_session::{build_session, getopts, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
+use rustc_span::FileName;
 use rustc_span::SourceFileHashAlgorithm;
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, RelocModel};
 use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel};
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::iter::FromIterator;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
@@ -40,16 +43,14 @@ fn build_session_options_and_crate_config(matches: getopts::Matches) -> (Options
 fn mk_session(matches: getopts::Matches) -> (Session, CfgSpecs) {
     let registry = registry::Registry::new(&[]);
     let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-    let sess = build_session(
-        sessopts,
-        None,
-        None,
-        registry,
-        DiagnosticOutput::Default,
-        Default::default(),
-        None,
-        None,
-    );
+    let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
+    let io = CompilerIO {
+        input: Input::Str { name: FileName::Custom(String::new()), input: String::new() },
+        output_dir: None,
+        output_file: None,
+        temps_dir,
+    };
+    let sess = build_session(sessopts, io, None, registry, Default::default(), None, None);
     (sess, cfg)
 }
 
@@ -540,7 +541,7 @@ fn test_codegen_options_tracking_hash() {
     }
 
     // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
-    // This list is in alphabetical order.
+    // tidy-alphabetical-start
     untracked!(ar, String::from("abc"));
     untracked!(codegen_units, Some(42));
     untracked!(default_linker_libraries, true);
@@ -556,6 +557,7 @@ fn test_codegen_options_tracking_hash() {
     untracked!(rpath, true);
     untracked!(save_temps, true);
     untracked!(strip, Strip::Debuginfo);
+    // tidy-alphabetical-end
 
     macro_rules! tracked {
         ($name: ident, $non_default_value: expr) => {
@@ -567,7 +569,7 @@ fn test_codegen_options_tracking_hash() {
     }
 
     // Make sure that changing a [TRACKED] option changes the hash.
-    // This list is in alphabetical order.
+    // tidy-alphabetical-start
     tracked!(code_model, Some(CodeModel::Large));
     tracked!(control_flow_guard, CFGuard::Checks);
     tracked!(debug_assertions, Some(true));
@@ -577,8 +579,8 @@ fn test_codegen_options_tracking_hash() {
     tracked!(force_unwind_tables, Some(true));
     tracked!(inline_threshold, Some(0xf007ba11));
     tracked!(instrument_coverage, Some(InstrumentCoverage::All));
-    tracked!(linker_plugin_lto, LinkerPluginLto::LinkerPluginAuto);
     tracked!(link_dead_code, Some(true));
+    tracked!(linker_plugin_lto, LinkerPluginLto::LinkerPluginAuto);
     tracked!(llvm_args, vec![String::from("1"), String::from("2")]);
     tracked!(lto, LtoCli::Fat);
     tracked!(metadata, vec![String::from("A"), String::from("B")]);
@@ -599,6 +601,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(symbol_mangling_version, Some(SymbolManglingVersion::V0));
     tracked!(target_cpu, Some(String::from("abc")));
     tracked!(target_feature, String::from("all the features, all of them"));
+    // tidy-alphabetical-end
 }
 
 #[test]
@@ -619,12 +622,13 @@ fn test_top_level_options_tracked_no_crate() {
     }
 
     // Make sure that changing a [TRACKED_NO_CRATE_HASH] option leaves the crate hash unchanged but changes the incremental hash.
-    // This list is in alphabetical order.
-    tracked!(remap_path_prefix, vec![("/home/bors/rust".into(), "src".into())]);
+    // tidy-alphabetical-start
     tracked!(
         real_rust_source_base_dir,
         Some("/home/bors/rust/.rustup/toolchains/nightly/lib/rustlib/src/rust".into())
     );
+    tracked!(remap_path_prefix, vec![("/home/bors/rust".into(), "src".into())]);
+    // tidy-alphabetical-end
 }
 
 #[test]
@@ -641,7 +645,7 @@ fn test_unstable_options_tracking_hash() {
     }
 
     // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
-    // This list is in alphabetical order.
+    // tidy-alphabetical-start
     untracked!(assert_incr_state, Some(String::from("loaded")));
     untracked!(deduplicate_diagnostics, false);
     untracked!(dep_tasks, true);
@@ -654,11 +658,14 @@ fn test_unstable_options_tracking_hash() {
     untracked!(dump_mir_dir, String::from("abc"));
     untracked!(dump_mir_exclude_pass_number, true);
     untracked!(dump_mir_graphviz, true);
+    untracked!(dump_mir_spanview, Some(MirSpanview::Statement));
+    untracked!(dump_mono_stats, SwitchWithOptPath::Enabled(Some("mono-items-dir/".into())));
+    untracked!(dump_mono_stats_format, DumpMonoStatsFormat::Json);
+    untracked!(dylib_lto, true);
     untracked!(emit_stack_sizes, true);
     untracked!(future_incompat_test, true);
     untracked!(hir_stats, true);
     untracked!(identify_regions, true);
-    untracked!(incremental_ignore_spans, true);
     untracked!(incremental_info, true);
     untracked!(incremental_verify_ich, true);
     untracked!(input_stats, true);
@@ -671,19 +678,18 @@ fn test_unstable_options_tracking_hash() {
     untracked!(mir_pretty_relative_line_numbers, true);
     untracked!(nll_facts, true);
     untracked!(no_analysis, true);
-    untracked!(no_interleave_lints, true);
     untracked!(no_leak_check, true);
     untracked!(no_parallel_llvm, true);
     untracked!(parse_only, true);
     untracked!(perf_stats, true);
     // `pre_link_arg` is omitted because it just forwards to `pre_link_args`.
     untracked!(pre_link_args, vec![String::from("abc"), String::from("def")]);
-    untracked!(profile_closures, true);
     untracked!(print_llvm_passes, true);
     untracked!(print_mono_items, Some(String::from("abc")));
     untracked!(print_type_sizes, true);
     untracked!(proc_macro_backtrace, true);
     untracked!(proc_macro_execution_strategy, ProcMacroExecutionStrategy::CrossThread);
+    untracked!(profile_closures, true);
     untracked!(query_dep_graph, true);
     untracked!(save_analysis, true);
     untracked!(self_profile, SwitchWithOptPath::Enabled(None));
@@ -695,12 +701,14 @@ fn test_unstable_options_tracking_hash() {
     untracked!(time_llvm_passes, true);
     untracked!(time_passes, true);
     untracked!(trace_macros, true);
+    untracked!(track_diagnostics, true);
     untracked!(trim_diagnostic_paths, false);
     untracked!(ui_testing, true);
     untracked!(unpretty, Some("expanded".to_string()));
     untracked!(unstable_options, true);
     untracked!(validate_mir, true);
     untracked!(verbose, true);
+    // tidy-alphabetical-end
 
     macro_rules! tracked {
         ($name: ident, $non_default_value: expr) => {
@@ -712,13 +720,13 @@ fn test_unstable_options_tracking_hash() {
     }
 
     // Make sure that changing a [TRACKED] option changes the hash.
-    // This list is in alphabetical order.
+    // tidy-alphabetical-start
     tracked!(allow_features, Some(vec![String::from("lang_items")]));
     tracked!(always_encode_mir, true);
     tracked!(asm_comments, true);
     tracked!(assume_incomplete_release, true);
     tracked!(binary_dep_depinfo, true);
-    tracked!(box_noalias, Some(false));
+    tracked!(box_noalias, false);
     tracked!(
         branch_protection,
         Some(BranchProtection {
@@ -726,41 +734,44 @@ fn test_unstable_options_tracking_hash() {
             pac_ret: Some(PacRet { leaf: true, key: PAuthKey::B })
         })
     );
-    tracked!(chalk, true);
     tracked!(codegen_backend, Some("abc".to_string()));
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(debug_info_for_profiling, true);
     tracked!(debug_macros, true);
     tracked!(dep_info_omit_d_target, true);
     tracked!(drop_tracking, true);
-    tracked!(export_executable_symbols, true);
     tracked!(dual_proc_macros, true);
     tracked!(dwarf_version, Some(5));
     tracked!(emit_thin_lto, false);
+    tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
     tracked!(force_unstable_if_unmarked, true);
     tracked!(fuel, Some(("abc".to_string(), 99)));
     tracked!(function_sections, Some(false));
     tracked!(human_readable_cgu_names, true);
+    tracked!(incremental_ignore_spans, true);
     tracked!(inline_in_all_cgus, Some(true));
     tracked!(inline_mir, Some(true));
     tracked!(inline_mir_hint_threshold, Some(123));
     tracked!(inline_mir_threshold, Some(123));
     tracked!(instrument_coverage, Some(InstrumentCoverage::All));
     tracked!(instrument_mcount, true);
+    tracked!(instrument_xray, Some(InstrumentXRay::default()));
     tracked!(link_only, true);
     tracked!(llvm_plugins, vec![String::from("plugin_name")]);
     tracked!(location_detail, LocationDetail { file: true, line: false, column: false });
+    tracked!(maximal_hir_to_mir_coverage, true);
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
     tracked!(mir_emit_retag, true);
     tracked!(mir_enable_passes, vec![("DestProp".to_string(), false)]);
     tracked!(mir_opt_level, Some(4));
     tracked!(move_size_limit, Some(4096));
-    tracked!(mutable_noalias, Some(true));
+    tracked!(mutable_noalias, false);
     tracked!(no_generate_arange_section, true);
+    tracked!(no_jump_tables, true);
     tracked!(no_link, true);
-    tracked!(no_unique_section_names, true);
     tracked!(no_profiler_runtime, true);
+    tracked!(no_unique_section_names, true);
     tracked!(oom, OomStrategy::Panic);
     tracked!(osx_rpath_install_name, true);
     tracked!(packed_bundled_libs, true);
@@ -773,8 +784,8 @@ fn test_unstable_options_tracking_hash() {
     tracked!(print_fuel, Some("abc".to_string()));
     tracked!(profile, true);
     tracked!(profile_emit, Some(PathBuf::from("abc")));
-    tracked!(profiler_runtime, "abc".to_string());
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));
+    tracked!(profiler_runtime, "abc".to_string());
     tracked!(relax_elf_relocations, Some(true));
     tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
@@ -792,7 +803,9 @@ fn test_unstable_options_tracking_hash() {
     tracked!(teach, true);
     tracked!(thinlto, Some(true));
     tracked!(thir_unsafeck, true);
+    tracked!(tiny_const_eval_limit, true);
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
+    tracked!(trait_solver, TraitSolver::Chalk);
     tracked!(translate_remapped_path_to_local_path, false);
     tracked!(trap_unreachable, Some(false));
     tracked!(treat_err_as_bug, NonZeroUsize::new(1));
@@ -803,6 +816,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(verify_llvm_ir, true);
     tracked!(virtual_function_elimination, true);
     tracked!(wasi_exec_model, Some(WasiExecModel::Reactor));
+    // tidy-alphabetical-end
 
     macro_rules! tracked_no_crate_hash {
         ($name: ident, $non_default_value: expr) => {

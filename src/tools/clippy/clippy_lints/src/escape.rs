@@ -1,13 +1,14 @@
 use clippy_utils::diagnostics::span_lint_hir;
 use rustc_hir::intravisit;
 use rustc_hir::{self, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind};
-use rustc_hir_analysis::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
+use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::kw;
 use rustc_target::spec::abi::Abi;
@@ -63,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         _: Span,
-        hir_id: HirId,
+        fn_def_id: LocalDefId,
     ) {
         if let Some(header) = fn_kind.header() {
             if header.abi != Abi::Rust {
@@ -71,7 +72,11 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
             }
         }
 
-        let parent_id = cx.tcx.hir().get_parent_item(hir_id).def_id;
+        let parent_id = cx
+            .tcx
+            .hir()
+            .get_parent_item(cx.tcx.hir().local_def_id_to_hir_id(fn_def_id))
+            .def_id;
         let parent_node = cx.tcx.hir().find_by_def_id(parent_id);
 
         let mut trait_self_ty = None;
@@ -84,11 +89,11 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
             // find `self` ty for this trait if relevant
             if let ItemKind::Trait(_, _, _, _, items) = item.kind {
                 for trait_item in items {
-                    if trait_item.id.hir_id() == hir_id {
+                    if trait_item.id.owner_id.def_id == fn_def_id {
                         // be sure we have `self` parameter in this function
                         if trait_item.kind == (AssocItemKind::Fn { has_self: true }) {
                             trait_self_ty = Some(
-                                TraitRef::identity(cx.tcx, trait_item.id.def_id.to_def_id())
+                                TraitRef::identity(cx.tcx, trait_item.id.owner_id.to_def_id())
                                     .self_ty()
                                     .skip_binder(),
                             );
@@ -105,7 +110,6 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
             too_large_for_stack: self.too_large_for_stack,
         };
 
-        let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
         let infcx = cx.tcx.infer_ctxt().build();
         ExprUseVisitor::new(&mut v, &infcx, fn_def_id, cx.param_env, cx.typeck_results()).consume_body(body);
 
@@ -131,7 +135,7 @@ fn is_argument(map: rustc_middle::hir::map::Map<'_>, id: HirId) -> bool {
         _ => return false,
     }
 
-    matches!(map.find(map.get_parent_node(id)), Some(Node::Param(_)))
+    matches!(map.find_parent(id), Some(Node::Param(_)))
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
@@ -156,8 +160,8 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             let map = &self.cx.tcx.hir();
             if is_argument(*map, cmt.hir_id) {
                 // Skip closure arguments
-                let parent_id = map.get_parent_node(cmt.hir_id);
-                if let Some(Node::Expr(..)) = map.find(map.get_parent_node(parent_id)) {
+                let parent_id = map.parent_id(cmt.hir_id);
+                if let Some(Node::Expr(..)) = map.find_parent(parent_id) {
                     return;
                 }
 
@@ -176,13 +180,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
     }
 
-    fn fake_read(
-        &mut self,
-        _: &rustc_hir_analysis::expr_use_visitor::PlaceWithHirId<'tcx>,
-        _: FakeReadCause,
-        _: HirId,
-    ) {
-    }
+    fn fake_read(&mut self, _: &rustc_hir_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {

@@ -214,15 +214,6 @@ impl<'tcx> TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
     fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
         self.normalize_generic_arg_after_erasing_regions(c.into()).expect_const()
     }
-
-    #[inline]
-    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
-        // FIXME: This *probably* needs canonicalization too!
-        let arg = self.param_env.and(c);
-        self.tcx
-            .try_normalize_mir_const_after_erasing_regions(arg)
-            .unwrap_or_else(|_| bug!("failed to normalize {:?}", c))
-    }
 }
 
 struct TryNormalizeAfterErasingRegionsFolder<'tcx> {
@@ -265,18 +256,6 @@ impl<'tcx> FallibleTypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'t
         match self.try_normalize_generic_arg_after_erasing_regions(c.into()) {
             Ok(t) => Ok(t.expect_const()),
             Err(_) => Err(NormalizationError::Const(c)),
-        }
-    }
-
-    fn try_fold_mir_const(
-        &mut self,
-        c: mir::ConstantKind<'tcx>,
-    ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
-        // FIXME: This *probably* needs canonicalization too!
-        let arg = self.param_env.and(c);
-        match self.tcx.try_normalize_mir_const_after_erasing_regions(arg) {
-            Ok(c) => Ok(c),
-            Err(_) => Err(NormalizationError::ConstantKind(c)),
         }
     }
 }

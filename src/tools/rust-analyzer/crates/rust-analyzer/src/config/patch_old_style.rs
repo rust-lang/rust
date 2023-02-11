@@ -4,6 +4,9 @@ use serde_json::{json, Value};
 /// This function patches the json config to the new expected keys.
 /// That is we try to load old known config keys here and convert them to the new ones.
 /// See https://github.com/rust-lang/rust-analyzer/pull/12010
+///
+/// We already have an alias system for simple cases, but if we make structural changes
+/// the alias infra fails down.
 pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
     let copy = json.clone();
 
@@ -105,9 +108,9 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
         merge(json, json!({ "cargo": { "features": "all" } }));
     }
 
-    // checkOnSave_allFeatures, checkOnSave_features -> checkOnSave_features
+    // checkOnSave_allFeatures, checkOnSave_features -> check_features
     if let Some(Value::Bool(true)) = copy.pointer("/checkOnSave/allFeatures") {
-        merge(json, json!({ "checkOnSave": { "features": "all" } }));
+        merge(json, json!({ "check": { "features": "all" } }));
     }
 
     // completion_addCallArgumentSnippets completion_addCallParenthesis -> completion_callable_snippets
@@ -116,11 +119,21 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
         copy.pointer("/completion/addCallParenthesis"),
     ) {
         (Some(Value::Bool(true)), Some(Value::Bool(true))) => json!("fill_arguments"),
-        (Some(Value::Bool(true)), _) => json!("add_parentheses"),
+        (_, Some(Value::Bool(true))) => json!("add_parentheses"),
         (Some(Value::Bool(false)), Some(Value::Bool(false))) => json!("none"),
         (_, _) => return,
     };
     merge(json, json!({ "completion": { "callable": {"snippets": res }} }));
+
+    // We need to do this due to the checkOnSave_enable -> checkOnSave change, as that key now can either be an object or a bool
+    // checkOnSave_* -> check_*
+    if let Some(Value::Object(obj)) = copy.pointer("/checkOnSave") {
+        // checkOnSave_enable -> checkOnSave
+        if let Some(b @ Value::Bool(_)) = obj.get("enable") {
+            merge(json, json!({ "checkOnSave": b }));
+        }
+        merge(json, json!({ "check": obj }));
+    }
 }
 
 fn merge(dst: &mut Value, src: Value) {

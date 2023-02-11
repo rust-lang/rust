@@ -1,5 +1,5 @@
-// We want to control preemption here.
-//@compile-flags: -Zmiri-preemption-rate=0
+// We want to control preemption here. Stacked borrows interferes by having its own accesses.
+//@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
 
 use std::thread::spawn;
 
@@ -27,7 +27,7 @@ pub fn main() {
         });
 
         let j2 = spawn(move || {
-            // Also an error of the form: Data race detected between Write on thread `<unnamed>` and Deallocate on thread `<unnamed>`
+            // Also an error of the form: Data race detected between (1) Deallocate on thread `<unnamed>` and (2) Write on thread `<unnamed>`
             // but the invalid allocation is detected first.
             *ptr.0 = 2; //~ ERROR: dereferenced after this allocation got freed
         });

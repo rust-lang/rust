@@ -14,12 +14,13 @@ pub fn expand_deriving_clone(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     // The simple form is `fn clone(&self) -> Self { *self }`, possibly with
     // some additional `AssertParamIsClone` assertions.
     //
     // We can use the simple form if either of the following are true.
-    // - The type derives Copy and there are no generic parameters.  (If we
+    // - The type derives Copy and there are no generic parameters. (If we
     //   used the simple form with generics, we'd have to bound the generics
     //   with Clone + Copy, and then there'd be no Clone impl at all if the
     //   user fills in something that is Clone but not Copy. After
@@ -31,10 +32,10 @@ pub fn expand_deriving_clone(
     let bounds;
     let substructure;
     let is_simple;
-    match *item {
-        Annotatable::Item(ref annitem) => match annitem.kind {
-            ItemKind::Struct(_, Generics { ref params, .. })
-            | ItemKind::Enum(_, Generics { ref params, .. }) => {
+    match item {
+        Annotatable::Item(annitem) => match &annitem.kind {
+            ItemKind::Struct(_, Generics { params, .. })
+            | ItemKind::Enum(_, Generics { params, .. }) => {
                 let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
                 let has_derive_copy = cx.resolver.has_derive_copy(container_id);
                 if has_derive_copy
@@ -67,14 +68,13 @@ pub fn expand_deriving_clone(
         _ => cx.span_bug(span, "`#[derive(Clone)]` on trait item or impl item"),
     }
 
-    let inline = cx.meta_word(span, sym::inline);
-    let attrs = thin_vec![cx.attribute(inline)];
+    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
     let trait_def = TraitDef {
         span,
         path: path_std!(clone::Clone),
         skip_path_as_bound: false,
+        needs_copy_as_bound_if_packed: true,
         additional_bounds: bounds,
-        generics: Bounds::empty(),
         supports_unions: true,
         methods: vec![MethodDef {
             name: sym::clone,
@@ -83,10 +83,11 @@ pub fn expand_deriving_clone(
             nonself_args: Vec::new(),
             ret_ty: Self_,
             attributes: attrs,
-            unify_fieldless_variants: false,
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: substructure,
         }],
         associated_types: Vec::new(),
+        is_const,
     };
 
     trait_def.expand_ext(cx, mitem, item, push, is_simple)
@@ -166,18 +167,20 @@ fn cs_clone(
     };
 
     let vdata;
-    match *substr.fields {
-        Struct(vdata_, ref af) => {
+    match substr.fields {
+        Struct(vdata_, af) => {
             ctor_path = cx.path(trait_span, vec![substr.type_ident]);
             all_fields = af;
-            vdata = vdata_;
+            vdata = *vdata_;
         }
-        EnumMatching(.., variant, ref af) => {
+        EnumMatching(.., variant, af) => {
             ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.ident]);
             all_fields = af;
             vdata = &variant.data;
         }
-        EnumTag(..) => cx.span_bug(trait_span, &format!("enum tags in `derive({})`", name,)),
+        EnumTag(..) | AllFieldlessEnum(..) => {
+            cx.span_bug(trait_span, &format!("enum tags in `derive({})`", name,))
+        }
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, &format!("associated function in `derive({})`", name))
         }

@@ -124,9 +124,8 @@
 //!
 //! ## Stack size
 //!
-//! The default stack size for spawned threads is 2 MiB, though this particular stack size is
-//! subject to change in the future. There are two ways to manually specify the stack size for
-//! spawned threads:
+//! The default stack size is platform-dependent and subject to change. Currently it is 2MB on all
+//! Tier-1 platforms. There are two ways to manually specify the stack size for spawned threads:
 //!
 //! * Build the thread with [`Builder`] and pass the desired stack size to [`Builder::stack_size`].
 //! * Set the `RUST_MIN_STACK` environment variable to an integer representing the desired stack
@@ -151,7 +150,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![cfg_attr(all(target_os = "wasi", target_vendor = "wasmer"), allow(unused_imports))]
-
+#![cfg_attr(test, allow(dead_code))]
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
 
@@ -173,9 +172,15 @@ use crate::sync::Arc;
 use crate::sys::thread as imp;
 use crate::sys_common::thread;
 use crate::sys_common::thread_info;
-use crate::sys_common::thread_parker::Parker;
+use crate::sys_common::thread_parking::Parker;
 use crate::sys_common::{AsInner, IntoInner};
 use crate::time::Duration;
+
+#[stable(feature = "scoped_threads", since = "1.63.0")]
+mod scoped;
+
+#[stable(feature = "scoped_threads", since = "1.63.0")]
+pub use scoped::{scope, Scope, ScopedJoinHandle};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Thread-local storage
@@ -184,17 +189,12 @@ use crate::time::Duration;
 #[macro_use]
 pub(crate) mod local;
 
-#[stable(feature = "scoped_threads", since = "1.63.0")]
-mod scoped;
-
-#[stable(feature = "scoped_threads", since = "1.63.0")]
-pub use scoped::{scope, Scope, ScopedJoinHandle};
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{AccessError, LocalKey};
 
-// Select the type used by the thread_local! macro to access TLS keys. There
-// are three types: "static", "fast", "OS". The "OS" thread local key
+// Provide the type used by the thread_local! macro to access TLS keys. This
+// needs to be kept in sync with the macro itself (in `local.rs`).
+// There are three types: "static", "fast", "OS". The "OS" thread local key
 // type is accessed via platform-specific API calls and is slow, while the "fast"
 // key type is accessed via code generated via LLVM, where TLS keys are set up
 // by the elf linker. "static" is for single-threaded platforms where a global
@@ -203,8 +203,13 @@ pub use self::local::{AccessError, LocalKey};
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
 #[cfg(all(target_thread_local, not(target_vendor = "wasmer")))]
 #[cfg(not(test))]
+#[cfg(all(
+    target_thread_local,
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
 #[doc(hidden)]
 pub use self::local::fast::Key as __FastLocalKeyInner;
+// when building for tests, use real std's type
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
 #[cfg(all(target_thread_local, not(target_vendor = "wasmer")))]
 #[cfg(test)] // when building for tests, use real std's key
@@ -219,6 +224,15 @@ pub use self::local::fast::Key as __FastLocalKeyInnerUnused; // we import this a
 #[doc(hidden)]
 #[cfg(any(not(target_thread_local), target_vendor = "wasmer"))]
 pub use self::local::os::Key as __OsLocalKeyInner;
+// when building for tests, use real std's type
+#[unstable(feature = "libstd_thread_internals", issue = "none")]
+#[cfg(test)]
+#[cfg(all(
+    not(target_thread_local),
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
+pub use realstd::thread::__OsLocalKeyInner;
+
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
 #[cfg(all(target_family = "wasm", not(target_vendor = "wasmer"), not(target_feature = "atomics")))]
 #[doc(hidden)]
@@ -1253,24 +1267,21 @@ impl ThreadId {
                     }
                 }
             } else {
-                use crate::sys_common::mutex::StaticMutex;
+                use crate::sync::{Mutex, PoisonError};
 
-                // It is UB to attempt to acquire this mutex reentrantly!
-                static GUARD: StaticMutex = StaticMutex::new();
-                static mut COUNTER: u64 = 0;
+                static COUNTER: Mutex<u64> = Mutex::new(0);
 
-                unsafe {
-                    let guard = GUARD.lock();
+                let mut counter = COUNTER.lock().unwrap_or_else(PoisonError::into_inner);
+                let Some(id) = counter.checked_add(1) else {
+                    // in case the panic handler ends up calling `ThreadId::new()`,
+                    // avoid reentrant lock acquire.
+                    drop(counter);
+                    exhausted();
+                };
 
-                    let Some(id) = COUNTER.checked_add(1) else {
-                        drop(guard); // in case the panic handler ends up calling `ThreadId::new()`, avoid reentrant lock acquire.
-                        exhausted();
-                    };
-
-                    COUNTER = id;
-                    drop(guard);
-                    ThreadId(NonZeroU64::new(id).unwrap())
-                }
+                *counter = id;
+                drop(counter);
+                ThreadId(NonZeroU64::new(id).unwrap())
             }
         }
     }
@@ -1345,7 +1356,7 @@ impl Thread {
             let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
             addr_of_mut!((*ptr).name).write(name);
             addr_of_mut!((*ptr).id).write(ThreadId::new());
-            Parker::new(addr_of_mut!((*ptr).parker));
+            Parker::new_in_place(addr_of_mut!((*ptr).parker));
             Pin::new_unchecked(arc.assume_init())
         };
 

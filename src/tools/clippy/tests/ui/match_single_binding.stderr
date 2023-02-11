@@ -196,5 +196,47 @@ LL +         suf
 LL ~     };
    |
 
-error: aborting due to 13 previous errors
+error: this match could be replaced by its scrutinee and body
+  --> $DIR/match_single_binding.rs:147:16
+   |
+LL |       let _ = || match side_effects() {
+   |  ________________^
+LL | |         _ => println!("Needs curlies"),
+LL | |     };
+   | |_____^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL ~     let _ = || {
+LL +         side_effects();
+LL +         println!("Needs curlies");
+LL ~     };
+   |
+
+error: this match could be written as a `let` statement
+  --> $DIR/match_single_binding.rs:154:5
+   |
+LL | /     match r {
+LL | |         x => match x {
+LL | |             Some(_) => {
+LL | |                 println!("Some");
+...  |
+LL | |         },
+LL | |     };
+   | |_____^
+   |
+help: consider using a `let` statement
+   |
+LL ~     let x = r;
+LL +     match x {
+LL +         Some(_) => {
+LL +             println!("Some");
+LL +         },
+LL +         None => {
+LL +             println!("None");
+LL +         },
+LL ~     };
+   |
+
+error: aborting due to 15 previous errors
 

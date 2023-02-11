@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::ArtificialField;
 use crate::Overlap;
 use crate::{AccessDepth, Deep, Shallow};
@@ -207,7 +209,7 @@ fn place_components_conflict<'tcx>(
             match (elem, &base_ty.kind(), access) {
                 (_, _, Shallow(Some(ArtificialField::ArrayLength)))
                 | (_, _, Shallow(Some(ArtificialField::ShallowBorrow))) => {
-                    // The array length is like  additional fields on the
+                    // The array length is like additional fields on the
                     // type; it does not overlap any existing data there.
                     // Furthermore, if cannot actually be a prefix of any
                     // borrowed place (at least in MIR as it is currently.)
@@ -318,16 +320,10 @@ fn place_projection_conflict<'tcx>(
             debug!("place_element_conflict: DISJOINT-OR-EQ-DEREF");
             Overlap::EqualOrDisjoint
         }
-        (ProjectionElem::OpaqueCast(v1), ProjectionElem::OpaqueCast(v2)) => {
-            if v1 == v2 {
-                // same type - recur.
-                debug!("place_element_conflict: DISJOINT-OR-EQ-OPAQUE");
-                Overlap::EqualOrDisjoint
-            } else {
-                // Different types. Disjoint!
-                debug!("place_element_conflict: DISJOINT-OPAQUE");
-                Overlap::Disjoint
-            }
+        (ProjectionElem::OpaqueCast(_), ProjectionElem::OpaqueCast(_)) => {
+            // casts to other types may always conflict irrespective of the type being cast to.
+            debug!("place_element_conflict: DISJOINT-OR-EQ-OPAQUE");
+            Overlap::EqualOrDisjoint
         }
         (ProjectionElem::Field(f1, _), ProjectionElem::Field(f2, _)) => {
             if f1 == f2 {

@@ -5,7 +5,7 @@ use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
-use crate::middle::privacy::AccessLevels;
+use crate::middle::privacy::EffectiveVisibilities;
 use crate::middle::resolve_lifetime::{ObjectLifetimeDefault, Region, ResolveLifetimes};
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
@@ -15,6 +15,7 @@ use crate::mir::interpret::{
 };
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
+use crate::query::Key;
 use crate::thir;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -27,12 +28,13 @@ use crate::traits::query::{
 };
 use crate::traits::specialization_graph;
 use crate::traits::{self, ImplSource};
+use crate::ty::context::TyCtxtFeed;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::TyAndLayout;
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::GeneratorDiagnosticData;
-use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt, UnusedGenericParams};
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
@@ -40,19 +42,19 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
-use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::cstore::{CrateDepKind, CrateSource};
 use rustc_session::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
 use rustc_session::lint::LintExpectationId;
-use rustc_session::utils::NativeLibKind;
 use rustc_session::Limits;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
@@ -104,30 +106,21 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-/// Helper for `TyCtxtEnsure` to avoid a closure.
-#[inline(always)]
-fn noop<T>(_: &T) {}
-
-/// Helper to ensure that queries only return `Copy` types.
-#[inline(always)]
-fn copy<T: Copy>(x: &T) -> T {
-    *x
-}
-
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
+    (LocalDefId) => { impl IntoQueryParam<LocalDefId> };
     ($K:ty) => { $K };
 }
 
-macro_rules! query_storage {
-    ([][$K:ty, $V:ty]) => {
-        <DefaultCacheSelector as CacheSelector<$K, $V>>::Cache
+macro_rules! query_if_arena {
+    ([] $arena:ty, $no_arena:ty) => {
+        $no_arena
     };
-    ([(arena_cache) $($rest:tt)*][$K:ty, $V:ty]) => {
-        <ArenaCacheSelector<'tcx> as CacheSelector<$K, $V>>::Cache
+    ([(arena_cache) $($rest:tt)*] $arena:ty, $no_arena:ty) => {
+        $arena
     };
-    ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
-        query_storage!([$($modifiers)*][$($args)*])
+    ([$other:tt $($modifiers:tt)*]$($args:tt)*) => {
+        query_if_arena!([$($modifiers)*]$($args)*)
     };
 }
 
@@ -191,23 +184,30 @@ macro_rules! define_callbacks {
 
             $(pub type $name<'tcx> = $($K)*;)*
         }
-        #[allow(nonstandard_style, unused_lifetimes)]
+        #[allow(nonstandard_style, unused_lifetimes, unused_parens)]
         pub mod query_values {
             use super::*;
 
-            $(pub type $name<'tcx> = $V;)*
+            $(pub type $name<'tcx> = query_if_arena!([$($modifiers)*] <$V as Deref>::Target, $V);)*
         }
-        #[allow(nonstandard_style, unused_lifetimes)]
+        #[allow(nonstandard_style, unused_lifetimes, unused_parens)]
         pub mod query_storage {
             use super::*;
 
-            $(pub type $name<'tcx> = query_storage!([$($modifiers)*][$($K)*, $V]);)*
+            $(
+                pub type $name<'tcx> = query_if_arena!([$($modifiers)*]
+                    <<$($K)* as Key>::CacheSelector
+                        as CacheSelector<'tcx, <$V as Deref>::Target>>::ArenaCache,
+                    <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, $V>>::Cache
+                );
+            )*
         }
+
         #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_stored {
             use super::*;
 
-            $(pub type $name<'tcx> = <query_storage::$name<'tcx> as QueryStorage>::Stored;)*
+            $(pub type $name<'tcx> = $V;)*
         }
 
         #[derive(Default)]
@@ -222,14 +222,10 @@ macro_rules! define_callbacks {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, noop);
-
-                match cached {
-                    Ok(()) => return,
-                    Err(()) => (),
-                }
-
-                self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure);
+                match try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key) {
+                    Some(_) => return,
+                    None => self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure),
+                };
             })*
         }
 
@@ -237,7 +233,7 @@ macro_rules! define_callbacks {
             $($(#[$attr])*
             #[inline(always)]
             #[must_use]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<'tcx>
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
                 self.at(DUMMY_SP).$name(key)
             })*
@@ -246,19 +242,15 @@ macro_rules! define_callbacks {
         impl<'tcx> TyCtxtAt<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<'tcx>
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, copy);
-
-                match cached {
-                    Ok(value) => return value,
-                    Err(()) => (),
+                match try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key) {
+                    Some(value) => value,
+                    None => self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap(),
                 }
-
-                self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap()
             })*
         }
 
@@ -275,13 +267,16 @@ macro_rules! define_callbacks {
 
         impl Default for Providers {
             fn default() -> Self {
+                use crate::query::Key;
+
                 Providers {
                     $($name: |_, key| bug!(
-                        "`tcx.{}({:?})` is not supported for external or local crate;\n
-                        hint: Queries can be either made to the local crate, or the external crate. This error means you tried to use it for one that's not supported (likely the local crate).\n
+                        "`tcx.{}({:?})` is not supported for {} crate;\n
+                        hint: Queries can be either made to the local crate, or the external crate. This error means you tried to use it for one that's not supported.\n
                         If that's not the case, {} was likely never assigned to a provider function.\n",
                         stringify!($name),
                         key,
+                        if key.query_crate_is_local() { "local" } else { "external" },
                         stringify!($name),
                     ),)*
                 }
@@ -318,9 +313,57 @@ macro_rules! define_callbacks {
                 span: Span,
                 key: query_keys::$name<'tcx>,
                 mode: QueryMode,
-            ) -> Option<query_stored::$name<'tcx>>;)*
+            ) -> Option<$V>;)*
         }
     };
+}
+
+macro_rules! hash_result {
+    ([]) => {{
+        Some(dep_graph::hash_result)
+    }};
+    ([(no_hash) $($rest:tt)*]) => {{
+        None
+    }};
+    ([$other:tt $($modifiers:tt)*]) => {
+        hash_result!([$($modifiers)*])
+    };
+}
+
+macro_rules! define_feedable {
+    ($($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
+        $(impl<'tcx, K: IntoQueryParam<$($K)*> + Copy> TyCtxtFeed<'tcx, K> {
+            $(#[$attr])*
+            #[inline(always)]
+            pub fn $name(self, value: query_values::$name<'tcx>) -> $V {
+                let key = self.key().into_query_param();
+                opt_remap_env_constness!([$($modifiers)*][key]);
+
+                let tcx = self.tcx;
+                let cache = &tcx.query_caches.$name;
+
+                match try_get_cached(tcx, cache, &key) {
+                    Some(old) => {
+                        bug!(
+                            "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
+                            stringify!($name),
+                        )
+                    }
+                    None => {
+                        let dep_node = dep_graph::DepNode::construct(tcx, dep_graph::DepKind::$name, &key);
+                        let dep_node_index = tcx.dep_graph.with_feed_task(
+                            dep_node,
+                            tcx,
+                            key,
+                            &value,
+                            hash_result!([$($modifiers)*]),
+                        );
+                        cache.complete(key, value, dep_node_index)
+                    }
+                }
+            }
+        })*
+    }
 }
 
 // Each of these queries corresponds to a function pointer field in the
@@ -336,6 +379,7 @@ macro_rules! define_callbacks {
 // as they will raise an fatal error on query cycles instead.
 
 rustc_query_append! { define_callbacks! }
+rustc_feedable_queries! { define_feedable! }
 
 mod sealed {
     use super::{DefId, LocalDefId, OwnerId};
@@ -362,6 +406,13 @@ mod sealed {
         }
     }
 
+    impl IntoQueryParam<LocalDefId> for OwnerId {
+        #[inline(always)]
+        fn into_query_param(self) -> LocalDefId {
+            self.def_id
+        }
+    }
+
     impl IntoQueryParam<DefId> for LocalDefId {
         #[inline(always)]
         fn into_query_param(self) -> DefId {
@@ -385,6 +436,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.opt_def_kind(def_id)
             .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
     }
+
+    pub fn bound_type_of(self, def_id: impl IntoQueryParam<DefId>) -> ty::EarlyBinder<Ty<'tcx>> {
+        ty::EarlyBinder(self.type_of(def_id))
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {
@@ -392,5 +447,9 @@ impl<'tcx> TyCtxtAt<'tcx> {
         let def_id = def_id.into_query_param();
         self.opt_def_kind(def_id)
             .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
+    }
+
+    pub fn bound_type_of(self, def_id: impl IntoQueryParam<DefId>) -> ty::EarlyBinder<Ty<'tcx>> {
+        ty::EarlyBinder(self.type_of(def_id))
     }
 }

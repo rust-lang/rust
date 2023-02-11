@@ -29,6 +29,7 @@ fn load_cargo_with_overrides(file: &str, cfg_overrides: CfgOverrides) -> CrateGr
         rustc_cfg: Vec::new(),
         cfg_overrides,
         toolchain: None,
+        target_layout: None,
     };
     to_crate_graph(project_workspace)
 }
@@ -106,7 +107,7 @@ fn to_crate_graph(project_workspace: ProjectWorkspace) -> CrateGraph {
 }
 
 fn check_crate_graph(crate_graph: CrateGraph, expect: Expect) {
-    let mut crate_graph = format!("{:#?}", crate_graph);
+    let mut crate_graph = format!("{crate_graph:#?}");
     replace_root(&mut crate_graph, false);
     expect.assert_eq(&crate_graph);
 }
@@ -150,6 +151,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -219,6 +221,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -297,6 +300,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -375,6 +379,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "debug_assertions",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -462,6 +467,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "feature=use_std",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -547,6 +553,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -618,6 +625,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -698,6 +706,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -778,6 +787,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -865,6 +875,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "feature=use_std",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -941,6 +952,7 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1012,6 +1024,7 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1092,6 +1105,7 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1172,6 +1186,7 @@ fn cargo_hello_world_project_model() {
                                 "test",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1259,6 +1274,7 @@ fn cargo_hello_world_project_model() {
                                 "feature=use_std",
                             ],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {
                                 "CARGO_PKG_LICENSE": "",
@@ -1327,6 +1343,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1371,6 +1388,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1405,6 +1423,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1439,6 +1458,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1473,6 +1493,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1517,6 +1538,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1551,6 +1573,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1566,10 +1589,10 @@ fn rust_project_hello_world_project_model() {
                             },
                             Dependency {
                                 crate_id: CrateId(
-                                    1,
+                                    3,
                                 ),
                                 name: CrateName(
-                                    "core",
+                                    "panic_unwind",
                                 ),
                                 prelude: true,
                             },
@@ -1584,10 +1607,10 @@ fn rust_project_hello_world_project_model() {
                             },
                             Dependency {
                                 crate_id: CrateId(
-                                    3,
+                                    1,
                                 ),
                                 name: CrateName(
-                                    "panic_unwind",
+                                    "core",
                                 ),
                                 prelude: true,
                             },
@@ -1597,6 +1620,15 @@ fn rust_project_hello_world_project_model() {
                                 ),
                                 name: CrateName(
                                     "profiler_builtins",
+                                ),
+                                prelude: true,
+                            },
+                            Dependency {
+                                crate_id: CrateId(
+                                    9,
+                                ),
+                                name: CrateName(
+                                    "unwind",
                                 ),
                                 prelude: true,
                             },
@@ -1614,25 +1646,7 @@ fn rust_project_hello_world_project_model() {
                                     8,
                                 ),
                                 name: CrateName(
-                                    "term",
-                                ),
-                                prelude: true,
-                            },
-                            Dependency {
-                                crate_id: CrateId(
-                                    9,
-                                ),
-                                name: CrateName(
                                     "test",
-                                ),
-                                prelude: true,
-                            },
-                            Dependency {
-                                crate_id: CrateId(
-                                    10,
-                                ),
-                                name: CrateName(
-                                    "unwind",
                                 ),
                                 prelude: true,
                             },
@@ -1667,6 +1681,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1690,40 +1705,6 @@ fn rust_project_hello_world_project_model() {
                         display_name: Some(
                             CrateDisplayName {
                                 crate_name: CrateName(
-                                    "term",
-                                ),
-                                canonical_name: "term",
-                            },
-                        ),
-                        cfg_options: CfgOptions(
-                            [],
-                        ),
-                        potential_cfg_options: CfgOptions(
-                            [],
-                        ),
-                        env: Env {
-                            entries: {},
-                        },
-                        dependencies: [],
-                        proc_macro: Err(
-                            "no proc macro loaded for sysroot crate",
-                        ),
-                        origin: Lang(
-                            Other,
-                        ),
-                        is_proc_macro: false,
-                    },
-                    CrateId(
-                        9,
-                    ): CrateData {
-                        root_file_id: FileId(
-                            10,
-                        ),
-                        edition: Edition2018,
-                        version: None,
-                        display_name: Some(
-                            CrateDisplayName {
-                                crate_name: CrateName(
                                     "test",
                                 ),
                                 canonical_name: "test",
@@ -1735,6 +1716,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1748,10 +1730,10 @@ fn rust_project_hello_world_project_model() {
                         is_proc_macro: false,
                     },
                     CrateId(
-                        10,
+                        9,
                     ): CrateData {
                         root_file_id: FileId(
-                            11,
+                            10,
                         ),
                         edition: Edition2018,
                         version: None,
@@ -1769,6 +1751,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1782,10 +1765,10 @@ fn rust_project_hello_world_project_model() {
                         is_proc_macro: false,
                     },
                     CrateId(
-                        11,
+                        10,
                     ): CrateData {
                         root_file_id: FileId(
-                            12,
+                            11,
                         ),
                         edition: Edition2018,
                         version: None,
@@ -1803,6 +1786,7 @@ fn rust_project_hello_world_project_model() {
                         potential_cfg_options: CfgOptions(
                             [],
                         ),
+                        target_layout: None,
                         env: Env {
                             entries: {},
                         },
@@ -1836,7 +1820,7 @@ fn rust_project_hello_world_project_model() {
                             },
                             Dependency {
                                 crate_id: CrateId(
-                                    9,
+                                    8,
                                 ),
                                 name: CrateName(
                                     "test",

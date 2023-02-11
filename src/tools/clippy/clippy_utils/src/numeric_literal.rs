@@ -1,4 +1,4 @@
-use rustc_ast::ast::{Lit, LitFloatType, LitIntType, LitKind};
+use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
 use std::iter;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -46,10 +46,6 @@ pub struct NumericLiteral<'a> {
 }
 
 impl<'a> NumericLiteral<'a> {
-    pub fn from_lit(src: &'a str, lit: &Lit) -> Option<NumericLiteral<'a>> {
-        NumericLiteral::from_lit_kind(src, &lit.kind)
-    }
-
     pub fn from_lit_kind(src: &'a str, lit_kind: &LitKind) -> Option<NumericLiteral<'a>> {
         let unsigned_src = src.strip_prefix('-').map_or(src, |s| s);
         if lit_kind.is_numeric()
@@ -69,12 +65,13 @@ impl<'a> NumericLiteral<'a> {
 
     #[must_use]
     pub fn new(lit: &'a str, suffix: Option<&'a str>, float: bool) -> Self {
+        let unsigned_lit = lit.trim_start_matches('-');
         // Determine delimiter for radix prefix, if present, and radix.
-        let radix = if lit.starts_with("0x") {
+        let radix = if unsigned_lit.starts_with("0x") {
             Radix::Hexadecimal
-        } else if lit.starts_with("0b") {
+        } else if unsigned_lit.starts_with("0b") {
             Radix::Binary
-        } else if lit.starts_with("0o") {
+        } else if unsigned_lit.starts_with("0o") {
             Radix::Octal
         } else {
             Radix::Decimal

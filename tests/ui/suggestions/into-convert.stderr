@@ -1,0 +1,44 @@
+error[E0308]: mismatched types
+  --> $DIR/into-convert.rs:6:16
+   |
+LL |     let x: A = B;
+   |            -   ^ expected `A`, found `B`
+   |            |
+   |            expected due to this
+   |
+help: call `Into::into` on this expression to convert `B` into `A`
+   |
+LL |     let x: A = B.into();
+   |                 +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/into-convert.rs:10:24
+   |
+LL |     let y: Arc<Path> = PathBuf::new();
+   |            ---------   ^^^^^^^^^^^^^^ expected `Arc<Path>`, found `PathBuf`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Arc<Path>`
+              found struct `PathBuf`
+help: call `Into::into` on this expression to convert `PathBuf` into `Arc<Path>`
+   |
+LL |     let y: Arc<Path> = PathBuf::new().into();
+   |                                      +++++++
+
+error[E0308]: mismatched types
+  --> $DIR/into-convert.rs:14:24
+   |
+LL |     let z: AtomicU32 = 1;
+   |            ---------   ^ expected `AtomicU32`, found integer
+   |            |
+   |            expected due to this
+   |
+help: call `Into::into` on this expression to convert `{integer}` into `AtomicU32`
+   |
+LL |     let z: AtomicU32 = 1.into();
+   |                         +++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

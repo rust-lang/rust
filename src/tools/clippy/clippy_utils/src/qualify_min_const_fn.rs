@@ -3,6 +3,7 @@
 // of terminologies might not be relevant in the context of Clippy. Note that its behavior might
 // differ from the time of `rustc` even if the name stays the same.
 
+use crate::msrvs::Msrv;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
@@ -18,25 +19,29 @@ use std::borrow::Cow;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
-pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: Option<RustcVersion>) -> McfResult {
+pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) -> McfResult {
     let def_id = body.source.def_id();
     let mut current = def_id;
     loop {
         let predicates = tcx.predicates_of(current);
         for (predicate, _) in predicates.predicates {
             match predicate.kind().skip_binder() {
-                ty::PredicateKind::RegionOutlives(_)
-                | ty::PredicateKind::TypeOutlives(_)
+                ty::PredicateKind::Clause(
+                    ty::Clause::RegionOutlives(_)
+                    | ty::Clause::TypeOutlives(_)
+                    | ty::Clause::Projection(_)
+                    | ty::Clause::Trait(..),
+                )
                 | ty::PredicateKind::WellFormed(_)
-                | ty::PredicateKind::Projection(_)
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
-                | ty::PredicateKind::Trait(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
+                ty::PredicateKind::AliasEq(..) => panic!("alias eq predicate on function: {predicate:#?}"),
                 ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {predicate:#?}"),
                 ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {predicate:#?}"),
                 ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {predicate:#?}"),
                 ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {predicate:#?}"),
+                ty::PredicateKind::Ambiguous => panic!("ambiguous predicate on function: {predicate:#?}"),
             }
         }
         match predicates.parent {
@@ -51,7 +56,7 @@ pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: 
     // impl trait is gone in MIR, so check the return type manually
     check_ty(
         tcx,
-        tcx.fn_sig(def_id).output().skip_binder(),
+        tcx.fn_sig(def_id).subst_identity().output().skip_binder(),
         body.local_decls.iter().next().unwrap().source_info.span,
     )?;
 
@@ -78,7 +83,7 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
             ty::Ref(_, _, hir::Mutability::Mut) => {
                 return Err((span, "mutable references in const fn are unstable".into()));
             },
-            ty::Opaque(..) => return Err((span, "`impl Trait` in const fn is unstable".into())),
+            ty::Alias(ty::Opaque, ..) => return Err((span, "`impl Trait` in const fn is unstable".into())),
             ty::FnPtr(..) => {
                 return Err((span, "function pointers in const fn are unstable".into()));
             },
@@ -236,6 +241,7 @@ fn check_statement<'tcx>(
         | StatementKind::Retag { .. }
         | StatementKind::AscribeUserType(..)
         | StatementKind::Coverage(..)
+        | StatementKind::ConstEvalCounter
         | StatementKind::Nop => Ok(()),
     }
 }
@@ -276,11 +282,11 @@ fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &B
     Ok(())
 }
 
-fn check_terminator<'a, 'tcx>(
+fn check_terminator<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &'a Body<'tcx>,
+    body: &Body<'tcx>,
     terminator: &Terminator<'tcx>,
-    msrv: Option<RustcVersion>,
+    msrv: &Msrv,
 ) -> McfResult {
     let span = terminator.source_info.span;
     match &terminator.kind {
@@ -297,11 +303,7 @@ fn check_terminator<'a, 'tcx>(
             check_operand(tcx, value, span, body)
         },
 
-        TerminatorKind::SwitchInt {
-            discr,
-            switch_ty: _,
-            targets: _,
-        } => check_operand(tcx, discr, span, body),
+        TerminatorKind::SwitchInt { discr, targets: _ } => check_operand(tcx, discr, span, body),
 
         TerminatorKind::Abort => Err((span, "abort is not stable in const fn".into())),
         TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
@@ -364,7 +366,7 @@ fn check_terminator<'a, 'tcx>(
     }
 }
 
-fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: Option<RustcVersion>) -> bool {
+fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
     tcx.is_const_fn(def_id)
         && tcx.lookup_const_stability(def_id).map_or(true, |const_stab| {
             if let rustc_attr::StabilityLevel::Stable { since, .. } = const_stab.level {
@@ -383,15 +385,12 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: Option<RustcVersion>) -> bo
 
                 let since = rustc_span::Symbol::intern(short_version);
 
-                crate::meets_msrv(
-                    msrv,
-                    RustcVersion::parse(since.as_str()).unwrap_or_else(|err| {
-                        panic!("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted: `{since}`, {err:?}")
-                    }),
-                )
+                msrv.meets(RustcVersion::parse(since.as_str()).unwrap_or_else(|err| {
+                    panic!("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted: `{since}`, {err:?}")
+                }))
             } else {
                 // Unstable const fn with the feature enabled.
-                msrv.is_none()
+                msrv.current().is_none()
             }
         })
 }

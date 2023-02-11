@@ -1613,7 +1613,7 @@ impl<'a, T> CursorMut<'a, T> {
             None
         } else {
             // We can't point to the node that we pop. Copying the behavior of
-            // `remove_current`, we move on the the next node in the sequence.
+            // `remove_current`, we move on to the next node in the sequence.
             // If the list is of length 1 then we end pointing to the "ghost"
             // node at index 0, which is expected.
             if self.list.head == self.current {

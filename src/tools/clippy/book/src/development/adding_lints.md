@@ -146,7 +146,8 @@ For cargo lints, the process of testing differs in that we are interested in the
 manifest.
 
 If our new lint is named e.g. `foo_categories`, after running `cargo dev
-new_lint` we will find by default two new crates, each with its manifest file:
+new_lint --name=foo_categories --type=cargo --category=cargo` we will find by
+default two new crates, each with its manifest file:
 
 * `tests/ui-cargo/foo_categories/fail/Cargo.toml`: this file should cause the
   new lint to raise an error.
@@ -443,27 +444,27 @@ value is passed to the constructor in `clippy_lints/lib.rs`.
 
 ```rust
 pub struct ManualStrip {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl ManualStrip {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
 ```
 
 The project's MSRV can then be matched against the feature MSRV in the LintPass
-using the `meets_msrv` utility function.
+using the `Msrv::meets` method.
 
 ``` rust
-if !meets_msrv(self.msrv, msrvs::STR_STRIP_PREFIX) {
+if !self.msrv.meets(msrvs::STR_STRIP_PREFIX) {
     return;
 }
 ```
 
-The project's MSRV can also be specified as an inner attribute, which overrides
+The project's MSRV can also be specified as an attribute, which overrides
 the value from `clippy.toml`. This can be accounted for using the
 `extract_msrv_attr!(LintContext)` macro and passing
 `LateContext`/`EarlyContext`.
@@ -478,8 +479,23 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
 ```
 
 Once the `msrv` is added to the lint, a relevant test case should be added to
-`tests/ui/min_rust_version_attr.rs` which verifies that the lint isn't emitted
-if the project's MSRV is lower.
+the lint's test file, `tests/ui/manual_strip.rs` in this example. It should
+have a case for the version below the MSRV and one with the same contents but
+for the MSRV version itself.
+
+```rust
+...
+
+#[clippy::msrv = "1.44"]
+fn msrv_1_44() {
+    /* something that would trigger the lint */
+}
+
+#[clippy::msrv = "1.45"]
+fn msrv_1_45() {
+    /* something that would trigger the lint */
+}
+```
 
 As a last step, the lint should be added to the lint documentation. This is done
 in `clippy_lints/src/utils/conf.rs`:
@@ -683,6 +699,10 @@ for some users. Adding a configuration is done in the following steps:
        Simply add a new subfolder with a fitting name. This folder contains a
        `clippy.toml` file with the configuration value and a rust file that
        should be linted by Clippy. The test can otherwise be written as usual.
+
+5. Update [Lint Configuration](../lint_configuration.md)
+
+   Run `cargo collect-metadata` to generate documentation changes for the book.
 
 [`clippy_lints::utils::conf`]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/conf.rs
 [`clippy_lints` lib file]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/lib.rs

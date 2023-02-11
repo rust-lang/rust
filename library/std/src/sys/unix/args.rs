@@ -141,12 +141,28 @@ mod imp {
             // list.
             let argv = ARGV.load(Ordering::Relaxed);
             let argc = if argv.is_null() { 0 } else { ARGC.load(Ordering::Relaxed) };
-            (0..argc)
-                .map(|i| {
-                    let cstr = CStr::from_ptr(*argv.offset(i) as *const libc::c_char);
-                    OsStringExt::from_vec(cstr.to_bytes().to_vec())
-                })
-                .collect()
+            let mut args = Vec::with_capacity(argc as usize);
+            for i in 0..argc {
+                let ptr = *argv.offset(i) as *const libc::c_char;
+
+                // Some C commandline parsers (e.g. GLib and Qt) are replacing already
+                // handled arguments in `argv` with `NULL` and move them to the end. That
+                // means that `argc` might be bigger than the actual number of non-`NULL`
+                // pointers in `argv` at this point.
+                //
+                // To handle this we simply stop iterating at the first `NULL` argument.
+                //
+                // `argv` is also guaranteed to be `NULL`-terminated so any non-`NULL` arguments
+                // after the first `NULL` can safely be ignored.
+                if ptr.is_null() {
+                    break;
+                }
+
+                let cstr = CStr::from_ptr(ptr);
+                args.push(OsStringExt::from_vec(cstr.to_bytes().to_vec()));
+            }
+
+            args
         }
     }
 }

@@ -9,8 +9,6 @@ use core::num::flt2dec::MAX_SIG_DIGITS;
 use core::num::flt2dec::{decode, DecodableFloat, Decoded, FullDecoded};
 
 use rand::distributions::{Distribution, Uniform};
-use rand::rngs::StdRng;
-use rand::SeedableRng;
 
 pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
     match decode(v).1 {
@@ -92,7 +90,7 @@ where
     if cfg!(target_os = "emscripten") {
         return; // using rng pulls in i128 support, which doesn't work
     }
-    let mut rng = StdRng::from_entropy();
+    let mut rng = crate::test_rng();
     let f32_range = Uniform::new(0x0000_0001u32, 0x7f80_0000);
     iterate("f32_random_equivalence_test", k, n, f, g, |_| {
         let x = f32::from_bits(f32_range.sample(&mut rng));
@@ -108,7 +106,7 @@ where
     if cfg!(target_os = "emscripten") {
         return; // using rng pulls in i128 support, which doesn't work
     }
-    let mut rng = StdRng::from_entropy();
+    let mut rng = crate::test_rng();
     let f64_range = Uniform::new(0x0000_0000_0000_0001u64, 0x7ff0_0000_0000_0000);
     iterate("f64_random_equivalence_test", k, n, f, g, |_| {
         let x = f64::from_bits(f64_range.sample(&mut rng));

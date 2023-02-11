@@ -1,3 +1,4 @@
+use crate::errors::UnconditionalRecursion;
 use rustc_data_structures::graph::iterate::{
     NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
@@ -36,19 +37,11 @@ pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
 
         let sp = tcx.def_span(def_id);
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        tcx.struct_span_lint_hir(
+        tcx.emit_spanned_lint(
             UNCONDITIONAL_RECURSION,
             hir_id,
             sp,
-            "function cannot return without recursing",
-            |lint| {
-                lint.span_label(sp, "cannot return without recursing");
-                // offer some help to the programmer.
-                for call_span in vis.reachable_recursive_calls {
-                    lint.span_label(call_span, "recursive call site");
-                }
-                lint.help("a `loop` may express intention better if this is on purpose")
-            },
+            UnconditionalRecursion { span: sp, call_sites: vis.reachable_recursive_calls },
         );
     }
 }
@@ -67,7 +60,7 @@ impl<'mir, 'tcx> Search<'mir, 'tcx> {
     /// Returns `true` if `func` refers to the function we are searching in.
     fn is_recursive_call(&self, func: &Operand<'tcx>, args: &[Operand<'tcx>]) -> bool {
         let Search { tcx, body, trait_substs, .. } = *self;
-        // Resolving function type to a specific instance that is being called is expensive.  To
+        // Resolving function type to a specific instance that is being called is expensive. To
         // avoid the cost we check the number of arguments first, which is sufficient to reject
         // most of calls as non-recursive.
         if args.len() != body.arg_count {
@@ -125,7 +118,7 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
             // A diverging InlineAsm is treated as non-recursing
             TerminatorKind::InlineAsm { destination, .. } => {
                 if destination.is_some() {
-                    ControlFlow::CONTINUE
+                    ControlFlow::Continue(())
                 } else {
                     ControlFlow::Break(NonRecursive)
                 }
@@ -139,7 +132,7 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Goto { .. }
-            | TerminatorKind::SwitchInt { .. } => ControlFlow::CONTINUE,
+            | TerminatorKind::SwitchInt { .. } => ControlFlow::Continue(()),
         }
     }
 
@@ -152,7 +145,7 @@ impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
             }
         }
 
-        ControlFlow::CONTINUE
+        ControlFlow::Continue(())
     }
 
     fn ignore_edge(&mut self, bb: BasicBlock, target: BasicBlock) -> bool {

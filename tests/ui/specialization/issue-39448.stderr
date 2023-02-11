@@ -1,0 +1,35 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-39448.rs:1:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0275]: overflow evaluating the requirement `T: FromA<U>`
+  --> $DIR/issue-39448.rs:45:13
+   |
+LL |     x.foo(y.to()).to()
+   |             ^^
+   |
+note: required for `T` to implement `FromA<U>`
+  --> $DIR/issue-39448.rs:24:29
+   |
+LL | impl<T: A, U: A + FromA<T>> FromA<T> for U {
+   |                   --------  ^^^^^^^^     ^
+   |                   |
+   |                   unsatisfied trait bound introduced here
+note: required for `U` to implement `ToA<T>`
+  --> $DIR/issue-39448.rs:34:12
+   |
+LL | impl<T, U> ToA<U> for T
+   |            ^^^^^^     ^
+LL | where
+LL |     U: FromA<T>,
+   |        -------- unsatisfied trait bound introduced here
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0275`.

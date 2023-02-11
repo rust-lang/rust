@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/different_defining_uses_never_type3.rs:9:13
+   |
+LL | fn two() -> Tait { Two::<()>(todo!()) }
+   |             ^^^^ expected `One`, got `Two<()>`
+   |
+note: previous use here
+  --> $DIR/different_defining_uses_never_type3.rs:6:20
+   |
+LL | fn one() -> Tait { One }
+   |                    ^^^
+
+error: aborting due to previous error
+

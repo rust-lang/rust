@@ -12,11 +12,12 @@ mod vec_box;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Body, FnDecl, FnRetTy, GenericArg, HirId, ImplItem, ImplItemKind, Item, ItemKind, Local, MutTy, QPath, TraitItem,
+    Body, FnDecl, FnRetTy, GenericArg, ImplItem, ImplItemKind, Item, ItemKind, Local, MutTy, QPath, TraitItem,
     TraitItemKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 
 declare_clippy_lint! {
@@ -127,7 +128,7 @@ declare_clippy_lint! {
     /// `Vec` or a `VecDeque` (formerly called `RingBuf`).
     ///
     /// ### Why is this bad?
-    /// Gankro says:
+    /// Gankra says:
     ///
     /// > The TL;DR of `LinkedList` is that it's built on a massive amount of
     /// pointers and indirection.
@@ -311,15 +312,27 @@ pub struct Types {
 impl_lint_pass!(Types => [BOX_COLLECTION, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER, RC_MUTEX, TYPE_COMPLEXITY]);
 
 impl<'tcx> LateLintPass<'tcx> for Types {
-    fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
-        let is_in_trait_impl =
-            if let Some(hir::Node::Item(item)) = cx.tcx.hir().find_by_def_id(cx.tcx.hir().get_parent_item(id).def_id) {
-                matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
-            } else {
-                false
-            };
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'_>,
+        _: FnKind<'_>,
+        decl: &FnDecl<'_>,
+        _: &Body<'_>,
+        _: Span,
+        def_id: LocalDefId,
+    ) {
+        let is_in_trait_impl = if let Some(hir::Node::Item(item)) = cx.tcx.hir().find_by_def_id(
+            cx.tcx
+                .hir()
+                .get_parent_item(cx.tcx.hir().local_def_id_to_hir_id(def_id))
+                .def_id,
+        ) {
+            matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
+        } else {
+            false
+        };
 
-        let is_exported = cx.access_levels.is_exported(cx.tcx.hir().local_def_id(id));
+        let is_exported = cx.effective_visibilities.is_exported(def_id);
 
         self.check_fn_decl(
             cx,
@@ -333,7 +346,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        let is_exported = cx.access_levels.is_exported(item.def_id.def_id);
+        let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         match item.kind {
             ItemKind::Static(ty, _, _) | ItemKind::Const(ty, _) => self.check_ty(
@@ -379,7 +392,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
-        let is_exported = cx.access_levels.is_exported(cx.tcx.hir().local_def_id(field.hir_id));
+        let is_exported = cx.effective_visibilities.is_exported(field.def_id);
 
         self.check_ty(
             cx,
@@ -392,7 +405,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &TraitItem<'_>) {
-        let is_exported = cx.access_levels.is_exported(item.def_id.def_id);
+        let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         let context = CheckTyContext {
             is_exported,
@@ -537,7 +550,7 @@ impl Types {
                     QPath::LangItem(..) => {},
                 }
             },
-            TyKind::Rptr(lt, ref mut_ty) => {
+            TyKind::Ref(lt, ref mut_ty) => {
                 context.is_nested_call = true;
                 if !borrowed_box::check(cx, hir_ty, lt, mut_ty) {
                     self.check_ty(cx, mut_ty.ty, context);

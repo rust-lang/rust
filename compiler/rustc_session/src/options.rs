@@ -169,6 +169,8 @@ top_level_options!(
         /// is currently just a hack and will be removed eventually, so please
         /// try to not rely on this too much.
         actually_rustdoc: bool [TRACKED],
+        /// Whether name resolver should resolve documentation links.
+        resolve_doc_links: ResolveDocLinks [TRACKED],
 
         /// Control path trimming.
         trimmed_def_paths: TrimmedDefPaths [TRACKED],
@@ -181,12 +183,12 @@ top_level_options!(
         #[rustc_lint_opt_deny_field_access("use `Session::codegen_units` instead of this field")]
         cli_forced_codegen_units: Option<usize> [UNTRACKED],
         #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
-        cli_forced_thinlto_off: bool [UNTRACKED],
+        cli_forced_local_thinlto_off: bool [UNTRACKED],
 
         /// Remap source path prefixes in all output (messages, object files, debug, etc.).
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [TRACKED_NO_CRATE_HASH],
         /// Base directory containing the `src/` for the Rust standard library, and
-        /// potentially `rustc` as well, if we can can find it. Right now it's always
+        /// potentially `rustc` as well, if we can find it. Right now it's always
         /// `$sysroot/lib/rustlib/src/rust` (i.e. the `rustup` `rust-src` component).
         ///
         /// This directory is what the virtual `/rustc/$hash` is translated back to,
@@ -349,7 +351,7 @@ fn build_options<O: Default>(
 #[allow(non_upper_case_globals)]
 mod desc {
     pub const parse_no_flag: &str = "no value";
-    pub const parse_bool: &str = "one of: `y`, `yes`, `on`, `n`, `no`, or `off`";
+    pub const parse_bool: &str = "one of: `y`, `yes`, `on`, `true`, `n`, `no`, `off` or `false`";
     pub const parse_opt_bool: &str = parse_bool;
     pub const parse_string: &str = "a string";
     pub const parse_opt_string: &str = parse_string;
@@ -368,7 +370,7 @@ mod desc {
     pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub const parse_oom_strategy: &str = "either `panic` or `abort`";
     pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
-    pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `hwaddress`, `leak`, `memory`, `memtag`, `shadow-call-stack`, or `thread`";
+    pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `hwaddress`, `kcfi`, `leak`, `memory`, `memtag`, `shadow-call-stack`, or `thread`";
     pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
     pub const parse_cfguard: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
@@ -377,10 +379,14 @@ mod desc {
     pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_mir_spanview: &str = "`statement` (default), `terminator`, or `block`";
+    pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub const parse_instrument_coverage: &str =
         "`all` (default), `except-unused-generics`, `except-unused-functions`, or `off`";
+    pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a number bigger than 0";
+    pub const parse_trait_solver: &str =
+        "one of the supported solver modes (`classic`, `chalk`, or `next`)";
     pub const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub const parse_linker_plugin_lto: &str =
@@ -429,11 +435,11 @@ mod parse {
     /// Use this for any boolean option that has a static default.
     pub(crate) fn parse_bool(slot: &mut bool, v: Option<&str>) -> bool {
         match v {
-            Some("y") | Some("yes") | Some("on") | None => {
+            Some("y") | Some("yes") | Some("on") | Some("true") | None => {
                 *slot = true;
                 true
             }
-            Some("n") | Some("no") | Some("off") => {
+            Some("n") | Some("no") | Some("off") | Some("false") => {
                 *slot = false;
                 true
             }
@@ -446,11 +452,11 @@ mod parse {
     /// other factors, such as other options, or target options.)
     pub(crate) fn parse_opt_bool(slot: &mut Option<bool>, v: Option<&str>) -> bool {
         match v {
-            Some("y") | Some("yes") | Some("on") | None => {
+            Some("y") | Some("yes") | Some("on") | Some("true") | None => {
                 *slot = Some(true);
                 true
             }
-            Some("n") | Some("no") | Some("off") => {
+            Some("n") | Some("no") | Some("off") | Some("false") => {
                 *slot = Some(false);
                 true
             }
@@ -675,6 +681,7 @@ mod parse {
                 *slot |= match s {
                     "address" => SanitizerSet::ADDRESS,
                     "cfi" => SanitizerSet::CFI,
+                    "kcfi" => SanitizerSet::KCFI,
                     "leak" => SanitizerSet::LEAK,
                     "memory" => SanitizerSet::MEMORY,
                     "memtag" => SanitizerSet::MEMTAG,
@@ -819,6 +826,21 @@ mod parse {
         true
     }
 
+    pub(crate) fn parse_dump_mono_stats(slot: &mut DumpMonoStatsFormat, v: Option<&str>) -> bool {
+        match v {
+            None => true,
+            Some("json") => {
+                *slot = DumpMonoStatsFormat::Json;
+                true
+            }
+            Some("markdown") => {
+                *slot = DumpMonoStatsFormat::Markdown;
+                true
+            }
+            Some(_) => false,
+        }
+    }
+
     pub(crate) fn parse_instrument_coverage(
         slot: &mut Option<InstrumentCoverage>,
         v: Option<&str>,
@@ -850,6 +872,68 @@ mod parse {
         true
     }
 
+    pub(crate) fn parse_instrument_xray(
+        slot: &mut Option<InstrumentXRay>,
+        v: Option<&str>,
+    ) -> bool {
+        if v.is_some() {
+            let mut bool_arg = None;
+            if parse_opt_bool(&mut bool_arg, v) {
+                *slot = if bool_arg.unwrap() { Some(InstrumentXRay::default()) } else { None };
+                return true;
+            }
+        }
+
+        let mut options = slot.get_or_insert_default();
+        let mut seen_always = false;
+        let mut seen_never = false;
+        let mut seen_ignore_loops = false;
+        let mut seen_instruction_threshold = false;
+        let mut seen_skip_entry = false;
+        let mut seen_skip_exit = false;
+        for option in v.into_iter().map(|v| v.split(',')).flatten() {
+            match option {
+                "always" if !seen_always && !seen_never => {
+                    options.always = true;
+                    options.never = false;
+                    seen_always = true;
+                }
+                "never" if !seen_never && !seen_always => {
+                    options.never = true;
+                    options.always = false;
+                    seen_never = true;
+                }
+                "ignore-loops" if !seen_ignore_loops => {
+                    options.ignore_loops = true;
+                    seen_ignore_loops = true;
+                }
+                option
+                    if option.starts_with("instruction-threshold")
+                        && !seen_instruction_threshold =>
+                {
+                    let Some(("instruction-threshold", n)) = option.split_once('=') else {
+                        return false;
+                    };
+                    match n.parse() {
+                        Ok(n) => options.instruction_threshold = Some(n),
+                        Err(_) => return false,
+                    }
+                    seen_instruction_threshold = true;
+                }
+                "skip-entry" if !seen_skip_entry => {
+                    options.skip_entry = true;
+                    seen_skip_entry = true;
+                }
+                "skip-exit" if !seen_skip_exit => {
+                    options.skip_exit = true;
+                    seen_skip_exit = true;
+                }
+                _ => return false,
+            }
+        }
+        true
+    }
+
     pub(crate) fn parse_treat_err_as_bug(slot: &mut Option<NonZeroUsize>, v: Option<&str>) -> bool {
         match v {
             Some(s) => {
@@ -861,6 +945,18 @@ mod parse {
                 true
             }
         }
+    }
+
+    pub(crate) fn parse_trait_solver(slot: &mut TraitSolver, v: Option<&str>) -> bool {
+        match v {
+            Some("classic") => *slot = TraitSolver::Classic,
+            Some("chalk") => *slot = TraitSolver::Chalk,
+            Some("next") => *slot = TraitSolver::Next,
+            // default trait solver is subject to change..
+            Some("default") => *slot = TraitSolver::Classic,
+            _ => return false,
+        }
+        true
     }
 
     pub(crate) fn parse_lto(slot: &mut LtoCli, v: Option<&str>) -> bool {
@@ -1075,12 +1171,11 @@ mod parse {
 options! {
     CodegenOptions, CG_OPTIONS, cgopts, "C", "codegen",
 
-    // This list is in alphabetical order.
-    //
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
     // - src/doc/rustc/src/codegen-options/index.md
 
+    // tidy-alphabetical-start
     ar: String = (String::new(), parse_string, [UNTRACKED],
         "this option is deprecated and does nothing"),
     #[rustc_lint_opt_deny_field_access("use `Session::code_model` instead of this field")]
@@ -1195,9 +1290,8 @@ options! {
     target_feature: String = (String::new(), parse_target_feature, [TRACKED],
         "target specific attributes. (`rustc --print target-features` for details). \
         This feature is unsafe."),
+    // tidy-alphabetical-end
 
-    // This list is in alphabetical order.
-    //
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
     // - src/doc/rustc/src/codegen-options/index.md
@@ -1206,29 +1300,27 @@ options! {
 options! {
     UnstableOptions, Z_OPTIONS, dbopts, "Z", "unstable",
 
-    // This list is in alphabetical order.
-    //
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
     // - src/doc/unstable-book/src/compiler-flags
 
+    // tidy-alphabetical-start
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
-        "only allow the listed language features to be enabled in code (space separated)"),
+        "only allow the listed language features to be enabled in code (comma separated)"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata (default: no)"),
-    assume_incomplete_release: bool = (false, parse_bool, [TRACKED],
-        "make cfg(version) treat the current version as incomplete (default: no)"),
-    #[rustc_lint_opt_deny_field_access("use `Session::asm_comments` instead of this field")]
     asm_comments: bool = (false, parse_bool, [TRACKED],
         "generate comments into the assembly (may change behavior) (default: no)"),
     assert_incr_state: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "assert that the incremental cache is in given state: \
          either `loaded` or `not-loaded`."),
+    assume_incomplete_release: bool = (false, parse_bool, [TRACKED],
+        "make cfg(version) treat the current version as incomplete (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::binary_dep_depinfo` instead of this field")]
     binary_dep_depinfo: bool = (false, parse_bool, [TRACKED],
         "include artifacts (sysroot, crate dependencies) used during compilation in dep-info \
         (default: no)"),
-    box_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    box_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for box (default: yes)"),
     branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED],
         "set options for branch target identification and pointer authentication on AArch64"),
@@ -1236,8 +1328,6 @@ options! {
         "instrument control-flow architecture protection"),
     cgu_partitioning_strategy: Option<String> = (None, parse_opt_string, [TRACKED],
         "the codegen unit partitioning strategy to use"),
-    chalk: bool = (false, parse_bool, [TRACKED],
-        "enable the experimental Chalk-based trait solving engine"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],
@@ -1256,6 +1346,8 @@ options! {
     dep_tasks: bool = (false, parse_bool, [UNTRACKED],
         "print tasks that execute and the color their dep node gets (requires debug build) \
         (default: no)"),
+    diagnostic_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
+        "set the current output width for diagnostic truncation"),
     dlltool: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "import library generation tool (windows-gnu only)"),
     dont_buffer_diagnostics: bool = (false, parse_bool, [UNTRACKED],
@@ -1263,6 +1355,8 @@ options! {
         (default: no)"),
     drop_tracking: bool = (false, parse_bool, [TRACKED],
         "enables drop tracking in generators (default: no)"),
+    drop_tracking_mir: bool = (false, parse_bool, [TRACKED],
+        "enables drop tracking on MIR in generators (default: no)"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
@@ -1294,8 +1388,15 @@ options! {
         computed `block` spans (one span encompassing a block's terminator and \
         all statements). If `-Z instrument-coverage` is also enabled, create \
         an additional `.html` file showing the computed coverage spans."),
+    dump_mono_stats: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
+        parse_switch_with_opt_path, [UNTRACKED],
+        "output statistics about monomorphization collection"),
+    dump_mono_stats_format: DumpMonoStatsFormat = (DumpMonoStatsFormat::Markdown, parse_dump_mono_stats, [UNTRACKED],
+        "the format to use for -Z dump-mono-stats (`markdown` (default) or `json`)"),
     dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
+    dylib_lto: bool = (false, parse_bool, [UNTRACKED],
+        "enables LTO for dylib crate type"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
     emit_thin_lto: bool = (true, parse_bool, [TRACKED],
@@ -1328,25 +1429,26 @@ options! {
         "generate human-readable, predictable names for codegen units (default: no)"),
     identify_regions: bool = (false, parse_bool, [UNTRACKED],
         "display unnamed regions as `'<id>`, using a non-ident unique id (default: no)"),
-    incremental_ignore_spans: bool = (false, parse_bool, [UNTRACKED],
+    incremental_ignore_spans: bool = (false, parse_bool, [TRACKED],
         "ignore spans during ICH computation -- used for testing (default: no)"),
     incremental_info: bool = (false, parse_bool, [UNTRACKED],
         "print high-level information about incremental reuse (or the lack thereof) \
         (default: no)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::incremental_relative_spans` instead of this field")]
     incremental_relative_spans: bool = (false, parse_bool, [TRACKED],
         "hash spans relative to their parent item for incr. comp. (default: no)"),
     incremental_verify_ich: bool = (false, parse_bool, [UNTRACKED],
         "verify incr. comp. hashes of green query instances (default: no)"),
+    inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "control whether `#[inline]` functions are in all CGUs"),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
         "enable LLVM inlining (default: yes)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable MIR inlining (default: no)"),
-    inline_mir_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
-        "a default MIR inlining threshold (default: 50)"),
     inline_mir_hint_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
         "inlining threshold for functions with inline hint (default: 100)"),
-    inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
-        "control whether `#[inline]` functions are in all CGUs"),
+    inline_mir_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "a default MIR inlining threshold (default: 50)"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather statistics about the input (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
@@ -1358,11 +1460,22 @@ options! {
         `=except-unused-generics`
         `=except-unused-functions`
         `=off` (default)"),
-    #[rustc_lint_opt_deny_field_access("use `Session::instrument_mcount` instead of this field")]
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
+    instrument_xray: Option<InstrumentXRay> = (None, parse_instrument_xray, [TRACKED],
+        "insert function instrument code for XRay-based tracing (default: no)
+         Optional extra settings:
+         `=always`
+         `=never`
+         `=ignore-loops`
+         `=instruction-threshold=N`
+         `=skip-entry`
+         `=skip-exit`
+         Multiple options can be combined with commas."),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],
         "keep hygiene data after analysis (default: no)"),
+    layout_seed: Option<u64> = (None, parse_opt_number, [TRACKED],
+        "seed layout randomization"),
     link_native_libraries: bool = (true, parse_bool, [UNTRACKED],
         "link native libraries in the linker invocation (default: yes)"),
     link_only: bool = (false, parse_bool, [TRACKED],
@@ -1379,10 +1492,12 @@ options! {
         "list the symbols defined by a library crate (default: no)"),
     macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
         "show macro backtraces (default: no)"),
+    maximal_hir_to_mir_coverage: bool = (false, parse_bool, [TRACKED],
+        "save as much information as possible about the correspondence between MIR and HIR \
+        as source scopes (default: no)"),
     merge_functions: Option<MergeFunctions> = (None, parse_merge_functions, [TRACKED],
         "control the operation of the MergeFunctions LLVM pass, taking \
         the same values as the target option of the same name"),
-    #[rustc_lint_opt_deny_field_access("use `Session::meta_stats` instead of this field")]
     meta_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather metadata statistics (default: no)"),
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
@@ -1392,14 +1507,14 @@ options! {
         "use like `-Zmir-enable-passes=+DestProp,-InstCombine`. Forces the specified passes to be \
         enabled, overriding all other checks. Passes that are not specified are enabled or \
         disabled by other flags as usual."),
-    mir_pretty_relative_line_numbers: bool = (false, parse_bool, [UNTRACKED],
-        "use line numbers relative to the function in mir pretty printing"),
     #[rustc_lint_opt_deny_field_access("use `Session::mir_opt_level` instead of this field")]
     mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
+    mir_pretty_relative_line_numbers: bool = (false, parse_bool, [UNTRACKED],
+        "use line numbers relative to the function in mir pretty printing"),
     move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "the size at which the `large_assignments` lint starts to be emitted"),
-    mutable_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    mutable_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes)"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
         "dump facts from NLL analysis into side files (default: no)"),
@@ -1411,26 +1526,24 @@ options! {
         "run all passes except codegen; no output"),
     no_generate_arange_section: bool = (false, parse_no_flag, [TRACKED],
         "omit DWARF address ranges that give faster lookups"),
-    no_interleave_lints: bool = (false, parse_no_flag, [UNTRACKED],
-        "execute lints separately; allows benchmarking individual lints"),
+    no_jump_tables: bool = (false, parse_no_flag, [TRACKED],
+        "disable the jump tables and lookup tables that can be generated from a switch case lowering"),
     no_leak_check: bool = (false, parse_no_flag, [UNTRACKED],
         "disable the 'leak check' for subtyping; unsound, but useful for tests"),
     no_link: bool = (false, parse_no_flag, [TRACKED],
         "compile without linking"),
     no_parallel_llvm: bool = (false, parse_no_flag, [UNTRACKED],
         "run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)"),
-    no_unique_section_names: bool = (false, parse_bool, [TRACKED],
-        "do not use unique names for text and data sections when -Z function-sections is used"),
     no_profiler_runtime: bool = (false, parse_no_flag, [TRACKED],
         "prevent automatic injection of the profiler_builtins crate"),
+    no_unique_section_names: bool = (false, parse_bool, [TRACKED],
+        "do not use unique names for text and data sections when -Z function-sections is used"),
     normalize_docs: bool = (false, parse_bool, [TRACKED],
         "normalize associated items in rustdoc when generating documentation"),
     oom: OomStrategy = (OomStrategy::Abort, parse_oom_strategy, [TRACKED],
         "panic strategy for out-of-memory handling"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
-    diagnostic_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
-        "set the current output width for diagnostic truncation"),
     packed_bundled_libs: bool = (false, parse_bool, [TRACKED],
         "change rlib format to store native libraries as archives"),
     panic_abort_tests: bool = (false, parse_bool, [TRACKED],
@@ -1461,7 +1574,6 @@ options! {
         See #77382 and #74551."),
     print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
         "make rustc print the total optimization fuel used by a crate"),
-    #[rustc_lint_opt_deny_field_access("use `Session::print_llvm_passes` instead of this field")]
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "print the LLVM optimization passes being run (default: no)"),
     print_mono_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
@@ -1480,25 +1592,20 @@ options! {
     profile_emit: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "file path to emit profiling data at runtime when using 'profile' \
         (default based on relative source path)"),
-    profiler_runtime: String = (String::from("profiler_builtins"), parse_string, [TRACKED],
-        "name of the profiler runtime crate to automatically inject (default: `profiler_builtins`)"),
     profile_sample_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "use the given `.prof` file for sampled profile-guided optimization (also known as AutoFDO)"),
+    profiler_runtime: String = (String::from("profiler_builtins"), parse_string, [TRACKED],
+        "name of the profiler runtime crate to automatically inject (default: `profiler_builtins`)"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "enable queries of the dependency graph for regression testing (default: no)"),
     randomize_layout: bool = (false, parse_bool, [TRACKED],
         "randomize the layout of types (default: no)"),
-    layout_seed: Option<u64> = (None, parse_opt_number, [TRACKED],
-        "seed layout randomization"),
     relax_elf_relocations: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether ELF relocations can be relaxed"),
     relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
         "choose which RELRO level to use"),
     remap_cwd_prefix: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "remap paths under the current working directory to this path prefix"),
-    simulate_remapped_rust_src_base: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
-        "simulate the effect of remap-debuginfo = true at bootstrapping by remapping path \
-        to rust's source base directory. only meant for testing purposes"),
     report_delayed_bugs: bool = (false, parse_bool, [TRACKED],
         "immediately print bugs registered with `delay_span_bug` (default: no)"),
     sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
@@ -1516,27 +1623,41 @@ options! {
     self_profile: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
         parse_switch_with_opt_path, [UNTRACKED],
         "run the self profiler and output the raw event data"),
-    /// keep this in sync with the event filter names in librustc_data_structures/profiling.rs
-    self_profile_events: Option<Vec<String>> = (None, parse_opt_comma_list, [UNTRACKED],
-        "specify the events recorded by the self profiler;
-        for example: `-Z self-profile-events=default,query-keys`
-        all options: none, all, default, generic-activity, query-provider, query-cache-hit
-                     query-blocked, incr-cache-load, incr-result-hashing, query-keys, function-args, args, llvm, artifact-sizes"),
     self_profile_counter: String = ("wall-time".to_string(), parse_string, [UNTRACKED],
         "counter used by the self profiler (default: `wall-time`), one of:
         `wall-time` (monotonic clock, i.e. `std::time::Instant`)
         `instructions:u` (retired instructions, userspace-only)
         `instructions-minus-irqs:u` (subtracting hardware interrupt counts for extra accuracy)"
     ),
+    /// keep this in sync with the event filter names in librustc_data_structures/profiling.rs
+    self_profile_events: Option<Vec<String>> = (None, parse_opt_comma_list, [UNTRACKED],
+        "specify the events recorded by the self profiler;
+        for example: `-Z self-profile-events=default,query-keys`
+        all options: none, all, default, generic-activity, query-provider, query-cache-hit
+                     query-blocked, incr-cache-load, incr-result-hashing, query-keys, function-args, args, llvm, artifact-sizes"),
     share_generics: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "make the current crate share its generic instantiations"),
     show_span: Option<String> = (None, parse_opt_string, [TRACKED],
         "show spans for compiler debugging (expr|pat|ty)"),
+    simulate_remapped_rust_src_base: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
+        "simulate the effect of remap-debuginfo = true at bootstrapping by remapping path \
+        to rust's source base directory. only meant for testing purposes"),
     span_debug: bool = (false, parse_bool, [UNTRACKED],
         "forward proc_macro::Span's `Debug` impl to `Span`"),
     /// o/w tests have closure@path
     span_free_formats: bool = (false, parse_bool, [UNTRACKED],
         "exclude spans when debug-printing compiler state (default: no)"),
+    split_dwarf_inlining: bool = (false, parse_bool, [TRACKED],
+        "provide minimal debug info in the object/executable to facilitate online \
+         symbolication/stack traces in the absence of .dwo/.dwp files when using Split DWARF"),
+    split_dwarf_kind: SplitDwarfKind = (SplitDwarfKind::Split, parse_split_dwarf_kind, [TRACKED],
+        "split dwarf variant (only if -Csplit-debuginfo is enabled and on relevant platform)
+        (default: `split`)
+
+        `split`: sections which do not require relocation are written into a DWARF object (`.dwo`)
+                 file which is ignored by the linker
+        `single`: sections which do not require relocation are written into object file but ignored
+                  by the linker"),
     src_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_src_file_hash, [TRACKED],
         "hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)"),
     #[rustc_lint_opt_deny_field_access("use `Session::stack_protector` instead of this field")]
@@ -1546,17 +1667,6 @@ options! {
         "control if mem::uninitialized and mem::zeroed panic on more UB"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
-    split_dwarf_kind: SplitDwarfKind = (SplitDwarfKind::Split, parse_split_dwarf_kind, [TRACKED],
-        "split dwarf variant (only if -Csplit-debuginfo is enabled and on relevant platform)
-        (default: `split`)
-
-        `split`: sections which do not require relocation are written into a DWARF object (`.dwo`)
-                 file which is ignored by the linker
-        `single`: sections which do not require relocation are written into object file but ignored
-                  by the linker"),
-    split_dwarf_inlining: bool = (true, parse_bool, [TRACKED],
-        "provide minimal debug info in the object/executable to facilitate online \
-         symbolication/stack traces in the absence of .dwo/.dwp files when using Split DWARF"),
     symbol_mangling_version: Option<SymbolManglingVersion> = (None,
         parse_symbol_mangling_version, [TRACKED],
         "which mangling version to use for symbol names ('legacy' (default) or 'v0')"),
@@ -1565,17 +1675,6 @@ options! {
         "show extended diagnostic help (default: no)"),
     temps_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "the directory the intermediate files are written to"),
-    // Diagnostics are considered side-effects of a query (see `QuerySideEffects`) and are saved
-    // alongside query results and changes to translation options can affect diagnostics - so
-    // translation options should be tracked.
-    translate_lang: Option<LanguageIdentifier> = (None, parse_opt_langid, [TRACKED],
-        "language identifier for diagnostic output"),
-    translate_additional_ftl: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
-        "additional fluent translation to preferentially use (for testing translation)"),
-    translate_directionality_markers: bool = (false, parse_bool, [TRACKED],
-        "emit directionality isolation markers in translated diagnostics"),
-    tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
-        "select processor to schedule for (`rustc --print target-cpus` for details)"),
     #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),
@@ -1588,17 +1687,30 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::threads` instead of this field")]
     threads: usize = (1, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
-    #[rustc_lint_opt_deny_field_access("use `Session::time_llvm_passes` instead of this field")]
     time_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each LLVM pass (default: no)"),
-    #[rustc_lint_opt_deny_field_access("use `Session::time_passes` instead of this field")]
     time_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each rustc pass (default: no)"),
+    tiny_const_eval_limit: bool = (false, parse_bool, [TRACKED],
+        "sets a tiny, non-configurable limit for const eval; useful for compiler tests"),
     #[rustc_lint_opt_deny_field_access("use `Session::tls_model` instead of this field")]
     tls_model: Option<TlsModel> = (None, parse_tls_model, [TRACKED],
         "choose the TLS model to use (`rustc --print tls-models` for details)"),
     trace_macros: bool = (false, parse_bool, [UNTRACKED],
         "for every macro invocation, print its name and arguments (default: no)"),
+    track_diagnostics: bool = (false, parse_bool, [UNTRACKED],
+        "tracks where in rustc a diagnostic was emitted"),
+    trait_solver: TraitSolver = (TraitSolver::Classic, parse_trait_solver, [TRACKED],
+        "specify the trait solver mode used by rustc (default: classic)"),
+    // Diagnostics are considered side-effects of a query (see `QuerySideEffects`) and are saved
+    // alongside query results and changes to translation options can affect diagnostics - so
+    // translation options should be tracked.
+    translate_additional_ftl: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
+        "additional fluent translation to preferentially use (for testing translation)"),
+    translate_directionality_markers: bool = (false, parse_bool, [TRACKED],
+        "emit directionality isolation markers in translated diagnostics"),
+    translate_lang: Option<LanguageIdentifier> = (None, parse_opt_langid, [TRACKED],
+        "language identifier for diagnostic output"),
     translate_remapped_path_to_local_path: bool = (true, parse_bool, [TRACKED],
         "translate remapped paths into local paths when possible (default: yes)"),
     trap_unreachable: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -1607,6 +1719,8 @@ options! {
         "treat error number `val` that occurs as bug"),
     trim_diagnostic_paths: bool = (true, parse_bool, [UNTRACKED],
         "in diagnostics, use heuristics to shorten paths referring to items"),
+    tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
+        "select processor to schedule for (`rustc --print target-cpus` for details)"),
     ui_testing: bool = (false, parse_bool, [UNTRACKED],
         "emit compiler diagnostics in a form suitable for UI testing (default: no)"),
     uninit_const_chunk_threshold: usize = (16, parse_number, [TRACKED],
@@ -1647,9 +1761,8 @@ options! {
         Requires `-Clto[=[fat,yes]]`"),
     wasi_exec_model: Option<WasiExecModel> = (None, parse_wasi_exec_model, [TRACKED],
         "whether to build a wasi command or reactor"),
+    // tidy-alphabetical-end
 
-    // This list is in alphabetical order.
-    //
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
 }

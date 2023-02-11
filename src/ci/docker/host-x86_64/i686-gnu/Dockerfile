@@ -15,7 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   gdb \
   zlib1g-dev \
   lib32z1-dev \
-  xz-utils
+  xz-utils \
+  && rm -rf /var/lib/apt/lists/*
 
 
 COPY scripts/sccache.sh /scripts/
@@ -26,6 +27,6 @@ ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu
 # this slow job.
 ENV SCRIPT python3 ../x.py --stage 2 test \
   --exclude src/bootstrap \
-  --exclude src/test/rustdoc-js \
+  --exclude tests/rustdoc-js \
   --exclude src/tools/error_index_generator \
   --exclude src/tools/linkchecker

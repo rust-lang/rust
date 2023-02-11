@@ -176,7 +176,6 @@ pub struct AssertParamIsCopy<T: Copy + ?Sized> {
 /// are implemented in `traits::SelectionContext::copy_clone_conditions()`
 /// in `rustc_trait_selection`.
 mod impls {
-
     use super::Clone;
 
     macro_rules! impl_clone {
@@ -185,7 +184,7 @@ mod impls {
                 #[stable(feature = "rust1", since = "1.0.0")]
                 #[rustc_const_unstable(feature = "const_clone", issue = "91805")]
                 impl const Clone for $t {
-                    #[inline]
+                    #[inline(always)]
                     fn clone(&self) -> Self {
                         *self
                     }
@@ -213,7 +212,7 @@ mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "91805")]
     impl<T: ?Sized> const Clone for *const T {
-        #[inline]
+        #[inline(always)]
         fn clone(&self) -> Self {
             *self
         }
@@ -222,7 +221,7 @@ mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "91805")]
     impl<T: ?Sized> const Clone for *mut T {
-        #[inline]
+        #[inline(always)]
         fn clone(&self) -> Self {
             *self
         }
@@ -232,7 +231,7 @@ mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "91805")]
     impl<T: ?Sized> const Clone for &T {
-        #[inline]
+        #[inline(always)]
         #[rustc_diagnostic_item = "noop_method_clone"]
         fn clone(&self) -> Self {
             *self

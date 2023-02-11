@@ -64,8 +64,8 @@ impl<'tcx> LateLintPass<'tcx> for UnwrapInResult {
             // first check if it's a method or function
             if let hir::ImplItemKind::Fn(ref _signature, _) = impl_item.kind;
             // checking if its return type is `result` or `option`
-            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::Result)
-                || is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::Option);
+            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.owner_id), sym::Result)
+                || is_type_diagnostic_item(cx, return_ty(cx, impl_item.owner_id), sym::Option);
             then {
                 lint_impl_body(cx, impl_item.span, impl_item);
             }
@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for UnwrapInResult {
 fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_item: &'tcx hir::ImplItem<'_>) {
     if let ImplItemKind::Fn(_, body_id) = impl_item.kind {
         let body = cx.tcx.hir().body(body_id);
-        let typeck = cx.tcx.typeck(impl_item.def_id.def_id);
+        let typeck = cx.tcx.typeck(impl_item.owner_id.def_id);
         let mut result = Vec::new();
         let _: Option<!> = for_each_expr(body.value, |e| {
             // check for `expect`

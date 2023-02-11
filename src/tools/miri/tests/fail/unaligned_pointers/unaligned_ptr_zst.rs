@@ -4,7 +4,7 @@
 
 fn main() {
     // Try many times as this might work by chance.
-    for i in 0..10 {
+    for i in 0..20 {
         let x = i as u8;
         let x = &x as *const _ as *const [u32; 0];
         // This must fail because alignment is violated. Test specifically for loading ZST.

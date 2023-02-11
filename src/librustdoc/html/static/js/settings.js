@@ -1,5 +1,5 @@
 // Local js definitions:
-/* global getSettingValue, getVirtualKey, updateLocalStorage, updateSystemTheme */
+/* global getSettingValue, getVirtualKey, updateLocalStorage, updateTheme */
 /* global addClass, removeClass, onEach, onEachLazy, blurHandler, elemIsInParent */
 /* global MAIN_ID, getVar, getSettingsButton */
 
@@ -9,14 +9,17 @@
     const isSettingsPage = window.location.pathname.endsWith("/settings.html");
 
     function changeSetting(settingName, value) {
+        if (settingName === "theme") {
+            const useSystem = value === "system preference" ? "true" : "false";
+            updateLocalStorage("use-system-theme", useSystem);
+        }
         updateLocalStorage(settingName, value);
 
         switch (settingName) {
             case "theme":
             case "preferred-dark-theme":
             case "preferred-light-theme":
-            case "use-system-theme":
-                updateSystemTheme();
+                updateTheme();
                 updateLightAndDark();
                 break;
             case "line-numbers":
@@ -45,19 +48,18 @@
     }
 
     function showLightAndDark() {
-        addClass(document.getElementById("theme").parentElement, "hidden");
-        removeClass(document.getElementById("preferred-light-theme").parentElement, "hidden");
-        removeClass(document.getElementById("preferred-dark-theme").parentElement, "hidden");
+        removeClass(document.getElementById("preferred-light-theme"), "hidden");
+        removeClass(document.getElementById("preferred-dark-theme"), "hidden");
     }
 
     function hideLightAndDark() {
-        addClass(document.getElementById("preferred-light-theme").parentElement, "hidden");
-        addClass(document.getElementById("preferred-dark-theme").parentElement, "hidden");
-        removeClass(document.getElementById("theme").parentElement, "hidden");
+        addClass(document.getElementById("preferred-light-theme"), "hidden");
+        addClass(document.getElementById("preferred-dark-theme"), "hidden");
     }
 
     function updateLightAndDark() {
-        if (getSettingValue("use-system-theme") !== "false") {
+        const useSystem = getSettingValue("use-system-theme");
+        if (useSystem === "true" || (useSystem === null && getSettingValue("theme") === null)) {
             showLightAndDark();
         } else {
             hideLightAndDark();
@@ -66,8 +68,7 @@
 
     function setEvents(settingsElement) {
         updateLightAndDark();
-        onEachLazy(settingsElement.getElementsByClassName("slider"), elem => {
-            const toggle = elem.previousElementSibling;
+        onEachLazy(settingsElement.querySelectorAll("input[type=\"checkbox\"]"), toggle => {
             const settingId = toggle.id;
             const settingValue = getSettingValue(settingId);
             if (settingValue !== null) {
@@ -79,20 +80,20 @@
             toggle.onkeyup = handleKey;
             toggle.onkeyrelease = handleKey;
         });
-        onEachLazy(settingsElement.getElementsByClassName("select-wrapper"), elem => {
-            const select = elem.getElementsByTagName("select")[0];
-            const settingId = select.id;
-            const settingValue = getSettingValue(settingId);
-            if (settingValue !== null) {
-                select.value = settingValue;
-            }
-            select.onchange = function() {
-                changeSetting(this.id, this.value);
-            };
-        });
         onEachLazy(settingsElement.querySelectorAll("input[type=\"radio\"]"), elem => {
             const settingId = elem.name;
-            const settingValue = getSettingValue(settingId);
+            let settingValue = getSettingValue(settingId);
+            if (settingId === "theme") {
+                const useSystem = getSettingValue("use-system-theme");
+                if (useSystem === "true" || settingValue === null) {
+                    if (useSystem !== "false") {
+                        settingValue = "system preference";
+                    } else {
+                        // This is the default theme.
+                        settingValue = "light";
+                    }
+                }
+            }
             if (settingValue !== null && settingValue !== "null") {
                 elem.checked = settingValue === elem.value;
             }
@@ -115,35 +116,40 @@
         let output = "";
 
         for (const setting of settings) {
-            output += "<div class=\"setting-line\">";
             const js_data_name = setting["js_name"];
             const setting_name = setting["name"];
 
             if (setting["options"] !== undefined) {
                 // This is a select setting.
-                output += `<div class="radio-line" id="${js_data_name}">\
-                        <span class="setting-name">${setting_name}</span>\
-                        <div class="choices">`;
+                output += `\
+<div class="setting-line" id="${js_data_name}">
+    <div class="setting-radio-name">${setting_name}</div>
+    <div class="setting-radio-choices">`;
                 onEach(setting["options"], option => {
                     const checked = option === setting["default"] ? " checked" : "";
+                    const full = `${js_data_name}-${option.replace(/ /g,"-")}`;
 
-                    output += `<label for="${js_data_name}-${option}" class="choice">\
-                           <input type="radio" name="${js_data_name}" \
-                                id="${js_data_name}-${option}" value="${option}"${checked}>\
-                           <span>${option}</span>\
-                         </label>`;
+                    output += `\
+        <label for="${full}" class="setting-radio">
+            <input type="radio" name="${js_data_name}"
+                id="${full}" value="${option}"${checked}>
+            <span>${option}</span>
+        </label>`;
                 });
-                output += "</div></div>";
+                output += `\
+    </div>
+</div>`;
             } else {
-                // This is a toggle.
+                // This is a checkbox toggle.
                 const checked = setting["default"] === true ? " checked" : "";
-                output += `<label class="toggle">\
-                        <input type="checkbox" id="${js_data_name}"${checked}>\
-                        <span class="slider"></span>\
-                        <span class="label">${setting_name}</span>\
-                    </label>`;
+                output += `\
+<div class="setting-line">\
+    <label class="setting-check">\
+        <input type="checkbox" id="${js_data_name}"${checked}>\
+        <span>${setting_name}</span>\
+    </label>\
+</div>`;
             }
-            output += "</div>";
         }
         return output;
     }
@@ -154,30 +160,27 @@
      * @return {HTMLElement}
      */
     function buildSettingsPage() {
-        const themes = getVar("themes").split(",");
+        const theme_names = getVar("themes").split(",").filter(t => t);
+        theme_names.push("light", "dark", "ayu");
+
         const settings = [
-            {
-                "name": "Use system theme",
-                "js_name": "use-system-theme",
-                "default": true,
-            },
             {
                 "name": "Theme",
                 "js_name": "theme",
-                "default": "light",
-                "options": themes,
+                "default": "system preference",
+                "options": theme_names.concat("system preference"),
             },
             {
                 "name": "Preferred light theme",
                 "js_name": "preferred-light-theme",
                 "default": "light",
-                "options": themes,
+                "options": theme_names,
             },
             {
                 "name": "Preferred dark theme",
                 "js_name": "preferred-dark-theme",
                 "default": "dark",
-                "options": themes,
+                "options": theme_names,
             },
             {
                 "name": "Auto-hide item contents for large items",
@@ -216,7 +219,9 @@
         const innerHTML = `<div class="settings">${buildSettingsPageSections(settings)}</div>`;
         const el = document.createElement(elementKind);
         el.id = "settings";
-        el.className = "popover";
+        if (!isSettingsPage) {
+            el.className = "popover";
+        }
         el.innerHTML = innerHTML;
 
         if (isSettingsPage) {
@@ -254,7 +259,7 @@
             event.preventDefault();
             const shouldDisplaySettings = settingsMenu.style.display === "none";
 
-            window.hidePopoverMenus();
+            window.hideAllModals();
             if (shouldDisplaySettings) {
                 displaySettings();
             }

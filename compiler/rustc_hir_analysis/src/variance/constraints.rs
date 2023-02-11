@@ -72,8 +72,8 @@ pub fn add_constraints_from_crate<'a, 'tcx>(
 
                 let adt = tcx.adt_def(def_id);
                 for variant in adt.variants() {
-                    if let Some(ctor) = variant.ctor_def_id {
-                        constraint_cx.build_constraints_for_item(ctor.expect_local());
+                    if let Some(ctor_def_id) = variant.ctor_def_id() {
+                        constraint_cx.build_constraints_for_item(ctor_def_id.expect_local());
                     }
                 }
             }
@@ -119,7 +119,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::FnDef(..) => {
-                self.add_constraints_from_sig(current_item, tcx.fn_sig(def_id), self.covariant);
+                self.add_constraints_from_sig(
+                    current_item,
+                    tcx.fn_sig(def_id).subst_identity(),
+                    self.covariant,
+                );
             }
 
             ty::Error(_) => {}
@@ -221,8 +225,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::Ref(region, ty, mutbl) => {
-                let contra = self.contravariant(variance);
-                self.add_constraints_from_region(current, region, contra);
+                self.add_constraints_from_region(current, region, variance);
                 self.add_constraints_from_mt(current, &ty::TypeAndMut { ty, mutbl }, variance);
             }
 
@@ -249,18 +252,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_substs(current, def.did(), substs, variance);
             }
 
-            ty::Projection(ref data) => {
+            ty::Alias(_, ref data) => {
                 self.add_constraints_from_invariant_substs(current, data.substs, variance);
             }
 
-            ty::Opaque(_, substs) => {
-                self.add_constraints_from_invariant_substs(current, substs, variance);
-            }
-
             ty::Dynamic(data, r, _) => {
-                // The type `Foo<T+'a>` is contravariant w/r/t `'a`:
-                let contra = self.contravariant(variance);
-                self.add_constraints_from_region(current, r, contra);
+                // The type `dyn Trait<T> +'a` is covariant w/r/t `'a`:
+                self.add_constraints_from_region(current, r, variance);
 
                 if let Some(poly_trait_ref) = data.principal() {
                     self.add_constraints_from_invariant_substs(
@@ -295,12 +293,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // types, where we use Error as the Self type
             }
 
-            ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Bound(..) | ty::Infer(..) => {
-                bug!(
-                    "unexpected type encountered in \
-                      variance inference: {}",
-                    ty
-                );
+            ty::Placeholder(..)
+            | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
+            | ty::Bound(..)
+            | ty::Infer(..) => {
+                bug!("unexpected type encountered in variance inference: {}", ty);
             }
         }
     }
@@ -410,6 +408,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // Late-bound regions do not get substituted the same
                 // way early-bound regions do, so we skip them here.
             }
+
+            ty::ReError(_) => {}
 
             ty::ReFree(..) | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReErased => {
                 // We don't expect to see anything but 'static or bound

@@ -3,9 +3,8 @@
 // RFC for reference.
 
 use rustc_data_structures::sso::SsoHashSet;
-use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, SubstsRef, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 use smallvec::{smallvec, SmallVec};
 
 #[derive(Debug)]
@@ -23,7 +22,7 @@ pub enum Component<'tcx> {
     // is not in a position to judge which is the best technique, so
     // we just product the projection as a component and leave it to
     // the consumer to decide (but see `EscapingProjection` below).
-    Projection(ty::ProjectionTy<'tcx>),
+    Alias(ty::AliasTy<'tcx>),
 
     // In the case where a projection has escaping regions -- meaning
     // regions bound within the type itself -- we always use
@@ -45,9 +44,7 @@ pub enum Component<'tcx> {
     // projection, so that implied bounds code can avoid relying on
     // them. This gives us room to improve the regionck reasoning in
     // the future without breaking backwards compat.
-    EscapingProjection(Vec<Component<'tcx>>),
-
-    Opaque(DefId, SubstsRef<'tcx>),
+    EscapingAlias(Vec<Component<'tcx>>),
 }
 
 /// Push onto `out` all the things that must outlive `'a` for the condition
@@ -115,24 +112,13 @@ fn compute_components<'tcx>(
             }
 
             // All regions are bound inside a witness
-            ty::GeneratorWitness(..) => (),
+            ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => (),
 
             // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
             // is implied by the environment is done in regionck.
             ty::Param(p) => {
                 out.push(Component::Param(p));
             }
-
-            // Ignore lifetimes found in opaque types. Opaque types can
-            // have lifetimes in their substs which their hidden type doesn't
-            // actually use. If we inferred that an opaque type is outlived by
-            // its parameter lifetimes, then we could prove that any lifetime
-            // outlives any other lifetime, which is unsound.
-            // See https://github.com/rust-lang/rust/issues/84305 for
-            // more details.
-            ty::Opaque(def_id, substs) => {
-                out.push(Component::Opaque(def_id, substs));
-            },
 
             // For projections, we prefer to generate an obligation like
             // `<P0 as Trait<P1...Pn>>::Foo: 'a`, because this gives the
@@ -142,23 +128,23 @@ fn compute_components<'tcx>(
             // trait-ref. Therefore, if we see any higher-ranked regions,
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
-            ty::Projection(ref data) => {
-                if !data.has_escaping_bound_vars() {
+            ty::Alias(_, alias_ty) => {
+                if !alias_ty.has_escaping_bound_vars() {
                     // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus generating no
                     // constraints for Pi). This defers the choice between
                     // the rules OutlivesProjectionEnv,
                     // OutlivesProjectionTraitDef, and
                     // OutlivesProjectionComponents to regionck.
-                    out.push(Component::Projection(*data));
+                    out.push(Component::Alias(alias_ty));
                 } else {
                     // fallback case: hard code
-                    // OutlivesProjectionComponents.  Continue walking
+                    // OutlivesProjectionComponents. Continue walking
                     // through and constrain Pi.
                     let mut subcomponents = smallvec![];
                     let mut subvisited = SsoHashSet::new();
                     compute_components_recursive(tcx, ty.into(), &mut subcomponents, &mut subvisited);
-                    out.push(Component::EscapingProjection(subcomponents.into_iter().collect()));
+                    out.push(Component::EscapingAlias(subcomponents.into_iter().collect()));
                 }
             }
 
@@ -195,7 +181,7 @@ fn compute_components<'tcx>(
             ty::Error(_) => {
                 // (*) Function pointers and trait objects are both binders.
                 // In the RFC, this means we would add the bound regions to
-                // the "bound regions list".  In our representation, no such
+                // the "bound regions list". In our representation, no such
                 // list is maintained explicitly, because bound regions
                 // themselves can be readily identified.
                 compute_components_recursive(tcx, ty.into(), out, visited);

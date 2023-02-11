@@ -14,8 +14,8 @@ use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use serde_json::from_value;
 
-use crate::CfgOverrides;
-use crate::{utf8_stdout, ManifestPath};
+use crate::{utf8_stdout, InvocationLocation, ManifestPath};
+use crate::{CfgOverrides, InvocationStrategy};
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -106,6 +106,8 @@ pub struct CargoConfig {
     pub run_build_script_command: Option<Vec<String>>,
     /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, String>,
+    pub invocation_strategy: InvocationStrategy,
+    pub invocation_location: InvocationLocation,
 }
 
 impl CargoConfig {
@@ -268,11 +270,7 @@ impl CargoWorkspace {
         config: &CargoConfig,
         progress: &dyn Fn(String),
     ) -> Result<cargo_metadata::Metadata> {
-        let target = config
-            .target
-            .clone()
-            .or_else(|| cargo_config_build_target(cargo_toml, &config.extra_env))
-            .or_else(|| rustc_discover_host_triple(cargo_toml, &config.extra_env));
+        let targets = find_list_of_build_targets(config, cargo_toml);
 
         let mut meta = MetadataCommand::new();
         meta.cargo_path(toolchain::cargo());
@@ -283,8 +281,6 @@ impl CargoWorkspace {
             }
             CargoFeatures::Selected { features, no_default_features } => {
                 if *no_default_features {
-                    // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
-                    // https://github.com/oli-obk/cargo_metadata/issues/79
                     meta.features(CargoOpt::NoDefaultFeatures);
                 }
                 if !features.is_empty() {
@@ -294,8 +290,12 @@ impl CargoWorkspace {
         }
         meta.current_dir(current_dir.as_os_str());
 
-        if let Some(target) = target {
-            meta.other_options(vec![String::from("--filter-platform"), target]);
+        if !targets.is_empty() {
+            let other_options: Vec<_> = targets
+                .into_iter()
+                .flat_map(|target| ["--filter-platform".to_string(), target])
+                .collect();
+            meta.other_options(other_options);
         }
 
         // FIXME: Fetching metadata is a slow process, as it might require
@@ -329,18 +329,21 @@ impl CargoWorkspace {
         let ws_members = &meta.workspace_members;
 
         meta.packages.sort_by(|a, b| a.id.cmp(&b.id));
-        for meta_pkg in &meta.packages {
+        for meta_pkg in meta.packages {
             let cargo_metadata::Package {
-                id,
-                edition,
                 name,
-                manifest_path,
                 version,
-                metadata,
+                id,
+                source,
+                targets: meta_targets,
+                features,
+                manifest_path,
                 repository,
+                edition,
+                metadata,
                 ..
             } = meta_pkg;
-            let meta = from_value::<PackageMetadata>(metadata.clone()).unwrap_or_default();
+            let meta = from_value::<PackageMetadata>(metadata).unwrap_or_default();
             let edition = match edition {
                 cargo_metadata::Edition::E2015 => Edition::Edition2015,
                 cargo_metadata::Edition::E2018 => Edition::Edition2018,
@@ -352,35 +355,36 @@ impl CargoWorkspace {
             };
             // We treat packages without source as "local" packages. That includes all members of
             // the current workspace, as well as any path dependency outside the workspace.
-            let is_local = meta_pkg.source.is_none();
-            let is_member = ws_members.contains(id);
+            let is_local = source.is_none();
+            let is_member = ws_members.contains(&id);
 
             let pkg = packages.alloc(PackageData {
                 id: id.repr.clone(),
-                name: name.clone(),
-                version: version.clone(),
-                manifest: AbsPathBuf::assert(PathBuf::from(&manifest_path)).try_into().unwrap(),
+                name,
+                version,
+                manifest: AbsPathBuf::assert(manifest_path.into()).try_into().unwrap(),
                 targets: Vec::new(),
                 is_local,
                 is_member,
                 edition,
-                repository: repository.clone(),
+                repository,
                 dependencies: Vec::new(),
-                features: meta_pkg.features.clone().into_iter().collect(),
+                features: features.into_iter().collect(),
                 active_features: Vec::new(),
                 metadata: meta.rust_analyzer.unwrap_or_default(),
             });
             let pkg_data = &mut packages[pkg];
             pkg_by_id.insert(id, pkg);
-            for meta_tgt in &meta_pkg.targets {
-                let is_proc_macro = meta_tgt.kind.as_slice() == ["proc-macro"];
+            for meta_tgt in meta_targets {
+                let cargo_metadata::Target { name, kind, required_features, src_path, .. } =
+                    meta_tgt;
                 let tgt = targets.alloc(TargetData {
                     package: pkg,
-                    name: meta_tgt.name.clone(),
-                    root: AbsPathBuf::assert(PathBuf::from(&meta_tgt.src_path)),
-                    kind: TargetKind::new(meta_tgt.kind.as_slice()),
-                    is_proc_macro,
-                    required_features: meta_tgt.required_features.clone(),
+                    name,
+                    root: AbsPathBuf::assert(src_path.into()),
+                    kind: TargetKind::new(&kind),
+                    is_proc_macro: &*kind == ["proc-macro"],
+                    required_features,
                 });
                 pkg_data.targets.push(tgt);
             }
@@ -407,7 +411,7 @@ impl CargoWorkspace {
         CargoWorkspace { packages, targets, workspace_root }
     }
 
-    pub fn packages<'a>(&'a self) -> impl Iterator<Item = Package> + ExactSizeIterator + 'a {
+    pub fn packages(&self) -> impl Iterator<Item = Package> + ExactSizeIterator + '_ {
         self.packages.iter().map(|(id, _pkg)| id)
     }
 
@@ -423,7 +427,7 @@ impl CargoWorkspace {
     }
 
     pub fn package_flag(&self, package: &PackageData) -> String {
-        if self.is_unique(&*package.name) {
+        if self.is_unique(&package.name) {
             package.name.clone()
         } else {
             format!("{}:{}", package.name, package.version)
@@ -465,6 +469,19 @@ impl CargoWorkspace {
     }
 }
 
+fn find_list_of_build_targets(config: &CargoConfig, cargo_toml: &ManifestPath) -> Vec<String> {
+    if let Some(target) = &config.target {
+        return [target.into()].to_vec();
+    }
+
+    let build_targets = cargo_config_build_target(cargo_toml, &config.extra_env);
+    if !build_targets.is_empty() {
+        return build_targets;
+    }
+
+    rustc_discover_host_triple(cargo_toml, &config.extra_env).into_iter().collect()
+}
+
 fn rustc_discover_host_triple(
     cargo_toml: &ManifestPath,
     extra_env: &FxHashMap<String, String>,
@@ -495,20 +512,29 @@ fn rustc_discover_host_triple(
 fn cargo_config_build_target(
     cargo_toml: &ManifestPath,
     extra_env: &FxHashMap<String, String>,
-) -> Option<String> {
+) -> Vec<String> {
     let mut cargo_config = Command::new(toolchain::cargo());
     cargo_config.envs(extra_env);
     cargo_config
         .current_dir(cargo_toml.parent())
-        .args(&["-Z", "unstable-options", "config", "get", "build.target"])
+        .args(["-Z", "unstable-options", "config", "get", "build.target"])
         .env("RUSTC_BOOTSTRAP", "1");
     // if successful we receive `build.target = "target-triple"`
+    // or `build.target = ["<target 1>", ..]`
     tracing::debug!("Discovering cargo config target by {:?}", cargo_config);
-    match utf8_stdout(cargo_config) {
-        Ok(stdout) => stdout
-            .strip_prefix("build.target = \"")
-            .and_then(|stdout| stdout.strip_suffix('"'))
-            .map(ToOwned::to_owned),
-        Err(_) => None,
+    utf8_stdout(cargo_config).map(parse_output_cargo_config_build_target).unwrap_or_default()
+}
+
+fn parse_output_cargo_config_build_target(stdout: String) -> Vec<String> {
+    let trimmed = stdout.trim_start_matches("build.target = ").trim_matches('"');
+
+    if !trimmed.starts_with('[') {
+        return [trimmed.to_string()].to_vec();
     }
+
+    let res = serde_json::from_str(trimmed);
+    if let Err(e) = &res {
+        tracing::warn!("Failed to parse `build.target` as an array of target: {}`", e);
+    }
+    res.unwrap_or_default()
 }

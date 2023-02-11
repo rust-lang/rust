@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::{BasicBlock, Body, Location};
 
@@ -18,9 +20,8 @@ pub struct LocationTable {
 }
 
 rustc_index::newtype_index! {
-    pub struct LocationIndex {
-        DEBUG_FORMAT = "LocationIndex({})"
-    }
+    #[debug_format = "LocationIndex({})"]
+    pub struct LocationIndex {}
 }
 
 #[derive(Copy, Clone, Debug)]

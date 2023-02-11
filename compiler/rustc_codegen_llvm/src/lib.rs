@@ -5,13 +5,16 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(hash_raw_entry)]
-#![feature(let_chains)]
 #![feature(extern_types)]
-#![feature(once_cell)]
+#![feature(hash_raw_entry)]
 #![feature(iter_intersperse)]
+#![feature(let_chains)]
+#![feature(never_type)]
+#![feature(once_cell)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -20,6 +23,7 @@ extern crate tracing;
 
 use back::write::{create_informational_target_machine, create_target_machine};
 
+use errors::ParseTargetMachineConfig;
 pub use llvm_util::target_features;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
@@ -62,6 +66,7 @@ mod context;
 mod coverageinfo;
 mod debuginfo;
 mod declare;
+mod errors;
 mod intrinsic;
 
 // The following is a work around that replaces `pub mod llvm;` and that fixes issue 53912.
@@ -108,11 +113,11 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         tcx: TyCtxt<'tcx>,
         module_name: &str,
         kind: AllocatorKind,
-        has_alloc_error_handler: bool,
+        alloc_error_handler_kind: AllocatorKind,
     ) -> ModuleLlvm {
         let mut module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
         unsafe {
-            allocator::codegen(tcx, &mut module_llvm, module_name, kind, has_alloc_error_handler);
+            allocator::codegen(tcx, &mut module_llvm, module_name, kind, alloc_error_handler_kind);
         }
         module_llvm
     }
@@ -165,6 +170,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     type Module = ModuleLlvm;
     type ModuleBuffer = back::lto::ModuleBuffer;
     type TargetMachine = &'static mut llvm::TargetMachine;
+    type TargetMachineError = crate::errors::LlvmError<'static>;
     type ThinData = back::lto::ThinData;
     type ThinBuffer = back::lto::ThinBuffer;
     fn print_pass_timings(&self) {
@@ -412,8 +418,7 @@ impl ModuleLlvm {
             let tm = match (cgcx.tm_factory)(tm_factory_config) {
                 Ok(m) => m,
                 Err(e) => {
-                    handler.struct_err(&e).emit();
-                    return Err(FatalError);
+                    return Err(handler.emit_almost_fatal(ParseTargetMachineConfig(e)));
                 }
             };
 

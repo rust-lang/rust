@@ -9,10 +9,81 @@ use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::Path;
 
+use crate::builder::{crate_description, Builder, RunConfig, ShouldRun, Step};
+use crate::cache::Interned;
 use crate::util::t;
-use crate::Build;
+use crate::{Build, Compiler, Mode, Subcommand};
 
-pub fn clean(build: &Build, all: bool) {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CleanAll {}
+
+impl Step for CleanAll {
+    const DEFAULT: bool = true;
+    type Output = ();
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(CleanAll {})
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let Subcommand::Clean { all, .. } = builder.config.cmd else { unreachable!("wrong subcommand?") };
+        clean_default(builder.build, all)
+    }
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.never() // handled by DEFAULT
+    }
+}
+
+macro_rules! clean_crate_tree {
+    ( $( $name:ident, $mode:path, $root_crate:literal);+ $(;)? ) => { $(
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        pub struct $name {
+            compiler: Compiler,
+            crates: Interned<Vec<String>>,
+        }
+
+        impl Step for $name {
+            type Output = ();
+
+            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+                let crates = run.builder.in_tree_crates($root_crate, None);
+                run.crates(crates)
+            }
+
+            fn make_run(run: RunConfig<'_>) {
+                let builder = run.builder;
+                let compiler = builder.compiler(builder.top_stage, run.target);
+                builder.ensure(Self { crates: run.cargo_crates_in_set(), compiler });
+            }
+
+            fn run(self, builder: &Builder<'_>) -> Self::Output {
+                let compiler = self.compiler;
+                let target = compiler.host;
+                let mut cargo = builder.bare_cargo(compiler, $mode, target, "clean");
+                for krate in &*self.crates {
+                    cargo.arg(krate);
+                }
+
+                builder.info(&format!(
+                    "Cleaning{} stage{} {} artifacts ({} -> {})",
+                    crate_description(&self.crates), compiler.stage, stringify!($name).to_lowercase(), &compiler.host, target,
+                ));
+
+                // NOTE: doesn't use `run_cargo` because we don't want to save a stamp file,
+                // and doesn't use `stream_cargo` to avoid passing `--message-format` which `clean` doesn't accept.
+                builder.run(&mut cargo);
+            }
+        }
+    )+ }
+}
+
+clean_crate_tree! {
+    Rustc, Mode::Rustc, "rustc-main";
+    Std, Mode::Std, "test";
+}
+
+fn clean_default(build: &Build, all: bool) {
     rm_rf("tmp".as_ref());
 
     if all {
@@ -21,6 +92,7 @@ pub fn clean(build: &Build, all: bool) {
         rm_rf(&build.out.join("tmp"));
         rm_rf(&build.out.join("dist"));
         rm_rf(&build.out.join("bootstrap"));
+        rm_rf(&build.out.join("rustfmt.stamp"));
 
         for host in &build.hosts {
             let entries = match build.out.join(host.triple).read_dir() {

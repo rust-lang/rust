@@ -8,7 +8,7 @@ LL |         let _val = *left_ptr;
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
    = note: inside `deref` at $DIR/provenance_transmute.rs:LL:CC
-note: inside `main` at $DIR/provenance_transmute.rs:LL:CC
+note: inside `main`
   --> $DIR/provenance_transmute.rs:LL:CC
    |
 LL |         deref(ptr1, ptr2.with_addr(ptr1.addr()));

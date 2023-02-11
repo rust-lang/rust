@@ -1,0 +1,26 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-61882.rs:4:27
+   |
+LL |     const B: A<u8> = Self(0);
+   |                      ---- ^ expected `bool`, found integer
+   |                      |
+   |                      arguments to this function are incorrect
+   |
+note: tuple struct defined here
+  --> $DIR/issue-61882.rs:1:8
+   |
+LL | struct A<T>(T);
+   |        ^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-61882.rs:4:22
+   |
+LL |     const B: A<u8> = Self(0);
+   |                      ^^^^^^^ expected `A<u8>`, found `A<bool>`
+   |
+   = note: expected struct `A<u8>`
+              found struct `A<bool>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -53,11 +53,11 @@ impl DisallowedPath {
         path
     }
 
-    pub fn reason(&self) -> Option<&str> {
+    pub fn reason(&self) -> Option<String> {
         match self {
             Self::WithReason {
                 reason: Some(reason), ..
-            } => Some(reason),
+            } => Some(format!("{reason} (from clippy.toml)")),
             _ => None,
         }
     }
@@ -205,15 +205,55 @@ macro_rules! define_Conf {
 }
 
 define_Conf! {
-    /// Lint: Arithmetic.
+    /// Lint: ARITHMETIC_SIDE_EFFECTS.
     ///
-    /// Suppress checking of the passed type names.
+    /// Suppress checking of the passed type names in all types of operations.
+    ///
+    /// If a specific operation is desired, consider using `arithmetic_side_effects_allowed_binary` or `arithmetic_side_effects_allowed_unary` instead.
+    ///
+    /// #### Example
+    ///
+    /// ```toml
+    /// arithmetic-side-effects-allowed = ["SomeType", "AnotherType"]
+    /// ```
+    ///
+    /// #### Noteworthy
+    ///
+    /// A type, say `SomeType`, listed in this configuration has the same behavior of
+    /// `["SomeType" , "*"], ["*", "SomeType"]` in `arithmetic_side_effects_allowed_binary`.
     (arithmetic_side_effects_allowed: rustc_data_structures::fx::FxHashSet<String> = <_>::default()),
+    /// Lint: ARITHMETIC_SIDE_EFFECTS.
+    ///
+    /// Suppress checking of the passed type pair names in binary operations like addition or
+    /// multiplication.
+    ///
+    /// Supports the "*" wildcard to indicate that a certain type won't trigger the lint regardless
+    /// of the involved counterpart. For example, `["SomeType", "*"]` or `["*", "AnotherType"]`.
+    ///
+    /// Pairs are asymmetric, which means that `["SomeType", "AnotherType"]` is not the same as
+    /// `["AnotherType", "SomeType"]`.
+    ///
+    /// #### Example
+    ///
+    /// ```toml
+    /// arithmetic-side-effects-allowed-binary = [["SomeType" , "f32"], ["AnotherType", "*"]]
+    /// ```
+    (arithmetic_side_effects_allowed_binary: Vec<[String; 2]> = <_>::default()),
+    /// Lint: ARITHMETIC_SIDE_EFFECTS.
+    ///
+    /// Suppress checking of the passed type names in unary operations like "negation" (`-`).
+    ///
+    /// #### Example
+    ///
+    /// ```toml
+    /// arithmetic-side-effects-allowed-unary = ["SomeType", "AnotherType"]
+    /// ```
+    (arithmetic_side_effects_allowed_unary: rustc_data_structures::fx::FxHashSet<String> = <_>::default()),
     /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UNUSED_SELF, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION, BOX_COLLECTION, REDUNDANT_ALLOCATION, RC_BUFFER, VEC_BOX, OPTION_OPTION, LINKEDLIST, RC_MUTEX.
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
     (avoid_breaking_exported_api: bool = true),
-    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP.
+    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN.
     ///
     /// The minimum rust version that the project supports
     (msrv: Option<String> = None),
@@ -283,7 +323,7 @@ define_Conf! {
     ///
     /// The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by reference.
     (trivial_copy_size_limit: Option<u64> = None),
-    /// Lint: LARGE_TYPE_PASS_BY_MOVE.
+    /// Lint: LARGE_TYPES_PASSED_BY_VALUE.
     ///
     /// The minimum size (in bytes) to consider a type for passing by reference instead of by value.
     (pass_by_value_size_limit: u64 = 256),
@@ -294,7 +334,7 @@ define_Conf! {
     /// Lint: LARGE_STACK_ARRAYS, LARGE_CONST_ARRAYS.
     ///
     /// The maximum allowed size for arrays on the stack
-    (array_size_threshold: u64 = 512_000),
+    (array_size_threshold: u128 = 512_000),
     /// Lint: VEC_BOX.
     ///
     /// The size of the boxed type in bytes, where boxing in a `Vec` is allowed
@@ -335,6 +375,12 @@ define_Conf! {
     ///
     /// Enables verbose mode. Triggers if there is more than one uppercase char next to each other
     (upper_case_acronyms_aggressive: bool = false),
+    /// Lint: MANUAL_LET_ELSE.
+    ///
+    /// Whether the matches should be considered by the lint, and whether there should
+    /// be filtering for common types.
+    (matches_for_let_else: crate::manual_let_else::MatchLintBehaviour =
+        crate::manual_let_else::MatchLintBehaviour::WellKnownTypes),
     /// Lint: _CARGO_COMMON_METADATA.
     ///
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
@@ -365,7 +411,7 @@ define_Conf! {
     /// the slice pattern that is suggested. If more elements would be necessary, the lint is suppressed.
     /// For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
     (max_suggested_slice_pattern_length: u64 = 3),
-    /// Lint: AWAIT_HOLDING_INVALID_TYPE
+    /// Lint: AWAIT_HOLDING_INVALID_TYPE.
     (await_holding_invalid_types: Vec<crate::utils::conf::DisallowedPath> = Vec::new()),
     /// Lint: LARGE_INCLUDE_FILE.
     ///
@@ -373,23 +419,48 @@ define_Conf! {
     (max_include_file_size: u64 = 1_000_000),
     /// Lint: EXPECT_USED.
     ///
-    /// Whether `expect` should be allowed in test functions
+    /// Whether `expect` should be allowed within `#[cfg(test)]`
     (allow_expect_in_tests: bool = false),
     /// Lint: UNWRAP_USED.
     ///
-    /// Whether `unwrap` should be allowed in test functions
+    /// Whether `unwrap` should be allowed in test cfg
     (allow_unwrap_in_tests: bool = false),
     /// Lint: DBG_MACRO.
     ///
     /// Whether `dbg!` should be allowed in test functions
     (allow_dbg_in_tests: bool = false),
-    /// Lint: RESULT_LARGE_ERR
+    /// Lint: PRINT_STDOUT, PRINT_STDERR.
+    ///
+    /// Whether print macros (ex. `println!`) should be allowed in test functions
+    (allow_print_in_tests: bool = false),
+    /// Lint: RESULT_LARGE_ERR.
     ///
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     (large_error_threshold: u64 = 128),
+    /// Lint: MUTABLE_KEY_TYPE.
+    ///
+    /// A list of paths to types that should be treated like `Arc`, i.e. ignored but
+    /// for the generic parameters for determining interior mutability
+    (ignore_interior_mutability: Vec<String> = Vec::from(["bytes::Bytes".into()])),
+    /// Lint: UNINLINED_FORMAT_ARGS.
+    ///
+    /// Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
+    (allow_mixed_uninlined_format_args: bool = true),
+    /// Lint: INDEXING_SLICING.
+    ///
+    /// Whether to suppress a restriction lint in constant code. In same
+    /// cases the restructured operation might not be unavoidable, as the
+    /// suggested counterparts are unavailable in constant code. This
+    /// configuration will cause restriction lints to trigger even
+    /// if no suggestion can be made.
+    (suppress_restriction_lint_in_const: bool = false),
 }
 
 /// Search for the configuration file.
+///
+/// # Errors
+///
+/// Returns any unexpected filesystem error encountered when searching for the config file
 pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
     /// Possible filename to search for.
     const CONFIG_FILE_NAMES: [&str; 2] = [".clippy.toml", "clippy.toml"];

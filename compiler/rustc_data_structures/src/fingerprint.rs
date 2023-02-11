@@ -1,6 +1,5 @@
 use crate::stable_hasher;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 
 #[cfg(test)]
@@ -140,7 +139,7 @@ impl stable_hasher::StableHasherResult for Fingerprint {
     }
 }
 
-impl_stable_hash_via_hash!(Fingerprint);
+impl_stable_traits_for_trivial_type!(Fingerprint);
 
 impl<E: Encoder> Encodable<E> for Fingerprint {
     #[inline]

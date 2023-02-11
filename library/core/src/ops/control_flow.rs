@@ -79,7 +79,9 @@ use crate::{convert, ops};
 /// [`Break`]: ControlFlow::Break
 /// [`Continue`]: ControlFlow::Continue
 #[stable(feature = "control_flow_enum_type", since = "1.55.0")]
-#[derive(Debug, Clone, Copy, PartialEq)]
+// ControlFlow should not implement PartialOrd or Ord, per RFC 3058:
+// https://rust-lang.github.io/rfcs/3058-try-trait-v2.html#traits-for-controlflow
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ControlFlow<B, C = ()> {
     /// Move on to the next phase of the operation as normal.
     #[stable(feature = "control_flow_enum_type", since = "1.55.0")]
@@ -256,47 +258,4 @@ impl<R: ops::Try> ControlFlow<R, R::Output> {
             ControlFlow::Break(v) => v,
         }
     }
-}
-
-impl<B> ControlFlow<B, ()> {
-    /// It's frequently the case that there's no value needed with `Continue`,
-    /// so this provides a way to avoid typing `(())`, if you prefer it.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(control_flow_enum)]
-    /// use std::ops::ControlFlow;
-    ///
-    /// let mut partial_sum = 0;
-    /// let last_used = (1..10).chain(20..25).try_for_each(|x| {
-    ///     partial_sum += x;
-    ///     if partial_sum > 100 { ControlFlow::Break(x) }
-    ///     else { ControlFlow::CONTINUE }
-    /// });
-    /// assert_eq!(last_used.break_value(), Some(22));
-    /// ```
-    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
-    pub const CONTINUE: Self = ControlFlow::Continue(());
-}
-
-impl<C> ControlFlow<(), C> {
-    /// APIs like `try_for_each` don't need values with `Break`,
-    /// so this provides a way to avoid typing `(())`, if you prefer it.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(control_flow_enum)]
-    /// use std::ops::ControlFlow;
-    ///
-    /// let mut partial_sum = 0;
-    /// (1..10).chain(20..25).try_for_each(|x| {
-    ///     if partial_sum > 100 { ControlFlow::BREAK }
-    ///     else { partial_sum += x; ControlFlow::CONTINUE }
-    /// });
-    /// assert_eq!(partial_sum, 108);
-    /// ```
-    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
-    pub const BREAK: Self = ControlFlow::Break(());
 }

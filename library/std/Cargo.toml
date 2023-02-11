@@ -18,24 +18,25 @@ core = { path = "../core" }
 # FIXME: use target specific dependency
 #libc = { version = "0.2.126", default-features = false, features = ['rustc-dep-of-std'] }
 libc = { git = "https://github.com/john-sharratt/libc.git", default-features = false, features = ['rustc-dep-of-std'] }
-compiler_builtins = { version = "0.1.73" }
+compiler_builtins = { version = "0.1.85" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
 hashbrown = { version = "0.12", default-features = false, features = ['rustc-dep-of-std'] }
 std_detect = { path = "../stdarch/crates/std_detect", default-features = false, features = ['rustc-dep-of-std'] }
 
 # Dependencies of the `backtrace` crate
-addr2line = { version = "0.16.0", optional = true, default-features = false }
+addr2line = { version = "0.17.0", optional = true, default-features = false }
 rustc-demangle = { version = "0.1.21", features = ['rustc-dep-of-std'] }
-miniz_oxide = { version = "0.4.0", optional = true, default-features = false }
+miniz_oxide = { version = "0.5.0", optional = true, default-features = false }
 [dependencies.object]
-version = "0.26.1"
+version = "0.29.0"
 optional = true
 default-features = false
 features = ['read_core', 'elf', 'macho', 'pe', 'unaligned', 'archive']
 
 [dev-dependencies]
-rand = "0.7"
+rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
+rand_xorshift = "0.3.0"
 
 [patch.crates-io]
 libc = { git = "https://github.com/john-sharratt/libc.git", default-features = false, features = ['rustc-dep-of-std'] }

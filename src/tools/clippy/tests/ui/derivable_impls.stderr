@@ -113,5 +113,26 @@ help: ...and instead derive it
 LL | #[derive(Default)]
    |
 
-error: aborting due to 7 previous errors
+error: this `impl` can be derived
+  --> $DIR/derivable_impls.rs:252:1
+   |
+LL | / impl Default for SimpleEnum {
+LL | |     fn default() -> Self {
+LL | |         SimpleEnum::Bar
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = help: remove the manual implementation...
+help: ...and instead derive it...
+   |
+LL | #[derive(Default)]
+   |
+help: ...and mark the default variant
+   |
+LL ~     #[default]
+LL ~     Bar,
+   |
+
+error: aborting due to 8 previous errors
 

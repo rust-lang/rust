@@ -26,7 +26,7 @@ fn evaluate_obligation<'tcx>(
     let ParamEnvAnd { param_env, value: predicate } = goal;
 
     let mut selcx = SelectionContext::with_query_mode(&infcx, TraitQueryMode::Canonical);
-    let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
+    let obligation = Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate);
 
     selcx.evaluate_root_obligation(&obligation)
 }

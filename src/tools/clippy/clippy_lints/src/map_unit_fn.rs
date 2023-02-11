@@ -104,7 +104,7 @@ fn is_unit_function(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
 
     if let ty::FnDef(id, _) = *ty.kind() {
-        if let Some(fn_type) = cx.tcx.fn_sig(id).no_bound_vars() {
+        if let Some(fn_type) = cx.tcx.fn_sig(id).subst_identity().no_bound_vars() {
             return is_unit_type(fn_type.output());
         }
     }
@@ -119,7 +119,7 @@ fn is_unit_expression(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
 /// semicolons, which causes problems when generating a suggestion. Given an
 /// expression that evaluates to '()' or '!', recursively remove useless braces
 /// and semi-colons until is suitable for including in the suggestion template
-fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> Option<Span> {
+fn reduce_unit_expression(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Span> {
     if !is_unit_expression(cx, expr) {
         return None;
     }

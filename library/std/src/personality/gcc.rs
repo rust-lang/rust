@@ -37,7 +37,8 @@
 //! and the last personality routine transfers control to the catch block.
 
 use super::dwarf::eh::{self, EHAction, EHContext};
-use libc::{c_int, uintptr_t};
+use crate::ffi::c_int;
+use libc::uintptr_t;
 use unwind as uw;
 
 // Register ids were lifted from LLVM's TargetLowering::getExceptionPointerRegister()
@@ -219,7 +220,7 @@ cfg_if::cfg_if! {
         }
 
         cfg_if::cfg_if! {
-            if #[cfg(all(windows, target_arch = "x86_64", target_env = "gnu"))] {
+            if #[cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"))] {
                 // On x86_64 MinGW targets, the unwinding mechanism is SEH however the unwind
                 // handler data (aka LSDA) uses GCC-compatible encoding.
                 #[lang = "eh_personality"]

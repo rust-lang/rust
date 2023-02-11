@@ -131,7 +131,7 @@ pub(crate) fn render_field(
     item.detail(ty.display(ctx.db()).to_string())
         .set_documentation(field.docs(ctx.db()))
         .set_deprecated(is_deprecated)
-        .lookup_by(name.clone());
+        .lookup_by(name);
     item.insert_text(field_with_receiver(receiver.as_ref(), &escaped_name));
     if let Some(receiver) = &dot_access.receiver {
         if let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone()) {
@@ -144,8 +144,7 @@ pub(crate) fn render_field(
 }
 
 fn field_with_receiver(receiver: Option<&hir::Name>, field_name: &str) -> SmolStr {
-    receiver
-        .map_or_else(|| field_name.into(), |receiver| format!("{}.{}", receiver, field_name).into())
+    receiver.map_or_else(|| field_name.into(), |receiver| format!("{receiver}.{field_name}").into())
 }
 
 pub(crate) fn render_tuple_field(
@@ -306,7 +305,7 @@ fn render_resolution_path(
                 item.lookup_by(name.clone())
                     .label(SmolStr::from_iter([&name, "<…>"]))
                     .trigger_call_info()
-                    .insert_snippet(cap, format!("{}<$0>", local_name));
+                    .insert_snippet(cap, format!("{local_name}<$0>"));
             }
         }
     }
@@ -528,13 +527,13 @@ mod tests {
 
                 let tag = it.kind().tag();
                 let relevance = display_relevance(it.relevance());
-                items.push(format!("{} {} {}\n", tag, it.label(), relevance));
+                items.push(format!("{tag} {} {relevance}\n", it.label()));
 
                 if let Some((mutability, _offset, relevance)) = it.ref_match() {
                     let label = format!("&{}{}", mutability.as_keyword_for_ref(), it.label());
                     let relevance = display_relevance(relevance);
 
-                    items.push(format!("{} {} {}\n", tag, label, relevance));
+                    items.push(format!("{tag} {label} {relevance}\n"));
                 }
 
                 items
@@ -563,7 +562,7 @@ mod tests {
             .filter_map(|(cond, desc)| if cond { Some(desc) } else { None })
             .join("+");
 
-            format!("[{}]", relevance_factors)
+            format!("[{relevance_factors}]")
         }
     }
 

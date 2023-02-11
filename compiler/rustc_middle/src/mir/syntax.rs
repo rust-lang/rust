@@ -6,6 +6,7 @@
 use super::{BasicBlock, Constant, Field, Local, SwitchTargets, UserTypeProjection};
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
+use crate::traits::Reveal;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, List, Ty};
@@ -85,8 +86,28 @@ pub enum MirPhase {
     ///
     /// Also note that the lint pass which reports eg `200_u8 + 200_u8` as an error is run as a part
     /// of analysis to runtime MIR lowering. To ensure lints are reported reliably, this means that
-    /// transformations which may supress such errors should not run on analysis MIR.
+    /// transformations which may suppress such errors should not run on analysis MIR.
     Runtime(RuntimePhase),
+}
+
+impl MirPhase {
+    pub fn name(&self) -> &'static str {
+        match *self {
+            MirPhase::Built => "built",
+            MirPhase::Analysis(AnalysisPhase::Initial) => "analysis",
+            MirPhase::Analysis(AnalysisPhase::PostCleanup) => "analysis-post-cleanup",
+            MirPhase::Runtime(RuntimePhase::Initial) => "runtime",
+            MirPhase::Runtime(RuntimePhase::PostCleanup) => "runtime-post-cleanup",
+            MirPhase::Runtime(RuntimePhase::Optimized) => "runtime-optimized",
+        }
+    }
+
+    pub fn reveal(&self) -> Reveal {
+        match *self {
+            MirPhase::Built | MirPhase::Analysis(_) => Reveal::UserFacing,
+            MirPhase::Runtime(_) => Reveal::All,
+        }
+    }
 }
 
 /// See [`MirPhase::Analysis`].
@@ -299,8 +320,10 @@ pub enum StatementKind<'tcx> {
     /// <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/> for
     /// more details.
     ///
-    /// For code that is not specific to stacked borrows, you should consider retags to read
-    /// and modify the place in an opaque way.
+    /// For code that is not specific to stacked borrows, you should consider retags to read and
+    /// modify the place in an opaque way.
+    ///
+    /// Only `RetagKind::Default` and `RetagKind::FnEntry` are permitted.
     Retag(RetagKind, Box<Place<'tcx>>),
 
     /// Encodes a user's type ascription. These need to be preserved
@@ -331,6 +354,12 @@ pub enum StatementKind<'tcx> {
     /// Denotes a call to an intrinsic that does not require an unwind path and always returns.
     /// This avoids adding a new block and a terminator for simple intrinsics.
     Intrinsic(Box<NonDivergingIntrinsic<'tcx>>),
+
+    /// Instructs the const eval interpreter to increment a counter; this counter is used to track
+    /// how many steps the interpreter has taken. It is used to prevent the user from writing const
+    /// code that runs for too long or infinitely. Other than in the const eval interpreter, this
+    /// is a no-op.
+    ConstEvalCounter,
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
@@ -387,7 +416,7 @@ impl std::fmt::Display for NonDivergingIntrinsic<'_> {
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub enum RetagKind {
-    /// The initial retag when entering a function.
+    /// The initial retag of arguments when entering a function.
     FnEntry,
     /// Retag preparing for a two-phase borrow.
     TwoPhase,
@@ -489,6 +518,16 @@ pub struct CopyNonOverlapping<'tcx> {
 ///     must also be `cleanup`. This is a part of the type system and checked statically, so it is
 ///     still an error to have such an edge in the CFG even if it's known that it won't be taken at
 ///     runtime.
+///  4. The control flow between cleanup blocks must look like an upside down tree. Roughly
+///     speaking, this means that control flow that looks like a V is allowed, while control flow
+///     that looks like a W is not. This is necessary to ensure that landing pad information can be
+///     correctly codegened on MSVC. More precisely:
+///
+///     Begin with the standard control flow graph `G`. Modify `G` as follows: for any two cleanup
+///     vertices `u` and `v` such that `u` dominates `v`, contract `u` and `v` into a single vertex,
+///     deleting self edges and duplicate edges in the process. Now remove all vertices from `G`
+///     that are not cleanup vertices or are not reachable. The resulting graph must be an inverted
+///     tree, that is each vertex may have at most one successor and there may be no cycles.
 #[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, TypeFoldable, TypeVisitable)]
 pub enum TerminatorKind<'tcx> {
     /// Block has one successor; we continue execution there.
@@ -505,12 +544,6 @@ pub enum TerminatorKind<'tcx> {
     SwitchInt {
         /// The discriminant value being tested.
         discr: Operand<'tcx>,
-
-        /// The type of value being tested.
-        /// This is always the same as the type of `discr`.
-        /// FIXME: remove this redundant information. Currently, it is relied on by pretty-printing.
-        switch_ty: Ty<'tcx>,
-
         targets: SwitchTargets,
     },
 
@@ -547,14 +580,13 @@ pub enum TerminatorKind<'tcx> {
     Unreachable,
 
     /// The behavior of this statement differs significantly before and after drop elaboration.
-    /// After drop elaboration, `Drop` executes the drop glue for the specified place, after which
-    /// it continues execution/unwinds at the given basic blocks. It is possible that executing drop
-    /// glue is special - this would be part of Rust's memory model. (**FIXME**: due we have an
-    /// issue tracking if drop glue has any interesting semantics in addition to those of a function
-    /// call?)
     ///
-    /// `Drop` before drop elaboration is a *conditional* execution of the drop glue. Specifically, the
-    /// `Drop` will be executed if...
+    /// After drop elaboration: `Drop` terminators are a complete nop for types that have no drop
+    /// glue. For other types, `Drop` terminators behave exactly like a call to
+    /// `core::mem::drop_in_place` with a pointer to the given place.
+    ///
+    /// `Drop` before drop elaboration is a *conditional* execution of the drop glue. Specifically,
+    /// the `Drop` will be executed if...
     ///
     /// **Needs clarification**: End of that sentence. This in effect should document the exact
     /// behavior of drop elaboration. The following sounds vaguely right, but I'm not quite sure:
@@ -1171,10 +1203,8 @@ pub enum AggregateKind<'tcx> {
     /// active field index would identity the field `c`
     Adt(DefId, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<usize>),
 
-    // Note: We can use LocalDefId since closures and generators a deaggregated
-    // before codegen.
-    Closure(LocalDefId, SubstsRef<'tcx>),
-    Generator(LocalDefId, SubstsRef<'tcx>, hir::Movability),
+    Closure(DefId, SubstsRef<'tcx>),
+    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
@@ -1185,7 +1215,8 @@ pub enum NullOp {
     AlignOf,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum UnOp {
     /// The `!` operator for logical inversion
     Not,
@@ -1193,7 +1224,8 @@ pub enum UnOp {
     Neg,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum BinOp {
     /// The `+` operator (addition)
     Add,
@@ -1245,10 +1277,11 @@ pub enum BinOp {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(AggregateKind<'_>, 40);
     static_assert_size!(Operand<'_>, 24);
     static_assert_size!(Place<'_>, 16);
     static_assert_size!(PlaceElem<'_>, 24);
     static_assert_size!(Rvalue<'_>, 40);
+    // tidy-alphabetical-end
 }

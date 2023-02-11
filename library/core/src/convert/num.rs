@@ -49,7 +49,7 @@ macro_rules! impl_from {
             // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
             // Rustdocs on functions do not.
             #[doc = $doc]
-            #[inline]
+            #[inline(always)]
             fn from(small: $Small) -> Self {
                 small as Self
             }
@@ -167,6 +167,26 @@ impl_from! { u32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0"
 
 // Float -> Float
 impl_from! { f32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
+
+// bool -> Float
+#[stable(feature = "float_from_bool", since = "1.68.0")]
+#[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
+impl const From<bool> for f32 {
+    /// Converts `bool` to `f32` losslessly.
+    #[inline]
+    fn from(small: bool) -> Self {
+        small as u8 as Self
+    }
+}
+#[stable(feature = "float_from_bool", since = "1.68.0")]
+#[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
+impl const From<bool> for f64 {
+    /// Converts `bool` to `f64` losslessly.
+    #[inline]
+    fn from(small: bool) -> Self {
+        small as u8 as Self
+    }
+}
 
 // no possible bounds violation
 macro_rules! try_from_unbounded {

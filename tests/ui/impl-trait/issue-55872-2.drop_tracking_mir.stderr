@@ -1,0 +1,14 @@
+error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+  --> $DIR/issue-55872-2.rs:17:9
+   |
+LL |         async {}
+   |         ^^^^^^^^
+
+error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+  --> $DIR/issue-55872-2.rs:17:9
+   |
+LL |         async {}
+   |         ^^^^^^^^
+
+error: aborting due to 2 previous errors
+

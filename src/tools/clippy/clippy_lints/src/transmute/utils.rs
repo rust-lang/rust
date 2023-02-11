@@ -1,8 +1,6 @@
+use rustc_hir as hir;
 use rustc_hir::Expr;
-use rustc_hir_analysis::check::{
-    cast::{self, CastCheckResult},
-    FnCtxt, Inherited,
-};
+use rustc_hir_typeck::{cast, FnCtxt, Inherited};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{cast::CastKind, Ty};
 use rustc_span::DUMMY_SP;
@@ -22,33 +20,21 @@ pub(super) fn is_layout_incompatible<'tcx>(cx: &LateContext<'tcx>, from: Ty<'tcx
     }
 }
 
-/// Check if the type conversion can be expressed as a pointer cast, instead of
-/// a transmute. In certain cases, including some invalid casts from array
-/// references to pointers, this may cause additional errors to be emitted and/or
-/// ICE error messages. This function will panic if that occurs.
-pub(super) fn can_be_expressed_as_pointer_cast<'tcx>(
-    cx: &LateContext<'tcx>,
-    e: &'tcx Expr<'_>,
-    from_ty: Ty<'tcx>,
-    to_ty: Ty<'tcx>,
-) -> bool {
-    use CastKind::{AddrPtrCast, ArrayPtrCast, FnPtrAddrCast, FnPtrPtrCast, PtrAddrCast, PtrPtrCast};
-    matches!(
-        check_cast(cx, e, from_ty, to_ty),
-        Some(PtrPtrCast | PtrAddrCast | AddrPtrCast | ArrayPtrCast | FnPtrPtrCast | FnPtrAddrCast)
-    )
-}
-
 /// If a cast from `from_ty` to `to_ty` is valid, returns an Ok containing the kind of
 /// the cast. In certain cases, including some invalid casts from array references
 /// to pointers, this may cause additional errors to be emitted and/or ICE error
 /// messages. This function will panic if that occurs.
-fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> Option<CastKind> {
+pub(super) fn check_cast<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx Expr<'_>,
+    from_ty: Ty<'tcx>,
+    to_ty: Ty<'tcx>,
+) -> Option<CastKind> {
     let hir_id = e.hir_id;
     let local_def_id = hir_id.owner.def_id;
 
     Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
-        let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, hir_id);
+        let fn_ctxt = FnCtxt::new(inherited, cx.param_env, local_def_id);
 
         // If we already have errors, we can't be sure we can pointer cast.
         assert!(
@@ -56,10 +42,15 @@ fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>
             "Newly created FnCtxt contained errors"
         );
 
-        if let CastCheckResult::Deferred(check) = cast::check_cast(
-            &fn_ctxt, e, from_ty, to_ty,
+        if let Ok(check) = cast::CastCheck::new(
+            &fn_ctxt,
+            e,
+            from_ty,
+            to_ty,
             // We won't show any error to the user, so we don't care what the span is here.
-            DUMMY_SP, DUMMY_SP,
+            DUMMY_SP,
+            DUMMY_SP,
+            hir::Constness::NotConst,
         ) {
             let res = check.do_check(&fn_ctxt);
 

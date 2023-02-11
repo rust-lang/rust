@@ -35,8 +35,6 @@ use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Vis
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use smallvec::SmallVec;
-use std::borrow::Cow;
-use std::convert::TryInto;
 
 pub struct SimplifyCfg {
     label: String,
@@ -57,8 +55,8 @@ pub fn simplify_cfg<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyCfg {
-    fn name(&self) -> Cow<'_, str> {
-        Cow::Borrowed(&self.label)
+    fn name(&self) -> &str {
+        &self.label
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -381,9 +379,21 @@ fn save_unreachable_coverage(
     ));
 }
 
-pub struct SimplifyLocals;
+pub struct SimplifyLocals {
+    label: String,
+}
+
+impl SimplifyLocals {
+    pub fn new(label: &str) -> SimplifyLocals {
+        SimplifyLocals { label: format!("SimplifyLocals-{}", label) }
+    }
+}
 
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {
+    fn name(&self) -> &str {
+        &self.label
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }
@@ -392,6 +402,18 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
         trace!("running SimplifyLocals on {:?}", body.source);
         simplify_locals(body, tcx);
     }
+}
+
+pub fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>) {
+    // First, we're going to get a count of *actual* uses for every `Local`.
+    let mut used_locals = UsedLocals::new(body);
+
+    // Next, we're going to remove any `Local` with zero actual uses. When we remove those
+    // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
+    // count. For example, if we removed `_2 = discriminant(_1)`, then we'll subtract one from
+    // `use_counts[_1]`. That in turn might make `_1` unused, so we loop until we hit a
+    // fixedpoint where there are no more unused locals.
+    remove_unused_definitions_helper(&mut used_locals, body);
 }
 
 pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
@@ -403,7 +425,7 @@ pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
     // count. For example, if we removed `_2 = discriminant(_1)`, then we'll subtract one from
     // `use_counts[_1]`. That in turn might make `_1` unused, so we loop until we hit a
     // fixedpoint where there are no more unused locals.
-    remove_unused_definitions(&mut used_locals, body);
+    remove_unused_definitions_helper(&mut used_locals, body);
 
     // Finally, we'll actually do the work of shrinking `body.local_decls` and remapping the `Local`s.
     let map = make_local_map(&mut body.local_decls, &used_locals);
@@ -507,7 +529,7 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
                 self.super_statement(statement, location);
             }
 
-            StatementKind::Nop => {}
+            StatementKind::ConstEvalCounter | StatementKind::Nop => {}
 
             StatementKind::StorageLive(_local) | StatementKind::StorageDead(_local) => {}
 
@@ -538,7 +560,7 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
 }
 
 /// Removes unused definitions. Updates the used locals to reflect the changes made.
-fn remove_unused_definitions(used_locals: &mut UsedLocals, body: &mut Body<'_>) {
+fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Body<'_>) {
     // The use counts are updated as we remove the statements. A local might become unused
     // during the retain operation, leading to a temporary inconsistency (storage statements or
     // definitions referencing the local might remain). For correctness it is crucial that this
@@ -559,6 +581,7 @@ fn remove_unused_definitions(used_locals: &mut UsedLocals, body: &mut Body<'_>) 
 
                     StatementKind::SetDiscriminant { ref place, .. }
                     | StatementKind::Deinit(ref place) => used_locals.is_used(place.local),
+                    StatementKind::Nop => false,
                     _ => true,
                 };
 

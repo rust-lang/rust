@@ -27,7 +27,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// suitable also to be passed as function arguments.
     ///
     /// The operand returned from this function will *not be valid* after an ExprKind::Scope is
-    /// passed, so please do *not* return it from functions to avoid bad miscompiles.  Returns an
+    /// passed, so please do *not* return it from functions to avoid bad miscompiles. Returns an
     /// operand suitable for use as a call argument. This is almost always equivalent to
     /// `as_operand`, except for the particular case of passing values of (potentially) unsized
     /// types "by value" (see details below).
@@ -72,7 +72,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// will actually provide a pointer to the interior of the box, and not move the `dyn Debug`
     /// value to the stack.
     ///
-    /// See #68034 for more details.
+    /// See #68304 for more details.
     pub(crate) fn as_local_call_operand(
         &mut self,
         block: BasicBlock,
@@ -153,12 +153,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         if tcx.features().unsized_fn_params {
             let ty = expr.ty;
-            let span = expr.span;
             let param_env = this.param_env;
 
-            if !ty.is_sized(tcx.at(span), param_env) {
+            if !ty.is_sized(tcx, param_env) {
                 // !sized means !copy, so this is an unsized move
-                assert!(!ty.is_copy_modulo_regions(tcx.at(span), param_env));
+                assert!(!ty.is_copy_modulo_regions(tcx, param_env));
 
                 // As described above, detect the case where we are passing a value of unsized
                 // type, and that value is coming from the deref of a box.

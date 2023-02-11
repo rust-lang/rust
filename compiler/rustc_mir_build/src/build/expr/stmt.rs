@@ -6,10 +6,8 @@ use rustc_middle::thir::*;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Builds a block of MIR statements to evaluate the THIR `expr`.
-    /// If the original expression was an AST statement,
-    /// (e.g., `some().code(&here());`) then `opt_stmt_span` is the
-    /// span of that statement (including its semicolon, if any).
-    /// The scope is used if a statement temporary must be dropped.
+    ///
+    /// The `statement_scope` is used if a statement temporary must be dropped.
     pub(crate) fn stmt_expr(
         &mut self,
         mut block: BasicBlock,
@@ -59,7 +57,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // question raised here -- should we "freeze" the
                 // value of the lhs here?  I'm inclined to think not,
                 // since it seems closer to the semantics of the
-                // overloaded version, which takes `&mut self`.  This
+                // overloaded version, which takes `&mut self`. This
                 // only affects weird things like `x += {x += 1; x}`
                 // -- is that equal to `x + (x + 1)` or `2*(x+1)`?
 
@@ -115,7 +113,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //
                 // it is usually better to focus on `the_value` rather
                 // than the entirety of block(s) surrounding it.
-                let adjusted_span = (|| {
+                let adjusted_span =
                     if let ExprKind::Block { block } = expr.kind
                         && let Some(tail_ex) = this.thir[block].expr
                     {
@@ -137,10 +135,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             tail_result_is_ignored: true,
                             span: expr.span,
                         });
-                        return Some(expr.span);
-                    }
-                    None
-                })();
+                        Some(expr.span)
+                    } else {
+                        None
+                    };
 
                 let temp =
                     unpack!(block = this.as_temp(block, statement_scope, expr, Mutability::Not));

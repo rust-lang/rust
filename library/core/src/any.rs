@@ -148,7 +148,7 @@
 //! ```
 //!
 //! In this example, if the concrete type of `obj` in `use_my_trait` is `SomeConcreteType`, then
-//! the `get_context_ref` call will return a reference to `obj.some_string` with type `&String`.
+//! the `get_context_by_ref` call will return a reference to `obj.some_string` with type `&String`.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -662,7 +662,8 @@ impl dyn Any + Send + Sync {
 /// While `TypeId` implements `Hash`, `PartialOrd`, and `Ord`, it is worth
 /// noting that the hashes and ordering will vary between Rust releases. Beware
 /// of relying on them inside of your code!
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive(Clone, Copy, Debug, Hash, Eq)]
+#[derive_const(PartialEq, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
     t: u64,

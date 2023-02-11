@@ -22,14 +22,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::const_closure::ConstFnMutClosure;
 use crate::marker::Destruct;
-use crate::marker::StructuralPartialEq;
 
 use self::Ordering::*;
 
-/// Trait for equality comparisons which are [partial equivalence
-/// relations](https://en.wikipedia.org/wiki/Partial_equivalence_relation).
+/// Trait for equality comparisons.
 ///
 /// `x.eq(y)` can also be written `x == y`, and `x.ne(y)` can be written `x != y`.
 /// We use the easier-to-read infix notation in the remainder of this documentation.
@@ -37,6 +34,8 @@ use self::Ordering::*;
 /// This trait allows for partial equality, for types that do not have a full
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
 /// so floating point types implement `PartialEq` but not [`trait@Eq`].
+/// Formally speaking, when `Rhs == Self`, this trait corresponds to a [partial equivalence
+/// relation](https://en.wikipedia.org/wiki/Partial_equivalence_relation).
 ///
 /// Implementations must ensure that `eq` and `ne` are consistent with each other:
 ///
@@ -331,6 +330,7 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 /// assert_eq!(Ordering::Greater, result);
 /// ```
 #[derive(Clone, Copy, Eq, Debug, Hash)]
+#[derive_const(PartialOrd, Ord, PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(i8)]
 pub enum Ordering {
@@ -797,13 +797,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
         Self: Sized,
         Self: ~const Destruct,
     {
-        // HACK(fee1-dead): go back to using `self.max_by(other, Ord::cmp)`
-        // when trait methods are allowed to be used when a const closure is
-        // expected.
-        match self.cmp(&other) {
-            Ordering::Less | Ordering::Equal => other,
-            Ordering::Greater => self,
-        }
+        max_by(self, other, Ord::cmp)
     }
 
     /// Compares and returns the minimum of two values.
@@ -824,13 +818,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
         Self: Sized,
         Self: ~const Destruct,
     {
-        // HACK(fee1-dead): go back to using `self.min_by(other, Ord::cmp)`
-        // when trait methods are allowed to be used when a const closure is
-        // expected.
-        match self.cmp(&other) {
-            Ordering::Less | Ordering::Equal => self,
-            Ordering::Greater => other,
-        }
+        min_by(self, other, Ord::cmp)
     }
 
     /// Restrict a value to a certain interval.
@@ -874,36 +862,6 @@ pub trait Ord: Eq + PartialOrd<Self> {
 #[allow_internal_unstable(core_intrinsics)]
 pub macro Ord($item:item) {
     /* compiler built-in */
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl StructuralPartialEq for Ordering {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-impl const PartialEq for Ordering {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        (*self as i32).eq(&(*other as i32))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-impl const Ord for Ordering {
-    #[inline]
-    fn cmp(&self, other: &Ordering) -> Ordering {
-        (*self as i32).cmp(&(*other as i32))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-impl const PartialOrd for Ordering {
-    #[inline]
-    fn partial_cmp(&self, other: &Ordering) -> Option<Ordering> {
-        (*self as i32).partial_cmp(&(*other as i32))
-    }
 }
 
 /// Trait for types that form a [partial order](https://en.wikipedia.org/wiki/Partial_order).
@@ -1257,17 +1215,7 @@ where
     F: ~const Destruct,
     K: ~const Destruct,
 {
-    const fn imp<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(
-        f: &mut F,
-        (v1, v2): (&T, &T),
-    ) -> Ordering
-    where
-        T: ~const Destruct,
-        K: ~const Destruct,
-    {
-        f(v1).cmp(&f(v2))
-    }
-    min_by(v1, v2, ConstFnMutClosure::new(&mut f, imp))
+    min_by(v1, v2, const |v1, v2| f(v1).cmp(&f(v2)))
 }
 
 /// Compares and returns the maximum of two values.
@@ -1342,17 +1290,7 @@ where
     F: ~const Destruct,
     K: ~const Destruct,
 {
-    const fn imp<T, F: ~const FnMut(&T) -> K, K: ~const Ord>(
-        f: &mut F,
-        (v1, v2): (&T, &T),
-    ) -> Ordering
-    where
-        T: ~const Destruct,
-        K: ~const Destruct,
-    {
-        f(v1).cmp(&f(v2))
-    }
-    max_by(v1, v2, ConstFnMutClosure::new(&mut f, imp))
+    max_by(v1, v2, const |v1, v2| f(v1).cmp(&f(v2)))
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types

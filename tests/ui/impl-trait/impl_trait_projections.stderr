@@ -1,0 +1,33 @@
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/impl_trait_projections.rs:12:51
+   |
+LL | fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
+   |                                                   ^^^^^^^^^^^^^
+
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/impl_trait_projections.rs:19:9
+   |
+LL |     -> <impl Iterator as Iterator>::Item
+   |         ^^^^^^^^^^^^^
+
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/impl_trait_projections.rs:26:27
+   |
+LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
+   |                           ^^^^^^^^^^
+
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/impl_trait_projections.rs:33:29
+   |
+LL |     -> <dyn Iterator<Item = impl Debug> as Iterator>::Item
+   |                             ^^^^^^^^^^
+
+error[E0667]: `impl Trait` is not allowed in path parameters
+  --> $DIR/impl_trait_projections.rs:12:51
+   |
+LL | fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
+   |                                                   ^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0667`.

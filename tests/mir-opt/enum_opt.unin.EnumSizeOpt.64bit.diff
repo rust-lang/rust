@@ -1,0 +1,68 @@
+- // MIR for `unin` before EnumSizeOpt
++ // MIR for `unin` after EnumSizeOpt
+  
+  fn unin() -> NoData {
+      let mut _0: NoData;                  // return place in scope 0 at $DIR/enum_opt.rs:+0:18: +0:24
+      let mut _1: NoData;                  // in scope 0 at $DIR/enum_opt.rs:+1:7: +1:12
+      let mut _2: NoData;                  // in scope 0 at $DIR/enum_opt.rs:+2:7: +2:31
+      let mut _3: [u8; 8196];              // in scope 0 at $DIR/enum_opt.rs:+2:21: +2:30
++     let mut _4: [usize; 2];              // in scope 0 at $DIR/enum_opt.rs:+2:3: +2:31
++     let mut _5: isize;                   // in scope 0 at $DIR/enum_opt.rs:+2:3: +2:31
++     let mut _6: usize;                   // in scope 0 at $DIR/enum_opt.rs:+2:3: +2:31
++     let mut _7: usize;                   // in scope 0 at $DIR/enum_opt.rs:+2:3: +2:31
++     let mut _8: *mut NoData;             // in scope 0 at $DIR/enum_opt.rs:+2:3: +2:31
++     let mut _9: *mut u8;                 // in scope 0 at $DIR/enum_opt.rs:+2:3: +2:31
++     let mut _10: *const NoData;          // in scope 0 at $DIR/enum_opt.rs:+2:3: +2:31
++     let mut _11: *const u8;              // in scope 0 at $DIR/enum_opt.rs:+2:3: +2:31
++     let mut _12: [usize; 2];             // in scope 0 at $DIR/enum_opt.rs:+3:3: +3:4
++     let mut _13: isize;                  // in scope 0 at $DIR/enum_opt.rs:+3:3: +3:4
++     let mut _14: usize;                  // in scope 0 at $DIR/enum_opt.rs:+3:3: +3:4
++     let mut _15: usize;                  // in scope 0 at $DIR/enum_opt.rs:+3:3: +3:4
++     let mut _16: *mut NoData;            // in scope 0 at $DIR/enum_opt.rs:+3:3: +3:4
++     let mut _17: *mut u8;                // in scope 0 at $DIR/enum_opt.rs:+3:3: +3:4
++     let mut _18: *const NoData;          // in scope 0 at $DIR/enum_opt.rs:+3:3: +3:4
++     let mut _19: *const u8;              // in scope 0 at $DIR/enum_opt.rs:+3:3: +3:4
+      scope 1 {
+          debug a => _1;                   // in scope 1 at $DIR/enum_opt.rs:+1:7: +1:12
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/enum_opt.rs:+1:7: +1:12
+          _1 = NoData::None;               // scope 0 at $DIR/enum_opt.rs:+1:15: +1:27
+          StorageLive(_2);                 // scope 1 at $DIR/enum_opt.rs:+2:7: +2:31
+          StorageLive(_3);                 // scope 1 at $DIR/enum_opt.rs:+2:21: +2:30
+          _3 = [const 1_u8; 8196];         // scope 1 at $DIR/enum_opt.rs:+2:21: +2:30
+          _2 = NoData::Large(move _3);     // scope 1 at $DIR/enum_opt.rs:+2:7: +2:31
+          StorageDead(_3);                 // scope 1 at $DIR/enum_opt.rs:+2:30: +2:31
+-         _1 = move _2;                    // scope 1 at $DIR/enum_opt.rs:+2:3: +2:31
++         StorageLive(_4);                 // scope 1 at $DIR/enum_opt.rs:+2:3: +2:31
++         _4 = const [8197_usize, 1_usize]; // scope 1 at $DIR/enum_opt.rs:+2:3: +2:31
++         _5 = discriminant(_2);           // scope 1 at $DIR/enum_opt.rs:+2:3: +2:31
++         _6 = _5 as usize (IntToInt);     // scope 1 at $DIR/enum_opt.rs:+2:3: +2:31
++         _7 = _4[_6];                     // scope 1 at $DIR/enum_opt.rs:+2:3: +2:31
++         _8 = &raw mut _1;                // scope 1 at $DIR/enum_opt.rs:+2:3: +2:31
++         _9 = _8 as *mut u8 (PtrToPtr);   // scope 1 at $DIR/enum_opt.rs:+2:3: +2:31
++         _10 = &raw const _2;             // scope 1 at $DIR/enum_opt.rs:+2:3: +2:31
++         _11 = _10 as *const u8 (PtrToPtr); // scope 1 at $DIR/enum_opt.rs:+2:3: +2:31
++         Deinit(_8);                      // scope 1 at $DIR/enum_opt.rs:+2:3: +2:31
++         copy_nonoverlapping(dst = _9, src = _11, count = _7); // scope 1 at $DIR/enum_opt.rs:+2:3: +2:31
++         StorageDead(_4);                 // scope 1 at $DIR/enum_opt.rs:+2:3: +2:31
+          StorageDead(_2);                 // scope 1 at $DIR/enum_opt.rs:+2:30: +2:31
+-         _0 = move _1;                    // scope 1 at $DIR/enum_opt.rs:+3:3: +3:4
++         StorageLive(_12);                // scope 1 at $DIR/enum_opt.rs:+3:3: +3:4
++         _12 = const [8197_usize, 1_usize]; // scope 1 at $DIR/enum_opt.rs:+3:3: +3:4
++         _13 = discriminant(_1);          // scope 1 at $DIR/enum_opt.rs:+3:3: +3:4
++         _14 = _13 as usize (IntToInt);   // scope 1 at $DIR/enum_opt.rs:+3:3: +3:4
++         _15 = _12[_14];                  // scope 1 at $DIR/enum_opt.rs:+3:3: +3:4
++         _16 = &raw mut _0;               // scope 1 at $DIR/enum_opt.rs:+3:3: +3:4
++         _17 = _16 as *mut u8 (PtrToPtr); // scope 1 at $DIR/enum_opt.rs:+3:3: +3:4
++         _18 = &raw const _1;             // scope 1 at $DIR/enum_opt.rs:+3:3: +3:4
++         _19 = _18 as *const u8 (PtrToPtr); // scope 1 at $DIR/enum_opt.rs:+3:3: +3:4
++         Deinit(_16);                     // scope 1 at $DIR/enum_opt.rs:+3:3: +3:4
++         copy_nonoverlapping(dst = _17, src = _19, count = _15); // scope 1 at $DIR/enum_opt.rs:+3:3: +3:4
++         StorageDead(_12);                // scope 1 at $DIR/enum_opt.rs:+3:3: +3:4
+          StorageDead(_1);                 // scope 0 at $DIR/enum_opt.rs:+4:1: +4:2
+          return;                          // scope 0 at $DIR/enum_opt.rs:+4:2: +4:2
+      }
+  }
+  

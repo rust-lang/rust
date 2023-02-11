@@ -58,16 +58,16 @@ pub(crate) fn convert_two_arm_bool_match_to_matches_macro(
         target_range,
         |builder| {
             let mut arm_str = String::new();
-            if let Some(ref pat) = first_arm.pat() {
+            if let Some(pat) = &first_arm.pat() {
                 arm_str += &pat.to_string();
             }
-            if let Some(ref guard) = first_arm.guard() {
-                arm_str += &format!(" {}", &guard.to_string());
+            if let Some(guard) = &first_arm.guard() {
+                arm_str += &format!(" {guard}");
             }
             if invert_matches {
-                builder.replace(target_range, format!("!matches!({}, {})", expr, arm_str));
+                builder.replace(target_range, format!("!matches!({expr}, {arm_str})"));
             } else {
-                builder.replace(target_range, format!("matches!({}, {})", expr, arm_str));
+                builder.replace(target_range, format!("matches!({expr}, {arm_str})"));
             }
         },
     )

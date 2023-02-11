@@ -7,7 +7,9 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::TryReserveErrorKind::*;
 use std::fmt::Debug;
+use std::hint;
 use std::iter::InPlaceIterable;
+use std::mem;
 use std::mem::{size_of, swap};
 use std::ops::Bound::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -1089,7 +1091,8 @@ fn test_into_iter_drop_allocator() {
         }
 
         unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-            System.deallocate(ptr, layout)
+            // Safety: Invariants passed to caller.
+            unsafe { System.deallocate(ptr, layout) }
         }
     }
 
@@ -1106,8 +1109,31 @@ fn test_into_iter_drop_allocator() {
 
 #[test]
 fn test_into_iter_zst() {
-    for _ in vec![[0u64; 0]].into_iter() {}
-    for _ in vec![[0u64; 0]; 5].into_iter().rev() {}
+    #[derive(Debug, Clone)]
+    struct AlignedZstWithDrop([u64; 0]);
+    impl Drop for AlignedZstWithDrop {
+        fn drop(&mut self) {
+            let addr = self as *mut _ as usize;
+            assert!(hint::black_box(addr) % mem::align_of::<u64>() == 0);
+        }
+    }
+
+    const C: AlignedZstWithDrop = AlignedZstWithDrop([0u64; 0]);
+
+    for _ in vec![C].into_iter() {}
+    for _ in vec![C; 5].into_iter().rev() {}
+
+    let mut it = vec![C, C].into_iter();
+    it.advance_by(1).unwrap();
+    drop(it);
+
+    let mut it = vec![C, C].into_iter();
+    it.next_chunk::<1>().unwrap();
+    drop(it);
+
+    let mut it = vec![C, C].into_iter();
+    it.next_chunk::<4>().unwrap_err();
+    drop(it);
 }
 
 #[test]
@@ -1823,7 +1849,7 @@ fn test_stable_pointers() {
     }
 
     // Test that, if we reserved enough space, adding and removing elements does not
-    // invalidate references into the vector (such as `v0`).  This test also
+    // invalidate references into the vector (such as `v0`). This test also
     // runs in Miri, which would detect such problems.
     // Note that this test does *not* constitute a stable guarantee that all these functions do not
     // reallocate! Only what is explicitly documented at

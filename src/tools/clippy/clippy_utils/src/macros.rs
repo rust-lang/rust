@@ -1,6 +1,5 @@
 #![allow(clippy::similar_names)] // `expr` and `expn`
 
-use crate::is_path_diagnostic_item;
 use crate::source::snippet_opt;
 use crate::visitors::{for_each_expr, Descend};
 
@@ -8,7 +7,7 @@ use arrayvec::ArrayVec;
 use itertools::{izip, Either, Itertools};
 use rustc_ast::ast::LitKind;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{self as hir, Expr, ExprField, ExprKind, HirId, Node, QPath};
+use rustc_hir::{self as hir, Expr, ExprField, ExprKind, HirId, LangItem, Node, QPath, TyKind};
 use rustc_lexer::unescape::unescape_literal;
 use rustc_lexer::{tokenize, unescape, LiteralKind, TokenKind};
 use rustc_lint::LateContext;
@@ -199,13 +198,19 @@ pub fn first_node_in_macro(cx: &LateContext<'_>, node: &impl HirNode) -> Option<
 pub fn is_panic(cx: &LateContext<'_>, def_id: DefId) -> bool {
     let Some(name) = cx.tcx.get_diagnostic_name(def_id) else { return false };
     matches!(
-        name.as_str(),
-        "core_panic_macro"
-            | "std_panic_macro"
-            | "core_panic_2015_macro"
-            | "std_panic_2015_macro"
-            | "core_panic_2021_macro"
+        name,
+        sym::core_panic_macro
+            | sym::std_panic_macro
+            | sym::core_panic_2015_macro
+            | sym::std_panic_2015_macro
+            | sym::core_panic_2021_macro
     )
+}
+
+/// Is `def_id` of `assert!` or `debug_assert!`
+pub fn is_assert_macro(cx: &LateContext<'_>, def_id: DefId) -> bool {
+    let Some(name) = cx.tcx.get_diagnostic_name(def_id) else { return false };
+    matches!(name, sym::assert_macro | sym::debug_assert_macro)
 }
 
 pub enum PanicExpn<'a> {
@@ -322,7 +327,7 @@ fn is_assert_arg(cx: &LateContext<'_>, expr: &Expr<'_>, assert_expn: ExpnId) -> 
         } else {
             match cx.tcx.item_name(macro_call.def_id) {
                 // `cfg!(debug_assertions)` in `debug_assert!`
-                sym::cfg => ControlFlow::CONTINUE,
+                sym::cfg => ControlFlow::Continue(()),
                 // assert!(other_macro!(..))
                 _ => ControlFlow::Break(true),
             }
@@ -433,8 +438,7 @@ impl<'tcx> FormatArgsValues<'tcx> {
                 // ArgumentV1::from_usize(<val>)
                 if let ExprKind::Call(callee, [val]) = expr.kind
                     && let ExprKind::Path(QPath::TypeRelative(ty, _)) = callee.kind
-                    && let hir::TyKind::Path(QPath::Resolved(_, path)) = ty.kind
-                    && path.segments.last().unwrap().ident.name == sym::ArgumentV1
+                    && let TyKind::Path(QPath::LangItem(LangItem::FormatArgument, _, _)) = ty.kind
                 {
                     let val_idx = if val.span.ctxt() == expr.span.ctxt()
                         && let ExprKind::Field(_, field) = val.kind
@@ -480,20 +484,6 @@ struct ParamPosition {
 
 impl<'tcx> Visitor<'tcx> for ParamPosition {
     fn visit_expr_field(&mut self, field: &'tcx ExprField<'tcx>) {
-        fn parse_count(expr: &Expr<'_>) -> Option<usize> {
-            // ::core::fmt::rt::v1::Count::Param(1usize),
-            if let ExprKind::Call(ctor, [val]) = expr.kind
-                && let ExprKind::Path(QPath::Resolved(_, path)) = ctor.kind
-                && path.segments.last()?.ident.name == sym::Param
-                && let ExprKind::Lit(lit) = &val.kind
-                && let LitKind::Int(pos, _) = lit.node
-            {
-                Some(pos as usize)
-            } else {
-                None
-            }
-        }
-
         match field.ident.name {
             sym::position => {
                 if let ExprKind::Lit(lit) = &field.expr.kind
@@ -513,15 +503,41 @@ impl<'tcx> Visitor<'tcx> for ParamPosition {
     }
 }
 
+fn parse_count(expr: &Expr<'_>) -> Option<usize> {
+    // <::core::fmt::rt::v1::Count>::Param(1usize),
+    if let ExprKind::Call(ctor, [val]) = expr.kind
+        && let ExprKind::Path(QPath::TypeRelative(_, path)) = ctor.kind
+            && path.ident.name == sym::Param
+            && let ExprKind::Lit(lit) = &val.kind
+            && let LitKind::Int(pos, _) = lit.node
+    {
+        Some(pos as usize)
+    } else {
+        None
+    }
+}
+
 /// Parses the `fmt` arg of `Arguments::new_v1_formatted(pieces, args, fmt, _)`
 fn parse_rt_fmt<'tcx>(fmt_arg: &'tcx Expr<'tcx>) -> Option<impl Iterator<Item = ParamPosition> + 'tcx> {
     if let ExprKind::AddrOf(.., array) = fmt_arg.kind
         && let ExprKind::Array(specs) = array.kind
     {
         Some(specs.iter().map(|spec| {
-            let mut position = ParamPosition::default();
-            position.visit_expr(spec);
-            position
+            if let ExprKind::Call(f, args) = spec.kind
+                && let ExprKind::Path(QPath::TypeRelative(ty, f)) = f.kind
+                && let TyKind::Path(QPath::LangItem(LangItem::FormatPlaceholder, _, _)) = ty.kind
+                && f.ident.name == sym::new
+                && let [position, _fill, _align, _flags, precision, width] = args
+                && let ExprKind::Lit(position) = &position.kind
+                && let LitKind::Int(position, _) = position.node {
+                    ParamPosition {
+                        value: position as usize,
+                        width: parse_count(width),
+                        precision: parse_count(precision),
+                    }
+            } else {
+                ParamPosition::default()
+            }
         }))
     } else {
         None
@@ -627,7 +643,7 @@ pub enum Count<'tcx> {
     /// `FormatParamKind::Numbered`.
     Param(FormatParam<'tcx>),
     /// Not specified.
-    Implied,
+    Implied(Option<Span>),
 }
 
 impl<'tcx> Count<'tcx> {
@@ -638,8 +654,10 @@ impl<'tcx> Count<'tcx> {
         inner: Option<rpf::InnerSpan>,
         values: &FormatArgsValues<'tcx>,
     ) -> Option<Self> {
+        let span = inner.map(|inner| span_from_inner(values.format_string_span, inner));
+
         Some(match count {
-            rpf::Count::CountIs(val) => Self::Is(val, span_from_inner(values.format_string_span, inner?)),
+            rpf::Count::CountIs(val) => Self::Is(val, span?),
             rpf::Count::CountIsName(name, _) => Self::Param(FormatParam::new(
                 FormatParamKind::Named(Symbol::intern(name)),
                 usage,
@@ -661,18 +679,26 @@ impl<'tcx> Count<'tcx> {
                 inner?,
                 values,
             )?),
-            rpf::Count::CountImplied => Self::Implied,
+            rpf::Count::CountImplied => Self::Implied(span),
         })
     }
 
     pub fn is_implied(self) -> bool {
-        matches!(self, Count::Implied)
+        matches!(self, Count::Implied(_))
     }
 
     pub fn param(self) -> Option<FormatParam<'tcx>> {
         match self {
             Count::Param(param) => Some(param),
             _ => None,
+        }
+    }
+
+    pub fn span(self) -> Option<Span> {
+        match self {
+            Count::Is(_, span) => Some(span),
+            Count::Param(param) => Some(param.span),
+            Count::Implied(span) => span,
         }
     }
 }
@@ -685,8 +711,8 @@ pub struct FormatSpec<'tcx> {
     pub fill: Option<char>,
     /// Optionally specified alignment.
     pub align: Alignment,
-    /// Packed version of various flags provided, see [`rustc_parse_format::Flag`].
-    pub flags: u32,
+    /// Whether all flag options are set to default (no flags specified).
+    pub no_flags: bool,
     /// Represents either the maximum width or the integer precision.
     pub precision: Count<'tcx>,
     /// The minimum width, will be padded according to `width`/`align`
@@ -702,7 +728,7 @@ impl<'tcx> FormatSpec<'tcx> {
         Some(Self {
             fill: spec.fill,
             align: spec.align,
-            flags: spec.flags,
+            no_flags: spec.sign.is_none() && !spec.alternate && !spec.zero_pad && spec.debug_hex.is_none(),
             precision: Count::new(
                 FormatParamUsage::Precision,
                 spec.precision,
@@ -738,11 +764,13 @@ impl<'tcx> FormatSpec<'tcx> {
     /// Returns true if this format spec is unchanged from the default. e.g. returns true for `{}`,
     /// `{foo}` and `{2}`, but false for `{:?}`, `{foo:5}` and `{3:.5}`
     pub fn is_default(&self) -> bool {
-        self.r#trait == sym::Display
-            && self.width.is_implied()
-            && self.precision.is_implied()
-            && self.align == Alignment::AlignUnknown
-            && self.flags == 0
+        self.r#trait == sym::Display && self.is_default_for_trait()
+    }
+
+    /// Has no other formatting specifiers than setting the format trait. returns true for `{}`,
+    /// `{foo}`, `{:?}`, but false for `{foo:5}`, `{3:.5?}`
+    pub fn is_default_for_trait(&self) -> bool {
+        self.width.is_implied() && self.precision.is_implied() && self.align == Alignment::AlignUnknown && self.no_flags
     }
 }
 
@@ -755,6 +783,22 @@ pub struct FormatArg<'tcx> {
     pub format: FormatSpec<'tcx>,
     /// span of the whole argument, `{..}`.
     pub span: Span,
+}
+
+impl<'tcx> FormatArg<'tcx> {
+    /// Span of the `:` and format specifiers
+    ///
+    /// ```ignore
+    /// format!("{:.}"), format!("{foo:.}")
+    ///           ^^                  ^^
+    /// ```
+    pub fn format_span(&self) -> Span {
+        let base = self.span.data();
+
+        // `base.hi` is `{...}|`, subtract 1 byte (the length of '}') so that it points before the closing
+        // brace `{...|}`
+        Span::new(self.param.span.hi(), base.hi - BytePos(1), base.ctxt, base.parent)
+    }
 }
 
 /// A parsed `format_args!` expansion.
@@ -853,7 +897,7 @@ impl<'tcx> FormatArgsExpn<'tcx> {
         // ::core::fmt::Arguments::new_v1_formatted(pieces, args, fmt, _unsafe_arg)
         if let ExprKind::Call(callee, [pieces, args, rest @ ..]) = expr.kind
             && let ExprKind::Path(QPath::TypeRelative(ty, seg)) = callee.kind
-            && is_path_diagnostic_item(cx, ty, sym::Arguments)
+            && let TyKind::Path(QPath::LangItem(LangItem::FormatArguments, _, _)) = ty.kind
             && matches!(seg.ident.as_str(), "new_v1" | "new_v1_formatted")
         {
             let format_string = FormatString::new(cx, pieces)?;

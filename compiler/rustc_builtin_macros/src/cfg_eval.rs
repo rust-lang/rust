@@ -210,8 +210,15 @@ impl CfgEval<'_, '_> {
 }
 
 impl MutVisitor for CfgEval<'_, '_> {
+    #[instrument(level = "trace", skip(self))]
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
-        self.cfg.configure_expr(expr);
+        self.cfg.configure_expr(expr, false);
+        mut_visit::noop_visit_expr(expr, self);
+    }
+
+    #[instrument(level = "trace", skip(self))]
+    fn visit_method_receiver_expr(&mut self, expr: &mut P<ast::Expr>) {
+        self.cfg.configure_expr(expr, true);
         mut_visit::noop_visit_expr(expr, self);
     }
 

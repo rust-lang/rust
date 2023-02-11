@@ -102,7 +102,7 @@
 //! to use a pointer type to store something that may hold an integer, some of
 //! the time.
 
-use super::{Custom, ErrorData, ErrorKind, SimpleMessage};
+use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
 use alloc::boxed::Box;
 use core::marker::PhantomData;
 use core::mem::{align_of, size_of};
@@ -166,18 +166,18 @@ impl Repr {
         // `new_unchecked` is safe.
         let res = Self(unsafe { NonNull::new_unchecked(tagged) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
-        // only run in libstd's tests, unless the user uses -Zbuild-std)
+        // only run in std's tests, unless the user uses -Zbuild-std)
         debug_assert!(matches!(res.data(), ErrorData::Custom(_)), "repr(custom) encoding failed");
         res
     }
 
     #[inline]
-    pub(super) fn new_os(code: i32) -> Self {
+    pub(super) fn new_os(code: RawOsError) -> Self {
         let utagged = ((code as usize) << 32) | TAG_OS;
         // Safety: `TAG_OS` is not zero, so the result of the `|` is not 0.
         let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
-        // only run in libstd's tests, unless the user uses -Zbuild-std)
+        // only run in std's tests, unless the user uses -Zbuild-std)
         debug_assert!(
             matches!(res.data(), ErrorData::Os(c) if c == code),
             "repr(os) encoding failed for {code}"
@@ -191,7 +191,7 @@ impl Repr {
         // Safety: `TAG_SIMPLE` is not zero, so the result of the `|` is not 0.
         let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
-        // only run in libstd's tests, unless the user uses -Zbuild-std)
+        // only run in std's tests, unless the user uses -Zbuild-std)
         debug_assert!(
             matches!(res.data(), ErrorData::Simple(k) if k == kind),
             "repr(simple) encoding failed {:?}",
@@ -250,7 +250,7 @@ where
     let bits = ptr.as_ptr().addr();
     match bits & TAG_MASK {
         TAG_OS => {
-            let code = ((bits as i64) >> 32) as i32;
+            let code = ((bits as i64) >> 32) as RawOsError;
             ErrorData::Os(code)
         }
         TAG_SIMPLE => {
@@ -348,7 +348,7 @@ fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
 // that our encoding relies on for correctness and soundness. (Some of these are
 // a bit overly thorough/cautious, admittedly)
 //
-// If any of these are hit on a platform that libstd supports, we should likely
+// If any of these are hit on a platform that std supports, we should likely
 // just use `repr_unpacked.rs` there instead (unless the fix is easy).
 macro_rules! static_assert {
     ($condition:expr) => {
@@ -374,10 +374,13 @@ static_assert!((TAG_MASK + 1).is_power_of_two());
 static_assert!(align_of::<SimpleMessage>() >= TAG_MASK + 1);
 static_assert!(align_of::<Custom>() >= TAG_MASK + 1);
 
-static_assert!(@usize_eq: (TAG_MASK & TAG_SIMPLE_MESSAGE), TAG_SIMPLE_MESSAGE);
-static_assert!(@usize_eq: (TAG_MASK & TAG_CUSTOM), TAG_CUSTOM);
-static_assert!(@usize_eq: (TAG_MASK & TAG_OS), TAG_OS);
-static_assert!(@usize_eq: (TAG_MASK & TAG_SIMPLE), TAG_SIMPLE);
+// `RawOsError` must be an alias for `i32`.
+const _: fn(RawOsError) -> i32 = |os| os;
+
+static_assert!(@usize_eq: TAG_MASK & TAG_SIMPLE_MESSAGE, TAG_SIMPLE_MESSAGE);
+static_assert!(@usize_eq: TAG_MASK & TAG_CUSTOM, TAG_CUSTOM);
+static_assert!(@usize_eq: TAG_MASK & TAG_OS, TAG_OS);
+static_assert!(@usize_eq: TAG_MASK & TAG_SIMPLE, TAG_SIMPLE);
 
 // This is obviously true (`TAG_CUSTOM` is `0b01`), but in `Repr::new_custom` we
 // offset a pointer by this value, and expect it to both be within the same

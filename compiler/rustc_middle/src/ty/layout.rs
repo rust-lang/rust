@@ -1,8 +1,6 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitable};
-use rustc_ast as ast;
-use rustc_attr as attr;
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -20,7 +18,6 @@ use std::ops::Bound;
 
 pub trait IntegerExt {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx>;
-    fn from_attr<C: HasDataLayout>(cx: &C, ity: attr::IntType) -> Integer;
     fn from_int_ty<C: HasDataLayout>(cx: &C, ity: ty::IntTy) -> Integer;
     fn from_uint_ty<C: HasDataLayout>(cx: &C, uty: ty::UintTy) -> Integer;
     fn repr_discr<'tcx>(
@@ -46,22 +43,6 @@ impl IntegerExt for Integer {
             (I32, true) => tcx.types.i32,
             (I64, true) => tcx.types.i64,
             (I128, true) => tcx.types.i128,
-        }
-    }
-
-    /// Gets the Integer type from an attr::IntType.
-    fn from_attr<C: HasDataLayout>(cx: &C, ity: attr::IntType) -> Integer {
-        let dl = cx.data_layout();
-
-        match ity {
-            attr::SignedInt(ast::IntTy::I8) | attr::UnsignedInt(ast::UintTy::U8) => I8,
-            attr::SignedInt(ast::IntTy::I16) | attr::UnsignedInt(ast::UintTy::U16) => I16,
-            attr::SignedInt(ast::IntTy::I32) | attr::UnsignedInt(ast::UintTy::U32) => I32,
-            attr::SignedInt(ast::IntTy::I64) | attr::UnsignedInt(ast::UintTy::U64) => I64,
-            attr::SignedInt(ast::IntTy::I128) | attr::UnsignedInt(ast::UintTy::U128) => I128,
-            attr::SignedInt(ast::IntTy::Isize) | attr::UnsignedInt(ast::UintTy::Usize) => {
-                dl.ptr_sized_integer()
-            }
         }
     }
 
@@ -147,7 +128,8 @@ impl PrimitiveExt for Primitive {
             Int(i, signed) => i.to_ty(tcx, signed),
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
-            Pointer => tcx.mk_mut_ptr(tcx.mk_unit()),
+            // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
+            Pointer(_) => tcx.mk_mut_ptr(tcx.mk_unit()),
         }
     }
 
@@ -157,7 +139,11 @@ impl PrimitiveExt for Primitive {
     fn to_int_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
-            Pointer => tcx.types.usize,
+            // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
+            Pointer(_) => {
+                let signed = false;
+                tcx.data_layout().ptr_sized_integer().to_ty(tcx, signed)
+            }
             F32 | F64 => bug!("floats do not have an int type"),
         }
     }
@@ -189,12 +175,31 @@ pub enum LayoutError<'tcx> {
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
 }
 
-impl<'a> IntoDiagnostic<'a, !> for LayoutError<'a> {
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, !> {
-        handler.struct_fatal(self.to_string())
+impl IntoDiagnostic<'_, !> for LayoutError<'_> {
+    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
+        let mut diag = handler.struct_fatal("");
+
+        match self {
+            LayoutError::Unknown(ty) => {
+                diag.set_arg("ty", ty);
+                diag.set_primary_message(rustc_errors::fluent::middle_unknown_layout);
+            }
+            LayoutError::SizeOverflow(ty) => {
+                diag.set_arg("ty", ty);
+                diag.set_primary_message(rustc_errors::fluent::middle_values_too_big);
+            }
+            LayoutError::NormalizationFailure(ty, e) => {
+                diag.set_arg("ty", ty);
+                diag.set_arg("failure_ty", e.get_type_for_failure());
+                diag.set_primary_message(rustc_errors::fluent::middle_cannot_be_normalized);
+            }
+        }
+        diag
     }
 }
 
+// FIXME: Once the other errors that embed this error have been converted to translateable
+// diagnostics, this Display impl should be removed.
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
@@ -216,6 +221,18 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
 pub struct LayoutCx<'tcx, C> {
     pub tcx: C,
     pub param_env: ty::ParamEnv<'tcx>,
+}
+
+impl<'tcx> LayoutCalculator for LayoutCx<'tcx, TyCtxt<'tcx>> {
+    type TargetDataLayoutRef = &'tcx TargetDataLayout;
+
+    fn delay_bug(&self, txt: &str) {
+        self.tcx.sess.delay_span_bug(DUMMY_SP, txt);
+    }
+
+    fn current_data_layout(&self) -> Self::TargetDataLayoutRef {
+        &self.tcx.data_layout
+    }
 }
 
 /// Type size "skeleton", i.e., the only information determining a type's size.
@@ -259,7 +276,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 let non_zero = !ty.is_unsafe_ptr();
                 let tail = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
                 match tail.kind() {
-                    ty::Param(_) | ty::Projection(_) => {
+                    ty::Param(_) | ty::Alias(ty::Projection, _) => {
                         debug_assert!(tail.has_non_region_param());
                         Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(tail) })
                     }
@@ -337,7 +354,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
-            ty::Projection(_) | ty::Opaque(..) => {
+            ty::Alias(..) => {
                 let normalized = tcx.normalize_erasing_regions(param_env, ty);
                 if ty == normalized {
                     Err(err)
@@ -591,7 +608,7 @@ where
                 })
             }
 
-            Variants::Multiple { ref variants, .. } => variants[variant_index],
+            Variants::Multiple { ref variants, .. } => cx.tcx().intern_layout(variants[variant_index].clone()),
         };
 
         assert_eq!(*layout.variants(), Variants::Single { index: variant_index });
@@ -628,6 +645,7 @@ where
                 | ty::Never
                 | ty::FnDef(..)
                 | ty::GeneratorWitness(..)
+                | ty::GeneratorWitnessMIR(..)
                 | ty::Foreign(..)
                 | ty::Dynamic(_, _, ty::Dyn) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
@@ -658,29 +676,50 @@ where
                         });
                     }
 
-                    match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
-                        ty::Slice(_) | ty::Str => TyMaybeWithLayout::Ty(tcx.types.usize),
-                        ty::Dynamic(_, _, ty::Dyn) => {
-                            TyMaybeWithLayout::Ty(tcx.mk_imm_ref(
-                                tcx.lifetimes.re_static,
-                                tcx.mk_array(tcx.types.usize, 3),
-                            ))
-                            /* FIXME: use actual fn pointers
-                            Warning: naively computing the number of entries in the
-                            vtable by counting the methods on the trait + methods on
-                            all parent traits does not work, because some methods can
-                            be not object safe and thus excluded from the vtable.
-                            Increase this counter if you tried to implement this but
-                            failed to do it without duplicating a lot of code from
-                            other places in the compiler: 2
-                            tcx.mk_tup(&[
-                                tcx.mk_array(tcx.types.usize, 3),
-                                tcx.mk_array(Option<fn()>),
-                            ])
-                            */
+                    let mk_dyn_vtable = || {
+                        tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types.usize, 3))
+                        /* FIXME: use actual fn pointers
+                        Warning: naively computing the number of entries in the
+                        vtable by counting the methods on the trait + methods on
+                        all parent traits does not work, because some methods can
+                        be not object safe and thus excluded from the vtable.
+                        Increase this counter if you tried to implement this but
+                        failed to do it without duplicating a lot of code from
+                        other places in the compiler: 2
+                        tcx.mk_tup(&[
+                            tcx.mk_array(tcx.types.usize, 3),
+                            tcx.mk_array(Option<fn()>),
+                        ])
+                        */
+                    };
+
+                    let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
+                        let metadata = tcx.normalize_erasing_regions(
+                            cx.param_env(),
+                            tcx.mk_projection(metadata_def_id, [pointee]),
+                        );
+
+                        // Map `Metadata = DynMetadata<dyn Trait>` back to a vtable, since it
+                        // offers better information than `std::ptr::metadata::VTable`,
+                        // and we rely on this layout information to trigger a panic in
+                        // `std::mem::uninitialized::<&dyn Trait>()`, for example.
+                        if let ty::Adt(def, substs) = metadata.kind()
+                            && Some(def.did()) == tcx.lang_items().dyn_metadata()
+                            && substs.type_at(0).is_trait()
+                        {
+                            mk_dyn_vtable()
+                        } else {
+                            metadata
                         }
-                        _ => bug!("TyAndLayout::field({:?}): not applicable", this),
-                    }
+                    } else {
+                        match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
+                            ty::Slice(_) | ty::Str => tcx.types.usize,
+                            ty::Dynamic(_, _, ty::Dyn) => mk_dyn_vtable(),
+                            _ => bug!("TyAndLayout::field({:?}): not applicable", this),
+                        }
+                    };
+
+                    TyMaybeWithLayout::Ty(metadata)
                 }
 
                 // Arrays and slices.
@@ -745,10 +784,9 @@ where
                     }
                 }
 
-                ty::Projection(_)
+                ty::Alias(..)
                 | ty::Bound(..)
                 | ty::Placeholder(..)
-                | ty::Opaque(..)
                 | ty::Param(_)
                 | ty::Infer(_)
                 | ty::Error(_) => bug!("TyAndLayout::field: unexpected type `{}`", this.ty),
@@ -780,17 +818,12 @@ where
         let tcx = cx.tcx();
         let param_env = cx.param_env();
 
-        let addr_space_of_ty = |ty: Ty<'tcx>| {
-            if ty.is_fn() { cx.data_layout().instruction_address_space } else { AddressSpace::DATA }
-        };
-
         let pointee_info = match *this.ty.kind() {
             ty::RawPtr(mt) if offset.bytes() == 0 => {
                 tcx.layout_of(param_env.and(mt.ty)).ok().map(|layout| PointeeInfo {
                     size: layout.size,
                     align: layout.align.abi,
                     safe: None,
-                    address_space: addr_space_of_ty(mt.ty),
                 })
             }
             ty::FnPtr(fn_sig) if offset.bytes() == 0 => {
@@ -798,44 +831,26 @@ where
                     size: layout.size,
                     align: layout.align.abi,
                     safe: None,
-                    address_space: cx.data_layout().instruction_address_space,
                 })
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
-                let address_space = addr_space_of_ty(ty);
-                let kind = if tcx.sess.opts.optimize == OptLevel::No {
-                    // Use conservative pointer kind if not optimizing. This saves us the
-                    // Freeze/Unpin queries, and can save time in the codegen backend (noalias
-                    // attributes in LLVM have compile-time cost even in unoptimized builds).
-                    PointerKind::SharedMutable
-                } else {
-                    match mt {
-                        hir::Mutability::Not => {
-                            if ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env()) {
-                                PointerKind::Frozen
-                            } else {
-                                PointerKind::SharedMutable
-                            }
-                        }
-                        hir::Mutability::Mut => {
-                            // References to self-referential structures should not be considered
-                            // noalias, as another pointer to the structure can be obtained, that
-                            // is not based-on the original reference. We consider all !Unpin
-                            // types to be potentially self-referential here.
-                            if ty.is_unpin(tcx.at(DUMMY_SP), cx.param_env()) {
-                                PointerKind::UniqueBorrowed
-                            } else {
-                                PointerKind::UniqueBorrowedPinned
-                            }
-                        }
-                    }
+                // Use conservative pointer kind if not optimizing. This saves us the
+                // Freeze/Unpin queries, and can save time in the codegen backend (noalias
+                // attributes in LLVM have compile-time cost even in unoptimized builds).
+                let optimize = tcx.sess.opts.optimize != OptLevel::No;
+                let kind = match mt {
+                    hir::Mutability::Not => PointerKind::SharedRef {
+                        frozen: optimize && ty.is_freeze(tcx, cx.param_env()),
+                    },
+                    hir::Mutability::Mut => PointerKind::MutableRef {
+                        unpin: optimize && ty.is_unpin(tcx, cx.param_env()),
+                    },
                 };
 
                 tcx.layout_of(param_env.and(ty)).ok().map(|layout| PointeeInfo {
                     size: layout.size,
                     align: layout.align.abi,
                     safe: Some(kind),
-                    address_space,
                 })
             }
 
@@ -847,7 +862,7 @@ where
                     //
                     // If the niche is a pointer, it's either valid (according
                     // to its type), or null (which the niche field's scalar
-                    // validity range encodes).  This allows using
+                    // validity range encodes). This allows using
                     // `dereferenceable_or_null` for e.g., `Option<&T>`, and
                     // this will continue to work as long as we don't start
                     // using more niches than just null (e.g., the first page of
@@ -872,7 +887,9 @@ where
                 let mut result = None;
 
                 if let Some(variant) = data_variant {
-                    let ptr_end = offset + Pointer.size(cx);
+                    // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
+                    // (requires passing in the expected address space from the caller)
+                    let ptr_end = offset + Pointer(AddressSpace::DATA).size(cx);
                     for i in 0..variant.fields.count() {
                         let field_start = variant.fields.offset(i);
                         if field_start <= offset {
@@ -898,7 +915,10 @@ where
                 if let Some(ref mut pointee) = result {
                     if let ty::Adt(def, _) = this.ty.kind() {
                         if def.is_box() && offset.bytes() == 0 {
-                            pointee.safe = Some(PointerKind::UniqueOwned);
+                            let optimize = tcx.sess.opts.optimize != OptLevel::No;
+                            pointee.safe = Some(PointerKind::Box {
+                                unpin: optimize && this.ty.boxed_ty().is_unpin(tcx, cx.param_env()),
+                            });
                         }
                     }
                 }
@@ -982,7 +1002,7 @@ where
 /// might (from a foreign exception or similar).
 #[inline]
 #[tracing::instrument(level = "debug", skip(tcx))]
-pub fn fn_can_unwind<'tcx>(tcx: TyCtxt<'tcx>, fn_def_id: Option<DefId>, abi: SpecAbi) -> bool {
+pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) -> bool {
     if let Some(did) = fn_def_id {
         // Special attribute for functions which can't unwind.
         if tcx.codegen_fn_attrs(did).flags.contains(CodegenFnAttrFlags::NEVER_UNWIND) {
@@ -1107,8 +1127,8 @@ impl<'tcx> fmt::Display for FnAbiError<'tcx> {
     }
 }
 
-impl<'tcx> IntoDiagnostic<'tcx, !> for FnAbiError<'tcx> {
-    fn into_diagnostic(self, handler: &'tcx Handler) -> DiagnosticBuilder<'tcx, !> {
+impl IntoDiagnostic<'_, !> for FnAbiError<'_> {
+    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
         handler.struct_fatal(self.to_string())
     }
 }

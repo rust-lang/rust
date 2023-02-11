@@ -316,3 +316,25 @@ pub fn mutable_impl_fn_mut(mut f: impl FnMut(), mut f_used_once: impl FnMut()) -
 
     move || takes_fn_mut(|| f_used_once())
 }
+
+impl dyn TestTrait + '_ {
+    fn method_on_dyn(&self) -> bool {
+        false
+    }
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/7746
+fn angle_brackets_and_substs() {
+    let array_opt: Option<&[u8; 3]> = Some(&[4, 8, 7]);
+    array_opt.map(|a| a.as_slice());
+
+    let slice_opt: Option<&[u8]> = Some(b"slice");
+    slice_opt.map(|s| s.len());
+
+    let ptr_opt: Option<*const usize> = Some(&487);
+    ptr_opt.map(|p| p.is_null());
+
+    let test_struct = TestStruct { some_ref: &487 };
+    let dyn_opt: Option<&dyn TestTrait> = Some(&test_struct);
+    dyn_opt.map(|d| d.method_on_dyn());
+}

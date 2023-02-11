@@ -5,10 +5,11 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
-use rustc_errors::struct_span_err;
+use rustc_errors::{error_code, struct_span_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
+use rustc_span::sym;
 use rustc_trait_selection::traits;
 
 mod builtin;
@@ -39,61 +40,26 @@ fn enforce_trait_manually_implementable(
     impl_def_id: LocalDefId,
     trait_def_id: DefId,
 ) {
-    let did = Some(trait_def_id);
-    let li = tcx.lang_items();
     let impl_header_span = tcx.def_span(impl_def_id);
 
-    // Disallow *all* explicit impls of `Pointee`, `DiscriminantKind`, `Sized` and `Unsize` for now.
-    if did == li.pointee_trait() {
-        struct_span_err!(
+    // Disallow *all* explicit impls of traits marked `#[rustc_deny_explicit_impl]`
+    if tcx.has_attr(trait_def_id, sym::rustc_deny_explicit_impl) {
+        let trait_name = tcx.item_name(trait_def_id);
+        let mut err = struct_span_err!(
             tcx.sess,
             impl_header_span,
             E0322,
-            "explicit impls for the `Pointee` trait are not permitted"
-        )
-        .span_label(impl_header_span, "impl of `Pointee` not allowed")
-        .emit();
-        return;
-    }
+            "explicit impls for the `{trait_name}` trait are not permitted"
+        );
+        err.span_label(impl_header_span, format!("impl of `{trait_name}` not allowed"));
 
-    if did == li.discriminant_kind_trait() {
-        struct_span_err!(
-            tcx.sess,
-            impl_header_span,
-            E0322,
-            "explicit impls for the `DiscriminantKind` trait are not permitted"
-        )
-        .span_label(impl_header_span, "impl of `DiscriminantKind` not allowed")
-        .emit();
-        return;
-    }
+        // Maintain explicit error code for `Unsize`, since it has a useful
+        // explanation about using `CoerceUnsized` instead.
+        if Some(trait_def_id) == tcx.lang_items().unsize_trait() {
+            err.code(error_code!(E0328));
+        }
 
-    if did == li.sized_trait() {
-        struct_span_err!(
-            tcx.sess,
-            impl_header_span,
-            E0322,
-            "explicit impls for the `Sized` trait are not permitted"
-        )
-        .span_label(impl_header_span, "impl of `Sized` not allowed")
-        .emit();
-        return;
-    }
-
-    if did == li.unsize_trait() {
-        struct_span_err!(
-            tcx.sess,
-            impl_header_span,
-            E0328,
-            "explicit impls for the `Unsize` trait are not permitted"
-        )
-        .span_label(impl_header_span, "impl of `Unsize` not allowed")
-        .emit();
-        return;
-    }
-
-    if tcx.features().unboxed_closures {
-        // the feature gate allows all Fn traits
+        err.emit();
         return;
     }
 
@@ -162,7 +128,7 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) {
 
     let impls = tcx.hir().trait_impls(def_id);
     for &impl_def_id in impls {
-        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
+        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity();
 
         check_impl(tcx, impl_def_id, trait_ref);
         check_object_overlap(tcx, impl_def_id, trait_ref);
@@ -203,9 +169,9 @@ fn check_object_overlap<'tcx>(
         });
 
         for component_def_id in component_def_ids {
-            if !tcx.is_object_safe(component_def_id) {
+            if !tcx.check_is_object_safe(component_def_id) {
                 // Without the 'object_safe_for_dispatch' feature this is an error
-                // which will be reported by wfcheck.  Ignore it here.
+                // which will be reported by wfcheck. Ignore it here.
                 // This is tested by `coherence-impl-trait-for-trait-object-safe.rs`.
                 // With the feature enabled, the trait is not implemented automatically,
                 // so this is valid.

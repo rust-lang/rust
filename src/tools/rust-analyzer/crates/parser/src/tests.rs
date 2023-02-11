@@ -37,8 +37,8 @@ fn lex(text: &str) -> String {
         let text = lexed.text(i);
         let error = lexed.error(i);
 
-        let error = error.map(|err| format!(" error: {}", err)).unwrap_or_default();
-        writeln!(res, "{:?} {:?}{}", kind, text, error).unwrap();
+        let error = error.map(|err| format!(" error: {err}")).unwrap_or_default();
+        writeln!(res, "{kind:?} {text:?}{error}").unwrap();
     }
     res
 }
@@ -47,7 +47,7 @@ fn lex(text: &str) -> String {
 fn parse_ok() {
     for case in TestCase::list("parser/ok") {
         let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
-        assert!(!errors, "errors in an OK file {}:\n{}", case.rs.display(), actual);
+        assert!(!errors, "errors in an OK file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual);
     }
 }
@@ -56,7 +56,7 @@ fn parse_ok() {
 fn parse_inline_ok() {
     for case in TestCase::list("parser/inline/ok") {
         let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
-        assert!(!errors, "errors in an OK file {}:\n{}", case.rs.display(), actual);
+        assert!(!errors, "errors in an OK file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual);
     }
 }
@@ -65,7 +65,7 @@ fn parse_inline_ok() {
 fn parse_err() {
     for case in TestCase::list("parser/err") {
         let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
-        assert!(errors, "no errors in an ERR file {}:\n{}", case.rs.display(), actual);
+        assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual)
     }
 }
@@ -74,7 +74,7 @@ fn parse_err() {
 fn parse_inline_err() {
     for case in TestCase::list("parser/inline/err") {
         let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
-        assert!(errors, "no errors in an ERR file {}:\n{}", case.rs.display(), actual);
+        assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual)
     }
 }
@@ -93,14 +93,12 @@ fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
         crate::StrStep::Token { kind, text } => {
             assert!(depth > 0);
             len += text.len();
-            write!(buf, "{}", indent).unwrap();
-            write!(buf, "{:?} {:?}\n", kind, text).unwrap();
+            writeln!(buf, "{indent}{kind:?} {text:?}").unwrap();
         }
         crate::StrStep::Enter { kind } => {
             assert!(depth > 0 || len == 0);
             depth += 1;
-            write!(buf, "{}", indent).unwrap();
-            write!(buf, "{:?}\n", kind).unwrap();
+            writeln!(buf, "{indent}{kind:?}").unwrap();
             indent.push_str("  ");
         }
         crate::StrStep::Exit => {
@@ -111,7 +109,7 @@ fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
         }
         crate::StrStep::Error { msg, pos } => {
             assert!(depth > 0);
-            errors.push(format!("error {}: {}\n", pos, msg))
+            errors.push(format!("error {pos}: {msg}\n"))
         }
     });
     assert_eq!(
@@ -124,7 +122,7 @@ fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
 
     for (token, msg) in lexed.errors() {
         let pos = lexed.text_start(token);
-        errors.push(format!("error {}: {}\n", pos, msg));
+        errors.push(format!("error {pos}: {msg}\n"));
     }
 
     let has_errors = !errors.is_empty();
@@ -149,7 +147,7 @@ impl TestCase {
 
         let mut res = Vec::new();
         let read_dir = fs::read_dir(&dir)
-            .unwrap_or_else(|err| panic!("can't `read_dir` {}: {}", dir.display(), err));
+            .unwrap_or_else(|err| panic!("can't `read_dir` {}: {err}", dir.display()));
         for file in read_dir {
             let file = file.unwrap();
             let path = file.path();

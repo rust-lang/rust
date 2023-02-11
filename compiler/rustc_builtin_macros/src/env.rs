@@ -1,4 +1,4 @@
-// The compiler code necessary to support the env! extension.  Eventually this
+// The compiler code necessary to support the env! extension. Eventually this
 // should all get sucked into either the compiler syntax extension plugin
 // interface.
 //
@@ -30,7 +30,7 @@ pub fn expand_option_env<'cx>(
                 sp,
                 true,
                 cx.std_path(&[sym::option, sym::Option, sym::None]),
-                vec![GenericArg::Type(cx.ty_rptr(
+                vec![GenericArg::Type(cx.ty_ref(
                     sp,
                     cx.ty_ident(sp, Ident::new(sym::str, sp)),
                     Some(lt),
@@ -52,8 +52,8 @@ pub fn expand_env<'cx>(
     sp: Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
-    let mut exprs = match get_exprs_from_tts(cx, sp, tts) {
-        Some(ref exprs) if exprs.is_empty() => {
+    let mut exprs = match get_exprs_from_tts(cx, tts) {
+        Some(exprs) if exprs.is_empty() => {
             cx.span_err(sp, "env! takes 1 or 2 arguments");
             return DummyResult::any(sp);
         }

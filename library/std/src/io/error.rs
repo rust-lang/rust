@@ -88,11 +88,22 @@ impl From<alloc::ffi::NulError> for Error {
 // doesn't accidentally get printed.
 #[cfg_attr(test, derive(Debug))]
 enum ErrorData<C> {
-    Os(i32),
+    Os(RawOsError),
     Simple(ErrorKind),
     SimpleMessage(&'static SimpleMessage),
     Custom(C),
 }
+
+/// The type of raw OS error codes returned by [`Error::raw_os_error`].
+///
+/// This is an [`i32`] on all currently supported platforms, but platforms
+/// added in the future (such as UEFI) may use a different primitive type like
+/// [`usize`]. Use `as`or [`into`] conversions where applicable to ensure maximum
+/// portability.
+///
+/// [`into`]: Into::into
+#[unstable(feature = "raw_os_error_ty", issue = "107792")]
+pub type RawOsError = i32;
 
 // `#[repr(align(4))]` is probably redundant, it should have that value or
 // higher already. We include it just because repr_bitpacked.rs's encoding
@@ -387,7 +398,7 @@ pub enum ErrorKind {
 impl ErrorKind {
     pub(crate) fn as_str(&self) -> &'static str {
         use ErrorKind::*;
-        // Strictly alphabetical, please.  (Sadly rustfmt cannot do this yet.)
+        // tidy-alphabetical-start
         match *self {
             AddrInUse => "address in use",
             AddrNotAvailable => "address not available",
@@ -431,6 +442,7 @@ impl ErrorKind {
             WouldBlock => "operation would block",
             WriteZero => "write zero",
         }
+        // tidy-alphabetical-end
     }
 }
 
@@ -481,6 +493,7 @@ impl Error {
     /// originate from the OS itself. The `error` argument is an arbitrary
     /// payload which will be contained in this [`Error`].
     ///
+    /// Note that this function allocates memory on the heap.
     /// If no extra payload is required, use the `From` conversion from
     /// `ErrorKind`.
     ///
@@ -495,7 +508,7 @@ impl Error {
     /// // errors can also be created from other errors
     /// let custom_error2 = Error::new(ErrorKind::Interrupted, custom_error);
     ///
-    /// // creating an error without payload
+    /// // creating an error without payload (and without memory allocation)
     /// let eof_error = Error::from(ErrorKind::UnexpectedEof);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -577,7 +590,7 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn last_os_error() -> Error {
-        Error::from_raw_os_error(sys::os::errno() as i32)
+        Error::from_raw_os_error(sys::os::errno())
     }
 
     /// Creates a new instance of an [`Error`] from a particular OS error code.
@@ -608,7 +621,7 @@ impl Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
-    pub fn from_raw_os_error(code: i32) -> Error {
+    pub fn from_raw_os_error(code: RawOsError) -> Error {
         Error { repr: Repr::new_os(code) }
     }
 
@@ -644,7 +657,7 @@ impl Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
-    pub fn raw_os_error(&self) -> Option<i32> {
+    pub fn raw_os_error(&self) -> Option<RawOsError> {
         match self.repr.data() {
             ErrorData::Os(i) => Some(i),
             ErrorData::Custom(..) => None,

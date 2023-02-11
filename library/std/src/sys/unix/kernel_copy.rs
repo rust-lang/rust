@@ -20,7 +20,7 @@
 //! Since those syscalls have requirements that cannot be fully checked in advance and
 //! gathering additional information about file descriptors would require additional syscalls
 //! anyway it simply attempts to use them one after another (guided by inaccurate hints) to
-//! figure out which one works and and falls back to the generic read-write copy loop if none of them
+//! figure out which one works and falls back to the generic read-write copy loop if none of them
 //! does.
 //! Once a working syscall is found for a pair of file descriptors it will be called in a loop
 //! until the copy operation is completed.
@@ -61,6 +61,10 @@ use crate::ptr;
 use crate::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use crate::sys::cvt;
 use crate::sys::weak::syscall;
+#[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+use libc::sendfile as sendfile64;
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+use libc::sendfile64;
 use libc::{EBADF, EINVAL, ENOSYS, EOPNOTSUPP, EOVERFLOW, EPERM, EXDEV};
 
 #[cfg(test)]
@@ -583,7 +587,7 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
                         // - copy_file_range file is immutable or syscall is blocked by seccomp¹ (EPERM)
                         // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
                         // - the writer fd was opened with O_APPEND (EBADF²)
-                        // and no bytes were written successfully yet.  (All these errnos should
+                        // and no bytes were written successfully yet. (All these errnos should
                         // not be returned if something was already written, but they happen in
                         // the wild, see #91152.)
                         //
@@ -647,7 +651,7 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
 
         let result = match mode {
             SpliceMode::Sendfile => {
-                cvt(unsafe { libc::sendfile(writer, reader, ptr::null_mut(), chunk_size) })
+                cvt(unsafe { sendfile64(writer, reader, ptr::null_mut(), chunk_size) })
             }
             SpliceMode::Splice => cvt(unsafe {
                 splice(reader, ptr::null_mut(), writer, ptr::null_mut(), chunk_size, 0)

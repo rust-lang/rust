@@ -10,8 +10,10 @@ use crate::sys_common::io::test::{tmpdir, TempDir};
 use crate::thread;
 use crate::time::{Duration, Instant};
 
-use rand::{rngs::StdRng, RngCore, SeedableRng};
+use rand::RngCore;
 
+#[cfg(target_os = "macos")]
+use crate::ffi::{c_char, c_int};
 #[cfg(unix)]
 use crate::os::unix::fs::symlink as symlink_dir;
 #[cfg(unix)]
@@ -24,8 +26,6 @@ use crate::os::windows::fs::{symlink_dir, symlink_file};
 use crate::sys::fs::symlink_junction;
 #[cfg(target_os = "macos")]
 use crate::sys::weak::weak;
-#[cfg(target_os = "macos")]
-use libc::{c_char, c_int};
 
 macro_rules! check {
     ($e:expr) => {
@@ -1181,7 +1181,7 @@ fn _assert_send_sync() {
 #[test]
 fn binary_file() {
     let mut bytes = [0; 1024];
-    StdRng::from_entropy().fill_bytes(&mut bytes);
+    crate::test_helpers::test_rng().fill_bytes(&mut bytes);
 
     let tmpdir = tmpdir();
 
@@ -1194,7 +1194,7 @@ fn binary_file() {
 #[test]
 fn write_then_read() {
     let mut bytes = [0; 1024];
-    StdRng::from_entropy().fill_bytes(&mut bytes);
+    crate::test_helpers::test_rng().fill_bytes(&mut bytes);
 
     let tmpdir = tmpdir();
 
@@ -1550,4 +1550,48 @@ fn hiberfil_sys() {
     fs::symlink_metadata(hiberfil).unwrap();
     fs::metadata(hiberfil).unwrap();
     assert_eq!(true, hiberfil.exists());
+}
+
+/// Test that two different ways of obtaining the FileType give the same result.
+/// Cf. https://github.com/rust-lang/rust/issues/104900
+#[test]
+fn test_eq_direntry_metadata() {
+    let tmpdir = tmpdir();
+    let file_path = tmpdir.join("file");
+    File::create(file_path).unwrap();
+    for e in fs::read_dir(tmpdir.path()).unwrap() {
+        let e = e.unwrap();
+        let p = e.path();
+        let ft1 = e.file_type().unwrap();
+        let ft2 = p.metadata().unwrap().file_type();
+        assert_eq!(ft1, ft2);
+    }
+}
+
+/// Regression test for https://github.com/rust-lang/rust/issues/50619.
+#[test]
+#[cfg(target_os = "linux")]
+fn test_read_dir_infinite_loop() {
+    use crate::io::ErrorKind;
+    use crate::process::Command;
+
+    // Create a zombie child process
+    let Ok(mut child) = Command::new("echo").spawn() else { return };
+
+    // Make sure the process is (un)dead
+    match child.kill() {
+        // InvalidInput means the child already exited
+        Err(e) if e.kind() != ErrorKind::InvalidInput => return,
+        _ => {}
+    }
+
+    // open() on this path will succeed, but readdir() will fail
+    let id = child.id();
+    let path = format!("/proc/{id}/net");
+
+    // Skip the test if we can't open the directory in the first place
+    let Ok(dir) = fs::read_dir(path) else { return };
+
+    // Check for duplicate errors
+    assert!(dir.filter(|e| e.is_err()).take(2).count() < 2);
 }

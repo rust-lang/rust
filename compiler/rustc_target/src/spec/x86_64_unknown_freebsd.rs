@@ -8,6 +8,7 @@ pub fn target() -> Target {
     base.stack_probes = StackProbeType::X86;
     base.supported_sanitizers =
         SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::MEMORY | SanitizerSet::THREAD;
+    base.supports_xray = true;
 
     Target {
         llvm_target: "x86_64-unknown-freebsd".into(),

@@ -134,7 +134,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
 
     let mut check_dup = |span: Span, str: &str, errors: &mut Errors| {
         if let Some(prev_span) = keys.get(str) {
-            errors.error(span, format!("Symbol `{}` is duplicated", str));
+            errors.error(span, format!("Symbol `{str}` is duplicated"));
             errors.error(*prev_span, "location of previous definition".to_string());
         } else {
             keys.insert(str.to_string(), span);
@@ -144,8 +144,8 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     let mut check_order = |span: Span, str: &str, errors: &mut Errors| {
         if let Some((prev_span, ref prev_str)) = prev_key {
             if str < prev_str {
-                errors.error(span, format!("Symbol `{}` must precede `{}`", str, prev_str));
-                errors.error(prev_span, format!("location of previous symbol `{}`", prev_str));
+                errors.error(span, format!("Symbol `{str}` must precede `{prev_str}`"));
+                errors.error(prev_span, format!("location of previous symbol `{prev_str}`"));
             }
         }
         prev_key = Some((span, str.to_string()));

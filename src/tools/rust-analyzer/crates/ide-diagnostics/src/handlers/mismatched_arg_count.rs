@@ -13,7 +13,7 @@ pub(crate) fn mismatched_arg_count(
     d: &hir::MismatchedArgCount,
 ) -> Diagnostic {
     let s = if d.expected == 1 { "" } else { "s" };
-    let message = format!("expected {} argument{}, found {}", d.expected, s, d.found);
+    let message = format!("expected {} argument{s}, found {}", d.expected, d.found);
     Diagnostic::new("mismatched-arg-count", message, invalid_args_range(ctx, d))
 }
 

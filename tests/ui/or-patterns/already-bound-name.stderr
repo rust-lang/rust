@@ -1,0 +1,101 @@
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/already-bound-name.rs:9:13
+   |
+LL |     let (a, a) = (0, 1); // Standard duplication without an or-pattern.
+   |             ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/already-bound-name.rs:12:15
+   |
+LL |     let (a, A(a, _) | B(a)) = (0, A(1, 2));
+   |               ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/already-bound-name.rs:12:25
+   |
+LL |     let (a, A(a, _) | B(a)) = (0, A(1, 2));
+   |                         ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/already-bound-name.rs:16:26
+   |
+LL |     let (A(a, _) | B(a), a) = (A(0, 1), 2);
+   |                          ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/already-bound-name.rs:19:15
+   |
+LL |     let (A(a, a) | B(a)) = A(0, 1);
+   |               ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/already-bound-name.rs:22:22
+   |
+LL |     let (B(a) | A(a, a)) = A(0, 1);
+   |                      ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/already-bound-name.rs:26:21
+   |
+LL |         B(a) | A(a, a) => {} // Let's ensure `match` has no funny business.
+   |                     ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/already-bound-name.rs:30:37
+   |
+LL |     let (B(A(a, _) | B(a)) | A(a, A(a, _) | B(a))) = B(B(1));
+   |                                     ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/already-bound-name.rs:30:47
+   |
+LL |     let (B(A(a, _) | B(a)) | A(a, A(a, _) | B(a))) = B(B(1));
+   |                                               ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/already-bound-name.rs:35:37
+   |
+LL |     let (B(_) | A(A(a, _) | B(a), A(a, _) | B(a))) = B(B(1));
+   |                                     ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/already-bound-name.rs:35:47
+   |
+LL |     let (B(_) | A(A(a, _) | B(a), A(a, _) | B(a))) = B(B(1));
+   |                                               ^ used in a pattern more than once
+
+error[E0408]: variable `a` is not bound in all patterns
+  --> $DIR/already-bound-name.rs:35:10
+   |
+LL |     let (B(_) | A(A(a, _) | B(a), A(a, _) | B(a))) = B(B(1));
+   |          ^^^^ pattern doesn't bind `a`        - variable not in all patterns
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/already-bound-name.rs:40:50
+   |
+LL |     let (B(A(a, _) | B(a)) | A(A(a, _) | B(a), A(a, _) | B(a))) = B(B(1));
+   |                                                  ^ used in a pattern more than once
+
+error[E0416]: identifier `a` is bound more than once in the same pattern
+  --> $DIR/already-bound-name.rs:40:60
+   |
+LL |     let (B(A(a, _) | B(a)) | A(A(a, _) | B(a), A(a, _) | B(a))) = B(B(1));
+   |                                                            ^ used in a pattern more than once
+
+error[E0308]: mismatched types
+  --> $DIR/already-bound-name.rs:30:32
+   |
+LL |     let (B(A(a, _) | B(a)) | A(a, A(a, _) | B(a))) = B(B(1));
+   |              -                 ^                     ------- this expression has type `E<E<{integer}>>`
+   |              |                 |
+   |              |                 expected integer, found `E<{integer}>`
+   |              first introduced with type `{integer}` here
+   |
+   = note: expected type `{integer}`
+              found enum `E<{integer}>`
+   = note: a binding must have the same type in all alternatives
+
+error: aborting due to 15 previous errors
+
+Some errors have detailed explanations: E0308, E0408, E0416.
+For more information about an error, try `rustc --explain E0308`.

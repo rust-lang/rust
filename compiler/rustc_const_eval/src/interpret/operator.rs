@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 use rustc_apfloat::Float;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
@@ -38,7 +36,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let Abi::ScalarPair(..) = dest.layout.abi {
             // We can use the optimized path and avoid `place_field` (which might do
             // `force_allocation`).
-            let pair = Immediate::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
+            let pair = Immediate::ScalarPair(val, Scalar::from_bool(overflowed));
             self.write_immediate(pair, dest)?;
         } else {
             assert!(self.tcx.sess.opts.unstable_opts.randomize_layout);

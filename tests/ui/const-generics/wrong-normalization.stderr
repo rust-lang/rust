@@ -1,0 +1,11 @@
+error[E0118]: no nominal type found for inherent implementation
+  --> $DIR/wrong-normalization.rs:16:6
+   |
+LL | impl <I8<{i8::MIN}> as Identity>::Identity {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
+   |
+   = note: either implement a trait on it or create a newtype to wrap it instead
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0118`.

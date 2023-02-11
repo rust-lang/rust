@@ -1,4 +1,4 @@
-use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
+use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
 use crate::traits::query::Fallible;
 use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt};
 
@@ -15,7 +15,9 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
         // `&T`, accounts for about 60% percentage of the predicates
         // we have to prove. No need to canonicalize and all that for
         // such cases.
-        if let ty::PredicateKind::Trait(trait_ref) = key.value.predicate.kind().skip_binder() {
+        if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_ref)) =
+            key.value.predicate.kind().skip_binder()
+        {
             if let Some(sized_def_id) = tcx.lang_items().sized_trait() {
                 if trait_ref.def_id() == sized_def_id {
                     if trait_ref.self_ty().is_trivially_sized(tcx) {
@@ -30,10 +32,10 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
 
     fn perform_query(
         tcx: TyCtxt<'tcx>,
-        mut canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalizedQueryResponse<'tcx, ()>> {
+        mut canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
+    ) -> Fallible<CanonicalQueryResponse<'tcx, ()>> {
         match canonicalized.value.value.predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(pred) => {
+            ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
                 canonicalized.value.param_env.remap_constness_with(pred.constness);
             }
             _ => canonicalized.value.param_env = canonicalized.value.param_env.without_const(),

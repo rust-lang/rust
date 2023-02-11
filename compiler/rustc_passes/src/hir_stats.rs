@@ -12,6 +12,7 @@ use rustc_hir::HirId;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::common::to_readable_str;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -121,7 +122,7 @@ impl<'k> StatCollector<'k> {
 
     fn print(&self, title: &str, prefix: &str) {
         let mut nodes: Vec<_> = self.nodes.iter().collect();
-        nodes.sort_by_key(|&(_, ref node)| node.stats.count * node.stats.size);
+        nodes.sort_by_key(|(_, node)| node.stats.count * node.stats.size);
 
         let total_size = nodes.iter().map(|(_, node)| node.stats.count * node.stats.size).sum();
 
@@ -147,7 +148,7 @@ impl<'k> StatCollector<'k> {
             );
             if !node.subnodes.is_empty() {
                 let mut subnodes: Vec<_> = node.subnodes.iter().collect();
-                subnodes.sort_by_key(|&(_, ref subnode)| subnode.count * subnode.size);
+                subnodes.sort_by_key(|(_, subnode)| subnode.count * subnode.size);
 
                 for (label, subnode) in subnodes {
                     let size = subnode.count * subnode.size;
@@ -324,7 +325,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 Slice,
                 Array,
                 Ptr,
-                Rptr,
+                Ref,
                 BareFn,
                 Never,
                 Tup,
@@ -363,13 +364,13 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         fd: &'v hir::FnDecl<'v>,
         b: hir::BodyId,
         _: Span,
-        id: hir::HirId,
+        id: LocalDefId,
     ) {
         self.record("FnDecl", Id::None, fd);
         hir_visit::walk_fn(self, fk, fd, b, id)
     }
 
-    fn visit_use(&mut self, p: &'v hir::Path<'v>, hir_id: hir::HirId) {
+    fn visit_use(&mut self, p: &'v hir::UsePath<'v>, hir_id: hir::HirId) {
         // This is `visit_use`, but the type is `Path` so record it that way.
         self.record("Path", Id::None, p);
         hir_visit::walk_use(self, p, hir_id)
@@ -442,7 +443,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_lifetime(self, lifetime)
     }
 
-    fn visit_path(&mut self, path: &'v hir::Path<'v>, _id: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'v>, _id: hir::HirId) {
         self.record("Path", Id::None, path);
         hir_visit::walk_path(self, path)
     }
@@ -560,13 +561,14 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_expr(&mut self, e: &'v ast::Expr) {
+        #[rustfmt::skip]
         record_variants!(
             (self, e, e.kind, Id::None, ast, Expr, ExprKind),
             [
                 Box, Array, ConstBlock, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type, Let,
                 If, While, ForLoop, Loop, Match, Closure, Block, Async, Await, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
-                InlineAsm, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet, Err
+                InlineAsm, FormatArgs, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet, IncludedBytes, Err
             ]
         );
         ast_visit::walk_expr(self, e)
@@ -579,7 +581,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Slice,
                 Array,
                 Ptr,
-                Rptr,
+                Ref,
                 BareFn,
                 Never,
                 Tup,

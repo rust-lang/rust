@@ -1,0 +1,14 @@
+error: invalid digit for a base 8 literal
+  --> $DIR/macro_rules-unmatchable-literals.rs:6:12
+   |
+LL |     ( 0o1238 ) => {};
+   |            ^
+
+error: invalid digit for a base 2 literal
+  --> $DIR/macro_rules-unmatchable-literals.rs:10:11
+   |
+LL |     ( 0b012 ) => {};
+   |           ^
+
+error: aborting due to 2 previous errors
+

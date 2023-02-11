@@ -1,0 +1,34 @@
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/issue-102989.rs:7:15
+   |
+LL | fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
+   |               ^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error[E0412]: cannot find type `Struct` in this scope
+  --> $DIR/issue-102989.rs:7:22
+   |
+LL | fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
+   |                      ^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-102989.rs:10:13
+   |
+LL |     let x = x << 1;
+   |             ^ help: a local variable with a similar name exists: `f`
+
+error[E0152]: found duplicate lang item `sized`
+  --> $DIR/issue-102989.rs:5:1
+   |
+LL | trait Sized { }
+   | ^^^^^^^^^^^
+   |
+   = note: the lang item is first defined in crate `core` (which `std` depends on)
+   = note: first definition in `core` loaded from SYSROOT/libcore-*.rlib
+   = note: second definition in the local crate (`issue_102989`)
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0152, E0412, E0425.
+For more information about an error, try `rustc --explain E0152`.

@@ -1,27 +1,32 @@
-error: restriction lints are not meant to be all enabled
-  --> $DIR/blanket_clippy_restriction_lints.rs:4:9
+error: `clippy::restriction` is not meant to be enabled as a group
+   |
+   = note: because of the command line `--warn clippy::restriction`
+   = help: enable the restriction lints you need individually
+   = note: `-D clippy::blanket-clippy-restriction-lints` implied by `-D warnings`
+
+error: `clippy::restriction` is not meant to be enabled as a group
+  --> $DIR/blanket_clippy_restriction_lints.rs:6:9
    |
 LL | #![warn(clippy::restriction)]
    |         ^^^^^^^^^^^^^^^^^^^
    |
-   = help: try enabling only the lints you really need
-   = note: `-D clippy::blanket-clippy-restriction-lints` implied by `-D warnings`
+   = help: enable the restriction lints you need individually
 
-error: restriction lints are not meant to be all enabled
-  --> $DIR/blanket_clippy_restriction_lints.rs:5:9
+error: `clippy::restriction` is not meant to be enabled as a group
+  --> $DIR/blanket_clippy_restriction_lints.rs:7:9
    |
 LL | #![deny(clippy::restriction)]
    |         ^^^^^^^^^^^^^^^^^^^
    |
-   = help: try enabling only the lints you really need
+   = help: enable the restriction lints you need individually
 
-error: restriction lints are not meant to be all enabled
-  --> $DIR/blanket_clippy_restriction_lints.rs:6:11
+error: `clippy::restriction` is not meant to be enabled as a group
+  --> $DIR/blanket_clippy_restriction_lints.rs:8:11
    |
 LL | #![forbid(clippy::restriction)]
    |           ^^^^^^^^^^^^^^^^^^^
    |
-   = help: try enabling only the lints you really need
+   = help: enable the restriction lints you need individually
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

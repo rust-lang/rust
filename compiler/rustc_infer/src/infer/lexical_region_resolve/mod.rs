@@ -17,7 +17,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::PlaceholderRegion;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{ReEarlyBound, ReErased, ReFree, ReStatic};
+use rustc_middle::ty::{ReEarlyBound, ReErased, ReError, ReFree, ReStatic};
 use rustc_middle::ty::{ReLateBound, RePlaceholder, ReVar};
 use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::Span;
@@ -52,7 +52,7 @@ pub struct LexicalRegionResolutions<'tcx> {
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum VarValue<'tcx> {
-    /// Empty lifetime is for data that is never accessed.  We tag the
+    /// Empty lifetime is for data that is never accessed. We tag the
     /// empty lifetime with a universe -- the idea is that we don't
     /// want `exists<'a> { forall<'b> { 'b: 'a } }` to be satisfiable.
     /// Therefore, the `'empty` in a universe `U` is less than all
@@ -216,6 +216,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 Ok(self.tcx().lifetimes.re_static)
             }
 
+            ReError(_) => Ok(a_region),
+
             ReEarlyBound(_) | ReFree(_) => {
                 // All empty regions are less than early-bound, free,
                 // and scope regions.
@@ -251,7 +253,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     VarValue::Empty(a_universe) => {
                         let b_data = var_values.value_mut(b_vid);
 
-                        let changed = (|| match *b_data {
+                        let changed = match *b_data {
                             VarValue::Empty(b_universe) => {
                                 // Empty regions are ordered according to the universe
                                 // they are associated with.
@@ -280,20 +282,20 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                                 };
 
                                 if lub == cur_region {
-                                    return false;
+                                    false
+                                } else {
+                                    debug!(
+                                        "Expanding value of {:?} from {:?} to {:?}",
+                                        b_vid, cur_region, lub
+                                    );
+
+                                    *b_data = VarValue::Value(lub);
+                                    true
                                 }
-
-                                debug!(
-                                    "Expanding value of {:?} from {:?} to {:?}",
-                                    b_vid, cur_region, lub
-                                );
-
-                                *b_data = VarValue::Value(lub);
-                                true
                             }
 
                             VarValue::ErrorValue => false,
-                        })();
+                        };
 
                         if changed {
                             changes.push(b_vid);
@@ -436,7 +438,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
             (VarValue::Value(a), VarValue::Empty(_)) => {
                 match *a {
-                    ReLateBound(..) | ReErased => {
+                    ReLateBound(..) | ReErased | ReError(_) => {
                         bug!("cannot relate region: {:?}", a);
                     }
 
@@ -465,7 +467,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
             (VarValue::Empty(a_ui), VarValue::Value(b)) => {
                 match *b {
-                    ReLateBound(..) | ReErased => {
+                    ReLateBound(..) | ReErased | ReError(_) => {
                         bug!("cannot relate region: {:?}", b);
                     }
 
@@ -488,7 +490,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         // If this empty region is from a universe that can
                         // name the placeholder, then the placeholder is
                         // larger; otherwise, the only ancestor is `'static`.
-                        if a_ui.can_name(placeholder.universe) { true } else { false }
+                        return a_ui.can_name(placeholder.universe);
                     }
                 }
             }
@@ -510,7 +512,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         }
 
         // If both `a` and `b` are free, consult the declared
-        // relationships.  Note that this can be more precise than the
+        // relationships. Note that this can be more precise than the
         // `lub` relationship defined below, since sometimes the "lub"
         // is actually the `postdom_upper_bound` (see
         // `TransitiveRelation` for more details).
@@ -545,6 +547,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     b
                 );
             }
+
+            (ReError(_), _) => a,
+
+            (_, ReError(_)) => b,
 
             (ReStatic, _) | (_, ReStatic) => {
                 // nothing lives longer than `'static`
@@ -665,7 +671,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // conflicting regions to report to the user. As we walk, we
         // trip the flags from false to true, and if we find that
         // we've already reported an error involving any particular
-        // node we just stop and don't report the current error.  The
+        // node we just stop and don't report the current error. The
         // idea is to report errors that derive from independent
         // regions of the graph, but not those that derive from
         // overlapping locations.
@@ -702,26 +708,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // Obtain the spans for all the places that can
                     // influence the constraints on this value for
                     // richer diagnostics in `static_impl_trait`.
-                    let influences: Vec<Span> = self
-                        .data
-                        .constraints
-                        .iter()
-                        .filter_map(|(constraint, origin)| match (constraint, origin) {
-                            (
-                                Constraint::VarSubVar(_, sup),
-                                SubregionOrigin::DataBorrowed(_, sp),
-                            ) if sup == &node_vid => Some(*sp),
-                            _ => None,
-                        })
-                        .collect();
 
-                    self.collect_error_for_expanding_node(
-                        graph,
-                        &mut dup_vec,
-                        node_vid,
-                        errors,
-                        influences,
-                    );
+                    self.collect_error_for_expanding_node(graph, &mut dup_vec, node_vid, errors);
                 }
             }
         }
@@ -775,7 +763,6 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         dup_vec: &mut IndexVec<RegionVid, Option<RegionVid>>,
         node_idx: RegionVid,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
-        influences: Vec<Span>,
     ) {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
@@ -830,7 +817,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         lower_bound.region,
                         upper_bound.origin.clone(),
                         upper_bound.region,
-                        influences,
+                        vec![],
                     ));
                     return;
                 }
@@ -842,6 +829,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // are placeholders as upper bounds, but the universe of the
         // variable `'a`, or some variable that `'a` has to outlive, doesn't
         // permit those placeholders.
+        //
+        // We only iterate to find the min, which means it doesn't cause reproducibility issues
+        #[allow(rustc::potential_query_instability)]
         let min_universe = lower_vid_bounds
             .into_iter()
             .map(|vid| self.var_infos[vid].universe)
@@ -1056,7 +1046,7 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
             ty::ReVar(rid) => match self.values[rid] {
                 VarValue::Empty(_) => r,
                 VarValue::Value(r) => r,
-                VarValue::ErrorValue => tcx.lifetimes.re_static,
+                VarValue::ErrorValue => tcx.re_error_misc(),
             },
             _ => r,
         };

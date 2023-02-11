@@ -2,6 +2,8 @@ use crate::hir;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_macros::HashStable_Generic;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
@@ -28,8 +30,6 @@ pub enum CtorKind {
     Fn,
     /// Constructor constant automatically created by a unit struct/variant.
     Const,
-    /// Unusable name in value namespace created by a struct variant.
-    Fictive,
 }
 
 /// An attribute that is not a macro; e.g., `#[inline]` or `#[rustfmt::skip]`.
@@ -132,13 +132,9 @@ impl DefKind {
             DefKind::Variant => "variant",
             DefKind::Ctor(CtorOf::Variant, CtorKind::Fn) => "tuple variant",
             DefKind::Ctor(CtorOf::Variant, CtorKind::Const) => "unit variant",
-            DefKind::Ctor(CtorOf::Variant, CtorKind::Fictive) => "struct variant",
             DefKind::Struct => "struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fn) => "tuple struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => "unit struct",
-            DefKind::Ctor(CtorOf::Struct, CtorKind::Fictive) => {
-                panic!("impossible struct constructor")
-            }
             DefKind::OpaqueTy => "opaque type",
             DefKind::ImplTraitPlaceholder => "opaque type in trait",
             DefKind::TyAlias => "type alias",
@@ -478,7 +474,8 @@ impl PartialRes {
 
 /// Different kinds of symbols can coexist even if they share the same textual name.
 /// Therefore, they each have a separate universe (known as a "namespace").
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
+#[derive(HashStable_Generic)]
 pub enum Namespace {
     /// The type namespace includes `struct`s, `enum`s, `union`s, `trait`s, and `mod`s
     /// (and, by extension, crates).
@@ -502,6 +499,15 @@ impl Namespace {
             Self::ValueNS => "value",
             Self::MacroNS => "macro",
         }
+    }
+}
+
+impl<CTX: crate::HashStableContext> ToStableHashKey<CTX> for Namespace {
+    type KeyType = Namespace;
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &CTX) -> Namespace {
+        *self
     }
 }
 
@@ -562,19 +568,11 @@ impl<T> PerNS<Option<T>> {
 }
 
 impl CtorKind {
-    pub fn from_ast(vdata: &ast::VariantData) -> CtorKind {
+    pub fn from_ast(vdata: &ast::VariantData) -> Option<(CtorKind, NodeId)> {
         match *vdata {
-            ast::VariantData::Tuple(..) => CtorKind::Fn,
-            ast::VariantData::Unit(..) => CtorKind::Const,
-            ast::VariantData::Struct(..) => CtorKind::Fictive,
-        }
-    }
-
-    pub fn from_hir(vdata: &hir::VariantData<'_>) -> CtorKind {
-        match *vdata {
-            hir::VariantData::Tuple(..) => CtorKind::Fn,
-            hir::VariantData::Unit(..) => CtorKind::Const,
-            hir::VariantData::Struct(..) => CtorKind::Fictive,
+            ast::VariantData::Tuple(_, node_id) => Some((CtorKind::Fn, node_id)),
+            ast::VariantData::Unit(node_id) => Some((CtorKind::Const, node_id)),
+            ast::VariantData::Struct(..) => None,
         }
     }
 }
@@ -611,8 +609,7 @@ impl<Id> Res<Id> {
     where
         Id: Debug,
     {
-        self.opt_def_id()
-            .unwrap_or_else(|| panic!("attempted .def_id() on invalid res: {:?}", self))
+        self.opt_def_id().unwrap_or_else(|| panic!("attempted .def_id() on invalid res: {self:?}"))
     }
 
     /// Return `Some(..)` with the `DefId` of this `Res` if it has a ID, else `None`.
@@ -766,7 +763,7 @@ pub enum LifetimeRes {
         binder: NodeId,
     },
     /// This variant is used for anonymous lifetimes that we did not resolve during
-    /// late resolution.  Those lifetimes will be inferred by typechecking.
+    /// late resolution. Those lifetimes will be inferred by typechecking.
     Infer,
     /// Explicit `'static` lifetime.
     Static,
@@ -775,3 +772,5 @@ pub enum LifetimeRes {
     /// HACK: This is used to recover the NodeId of an elided lifetime.
     ElidedAnchor { start: NodeId, end: NodeId },
 }
+
+pub type DocLinkResMap = FxHashMap<(Symbol, Namespace), Option<Res<NodeId>>>;

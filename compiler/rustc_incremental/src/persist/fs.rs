@@ -103,16 +103,17 @@
 //! unsupported file system and emit a warning in that case. This is not yet
 //! implemented.
 
+use crate::errors;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::{base_n, flock};
 use rustc_errors::ErrorGuaranteed;
 use rustc_fs_util::{link_or_copy, LinkOrCopy};
 use rustc_session::{Session, StableCrateId};
+use rustc_span::Symbol;
 
 use std::fs as std_fs;
 use std::io::{self, ErrorKind};
-use std::mem;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -202,7 +203,7 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 /// [`rustc_interface::queries::dep_graph`]: ../../rustc_interface/struct.Queries.html#structfield.dep_graph
 pub fn prepare_session_directory(
     sess: &Session,
-    crate_name: &str,
+    crate_name: Symbol,
     stable_crate_id: StableCrateId,
 ) -> Result<(), ErrorGuaranteed> {
     if sess.opts.incremental.is_none() {
@@ -225,12 +226,7 @@ pub fn prepare_session_directory(
     let crate_dir = match crate_dir.canonicalize() {
         Ok(v) => v,
         Err(err) => {
-            let reported = sess.err(&format!(
-                "incremental compilation: error canonicalizing path `{}`: {}",
-                crate_dir.display(),
-                err
-            ));
-            return Err(reported);
+            return Err(sess.emit_err(errors::CanonicalizePath { path: crate_dir, err }));
         }
     };
 
@@ -273,14 +269,7 @@ pub fn prepare_session_directory(
             debug!("successfully copied data from: {}", source_directory.display());
 
             if !allows_links {
-                sess.warn(&format!(
-                    "Hard linking files in the incremental \
-                                        compilation cache failed. Copying files \
-                                        instead. Consider moving the cache \
-                                        directory to a file system which supports \
-                                        hard linking in session dir `{}`",
-                    session_dir.display()
-                ));
+                sess.emit_warning(errors::HardLinkFailed { path: &session_dir });
             }
 
             sess.init_incr_comp_session(session_dir, directory_lock, true);
@@ -295,16 +284,11 @@ pub fn prepare_session_directory(
             // Try to remove the session directory we just allocated. We don't
             // know if there's any garbage in it from the failed copy action.
             if let Err(err) = safe_remove_dir_all(&session_dir) {
-                sess.warn(&format!(
-                    "Failed to delete partly initialized \
-                                    session dir `{}`: {}",
-                    session_dir.display(),
-                    err
-                ));
+                sess.emit_warning(errors::DeletePartial { path: &session_dir, err });
             }
 
             delete_session_dir_lock_file(sess, &lock_file_path);
-            mem::drop(directory_lock);
+            drop(directory_lock);
         }
     }
 }
@@ -322,7 +306,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
 
     let incr_comp_session_dir: PathBuf = sess.incr_comp_session_dir().clone();
 
-    if sess.has_errors_or_delayed_span_bugs() {
+    if let Some(_) = sess.has_errors_or_delayed_span_bugs() {
         // If there have been any errors during compilation, we don't want to
         // publish this session directory. Rather, we'll just delete it.
 
@@ -332,12 +316,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
         );
 
         if let Err(err) = safe_remove_dir_all(&*incr_comp_session_dir) {
-            sess.warn(&format!(
-                "Error deleting incremental compilation \
-                                session directory `{}`: {}",
-                incr_comp_session_dir.display(),
-                err
-            ));
+            sess.emit_warning(errors::DeleteFull { path: &incr_comp_session_dir, err });
         }
 
         let lock_file_path = lock_file_path(&*incr_comp_session_dir);
@@ -380,12 +359,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
         }
         Err(e) => {
             // Warn about the error. However, no need to abort compilation now.
-            sess.warn(&format!(
-                "Error finalizing incremental compilation \
-                               session directory `{}`: {}",
-                incr_comp_session_dir.display(),
-                e
-            ));
+            sess.emit_warning(errors::Finalize { path: &incr_comp_session_dir, err: e });
 
             debug!("finalize_session_directory() - error, marking as invalid");
             // Drop the file lock, so we can garage collect
@@ -488,16 +462,7 @@ fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorGua
             debug!("{} directory created successfully", dir_tag);
             Ok(())
         }
-        Err(err) => {
-            let reported = sess.err(&format!(
-                "Could not create incremental compilation {} \
-                               directory `{}`: {}",
-                dir_tag,
-                path.display(),
-                err
-            ));
-            Err(reported)
-        }
+        Err(err) => Err(sess.emit_err(errors::CreateIncrCompDir { tag: dir_tag, path, err })),
     }
 }
 
@@ -518,46 +483,20 @@ fn lock_directory(
         // the lock should be exclusive
         Ok(lock) => Ok((lock, lock_file_path)),
         Err(lock_err) => {
-            let mut err = sess.struct_err(&format!(
-                "incremental compilation: could not create \
-                 session directory lock file: {}",
-                lock_err
-            ));
-            if flock::Lock::error_unsupported(&lock_err) {
-                err.note(&format!(
-                    "the filesystem for the incremental path at {} \
-                     does not appear to support locking, consider changing the \
-                     incremental path to a filesystem that supports locking \
-                     or disable incremental compilation",
-                    session_dir.display()
-                ));
-                if std::env::var_os("CARGO").is_some() {
-                    err.help(
-                        "incremental compilation can be disabled by setting the \
-                         environment variable CARGO_INCREMENTAL=0 (see \
-                         https://doc.rust-lang.org/cargo/reference/profiles.html#incremental)",
-                    );
-                    err.help(
-                        "the entire build directory can be changed to a different \
-                        filesystem by setting the environment variable CARGO_TARGET_DIR \
-                        to a different path (see \
-                        https://doc.rust-lang.org/cargo/reference/config.html#buildtarget-dir)",
-                    );
-                }
-            }
-            Err(err.emit())
+            let is_unsupported_lock = flock::Lock::error_unsupported(&lock_err).then_some(());
+            Err(sess.emit_err(errors::CreateLock {
+                lock_err,
+                session_dir,
+                is_unsupported_lock,
+                is_cargo: std::env::var_os("CARGO").map(|_| ()),
+            }))
         }
     }
 }
 
 fn delete_session_dir_lock_file(sess: &Session, lock_file_path: &Path) {
     if let Err(err) = safe_remove_file(&lock_file_path) {
-        sess.warn(&format!(
-            "Error deleting lock file for incremental \
-                            compilation session directory `{}`: {}",
-            lock_file_path.display(),
-            err
-        ));
+        sess.emit_warning(errors::DeleteLock { path: lock_file_path, err });
     }
 }
 
@@ -657,7 +596,7 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path(sess: &Session, crate_name: &str, stable_crate_id: StableCrateId) -> PathBuf {
+fn crate_path(sess: &Session, crate_name: Symbol, stable_crate_id: StableCrateId) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
     let stable_crate_id = base_n::encode(stable_crate_id.to_u64() as u128, INT_ENCODE_BASE);
@@ -774,12 +713,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
         if !lock_file_to_session_dir.values().any(|dir| *dir == directory_name) {
             let path = crate_directory.join(directory_name);
             if let Err(err) = safe_remove_dir_all(&path) {
-                sess.warn(&format!(
-                    "Failed to garbage collect invalid incremental \
-                                    compilation session directory `{}`: {}",
-                    path.display(),
-                    err
-                ));
+                sess.emit_warning(errors::InvalidGcFailed { path: &path, err });
             }
         }
     }
@@ -863,7 +797,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
                     // Let's make it explicit that the file lock is released at this point,
                     // or rather, that we held on to it until here
-                    mem::drop(lock);
+                    drop(lock);
                 }
                 Err(_) => {
                     debug!(
@@ -885,19 +819,14 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
         debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
 
         if let Err(err) = safe_remove_dir_all(&path) {
-            sess.warn(&format!(
-                "Failed to garbage collect finalized incremental \
-                                compilation session directory `{}`: {}",
-                path.display(),
-                err
-            ));
+            sess.emit_warning(errors::FinalizedGcFailed { path: &path, err });
         } else {
             delete_session_dir_lock_file(sess, &lock_file_path(&path));
         }
 
         // Let's make it explicit that the file lock is released at this point,
         // or rather, that we held on to it until here
-        mem::drop(lock);
+        drop(lock);
     }
 
     Ok(())
@@ -907,11 +836,7 @@ fn delete_old(sess: &Session, path: &Path) {
     debug!("garbage_collect_session_directories() - deleting `{}`", path.display());
 
     if let Err(err) = safe_remove_dir_all(&path) {
-        sess.warn(&format!(
-            "Failed to garbage collect incremental compilation session directory `{}`: {}",
-            path.display(),
-            err
-        ));
+        sess.emit_warning(errors::SessionGcFailed { path: &path, err });
     } else {
         delete_session_dir_lock_file(sess, &lock_file_path(&path));
     }

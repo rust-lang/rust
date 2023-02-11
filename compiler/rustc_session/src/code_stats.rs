@@ -19,8 +19,26 @@ pub enum SizeKind {
     Min,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum FieldKind {
+    AdtField,
+    Upvar,
+    GeneratorLocal,
+}
+
+impl std::fmt::Display for FieldKind {
+    fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FieldKind::AdtField => write!(w, "field"),
+            FieldKind::Upvar => write!(w, "upvar"),
+            FieldKind::GeneratorLocal => write!(w, "local"),
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FieldInfo {
+    pub kind: FieldKind,
     pub name: Symbol,
     pub offset: u64,
     pub size: u64,
@@ -33,6 +51,7 @@ pub enum DataTypeKind {
     Union,
     Enum,
     Closure,
+    Generator,
 }
 
 #[derive(PartialEq, Eq, Hash, Debug)]
@@ -65,7 +84,11 @@ impl CodeStats {
         // Sort variants so the largest ones are shown first. A stable sort is
         // used here so that source code order is preserved for all variants
         // that have the same size.
-        variants.sort_by(|info1, info2| info2.size.cmp(&info1.size));
+        // Except for Generators, whose variants are already sorted according to
+        // their yield points in `variant_info_for_generator`.
+        if kind != DataTypeKind::Generator {
+            variants.sort_by(|info1, info2| info2.size.cmp(&info1.size));
+        }
         let info = TypeSizeInfo {
             kind,
             type_description: type_desc.to_string(),
@@ -114,7 +137,7 @@ impl CodeStats {
 
             let struct_like = match kind {
                 DataTypeKind::Struct | DataTypeKind::Closure => true,
-                DataTypeKind::Enum | DataTypeKind::Union => false,
+                DataTypeKind::Enum | DataTypeKind::Union | DataTypeKind::Generator => false,
             };
             for (i, variant_info) in variants.into_iter().enumerate() {
                 let VariantInfo { ref name, kind: _, align: _, size, ref fields } = *variant_info;
@@ -144,7 +167,7 @@ impl CodeStats {
                 fields.sort_by_key(|f| (f.offset, f.size));
 
                 for field in fields {
-                    let FieldInfo { ref name, offset, size, align } = field;
+                    let FieldInfo { kind, ref name, offset, size, align } = field;
 
                     if offset > min_offset {
                         let pad = offset - min_offset;
@@ -154,16 +177,16 @@ impl CodeStats {
                     if offset < min_offset {
                         // If this happens it's probably a union.
                         println!(
-                            "print-type-size {indent}field `.{name}`: {size} bytes, \
+                            "print-type-size {indent}{kind} `.{name}`: {size} bytes, \
                                   offset: {offset} bytes, \
                                   alignment: {align} bytes"
                         );
                     } else if info.packed || offset == min_offset {
-                        println!("print-type-size {indent}field `.{name}`: {size} bytes");
+                        println!("print-type-size {indent}{kind} `.{name}`: {size} bytes");
                     } else {
                         // Include field alignment in output only if it caused padding injection
                         println!(
-                            "print-type-size {indent}field `.{name}`: {size} bytes, \
+                            "print-type-size {indent}{kind} `.{name}`: {size} bytes, \
                                   alignment: {align} bytes"
                         );
                     }

@@ -95,20 +95,28 @@
 mod default;
 mod merging;
 
+use std::cmp;
+use std::fs::{self, File};
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync;
-use rustc_hir::def_id::DefIdSet;
+use rustc_hir::def_id::{DefIdSet, LOCAL_CRATE};
 use rustc_middle::mir;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{CodegenUnit, Linkage};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_span::symbol::Symbol;
 
 use crate::collector::InliningMap;
 use crate::collector::{self, MonoItemCollectionMode};
-use crate::errors::{SymbolAlreadyDefined, UnknownPartitionStrategy};
+use crate::errors::{
+    CouldntDumpMonoStats, SymbolAlreadyDefined, UnknownCguCollectionMode, UnknownPartitionStrategy,
+};
 
 pub struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -174,7 +182,7 @@ pub fn partition<'tcx>(
         partitioner.place_root_mono_items(cx, mono_items)
     };
 
-    initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
+    initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.create_size_estimate(tcx));
 
     debug_dump(tcx, "INITIAL PARTITIONING:", initial_partitioning.codegen_units.iter());
 
@@ -194,7 +202,7 @@ pub fn partition<'tcx>(
         partitioner.place_inlined_mono_items(cx, initial_partitioning)
     };
 
-    post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
+    post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.create_size_estimate(tcx));
 
     debug_dump(tcx, "POST INLINING:", post_inlining.codegen_units.iter());
 
@@ -279,7 +287,7 @@ where
         use std::fmt::Write;
 
         let s = &mut String::new();
-        let _ = writeln!(s, "{}", label);
+        let _ = writeln!(s, "{label}");
         for cgu in cgus {
             let _ =
                 writeln!(s, "CodegenUnit {} estimated size {} :", cgu.name(), cgu.size_estimate());
@@ -299,7 +307,7 @@ where
                 );
             }
 
-            let _ = writeln!(s, "");
+            let _ = writeln!(s);
         }
 
         std::mem::take(s)
@@ -339,24 +347,16 @@ where
     }
 }
 
-fn collect_and_partition_mono_items<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    (): (),
-) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
+fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[CodegenUnit<'_>]) {
     let collection_mode = match tcx.sess.opts.unstable_opts.print_mono_items {
         Some(ref s) => {
-            let mode_string = s.to_lowercase();
-            let mode_string = mode_string.trim();
-            if mode_string == "eager" {
+            let mode = s.to_lowercase();
+            let mode = mode.trim();
+            if mode == "eager" {
                 MonoItemCollectionMode::Eager
             } else {
-                if mode_string != "lazy" {
-                    let message = format!(
-                        "Unknown codegen-item collection mode '{}'. \
-                                           Falling back to 'lazy' mode.",
-                        mode_string
-                    );
-                    tcx.sess.warn(&message);
+                if mode != "lazy" {
+                    tcx.sess.emit_warning(UnknownCguCollectionMode { mode });
                 }
 
                 MonoItemCollectionMode::Lazy
@@ -411,6 +411,15 @@ fn collect_and_partition_mono_items<'tcx>(
         })
         .collect();
 
+    // Output monomorphization stats per def_id
+    if let SwitchWithOptPath::Enabled(ref path) = tcx.sess.opts.unstable_opts.dump_mono_stats {
+        if let Err(err) =
+            dump_mono_items_stats(tcx, &codegen_units, path, tcx.crate_name(LOCAL_CRATE))
+        {
+            tcx.sess.emit_fatal(CouldntDumpMonoStats { error: err.to_string() });
+        }
+    }
+
     if tcx.sess.opts.unstable_opts.print_mono_items.is_some() {
         let mut item_to_cgus: FxHashMap<_, Vec<_>> = Default::default();
 
@@ -458,14 +467,91 @@ fn collect_and_partition_mono_items<'tcx>(
         item_keys.sort();
 
         for item in item_keys {
-            println!("MONO_ITEM {}", item);
+            println!("MONO_ITEM {item}");
         }
     }
 
     (tcx.arena.alloc(mono_items), codegen_units)
 }
 
-fn codegened_and_inlined_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx DefIdSet {
+/// Outputs stats about instantation counts and estimated size, per `MonoItem`'s
+/// def, to a file in the given output directory.
+fn dump_mono_items_stats<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    codegen_units: &[CodegenUnit<'tcx>],
+    output_directory: &Option<PathBuf>,
+    crate_name: Symbol,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let output_directory = if let Some(ref directory) = output_directory {
+        fs::create_dir_all(directory)?;
+        directory
+    } else {
+        Path::new(".")
+    };
+
+    let format = tcx.sess.opts.unstable_opts.dump_mono_stats_format;
+    let ext = format.extension();
+    let filename = format!("{crate_name}.mono_items.{ext}");
+    let output_path = output_directory.join(&filename);
+    let file = File::create(&output_path)?;
+    let mut file = BufWriter::new(file);
+
+    // Gather instantiated mono items grouped by def_id
+    let mut items_per_def_id: FxHashMap<_, Vec<_>> = Default::default();
+    for cgu in codegen_units {
+        for (&mono_item, _) in cgu.items() {
+            // Avoid variable-sized compiler-generated shims
+            if mono_item.is_user_defined() {
+                items_per_def_id.entry(mono_item.def_id()).or_default().push(mono_item);
+            }
+        }
+    }
+
+    #[derive(serde::Serialize)]
+    struct MonoItem {
+        name: String,
+        instantiation_count: usize,
+        size_estimate: usize,
+        total_estimate: usize,
+    }
+
+    // Output stats sorted by total instantiated size, from heaviest to lightest
+    let mut stats: Vec<_> = items_per_def_id
+        .into_iter()
+        .map(|(def_id, items)| {
+            let name = with_no_trimmed_paths!(tcx.def_path_str(def_id));
+            let instantiation_count = items.len();
+            let size_estimate = items[0].size_estimate(tcx);
+            let total_estimate = instantiation_count * size_estimate;
+            MonoItem { name, instantiation_count, size_estimate, total_estimate }
+        })
+        .collect();
+    stats.sort_unstable_by_key(|item| cmp::Reverse(item.total_estimate));
+
+    if !stats.is_empty() {
+        match format {
+            DumpMonoStatsFormat::Json => serde_json::to_writer(file, &stats)?,
+            DumpMonoStatsFormat::Markdown => {
+                writeln!(
+                    file,
+                    "| Item | Instantiation count | Estimated Cost Per Instantiation | Total Estimated Cost |"
+                )?;
+                writeln!(file, "| --- | ---: | ---: | ---: |")?;
+
+                for MonoItem { name, instantiation_count, size_estimate, total_estimate } in stats {
+                    writeln!(
+                        file,
+                        "| `{name}` | {instantiation_count} | {size_estimate} | {total_estimate} |"
+                    )?;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn codegened_and_inlined_items(tcx: TyCtxt<'_>, (): ()) -> &DefIdSet {
     let (items, cgus) = tcx.collect_and_partition_mono_items(());
     let mut visited = DefIdSet::default();
     let mut result = items.clone();
@@ -507,6 +593,6 @@ pub fn provide(providers: &mut Providers) {
         let (_, all) = tcx.collect_and_partition_mono_items(());
         all.iter()
             .find(|cgu| cgu.name() == name)
-            .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))
+            .unwrap_or_else(|| panic!("failed to find cgu with name {name:?}"))
     };
 }

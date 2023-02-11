@@ -3,7 +3,9 @@
 
 use std::cell::Cell;
 
-use rustc_ast::Mutability;
+use either::Right;
+
+use rustc_const_eval::const_eval::CheckAlignment;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
@@ -20,7 +22,7 @@ use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayo
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeVisitable};
 use rustc_span::{def_id::DefId, Span};
-use rustc_target::abi::{self, HasDataLayout, Size, TargetDataLayout};
+use rustc_target::abi::{self, Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi as CallAbi;
 use rustc_trait_selection::traits;
 
@@ -184,15 +186,26 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     type MemoryKind = !;
 
     #[inline(always)]
-    fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+    fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
         // We do not check for alignment to avoid having to carry an `Align`
         // in `ConstValue::ByRef`.
-        false
+        CheckAlignment::No
     }
 
     #[inline(always)]
     fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         false // for now, we don't enforce validity
+    }
+    fn alignment_check_failed(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        _has: Align,
+        _required: Align,
+        _check: CheckAlignment,
+    ) -> InterpResult<'tcx, ()> {
+        span_bug!(
+            ecx.cur_span(),
+            "`alignment_check_failed` called when no alignment check requested"
+        )
     }
 
     fn load_mir(
@@ -266,7 +279,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _tcx: TyCtxt<'tcx>,
         _machine: &Self,
         _alloc_id: AllocId,
-        alloc: ConstAllocation<'tcx, Self::Provenance, Self::AllocExtra>,
+        alloc: ConstAllocation<'tcx>,
         _static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
@@ -275,7 +288,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         }
         // If the static allocation is mutable, then we can't const prop it as its content
         // might be different at runtime.
-        if alloc.inner().mutability == Mutability::Mut {
+        if alloc.inner().mutability.is_mut() {
             throw_machine_stop_str!("can't access mutable globals in ConstProp");
         }
 
@@ -385,7 +398,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // I don't know how return types can seem to be unsized but this happens in the
             // `type/type-unsatisfiable.rs` test.
             .filter(|ret_layout| {
-                !ret_layout.is_unsized() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
+                ret_layout.is_sized() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
             })
             .unwrap_or_else(|| ecx.layout_of(tcx.types.unit).unwrap());
 
@@ -429,7 +442,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // Try to read the local as an immediate so that if it is representable as a scalar, we can
         // handle it as such, but otherwise, just return the value as is.
         Some(match self.ecx.read_immediate_raw(&op) {
-            Ok(Ok(imm)) => imm.into(),
+            Ok(Right(imm)) => imm.into(),
             _ => op,
         })
     }
@@ -471,7 +484,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        self.ecx.const_to_op(&c.literal, None).ok()
+        // No span, we don't want errors to be shown.
+        self.ecx.eval_mir_constant(&c.literal, None, None).ok()
     }
 
     /// Returns the value, if any, of evaluating `place`.
@@ -513,7 +527,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let r = self.use_ecx(|this| this.ecx.read_immediate(&this.ecx.eval_operand(right, None)?));
         let l = self.use_ecx(|this| this.ecx.read_immediate(&this.ecx.eval_operand(left, None)?));
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
-        if op == BinOp::Shr || op == BinOp::Shl {
+        if matches!(op, BinOp::Shr | BinOp::Shl) {
             let r = r.clone()?;
             // We need the type of the LHS. We cannot use `place_layout` as that is the type
             // of the result, which for checked binops is not the same!
@@ -633,18 +647,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
         if !rvalue
             .ty(&self.ecx.frame().body.local_decls, *self.ecx.tcx)
-            .is_sized(self.ecx.tcx, self.param_env)
+            .is_sized(*self.ecx.tcx, self.param_env)
         {
             // the interpreter doesn't support unsized locals (only unsized arguments),
             // but rustc does (in a kinda broken way), so we have to skip them here
             return None;
         }
 
-        if self.tcx.sess.mir_opt_level() >= 4 {
-            self.eval_rvalue_with_identities(rvalue, place)
-        } else {
-            self.use_ecx(|this| this.ecx.eval_rvalue_into_place(rvalue, place))
-        }
+        self.eval_rvalue_with_identities(rvalue, place)
     }
 
     // Attempt to use algebraic identities to eliminate constant expressions
@@ -686,8 +696,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     BinOp::Mul if const_arg.layout.ty.is_integral() && arg_value == 0 => {
                         if let Rvalue::CheckedBinaryOp(_, _) = rvalue {
                             let val = Immediate::ScalarPair(
-                                const_arg.to_scalar().into(),
-                                Scalar::from_bool(false).into(),
+                                const_arg.to_scalar(),
+                                Scalar::from_bool(false),
                             );
                             this.ecx.write_immediate(val, &dest)
                         } else {
@@ -742,7 +752,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // FIXME> figure out what to do when read_immediate_raw fails
         let imm = self.use_ecx(|this| this.ecx.read_immediate_raw(value));
 
-        if let Some(Ok(imm)) = imm {
+        if let Some(Right(imm)) = imm {
             match *imm {
                 interpret::Immediate::Scalar(scalar) => {
                     *rval = Rvalue::Use(self.operand_from_scalar(

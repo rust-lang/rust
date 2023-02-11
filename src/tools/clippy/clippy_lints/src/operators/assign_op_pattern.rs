@@ -8,7 +8,7 @@ use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir_analysis::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
+use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::LateContext;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::BorrowKind;
@@ -28,7 +28,7 @@ pub(super) fn check<'tcx>(
             let rty = cx.typeck_results().expr_ty(rhs);
             if_chain! {
                 if let Some((_, lang_item)) = binop_traits(op.node);
-                if let Ok(trait_id) = cx.tcx.lang_items().require(lang_item);
+                if let Some(trait_id) = cx.tcx.lang_items().get(lang_item);
                 let parent_fn = cx.tcx.hir().get_parent_item(e.hir_id).def_id;
                 if trait_ref_of_method(cx, parent_fn)
                     .map_or(true, |t| t.path.res.def_id() != trait_id);

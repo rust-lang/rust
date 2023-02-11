@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-disable-isolation -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
 
 use std::ptr::null_mut;
 use std::sync::atomic::{AtomicPtr, Ordering};
@@ -39,7 +39,7 @@ pub fn main() {
 
             sleep(Duration::from_millis(200));
 
-            stack_var = 1usize; //~ ERROR: Data race detected between Write on thread `<unnamed>` and Write on thread `<unnamed>`
+            stack_var = 1usize; //~ ERROR: Data race detected between (1) Write on thread `<unnamed>` and (2) Write on thread `<unnamed>`
 
             // read to silence errors
             stack_var

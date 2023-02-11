@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::interval::IntervalSet;
@@ -88,12 +90,14 @@ impl RegionValueElements {
 rustc_index::newtype_index! {
     /// A single integer representing a `Location` in the MIR control-flow
     /// graph. Constructed efficiently from `RegionValueElements`.
-    pub struct PointIndex { DEBUG_FORMAT = "PointIndex({})" }
+    #[debug_format = "PointIndex({})"]
+    pub struct PointIndex {}
 }
 
 rustc_index::newtype_index! {
     /// A single integer representing a `ty::Placeholder`.
-    pub struct PlaceholderIndex { DEBUG_FORMAT = "PlaceholderIndex({})" }
+    #[debug_format = "PlaceholderIndex({})"]
+    pub struct PlaceholderIndex {}
 }
 
 /// An individual element in a region value -- the value of a
@@ -183,6 +187,7 @@ pub(crate) struct PlaceholderIndices {
 }
 
 impl PlaceholderIndices {
+    /// Returns the `PlaceholderIndex` for the inserted `PlaceholderRegion`
     pub(crate) fn insert(&mut self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
         let (index, _) = self.indices.insert_full(placeholder);
         index.into()

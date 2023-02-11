@@ -1,0 +1,19 @@
+error[E0107]: missing generics for associated type `Monad::Wrapped`
+  --> $DIR/issue-79636-1.rs:13:34
+   |
+LL |     MInner: Monad<Unwrapped = A, Wrapped = MOuter::Wrapped<A>>,
+   |                                  ^^^^^^^ expected 1 generic argument
+   |
+note: associated type defined here, with 1 generic parameter: `B`
+  --> $DIR/issue-79636-1.rs:3:10
+   |
+LL |     type Wrapped<B>;
+   |          ^^^^^^^ -
+help: add missing generic argument
+   |
+LL |     MInner: Monad<Unwrapped = A, Wrapped<B> = MOuter::Wrapped<A>>,
+   |                                         +++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

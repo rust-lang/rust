@@ -3,6 +3,10 @@
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.
 
+use std::fmt::Display;
+
+use termcolor::WriteColor;
+
 /// A helper macro to `unwrap` a result except also print out details like:
 ///
 /// * The expression that failed
@@ -26,31 +30,44 @@ macro_rules! t {
 }
 
 macro_rules! tidy_error {
-    ($bad:expr, $fmt:expr) => ({
-        *$bad = true;
-        eprint!("tidy error: ");
-        eprintln!($fmt);
-    });
-    ($bad:expr, $fmt:expr, $($arg:tt)*) => ({
-        *$bad = true;
-        eprint!("tidy error: ");
-        eprintln!($fmt, $($arg)*);
+    ($bad:expr, $($fmt:tt)*) => ({
+        $crate::tidy_error($bad, format_args!($($fmt)*)).expect("failed to output error");
     });
 }
 
+fn tidy_error(bad: &mut bool, args: impl Display) -> std::io::Result<()> {
+    use std::io::Write;
+    use termcolor::{Color, ColorChoice, ColorSpec, StandardStream};
+
+    *bad = true;
+
+    let mut stderr = StandardStream::stdout(ColorChoice::Auto);
+    stderr.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
+
+    write!(&mut stderr, "tidy error")?;
+    stderr.set_color(&ColorSpec::new())?;
+
+    writeln!(&mut stderr, ": {args}")?;
+    Ok(())
+}
+
+pub mod alphabetical;
 pub mod bins;
 pub mod debug_artifacts;
 pub mod deps;
 pub mod edition;
-pub mod error_codes_check;
-pub mod errors;
+pub mod error_codes;
 pub mod extdeps;
 pub mod features;
+pub mod mir_opt_tests;
 pub mod pal;
 pub mod primitive_docs;
+pub mod rustdoc_gui_tests;
 pub mod style;
 pub mod target_specific_tests;
+pub mod tests_placement;
 pub mod ui_tests;
 pub mod unit_tests;
 pub mod unstable_book;
 pub mod walk;
+pub mod x_version;

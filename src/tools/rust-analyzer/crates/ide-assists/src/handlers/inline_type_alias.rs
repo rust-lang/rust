@@ -138,7 +138,7 @@ pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
             replacement = Replacement::Plain;
         }
         _ => {
-            let alias = get_type_alias(&ctx, &alias_instance)?;
+            let alias = get_type_alias(ctx, &alias_instance)?;
             concrete_type = alias.ty()?;
             replacement = inline(&alias, &alias_instance)?;
         }
@@ -158,7 +158,7 @@ impl Replacement {
     fn to_text(&self, concrete_type: &ast::Type) -> String {
         match self {
             Replacement::Generic { lifetime_map, const_and_type_map } => {
-                create_replacement(&lifetime_map, &const_and_type_map, &concrete_type)
+                create_replacement(lifetime_map, const_and_type_map, concrete_type)
             }
             Replacement::Plain => concrete_type.to_string(),
         }
@@ -240,7 +240,7 @@ impl ConstAndTypeMap {
     ) -> Option<Self> {
         let mut inner = HashMap::new();
         let instance_generics = generic_args_to_const_and_type_generics(instance_args);
-        let alias_generics = generic_param_list_to_const_and_type_generics(&alias_generics);
+        let alias_generics = generic_param_list_to_const_and_type_generics(alias_generics);
 
         if instance_generics.len() > alias_generics.len() {
             cov_mark::hit!(too_many_generic_args);

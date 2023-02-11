@@ -1,64 +1,56 @@
-if_chain! {
-    if let ExprKind::Struct(qpath, fields, None) = expr.kind;
-    if match_qpath(qpath, &["Test"]);
-    if fields.len() == 1;
-    if fields[0].ident.as_str() == "field";
-    if let ExprKind::If(cond, then, Some(else_expr)) = fields[0].expr.kind;
-    if let ExprKind::DropTemps(expr1) = cond.kind;
-    if let ExprKind::Lit(ref lit) = expr1.kind;
-    if let LitKind::Bool(true) = lit.node;
-    if let ExprKind::Block(block, None) = then.kind;
-    if block.stmts.is_empty();
-    if let Some(trailing_expr) = block.expr;
-    if let ExprKind::Lit(ref lit1) = trailing_expr.kind;
-    if let LitKind::Int(1, LitIntType::Unsuffixed) = lit1.node;
-    if let ExprKind::Block(block1, None) = else_expr.kind;
-    if block1.stmts.is_empty();
-    if let Some(trailing_expr1) = block1.expr;
-    if let ExprKind::Lit(ref lit2) = trailing_expr1.kind;
-    if let LitKind::Int(0, LitIntType::Unsuffixed) = lit2.node;
-    then {
-        // report your lint here
-    }
+if let ExprKind::Struct(qpath, fields, None) = expr.kind
+    && match_qpath(qpath, &["Test"])
+    && fields.len() == 1
+    && fields[0].ident.as_str() == "field"
+    && let ExprKind::If(cond, then, Some(else_expr)) = fields[0].expr.kind
+    && let ExprKind::DropTemps(expr1) = cond.kind
+    && let ExprKind::Lit(ref lit) = expr1.kind
+    && let LitKind::Bool(true) = lit.node
+    && let ExprKind::Block(block, None) = then.kind
+    && block.stmts.is_empty()
+    && let Some(trailing_expr) = block.expr
+    && let ExprKind::Lit(ref lit1) = trailing_expr.kind
+    && let LitKind::Int(1, LitIntType::Unsuffixed) = lit1.node
+    && let ExprKind::Block(block1, None) = else_expr.kind
+    && block1.stmts.is_empty()
+    && let Some(trailing_expr1) = block1.expr
+    && let ExprKind::Lit(ref lit2) = trailing_expr1.kind
+    && let LitKind::Int(0, LitIntType::Unsuffixed) = lit2.node
+{
+    // report your lint here
 }
-if_chain! {
-    if let PatKind::Struct(ref qpath, fields, false) = arm.pat.kind;
-    if match_qpath(qpath, &["Test"]);
-    if fields.len() == 1;
-    if fields[0].ident.as_str() == "field";
-    if let PatKind::Lit(lit_expr) = fields[0].pat.kind;
-    if let ExprKind::Lit(ref lit) = lit_expr.kind;
-    if let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node;
-    if arm.guard.is_none();
-    if let ExprKind::Block(block, None) = arm.body.kind;
-    if block.stmts.is_empty();
-    if block.expr.is_none();
-    then {
-        // report your lint here
-    }
+if let PatKind::Struct(ref qpath, fields, false) = arm.pat.kind
+    && match_qpath(qpath, &["Test"])
+    && fields.len() == 1
+    && fields[0].ident.as_str() == "field"
+    && let PatKind::Lit(lit_expr) = fields[0].pat.kind
+    && let ExprKind::Lit(ref lit) = lit_expr.kind
+    && let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node
+    && arm.guard.is_none()
+    && let ExprKind::Block(block, None) = arm.body.kind
+    && block.stmts.is_empty()
+    && block.expr.is_none()
+{
+    // report your lint here
 }
-if_chain! {
-    if let PatKind::TupleStruct(ref qpath, fields, None) = arm.pat.kind;
-    if match_qpath(qpath, &["TestTuple"]);
-    if fields.len() == 1;
-    if let PatKind::Lit(lit_expr) = fields[0].kind;
-    if let ExprKind::Lit(ref lit) = lit_expr.kind;
-    if let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node;
-    if arm.guard.is_none();
-    if let ExprKind::Block(block, None) = arm.body.kind;
-    if block.stmts.is_empty();
-    if block.expr.is_none();
-    then {
-        // report your lint here
-    }
+if let PatKind::TupleStruct(ref qpath, fields, None) = arm.pat.kind
+    && match_qpath(qpath, &["TestTuple"])
+    && fields.len() == 1
+    && let PatKind::Lit(lit_expr) = fields[0].kind
+    && let ExprKind::Lit(ref lit) = lit_expr.kind
+    && let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node
+    && arm.guard.is_none()
+    && let ExprKind::Block(block, None) = arm.body.kind
+    && block.stmts.is_empty()
+    && block.expr.is_none()
+{
+    // report your lint here
 }
-if_chain! {
-    if let ExprKind::MethodCall(method_name, receiver, args, _) = expr.kind;
-    if method_name.ident.as_str() == "test";
-    if let ExprKind::Path(ref qpath) = receiver.kind;
-    if match_qpath(qpath, &["test_method_call"]);
-    if args.is_empty();
-    then {
-        // report your lint here
-    }
+if let ExprKind::MethodCall(method_name, receiver, args, _) = expr.kind
+    && method_name.ident.as_str() == "test"
+    && let ExprKind::Path(ref qpath) = receiver.kind
+    && match_qpath(qpath, &["test_method_call"])
+    && args.is_empty()
+{
+    // report your lint here
 }

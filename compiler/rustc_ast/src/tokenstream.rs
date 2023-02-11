@@ -41,7 +41,8 @@ use std::{fmt, iter};
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.
 #[derive(Debug, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
 pub enum TokenTree {
-    /// A single token.
+    /// A single token. Should never be `OpenDelim` or `CloseDelim`, because
+    /// delimiters are implicitly represented by `Delimited`.
     Token(Token, Spacing),
     /// A delimited sequence of token trees.
     Delimited(DelimSpan, Delimiter, TokenStream),
@@ -64,7 +65,7 @@ impl TokenTree {
         match (self, other) {
             (TokenTree::Token(token, _), TokenTree::Token(token2, _)) => token.kind == token2.kind,
             (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
-                delim == delim2 && tts.eq_unspanned(&tts2)
+                delim == delim2 && tts.eq_unspanned(tts2)
             }
             _ => false,
         }
@@ -86,12 +87,12 @@ impl TokenTree {
         }
     }
 
-    // Create a `TokenTree::Token` with alone spacing.
+    /// Create a `TokenTree::Token` with alone spacing.
     pub fn token_alone(kind: TokenKind, span: Span) -> TokenTree {
         TokenTree::Token(Token::new(kind, span), Spacing::Alone)
     }
 
-    // Create a `TokenTree::Token` with joint spacing.
+    /// Create a `TokenTree::Token` with joint spacing.
     pub fn token_joint(kind: TokenKind, span: Span) -> TokenTree {
         TokenTree::Token(Token::new(kind, span), Spacing::Joint)
     }
@@ -258,8 +259,7 @@ impl AttrTokenStream {
 
                         assert!(
                             found,
-                            "Failed to find trailing delimited group in: {:?}",
-                            target_tokens
+                            "Failed to find trailing delimited group in: {target_tokens:?}"
                         );
                     }
                     let mut flat: SmallVec<[_; 1]> = SmallVec::new();
@@ -362,7 +362,7 @@ impl TokenStream {
     }
 }
 
-impl iter::FromIterator<TokenTree> for TokenStream {
+impl FromIterator<TokenTree> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenTree>>(iter: I) -> Self {
         TokenStream::new(iter.into_iter().collect::<Vec<TokenTree>>())
     }
@@ -389,12 +389,12 @@ impl TokenStream {
         self.0.len()
     }
 
-    pub fn trees(&self) -> CursorRef<'_> {
-        CursorRef::new(self)
+    pub fn trees(&self) -> RefTokenTreeCursor<'_> {
+        RefTokenTreeCursor::new(self)
     }
 
-    pub fn into_trees(self) -> Cursor {
-        Cursor::new(self)
+    pub fn into_trees(self) -> TokenTreeCursor {
+        TokenTreeCursor::new(self)
     }
 
     /// Compares two `TokenStream`s, checking equality without regarding span information.
@@ -402,7 +402,7 @@ impl TokenStream {
         let mut t1 = self.trees();
         let mut t2 = other.trees();
         for (t1, t2) in iter::zip(&mut t1, &mut t2) {
-            if !t1.eq_unspanned(&t2) {
+            if !t1.eq_unspanned(t2) {
                 return false;
             }
         }
@@ -413,17 +413,17 @@ impl TokenStream {
         TokenStream(Lrc::new(self.0.iter().enumerate().map(|(i, tree)| f(i, tree)).collect()))
     }
 
-    // Create a token stream containing a single token with alone spacing.
+    /// Create a token stream containing a single token with alone spacing.
     pub fn token_alone(kind: TokenKind, span: Span) -> TokenStream {
         TokenStream::new(vec![TokenTree::token_alone(kind, span)])
     }
 
-    // Create a token stream containing a single token with joint spacing.
+    /// Create a token stream containing a single token with joint spacing.
     pub fn token_joint(kind: TokenKind, span: Span) -> TokenStream {
         TokenStream::new(vec![TokenTree::token_joint(kind, span)])
     }
 
-    // Create a token stream containing a single `Delimited`.
+    /// Create a token stream containing a single `Delimited`.
     pub fn delimited(span: DelimSpan, delim: Delimiter, tts: TokenStream) -> TokenStream {
         TokenStream::new(vec![TokenTree::Delimited(span, delim, tts)])
     }
@@ -475,7 +475,7 @@ impl TokenStream {
             token::Interpolated(nt) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
                 Delimiter::Invisible,
-                TokenStream::from_nonterminal_ast(&nt).flattened(),
+                TokenStream::from_nonterminal_ast(nt).flattened(),
             ),
             _ => TokenTree::Token(token.clone(), spacing),
         }
@@ -511,7 +511,7 @@ impl TokenStream {
     fn try_glue_to_last(vec: &mut Vec<TokenTree>, tt: &TokenTree) -> bool {
         if let Some(TokenTree::Token(last_tok, Spacing::Joint)) = vec.last()
             && let TokenTree::Token(tok, spacing) = tt
-            && let Some(glued_tok) = last_tok.glue(&tok)
+            && let Some(glued_tok) = last_tok.glue(tok)
         {
             // ...then overwrite the last token tree in `vec` with the
             // glued token, and skip the first token tree from `stream`.
@@ -522,8 +522,8 @@ impl TokenStream {
         }
     }
 
-    // Push `tt` onto the end of the stream, possibly gluing it to the last
-    // token. Uses `make_mut` to maximize efficiency.
+    /// Push `tt` onto the end of the stream, possibly gluing it to the last
+    /// token. Uses `make_mut` to maximize efficiency.
     pub fn push_tree(&mut self, tt: TokenTree) {
         let vec_mut = Lrc::make_mut(&mut self.0);
 
@@ -534,9 +534,9 @@ impl TokenStream {
         }
     }
 
-    // Push `stream` onto the end of the stream, possibly gluing the first
-    // token tree to the last token. (No other token trees will be glued.)
-    // Uses `make_mut` to maximize efficiency.
+    /// Push `stream` onto the end of the stream, possibly gluing the first
+    /// token tree to the last token. (No other token trees will be glued.)
+    /// Uses `make_mut` to maximize efficiency.
     pub fn push_stream(&mut self, stream: TokenStream) {
         let vec_mut = Lrc::make_mut(&mut self.0);
 
@@ -552,16 +552,17 @@ impl TokenStream {
     }
 }
 
-/// By-reference iterator over a [`TokenStream`].
+/// By-reference iterator over a [`TokenStream`], that produces `&TokenTree`
+/// items.
 #[derive(Clone)]
-pub struct CursorRef<'t> {
+pub struct RefTokenTreeCursor<'t> {
     stream: &'t TokenStream,
     index: usize,
 }
 
-impl<'t> CursorRef<'t> {
+impl<'t> RefTokenTreeCursor<'t> {
     fn new(stream: &'t TokenStream) -> Self {
-        CursorRef { stream, index: 0 }
+        RefTokenTreeCursor { stream, index: 0 }
     }
 
     pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
@@ -569,7 +570,7 @@ impl<'t> CursorRef<'t> {
     }
 }
 
-impl<'t> Iterator for CursorRef<'t> {
+impl<'t> Iterator for RefTokenTreeCursor<'t> {
     type Item = &'t TokenTree;
 
     fn next(&mut self) -> Option<&'t TokenTree> {
@@ -580,15 +581,16 @@ impl<'t> Iterator for CursorRef<'t> {
     }
 }
 
-/// Owning by-value iterator over a [`TokenStream`].
+/// Owning by-value iterator over a [`TokenStream`], that produces `TokenTree`
+/// items.
 // FIXME: Many uses of this can be replaced with by-reference iterator to avoid clones.
 #[derive(Clone)]
-pub struct Cursor {
+pub struct TokenTreeCursor {
     pub stream: TokenStream,
     index: usize,
 }
 
-impl Iterator for Cursor {
+impl Iterator for TokenTreeCursor {
     type Item = TokenTree;
 
     fn next(&mut self) -> Option<TokenTree> {
@@ -599,9 +601,9 @@ impl Iterator for Cursor {
     }
 }
 
-impl Cursor {
+impl TokenTreeCursor {
     fn new(stream: TokenStream) -> Self {
-        Cursor { stream, index: 0 }
+        TokenTreeCursor { stream, index: 0 }
     }
 
     #[inline]
@@ -614,6 +616,15 @@ impl Cursor {
 
     pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
         self.stream.0.get(self.index + n)
+    }
+
+    // Replace the previously obtained token tree with `tts`, and rewind to
+    // just before them.
+    pub fn replace_prev_and_rewind(&mut self, tts: Vec<TokenTree>) {
+        assert!(self.index > 0);
+        self.index -= 1;
+        let stream = Lrc::make_mut(&mut self.stream.0);
+        stream.splice(self.index..self.index + 1, tts);
     }
 }
 
@@ -646,10 +657,11 @@ impl DelimSpan {
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(AttrTokenStream, 8);
     static_assert_size!(AttrTokenTree, 32);
     static_assert_size!(LazyAttrTokenStream, 8);
     static_assert_size!(TokenStream, 8);
     static_assert_size!(TokenTree, 32);
+    // tidy-alphabetical-end
 }

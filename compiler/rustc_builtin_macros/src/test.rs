@@ -2,7 +2,6 @@
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 use rustc_ast as ast;
-use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
@@ -13,13 +12,13 @@ use rustc_span::Span;
 use std::iter;
 use thin_vec::thin_vec;
 
-// #[test_case] is used by custom test authors to mark tests
-// When building for test, it needs to make the item public and gensym the name
-// Otherwise, we'll omit the item. This behavior means that any item annotated
-// with #[test_case] is never addressable.
-//
-// We mark item with an inert attribute "rustc_test_marker" which the test generation
-// logic will pick up on.
+/// #[test_case] is used by custom test authors to mark tests
+/// When building for test, it needs to make the item public and gensym the name
+/// Otherwise, we'll omit the item. This behavior means that any item annotated
+/// with #[test_case] is never addressable.
+///
+/// We mark item with an inert attribute "rustc_test_marker" which the test generation
+/// logic will pick up on.
 pub fn expand_test_case(
     ecx: &mut ExtCtxt<'_>,
     attr_sp: Span,
@@ -36,13 +35,18 @@ pub fn expand_test_case(
     let sp = ecx.with_def_site_ctxt(attr_sp);
     let mut item = anno_item.expect_item();
     item = item.map(|mut item| {
+        let test_path_symbol = Symbol::intern(&item_path(
+            // skip the name of the root module
+            &ecx.current_expansion.module.mod_path[1..],
+            &item.ident,
+        ));
         item.vis = ast::Visibility {
             span: item.vis.span,
             kind: ast::VisibilityKind::Public,
             tokens: None,
         };
         item.ident.span = item.ident.span.with_ctxt(sp.ctxt());
-        item.attrs.push(ecx.attribute(ecx.meta_word(sp, sym::rustc_test_marker)));
+        item.attrs.push(ecx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, sp));
         item
     });
 
@@ -103,7 +107,7 @@ pub fn expand_test_or_bench(
     };
 
     // Note: non-associated fn items are already handled by `expand_test_or_bench`
-    if !matches!(item.kind, ast::ItemKind::Fn(_)) {
+    let ast::ItemKind::Fn(fn_) = &item.kind else {
         let diag = &cx.sess.parse_sess.span_diagnostic;
         let msg = "the `#[test]` attribute may only be used on a non-associated function";
         let mut err = match item.kind {
@@ -121,7 +125,7 @@ pub fn expand_test_or_bench(
             .emit();
 
         return vec![Annotatable::Item(item)];
-    }
+    };
 
     // has_*_signature will report any errors in the type so compilation
     // will fail. We shouldn't try to expand in this case because the errors
@@ -132,12 +136,14 @@ pub fn expand_test_or_bench(
         return vec![Annotatable::Item(item)];
     }
 
-    let (sp, attr_sp) = (cx.with_def_site_ctxt(item.span), cx.with_def_site_ctxt(attr_sp));
+    let sp = cx.with_def_site_ctxt(item.span);
+    let ret_ty_sp = cx.with_def_site_ctxt(fn_.sig.decl.output.span());
+    let attr_sp = cx.with_def_site_ctxt(attr_sp);
 
     let test_id = Ident::new(sym::test, attr_sp);
 
     // creates test::$name
-    let test_path = |name| cx.path(sp, vec![test_id, Ident::from_str_and_span(name, sp)]);
+    let test_path = |name| cx.path(ret_ty_sp, vec![test_id, Ident::from_str_and_span(name, sp)]);
 
     // creates test::ShouldPanic::$name
     let should_panic_path = |name| {
@@ -183,7 +189,7 @@ pub fn expand_test_or_bench(
                         vec![
                             // super::$test_fn(b)
                             cx.expr_call(
-                                sp,
+                                ret_ty_sp,
                                 cx.expr_path(cx.path(sp, vec![item.ident])),
                                 vec![cx.expr_ident(sp, b)],
                             ),
@@ -207,7 +213,11 @@ pub fn expand_test_or_bench(
                         cx.expr_path(test_path("assert_test_result")),
                         vec![
                             // $test_fn()
-                            cx.expr_call(sp, cx.expr_path(cx.path(sp, vec![item.ident])), vec![]), // )
+                            cx.expr_call(
+                                ret_ty_sp,
+                                cx.expr_path(cx.path(sp, vec![item.ident])),
+                                vec![],
+                            ), // )
                         ],
                     ), // }
                 ), // )
@@ -215,17 +225,20 @@ pub fn expand_test_or_bench(
         )
     };
 
+    let test_path_symbol = Symbol::intern(&item_path(
+        // skip the name of the root module
+        &cx.current_expansion.module.mod_path[1..],
+        &item.ident,
+    ));
+
     let mut test_const = cx.item(
         sp,
         Ident::new(item.ident.name, sp),
         thin_vec![
             // #[cfg(test)]
-            cx.attribute(attr::mk_list_item(
-                Ident::new(sym::cfg, attr_sp),
-                vec![attr::mk_nested_word_item(Ident::new(sym::test, attr_sp))],
-            )),
-            // #[rustc_test_marker]
-            cx.attribute(cx.meta_word(attr_sp, sym::rustc_test_marker)),
+            cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
+            // #[rustc_test_marker = "test_case_sort_key"]
+            cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
         ],
         // const $ident: test::TestDescAndFn =
         ast::ItemKind::Const(
@@ -250,14 +263,7 @@ pub fn expand_test_or_bench(
                                         cx.expr_call(
                                             sp,
                                             cx.expr_path(test_path("StaticTestName")),
-                                            vec![cx.expr_str(
-                                                sp,
-                                                Symbol::intern(&item_path(
-                                                    // skip the name of the root module
-                                                    &cx.current_expansion.module.mod_path[1..],
-                                                    &item.ident,
-                                                )),
-                                            )],
+                                            vec![cx.expr_str(sp, test_path_symbol)],
                                         ),
                                     ),
                                     // ignore: true | false
@@ -459,61 +465,67 @@ fn test_type(cx: &ExtCtxt<'_>) -> TestType {
 fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let has_should_panic_attr = cx.sess.contains_name(&i.attrs, sym::should_panic);
     let sd = &cx.sess.parse_sess.span_diagnostic;
-    if let ast::ItemKind::Fn(box ast::Fn { ref sig, ref generics, .. }) = i.kind {
-        if let ast::Unsafe::Yes(span) = sig.header.unsafety {
-            sd.struct_span_err(i.span, "unsafe functions cannot be used for tests")
-                .span_label(span, "`unsafe` because of this")
-                .emit();
-            return false;
-        }
-        if let ast::Async::Yes { span, .. } = sig.header.asyncness {
-            sd.struct_span_err(i.span, "async functions cannot be used for tests")
-                .span_label(span, "`async` because of this")
-                .emit();
-            return false;
-        }
-
-        // If the termination trait is active, the compiler will check that the output
-        // type implements the `Termination` trait as `libtest` enforces that.
-        let has_output = match sig.decl.output {
-            ast::FnRetTy::Default(..) => false,
-            ast::FnRetTy::Ty(ref t) if t.kind.is_unit() => false,
-            _ => true,
-        };
-
-        if !sig.decl.inputs.is_empty() {
-            sd.span_err(i.span, "functions used as tests can not have any arguments");
-            return false;
-        }
-
-        match (has_output, has_should_panic_attr) {
-            (true, true) => {
-                sd.span_err(i.span, "functions using `#[should_panic]` must return `()`");
-                false
+    match &i.kind {
+        ast::ItemKind::Fn(box ast::Fn { sig, generics, .. }) => {
+            if let ast::Unsafe::Yes(span) = sig.header.unsafety {
+                sd.struct_span_err(i.span, "unsafe functions cannot be used for tests")
+                    .span_label(span, "`unsafe` because of this")
+                    .emit();
+                return false;
             }
-            (true, false) => {
-                if !generics.params.is_empty() {
-                    sd.span_err(i.span, "functions used as tests must have signature fn() -> ()");
+            if let ast::Async::Yes { span, .. } = sig.header.asyncness {
+                sd.struct_span_err(i.span, "async functions cannot be used for tests")
+                    .span_label(span, "`async` because of this")
+                    .emit();
+                return false;
+            }
+
+            // If the termination trait is active, the compiler will check that the output
+            // type implements the `Termination` trait as `libtest` enforces that.
+            let has_output = match &sig.decl.output {
+                ast::FnRetTy::Default(..) => false,
+                ast::FnRetTy::Ty(t) if t.kind.is_unit() => false,
+                _ => true,
+            };
+
+            if !sig.decl.inputs.is_empty() {
+                sd.span_err(i.span, "functions used as tests can not have any arguments");
+                return false;
+            }
+
+            match (has_output, has_should_panic_attr) {
+                (true, true) => {
+                    sd.span_err(i.span, "functions using `#[should_panic]` must return `()`");
                     false
-                } else {
-                    true
                 }
+                (true, false) => {
+                    if !generics.params.is_empty() {
+                        sd.span_err(
+                            i.span,
+                            "functions used as tests must have signature fn() -> ()",
+                        );
+                        false
+                    } else {
+                        true
+                    }
+                }
+                (false, _) => true,
             }
-            (false, _) => true,
         }
-    } else {
-        // should be unreachable because `is_test_fn_item` should catch all non-fn items
-        false
+        _ => {
+            // should be unreachable because `is_test_fn_item` should catch all non-fn items
+            debug_assert!(false);
+            false
+        }
     }
 }
 
 fn has_bench_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
-    let has_sig = if let ast::ItemKind::Fn(box ast::Fn { ref sig, .. }) = i.kind {
+    let has_sig = match &i.kind {
         // N.B., inadequate check, but we're running
         // well before resolve, can't get too deep.
-        sig.decl.inputs.len() == 1
-    } else {
-        false
+        ast::ItemKind::Fn(box ast::Fn { sig, .. }) => sig.decl.inputs.len() == 1,
+        _ => false,
     };
 
     if !has_sig {

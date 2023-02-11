@@ -617,3 +617,33 @@ mod issue6902 {
         Bar = 1,
     }
 }
+
+#[clippy::msrv = "1.36"]
+fn msrv_1_36() {
+    enum E {
+        A,
+    }
+
+    impl E {
+        fn foo(self) {
+            match self {
+                E::A => {},
+            }
+        }
+    }
+}
+
+#[clippy::msrv = "1.37"]
+fn msrv_1_37() {
+    enum E {
+        A,
+    }
+
+    impl E {
+        fn foo(self) {
+            match self {
+                E::A => {},
+            }
+        }
+    }
+}

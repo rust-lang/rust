@@ -13,8 +13,8 @@ use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::DefId;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::def_id::LOCAL_CRATE;
@@ -40,7 +40,7 @@ pub(crate) struct JsonRenderer<'tcx> {
     /// The directory where the blob will be written to.
     out_path: PathBuf,
     cache: Rc<Cache>,
-    imported_items: FxHashSet<DefId>,
+    imported_items: DefIdSet,
 }
 
 impl<'tcx> JsonRenderer<'tcx> {
@@ -98,53 +98,6 @@ impl<'tcx> JsonRenderer<'tcx> {
                     .collect()
             })
             .unwrap_or_default()
-    }
-
-    fn get_trait_items(&mut self) -> Vec<(types::Id, types::Item)> {
-        debug!("Adding foreign trait items");
-        Rc::clone(&self.cache)
-            .traits
-            .iter()
-            .filter_map(|(&id, trait_item)| {
-                // only need to synthesize items for external traits
-                if !id.is_local() {
-                    for item in &trait_item.items {
-                        trace!("Adding subitem to {id:?}: {:?}", item.item_id);
-                        self.item(item.clone()).unwrap();
-                    }
-                    let item_id = from_item_id(id.into(), self.tcx);
-                    Some((
-                        item_id.clone(),
-                        types::Item {
-                            id: item_id,
-                            crate_id: id.krate.as_u32(),
-                            name: self
-                                .cache
-                                .paths
-                                .get(&id)
-                                .unwrap_or_else(|| {
-                                    self.cache
-                                        .external_paths
-                                        .get(&id)
-                                        .expect("Trait should either be in local or external paths")
-                                })
-                                .0
-                                .last()
-                                .map(|s| s.to_string()),
-                            visibility: types::Visibility::Public,
-                            inner: types::ItemEnum::Trait(trait_item.clone().into_tcx(self.tcx)),
-                            span: None,
-                            docs: Default::default(),
-                            links: Default::default(),
-                            attrs: Default::default(),
-                            deprecation: Default::default(),
-                        },
-                    ))
-                } else {
-                    None
-                }
-            })
-            .collect()
     }
 }
 
@@ -223,15 +176,14 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                     false
                 }
 
-                types::ItemEnum::Method(_)
+                types::ItemEnum::Function(_)
                 | types::ItemEnum::Module(_)
+                | types::ItemEnum::Import(_)
                 | types::ItemEnum::AssocConst { .. }
                 | types::ItemEnum::AssocType { .. } => true,
                 types::ItemEnum::ExternCrate { .. }
-                | types::ItemEnum::Import(_)
                 | types::ItemEnum::StructField(_)
                 | types::ItemEnum::Variant(_)
-                | types::ItemEnum::Function(_)
                 | types::ItemEnum::TraitAlias(_)
                 | types::ItemEnum::Impl(_)
                 | types::ItemEnum::Typedef(_)
@@ -270,18 +222,14 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     fn after_krate(&mut self) -> Result<(), Error> {
         debug!("Done with crate");
 
-        debug!("Adding Primitve impls");
+        debug!("Adding Primitive impls");
         for primitive in Rc::clone(&self.cache).primitive_locations.values() {
             self.get_impls(*primitive);
         }
 
         let e = ExternalCrate { crate_num: LOCAL_CRATE };
 
-        // FIXME(adotinthevoid): Remove this, as it's not consistant with not
-        // inlining foreign items.
-        let foreign_trait_items = self.get_trait_items();
-        let mut index = (*self.index).clone().into_inner();
-        index.extend(foreign_trait_items);
+        let index = (*self.index).clone().into_inner();
 
         debug!("Constructing Output");
         // This needs to be the default HashMap for compatibility with the public interface for

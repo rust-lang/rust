@@ -113,6 +113,12 @@ resources useful.
 [The Reference](reference/index.html) is not a formal spec, but is more detailed and
 comprehensive than the book.
 
+## The Style Guide
+
+[The Rust Style Guide](style-guide/index.html) describes the standard formatting of Rust
+code. Most developers use rustfmt to format their code, and rustfmt's default
+formatting matches this style guide.
+
 ## The Rustonomicon
 
 [The Rustonomicon](nomicon/index.html) is your guidebook to the dark arts of unsafe

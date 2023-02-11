@@ -298,7 +298,7 @@ impl<'a> Tarball<'a> {
     fn run(self, build_cli: impl FnOnce(&Tarball<'a>, &mut Command)) -> GeneratedTarball {
         t!(std::fs::create_dir_all(&self.overlay_dir));
         self.builder.create(&self.overlay_dir.join("version"), &self.overlay.version(self.builder));
-        if let Some(info) = self.builder.rust_info.info() {
+        if let Some(info) = self.builder.rust_info().info() {
             channel::write_commit_hash_file(&self.overlay_dir, &info.sha);
             channel::write_commit_info_file(&self.overlay_dir, info);
         }
@@ -323,7 +323,7 @@ impl<'a> Tarball<'a> {
         // Ensure there are no symbolic links in the tarball. In particular,
         // rustup-toolchain-install-master and most versions of Windows can't handle symbolic links.
         let decompressed_output = self.temp_dir.join(&package_name);
-        if !self.builder.config.dry_run && !self.permit_symlinks {
+        if !self.builder.config.dry_run() && !self.permit_symlinks {
             for entry in walkdir::WalkDir::new(&decompressed_output) {
                 let entry = t!(entry);
                 if entry.path_is_symlink() {

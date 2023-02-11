@@ -4,6 +4,7 @@ use rustc_middle::ty::layout::{
     fn_can_unwind, FnAbiError, HasParamEnv, HasTyCtxt, LayoutCx, LayoutOf, TyAndLayout,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
@@ -34,13 +35,13 @@ fn fn_sig_for_fn_abi<'tcx>(
             // HACK(davidtwco,eddyb): This is a workaround for polymorphization considering
             // parameters unused if they show up in the signature, but not in the `mir::Body`
             // (i.e. due to being inside a projection that got normalized, see
-            // `src/test/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
+            // `tests/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
             // track of a polymorphization `ParamEnv` to allow normalizing later.
             //
             // We normalize the `fn_sig` again after substituting at a later point.
             let mut sig = match *ty.kind() {
                 ty::FnDef(def_id, substs) => tcx
-                    .bound_fn_sig(def_id)
+                    .fn_sig(def_id)
                     .map_bound(|fn_sig| {
                         tcx.normalize_erasing_regions(tcx.param_env(def_id), fn_sig)
                     })
@@ -84,7 +85,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 bound_vars,
             )
         }
-        ty::Generator(_, substs, _) => {
+        ty::Generator(did, substs, _) => {
             let sig = substs.as_generator().poly_sig();
 
             let bound_vars = tcx.mk_bound_variable_kinds(
@@ -103,13 +104,45 @@ fn fn_sig_for_fn_abi<'tcx>(
             let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
 
             let sig = sig.skip_binder();
-            let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
-            let state_adt_ref = tcx.adt_def(state_did);
-            let state_substs = tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
-            let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+            // The `FnSig` and the `ret_ty` here is for a generators main
+            // `Generator::resume(...) -> GeneratorState` function in case we
+            // have an ordinary generator, or the `Future::poll(...) -> Poll`
+            // function in case this is a special generator backing an async construct.
+            let (resume_ty, ret_ty) = if tcx.generator_is_async(did) {
+                // The signature should be `Future::poll(_, &mut Context<'_>) -> Poll<Output>`
+                let poll_did = tcx.require_lang_item(LangItem::Poll, None);
+                let poll_adt_ref = tcx.adt_def(poll_did);
+                let poll_substs = tcx.intern_substs(&[sig.return_ty.into()]);
+                let ret_ty = tcx.mk_adt(poll_adt_ref, poll_substs);
+
+                // We have to replace the `ResumeTy` that is used for type and borrow checking
+                // with `&mut Context<'_>` which is used in codegen.
+                #[cfg(debug_assertions)]
+                {
+                    if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
+                        let expected_adt =
+                            tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
+                        assert_eq!(*resume_ty_adt, expected_adt);
+                    } else {
+                        panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
+                    };
+                }
+                let context_mut_ref = tcx.mk_task_context();
+
+                (context_mut_ref, ret_ty)
+            } else {
+                // The signature should be `Generator::resume(_, Resume) -> GeneratorState<Yield, Return>`
+                let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
+                let state_adt_ref = tcx.adt_def(state_did);
+                let state_substs = tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
+                let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+
+                (sig.resume_ty, ret_ty)
+            };
+
             ty::Binder::bind_with_vars(
                 tcx.mk_fn_sig(
-                    [env_ty, sig.resume_ty].iter(),
+                    [env_ty, resume_ty].iter(),
                     &ret_ty,
                     false,
                     hir::Unsafety::Normal,
@@ -206,13 +239,12 @@ fn adjust_for_rust_scalar<'tcx>(
         return;
     }
 
-    // Scalars which have invalid values cannot be undef.
-    if !scalar.is_always_valid(&cx) {
+    if !scalar.is_uninit_valid() {
         attrs.set(ArgAttribute::NoUndef);
     }
 
     // Only pointer types handled below.
-    let Scalar::Initialized { value: Pointer, valid_range} = scalar else { return };
+    let Scalar::Initialized { value: Pointer(_), valid_range} = scalar else { return };
 
     if !valid_range.contains(0) {
         attrs.set(ArgAttribute::NonNull);
@@ -222,56 +254,49 @@ fn adjust_for_rust_scalar<'tcx>(
         if let Some(kind) = pointee.safe {
             attrs.pointee_align = Some(pointee.align);
 
-            // `Box` (`UniqueBorrowed`) are not necessarily dereferenceable
-            // for the entire duration of the function as they can be deallocated
-            // at any time. Same for shared mutable references. If LLVM had a
-            // way to say "dereferenceable on entry" we could use it here.
+            // `Box` are not necessarily dereferenceable for the entire duration of the function as
+            // they can be deallocated at any time. Same for non-frozen shared references (see
+            // <https://github.com/rust-lang/rust/pull/98017>), and for mutable references to
+            // potentially self-referential types (see
+            // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>). If LLVM had a way
+            // to say "dereferenceable on entry" we could use it here.
             attrs.pointee_size = match kind {
-                PointerKind::UniqueBorrowed
-                | PointerKind::UniqueBorrowedPinned
-                | PointerKind::Frozen => pointee.size,
-                PointerKind::SharedMutable | PointerKind::UniqueOwned => Size::ZERO,
+                PointerKind::Box { .. }
+                | PointerKind::SharedRef { frozen: false }
+                | PointerKind::MutableRef { unpin: false } => Size::ZERO,
+                PointerKind::SharedRef { frozen: true }
+                | PointerKind::MutableRef { unpin: true } => pointee.size,
             };
-
-            // `Box`, `&T`, and `&mut T` cannot be undef.
-            // Note that this only applies to the value of the pointer itself;
-            // this attribute doesn't make it UB for the pointed-to data to be undef.
-            attrs.set(ArgAttribute::NoUndef);
 
             // The aliasing rules for `Box<T>` are still not decided, but currently we emit
             // `noalias` for it. This can be turned off using an unstable flag.
             // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
-            let noalias_for_box = cx.tcx.sess.opts.unstable_opts.box_noalias.unwrap_or(true);
+            let noalias_for_box = cx.tcx.sess.opts.unstable_opts.box_noalias;
 
-            // `&mut` pointer parameters never alias other parameters,
-            // or mutable global data
+            // LLVM prior to version 12 had known miscompiles in the presence of noalias attributes
+            // (see #54878), so it was conditionally disabled, but we don't support earlier
+            // versions at all anymore. We still support turning it off using -Zmutable-noalias.
+            let noalias_mut_ref = cx.tcx.sess.opts.unstable_opts.mutable_noalias;
+
+            // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as both
+            // `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely on memory
+            // dependencies rather than pointer equality. However this only applies to arguments,
+            // not return values.
             //
-            // `&T` where `T` contains no `UnsafeCell<U>` is immutable,
-            // and can be marked as both `readonly` and `noalias`, as
-            // LLVM's definition of `noalias` is based solely on memory
-            // dependencies rather than pointer equality
-            //
-            // Due to past miscompiles in LLVM, we apply a separate NoAliasMutRef attribute
-            // for UniqueBorrowed arguments, so that the codegen backend can decide whether
-            // or not to actually emit the attribute. It can also be controlled with the
-            // `-Zmutable-noalias` debugging option.
+            // `&mut T` and `Box<T>` where `T: Unpin` are unique and hence `noalias`.
             let no_alias = match kind {
-                PointerKind::SharedMutable
-                | PointerKind::UniqueBorrowed
-                | PointerKind::UniqueBorrowedPinned => false,
-                PointerKind::UniqueOwned => noalias_for_box,
-                PointerKind::Frozen => !is_return,
+                PointerKind::SharedRef { frozen } => frozen,
+                PointerKind::MutableRef { unpin } => unpin && noalias_mut_ref,
+                PointerKind::Box { unpin } => unpin && noalias_for_box,
             };
-            if no_alias {
+            // We can never add `noalias` in return position; that LLVM attribute has some very surprising semantics
+            // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/385#issuecomment-1368055745>).
+            if no_alias && !is_return {
                 attrs.set(ArgAttribute::NoAlias);
             }
 
-            if kind == PointerKind::Frozen && !is_return {
+            if matches!(kind, PointerKind::SharedRef { frozen: true }) && !is_return {
                 attrs.set(ArgAttribute::ReadOnly);
-            }
-
-            if kind == PointerKind::UniqueBorrowed && !is_return {
-                attrs.set(ArgAttribute::NoAliasMutRef);
             }
         }
     }
@@ -384,7 +409,7 @@ fn fn_abi_new_uncached<'tcx>(
         conv,
         can_unwind: fn_can_unwind(cx.tcx(), fn_def_id, sig.abi),
     };
-    fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi)?;
+    fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi, fn_def_id)?;
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
     Ok(cx.tcx.arena.alloc(fn_abi))
 }
@@ -394,6 +419,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
     abi: SpecAbi,
+    fn_def_id: Option<DefId>,
 ) -> Result<(), FnAbiError<'tcx>> {
     if abi == SpecAbi::Unadjusted {
         return Ok(());
@@ -404,7 +430,18 @@ fn fn_abi_adjust_for_abi<'tcx>(
         || abi == SpecAbi::RustIntrinsic
         || abi == SpecAbi::PlatformIntrinsic
     {
-        let fixup = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>| {
+        // Look up the deduced parameter attributes for this function, if we have its def ID and
+        // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes
+        // as appropriate.
+        let deduced_param_attrs = if cx.tcx.sess.opts.optimize != OptLevel::No
+            && cx.tcx.sess.opts.incremental.is_none()
+        {
+            fn_def_id.map(|fn_def_id| cx.tcx.deduced_param_attrs(fn_def_id)).unwrap_or_default()
+        } else {
+            &[]
+        };
+
+        let fixup = |arg: &mut ArgAbi<'tcx, Ty<'tcx>>, arg_idx: Option<usize>| {
             if arg.is_ignore() {
                 return;
             }
@@ -443,7 +480,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
             }
 
             let size = arg.layout.size;
-            if arg.layout.is_unsized() || size > Pointer.size(cx) {
+            if arg.layout.is_unsized() || size > Pointer(AddressSpace::DATA).size(cx) {
                 arg.make_indirect();
             } else {
                 // We want to pass small aggregates as immediates, but using
@@ -451,10 +488,30 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 // so we pick an appropriately sized integer type instead.
                 arg.cast_to(Reg { kind: RegKind::Integer, size });
             }
+
+            // If we deduced that this parameter was read-only, add that to the attribute list now.
+            //
+            // The `readonly` parameter only applies to pointers, so we can only do this if the
+            // argument was passed indirectly. (If the argument is passed directly, it's an SSA
+            // value, so it's implicitly immutable.)
+            if let (Some(arg_idx), &mut PassMode::Indirect { ref mut attrs, .. }) =
+                (arg_idx, &mut arg.mode)
+            {
+                // The `deduced_param_attrs` list could be empty if this is a type of function
+                // we can't deduce any parameters for, so make sure the argument index is in
+                // bounds.
+                if let Some(deduced_param_attrs) = deduced_param_attrs.get(arg_idx) {
+                    if deduced_param_attrs.read_only {
+                        attrs.regular.insert(ArgAttribute::ReadOnly);
+                        debug!("added deduced read-only attribute");
+                    }
+                }
+            }
         };
-        fixup(&mut fn_abi.ret);
-        for arg in fn_abi.args.iter_mut() {
-            fixup(arg);
+
+        fixup(&mut fn_abi.ret, None);
+        for (arg_idx, arg) in fn_abi.args.iter_mut().enumerate() {
+            fixup(arg, Some(arg_idx));
         }
     } else {
         fn_abi.adjust_for_foreign_abi(cx, abi)?;

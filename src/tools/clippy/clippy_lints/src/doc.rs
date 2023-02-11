@@ -11,7 +11,7 @@ use rustc_ast::token::CommentKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
-use rustc_errors::{Applicability, Handler, MultiSpan, SuggestionStyle};
+use rustc_errors::{Applicability, Handler, SuggestionStyle};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AnonConst, Expr};
@@ -23,7 +23,6 @@ use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_parse::parser::ForceCollect;
 use rustc_session::parse::ParseSess;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::def_id::LocalDefId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{BytePos, FilePathMapping, SourceMap, Span};
 use rustc_span::{sym, FileName, Pos};
@@ -221,6 +220,42 @@ declare_clippy_lint! {
     "possible typo for an intra-doc link"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the doc comments of publicly visible
+    /// safe functions and traits and warns if there is a `# Safety` section.
+    ///
+    /// ### Why is this bad?
+    /// Safe functions and traits are safe to implement and therefore do not
+    /// need to describe safety preconditions that users are required to uphold.
+    ///
+    /// ### Examples
+    /// ```rust
+    ///# type Universe = ();
+    /// /// # Safety
+    /// ///
+    /// /// This function should not be called before the horsemen are ready.
+    /// pub fn start_apocalypse_but_safely(u: &mut Universe) {
+    ///     unimplemented!();
+    /// }
+    /// ```
+    ///
+    /// The function is safe, so there shouldn't be any preconditions
+    /// that have to be explained for safety reasons.
+    ///
+    /// ```rust
+    ///# type Universe = ();
+    /// /// This function should really be documented
+    /// pub fn start_apocalypse(u: &mut Universe) {
+    ///     unimplemented!();
+    /// }
+    /// ```
+    #[clippy::version = "1.67.0"]
+    pub UNNECESSARY_SAFETY_DOC,
+    restriction,
+    "`pub fn` or `pub trait` with `# Safety` docs"
+}
+
 #[expect(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct DocMarkdown {
@@ -243,7 +278,8 @@ impl_lint_pass!(DocMarkdown => [
     MISSING_SAFETY_DOC,
     MISSING_ERRORS_DOC,
     MISSING_PANICS_DOC,
-    NEEDLESS_DOCTEST_MAIN
+    NEEDLESS_DOCTEST_MAIN,
+    UNNECESSARY_SAFETY_DOC,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
@@ -254,40 +290,37 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let headers = check_attrs(cx, &self.valid_idents, attrs);
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
-                if !(is_entrypoint_fn(cx, item.def_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
+                if !(is_entrypoint_fn(cx, item.owner_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
                     let body = cx.tcx.hir().body(body_id);
                     let mut fpu = FindPanicUnwrap {
                         cx,
-                        typeck_results: cx.tcx.typeck(item.def_id.def_id),
+                        typeck_results: cx.tcx.typeck(item.owner_id.def_id),
                         panic_span: None,
                     };
                     fpu.visit_expr(body.value);
-                    lint_for_missing_headers(
-                        cx,
-                        item.def_id.def_id,
-                        item.span,
-                        sig,
-                        headers,
-                        Some(body_id),
-                        fpu.panic_span,
-                    );
+                    lint_for_missing_headers(cx, item.owner_id, sig, headers, Some(body_id), fpu.panic_span);
                 }
             },
             hir::ItemKind::Impl(impl_) => {
                 self.in_trait_impl = impl_.of_trait.is_some();
             },
-            hir::ItemKind::Trait(_, unsafety, ..) => {
-                if !headers.safety && unsafety == hir::Unsafety::Unsafe {
-                    span_lint(
-                        cx,
-                        MISSING_SAFETY_DOC,
-                        item.span,
-                        "docs for unsafe trait missing `# Safety` section",
-                    );
-                }
+            hir::ItemKind::Trait(_, unsafety, ..) => match (headers.safety, unsafety) {
+                (false, hir::Unsafety::Unsafe) => span_lint(
+                    cx,
+                    MISSING_SAFETY_DOC,
+                    cx.tcx.def_span(item.owner_id),
+                    "docs for unsafe trait missing `# Safety` section",
+                ),
+                (true, hir::Unsafety::Normal) => span_lint(
+                    cx,
+                    UNNECESSARY_SAFETY_DOC,
+                    cx.tcx.def_span(item.owner_id),
+                    "docs for safe trait have unnecessary `# Safety` section",
+                ),
+                _ => (),
             },
             _ => (),
         }
@@ -301,17 +334,17 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let headers = check_attrs(cx, &self.valid_idents, attrs);
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
             if !in_external_macro(cx.tcx.sess, item.span) {
-                lint_for_missing_headers(cx, item.def_id.def_id, item.span, sig, headers, None, None);
+                lint_for_missing_headers(cx, item.owner_id, sig, headers, None, None);
             }
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let headers = check_attrs(cx, &self.valid_idents, attrs);
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
         if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span) {
             return;
         }
@@ -319,33 +352,24 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
             let body = cx.tcx.hir().body(body_id);
             let mut fpu = FindPanicUnwrap {
                 cx,
-                typeck_results: cx.tcx.typeck(item.def_id.def_id),
+                typeck_results: cx.tcx.typeck(item.owner_id.def_id),
                 panic_span: None,
             };
             fpu.visit_expr(body.value);
-            lint_for_missing_headers(
-                cx,
-                item.def_id.def_id,
-                item.span,
-                sig,
-                headers,
-                Some(body_id),
-                fpu.panic_span,
-            );
+            lint_for_missing_headers(cx, item.owner_id, sig, headers, Some(body_id), fpu.panic_span);
         }
     }
 }
 
-fn lint_for_missing_headers<'tcx>(
-    cx: &LateContext<'tcx>,
-    def_id: LocalDefId,
-    span: impl Into<MultiSpan> + Copy,
+fn lint_for_missing_headers(
+    cx: &LateContext<'_>,
+    owner_id: hir::OwnerId,
     sig: &hir::FnSig<'_>,
     headers: DocHeaders,
     body_id: Option<hir::BodyId>,
     panic_span: Option<Span>,
 ) {
-    if !cx.access_levels.is_exported(def_id) {
+    if !cx.effective_visibilities.is_exported(owner_id.def_id) {
         return; // Private functions do not require doc comments
     }
 
@@ -353,19 +377,27 @@ fn lint_for_missing_headers<'tcx>(
     if cx
         .tcx
         .hir()
-        .parent_iter(cx.tcx.hir().local_def_id_to_hir_id(def_id))
+        .parent_iter(owner_id.into())
         .any(|(id, _node)| is_doc_hidden(cx.tcx.hir().attrs(id)))
     {
         return;
     }
 
-    if !headers.safety && sig.header.unsafety == hir::Unsafety::Unsafe {
-        span_lint(
+    let span = cx.tcx.def_span(owner_id);
+    match (headers.safety, sig.header.unsafety) {
+        (false, hir::Unsafety::Unsafe) => span_lint(
             cx,
             MISSING_SAFETY_DOC,
             span,
             "unsafe function's docs miss `# Safety` section",
-        );
+        ),
+        (true, hir::Unsafety::Normal) => span_lint(
+            cx,
+            UNNECESSARY_SAFETY_DOC,
+            span,
+            "safe function's docs have unnecessary `# Safety` section",
+        ),
+        _ => (),
     }
     if !headers.panics && panic_span.is_some() {
         span_lint_and_note(
@@ -378,8 +410,7 @@ fn lint_for_missing_headers<'tcx>(
         );
     }
     if !headers.errors {
-        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
-        if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::Result) {
+        if is_type_diagnostic_item(cx, return_ty(cx, owner_id), sym::Result) {
             span_lint(
                 cx,
                 MISSING_ERRORS_DOC,
@@ -394,9 +425,7 @@ fn lint_for_missing_headers<'tcx>(
                 let body = cx.tcx.hir().body(body_id);
                 let ret_ty = typeck.expr_ty(body.value);
                 if implements_trait(cx, ret_ty, future, &[]);
-                if let ty::Opaque(_, subs) = ret_ty.kind();
-                if let Some(gen) = subs.types().next();
-                if let ty::Generator(_, subs, _) = gen.kind();
+                if let ty::Generator(_, subs, _) = ret_ty.kind();
                 if is_type_diagnostic_item(cx, subs.as_generator().return_ty(), sym::Result);
                 then {
                     span_lint(
@@ -467,7 +496,7 @@ struct DocHeaders {
     panics: bool,
 }
 
-fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &'a [Attribute]) -> DocHeaders {
+fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[Attribute]) -> Option<DocHeaders> {
     use pulldown_cmark::{BrokenLink, CowStr, Options};
     /// We don't want the parser to choke on intra doc links. Since we don't
     /// actually care about rendering them, just pretend that all broken links are
@@ -488,11 +517,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
         } else if attr.has_name(sym::doc) {
             // ignore mix of sugared and non-sugared doc
             // don't trigger the safety or errors check
-            return DocHeaders {
-                safety: true,
-                errors: true,
-                panics: true,
-            };
+            return None;
         }
     }
 
@@ -504,7 +529,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
     }
 
     if doc.is_empty() {
-        return DocHeaders::default();
+        return Some(DocHeaders::default());
     }
 
     let mut cb = fake_broken_link_callback;
@@ -527,7 +552,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
             (previous, current) => Err(((previous, previous_range), (current, current_range))),
         }
     });
-    check_doc(cx, valid_idents, events, &spans)
+    Some(check_doc(cx, valid_idents, events, &spans))
 }
 
 const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail"];
@@ -690,6 +715,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                     false,
                     false,
                     None,
+                    false,
                     false,
                 );
                 let handler = Handler::with_emitter(false, None, Box::new(emitter));

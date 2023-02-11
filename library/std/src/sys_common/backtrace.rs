@@ -7,21 +7,20 @@ use crate::fmt;
 use crate::io;
 use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
-use crate::sys_common::mutex::StaticMutex;
+use crate::sync::{Mutex, PoisonError};
 
 /// Max number of frames to print.
 const MAX_NB_FRAMES: usize = 100;
 
-// SAFETY: Don't attempt to lock this reentrantly.
-pub unsafe fn lock() -> impl Drop {
-    static LOCK: StaticMutex = StaticMutex::new();
-    LOCK.lock()
+pub fn lock() -> impl Drop {
+    static LOCK: Mutex<()> = Mutex::new(());
+    LOCK.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// Prints the current backtrace.
 pub fn print(w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
     // There are issues currently linking libbacktrace into tests, and in
-    // general during libstd's own unit tests we're not testing this path. In
+    // general during std's own unit tests we're not testing this path. In
     // test mode immediately return here to optimize away any references to the
     // libbacktrace symbols
     if cfg!(test) {
@@ -112,7 +111,7 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
 }
 
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`. Note that
-/// this is only inline(never) when backtraces in libstd are enabled, otherwise
+/// this is only inline(never) when backtraces in std are enabled, otherwise
 /// it's fine to optimize away.
 #[cfg_attr(feature = "backtrace", inline(never))]
 pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
@@ -128,7 +127,7 @@ where
 }
 
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`. Note that
-/// this is only inline(never) when backtraces in libstd are enabled, otherwise
+/// this is only inline(never) when backtraces in std are enabled, otherwise
 /// it's fine to optimize away.
 #[cfg_attr(feature = "backtrace", inline(never))]
 pub fn __rust_end_short_backtrace<F, T>(f: F) -> T

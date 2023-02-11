@@ -35,8 +35,7 @@ fn opt_span_bug_fmt<S: Into<MultiSpan>>(
             (Some(tcx), None) => tcx.sess.diagnostic().bug(&msg),
             (None, _) => panic_any(msg),
         }
-    });
-    unreachable!();
+    })
 }
 
 /// A query to trigger a `delay_span_bug`. Clearly, if one has a `tcx` one can already trigger a

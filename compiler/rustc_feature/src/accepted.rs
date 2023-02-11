@@ -48,11 +48,17 @@ declare_features! (
 
     /// Allows `#[target_feature(...)]` on aarch64 platforms
     (accepted, aarch64_target_feature, "1.61.0", Some(44839), None),
+    /// Allows using the `efiapi` ABI.
+    (accepted, abi_efiapi, "1.68.0", Some(65815), None),
     /// Allows the sysV64 ABI to be specified on all platforms
     /// instead of just the platforms on which it is the C ABI.
     (accepted, abi_sysv64, "1.24.0", Some(36167), None),
     /// Allows using ADX intrinsics from `core::arch::{x86, x86_64}`.
     (accepted, adx_target_feature, "1.61.0", Some(44839), None),
+    /// Allows explicit discriminants on non-unit enum variants.
+    (accepted, arbitrary_enum_discriminant, "1.66.0", Some(60553), None),
+    /// Allows using `sym` operands in inline assembly.
+    (accepted, asm_sym, "1.66.0", Some(93333), None),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
     (accepted, associated_consts, "1.20.0", Some(29646), None),
     /// Allows using associated `type`s in `trait`s.
@@ -122,6 +128,8 @@ declare_features! (
     (accepted, copy_closures, "1.26.0", Some(44490), None),
     /// Allows `crate` in paths.
     (accepted, crate_in_paths, "1.30.0", Some(45477), None),
+    /// Allows rustc to inject a default alloc_error_handler
+    (accepted, default_alloc_error_handler, "1.68.0", Some(66741), None),
     /// Allows using assigning a default type to type parameters in algebraic data type definitions.
     (accepted, default_type_params, "1.0.0", None, None),
     /// Allows `#[deprecated]` attribute.
@@ -155,6 +163,8 @@ declare_features! (
     (accepted, extern_crate_self, "1.34.0", Some(56409), None),
     /// Allows access to crate names passed via `--extern` through prelude.
     (accepted, extern_prelude, "1.30.0", Some(44660), None),
+    /// Allows using F16C intrinsics from `core::arch::{x86, x86_64}`.
+    (accepted, f16c_target_feature, "1.68.0", Some(44839), None),
     /// Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
     (accepted, field_init_shorthand, "1.17.0", Some(37340), None),
     /// Allows `#[must_use]` on functions, and introduces must-use operators (RFC 1940).
@@ -170,7 +180,7 @@ declare_features! (
     // FIXME: explain `globs`.
     (accepted, globs, "1.0.0", None, None),
     /// Allows using `..=X` as a pattern.
-    (accepted, half_open_range_patterns, "CURRENT_RUSTC_VERSION", Some(67264), None),
+    (accepted, half_open_range_patterns, "1.66.0", Some(67264), None),
     /// Allows using the `u128` and `i128` types.
     (accepted, i128_type, "1.26.0", Some(35118), None),
     /// Allows the use of `if let` expressions.
@@ -187,6 +197,8 @@ declare_features! (
     (accepted, infer_outlives_requirements, "1.30.0", Some(44493), None),
     /// Allows irrefutable patterns in `if let` and `while let` statements (RFC 2086).
     (accepted, irrefutable_let_patterns, "1.33.0", Some(44495), None),
+    /// Allows `#[instruction_set(_)]` attribute.
+    (accepted, isa_attribute, "1.67.0", Some(74727), None),
     /// Allows some increased flexibility in the name resolution rules,
     /// especially around globs and shadowing (RFC 1560).
     (accepted, item_like_imports, "1.15.0", Some(35120), None),
@@ -231,6 +243,8 @@ declare_features! (
     (accepted, native_link_modifiers, "1.61.0", Some(81490), None),
     /// Allows specifying the bundle link modifier
     (accepted, native_link_modifiers_bundle, "1.63.0", Some(81490), None),
+    /// Allows specifying the verbatim link modifier
+    (accepted, native_link_modifiers_verbatim, "1.67.0", Some(81490), None),
     /// Allows specifying the whole-archive link modifier
     (accepted, native_link_modifiers_whole_archive, "1.61.0", Some(81490), None),
     /// Allows using non lexical lifetimes (RFC 2094).

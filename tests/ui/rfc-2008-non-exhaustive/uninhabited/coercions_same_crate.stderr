@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> $DIR/coercions_same_crate.rs:30:5
+   |
+LL | fn cannot_coerce_empty_enum_to_anything(x: UninhabitedEnum) -> A {
+   |                                                                - expected `A` because of return type
+LL |     x
+   |     ^ expected `A`, found `UninhabitedEnum`
+
+error[E0308]: mismatched types
+  --> $DIR/coercions_same_crate.rs:34:5
+   |
+LL | fn cannot_coerce_empty_tuple_struct_to_anything(x: UninhabitedTupleStruct) -> A {
+   |                                                                               - expected `A` because of return type
+LL |     x
+   |     ^ expected `A`, found `UninhabitedTupleStruct`
+
+error[E0308]: mismatched types
+  --> $DIR/coercions_same_crate.rs:38:5
+   |
+LL | fn cannot_coerce_empty_struct_to_anything(x: UninhabitedStruct) -> A {
+   |                                                                    - expected `A` because of return type
+LL |     x
+   |     ^ expected `A`, found `UninhabitedStruct`
+
+error[E0308]: mismatched types
+  --> $DIR/coercions_same_crate.rs:42:5
+   |
+LL | fn cannot_coerce_enum_with_empty_variants_to_anything(x: UninhabitedVariants) -> A {
+   |                                                                                  - expected `A` because of return type
+LL |     x
+   |     ^ expected `A`, found `UninhabitedVariants`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
