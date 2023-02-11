@@ -1,8 +1,8 @@
 //! Runs rustfmt on the repository.
 
 use crate::builder::Builder;
-use crate::util::{output, output_result, program_out_of_date, t};
-use build_helper::git::updated_master_branch;
+use crate::util::{output, program_out_of_date, t};
+use build_helper::git::get_git_modified_files;
 use ignore::WalkBuilder;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
@@ -80,23 +80,11 @@ fn update_rustfmt_version(build: &Builder<'_>) {
 ///
 /// Returns `None` if all files should be formatted.
 fn get_modified_rs_files(build: &Builder<'_>) -> Result<Option<Vec<String>>, String> {
-    let Ok(updated_master) = updated_master_branch(Some(&build.config.src)) else { return Ok(None); };
-
     if !verify_rustfmt_version(build) {
         return Ok(None);
     }
 
-    let merge_base =
-        output_result(build.config.git().arg("merge-base").arg(&updated_master).arg("HEAD"))?;
-    Ok(Some(
-        output_result(
-            build.config.git().arg("diff-index").arg("--name-only").arg(merge_base.trim()),
-        )?
-        .lines()
-        .map(|s| s.trim().to_owned())
-        .filter(|f| Path::new(f).extension().map_or(false, |ext| ext == "rs"))
-        .collect(),
-    ))
+    get_git_modified_files(Some(&build.config.src), &vec!["rs"])
 }
 
 #[derive(serde::Deserialize)]

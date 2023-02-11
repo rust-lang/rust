@@ -1510,6 +1510,10 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         if builder.config.rust_optimize_tests {
             cmd.arg("--optimize-tests");
         }
+        if builder.config.cmd.only_modified() {
+            cmd.arg("--only-modified");
+        }
+
         let mut flags = if is_rustdoc { Vec::new() } else { vec!["-Crpath".to_string()] };
         flags.push(format!("-Cdebuginfo={}", builder.config.rust_debuginfo_level_tests));
         flags.extend(builder.config.cmd.rustc_args().iter().map(|s| s.to_string()));

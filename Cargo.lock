@@ -895,6 +895,7 @@ dependencies = [
 name = "compiletest"
 version = "0.0.0"
 dependencies = [
+ "build_helper",
  "colored",
  "diff",
  "getopts",
