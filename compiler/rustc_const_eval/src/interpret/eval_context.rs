@@ -5,6 +5,7 @@ use std::mem;
 use either::{Either, Left, Right};
 
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ErrorHandled, InterpError, InvalidProgramInfo};
@@ -46,6 +47,9 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 
     /// The recursion limit (cached from `tcx.recursion_limit(())`)
     pub recursion_limit: Limit,
+
+    // reuse allocation for bit set
+    always_live_locals_cache: GrowableBitSet<mir::Local>,
 }
 
 // The Phantomdata exists to prevent this type from being `Send`. If it were sent across a thread
@@ -408,6 +412,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             param_env,
             memory: Memory::new(),
             recursion_limit: tcx.recursion_limit(),
+            always_live_locals_cache: Default::default(),
         }
     }
 
@@ -705,13 +710,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
 
         // Now mark those locals as live that have no `Storage*` annotations.
-        let always_live = always_storage_live_locals(self.body());
+        // and take cached allocation for bitset ...
+        let mut always_live = mem::take(&mut self.always_live_locals_cache);
+        always_storage_live_locals(self.body(), &mut always_live);
+
         for local in locals.indices() {
             if always_live.contains(local) {
                 locals[local].value = LocalValue::Live(Operand::Immediate(Immediate::Uninit));
             }
         }
         // done
+        // ... and place it back
+        self.always_live_locals_cache = always_live;
+
         self.frame_mut().locals = locals;
         M::after_stack_push(self)?;
         self.frame_mut().loc = Left(mir::Location::START);

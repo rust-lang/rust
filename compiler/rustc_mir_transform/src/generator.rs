@@ -1401,9 +1401,11 @@ pub(crate) fn mir_generator_witnesses<'tcx>(
     };
 
     // When first entering the generator, move the resume argument into its new local.
-    let always_live_locals = always_storage_live_locals(&body);
+    let mut always_live_locals = GrowableBitSet::new_empty();
+    always_storage_live_locals(&body, &mut always_live_locals);
 
-    let liveness_info = locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
+    let liveness_info =
+        locals_live_across_suspend_points(tcx, body, always_live_locals.as_bitset(), movable);
 
     // Extract locals which are live across suspension point into `layout`
     // `remap` gives a mapping from local indices onto generator struct indices
@@ -1493,10 +1495,11 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             },
         );
 
-        let always_live_locals = always_storage_live_locals(&body);
+        let mut always_live_locals = GrowableBitSet::new_empty();
+        always_storage_live_locals(&body, &mut always_live_locals);
 
         let liveness_info =
-            locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
+            locals_live_across_suspend_points(tcx, body, always_live_locals.as_bitset(), movable);
 
         if tcx.sess.opts.unstable_opts.validate_mir {
             let mut vis = EnsureGeneratorFieldAssignmentsNeverAlias {
@@ -1533,7 +1536,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             state_substs,
             remap,
             storage_liveness,
-            always_live_locals,
+            always_live_locals: always_live_locals.into(),
             suspension_points: Vec::new(),
             new_ret_local,
             discr_ty,

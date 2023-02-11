@@ -1,7 +1,7 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::{BitSet, GrowableBitSet};
 use rustc_index::vec::IndexVec;
 use rustc_infer::traits::Reveal;
 use rustc_middle::mir::interpret::Scalar;
@@ -52,11 +52,13 @@ impl<'tcx> MirPass<'tcx> for Validator {
             Reveal::All => tcx.param_env_reveal_all_normalized(def_id),
         };
 
-        let always_live_locals = always_storage_live_locals(body);
-        let storage_liveness = MaybeStorageLive::new(std::borrow::Cow::Owned(always_live_locals))
-            .into_engine(tcx, body)
-            .iterate_to_fixpoint()
-            .into_results_cursor(body);
+        let mut always_live_locals = GrowableBitSet::new_empty();
+        always_storage_live_locals(body, &mut always_live_locals);
+        let storage_liveness =
+            MaybeStorageLive::new(std::borrow::Cow::Owned(always_live_locals.into()))
+                .into_engine(tcx, body)
+                .iterate_to_fixpoint()
+                .into_results_cursor(body);
 
         let mut checker = TypeChecker {
             when: &self.when,

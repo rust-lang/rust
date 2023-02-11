@@ -1552,6 +1552,17 @@ impl<T: Idx> GrowableBitSet<T> {
     pub fn len(&self) -> usize {
         self.bit_set.count()
     }
+
+    // reuse allocation, set domain_size and fill
+    pub fn fill(&mut self, domain_size: usize) {
+        self.ensure(domain_size);
+        self.bit_set.domain_size = domain_size;
+        self.bit_set.insert_all();
+    }
+
+    pub fn as_bitset(&self) -> &BitSet<T> {
+        &self.bit_set
+    }
 }
 
 impl<T: Idx> From<BitSet<T>> for GrowableBitSet<T> {
