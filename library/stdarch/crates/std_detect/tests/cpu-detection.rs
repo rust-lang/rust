@@ -110,6 +110,7 @@ fn aarch64_bsd() {
     println!("sve: {:?}", is_aarch64_feature_detected!("sve"));
     println!("crc: {:?}", is_aarch64_feature_detected!("crc"));
     println!("lse: {:?}", is_aarch64_feature_detected!("lse"));
+    println!("lse2: {:?}", is_aarch64_feature_detected!("lse2"));
     println!("rdm: {:?}", is_aarch64_feature_detected!("rdm"));
     println!("rcpc: {:?}", is_aarch64_feature_detected!("rcpc"));
     println!("dotprod: {:?}", is_aarch64_feature_detected!("dotprod"));

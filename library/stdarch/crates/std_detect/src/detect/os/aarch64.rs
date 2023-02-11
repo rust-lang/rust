@@ -15,6 +15,7 @@
 //!
 //! - [Zircon implementation](https://fuchsia.googlesource.com/zircon/+/master/kernel/arch/arm64/feature.cpp)
 //! - [Linux documentation](https://www.kernel.org/doc/Documentation/arm64/cpu-feature-registers.txt)
+//! - [ARM documentation](https://developer.arm.com/documentation/ddi0601/2022-12/AArch64-Registers?lang=en)
 
 use crate::detect::{cache, Feature};
 use core::arch::asm;
@@ -43,6 +44,16 @@ pub(crate) fn detect_features() -> cache::Initializer {
         );
     }
 
+    // ID_AA64MMFR2_EL1 - AArch64 Memory Model Feature Register 2
+    let aa64mmfr2: u64;
+    unsafe {
+        asm!(
+            "mrs {}, ID_AA64MMFR2_EL1",
+            out(reg) aa64mmfr2,
+            options(pure, nomem, preserves_flags, nostack)
+        );
+    }
+
     // ID_AA64PFR0_EL1 - Processor Feature Register 0
     let aa64pfr0: u64;
     unsafe {
@@ -53,12 +64,13 @@ pub(crate) fn detect_features() -> cache::Initializer {
         );
     }
 
-    parse_system_registers(aa64isar0, aa64isar1, Some(aa64pfr0))
+    parse_system_registers(aa64isar0, aa64isar1, aa64mmfr2, Some(aa64pfr0))
 }
 
 pub(crate) fn parse_system_registers(
     aa64isar0: u64,
     aa64isar1: u64,
+    aa64mmfr2: u64,
     aa64pfr0: Option<u64>,
 ) -> cache::Initializer {
     let mut value = cache::Initializer::default();
@@ -72,7 +84,7 @@ pub(crate) fn parse_system_registers(
     // ID_AA64ISAR0_EL1 - Instruction Set Attribute Register 0
     enable_feature(Feature::pmull, bits_shift(aa64isar0, 7, 4) >= 2);
     enable_feature(Feature::tme, bits_shift(aa64isar0, 27, 24) == 1);
-    enable_feature(Feature::lse, bits_shift(aa64isar0, 23, 20) >= 1);
+    enable_feature(Feature::lse, bits_shift(aa64isar0, 23, 20) >= 2);
     enable_feature(Feature::crc, bits_shift(aa64isar0, 19, 16) >= 1);
 
     // ID_AA64PFR0_EL1 - Processor Feature Register 0
@@ -99,12 +111,15 @@ pub(crate) fn parse_system_registers(
         enable_feature(Feature::sve, asimd && bits_shift(aa64pfr0, 35, 32) >= 1);
     }
 
-    // ID_AA64PFR0_EL1 - Processor Feature Register 0
+    // ID_AA64ISAR1_EL1 - Instruction Set Attribute Register 1
     // Check for either APA or API field
     enable_feature(Feature::paca, bits_shift(aa64isar1, 11, 4) >= 1);
     enable_feature(Feature::rcpc, bits_shift(aa64isar1, 23, 20) >= 1);
     // Check for either GPA or GPI field
     enable_feature(Feature::pacg, bits_shift(aa64isar1, 31, 24) >= 1);
+
+    // ID_AA64MMFR2_EL1 - AArch64 Memory Model Feature Register 2
+    enable_feature(Feature::lse2, bits_shift(aa64mmfr2, 35, 32) >= 1);
 
     value
 }

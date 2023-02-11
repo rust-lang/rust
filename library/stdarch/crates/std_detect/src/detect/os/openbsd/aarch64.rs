@@ -7,13 +7,11 @@
 use crate::detect::cache;
 use core::{mem::MaybeUninit, ptr};
 
-// Defined in sys/sysctl.h.
-// https://github.com/openbsd/src/blob/72ccc03bd11da614f31f7ff76e3f6fce99bc1c79/sys/sys/sysctl.h#L82
-const CTL_MACHDEP: libc::c_int = 7;
 // Defined in machine/cpu.h.
 // https://github.com/openbsd/src/blob/72ccc03bd11da614f31f7ff76e3f6fce99bc1c79/sys/arch/arm64/include/cpu.h#L25-L40
 const CPU_ID_AA64ISAR0: libc::c_int = 2;
 const CPU_ID_AA64ISAR1: libc::c_int = 3;
+const CPU_ID_AA64MMFR2: libc::c_int = 7;
 const CPU_ID_AA64PFR0: libc::c_int = 8;
 
 /// Try to read the features from the system registers.
@@ -24,13 +22,14 @@ pub(crate) fn detect_features() -> cache::Initializer {
     // https://github.com/openbsd/src/commit/c7654cd65262d532212f65123ee3905ba200365c
     // sysctl returns an unsupported error if operation is not supported,
     // so we can safely use this function on older versions of OpenBSD.
-    let aa64isar0 = sysctl64(&[CTL_MACHDEP, CPU_ID_AA64ISAR0]).unwrap_or(0);
-    let aa64isar1 = sysctl64(&[CTL_MACHDEP, CPU_ID_AA64ISAR1]).unwrap_or(0);
+    let aa64isar0 = sysctl64(&[libc::CTL_MACHDEP, CPU_ID_AA64ISAR0]).unwrap_or(0);
+    let aa64isar1 = sysctl64(&[libc::CTL_MACHDEP, CPU_ID_AA64ISAR1]).unwrap_or(0);
+    let aa64mmfr2 = sysctl64(&[libc::CTL_MACHDEP, CPU_ID_AA64MMFR2]).unwrap_or(0);
     // Do not use unwrap_or(0) because in fp and asimd fields, 0 indicates that
     // the feature is available.
-    let aa64pfr0 = sysctl64(&[CTL_MACHDEP, CPU_ID_AA64PFR0]);
+    let aa64pfr0 = sysctl64(&[libc::CTL_MACHDEP, CPU_ID_AA64PFR0]);
 
-    super::aarch64::parse_system_registers(aa64isar0, aa64isar1, aa64pfr0)
+    super::aarch64::parse_system_registers(aa64isar0, aa64isar1, aa64mmfr2, aa64pfr0)
 }
 
 #[inline]
