@@ -1583,6 +1583,7 @@ symbols! {
         unrestricted_attribute_tokens,
         unsafe_block_in_unsafe_fn,
         unsafe_cell,
+        unsafe_cell_from_mut,
         unsafe_no_drop_flag,
         unsafe_pin_internals,
         unsize,
