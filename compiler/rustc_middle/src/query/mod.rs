@@ -2168,4 +2168,11 @@ rustc_queries! {
         desc { "traits in scope for documentation links for a module" }
         separate_provide_extern
     }
+
+    /// Used in `super_combine_consts` to ICE if the type of the two consts are definitely not going to end up being
+    /// equal to eachother. This might return `Ok` even if the types are unequal, but will never return `Err` if
+    /// the types might be equal.
+    query check_const_param_definitely_unequal(arg: Canonical<'tcx, (ty::ParamEnv<'tcx>, Ty<'tcx>, Ty<'tcx>)>) -> Result<(), ()> {
+        desc { "check whether two const param are definitely not equal to eachother"}
+    }
 }

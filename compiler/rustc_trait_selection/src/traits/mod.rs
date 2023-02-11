@@ -554,6 +554,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
         subst_and_check_impossible_predicates,
+        check_const_param_definitely_unequal: misc::check_const_param_definitely_unequal,
         is_impossible_method,
         ..*providers
     };

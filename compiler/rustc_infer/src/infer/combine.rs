@@ -31,6 +31,7 @@ use super::{InferCtxt, MiscVariable, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
+use rustc_middle::infer::canonical::OriginalQueryValues;
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::ObligationCause;
@@ -151,6 +152,33 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let a = self.shallow_resolve(a);
         let b = self.shallow_resolve(b);
+
+        // We should never have to relate the `ty` field on `Const` as it is checked elsewhere that consts have the
+        // correct type for the generic param they are an argument for. However there have been a number of cases
+        // historically where asserting that the types are equal has found bugs in the compiler so this is valuable
+        // to check even if it is a bit nasty impl wise :(
+        //
+        // This probe is probably not strictly necessary but it seems better to be safe and not accidentally find
+        // ourselves with a check to find bugs being required for code to compile because it made inference progress.
+        self.probe(|_| {
+            if a.ty() == b.ty() {
+                return;
+            }
+
+            // We don't have access to trait solving machinery in `rustc_infer` so the logic for determining if the
+            // two const param's types are able to be equal has to go through a canonical query with the actual logic
+            // in `rustc_trait_selection`.
+            let canonical = self.canonicalize_query(
+                (relation.param_env(), a.ty(), b.ty()),
+                &mut OriginalQueryValues::default(),
+            );
+            if let Err(()) = self.tcx.check_const_param_definitely_unequal(canonical) {
+                self.tcx.sess.delay_span_bug(
+                    DUMMY_SP,
+                    &format!("cannot relate consts of different types (a={:?}, b={:?})", a, b,),
+                );
+            }
+        });
 
         match (a.kind(), b.kind()) {
             (
