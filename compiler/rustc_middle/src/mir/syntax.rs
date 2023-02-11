@@ -672,8 +672,10 @@ pub enum TerminatorKind<'tcx> {
     /// necessarily executed even in the case of a panic, for example in `-C panic=abort`. If the
     /// assertion does not fail, execution continues at the specified basic block.
     ///
-    /// When overflow checking is disabled and we are generating run-time code, the `Overflow*`
-    /// variants of this terminator are codegened as simple `goto target`.
+    /// When overflow checking is disabled and this is run-time MIR (as opposed to compile-time MIR
+    /// that is used for CTFE), the following variants of this terminator behave as `goto target`:
+    /// - `OverflowNeg(..)`,
+    /// - `Overflow(op, ..)` if op is a checkable operation (add, sub, mul, shl, shr).
     Assert {
         cond: Operand<'tcx>,
         expected: bool,
