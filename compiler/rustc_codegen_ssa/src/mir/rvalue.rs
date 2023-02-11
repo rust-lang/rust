@@ -656,6 +656,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // with #[rustc_inherit_overflow_checks] and inlined from
         // another crate (mostly core::num generic/#[inline] fns),
         // while the current crate doesn't use overflow checks.
+        //
+        // As an optimization, we emit an unchecked binop when overflow checks are disabled,
+        // as the overflow flag would be ignored anyway.
         if !bx.cx().check_overflow() {
             let val = self.codegen_scalar_binop(bx, op, lhs, rhs, input_ty);
             return OperandValue::Pair(val, bx.cx().const_bool(false));
