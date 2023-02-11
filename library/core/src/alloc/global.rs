@@ -203,7 +203,7 @@ pub unsafe trait GlobalAlloc {
         ptr
     }
 
-    /// Shrink or grow a block of memory to the given `new_size`.
+    /// Shrink or grow a block of memory to the given `new_size` in bytes.
     /// The block is described by the given `ptr` pointer and `layout`.
     ///
     /// If this returns a non-null pointer, then ownership of the memory block
@@ -211,10 +211,11 @@ pub unsafe trait GlobalAlloc {
     /// Any access to the old `ptr` is Undefined Behavior, even if the
     /// allocation remained in-place. The newly returned pointer is the only valid pointer
     /// for accessing this memory now.
+    ///
     /// The new memory block is allocated with `layout`,
-    /// but with the `size` updated to `new_size`. This new layout must be
-    /// used when deallocating the new memory block with `dealloc`. The range
-    /// `0..min(layout.size(), new_size)` of the new memory block is
+    /// but with the `size` updated to `new_size` in bytes.
+    /// This new layout must be used when deallocating the new memory block with `dealloc`.
+    /// The range `0..min(layout.size(), new_size)` of the new memory block is
     /// guaranteed to have the same values as the original block.
     ///
     /// If this method returns null, then ownership of the memory
