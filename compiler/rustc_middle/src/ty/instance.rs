@@ -1,6 +1,6 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
+use crate::ty::{self, Binder, Ty, TyCtxt, TyKind, TypeFoldable, TypeSuperFoldable, TypeVisitable};
 use crate::ty::{EarlyBinder, InternalSubsts, SubstsRef};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::Namespace;
@@ -539,8 +539,17 @@ impl<'tcx> Instance<'tcx> {
     }
 
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
+        let ty_erased =
+            if let (true, TyKind::FnPtr(poly_fn_sig)) = (ty.has_late_bound_regions(), ty.kind()) {
+                let re_erased = tcx.erase_late_bound_regions(*poly_fn_sig);
+                let rebound = Binder::dummy(re_erased);
+                let reassembled = tcx.mk_fn_ptr(rebound);
+                reassembled
+            } else {
+                ty
+            };
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
-        let substs = tcx.intern_substs(&[ty.into()]);
+        let substs = tcx.intern_substs(&[ty_erased.into()]);
         Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs)
     }
 
