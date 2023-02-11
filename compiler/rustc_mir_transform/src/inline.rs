@@ -81,11 +81,29 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     }
 
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
+    let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
+
+    let self_margin = if tcx.generics_of(def_id).requires_monomorphization(tcx)
+        || codegen_fn_attrs.requests_inline()
+    {
+        let self_threshold = inline_threshold(tcx, body, codegen_fn_attrs);
+        let self_cost = {
+            let mut self_checker = CostChecker::new(tcx, param_env, None, body);
+            self_checker.visit_body(body);
+            self_checker.cost()
+        };
+        debug!(?self_threshold, ?self_cost);
+        self_threshold.checked_sub(self_cost)
+    } else {
+        None
+    };
+    debug!(?self_margin);
 
     let mut this = Inliner {
         tcx,
         param_env,
-        codegen_fn_attrs: tcx.codegen_fn_attrs(def_id),
+        codegen_fn_attrs,
+        self_margin,
         history: Vec::new(),
         changed: false,
     };
@@ -128,6 +146,10 @@ struct Inliner<'tcx> {
     history: Vec<DefId>,
     /// Indicates that the caller body has been modified.
     changed: bool,
+    /// Difference between the caller's own cost and threshold.
+    /// This is `Some` when the caller is small enough to be inlined itself,
+    /// and should be kept as such.
+    self_margin: Option<usize>,
 }
 
 impl<'tcx> Inliner<'tcx> {
@@ -423,7 +445,8 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Result<(), &'static str> {
         let tcx = self.tcx;
 
-        let threshold = inline_threshold(tcx, callee_body, callee_attrs);
+        let threshold =
+            self.self_margin.unwrap_or_else(|| inline_threshold(tcx, callee_body, callee_attrs));
         debug!("    final inline threshold = {}", threshold);
 
         // FIXME: Give a bonus to functions with only a single caller
