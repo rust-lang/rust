@@ -46,16 +46,24 @@ crate from working on applications in which `std` is not available.
   the operating system. `std_detect` assumes that the binary is an user-space
   application. If you need raw support for querying `cpuid`, consider using the
   [`cupid`](https://crates.io/crates/cupid) crate.
-  
-* Linux:
-  * `arm{32, 64}`, `mips{32,64}{,el}`, `powerpc{32,64}{,le}`: `std_detect`
+
+* Linux/Android:
+  * `arm{32, 64}`, `mips{32,64}{,el}`, `powerpc{32,64}{,le}`, `riscv{32,64}`: `std_detect`
     supports these on Linux by querying ELF auxiliary vectors (using `getauxval`
-    when available), and if that fails, by querying `/proc/cpuinfo`. 
+    when available), and if that fails, by querying `/proc/cpuinfo`.
   * `arm64`: partial support for doing run-time feature detection by directly
     querying `mrs` is implemented for Linux >= 4.11, but not enabled by default.
 
 * FreeBSD:
+  * `arm32`, `powerpc64`: `std_detect` supports these on FreeBSD by querying ELF
+    auxiliary vectors using `sysctl`.
   * `arm64`: run-time feature detection is implemented by directly querying `mrs`.
+
+* OpenBSD:
+  * `arm64`: run-time feature detection is implemented by querying `sysctl`.
+
+* Windows:
+  * `arm64`: run-time feature detection is implemented by querying `IsProcessorFeaturePresent`.
 
 # License
 
