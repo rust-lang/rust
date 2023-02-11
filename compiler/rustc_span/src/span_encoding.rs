@@ -110,11 +110,16 @@ impl Span {
                 // Inline format with parent.
                 let len_or_tag = len_or_tag | PARENT_MASK;
                 let parent2 = parent.local_def_index.as_u32();
-                if ctxt2 == SyntaxContext::root().as_u32() && parent2 <= MAX_CTXT {
+                if ctxt2 == SyntaxContext::root().as_u32()
+                    && parent2 <= MAX_CTXT
+                    && len_or_tag < LEN_TAG
+                {
+                    debug_assert_ne!(len_or_tag, LEN_TAG);
                     return Span { base_or_index: base, len_or_tag, ctxt_or_tag: parent2 as u16 };
                 }
             } else {
                 // Inline format with ctxt.
+                debug_assert_ne!(len_or_tag, LEN_TAG);
                 return Span {
                     base_or_index: base,
                     len_or_tag: len as u16,
