@@ -1,6 +1,7 @@
 // This is a separate crate so that we can `allow(incomplete_features)` for just `generic_const_exprs`
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
+#![feature(core_intrinsics)]
 
 #[cfg(debug_assertions)]
 use std::intrinsics::type_name;
