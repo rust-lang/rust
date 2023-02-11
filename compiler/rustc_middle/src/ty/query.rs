@@ -67,6 +67,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi;
 use rustc_target::spec::PanicStrategy;
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -76,6 +77,8 @@ pub struct QuerySystem<'tcx> {
     pub extern_providers: Box<ExternProviders>,
     pub arenas: QueryArenas<'tcx>,
     pub caches: QueryCaches<'tcx>,
+    // Since we erase query value types we tell the typesystem about them with `PhantomData`.
+    _phantom_values: QueryPhantomValues<'tcx>,
 }
 
 impl<'tcx> QuerySystem<'tcx> {
@@ -85,6 +88,7 @@ impl<'tcx> QuerySystem<'tcx> {
             extern_providers: Box::new(extern_providers),
             arenas: Default::default(),
             caches: Default::default(),
+            _phantom_values: Default::default(),
         }
     }
 }
@@ -301,6 +305,11 @@ macro_rules! define_callbacks {
                 (WorkerLocal<TypedArena<<$V as Deref>::Target>>)
                 ()
             ),)*
+        }
+
+        #[derive(Default)]
+        pub struct QueryPhantomValues<'tcx> {
+            $($(#[$attr])* pub $name: PhantomData<query_values::$name<'tcx>>,)*
         }
 
         #[derive(Default)]
