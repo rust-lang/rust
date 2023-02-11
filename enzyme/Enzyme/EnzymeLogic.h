@@ -34,9 +34,6 @@
 #include <set>
 #include <utility>
 
-#include "SCEV/ScalarEvolutionExpander.h"
-#include "SCEV/TargetLibraryInfo.h"
-
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"

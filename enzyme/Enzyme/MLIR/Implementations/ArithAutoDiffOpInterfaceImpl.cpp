@@ -33,7 +33,7 @@ struct MulFOpInterface
       mlir::Value res = nullptr;
       for (int i = 0; i < 2; i++) {
         if (!gutils->isConstantValue(mulOp.getOperand(i))) {
-          Value tmp = builder.create<arith::MulFOp>(
+          mlir::Value tmp = builder.create<arith::MulFOp>(
               mulOp.getLoc(),
               gutils->invertPointerM(mulOp.getOperand(i), builder),
               gutils->getNewFromOriginal(mulOp.getOperand(1 - i)));
@@ -61,7 +61,8 @@ struct AddFOpInterface
       mlir::Value res = nullptr;
       for (int i = 0; i < 2; i++) {
         if (!gutils->isConstantValue(addOp.getOperand(i))) {
-          Value tmp = gutils->invertPointerM(addOp.getOperand(i), builder);
+          mlir::Value tmp =
+              gutils->invertPointerM(addOp.getOperand(i), builder);
           if (res == nullptr)
             res = tmp;
           else

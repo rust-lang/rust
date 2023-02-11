@@ -20,7 +20,7 @@
 using namespace mlir;
 using namespace mlir::enzyme;
 
-static inline Type getShadowType(Type type, unsigned width = 1) {
+static inline mlir::Type getShadowType(mlir::Type type, unsigned width = 1) {
   return type.cast<AutoDiffTypeInterface>().getShadowType(width);
 }
 
@@ -87,7 +87,7 @@ mlir::enzyme::MGradientUtils::MGradientUtils(
   */
 }
 
-Value mlir::enzyme::MGradientUtils::getNewFromOriginal(
+mlir::Value mlir::enzyme::MGradientUtils::getNewFromOriginal(
     const mlir::Value originst) const {
   if (!originalToNewFn.contains(originst)) {
     llvm::errs() << oldFunc << "\n";
@@ -147,8 +147,8 @@ bool mlir::enzyme::MGradientUtils::isConstantValue(Value v) const {
   return false;
 }
 
-Value mlir::enzyme::MGradientUtils::invertPointerM(Value v,
-                                                   OpBuilder &Builder2) {
+mlir::Value mlir::enzyme::MGradientUtils::invertPointerM(mlir::Value v,
+                                                         OpBuilder &Builder2) {
   // TODO
   if (invertedPointers.contains(v))
     return invertedPointers.lookupOrNull(v);
@@ -389,7 +389,7 @@ void cloneInto(Region *src, Region *dest, BlockAndValueMapping &mapper,
 Operation *clone(Operation *src, BlockAndValueMapping &mapper,
                  Operation::CloneOptions options,
                  std::map<Operation *, Operation *> &opMap) {
-  SmallVector<Value, 8> operands;
+  SmallVector<mlir::Value, 8> operands;
   SmallVector<Block *, 2> successors;
 
   // Remap the operands.
@@ -482,7 +482,7 @@ void cloneInto(Region *src, Region *dest, Region::iterator destPos,
 
   // Finally now that all operation results have been mapped, set the operands
   // and clone the regions.
-  SmallVector<Value> operands;
+  SmallVector<mlir::Value> operands;
   for (auto zippedBlocks : llvm::zip(*src, newBlocksRange)) {
     for (auto ops :
          llvm::zip(std::get<0>(zippedBlocks), std::get<1>(zippedBlocks))) {
@@ -492,7 +492,7 @@ void cloneInto(Region *src, Region *dest, Region::iterator destPos,
       operands.resize(source.getNumOperands());
       llvm::transform(
           source.getOperands(), operands.begin(),
-          [&](Value operand) { return mapper.lookupOrDefault(operand); });
+          [&](mlir::Value operand) { return mapper.lookupOrDefault(operand); });
       clone.setOperands(operands);
 
       for (auto regions : llvm::zip(source.getRegions(), clone.getRegions()))
@@ -658,7 +658,7 @@ void createTerminator(MDiffeGradientUtils *gutils, mlir::Block *oBB,
 
   if (auto binst = dyn_cast<BranchOpInterface>(inst)) {
     // TODO generalize to cloneWithNewBlockArgs interface
-    SmallVector<Value> newVals;
+    SmallVector<mlir::Value> newVals;
 
     SmallVector<int32_t> segSizes;
     for (size_t i = 0, len = binst.getSuccessorOperands(0)
@@ -711,7 +711,8 @@ void createTerminator(MDiffeGradientUtils *gutils, mlir::Block *oBB,
     } else if (!gutils->isConstantValue(ret)) {
       toret = gutils->invertPointerM(ret, nBuilder);
     } else {
-      Type retTy = ret.getType().cast<AutoDiffTypeInterface>().getShadowType();
+      mlir::Type retTy =
+          ret.getType().cast<AutoDiffTypeInterface>().getShadowType();
       toret = retTy.cast<AutoDiffTypeInterface>().createNullValue(nBuilder,
                                                                   ret.getLoc());
     }
@@ -735,7 +736,8 @@ void createTerminator(MDiffeGradientUtils *gutils, mlir::Block *oBB,
     } else if (!gutils->isConstantValue(ret)) {
       toret = gutils->invertPointerM(ret, nBuilder);
     } else {
-      Type retTy = ret.getType().cast<AutoDiffTypeInterface>().getShadowType();
+      mlir::Type retTy =
+          ret.getType().cast<AutoDiffTypeInterface>().getShadowType();
       toret = retTy.cast<AutoDiffTypeInterface>().createNullValue(nBuilder,
                                                                   ret.getLoc());
     }

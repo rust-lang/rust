@@ -29,7 +29,7 @@ struct ForOpInterface
                                          MGradientUtils *gutils) const {
     auto forOp = cast<scf::ForOp>(op);
     auto nFor = cast<scf::ForOp>(gutils->getNewFromOriginal(op));
-    SmallVector<Type> nTypes;
+    SmallVector<mlir::Type> nTypes;
     for (auto r : forOp->getResults()) {
       // TODO only if used
       nTypes.push_back(r.getType());
@@ -40,7 +40,7 @@ struct ForOpInterface
         nTypes.push_back(adTypeIface.getShadowType());
       }
     }
-    SmallVector<Value> nArgs;
+    SmallVector<mlir::Value> nArgs;
     for (auto r :
          llvm::zip(forOp.getIterOperands(), forOp.getRegionIterArgs())) {
       // TODO only if used
@@ -54,7 +54,7 @@ struct ForOpInterface
         gutils->getNewFromOriginal(forOp.getStep()), nArgs);
     repFor.getRegion().takeBody(nFor.getRegion());
 
-    SmallVector<Value> reps;
+    SmallVector<mlir::Value> reps;
     size_t idx = 0;
     for (auto r : forOp.getResults()) {
       // TODO only if used
@@ -78,7 +78,7 @@ struct ForOpInterface
     }
     auto oldYield = repFor.getBody()->getTerminator();
     builder.setInsertionPointToEnd(repFor.getBody());
-    SmallVector<Value> nYields;
+    SmallVector<mlir::Value> nYields;
     for (auto r : llvm::zip(forOp.getResults(),
                             forOp.getBody()->getTerminator()->getOperands())) {
       // TODO only if used
