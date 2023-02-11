@@ -1120,6 +1120,13 @@ impl From<call::AdjustForForeignAbiError> for FnAbiError<'_> {
 
 impl<'tcx> fmt::Display for FnAbiError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        #[cfg(bootstrap)]
+        match self {
+            Self::Layout(err) => fmt::Display::fmt(err, f),
+            Self::AdjustForForeignAbi(err) => fmt::Display::fmt(err, f),
+        }
+
+        #[cfg(not(bootstrap))]
         match self {
             Self::Layout(err) => err.fmt(f),
             Self::AdjustForForeignAbi(err) => err.fmt(f),

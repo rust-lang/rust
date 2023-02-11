@@ -7,8 +7,10 @@ use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
+#[cfg(not(bootstrap))]
+use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, CrateVariancesMap, SubstsRef, Ty, TyCtxt};
-use rustc_middle::ty::{DefIdTree, TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::{DefIdTree, TypeSuperVisitable};
 use std::ops::ControlFlow;
 
 /// Defines the `TermsContext` basically houses an arena where we can
