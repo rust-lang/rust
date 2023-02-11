@@ -169,6 +169,8 @@ top_level_options!(
         /// is currently just a hack and will be removed eventually, so please
         /// try to not rely on this too much.
         actually_rustdoc: bool [TRACKED],
+        /// Whether name resolver should resolve documentation links.
+        resolve_doc_links: ResolveDocLinks [TRACKED],
 
         /// Control path trimming.
         trimmed_def_paths: TrimmedDefPaths [TRACKED],

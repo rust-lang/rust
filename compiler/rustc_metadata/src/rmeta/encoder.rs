@@ -3,7 +3,6 @@ use crate::rmeta::def_path_hash_map::DefPathHashMapRef;
 use crate::rmeta::table::TableBuilder;
 use crate::rmeta::*;
 
-use rustc_ast::util::comments;
 use rustc_ast::Attribute;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
@@ -772,7 +771,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
 struct AnalyzeAttrState {
     is_exported: bool,
-    may_have_doc_links: bool,
     is_doc_hidden: bool,
 }
 
@@ -790,15 +788,12 @@ fn analyze_attr(attr: &Attribute, state: &mut AnalyzeAttrState) -> bool {
     let mut should_encode = false;
     if rustc_feature::is_builtin_only_local(attr.name_or_empty()) {
         // Attributes marked local-only don't need to be encoded for downstream crates.
-    } else if let Some(s) = attr.doc_str() {
+    } else if attr.doc_str().is_some() {
         // We keep all doc comments reachable to rustdoc because they might be "imported" into
         // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
         // their own.
         if state.is_exported {
             should_encode = true;
-            if comments::may_have_doc_links(s.as_str()) {
-                state.may_have_doc_links = true;
-            }
         }
     } else if attr.has_name(sym::doc) {
         // If this is a `doc` attribute that doesn't have anything except maybe `inline` (as in
@@ -1139,7 +1134,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let tcx = self.tcx;
         let mut state = AnalyzeAttrState {
             is_exported: tcx.effective_visibilities(()).is_exported(def_id),
-            may_have_doc_links: false,
             is_doc_hidden: false,
         };
         let attr_iter = tcx
@@ -1151,9 +1145,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record_array!(self.tables.attributes[def_id.to_def_id()] <- attr_iter);
 
         let mut attr_flags = AttrFlags::empty();
-        if state.may_have_doc_links {
-            attr_flags |= AttrFlags::MAY_HAVE_DOC_LINKS;
-        }
         if state.is_doc_hidden {
             attr_flags |= AttrFlags::IS_DOC_HIDDEN;
         }
@@ -1230,6 +1221,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 assert!(def_id.is_local());
                 def_id.index
             }));
+        }
+
+        for (def_id, res_map) in &tcx.resolutions(()).doc_link_resolutions {
+            record!(self.tables.doc_link_resolutions[def_id.to_def_id()] <- res_map);
+        }
+
+        for (def_id, traits) in &tcx.resolutions(()).doc_link_traits_in_scope {
+            record_array!(self.tables.doc_link_traits_in_scope[def_id.to_def_id()] <- traits);
         }
     }
 
@@ -1715,6 +1714,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.lookup_stability[LOCAL_CRATE.as_def_id()] <- stability);
             }
             self.encode_deprecation(LOCAL_CRATE.as_def_id());
+            if let Some(res_map) = tcx.resolutions(()).doc_link_resolutions.get(&CRATE_DEF_ID) {
+                record!(self.tables.doc_link_resolutions[LOCAL_CRATE.as_def_id()] <- res_map);
+            }
+            if let Some(traits) = tcx.resolutions(()).doc_link_traits_in_scope.get(&CRATE_DEF_ID) {
+                record_array!(self.tables.doc_link_traits_in_scope[LOCAL_CRATE.as_def_id()] <- traits);
+            }
 
             // Normally, this information is encoded when we walk the items
             // defined in this crate. However, we skip doing that for proc-macro crates,
@@ -2225,6 +2230,18 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
+        doc_link_resolutions: |tcx, def_id| {
+            tcx.resolutions(())
+                .doc_link_resolutions
+                .get(&def_id.expect_local())
+                .expect("no resolutions for a doc link")
+        },
+        doc_link_traits_in_scope: |tcx, def_id| {
+            tcx.resolutions(())
+                .doc_link_traits_in_scope
+                .get(&def_id.expect_local())
+                .expect("no traits in scope for a doc link")
+        },
         traits_in_crate: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
 

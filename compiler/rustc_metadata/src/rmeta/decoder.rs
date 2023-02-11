@@ -11,7 +11,7 @@ use rustc_data_structures::sync::{Lock, LockGuard, Lrc, OnceCell};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::diagnostic_items::DiagnosticItems;
@@ -1163,20 +1163,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         )
     }
 
-    /// Decodes all inherent impls in the crate (for rustdoc).
-    fn get_inherent_impls(self) -> impl Iterator<Item = (DefId, DefId)> + 'a {
-        (0..self.root.tables.inherent_impls.size()).flat_map(move |i| {
-            let ty_index = DefIndex::from_usize(i);
-            let ty_def_id = self.local_def_id(ty_index);
-            self.root
-                .tables
-                .inherent_impls
-                .get(self, ty_index)
-                .decode(self)
-                .map(move |impl_index| (ty_def_id, self.local_def_id(impl_index)))
-        })
-    }
-
     /// Decodes all traits in the crate (for rustdoc and rustc diagnostics).
     fn get_traits(self) -> impl Iterator<Item = DefId> + 'a {
         self.root.traits.decode(self).map(move |index| self.local_def_id(index))
@@ -1193,13 +1179,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 (trait_def_id, self.local_def_id(impl_index), simplified_self_ty)
             })
         })
-    }
-
-    fn get_all_incoherent_impls(self) -> impl Iterator<Item = DefId> + 'a {
-        self.cdata
-            .incoherent_impls
-            .values()
-            .flat_map(move |impls| impls.decode(self).map(move |idx| self.local_def_id(idx)))
     }
 
     fn get_incoherent_impls(self, tcx: TyCtxt<'tcx>, simp: SimplifiedType) -> &'tcx [DefId] {
@@ -1597,6 +1576,24 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_is_intrinsic(self, index: DefIndex) -> bool {
         self.root.tables.is_intrinsic.get(self, index)
+    }
+
+    fn get_doc_link_resolutions(self, index: DefIndex) -> DocLinkResMap {
+        self.root
+            .tables
+            .doc_link_resolutions
+            .get(self, index)
+            .expect("no resolutions for a doc link")
+            .decode(self)
+    }
+
+    fn get_doc_link_traits_in_scope(self, index: DefIndex) -> impl Iterator<Item = DefId> + 'a {
+        self.root
+            .tables
+            .doc_link_traits_in_scope
+            .get(self, index)
+            .expect("no traits in scope for a doc link")
+            .decode(self)
     }
 }
 

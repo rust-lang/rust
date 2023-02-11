@@ -31,6 +31,7 @@ extern crate tracing;
 //
 // Dependencies listed in Cargo.toml do not need `extern crate`.
 
+extern crate pulldown_cmark;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
@@ -741,7 +742,7 @@ fn main_args(at_args: &[String]) -> MainResult {
         (false, true) => {
             let input = options.input.clone();
             let edition = options.edition;
-            let config = core::create_config(options);
+            let config = core::create_config(options, &render_options);
 
             // `markdown::render` can invoke `doctest::make_test`, which
             // requires session globals and a thread pool, so we use
@@ -774,7 +775,7 @@ fn main_args(at_args: &[String]) -> MainResult {
     let scrape_examples_options = options.scrape_examples_options.clone();
     let bin_crate = options.bin_crate;
 
-    let config = core::create_config(options);
+    let config = core::create_config(options, &render_options);
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
@@ -792,22 +793,13 @@ fn main_args(at_args: &[String]) -> MainResult {
         }
 
         compiler.enter(|queries| {
-            // We need to hold on to the complete resolver, so we cause everything to be
-            // cloned for the analysis passes to use. Suboptimal, but necessary in the
-            // current architecture.
-            // FIXME(#83761): Resolver cloning can lead to inconsistencies between data in the
-            // two copies because one of the copies can be modified after `TyCtxt` construction.
-            let (resolver, resolver_caches) = {
+            let resolver_caches = {
                 let expansion = abort_on_err(queries.expansion(), sess);
                 let (krate, resolver, _) = &*expansion.borrow();
                 let resolver_caches = resolver.borrow_mut().access(|resolver| {
-                    collect_intra_doc_links::early_resolve_intra_doc_links(
-                        resolver,
-                        krate,
-                        render_options.document_private,
-                    )
+                    collect_intra_doc_links::early_resolve_intra_doc_links(resolver, krate)
                 });
-                (resolver.clone(), resolver_caches)
+                resolver_caches
             };
 
             if sess.diagnostic().has_errors_or_lint_errors().is_some() {
@@ -820,7 +812,6 @@ fn main_args(at_args: &[String]) -> MainResult {
                 let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
                     core::run_global_ctxt(
                         tcx,
-                        resolver,
                         resolver_caches,
                         show_coverage,
                         render_options,

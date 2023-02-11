@@ -2156,4 +2156,16 @@ rustc_queries! {
         desc { |tcx| "deducing parameter attributes for {}", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
+
+    query doc_link_resolutions(def_id: DefId) -> &'tcx DocLinkResMap {
+        eval_always
+        desc { "resolutions for documentation links for a module" }
+        separate_provide_extern
+    }
+
+    query doc_link_traits_in_scope(def_id: DefId) -> &'tcx [DefId] {
+        eval_always
+        desc { "traits in scope for documentation links for a module" }
+        separate_provide_extern
+    }
 }

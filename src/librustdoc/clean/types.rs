@@ -5,13 +5,12 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::OnceLock as OnceCell;
-use std::{cmp, fmt, iter};
+use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use thin_vec::ThinVec;
 
-use rustc_ast::util::comments::beautify_doc_string;
-use rustc_ast::{self as ast, AttrStyle};
+use rustc_ast as ast;
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -24,6 +23,7 @@ use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt, Visibility};
+use rustc_resolve::rustdoc::{add_doc_fragment, attrs_to_doc_fragments, inner_docs, DocFragment};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -405,7 +405,7 @@ impl Item {
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
         self.item_id
             .as_def_id()
-            .map(|did| tcx.get_attrs_unchecked(did).inner_docs())
+            .map(|did| inner_docs(tcx.get_attrs_unchecked(did)))
             .unwrap_or(false)
     }
 
@@ -874,8 +874,6 @@ pub(crate) trait AttributesExt {
 
     fn span(&self) -> Option<rustc_span::Span>;
 
-    fn inner_docs(&self) -> bool;
-
     fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>>;
 }
 
@@ -892,14 +890,6 @@ impl AttributesExt for [ast::Attribute] {
     /// Return the span of the first doc-comment, if it exists.
     fn span(&self) -> Option<rustc_span::Span> {
         self.iter().find(|attr| attr.doc_str().is_some()).map(|attr| attr.span)
-    }
-
-    /// Returns whether the first doc-comment is an inner attribute.
-    ///
-    //// If there are no doc-comments, return true.
-    /// FIXME(#78591): Support both inner and outer attributes on the same item.
-    fn inner_docs(&self) -> bool {
-        self.iter().find(|a| a.doc_str().is_some()).map_or(true, |a| a.style == AttrStyle::Inner)
     }
 
     fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
@@ -1010,58 +1000,6 @@ impl<I: Iterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
     }
 }
 
-/// A portion of documentation, extracted from a `#[doc]` attribute.
-///
-/// Each variant contains the line number within the complete doc-comment where the fragment
-/// starts, as well as the Span where the corresponding doc comment or attribute is located.
-///
-/// Included files are kept separate from inline doc comments so that proper line-number
-/// information can be given when a doctest fails. Sugared doc comments and "raw" doc comments are
-/// kept separate because of issue #42760.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub(crate) struct DocFragment {
-    pub(crate) span: rustc_span::Span,
-    /// The module this doc-comment came from.
-    ///
-    /// This allows distinguishing between the original documentation and a pub re-export.
-    /// If it is `None`, the item was not re-exported.
-    pub(crate) parent_module: Option<DefId>,
-    pub(crate) doc: Symbol,
-    pub(crate) kind: DocFragmentKind,
-    pub(crate) indent: usize,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) enum DocFragmentKind {
-    /// A doc fragment created from a `///` or `//!` doc comment.
-    SugaredDoc,
-    /// A doc fragment created from a "raw" `#[doc=""]` attribute.
-    RawDoc,
-}
-
-/// The goal of this function is to apply the `DocFragment` transformation that is required when
-/// transforming into the final Markdown, which is applying the computed indent to each line in
-/// each doc fragment (a `DocFragment` can contain multiple lines in case of `#[doc = ""]`).
-///
-/// Note: remove the trailing newline where appropriate
-fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
-    let s = frag.doc.as_str();
-    let mut iter = s.lines();
-    if s.is_empty() {
-        out.push('\n');
-        return;
-    }
-    while let Some(line) = iter.next() {
-        if line.chars().any(|c| !c.is_whitespace()) {
-            assert!(line.len() >= frag.indent);
-            out.push_str(&line[frag.indent..]);
-        } else {
-            out.push_str(line);
-        }
-        out.push('\n');
-    }
-}
-
 /// Collapse a collection of [`DocFragment`]s into one string,
 /// handling indentation and newlines as needed.
 pub(crate) fn collapse_doc_fragments(doc_strings: &[DocFragment]) -> String {
@@ -1071,86 +1009,6 @@ pub(crate) fn collapse_doc_fragments(doc_strings: &[DocFragment]) -> String {
     }
     acc.pop();
     acc
-}
-
-/// Removes excess indentation on comments in order for the Markdown
-/// to be parsed correctly. This is necessary because the convention for
-/// writing documentation is to provide a space between the /// or //! marker
-/// and the doc text, but Markdown is whitespace-sensitive. For example,
-/// a block of text with four-space indentation is parsed as a code block,
-/// so if we didn't unindent comments, these list items
-///
-/// /// A list:
-/// ///
-/// ///    - Foo
-/// ///    - Bar
-///
-/// would be parsed as if they were in a code block, which is likely not what the user intended.
-fn unindent_doc_fragments(docs: &mut Vec<DocFragment>) {
-    // `add` is used in case the most common sugared doc syntax is used ("/// "). The other
-    // fragments kind's lines are never starting with a whitespace unless they are using some
-    // markdown formatting requiring it. Therefore, if the doc block have a mix between the two,
-    // we need to take into account the fact that the minimum indent minus one (to take this
-    // whitespace into account).
-    //
-    // For example:
-    //
-    // /// hello!
-    // #[doc = "another"]
-    //
-    // In this case, you want "hello! another" and not "hello!  another".
-    let add = if docs.windows(2).any(|arr| arr[0].kind != arr[1].kind)
-        && docs.iter().any(|d| d.kind == DocFragmentKind::SugaredDoc)
-    {
-        // In case we have a mix of sugared doc comments and "raw" ones, we want the sugared one to
-        // "decide" how much the minimum indent will be.
-        1
-    } else {
-        0
-    };
-
-    // `min_indent` is used to know how much whitespaces from the start of each lines must be
-    // removed. Example:
-    //
-    // ///     hello!
-    // #[doc = "another"]
-    //
-    // In here, the `min_indent` is 1 (because non-sugared fragment are always counted with minimum
-    // 1 whitespace), meaning that "hello!" will be considered a codeblock because it starts with 4
-    // (5 - 1) whitespaces.
-    let Some(min_indent) = docs
-        .iter()
-        .map(|fragment| {
-            fragment.doc.as_str().lines().fold(usize::MAX, |min_indent, line| {
-                if line.chars().all(|c| c.is_whitespace()) {
-                    min_indent
-                } else {
-                    // Compare against either space or tab, ignoring whether they are
-                    // mixed or not.
-                    let whitespace = line.chars().take_while(|c| *c == ' ' || *c == '\t').count();
-                    cmp::min(min_indent, whitespace)
-                        + if fragment.kind == DocFragmentKind::SugaredDoc { 0 } else { add }
-                }
-            })
-        })
-        .min()
-    else {
-        return;
-    };
-
-    for fragment in docs {
-        if fragment.doc == kw::Empty {
-            continue;
-        }
-
-        let min_indent = if fragment.kind != DocFragmentKind::SugaredDoc && min_indent > 0 {
-            min_indent - add
-        } else {
-            min_indent
-        };
-
-        fragment.indent = min_indent;
-    }
 }
 
 /// A link that has not yet been rendered.
@@ -1231,26 +1089,7 @@ impl Attributes {
         attrs: impl Iterator<Item = (&'a ast::Attribute, Option<DefId>)>,
         doc_only: bool,
     ) -> Attributes {
-        let mut doc_strings = Vec::new();
-        let mut other_attrs = ast::AttrVec::new();
-        for (attr, parent_module) in attrs {
-            if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
-                trace!("got doc_str={doc_str:?}");
-                let doc = beautify_doc_string(doc_str, comment_kind);
-                let kind = if attr.is_doc_comment() {
-                    DocFragmentKind::SugaredDoc
-                } else {
-                    DocFragmentKind::RawDoc
-                };
-                let fragment = DocFragment { span: attr.span, doc, kind, parent_module, indent: 0 };
-                doc_strings.push(fragment);
-            } else if !doc_only {
-                other_attrs.push(attr.clone());
-            }
-        }
-
-        unindent_doc_fragments(&mut doc_strings);
-
+        let (doc_strings, other_attrs) = attrs_to_doc_fragments(attrs, doc_only);
         Attributes { doc_strings, other_attrs }
     }
 
@@ -1267,20 +1106,6 @@ impl Attributes {
         }
         out.pop();
         if out.is_empty() { None } else { Some(out) }
-    }
-
-    /// Return the doc-comments on this item, grouped by the module they came from.
-    /// The module can be different if this is a re-export with added documentation.
-    ///
-    /// The last newline is not trimmed so the produced strings are reusable between
-    /// early and late doc link resolution regardless of their position.
-    pub(crate) fn prepare_to_doc_link_resolution(&self) -> FxHashMap<Option<DefId>, String> {
-        let mut res = FxHashMap::default();
-        for fragment in &self.doc_strings {
-            let out_str = res.entry(fragment.parent_module).or_default();
-            add_doc_fragment(out_str, fragment);
-        }
-        res
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined

@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 bitflags = "1.2.1"
+pulldown-cmark = { version = "0.9.2", default-features = false }
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }

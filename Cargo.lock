@@ -4615,6 +4615,7 @@ name = "rustc_resolve"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "pulldown-cmark 0.9.2",
  "rustc_arena",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -4881,7 +4882,6 @@ dependencies = [
  "itertools",
  "minifier",
  "once_cell",
- "pulldown-cmark 0.9.2",
  "rayon",
  "regex",
  "rustdoc-json-types",

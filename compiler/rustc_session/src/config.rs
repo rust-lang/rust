@@ -419,6 +419,18 @@ pub enum TrimmedDefPaths {
     GoodPath,
 }
 
+#[derive(Clone, Hash)]
+pub enum ResolveDocLinks {
+    /// Do not resolve doc links.
+    None,
+    /// Resolve doc links on exported items only for crate types that have metadata.
+    ExportedMetadata,
+    /// Resolve doc links on exported items.
+    Exported,
+    /// Resolve doc links on all items.
+    All,
+}
+
 /// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
 /// *Do not* switch `BTreeMap` out for an unsorted container type! That would break
 /// dependency tracking for command-line arguments. Also only hash keys, since tracking
@@ -788,6 +800,7 @@ impl Default for Options {
             unstable_features: UnstableFeatures::Disallow,
             debug_assertions: true,
             actually_rustdoc: false,
+            resolve_doc_links: ResolveDocLinks::None,
             trimmed_def_paths: TrimmedDefPaths::default(),
             cli_forced_codegen_units: None,
             cli_forced_local_thinlto_off: false,
@@ -881,6 +894,15 @@ pub enum CrateType {
     Staticlib,
     Cdylib,
     ProcMacro,
+}
+
+impl CrateType {
+    pub fn has_metadata(self) -> bool {
+        match self {
+            CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro => true,
+            CrateType::Executable | CrateType::Cdylib | CrateType::Staticlib => false,
+        }
+    }
 }
 
 #[derive(Clone, Hash, Debug, PartialEq, Eq)]
@@ -2562,6 +2584,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         libs,
         debug_assertions,
         actually_rustdoc: false,
+        resolve_doc_links: ResolveDocLinks::ExportedMetadata,
         trimmed_def_paths: TrimmedDefPaths::default(),
         cli_forced_codegen_units: codegen_units,
         cli_forced_local_thinlto_off: disable_local_thinlto,
@@ -2825,8 +2848,9 @@ pub(crate) mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, ErrorOutputType,
         InstrumentCoverage, InstrumentXRay, LdImpl, LinkerPluginLto, LocationDetail, LtoCli,
-        OomStrategy, OptLevel, OutputType, OutputTypes, Passes, SourceFileHashAlgorithm,
-        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
+        OomStrategy, OptLevel, OutputType, OutputTypes, Passes, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -2913,6 +2937,7 @@ pub(crate) mod dep_tracking {
         TargetTriple,
         Edition,
         LinkerPluginLto,
+        ResolveDocLinks,
         SplitDebuginfo,
         SplitDwarfKind,
         StackProtector,
