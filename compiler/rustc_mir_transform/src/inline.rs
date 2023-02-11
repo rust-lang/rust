@@ -117,10 +117,12 @@ fn inline_threshold<'tcx>(
     callee_body: &Body<'tcx>,
     callee_attrs: &CodegenFnAttrs,
 ) -> usize {
-    let mut threshold = if callee_attrs.requests_inline() {
-        tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
-    } else {
-        tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(50)
+    let mut threshold = match callee_attrs.inline {
+        InlineAttr::Hint | InlineAttr::Always => {
+            tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(200)
+        }
+        InlineAttr::None => tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(100),
+        InlineAttr::Never => 0,
     };
 
     // Give a bonus functions with a small number of blocks,
