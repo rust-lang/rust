@@ -43,9 +43,9 @@ pub mod locks {
     mod futex_mutex;
     mod futex_rwlock;
     mod futex_condvar;
-    pub use futex_mutex::{Mutex, MovableMutex};
-    pub use futex_rwlock::MovableRwLock;
-    pub use futex_condvar::MovableCondvar;
+    pub(crate) use futex_condvar::Condvar;
+    pub(crate) use futex_mutex::Mutex;
+    pub(crate) use futex_rwlock::RwLock;
 }
 #[path = "atomics/futex.rs"]
 pub mod futex;

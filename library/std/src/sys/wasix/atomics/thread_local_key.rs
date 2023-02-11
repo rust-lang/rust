@@ -1,3 +1,5 @@
+#![allow(dead_code, unused, fuzzy_provenance_casts)]
+
 use crate::mem;
 
 pub type Key = u32;
