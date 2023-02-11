@@ -6,21 +6,18 @@
       let _1: ();                          // in scope 0 at $DIR/inline_cycle_generic.rs:+1:5: +1:24
 +     scope 1 (inlined <C as Call>::call) { // at $DIR/inline_cycle_generic.rs:9:5: 9:24
 +         scope 2 (inlined <B<A> as Call>::call) { // at $DIR/inline_cycle_generic.rs:38:9: 38:31
-+             scope 3 (inlined <A as Call>::call) { // at $DIR/inline_cycle_generic.rs:31:9: 31:28
-+                 scope 4 (inlined <B<C> as Call>::call) { // at $DIR/inline_cycle_generic.rs:23:9: 23:31
-+                 }
-+             }
 +         }
 +     }
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/inline_cycle_generic.rs:+1:5: +1:24
 -         _1 = <C as Call>::call() -> bb1; // scope 0 at $DIR/inline_cycle_generic.rs:+1:5: +1:24
-+         _1 = <C as Call>::call() -> bb1; // scope 4 at $DIR/inline_cycle_generic.rs:31:9: 31:28
++         _1 = <A as Call>::call() -> bb1; // scope 2 at $DIR/inline_cycle_generic.rs:31:9: 31:28
                                            // mir::Constant
 -                                          // + span: $DIR/inline_cycle_generic.rs:9:5: 9:22
+-                                          // + literal: Const { ty: fn() {<C as Call>::call}, val: Value(<ZST>) }
 +                                          // + span: $DIR/inline_cycle_generic.rs:31:9: 31:26
-                                           // + literal: Const { ty: fn() {<C as Call>::call}, val: Value(<ZST>) }
++                                          // + literal: Const { ty: fn() {<A as Call>::call}, val: Value(<ZST>) }
       }
   
       bb1: {

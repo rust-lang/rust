@@ -1,10 +1,10 @@
-DefId(0:16 ~ thir_tree_match[3c9a]::has_match):
+DefId(0:16 ~ thir_tree_match[fcf8]::has_match):
 params: [
     Param {
         ty: Foo
         ty_span: Some($DIR/thir-tree-match.rs:15:19: 15:22 (#0))
         self_kind: None
-        hir_id: Some(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).1))
+        hir_id: Some(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).1))
         param: Some( 
             Pat: {
                 ty: Foo
@@ -14,7 +14,7 @@ params: [
                         mutability: Not
                         name: "foo"
                         mode: ByValue
-                        var: LocalVarId(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).2))
+                        var: LocalVarId(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).2))
                         ty: Foo
                         is_primary: true
                         subpattern: None
@@ -41,7 +41,7 @@ body:
                         kind: 
                             Scope {
                                 region_scope: Node(26)
-                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).26))
+                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).26))
                                 value:
                                     Expr {
                                         ty: bool
@@ -63,7 +63,7 @@ body:
                                                         kind: 
                                                             Scope {
                                                                 region_scope: Node(3)
-                                                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).3))
+                                                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).3))
                                                                 value:
                                                                     Expr {
                                                                         ty: bool
@@ -79,7 +79,7 @@ body:
                                                                                         kind: 
                                                                                             Scope {
                                                                                                 region_scope: Node(4)
-                                                                                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).4))
+                                                                                                lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).4))
                                                                                                 value:
                                                                                                     Expr {
                                                                                                         ty: Foo
@@ -87,7 +87,7 @@ body:
                                                                                                         span: $DIR/thir-tree-match.rs:16:11: 16:14 (#0)
                                                                                                         kind: 
                                                                                                             VarRef {
-                                                                                                                id: LocalVarId(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).2))
+                                                                                                                id: LocalVarId(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).2))
                                                                                                             }
                                                                                                     }
                                                                                             }
@@ -102,10 +102,10 @@ body:
                                                                                                     Variant {
                                                                                                         adt_def: 
                                                                                                             AdtDef {
-                                                                                                                did: DefId(0:10 ~ thir_tree_match[3c9a]::Foo)
-                                                                                                                variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[3c9a]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[3c9a]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[3c9a]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[3c9a])) }], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[3c9a]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[3c9a]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], flags: NO_VARIANT_FLAGS }]
+                                                                                                                did: DefId(0:10 ~ thir_tree_match[fcf8]::Foo)
+                                                                                                                variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[fcf8]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[fcf8]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[fcf8]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[fcf8])) }], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[fcf8]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[fcf8]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], flags: NO_VARIANT_FLAGS }]
                                                                                                                 flags: IS_ENUM
-                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: (empty), field_shuffle_seed: 11573694388057581 }
+                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: (empty), field_shuffle_seed: 3477539199540094892 }
                                                                                                         substs: []
                                                                                                         variant_index: 0
                                                                                                         subpatterns: [
@@ -116,10 +116,10 @@ body:
                                                                                                                     Variant {
                                                                                                                         adt_def: 
                                                                                                                             AdtDef {
-                                                                                                                                did: DefId(0:3 ~ thir_tree_match[3c9a]::Bar)
-                                                                                                                                variants: [VariantDef { def_id: DefId(0:4 ~ thir_tree_match[3c9a]::Bar::First), ctor: Some((Const, DefId(0:5 ~ thir_tree_match[3c9a]::Bar::First::{constructor#0}))), name: "First", discr: Relative(0), fields: [], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:6 ~ thir_tree_match[3c9a]::Bar::Second), ctor: Some((Const, DefId(0:7 ~ thir_tree_match[3c9a]::Bar::Second::{constructor#0}))), name: "Second", discr: Relative(1), fields: [], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:8 ~ thir_tree_match[3c9a]::Bar::Third), ctor: Some((Const, DefId(0:9 ~ thir_tree_match[3c9a]::Bar::Third::{constructor#0}))), name: "Third", discr: Relative(2), fields: [], flags: NO_VARIANT_FLAGS }]
+                                                                                                                                did: DefId(0:3 ~ thir_tree_match[fcf8]::Bar)
+                                                                                                                                variants: [VariantDef { def_id: DefId(0:4 ~ thir_tree_match[fcf8]::Bar::First), ctor: Some((Const, DefId(0:5 ~ thir_tree_match[fcf8]::Bar::First::{constructor#0}))), name: "First", discr: Relative(0), fields: [], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:6 ~ thir_tree_match[fcf8]::Bar::Second), ctor: Some((Const, DefId(0:7 ~ thir_tree_match[fcf8]::Bar::Second::{constructor#0}))), name: "Second", discr: Relative(1), fields: [], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:8 ~ thir_tree_match[fcf8]::Bar::Third), ctor: Some((Const, DefId(0:9 ~ thir_tree_match[fcf8]::Bar::Third::{constructor#0}))), name: "Third", discr: Relative(2), fields: [], flags: NO_VARIANT_FLAGS }]
                                                                                                                                 flags: IS_ENUM
-                                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: (empty), field_shuffle_seed: 3125160937860410723 }
+                                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: (empty), field_shuffle_seed: 10333377570083945360 }
                                                                                                                         substs: []
                                                                                                                         variant_index: 0
                                                                                                                         subpatterns: []
@@ -148,7 +148,7 @@ body:
                                                                                                                 kind: 
                                                                                                                     Scope {
                                                                                                                         region_scope: Node(13)
-                                                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).13))
+                                                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).13))
                                                                                                                         value:
                                                                                                                             Expr {
                                                                                                                                 ty: bool
@@ -162,7 +162,7 @@ body:
                                                                                                             }
                                                                                                     }
                                                                                             }
-                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).12))
+                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).12))
                                                                                         scope: Node(12)
                                                                                         span: $DIR/thir-tree-match.rs:17:9: 17:40 (#0)
                                                                                     }
@@ -175,10 +175,10 @@ body:
                                                                                                     Variant {
                                                                                                         adt_def: 
                                                                                                             AdtDef {
-                                                                                                                did: DefId(0:10 ~ thir_tree_match[3c9a]::Foo)
-                                                                                                                variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[3c9a]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[3c9a]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[3c9a]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[3c9a])) }], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[3c9a]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[3c9a]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], flags: NO_VARIANT_FLAGS }]
+                                                                                                                did: DefId(0:10 ~ thir_tree_match[fcf8]::Foo)
+                                                                                                                variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[fcf8]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[fcf8]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[fcf8]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[fcf8])) }], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[fcf8]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[fcf8]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], flags: NO_VARIANT_FLAGS }]
                                                                                                                 flags: IS_ENUM
-                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: (empty), field_shuffle_seed: 11573694388057581 }
+                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: (empty), field_shuffle_seed: 3477539199540094892 }
                                                                                                         substs: []
                                                                                                         variant_index: 0
                                                                                                         subpatterns: [
@@ -211,7 +211,7 @@ body:
                                                                                                                 kind: 
                                                                                                                     Scope {
                                                                                                                         region_scope: Node(19)
-                                                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).19))
+                                                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).19))
                                                                                                                         value:
                                                                                                                             Expr {
                                                                                                                                 ty: bool
@@ -225,7 +225,7 @@ body:
                                                                                                             }
                                                                                                     }
                                                                                             }
-                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).18))
+                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).18))
                                                                                         scope: Node(18)
                                                                                         span: $DIR/thir-tree-match.rs:18:9: 18:32 (#0)
                                                                                     }
@@ -238,10 +238,10 @@ body:
                                                                                                     Variant {
                                                                                                         adt_def: 
                                                                                                             AdtDef {
-                                                                                                                did: DefId(0:10 ~ thir_tree_match[3c9a]::Foo)
-                                                                                                                variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[3c9a]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[3c9a]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[3c9a]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[3c9a])) }], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[3c9a]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[3c9a]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], flags: NO_VARIANT_FLAGS }]
+                                                                                                                did: DefId(0:10 ~ thir_tree_match[fcf8]::Foo)
+                                                                                                                variants: [VariantDef { def_id: DefId(0:11 ~ thir_tree_match[fcf8]::Foo::FooOne), ctor: Some((Fn, DefId(0:12 ~ thir_tree_match[fcf8]::Foo::FooOne::{constructor#0}))), name: "FooOne", discr: Relative(0), fields: [FieldDef { did: DefId(0:13 ~ thir_tree_match[fcf8]::Foo::FooOne::0), name: "0", vis: Restricted(DefId(0:0 ~ thir_tree_match[fcf8])) }], flags: NO_VARIANT_FLAGS }, VariantDef { def_id: DefId(0:14 ~ thir_tree_match[fcf8]::Foo::FooTwo), ctor: Some((Const, DefId(0:15 ~ thir_tree_match[fcf8]::Foo::FooTwo::{constructor#0}))), name: "FooTwo", discr: Relative(1), fields: [], flags: NO_VARIANT_FLAGS }]
                                                                                                                 flags: IS_ENUM
-                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: (empty), field_shuffle_seed: 11573694388057581 }
+                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: (empty), field_shuffle_seed: 3477539199540094892 }
                                                                                                         substs: []
                                                                                                         variant_index: 1
                                                                                                         subpatterns: []
@@ -266,7 +266,7 @@ body:
                                                                                                                 kind: 
                                                                                                                     Scope {
                                                                                                                         region_scope: Node(24)
-                                                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).24))
+                                                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).24))
                                                                                                                         value:
                                                                                                                             Expr {
                                                                                                                                 ty: bool
@@ -280,7 +280,7 @@ body:
                                                                                                             }
                                                                                                     }
                                                                                             }
-                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[3c9a]::has_match).23))
+                                                                                        lint_level: Explicit(HirId(DefId(0:16 ~ thir_tree_match[fcf8]::has_match).23))
                                                                                         scope: Node(23)
                                                                                         span: $DIR/thir-tree-match.rs:19:9: 19:28 (#0)
                                                                                     }
@@ -297,7 +297,7 @@ body:
     }
 
 
-DefId(0:17 ~ thir_tree_match[3c9a]::main):
+DefId(0:17 ~ thir_tree_match[fcf8]::main):
 params: [
 ]
 body:
@@ -317,7 +317,7 @@ body:
                         kind: 
                             Scope {
                                 region_scope: Node(2)
-                                lint_level: Explicit(HirId(DefId(0:17 ~ thir_tree_match[3c9a]::main).2))
+                                lint_level: Explicit(HirId(DefId(0:17 ~ thir_tree_match[fcf8]::main).2))
                                 value:
                                     Expr {
                                         ty: ()

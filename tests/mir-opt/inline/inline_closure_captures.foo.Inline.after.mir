@@ -32,7 +32,7 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         _5 = &_1;                        // scope 0 at $DIR/inline_closure_captures.rs:+1:13: +1:24
         _3 = [closure@foo::<T>::{closure#0}] { q: move _4, t: move _5 }; // scope 0 at $DIR/inline_closure_captures.rs:+1:13: +1:24
                                          // closure
-                                         // + def_id: DefId(0:6 ~ inline_closure_captures[8bc0]::foo::{closure#0})
+                                         // + def_id: DefId(0:6 ~ inline_closure_captures[63a5]::foo::{closure#0})
                                          // + substs: [
                                          //     T,
                                          //     i8,
