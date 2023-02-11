@@ -823,14 +823,17 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         _ => return false,
                     }
                 }
+
                 // There's not really much we can do with these predicates -
                 // we start out with a `ParamEnv` with no inference variables,
                 // and these don't correspond to adding any new bounds to
                 // the `ParamEnv`.
                 ty::PredicateKind::WellFormed(..)
+                | ty::PredicateKind::AliasEq(..)
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(..)
+                // FIXME(generic_const_exprs): you can absolutely add this as a where clauses
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => {}

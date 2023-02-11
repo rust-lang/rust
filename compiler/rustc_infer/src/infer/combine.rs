@@ -38,8 +38,8 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{
-    self, FallibleTypeFolder, InferConst, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
-    TypeVisitable,
+    self, AliasKind, FallibleTypeFolder, InferConst, ToPredicate, Ty, TyCtxt, TypeFoldable,
+    TypeSuperFoldable, TypeVisitable,
 };
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::{Span, DUMMY_SP};
@@ -74,7 +74,7 @@ impl<'tcx> InferCtxt<'tcx> {
         b: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>>
     where
-        R: TypeRelation<'tcx>,
+        R: ObligationEmittingRelation<'tcx>,
     {
         let a_is_expected = relation.a_is_expected();
 
@@ -122,6 +122,15 @@ impl<'tcx> InferCtxt<'tcx> {
                 Err(TypeError::Sorts(ty::relate::expected_found(relation, a, b)))
             }
 
+            (ty::Alias(AliasKind::Projection, _), _) if self.tcx.trait_solver_next() => {
+                relation.register_type_equate_obligation(a.into(), b.into());
+                Ok(b)
+            }
+            (_, ty::Alias(AliasKind::Projection, _)) if self.tcx.trait_solver_next() => {
+                relation.register_type_equate_obligation(b.into(), a.into());
+                Ok(a)
+            }
+
             _ => ty::relate::super_relate_tys(relation, a, b),
         }
     }
@@ -133,7 +142,7 @@ impl<'tcx> InferCtxt<'tcx> {
         b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>>
     where
-        R: ConstEquateRelation<'tcx>,
+        R: ObligationEmittingRelation<'tcx>,
     {
         debug!("{}.consts({:?}, {:?})", relation.tag(), a, b);
         if a == b {
@@ -169,7 +178,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 // FIXME(#59490): Need to remove the leak check to accommodate
                 // escaping bound variables here.
                 if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
-                    relation.const_equate_obligation(a, b);
+                    relation.register_const_equate_obligation(a, b);
                 }
                 return Ok(b);
             }
@@ -177,7 +186,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 // FIXME(#59490): Need to remove the leak check to accommodate
                 // escaping bound variables here.
                 if !a.has_escaping_bound_vars() && !b.has_escaping_bound_vars() {
-                    relation.const_equate_obligation(a, b);
+                    relation.register_const_equate_obligation(a, b);
                 }
                 return Ok(a);
             }
@@ -435,32 +444,21 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         Ok(Generalization { ty, needs_wf })
     }
 
-    pub fn add_const_equate_obligation(
+    pub fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
+        self.obligations.extend(obligations.into_iter());
+    }
+
+    pub fn register_predicates(
         &mut self,
-        a_is_expected: bool,
-        a: ty::Const<'tcx>,
-        b: ty::Const<'tcx>,
+        obligations: impl IntoIterator<Item = impl ToPredicate<'tcx>>,
     ) {
-        let predicate = if a_is_expected {
-            ty::PredicateKind::ConstEquate(a, b)
-        } else {
-            ty::PredicateKind::ConstEquate(b, a)
-        };
-        self.obligations.push(Obligation::new(
-            self.tcx(),
-            self.trace.cause.clone(),
-            self.param_env,
-            ty::Binder::dummy(predicate),
-        ));
+        self.obligations.extend(obligations.into_iter().map(|to_pred| {
+            Obligation::new(self.infcx.tcx, self.trace.cause.clone(), self.param_env, to_pred)
+        }))
     }
 
     pub fn mark_ambiguous(&mut self) {
-        self.obligations.push(Obligation::new(
-            self.tcx(),
-            self.trace.cause.clone(),
-            self.param_env,
-            ty::Binder::dummy(ty::PredicateKind::Ambiguous),
-        ));
+        self.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
     }
 }
 
@@ -779,11 +777,42 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     }
 }
 
-pub trait ConstEquateRelation<'tcx>: TypeRelation<'tcx> {
+pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
+    /// Register obligations that must hold in order for this relation to hold
+    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>);
+
+    /// Register predicates that must hold in order for this relation to hold. Uses
+    /// a default obligation cause, [`ObligationEmittingRelation::register_obligations`] should
+    /// be used if control over the obligaton causes is required.
+    fn register_predicates(
+        &mut self,
+        obligations: impl IntoIterator<Item = impl ToPredicate<'tcx>>,
+    );
+
     /// Register an obligation that both constants must be equal to each other.
     ///
     /// If they aren't equal then the relation doesn't hold.
-    fn const_equate_obligation(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>);
+    fn register_const_equate_obligation(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>) {
+        let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
+
+        self.register_predicates([ty::Binder::dummy(if self.tcx().trait_solver_next() {
+            ty::PredicateKind::AliasEq(a.into(), b.into())
+        } else {
+            ty::PredicateKind::ConstEquate(a, b)
+        })]);
+    }
+
+    /// Register an obligation that both types must be equal to each other.
+    ///
+    /// If they aren't equal then the relation doesn't hold.
+    fn register_type_equate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+        let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
+
+        self.register_predicates([ty::Binder::dummy(ty::PredicateKind::AliasEq(
+            a.into(),
+            b.into(),
+        ))]);
+    }
 }
 
 fn int_unification_error<'tcx>(

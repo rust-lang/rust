@@ -311,10 +311,12 @@ pub(crate) fn clean_predicate<'tcx>(
         ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
             Some(clean_projection_predicate(bound_predicate.rebind(pred), cx))
         }
+        // FIXME(generic_const_exprs): should this do something?
         ty::PredicateKind::ConstEvaluatable(..) => None,
         ty::PredicateKind::WellFormed(..) => None,
 
         ty::PredicateKind::Subtype(..)
+        | ty::PredicateKind::AliasEq(..)
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::ClosureKind(..)

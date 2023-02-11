@@ -42,6 +42,8 @@ mod trait_goals;
 
 pub use fulfill::FulfillmentCtxt;
 
+use self::infcx_ext::InferCtxtExt;
+
 /// A goal is a statement, i.e. `predicate`, we want to prove
 /// given some assumptions, i.e. `param_env`.
 ///
@@ -79,6 +81,21 @@ pub struct Response<'tcx> {
     /// Additional constraints returned by this query.
     pub external_constraints: ExternalConstraints<'tcx>,
     pub certainty: Certainty,
+}
+
+trait CanonicalResponseExt {
+    fn has_no_inference_or_external_constraints(&self) -> bool;
+}
+
+impl<'tcx> CanonicalResponseExt for Canonical<'tcx, Response<'tcx>> {
+    fn has_no_inference_or_external_constraints(&self) -> bool {
+        // so that we get a compile error when regions are supported
+        // so this code can be checked for being correct
+        let _: () = self.value.external_constraints.regions;
+
+        self.value.var_values.is_identity()
+            && self.value.external_constraints.opaque_types.is_empty()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
@@ -302,6 +319,9 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
+                ty::PredicateKind::AliasEq(lhs, rhs) => {
+                    self.compute_alias_eq_goal(Goal { param_env, predicate: (lhs, rhs) })
+                }
             }
         } else {
             let kind = self.infcx.instantiate_binder_with_placeholders(kind);
@@ -398,6 +418,63 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             None => self.make_canonical_response(Certainty::AMBIGUOUS),
         }
     }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    fn compute_alias_eq_goal(
+        &mut self,
+        goal: Goal<'tcx, (ty::Term<'tcx>, ty::Term<'tcx>)>,
+    ) -> QueryResult<'tcx> {
+        let tcx = self.tcx();
+
+        let evaluate_normalizes_to = |ecx: &mut EvalCtxt<'_, 'tcx>, alias, other| {
+            debug!("evaluate_normalizes_to(alias={:?}, other={:?})", alias, other);
+            let r = ecx.infcx.probe(|_| {
+                let (_, certainty) = ecx.evaluate_goal(goal.with(
+                    tcx,
+                    ty::Binder::dummy(ty::ProjectionPredicate {
+                        projection_ty: alias,
+                        term: other,
+                    }),
+                ))?;
+                ecx.make_canonical_response(certainty)
+            });
+            debug!("evaluate_normalizes_to(..) -> {:?}", r);
+            r
+        };
+
+        if goal.predicate.0.is_infer() || goal.predicate.1.is_infer() {
+            bug!(
+                "`AliasEq` goal with an infer var on lhs or rhs which should have been instantiated"
+            );
+        }
+
+        match (
+            goal.predicate.0.to_alias_term_no_opaque(tcx),
+            goal.predicate.1.to_alias_term_no_opaque(tcx),
+        ) {
+            (None, None) => bug!("`AliasEq` goal without an alias on either lhs or rhs"),
+            (Some(alias), None) => evaluate_normalizes_to(self, alias, goal.predicate.1),
+            (None, Some(alias)) => evaluate_normalizes_to(self, alias, goal.predicate.0),
+            (Some(alias_lhs), Some(alias_rhs)) => {
+                debug!("compute_alias_eq_goal: both sides are aliases");
+
+                let mut candidates = Vec::with_capacity(3);
+
+                // Evaluate all 3 potential candidates for the alias' being equal
+                candidates.push(evaluate_normalizes_to(self, alias_lhs, goal.predicate.1));
+                candidates.push(evaluate_normalizes_to(self, alias_rhs, goal.predicate.0));
+                candidates.push(self.infcx.probe(|_| {
+                    debug!("compute_alias_eq_goal: alias defids are equal, equating substs");
+                    let nested_goals = self.infcx.eq(goal.param_env, alias_lhs, alias_rhs)?;
+                    self.evaluate_all_and_make_canonical_response(nested_goals)
+                }));
+
+                debug!(?candidates);
+
+                self.try_merge_responses(candidates.into_iter())
+            }
+        }
+    }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -448,6 +525,43 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     ) -> QueryResult<'tcx> {
         self.evaluate_all(goals).and_then(|certainty| self.make_canonical_response(certainty))
+    }
+
+    fn try_merge_responses(
+        &mut self,
+        responses: impl Iterator<Item = QueryResult<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        let candidates = responses.into_iter().flatten().collect::<Box<[_]>>();
+
+        if candidates.is_empty() {
+            return Err(NoSolution);
+        }
+
+        // FIXME(-Ztreat-solver=next): We should instead try to find a `Certainty::Yes` response with
+        // a subset of the constraints that all the other responses have.
+        let one = candidates[0];
+        if candidates[1..].iter().all(|resp| resp == &one) {
+            return Ok(one);
+        }
+
+        if let Some(response) = candidates.iter().find(|response| {
+            response.value.certainty == Certainty::Yes
+                && response.has_no_inference_or_external_constraints()
+        }) {
+            return Ok(response.clone());
+        }
+
+        let certainty = candidates.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
+            certainty.unify_and(response.value.certainty)
+        });
+        // FIXME(-Ztrait-solver=next): We should take the intersection of the constraints on all the
+        // responses and use that for the constraints of this ambiguous response.
+        let response = self.make_canonical_response(certainty);
+        if let Ok(response) = &response {
+            assert!(response.has_no_inference_or_external_constraints());
+        }
+
+        response
     }
 }
 

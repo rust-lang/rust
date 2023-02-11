@@ -2842,6 +2842,7 @@ define_print_and_forward_display! {
                 p!("the type `", print(ty), "` is found in the environment")
             }
             ty::PredicateKind::Ambiguous => p!("ambiguous"),
+            ty::PredicateKind::AliasEq(t1, t2) => p!(print(t1), " == ", print(t2)),
         }
     }
 

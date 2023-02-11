@@ -21,6 +21,7 @@ pub fn explicit_outlives_bounds<'tcx>(
         .filter_map(move |kind| match kind {
             ty::PredicateKind::Clause(ty::Clause::Projection(..))
             | ty::PredicateKind::Clause(ty::Clause::Trait(..))
+            | ty::PredicateKind::AliasEq(..)
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::WellFormed(..)

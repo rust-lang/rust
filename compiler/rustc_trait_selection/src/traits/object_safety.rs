@@ -327,6 +327,8 @@ fn predicate_references_self<'tcx>(
             // possible alternatives.
             if data.projection_ty.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
         }
+        ty::PredicateKind::AliasEq(..) => bug!("`AliasEq` not allowed as assumption"),
+
         ty::PredicateKind::WellFormed(..)
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
@@ -334,6 +336,7 @@ fn predicate_references_self<'tcx>(
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::Subtype(..)
         | ty::PredicateKind::Coerce(..)
+        // FIXME(generic_const_exprs): this can mention `Self`
         | ty::PredicateKind::ConstEvaluatable(..)
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::Ambiguous
@@ -368,6 +371,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::AliasEq(..)
             | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => false,
         }

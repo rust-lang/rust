@@ -73,6 +73,11 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                         MismatchedProjectionTypes { err: TypeError::Mismatch },
                                     )
                                 }
+                                ty::PredicateKind::AliasEq(_, _) => {
+                                    FulfillmentErrorCode::CodeProjectionError(
+                                        MismatchedProjectionTypes { err: TypeError::Mismatch },
+                                    )
+                                }
                                 ty::PredicateKind::Subtype(pred) => {
                                     let (a, b) = infcx.instantiate_binder_with_placeholders(
                                         goal.predicate.kind().rebind((pred.a, pred.b)),

@@ -85,7 +85,8 @@ fn compute_implied_outlives_bounds<'tcx>(
             // learn anything new from those.
             if obligation.predicate.has_non_region_infer() {
                 match obligation.predicate.kind().skip_binder() {
-                    ty::PredicateKind::Clause(ty::Clause::Projection(..)) => {
+                    ty::PredicateKind::Clause(ty::Clause::Projection(..))
+                    | ty::PredicateKind::AliasEq(..) => {
                         ocx.register_obligation(obligation.clone());
                     }
                     _ => {}
@@ -106,6 +107,7 @@ fn compute_implied_outlives_bounds<'tcx>(
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
+                | ty::PredicateKind::AliasEq(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => {}
 
                 // We need to search through *all* WellFormed predicates
