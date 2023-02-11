@@ -569,16 +569,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // checked operation, just a comparison with the minimum
         // value, so we have to check for the assert message.
         if !bx.cx().check_overflow() {
-            if let AssertKind::OverflowNeg(_)
-            | AssertKind::Overflow(
-                mir::BinOp::Add
-                | mir::BinOp::Sub
-                | mir::BinOp::Mul
-                | mir::BinOp::Shl
-                | mir::BinOp::Shr,
-                ..,
-            ) = *msg
-            {
+            let unchecked_overflow = match msg {
+                AssertKind::OverflowNeg(..) => true,
+                AssertKind::Overflow(op, ..) => op.is_checkable(),
+                _ => false,
+            };
+            if unchecked_overflow {
                 const_cond = Some(expected);
             }
         }
