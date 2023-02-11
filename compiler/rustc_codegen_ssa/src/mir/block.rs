@@ -1017,11 +1017,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
+            let arg_abi = &fn_abi.args[i];
+
             // The callee needs to own the argument memory if we pass it
             // by-ref, so make a local copy of non-immediate constants.
             match (arg, op.val) {
                 (&mir::Operand::Copy(_), Ref(_, None, _))
-                | (&mir::Operand::Constant(_), Ref(_, None, _)) => {
+                | (&mir::Operand::Constant(_), Ref(_, None, _))
+                    if arg_abi.is_indirect() =>
+                {
                     let tmp = PlaceRef::alloca(bx, op.layout);
                     bx.lifetime_start(tmp.llval, tmp.layout.size);
                     op.val.store(bx, tmp);
@@ -1031,7 +1035,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 _ => {}
             }
 
-            self.codegen_argument(bx, op, &mut llargs, &fn_abi.args[i]);
+            self.codegen_argument(bx, op, &mut llargs, arg_abi);
         }
         let num_untupled = untuple.map(|tup| {
             self.codegen_arguments_untupled(bx, tup, &mut llargs, &fn_abi.args[first_args.len()..])
