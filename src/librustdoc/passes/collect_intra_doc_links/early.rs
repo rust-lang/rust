@@ -24,7 +24,6 @@ pub(crate) fn early_resolve_intra_doc_links(
     link_resolver.process_extern_impls();
 
     ResolverCaches {
-        markdown_links: Some(Default::default()),
         all_trait_impls: Some(link_resolver.all_trait_impls),
         all_macro_rules: link_resolver.all_macro_rules,
         extern_doc_reachable: link_resolver.extern_doc_reachable,
