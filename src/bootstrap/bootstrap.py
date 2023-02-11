@@ -784,6 +784,8 @@ class RustBuild(object):
         if self.get_toml("metrics", "build"):
             args.append("--features")
             args.append("build-metrics")
+        if self.json_output:
+            args.append("--message-format=json")
         if color == "always":
             args.append("--color=always")
         elif color == "never":
@@ -841,6 +843,7 @@ def parse_args():
     parser.add_argument('--build')
     parser.add_argument('--color', choices=['always', 'never', 'auto'])
     parser.add_argument('--clean', action='store_true')
+    parser.add_argument('--json-output', action='store_true')
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
     return parser.parse_known_args(sys.argv)[0]
@@ -852,6 +855,7 @@ def bootstrap(args):
     build.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
     build.verbose = args.verbose != 0
     build.clean = args.clean
+    build.json_output = args.json_output
 
     # Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`,
     # then `config.toml` in the root directory.
