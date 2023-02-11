@@ -1507,6 +1507,11 @@ impl FnDecl {
             _ => panic!("unexpected desugaring of async function"),
         }
     }
+
+    /// Indicates id this function declaration can be used to create the type
+    pub(crate) fn type_builder(&self) -> bool {
+        self.inputs.values.get(0).and_then(|v| v.to_self())
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]

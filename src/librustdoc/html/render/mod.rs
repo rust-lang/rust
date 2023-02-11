@@ -845,11 +845,12 @@ fn assoc_method(
         render_attributes_in_code(w, meth);
         (0, "", Ending::Newline)
     };
+    let takes_self = d.inputs.values.iter().filter(|v| v.to_self().is_some()).count() > 0;
     w.reserve(header_len + "<a href=\"\" class=\"fn\">{".len() + "</a>".len());
     write!(
         w,
         "{indent}{vis}{constness}{asyncness}{unsafety}{defaultness}{abi}fn <a{href} class=\"fn\">{name}</a>\
-         {generics}{decl}{notable_traits}{where_clause}",
+         {generics}{decl}{notable_traits}{where_clause}{no_self}",
         indent = indent_str,
         vis = vis,
         constness = constness,
@@ -863,7 +864,19 @@ fn assoc_method(
         decl = d.full_print(header_len, indent, cx),
         notable_traits = notable_traits.unwrap_or_default(),
         where_clause = print_where_clause(g, cx, indent, end_newline),
+        no_self = if !takes_self {
+            "<span class=\"stab\" title=\"Can be used to construct this type\">⚒️</span>"
+        } else {
+            ""
+        }
     );
+}
+
+/// Returns true if the given function can be used to construct the type.
+///
+/// This means the function does not take `self` ad returns the given type (including if Option or Result)
+fn fn_is_to_build_type(ty: &clean::Item, fn_item: &clean::FnDecl) -> bool {
+    todo!()
 }
 
 /// Writes a span containing the versions at which an item became stable and/or const-stable. For

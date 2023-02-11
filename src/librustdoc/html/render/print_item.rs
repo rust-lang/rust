@@ -431,7 +431,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 write!(
                     w,
                     "<div class=\"item-left\">\
-                        <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
+                        <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name} {ind}</a>\
                         {visibility_emoji}\
                         {unsafety_flag}\
                         {stab_tags}\
@@ -448,6 +448,11 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                         .filter_map(|s| if !s.is_empty() { Some(s.as_str()) } else { None })
                         .collect::<Vec<_>>()
                         .join(" "),
+                    ind = if myitem.is_struct() {
+                        "*" // ToDo: indicate if can be constructed
+                    } else {
+                        ""
+                    }
                 );
                 w.write_str(ITEM_TABLE_ROW_CLOSE);
             }
