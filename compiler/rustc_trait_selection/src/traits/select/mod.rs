@@ -2080,8 +2080,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => None,
-            
-            // FIXME(str): We special case this impl for diagnostics reasons.
+
+            // We special case this impl for diagnostics reasons,
+            // otherwise we'll try explaining that `str` isn't Sized
+            // because `[u8]` isn't Sized.
             ty::Adt(def, _) if def.is_str() => None,
 
             ty::Tuple(tys) => Where(
@@ -2145,6 +2147,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Generator(_, _, hir::Movability::Static)
             | ty::Foreign(..)
             | ty::Ref(_, _, hir::Mutability::Mut) => None,
+
+            // FIXME(str): We special case this impl for diagnostics reasons.
+            ty::Adt(def, _) if def.is_str() => None,
 
             // FIXME(str): We special case this impl for diagnostics reasons.
             ty::Adt(def, _) if def.is_str() => None,

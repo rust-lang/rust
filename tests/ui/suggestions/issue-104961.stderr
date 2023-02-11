@@ -8,7 +8,7 @@ LL |     x.starts_with("hi".to_string() + " you")
    |
    = note: the trait bound `String: Pattern<'_>` is not satisfied
    = note: required for `String` to implement `Pattern<'_>`
-note: required by a bound in `core::str::<impl str>::starts_with`
+note: required by a bound in `str::starts_with`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
 help: consider borrowing here
    |
@@ -25,7 +25,7 @@ LL |     x.starts_with("hi".to_string())
    |
    = note: the trait bound `String: Pattern<'_>` is not satisfied
    = note: required for `String` to implement `Pattern<'_>`
-note: required by a bound in `core::str::<impl str>::starts_with`
+note: required by a bound in `str::starts_with`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
 help: consider borrowing here
    |

@@ -407,7 +407,7 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
             if path.ident.name == sym::to_string;
             let ty = cx.typeck_results().expr_ty(self_arg);
             if let ty::Ref(_, ty, ..) = ty.kind();
-            if *ty.is_str();
+            if ty.is_str();
             then {
                 span_lint_and_help(
                     cx,

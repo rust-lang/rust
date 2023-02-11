@@ -31,7 +31,9 @@ pub(crate) fn lit_to_const<'tcx>(
     let valtree = match (lit, &ty.kind()) {
         (ast::LitKind::Str(s, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_str() => {
             let str_bytes = s.as_str().as_bytes();
-            ty::ValTree::from_raw_bytes(tcx, str_bytes)
+            ty::ValTree::Branch(
+                tcx.arena.alloc_slice(&[ty::ValTree::from_raw_bytes(tcx, str_bytes)]),
+            )
         }
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _))
             if matches!(inner_ty.kind(), ty::Slice(_)) =>

@@ -18,7 +18,7 @@ macro_rules! check {
 fn main() {
     // type_name should support unsized types
     check!([u8], "[u8]");
-    check!(str, "str");
+    check!(str, "core::str::str");
     check!(dyn Send, "dyn core::marker::Send");
     check!(NT, "issue_21058::NT");
     check!(DST, "issue_21058::DST");

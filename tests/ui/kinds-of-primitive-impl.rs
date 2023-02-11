@@ -4,7 +4,7 @@ impl u8 {
 }
 
 impl str {
-//~^ error: cannot define inherent `impl` for primitive types
+//~^ error: cannot define inherent `impl` for a type outside of the crate where the type is defined
     fn foo() {}
     fn bar(self) {}
 }

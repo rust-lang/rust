@@ -48,6 +48,9 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::Tuple(_)
             | ty::Dynamic(_, _, _) => self.pretty_print_type(ty),
 
+            // FIXME(str): We could accept that it's an ADt, and print this like `std::str::Str`?
+            ty::Adt(def, _) if def.is_str() => self.pretty_print_type(ty),
+
             // Placeholders (all printed as `_` to uniformize them).
             ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => {
                 write!(self, "_")?;

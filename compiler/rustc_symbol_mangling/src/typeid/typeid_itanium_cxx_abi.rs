@@ -481,6 +481,7 @@ fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
+        // FIXME(str): Do we need this?
         ty::Adt(def, _) if def.is_str() => {
             // u3str as vendor extended type
             let mut s = String::from("u3str");

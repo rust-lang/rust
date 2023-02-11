@@ -19,6 +19,8 @@ macro_rules! concat {
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+#[lang = "str"]
+struct Str([u8]);
 
 type ptr = *mut u8;
 

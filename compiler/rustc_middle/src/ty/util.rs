@@ -955,8 +955,11 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnDef(..)
             | ty::Error(_)
             | ty::FnPtr(_) => true,
-            // FIXME(str): make sure this is true :^)
+
+            // This should be encoded somewhere as part of the "contract"
+            // for a valid `core::str::Str` implementation
             ty::Adt(def, _) if def.is_str() => true,
+
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_freeze),
             ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_freeze(),
             ty::Adt(..)
@@ -996,8 +999,11 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnDef(..)
             | ty::Error(_)
             | ty::FnPtr(_) => true,
-            // FIXME(str): make sure this is true :^)
+
+            // This should be encoded somewhere as part of the "contract"
+            // for a valid `core::str::Str` implementation
             ty::Adt(def, _) if def.is_str() => true,
+
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_unpin),
             ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_unpin(),
             ty::Adt(..)
@@ -1238,6 +1244,8 @@ pub fn needs_drop_components<'tcx>(
         | ty::RawPtr(_)
         | ty::Ref(..) => Ok(SmallVec::new()),
 
+        // This should be encoded somewhere as part of the "contract"
+        // for a valid `core::str::Str` implementation
         ty::Adt(def, _) if def.is_str() => Ok(SmallVec::new()),
 
         // Foreign types can never have destructors.
@@ -1294,6 +1302,10 @@ pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
         | ty::FnPtr(_)
         | ty::Never
         | ty::Foreign(_) => true,
+
+        // This should be encoded somewhere as part of the "contract"
+        // for a valid `core::str::Str` implementation
+        ty::Adt(def, _) if def.is_str() => true,
 
         ty::Alias(..)
         | ty::Dynamic(..)

@@ -28,6 +28,9 @@
 #[lang="freeze"] trait Freeze { }
 #[lang="copy"] trait Copy { }
 
+#[lang = "str"]
+struct Str([u8]);
+
 // The patterns in this file are written in the style of a table to make the
 // uniformities and distinctions more apparent.
 //
@@ -177,7 +180,8 @@
 // riscv:           i64 @c_ret_i64()
 #[no_mangle] pub extern "C" fn c_ret_i64() -> i64 { 0 }
 
-const C_SOURCE_FILE: &'static str = r##"
+/* Equivalent C source file:
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -201,4 +205,4 @@ int8_t   c_ret_i8()  { return 0; }
 int16_t  c_ret_i16() { return 0; }
 int32_t  c_ret_i32() { return 0; }
 int64_t  c_ret_i64() { return 0; }
-"##;
+*/

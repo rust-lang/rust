@@ -38,11 +38,11 @@ impl PartialEq for str {
 impl Eq for str {}
 
 #[cfg(not(bootstrap))]
-#[stable(feature = "str_type_impls", since = "CURRENT_VERSION")]
+#[stable(feature = "str_type_impls", since = "1.68.0")]
 impl crate::marker::StructuralPartialEq for str {}
 
 #[cfg(not(bootstrap))]
-#[stable(feature = "str_type_impls", since = "CURRENT_VERSION")]
+#[stable(feature = "str_type_impls", since = "1.68.0")]
 impl crate::marker::StructuralEq for str {}
 
 /// Implements comparison operations on strings.

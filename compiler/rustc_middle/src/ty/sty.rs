@@ -1854,7 +1854,6 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    // FIXME(str): Remove tcx from this
     pub fn sequence_element_type(self) -> Ty<'tcx> {
         match self.kind() {
             Array(ty, _) | Slice(ty) => *ty,

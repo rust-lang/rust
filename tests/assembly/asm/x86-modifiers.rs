@@ -30,6 +30,8 @@ macro_rules! stringify {
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+#[lang = "str"]
+struct Str([u8]);
 
 impl Copy for i32 {}
 

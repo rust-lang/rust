@@ -25,6 +25,8 @@ macro_rules! stringify {
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+#[lang = "str"]
+struct Str([u8]);
 
 type ptr = *const i32;
 

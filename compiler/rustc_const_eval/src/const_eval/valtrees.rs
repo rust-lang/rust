@@ -115,11 +115,6 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
             slice_branches(ecx, place, num_nodes)
         }
 
-        // FIXME(str): Do we need this?
-        ty::Adt(def, _) if def.is_str() => {
-            slice_branches(ecx, place, num_nodes)
-        }
-
         // Trait objects are not allowed in type level constants, as we have no concept for
         // resolving their backing type, even if we can do that at const eval time. We may
         // hypothetically be able to allow `dyn StructuralEq` trait objects in the future,
@@ -356,15 +351,6 @@ fn valtree_into_mplace<'tcx>(
                         len_scalar,
                     )
                 }
-                ty::Adt(def, _) if def.is_str() => {
-                    let len = valtree.unwrap_branch().len();
-                    let len_scalar = Scalar::from_machine_usize(len as u64, &tcx);
-
-                    Immediate::ScalarPair(
-                        Scalar::from_maybe_pointer((*pointee_place).ptr, &tcx),
-                        len_scalar,
-                    )
-                }
                 _ => pointee_place.to_ref(&tcx),
             };
             debug!(?imm);
@@ -399,7 +385,6 @@ fn valtree_into_mplace<'tcx>(
                 debug!(?i, ?inner_valtree);
 
                 let mut place_inner = match ty.kind() {
-                    ty::Adt(def, _) if def.is_str() => ecx.mplace_index(&place, i as u64).unwrap(),
                     ty::Slice(_) => ecx.mplace_index(&place, i as u64).unwrap(),
                     _ if !ty.is_sized(*ecx.tcx, ty::ParamEnv::empty())
                         && i == branches.len() - 1 =>

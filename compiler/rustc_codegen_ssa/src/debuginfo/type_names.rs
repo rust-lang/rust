@@ -59,6 +59,7 @@ fn push_debuginfo_type_name<'tcx>(
     match *t.kind() {
         ty::Bool => output.push_str("bool"),
         ty::Char => output.push_str("char"),
+        // FIXME(str): Do we need this? Or should we really just treat it like an ADT?
         ty::Adt(def, _) if def.is_str() => {
             if cpp_like_debuginfo {
                 output.push_str("str$")

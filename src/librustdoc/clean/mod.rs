@@ -1699,7 +1699,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Int(int_ty) => Primitive(int_ty.into()),
         ty::Uint(uint_ty) => Primitive(uint_ty.into()),
         ty::Float(float_ty) => Primitive(float_ty.into()),
-        ty::Str => Primitive(PrimitiveType::Str),
+        ty::Adt(def, _) if def.is_str() => Primitive(PrimitiveType::Str),
         ty::Slice(ty) => Slice(Box::new(clean_middle_ty(bound_ty.rebind(ty), cx, None))),
         ty::Array(ty, mut n) => {
             n = n.eval(cx.tcx, ty::ParamEnv::reveal_all());
