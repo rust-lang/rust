@@ -137,7 +137,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let ignored = M::checked_binop_checks_overflow(self)
+                let ignored = !M::checked_binop_checks_overflow(self)
                     && match msg {
                         mir::AssertKind::OverflowNeg(..) => true,
                         mir::AssertKind::Overflow(op, ..) => op.is_checkable(),
