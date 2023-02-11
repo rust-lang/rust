@@ -831,7 +831,7 @@ macro_rules! rgb_color {
 /* parse error: expected R_ANGLE */
 /* parse error: expected SEMICOLON */
 /* parse error: expected SEMICOLON */
-/* parse error: expected expression */
+/* parse error: expected expression, item or let statement */
 pub fn new() {
     let _ = 0as u32<<(8+8);
 }

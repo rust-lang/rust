@@ -1476,7 +1476,7 @@ macro_rules! m {
 /* parse error: expected identifier */
 /* parse error: expected SEMICOLON */
 /* parse error: expected SEMICOLON */
-/* parse error: expected expression */
+/* parse error: expected expression, item or let statement */
 fn f() {
     K::(C("0"));
 }

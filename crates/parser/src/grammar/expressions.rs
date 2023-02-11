@@ -68,6 +68,12 @@ pub(super) fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
         Err(m) => m,
     };
 
+    if !p.at_ts(EXPR_FIRST) {
+        p.err_and_bump("expected expression, item or let statement");
+        m.abandon(p);
+        return;
+    }
+
     if let Some((cm, blocklike)) = expr_stmt(p, Some(m)) {
         if !(p.at(T!['}']) || (semicolon != Semicolon::Required && p.at(EOF))) {
             // test no_semi_after_block
@@ -227,6 +233,12 @@ fn expr_bp(
         attributes::outer_attrs(p);
         m
     });
+
+    if !p.at_ts(EXPR_FIRST) {
+        p.err_recover("expected expression", atom::EXPR_RECOVERY_SET);
+        m.abandon(p);
+        return None;
+    }
     let mut lhs = match lhs(p, r) {
         Some((lhs, blocklike)) => {
             let lhs = lhs.extend_to(p, m);
@@ -551,6 +563,12 @@ fn cast_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
     m.complete(p, CAST_EXPR)
 }
 
+// test_err arg_list_recovery
+// fn main() {
+//     foo(bar::);
+//     foo(bar:);
+//     foo(bar+);
+// }
 fn arg_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['(']));
     let m = p.start();
@@ -563,8 +581,15 @@ fn arg_list(p: &mut Parser<'_>) {
         if !expr(p) {
             break;
         }
-        if !p.at(T![')']) && !p.expect(T![,]) {
-            break;
+        if !p.at(T![,]) {
+            if p.at_ts(EXPR_FIRST) {
+                p.error("expected `,`");
+                continue;
+            } else {
+                break;
+            }
+        } else {
+            p.bump(T![,]);
         }
     }
     p.eat(T![')']);

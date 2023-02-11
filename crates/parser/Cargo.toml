@@ -20,4 +20,5 @@ limit.workspace = true
 [dev-dependencies]
 expect-test = "1.4.0"
 
+stdx.workspace = true
 sourcegen.workspace = true
