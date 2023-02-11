@@ -92,7 +92,7 @@ pub fn init_env_logger(env: &str) -> Result<(), Error> {
             let fmt_layer = tracing_subscriber::fmt::layer()
                 .with_writer(io::stderr)
                 .without_time()
-                .event_format(BacktraceFormatter { backtrace_target: str.to_string() });
+                .event_format(BacktraceFormatter { backtrace_target: str });
             let subscriber = subscriber.with(fmt_layer);
             tracing::subscriber::set_global_default(subscriber).unwrap();
         }
