@@ -740,11 +740,7 @@ pub(crate) fn find_testable_code<T: doctest::Tester>(
             }
             Event::Text(ref s) if register_header.is_some() => {
                 let level = register_header.unwrap();
-                if s.is_empty() {
-                    tests.register_header("", level);
-                } else {
-                    tests.register_header(s, level);
-                }
+                tests.register_header(s, level);
                 register_header = None;
             }
             _ => {}
