@@ -189,7 +189,7 @@ struct EraseAllBoundRegions<'tcx> {
 // us an inaccurate span for an error message, but cannot
 // lead to unsoundness (we call `delay_span_bug` at the start
 // of `diagnostic_hir_wf_check`).
-impl<'tcx> TypeFolder<'tcx> for EraseAllBoundRegions<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseAllBoundRegions<'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
     }

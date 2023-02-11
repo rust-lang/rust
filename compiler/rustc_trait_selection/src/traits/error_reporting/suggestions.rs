@@ -4081,7 +4081,7 @@ struct ReplaceImplTraitFolder<'tcx> {
     replace_ty: Ty<'tcx>,
 }
 
-impl<'tcx> TypeFolder<'tcx> for ReplaceImplTraitFolder<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceImplTraitFolder<'tcx> {
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Param(ty::ParamTy { index, .. }) = t.kind() {
             if self.param.index == *index {

@@ -205,7 +205,7 @@ impl<'tcx> NormalizeAfterErasingRegionsFolder<'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for NormalizeAfterErasingRegionsFolder<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -241,7 +241,7 @@ impl<'tcx> TryNormalizeAfterErasingRegionsFolder<'tcx> {
     }
 }
 
-impl<'tcx> FallibleTypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
+impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
     type Error = NormalizationError<'tcx>;
 
     fn tcx(&self) -> TyCtxt<'tcx> {

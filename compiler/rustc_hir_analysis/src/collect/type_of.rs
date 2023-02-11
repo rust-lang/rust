@@ -850,7 +850,7 @@ fn infer_placeholder_type<'a>(
         tcx: TyCtxt<'tcx>,
     }
 
-    impl<'tcx> TypeFolder<'tcx> for MakeNameable<'tcx> {
+    impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MakeNameable<'tcx> {
         fn tcx(&self) -> TyCtxt<'tcx> {
             self.tcx
         }

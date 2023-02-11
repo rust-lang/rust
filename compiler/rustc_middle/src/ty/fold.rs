@@ -48,20 +48,20 @@ use rustc_hir::def_id::DefId;
 
 use std::collections::BTreeMap;
 
-pub trait TypeFoldable<'tcx> = ir::TypeFoldable<'tcx> + TypeVisitable<'tcx>;
-pub trait TypeSuperFoldable<'tcx> = ir::TypeSuperFoldable<'tcx>;
-pub trait TypeFolder<'tcx> = ir::TypeFolder<'tcx>;
-pub trait FallibleTypeFolder<'tcx> = ir::FallibleTypeFolder<'tcx>;
+pub trait TypeFoldable<'tcx> = ir::TypeFoldable<TyCtxt<'tcx>> + TypeVisitable<'tcx>;
+pub trait TypeSuperFoldable<'tcx> = ir::TypeSuperFoldable<TyCtxt<'tcx>>;
+pub trait TypeFolder<'tcx> = ir::TypeFolder<TyCtxt<'tcx>>;
+pub trait FallibleTypeFolder<'tcx> = ir::FallibleTypeFolder<TyCtxt<'tcx>>;
 
 pub mod ir {
-    use crate::ty::{self, ir::TypeVisitable, Binder, Ty, TyCtxt};
+    use crate::ty::{ir::TypeVisitable, Interner};
 
     /// This trait is implemented for every type that can be folded,
     /// providing the skeleton of the traversal.
     ///
     /// To implement this conveniently, use the derive macro located in
     /// `rustc_macros`.
-    pub trait TypeFoldable<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
+    pub trait TypeFoldable<I: Interner>: TypeVisitable<I> {
         /// The entry point for folding. To fold a value `t` with a folder `f`
         /// call: `t.try_fold_with(f)`.
         ///
@@ -72,28 +72,25 @@ pub mod ir {
         /// calls a folder method specifically for that type (such as
         /// `F::try_fold_ty`). This is where control transfers from `TypeFoldable`
         /// to `TypeFolder`.
-        fn try_fold_with<F: FallibleTypeFolder<'tcx>>(
-            self,
-            folder: &mut F,
-        ) -> Result<Self, F::Error>;
+        fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error>;
 
         /// A convenient alternative to `try_fold_with` for use with infallible
         /// folders. Do not override this method, to ensure coherence with
         /// `try_fold_with`.
-        fn fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
+        fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
             self.try_fold_with(folder).into_ok()
         }
     }
 
     // This trait is implemented for types of interest.
-    pub trait TypeSuperFoldable<'tcx>: TypeFoldable<'tcx> {
+    pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
         /// Provides a default fold for a type of interest. This should only be
         /// called within `TypeFolder` methods, when a non-custom traversal is
         /// desired for the value of the type of interest passed to that method.
         /// For example, in `MyFolder::try_fold_ty(ty)`, it is valid to call
         /// `ty.try_super_fold_with(self)`, but any other folding should be done
         /// with `xyz.try_fold_with(self)`.
-        fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        fn try_super_fold_with<F: FallibleTypeFolder<I>>(
             self,
             folder: &mut F,
         ) -> Result<Self, F::Error>;
@@ -101,7 +98,7 @@ pub mod ir {
         /// A convenient alternative to `try_super_fold_with` for use with
         /// infallible folders. Do not override this method, to ensure coherence
         /// with `try_super_fold_with`.
-        fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
+        fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
             self.try_super_fold_with(folder).into_ok()
         }
     }
@@ -115,29 +112,42 @@ pub mod ir {
     /// A blanket implementation of [`FallibleTypeFolder`] will defer to
     /// the infallible methods of this trait to ensure that the two APIs
     /// are coherent.
-    pub trait TypeFolder<'tcx>: FallibleTypeFolder<'tcx, Error = !> {
-        fn tcx(&self) -> TyCtxt<'tcx>;
+    pub trait TypeFolder<I: Interner>: FallibleTypeFolder<I, Error = !> {
+        fn tcx(&self) -> I;
 
-        fn fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Binder<'tcx, T>
+        fn fold_binder<T>(&mut self, t: I::Binder<T>) -> I::Binder<T>
         where
-            T: TypeFoldable<'tcx>,
+            T: TypeFoldable<I>,
+            I::Binder<T>: TypeSuperFoldable<I>,
         {
             t.super_fold_with(self)
         }
 
-        fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        fn fold_ty(&mut self, t: I::Ty) -> I::Ty
+        where
+            I::Ty: TypeSuperFoldable<I>,
+        {
             t.super_fold_with(self)
         }
 
-        fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        fn fold_region(&mut self, r: I::Region) -> I::Region
+        where
+            I::Region: TypeSuperFoldable<I>,
+        {
             r.super_fold_with(self)
         }
 
-        fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        fn fold_const(&mut self, c: I::Const) -> I::Const
+        where
+            I::Const: TypeSuperFoldable<I>,
+        {
             c.super_fold_with(self)
         }
 
-        fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate
+        where
+            I::Predicate: TypeSuperFoldable<I>,
+        {
             p.super_fold_with(self)
         }
     }
@@ -149,73 +159,93 @@ pub mod ir {
     /// A blanket implementation of this trait (that defers to the relevant
     /// method of [`TypeFolder`]) is provided for all infallible folders in
     /// order to ensure the two APIs are coherent.
-    pub trait FallibleTypeFolder<'tcx>: Sized {
+    pub trait FallibleTypeFolder<I: Interner>: Sized {
         type Error;
 
-        fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
+        fn tcx<'a>(&'a self) -> I;
 
-        fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, Self::Error>
+        fn try_fold_binder<T>(&mut self, t: I::Binder<T>) -> Result<I::Binder<T>, Self::Error>
         where
-            T: TypeFoldable<'tcx>,
+            T: TypeFoldable<I>,
+            I::Binder<T>: TypeSuperFoldable<I>,
         {
             t.try_super_fold_with(self)
         }
 
-        fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+        fn try_fold_ty(&mut self, t: I::Ty) -> Result<I::Ty, Self::Error>
+        where
+            I::Ty: TypeSuperFoldable<I>,
+        {
             t.try_super_fold_with(self)
         }
 
-        fn try_fold_region(
-            &mut self,
-            r: ty::Region<'tcx>,
-        ) -> Result<ty::Region<'tcx>, Self::Error> {
+        fn try_fold_region(&mut self, r: I::Region) -> Result<I::Region, Self::Error>
+        where
+            I::Region: TypeSuperFoldable<I>,
+        {
             r.try_super_fold_with(self)
         }
 
-        fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
+        fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, Self::Error>
+        where
+            I::Const: TypeSuperFoldable<I>,
+        {
             c.try_super_fold_with(self)
         }
 
-        fn try_fold_predicate(
-            &mut self,
-            p: ty::Predicate<'tcx>,
-        ) -> Result<ty::Predicate<'tcx>, Self::Error> {
+        fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, Self::Error>
+        where
+            I::Predicate: TypeSuperFoldable<I>,
+        {
             p.try_super_fold_with(self)
         }
     }
 
     // This blanket implementation of the fallible trait for infallible folders
     // delegates to infallible methods to ensure coherence.
-    impl<'tcx, F> FallibleTypeFolder<'tcx> for F
+    impl<I: Interner, F> FallibleTypeFolder<I> for F
     where
-        F: TypeFolder<'tcx>,
+        F: TypeFolder<I>,
     {
         type Error = !;
 
-        fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+        fn tcx<'a>(&'a self) -> I {
             TypeFolder::tcx(self)
         }
 
-        fn try_fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, !>
+        fn try_fold_binder<T>(&mut self, t: I::Binder<T>) -> Result<I::Binder<T>, !>
         where
-            T: TypeFoldable<'tcx>,
+            T: TypeFoldable<I>,
+            I::Binder<T>: TypeSuperFoldable<I>,
         {
             Ok(self.fold_binder(t))
         }
 
-        fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
+        fn try_fold_ty(&mut self, t: I::Ty) -> Result<I::Ty, !>
+        where
+            I::Ty: TypeSuperFoldable<I>,
+        {
             Ok(self.fold_ty(t))
         }
 
-        fn try_fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, !> {
+        fn try_fold_region(&mut self, r: I::Region) -> Result<I::Region, !>
+        where
+            I::Region: TypeSuperFoldable<I>,
+        {
             Ok(self.fold_region(r))
         }
 
-        fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, !> {
+        fn try_fold_const(&mut self, c: I::Const) -> Result<I::Const, !>
+        where
+            I::Const: TypeSuperFoldable<I>,
+        {
             Ok(self.fold_const(c))
         }
 
-        fn try_fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> Result<ty::Predicate<'tcx>, !> {
+        fn try_fold_predicate(&mut self, p: I::Predicate) -> Result<I::Predicate, !>
+        where
+            I::Predicate: TypeSuperFoldable<I>,
+        {
             Ok(self.fold_predicate(p))
         }
     }
@@ -236,7 +266,7 @@ where
     pub ct_op: H,
 }
 
-impl<'tcx, F, G, H> ir::TypeFolder<'tcx> for BottomUpFolder<'tcx, F, G, H>
+impl<'tcx, F, G, H> ir::TypeFolder<TyCtxt<'tcx>> for BottomUpFolder<'tcx, F, G, H>
 where
     F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
     G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
@@ -326,7 +356,7 @@ impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ir::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
+impl<'a, 'tcx> ir::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -400,7 +430,7 @@ impl<'tcx, D: BoundVarReplacerDelegate<'tcx>> BoundVarReplacer<'tcx, D> {
     }
 }
 
-impl<'tcx, D> ir::TypeFolder<'tcx> for BoundVarReplacer<'tcx, D>
+impl<'tcx, D> ir::TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'tcx, D>
 where
     D: BoundVarReplacerDelegate<'tcx>,
 {
@@ -666,7 +696,7 @@ impl<'tcx> Shifter<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeFolder<'tcx> for Shifter<'tcx> {
+impl<'tcx> ir::TypeFolder<TyCtxt<'tcx>> for Shifter<'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }

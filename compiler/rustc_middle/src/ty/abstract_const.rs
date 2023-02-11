@@ -52,7 +52,7 @@ impl<'tcx> TyCtxt<'tcx> {
             tcx: TyCtxt<'tcx>,
         }
 
-        impl<'tcx> TypeFolder<'tcx> for Expander<'tcx> {
+        impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Expander<'tcx> {
             fn tcx(&self) -> TyCtxt<'tcx> {
                 self.tcx
             }

@@ -227,7 +227,7 @@ impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {
     }
 }
 
-impl<'tcx> ir::TypeFoldable<'tcx> for GenericArg<'tcx> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.try_fold_with(folder).map(Into::into),
@@ -475,7 +475,7 @@ impl<'tcx> InternalSubsts<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeFoldable<'tcx> for SubstsRef<'tcx> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for SubstsRef<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         // This code is hot enough that it's worth specializing for the most
         // common length lists, to avoid the overhead of `SmallVec` creation.
@@ -503,7 +503,7 @@ impl<'tcx> ir::TypeFoldable<'tcx> for SubstsRef<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         // This code is fairly hot, though not as hot as `SubstsRef`.
         //
@@ -553,7 +553,7 @@ impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for &'tcx ty:
 pub struct EarlyBinder<T>(pub T);
 
 /// For early binders, you should first call `subst` before using any visitors.
-impl<'tcx, T> !ir::TypeFoldable<'tcx> for ty::EarlyBinder<T> {}
+impl<'tcx, T> !ir::TypeFoldable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
 impl<'tcx, T> !ir::TypeVisitable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
 
 impl<T> EarlyBinder<T> {
@@ -776,7 +776,7 @@ struct SubstFolder<'a, 'tcx> {
     binders_passed: u32,
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for SubstFolder<'a, 'tcx> {
     #[inline]
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx

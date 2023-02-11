@@ -842,7 +842,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for OpaqueTypeExpander<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

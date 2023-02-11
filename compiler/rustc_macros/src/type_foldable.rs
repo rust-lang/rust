@@ -23,7 +23,7 @@ pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::
     });
 
     s.bound_impl(
-        quote!(::rustc_middle::ty::fold::ir::TypeFoldable<'tcx>),
+        quote!(::rustc_middle::ty::fold::ir::TypeFoldable<::rustc_middle::ty::TyCtxt<'tcx>>),
         quote! {
             fn try_fold_with<__F: ::rustc_middle::ty::fold::FallibleTypeFolder<'tcx>>(
                 self,

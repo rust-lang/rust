@@ -536,7 +536,7 @@ pub struct MakeSuggestableFolder<'tcx> {
     infer_suggestable: bool,
 }
 
-impl<'tcx> FallibleTypeFolder<'tcx> for MakeSuggestableFolder<'tcx> {
+impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
     type Error = ();
 
     fn tcx(&self) -> TyCtxt<'tcx> {

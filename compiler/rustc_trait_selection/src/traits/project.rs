@@ -448,7 +448,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx> {
     fn tcx<'c>(&'c self) -> TyCtxt<'tcx> {
         self.selcx.tcx()
     }
@@ -740,7 +740,7 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -846,7 +846,7 @@ impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for PlaceholderReplacer<'_, 'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }

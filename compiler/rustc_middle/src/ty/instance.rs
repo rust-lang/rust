@@ -674,7 +674,7 @@ fn polymorphize<'tcx>(
         tcx: TyCtxt<'tcx>,
     }
 
-    impl<'tcx> ty::ir::TypeFolder<'tcx> for PolymorphizationFolder<'tcx> {
+    impl<'tcx> ty::ir::TypeFolder<TyCtxt<'tcx>> for PolymorphizationFolder<'tcx> {
         fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
             self.tcx
         }

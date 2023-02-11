@@ -61,7 +61,7 @@ impl<'tcx> fmt::Debug for traits::MismatchedProjectionTypes<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // TypeFoldable implementations.
 
-impl<'tcx, O: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> for traits::Obligation<'tcx, O> {
+impl<'tcx, O: TypeFoldable<'tcx>> ir::TypeFoldable<TyCtxt<'tcx>> for traits::Obligation<'tcx, O> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         Ok(traits::Obligation {
             cause: self.cause,

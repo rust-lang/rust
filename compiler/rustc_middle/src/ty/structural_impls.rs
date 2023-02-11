@@ -363,7 +363,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
 // TypeFoldable implementations.
 
 /// AdtDefs are basically the same as a DefId.
-impl<'tcx> ir::TypeFoldable<'tcx> for ty::AdtDef<'tcx> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for ty::AdtDef<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, _folder: &mut F) -> Result<Self, F::Error> {
         Ok(self)
     }
@@ -375,7 +375,7 @@ impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for ty::AdtDef<'tcx> {
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>, U: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> for (T, U) {
+impl<'tcx, T: TypeFoldable<'tcx>, U: TypeFoldable<'tcx>> ir::TypeFoldable<TyCtxt<'tcx>> for (T, U) {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
@@ -394,7 +394,7 @@ impl<'tcx, T: TypeVisitable<'tcx>, U: TypeVisitable<'tcx>> ir::TypeVisitable<TyC
 }
 
 impl<'tcx, A: TypeFoldable<'tcx>, B: TypeFoldable<'tcx>, C: TypeFoldable<'tcx>>
-    ir::TypeFoldable<'tcx> for (A, B, C)
+    ir::TypeFoldable<TyCtxt<'tcx>> for (A, B, C)
 {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
@@ -444,7 +444,7 @@ EnumTypeTraversalImpl! {
     } where T: TypeVisitable<'tcx>, E: TypeVisitable<'tcx>,
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> for Rc<T> {
+impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<TyCtxt<'tcx>> for Rc<T> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(
         mut self,
         folder: &mut F,
@@ -490,7 +490,7 @@ impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for Rc<T> {
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> for Arc<T> {
+impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<TyCtxt<'tcx>> for Arc<T> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(
         mut self,
         folder: &mut F,
@@ -536,7 +536,7 @@ impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for Arc<T> {
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> for Box<T> {
+impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<TyCtxt<'tcx>> for Box<T> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.try_map_id(|value| value.try_fold_with(folder))
     }
@@ -548,7 +548,7 @@ impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for Box<T> {
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> for Vec<T> {
+impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<TyCtxt<'tcx>> for Vec<T> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.try_map_id(|t| t.try_fold_with(folder))
     }
@@ -566,7 +566,7 @@ impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for &[T] {
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> for Box<[T]> {
+impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<TyCtxt<'tcx>> for Box<[T]> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.try_map_id(|t| t.try_fold_with(folder))
     }
@@ -578,7 +578,7 @@ impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for Box<[T]> 
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<'tcx> for ty::Binder<'tcx, T> {
+impl<'tcx, T: TypeFoldable<'tcx>> ir::TypeFoldable<TyCtxt<'tcx>> for ty::Binder<'tcx, T> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         folder.try_fold_binder(self)
     }
@@ -590,7 +590,7 @@ impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for ty::Binde
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> TypeSuperFoldable<'tcx> for ty::Binder<'tcx, T> {
+impl<'tcx, T: TypeFoldable<'tcx>> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Binder<'tcx, T> {
     fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
@@ -605,25 +605,25 @@ impl<'tcx, T: TypeVisitable<'tcx>> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Bind
     }
 }
 
-impl<'tcx> ir::TypeFoldable<'tcx> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_poly_existential_predicates(v))
     }
 }
 
-impl<'tcx> ir::TypeFoldable<'tcx> for &'tcx ty::List<ty::Const<'tcx>> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Const<'tcx>> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.mk_const_list(v.iter()))
     }
 }
 
-impl<'tcx> ir::TypeFoldable<'tcx> for &'tcx ty::List<ProjectionKind> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ProjectionKind> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_projs(v))
     }
 }
 
-impl<'tcx> ir::TypeFoldable<'tcx> for Ty<'tcx> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         folder.try_fold_ty(self)
     }
@@ -635,7 +635,7 @@ impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
     }
 }
 
-impl<'tcx> TypeSuperFoldable<'tcx> for Ty<'tcx> {
+impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
     fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
@@ -729,7 +729,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeFoldable<'tcx> for ty::Region<'tcx> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for ty::Region<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         folder.try_fold_region(self)
     }
@@ -741,7 +741,7 @@ impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for ty::Region<'tcx> {
     }
 }
 
-impl<'tcx> TypeSuperFoldable<'tcx> for ty::Region<'tcx> {
+impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Region<'tcx> {
     fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         _folder: &mut F,
@@ -756,7 +756,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Region<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeFoldable<'tcx> for ty::Predicate<'tcx> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         folder.try_fold_predicate(self)
     }
@@ -768,7 +768,7 @@ impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     }
 }
 
-impl<'tcx> TypeSuperFoldable<'tcx> for ty::Predicate<'tcx> {
+impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
@@ -784,13 +784,13 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeFoldable<'tcx> for &'tcx ty::List<ty::Predicate<'tcx>> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Predicate<'tcx>> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_predicates(v))
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>, I: Idx> ir::TypeFoldable<'tcx> for IndexVec<I, T> {
+impl<'tcx, T: TypeFoldable<'tcx>, I: Idx> ir::TypeFoldable<TyCtxt<'tcx>> for IndexVec<I, T> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.try_map_id(|x| x.try_fold_with(folder))
     }
@@ -802,7 +802,7 @@ impl<'tcx, T: TypeVisitable<'tcx>, I: Idx> ir::TypeVisitable<TyCtxt<'tcx>> for I
     }
 }
 
-impl<'tcx> ir::TypeFoldable<'tcx> for ty::Const<'tcx> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         folder.try_fold_const(self)
     }
@@ -814,7 +814,7 @@ impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     }
 }
 
-impl<'tcx> TypeSuperFoldable<'tcx> for ty::Const<'tcx> {
+impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
@@ -836,7 +836,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeFoldable<'tcx> for InferConst<'tcx> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for InferConst<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, _folder: &mut F) -> Result<Self, F::Error> {
         Ok(self)
     }

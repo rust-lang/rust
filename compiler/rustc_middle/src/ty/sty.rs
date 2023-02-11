@@ -1149,7 +1149,7 @@ struct SkipBindersAt<'tcx> {
     index: ty::DebruijnIndex,
 }
 
-impl<'tcx> FallibleTypeFolder<'tcx> for SkipBindersAt<'tcx> {
+impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for SkipBindersAt<'tcx> {
     type Error = ();
 
     fn tcx(&self) -> TyCtxt<'tcx> {

@@ -175,7 +175,7 @@ pub struct InferenceFudger<'a, 'tcx> {
     const_vars: (Range<ConstVid<'tcx>>, Vec<ConstVariableOrigin>),
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for InferenceFudger<'a, 'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }

@@ -859,7 +859,7 @@ pub struct RegionReplacer<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for RegionReplacer<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }

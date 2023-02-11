@@ -464,7 +464,7 @@ struct RemapLateBound<'a, 'tcx> {
     mapping: &'a FxHashMap<ty::BoundRegionKind, ty::BoundRegionKind>,
 }
 
-impl<'tcx> TypeFolder<'tcx> for RemapLateBound<'_, 'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -829,7 +829,7 @@ impl<'a, 'tcx> ImplTraitInTraitCollector<'a, 'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.ocx.infcx.tcx
     }

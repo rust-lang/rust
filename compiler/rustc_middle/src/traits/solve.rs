@@ -26,7 +26,7 @@ pub struct ExternalConstraintsData<'tcx> {
     pub opaque_types: Vec<(Ty<'tcx>, Ty<'tcx>)>,
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ExternalConstraints<'tcx> {
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         Ok(ir::FallibleTypeFolder::tcx(folder).intern_external_constraints(
             ExternalConstraintsData {

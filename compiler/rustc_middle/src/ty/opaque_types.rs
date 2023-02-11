@@ -93,7 +93,7 @@ impl<'tcx> ReverseMapper<'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

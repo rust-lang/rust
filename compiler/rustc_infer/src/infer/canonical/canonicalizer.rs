@@ -326,7 +326,7 @@ struct Canonicalizer<'cx, 'tcx> {
     binder_index: ty::DebruijnIndex,
 }
 
-impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
+impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
