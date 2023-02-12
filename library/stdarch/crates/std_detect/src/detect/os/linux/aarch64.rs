@@ -6,7 +6,7 @@ use crate::detect::{bit, cache, Feature};
 /// Try to read the features from the auxiliary vector, and if that fails, try
 /// to read them from /proc/cpuinfo.
 pub(crate) fn detect_features() -> cache::Initializer {
-    #[cfg(all(target_arch = "aarch64", target_os = "android"))]
+    #[cfg(target_os = "android")]
     let is_exynos9810 = {
         // Samsung Exynos 9810 has a bug that big and little cores have different
         // ISAs. And on older Android (pre-9), the kernel incorrectly reports
@@ -23,7 +23,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
         // because Android 9+ includes the fix.
         len > 0 && arch.starts_with(b"exynos9810")
     };
-    #[cfg(not(all(target_arch = "aarch64", target_os = "android")))]
+    #[cfg(not(target_os = "android"))]
     let is_exynos9810 = false;
 
     if let Ok(auxv) = auxvec::auxv() {
