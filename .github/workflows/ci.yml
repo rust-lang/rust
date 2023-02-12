@@ -37,12 +37,11 @@ jobs:
     name: PR
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
       CACHE_DOMAIN: ci-caches.rust-lang.org
     if: "github.event_name == 'pull_request'"
-    continue-on-error: "${{ matrix.tidy }}"
+    continue-on-error: false
     strategy:
       matrix:
         include:
@@ -50,6 +49,69 @@ jobs:
             tidy: false
             os: ubuntu-20.04-xl
             env: {}
+          - name: i686-msvc-2
+            env:
+              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-msvc"
+              SCRIPT: make ci-subset-2
+            os: windows-latest-xl
+          - name: x86_64-msvc-cargo
+            env:
+              SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-lld"
+            os: windows-latest-xl
+          - name: x86_64-msvc-tools
+            env:
+              SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json"
+              DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
+            os: windows-latest-xl
+          - name: x86_64-mingw-2
+            env:
+              SCRIPT: make ci-mingw-subset-2
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler --set llvm.allow-old-toolchain"
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+            os: windows-latest-xl
+          - name: dist-x86_64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=x86_64-pc-windows-msvc --target=x86_64-pc-windows-msvc --enable-full-tools --enable-profiler --set rust.lto=thin"
+              SCRIPT: PGO_HOST=x86_64-pc-windows-msvc src/ci/pgo.sh python x.py dist bootstrap --include-default-paths
+              DIST_REQUIRE_ALL_TOOLS: 1
+            os: windows-latest-xl
+          - name: dist-i686-msvc
+            env:
+              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-msvc --host=i686-pc-windows-msvc --target=i686-pc-windows-msvc,i586-pc-windows-msvc --enable-full-tools --enable-profiler"
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              DIST_REQUIRE_ALL_TOOLS: 1
+            os: windows-latest-xl
+          - name: dist-aarch64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=aarch64-pc-windows-msvc --enable-full-tools --enable-profiler"
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              DIST_REQUIRE_ALL_TOOLS: 1
+              WINDOWS_SDK_20348_HACK: 1
+            os: windows-latest-xl
+          - name: dist-i686-mingw
+            env:
+              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --enable-full-tools --enable-profiler --set llvm.allow-old-toolchain"
+              NO_DOWNLOAD_CI_LLVM: 1
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              CUSTOM_MINGW: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            os: windows-latest-xl
+          - name: dist-x86_64-mingw
+            env:
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler --set llvm.allow-old-toolchain"
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            os: windows-latest-xl
+          - name: dist-x86_64-msvc-alt
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-extended --enable-profiler"
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+            os: windows-latest-xl
           - name: mingw-check-tidy
             tidy: true
             os: ubuntu-20.04-xl
@@ -60,8 +122,9 @@ jobs:
             env: {}
           - name: x86_64-gnu-tools
             tidy: false
+            env:
+              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
             os: ubuntu-20.04-xl
-            env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -162,7 +225,6 @@ jobs:
     name: auto
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       DEPLOY_BUCKET: rust-lang-ci2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
@@ -292,14 +354,6 @@ jobs:
           - name: x86_64-gnu-distcheck
             os: ubuntu-20.04-xl
             env: {}
-          - name: x86_64-gnu-llvm-15
-            env:
-              RUST_BACKTRACE: 1
-            os: ubuntu-20.04-xl
-          - name: x86_64-gnu-llvm-14
-            env:
-              RUST_BACKTRACE: 1
-            os: ubuntu-20.04-xl
           - name: x86_64-gnu-llvm-13
             env:
               RUST_BACKTRACE: 1
@@ -326,7 +380,7 @@ jobs:
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-            os: macos-latest
+            os: macos-12-xl
           - name: dist-apple-various
             env:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim"
@@ -337,7 +391,7 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
-            os: macos-latest
+            os: macos-12-xl
           - name: dist-x86_64-apple-alt
             env:
               SCRIPT: "./x.py dist bootstrap --include-default-paths"
@@ -348,7 +402,7 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
-            os: macos-latest
+            os: macos-12-xl
           - name: x86_64-apple-1
             env:
               SCRIPT: "./x.py --stage 2 test --exclude tests/ui --exclude tests/rustdoc --exclude tests/run-make-fulldeps"
@@ -359,7 +413,7 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
-            os: macos-latest
+            os: macos-12-xl
           - name: x86_64-apple-2
             env:
               SCRIPT: "./x.py --stage 2 test tests/ui tests/rustdoc tests/run-make-fulldeps"
@@ -370,7 +424,7 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
-            os: macos-latest
+            os: macos-12-xl
           - name: dist-aarch64-apple
             env:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --stage 2"
@@ -385,7 +439,7 @@ jobs:
               NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
               JEMALLOC_SYS_WITH_LG_PAGE: 14
-            os: macos-latest
+            os: macos-12-xl
           - name: x86_64-msvc-1
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
@@ -419,14 +473,14 @@ jobs:
             os: windows-latest-xl
           - name: i686-mingw-1
             env:
-              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
+              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --set llvm.allow-old-toolchain"
               SCRIPT: make ci-mingw-subset-1
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
             os: windows-latest-xl
           - name: i686-mingw-2
             env:
-              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
+              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --set llvm.allow-old-toolchain"
               SCRIPT: make ci-mingw-subset-2
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
@@ -434,21 +488,21 @@ jobs:
           - name: x86_64-mingw-1
             env:
               SCRIPT: make ci-mingw-subset-1
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler --set llvm.allow-old-toolchain"
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
             os: windows-latest-xl
           - name: x86_64-mingw-2
             env:
               SCRIPT: make ci-mingw-subset-2
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler --set llvm.allow-old-toolchain"
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
             os: windows-latest-xl
           - name: dist-x86_64-msvc
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --host=x86_64-pc-windows-msvc --target=x86_64-pc-windows-msvc --enable-full-tools --enable-profiler --set rust.lto=thin"
-              SCRIPT: PGO_HOST=x86_64-pc-windows-msvc python src/ci/stage-build.py python x.py dist bootstrap --include-default-paths
+              SCRIPT: PGO_HOST=x86_64-pc-windows-msvc src/ci/pgo.sh python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
             os: windows-latest-xl
           - name: dist-i686-msvc
@@ -466,7 +520,7 @@ jobs:
             os: windows-latest-xl
           - name: dist-i686-mingw
             env:
-              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --enable-full-tools --enable-profiler"
+              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --enable-full-tools --enable-profiler --set llvm.allow-old-toolchain"
               NO_DOWNLOAD_CI_LLVM: 1
               SCRIPT: python x.py dist bootstrap --include-default-paths
               CUSTOM_MINGW: 1
@@ -475,7 +529,7 @@ jobs:
           - name: dist-x86_64-mingw
             env:
               SCRIPT: python x.py dist bootstrap --include-default-paths
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler --set llvm.allow-old-toolchain"
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
@@ -585,7 +639,6 @@ jobs:
     name: try
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
-      CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       DEPLOY_BUCKET: rust-lang-ci2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
