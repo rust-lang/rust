@@ -1,5 +1,5 @@
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:243:5
+  --> $DIR/arithmetic_side_effects.rs:270:5
    |
 LL |     _n += 1;
    |     ^^^^^^^
@@ -7,589 +7,589 @@ LL |     _n += 1;
    = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:244:5
+  --> $DIR/arithmetic_side_effects.rs:271:5
    |
 LL |     _n += &1;
    |     ^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:245:5
+  --> $DIR/arithmetic_side_effects.rs:272:5
    |
 LL |     _n -= 1;
    |     ^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:246:5
+  --> $DIR/arithmetic_side_effects.rs:273:5
    |
 LL |     _n -= &1;
    |     ^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:247:5
+  --> $DIR/arithmetic_side_effects.rs:274:5
    |
 LL |     _n /= 0;
    |     ^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:248:5
+  --> $DIR/arithmetic_side_effects.rs:275:5
    |
 LL |     _n /= &0;
    |     ^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:249:5
+  --> $DIR/arithmetic_side_effects.rs:276:5
    |
 LL |     _n %= 0;
    |     ^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:250:5
+  --> $DIR/arithmetic_side_effects.rs:277:5
    |
 LL |     _n %= &0;
    |     ^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:251:5
+  --> $DIR/arithmetic_side_effects.rs:278:5
    |
 LL |     _n *= 2;
    |     ^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:252:5
+  --> $DIR/arithmetic_side_effects.rs:279:5
    |
 LL |     _n *= &2;
    |     ^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:253:5
+  --> $DIR/arithmetic_side_effects.rs:280:5
    |
 LL |     _n += -1;
    |     ^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:254:5
+  --> $DIR/arithmetic_side_effects.rs:281:5
    |
 LL |     _n += &-1;
    |     ^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:255:5
+  --> $DIR/arithmetic_side_effects.rs:282:5
    |
 LL |     _n -= -1;
    |     ^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:256:5
+  --> $DIR/arithmetic_side_effects.rs:283:5
    |
 LL |     _n -= &-1;
    |     ^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:257:5
+  --> $DIR/arithmetic_side_effects.rs:284:5
    |
 LL |     _n /= -0;
    |     ^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:258:5
+  --> $DIR/arithmetic_side_effects.rs:285:5
    |
 LL |     _n /= &-0;
    |     ^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:259:5
+  --> $DIR/arithmetic_side_effects.rs:286:5
    |
 LL |     _n %= -0;
    |     ^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:260:5
+  --> $DIR/arithmetic_side_effects.rs:287:5
    |
 LL |     _n %= &-0;
    |     ^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:261:5
+  --> $DIR/arithmetic_side_effects.rs:288:5
    |
 LL |     _n *= -2;
    |     ^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:262:5
+  --> $DIR/arithmetic_side_effects.rs:289:5
    |
 LL |     _n *= &-2;
    |     ^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:263:5
+  --> $DIR/arithmetic_side_effects.rs:290:5
    |
 LL |     _custom += Custom;
    |     ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:264:5
+  --> $DIR/arithmetic_side_effects.rs:291:5
    |
 LL |     _custom += &Custom;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:265:5
+  --> $DIR/arithmetic_side_effects.rs:292:5
    |
 LL |     _custom -= Custom;
    |     ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:266:5
+  --> $DIR/arithmetic_side_effects.rs:293:5
    |
 LL |     _custom -= &Custom;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:267:5
+  --> $DIR/arithmetic_side_effects.rs:294:5
    |
 LL |     _custom /= Custom;
    |     ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:268:5
+  --> $DIR/arithmetic_side_effects.rs:295:5
    |
 LL |     _custom /= &Custom;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:269:5
+  --> $DIR/arithmetic_side_effects.rs:296:5
    |
 LL |     _custom %= Custom;
    |     ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:270:5
+  --> $DIR/arithmetic_side_effects.rs:297:5
    |
 LL |     _custom %= &Custom;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:271:5
+  --> $DIR/arithmetic_side_effects.rs:298:5
    |
 LL |     _custom *= Custom;
    |     ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:272:5
+  --> $DIR/arithmetic_side_effects.rs:299:5
    |
 LL |     _custom *= &Custom;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:273:5
+  --> $DIR/arithmetic_side_effects.rs:300:5
    |
 LL |     _custom += -Custom;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:274:5
+  --> $DIR/arithmetic_side_effects.rs:301:5
    |
 LL |     _custom += &-Custom;
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:275:5
+  --> $DIR/arithmetic_side_effects.rs:302:5
    |
 LL |     _custom -= -Custom;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:276:5
+  --> $DIR/arithmetic_side_effects.rs:303:5
    |
 LL |     _custom -= &-Custom;
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:277:5
+  --> $DIR/arithmetic_side_effects.rs:304:5
    |
 LL |     _custom /= -Custom;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:278:5
+  --> $DIR/arithmetic_side_effects.rs:305:5
    |
 LL |     _custom /= &-Custom;
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:279:5
+  --> $DIR/arithmetic_side_effects.rs:306:5
    |
 LL |     _custom %= -Custom;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:280:5
+  --> $DIR/arithmetic_side_effects.rs:307:5
    |
 LL |     _custom %= &-Custom;
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:281:5
+  --> $DIR/arithmetic_side_effects.rs:308:5
    |
 LL |     _custom *= -Custom;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:282:5
+  --> $DIR/arithmetic_side_effects.rs:309:5
    |
 LL |     _custom *= &-Custom;
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:285:10
+  --> $DIR/arithmetic_side_effects.rs:312:10
    |
 LL |     _n = _n + 1;
    |          ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:286:10
+  --> $DIR/arithmetic_side_effects.rs:313:10
    |
 LL |     _n = _n + &1;
    |          ^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:287:10
+  --> $DIR/arithmetic_side_effects.rs:314:10
    |
 LL |     _n = 1 + _n;
    |          ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:288:10
+  --> $DIR/arithmetic_side_effects.rs:315:10
    |
 LL |     _n = &1 + _n;
    |          ^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:289:10
+  --> $DIR/arithmetic_side_effects.rs:316:10
    |
 LL |     _n = _n - 1;
    |          ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:290:10
+  --> $DIR/arithmetic_side_effects.rs:317:10
    |
 LL |     _n = _n - &1;
    |          ^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:291:10
+  --> $DIR/arithmetic_side_effects.rs:318:10
    |
 LL |     _n = 1 - _n;
    |          ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:292:10
+  --> $DIR/arithmetic_side_effects.rs:319:10
    |
 LL |     _n = &1 - _n;
    |          ^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:293:10
+  --> $DIR/arithmetic_side_effects.rs:320:10
    |
 LL |     _n = _n / 0;
    |          ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:294:10
+  --> $DIR/arithmetic_side_effects.rs:321:10
    |
 LL |     _n = _n / &0;
    |          ^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:295:10
+  --> $DIR/arithmetic_side_effects.rs:322:10
    |
 LL |     _n = _n % 0;
    |          ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:296:10
+  --> $DIR/arithmetic_side_effects.rs:323:10
    |
 LL |     _n = _n % &0;
    |          ^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:297:10
+  --> $DIR/arithmetic_side_effects.rs:324:10
    |
 LL |     _n = _n * 2;
    |          ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:298:10
+  --> $DIR/arithmetic_side_effects.rs:325:10
    |
 LL |     _n = _n * &2;
    |          ^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:299:10
+  --> $DIR/arithmetic_side_effects.rs:326:10
    |
 LL |     _n = 2 * _n;
    |          ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:300:10
+  --> $DIR/arithmetic_side_effects.rs:327:10
    |
 LL |     _n = &2 * _n;
    |          ^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:301:10
+  --> $DIR/arithmetic_side_effects.rs:328:10
    |
 LL |     _n = 23 + &85;
    |          ^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:302:10
+  --> $DIR/arithmetic_side_effects.rs:329:10
    |
 LL |     _n = &23 + 85;
    |          ^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:303:10
+  --> $DIR/arithmetic_side_effects.rs:330:10
    |
 LL |     _n = &23 + &85;
    |          ^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:304:15
+  --> $DIR/arithmetic_side_effects.rs:331:15
    |
 LL |     _custom = _custom + _custom;
    |               ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:305:15
+  --> $DIR/arithmetic_side_effects.rs:332:15
    |
 LL |     _custom = _custom + &_custom;
    |               ^^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:306:15
+  --> $DIR/arithmetic_side_effects.rs:333:15
    |
 LL |     _custom = Custom + _custom;
    |               ^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:307:15
+  --> $DIR/arithmetic_side_effects.rs:334:15
    |
 LL |     _custom = &Custom + _custom;
    |               ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:308:15
+  --> $DIR/arithmetic_side_effects.rs:335:15
    |
 LL |     _custom = _custom - Custom;
    |               ^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:309:15
+  --> $DIR/arithmetic_side_effects.rs:336:15
    |
 LL |     _custom = _custom - &Custom;
    |               ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:310:15
+  --> $DIR/arithmetic_side_effects.rs:337:15
    |
 LL |     _custom = Custom - _custom;
    |               ^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:311:15
+  --> $DIR/arithmetic_side_effects.rs:338:15
    |
 LL |     _custom = &Custom - _custom;
    |               ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:312:15
+  --> $DIR/arithmetic_side_effects.rs:339:15
    |
 LL |     _custom = _custom / Custom;
    |               ^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:313:15
+  --> $DIR/arithmetic_side_effects.rs:340:15
    |
 LL |     _custom = _custom / &Custom;
    |               ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:314:15
+  --> $DIR/arithmetic_side_effects.rs:341:15
    |
 LL |     _custom = _custom % Custom;
    |               ^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:315:15
+  --> $DIR/arithmetic_side_effects.rs:342:15
    |
 LL |     _custom = _custom % &Custom;
    |               ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:316:15
+  --> $DIR/arithmetic_side_effects.rs:343:15
    |
 LL |     _custom = _custom * Custom;
    |               ^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:317:15
+  --> $DIR/arithmetic_side_effects.rs:344:15
    |
 LL |     _custom = _custom * &Custom;
    |               ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:318:15
+  --> $DIR/arithmetic_side_effects.rs:345:15
    |
 LL |     _custom = Custom * _custom;
    |               ^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:319:15
+  --> $DIR/arithmetic_side_effects.rs:346:15
    |
 LL |     _custom = &Custom * _custom;
    |               ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:320:15
+  --> $DIR/arithmetic_side_effects.rs:347:15
    |
 LL |     _custom = Custom + &Custom;
    |               ^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:321:15
+  --> $DIR/arithmetic_side_effects.rs:348:15
    |
 LL |     _custom = &Custom + Custom;
    |               ^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:322:15
+  --> $DIR/arithmetic_side_effects.rs:349:15
    |
 LL |     _custom = &Custom + &Custom;
    |               ^^^^^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:325:10
+  --> $DIR/arithmetic_side_effects.rs:352:10
    |
 LL |     _n = -_n;
    |          ^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:326:10
+  --> $DIR/arithmetic_side_effects.rs:353:10
    |
 LL |     _n = -&_n;
    |          ^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:327:15
+  --> $DIR/arithmetic_side_effects.rs:354:15
    |
 LL |     _custom = -_custom;
    |               ^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:328:15
+  --> $DIR/arithmetic_side_effects.rs:355:15
    |
 LL |     _custom = -&_custom;
    |               ^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:337:5
+  --> $DIR/arithmetic_side_effects.rs:364:5
    |
 LL |     1 + i;
    |     ^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:338:5
+  --> $DIR/arithmetic_side_effects.rs:365:5
    |
 LL |     i * 2;
    |     ^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:340:5
+  --> $DIR/arithmetic_side_effects.rs:367:5
    |
 LL |     i - 2 + 2 - i;
    |     ^^^^^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:341:5
+  --> $DIR/arithmetic_side_effects.rs:368:5
    |
 LL |     -i;
    |     ^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:342:5
+  --> $DIR/arithmetic_side_effects.rs:369:5
    |
 LL |     i >> 1;
    |     ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:343:5
+  --> $DIR/arithmetic_side_effects.rs:370:5
    |
 LL |     i << 1;
    |     ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:352:5
+  --> $DIR/arithmetic_side_effects.rs:379:5
    |
 LL |     i += 1;
    |     ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:353:5
+  --> $DIR/arithmetic_side_effects.rs:380:5
    |
 LL |     i -= 1;
    |     ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:354:5
+  --> $DIR/arithmetic_side_effects.rs:381:5
    |
 LL |     i *= 2;
    |     ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:356:5
+  --> $DIR/arithmetic_side_effects.rs:383:5
    |
 LL |     i /= 0;
    |     ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:358:5
+  --> $DIR/arithmetic_side_effects.rs:385:5
    |
 LL |     i /= var1;
    |     ^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:359:5
+  --> $DIR/arithmetic_side_effects.rs:386:5
    |
 LL |     i /= var2;
    |     ^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:361:5
+  --> $DIR/arithmetic_side_effects.rs:388:5
    |
 LL |     i %= 0;
    |     ^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:363:5
+  --> $DIR/arithmetic_side_effects.rs:390:5
    |
 LL |     i %= var1;
    |     ^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:364:5
+  --> $DIR/arithmetic_side_effects.rs:391:5
    |
 LL |     i %= var2;
    |     ^^^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:365:5
+  --> $DIR/arithmetic_side_effects.rs:392:5
    |
 LL |     i <<= 3;
    |     ^^^^^^^
 
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:366:5
+  --> $DIR/arithmetic_side_effects.rs:393:5
    |
 LL |     i >>= 2;
    |     ^^^^^^^
