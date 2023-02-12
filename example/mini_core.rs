@@ -698,7 +698,7 @@ struct PanicLocation {
 }
 
 #[no_mangle]
-#[cfg(not(windows))]
+#[cfg(not(all(windows, target_env = "gnu")))]
 pub fn get_tls() -> u8 {
     #[thread_local]
     static A: u8 = 42;
