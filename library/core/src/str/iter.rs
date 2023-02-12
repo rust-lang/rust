@@ -1,6 +1,6 @@
 //! Iterators for `str` methods.
 
-use crate::char;
+use crate::char as char_mod;
 use crate::fmt::{self, Write};
 use crate::iter::{Chain, FlatMap, Flatten};
 use crate::iter::{Copied, Filter, FusedIterator, Map, TrustedLen};
@@ -1455,8 +1455,8 @@ impl FusedIterator for EncodeUtf16<'_> {}
 #[derive(Clone, Debug)]
 pub struct EscapeDebug<'a> {
     pub(super) inner: Chain<
-        Flatten<option::IntoIter<char::EscapeDebug>>,
-        FlatMap<Chars<'a>, char::EscapeDebug, CharEscapeDebugContinue>,
+        Flatten<option::IntoIter<char_mod::EscapeDebug>>,
+        FlatMap<Chars<'a>, char_mod::EscapeDebug, CharEscapeDebugContinue>,
     >,
 }
 
@@ -1464,14 +1464,14 @@ pub struct EscapeDebug<'a> {
 #[stable(feature = "str_escape", since = "1.34.0")]
 #[derive(Clone, Debug)]
 pub struct EscapeDefault<'a> {
-    pub(super) inner: FlatMap<Chars<'a>, char::EscapeDefault, CharEscapeDefault>,
+    pub(super) inner: FlatMap<Chars<'a>, char_mod::EscapeDefault, CharEscapeDefault>,
 }
 
 /// The return type of [`str::escape_unicode`].
 #[stable(feature = "str_escape", since = "1.34.0")]
 #[derive(Clone, Debug)]
 pub struct EscapeUnicode<'a> {
-    pub(super) inner: FlatMap<Chars<'a>, char::EscapeUnicode, CharEscapeUnicode>,
+    pub(super) inner: FlatMap<Chars<'a>, char_mod::EscapeUnicode, CharEscapeUnicode>,
 }
 
 macro_rules! escape_types_impls {
