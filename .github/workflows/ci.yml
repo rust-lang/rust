@@ -42,7 +42,7 @@ jobs:
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
       CACHE_DOMAIN: ci-caches.rust-lang.org
     if: "github.event_name == 'pull_request'"
-    continue-on-error: "${{ matrix.tidy }}"
+    continue-on-error: false
     strategy:
       matrix:
         include:
