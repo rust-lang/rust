@@ -187,7 +187,7 @@ pub(crate) fn main() {
                 &bootstrap_host_compiler,
                 target_triple,
             );
-            bench::benchmark(&dirs, &bootstrap_host_compiler);
+            bench::benchmark(&dirs);
         }
     }
 }
