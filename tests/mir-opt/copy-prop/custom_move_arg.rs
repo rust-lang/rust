@@ -11,7 +11,7 @@ struct NotCopy(bool);
 #[custom_mir(dialect = "analysis", phase = "post-cleanup")]
 fn f(_1: NotCopy) {
     mir!({
-        let _2 = Move(_1);
+        let _2 = _1;
         Call(RET, bb1, opaque(Move(_1)))
     }
     bb1 = {

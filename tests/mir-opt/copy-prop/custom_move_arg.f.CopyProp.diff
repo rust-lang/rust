@@ -7,8 +7,9 @@
       let mut _3: NotCopy;                 // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
   
       bb0: {
--         _2 = move _1;                    // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-          _0 = opaque::<NotCopy>(move _1) -> bb1; // scope 0 at $DIR/custom_move_arg.rs:+3:9: +3:41
+-         _2 = _1;                         // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+-         _0 = opaque::<NotCopy>(move _1) -> bb1; // scope 0 at $DIR/custom_move_arg.rs:+3:9: +3:41
++         _0 = opaque::<NotCopy>(_1) -> bb1; // scope 0 at $DIR/custom_move_arg.rs:+3:9: +3:41
                                            // mir::Constant
                                            // + span: $DIR/custom_move_arg.rs:15:24: 15:30
                                            // + literal: Const { ty: fn(NotCopy) {opaque::<NotCopy>}, val: Value(<ZST>) }
