@@ -2,9 +2,8 @@ use super::*;
 
 #[test]
 fn test_lev_distance() {
-    use std::char::{from_u32, MAX};
     // Test bytelength agnosticity
-    for c in (0..MAX as u32).filter_map(from_u32).map(|i| i.to_string()) {
+    for c in (0..char::MAX as u32).filter_map(char::from_u32).map(|i| i.to_string()) {
         assert_eq!(lev_distance(&c[..], &c[..], usize::MAX), Some(0));
     }
 
