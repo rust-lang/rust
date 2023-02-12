@@ -12,7 +12,7 @@ assert-css: (".main-heading", {
   "flex-direction": "column"
 })
 
-assert-property: (".mobile-topbar h2", {"offsetHeight": 36})
+assert-property: (".mobile-topbar h2", {"offsetHeight": 33})
 
 // Note: We can't use assert-text here because the 'Since' is set by CSS and
 // is therefore not part of the DOM.
