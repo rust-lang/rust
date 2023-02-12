@@ -3,8 +3,9 @@
 use either::Either;
 use hir::{Semantics, Type};
 use syntax::{
+    algo::non_trivia_sibling,
     ast::{self, HasArgList, HasName},
-    AstNode, SyntaxToken,
+    AstNode, Direction, SyntaxToken, TextRange,
 };
 
 use crate::RootDatabase;
@@ -66,11 +67,24 @@ pub fn callable_for_node(
         ast::CallableExpr::MethodCall(call) => sema.resolve_method_call_as_callable(call),
     }?;
     let active_param = if let Some(arg_list) = calling_node.arg_list() {
-        let param = arg_list
+        let account_for_ws = |arg: &ast::Expr| {
+            let node = arg.syntax().clone();
+            let left = non_trivia_sibling(node.clone().into(), Direction::Prev)
+                .and_then(|it| it.into_token())?
+                .text_range();
+            let right = non_trivia_sibling(node.into(), Direction::Next)
+                .and_then(|it| it.into_token())?
+                .text_range();
+            Some(TextRange::new(left.end(), right.start()))
+        };
+        arg_list
             .args()
-            .take_while(|arg| arg.syntax().text_range().end() <= token.text_range().start())
-            .count();
-        Some(param)
+            .position(|arg| {
+                account_for_ws(&arg)
+                    .unwrap_or(arg.syntax().text_range())
+                    .contains(token.text_range().start())
+            })
+            .or(Some(0))
     } else {
         None
     };

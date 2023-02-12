@@ -380,7 +380,7 @@ fn expected_type_and_name(
                         sema,
                        token.clone(),
                     ).map(|ap| {
-                        let name = ap.ident().map(NameOrNameRef::Name);
+                        let name = dbg!(ap.ident().map(NameOrNameRef::Name));
 
                         let ty = strip_refs(ap.ty);
                         (Some(ty), name)
