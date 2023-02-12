@@ -149,7 +149,7 @@ pub(crate) fn main() {
     }
 
     if command == Command::Prepare {
-        prepare::prepare(&dirs);
+        prepare::prepare(&dirs, &bootstrap_host_compiler.rustc);
         process::exit(0);
     }
 
