@@ -149,7 +149,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         };
 
         let fn_sig = cx.tcx.fn_sig(fn_def_id).subst_identity();
-        let fn_sig = cx.tcx.erase_late_bound_regions(fn_sig);
+        let fn_sig = cx.tcx.liberate_late_bound_regions(fn_def_id.to_def_id(), fn_sig);
 
         for (idx, ((input, &ty), arg)) in decl.inputs.iter().zip(fn_sig.inputs()).zip(body.params).enumerate() {
             // All spans generated from a proc-macro invocation are the same...
