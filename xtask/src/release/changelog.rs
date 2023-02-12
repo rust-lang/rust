@@ -69,7 +69,7 @@ pub(crate) fn get_changelog(
 :page-layout: post
 
 Commit: commit:{commit}[] +
-Release: release:{today}[]
+Release: release:{today}[] (`TBD`)
 
 == New Features
 
