@@ -414,7 +414,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 // Check that sym actually points to a function. Later passes
                 // depend on this.
                 hir::InlineAsmOperand::SymFn { anon_const } => {
-                    let ty = self.tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
+                    let ty = self.tcx.type_of(anon_const.def_id);
                     match ty.kind() {
                         ty::Never | ty::Error(_) => {}
                         ty::FnDef(..) => {}
@@ -422,7 +422,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             let mut err =
                                 self.tcx.sess.struct_span_err(*op_sp, "invalid `sym` operand");
                             err.span_label(
-                                self.tcx.hir().span(anon_const.body.hir_id),
+                                self.tcx.def_span(anon_const.def_id),
                                 &format!("is {} `{}`", ty.kind().article(), ty),
                             );
                             err.help("`sym` operands must refer to either a function or a static");

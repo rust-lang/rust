@@ -21,7 +21,9 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, AdtDef, ParamEnv, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::{
+    self, AdtDef, DefIdTree, ParamEnv, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+};
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
@@ -174,16 +176,8 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         Ok(l) => l,
         // Foreign statics that overflow their allowed size should emit an error
         Err(LayoutError::SizeOverflow(_))
-            if {
-                let node = tcx.hir().get_by_def_id(def_id);
-                matches!(
-                    node,
-                    hir::Node::ForeignItem(hir::ForeignItem {
-                        kind: hir::ForeignItemKind::Static(..),
-                        ..
-                    })
-                )
-            } =>
+            if matches!(tcx.def_kind(def_id), DefKind::Static(_)
+                if tcx.def_kind(tcx.local_parent(def_id)) == DefKind::ForeignMod) =>
         {
             tcx.sess
                 .struct_span_err(span, "extern static is too large for the current architecture")
@@ -215,7 +209,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
     let item = tcx.hir().item(id);
     let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) = item.kind else {
-        tcx.sess.delay_span_bug(tcx.hir().span(id.hir_id()), "expected opaque item");
+        tcx.sess.delay_span_bug(item.span, "expected opaque item");
         return;
     };
 
