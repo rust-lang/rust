@@ -13,7 +13,7 @@ impl flags::PublishReleaseNotes {
         let tag_name = &file_name[0..10];
         let original_changelog_url = create_original_changelog_url(&file_name);
         let additional_paragraph =
-            format!("\nSee also [original changelog]({original_changelog_url}).");
+            format!("\nSee also the [changelog post]({original_changelog_url}).");
         markdown.push_str(&additional_paragraph);
         if self.dry_run {
             println!("{markdown}");
