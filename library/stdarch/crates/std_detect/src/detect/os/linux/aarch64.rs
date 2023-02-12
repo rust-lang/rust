@@ -6,6 +6,25 @@ use crate::detect::{bit, cache, Feature};
 /// Try to read the features from the auxiliary vector, and if that fails, try
 /// to read them from /proc/cpuinfo.
 pub(crate) fn detect_features() -> cache::Initializer {
+    #[cfg(all(target_arch = "aarch64", target_os = "android"))]
+    {
+        // Samsung Exynos 9810 has a bug that big and little cores have different
+        // ISAs. And on older Android (pre-9), the kernel incorrectly reports
+        // that features available only on some cores are available on all cores.
+        // https://reviews.llvm.org/D114523
+        let mut arch = [0_u8; libc::PROP_VALUE_MAX as usize];
+        let len = unsafe {
+            libc::__system_property_get(
+                b"ro.arch\0".as_ptr() as *const libc::c_char,
+                arch.as_mut_ptr() as *mut libc::c_char,
+            )
+        };
+        // On Exynos, ro.arch is not available on Android 12+, but it is fine
+        // because Android 9+ includes the fix.
+        if len > 0 && arch.starts_with(b"exynos9810") {
+            return cache::Initializer::default();
+        }
+    }
     if let Ok(auxv) = auxvec::auxv() {
         let hwcap: AtHwcap = auxv.into();
         return hwcap.cache();
