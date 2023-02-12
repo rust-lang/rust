@@ -2,7 +2,7 @@
 //!
 
 use super::{wasm_base, TlsModel};
-use super::{crt_objects, Cc, LinkerFlavor, Target};
+use super::{crt_objects::{self, LinkSelfContainedDefault}, Cc, LinkerFlavor, Target};
 
 pub fn target() -> Target {
     let mut options = wasm_base::options();
@@ -18,6 +18,9 @@ pub fn target() -> Target {
 
     options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();
     options.post_link_objects_self_contained = crt_objects::post_wasi_self_contained();
+
+    // FIXME: Figure out cases in which WASM needs to link with a native toolchain.
+    options.link_self_contained = LinkSelfContainedDefault::True;
 
     // WASI now supports multi-threading but not yet thread local support
     options.singlethread = false;
@@ -43,6 +46,10 @@ pub fn target() -> Target {
     // WASIX's `sys::args::init` function ignores its arguments; instead,
     // `args::args()` makes the WASIX API calls itself.
     options.main_needs_argc_argv = false;
+
+    // And, WASI mangles the name of "main" to distinguish between different
+    // signatures.
+    options.entry_name = "__main_void".into();
 
     // Any engine that implements wasm64 will surely implement the rest of these
     // features since they were all merged into the official spec by the time

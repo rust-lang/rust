@@ -94,10 +94,10 @@ pub mod linux;
 )))]
 #[cfg(any(all(target_os = "wasi", not(target_vendor = "wasmer")), doc))]
 pub mod wasi;
-#[cfg(any(all(target_os = "wasi", target_vendor = "wasmer"), doc))]
+#[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
 #[path = "wasix/mod.rs"]
 pub mod wasi;
-#[cfg(any(all(target_os = "wasi", target_vendor = "wasmer"), doc))]
+#[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod unix {
     #[stable(feature = "rust1", since = "1.0.0")]
