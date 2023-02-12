@@ -156,7 +156,7 @@ pub struct Session {
     /// `-C metadata` arguments passed to the compiler. Its value forms a unique
     /// global identifier for the crate. It is used to allow multiple crates
     /// with the same name to coexist. See the
-    /// `rustc_codegen_llvm::back::symbol_names` module for more information.
+    /// `rustc_symbol_mangling` crate for more information.
     pub stable_crate_id: OnceCell<StableCrateId>,
 
     features: OnceCell<rustc_feature::Features>,
