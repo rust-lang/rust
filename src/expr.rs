@@ -1027,12 +1027,14 @@ impl<'a> ControlFlow<'a> {
 
 /// Rewrite the `else` keyword with surrounding comments.
 ///
+/// force_newline_else: whether or not to rewrite the `else` keyword on a newline.
 /// is_last: true if this is an `else` and `false` if this is an `else if` block.
 /// context: rewrite context
 /// span: Span between the end of the last expression and the start of the else block,
 ///       which contains the `else` keyword
 /// shape: Shape
 pub(crate) fn rewrite_else_kw_with_comments(
+    force_newline_else: bool,
     is_last: bool,
     context: &RewriteContext<'_>,
     span: Span,
@@ -1048,6 +1050,7 @@ pub(crate) fn rewrite_else_kw_with_comments(
 
     let newline_sep = &shape.indent.to_string_with_newline(context.config);
     let before_sep = match context.config.control_brace_style() {
+        _ if force_newline_else => newline_sep.as_ref(),
         ControlBraceStyle::AlwaysNextLine | ControlBraceStyle::ClosingNextLine => {
             newline_sep.as_ref()
         }
@@ -1132,6 +1135,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
             };
 
             let else_kw = rewrite_else_kw_with_comments(
+                false,
                 last_in_chain,
                 context,
                 self.block.span.between(else_block.span),

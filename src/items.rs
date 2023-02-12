@@ -126,10 +126,14 @@ impl Rewrite for ast::Local {
             )?;
 
             if let Some(block) = else_block {
+                let else_kw_span = init.span.between(block.span);
+                let force_newline_else =
+                    !same_line_else_kw_and_brace(&result, context, else_kw_span, nested_shape);
                 let else_kw = rewrite_else_kw_with_comments(
+                    force_newline_else,
                     true,
                     context,
-                    init.span.between(block.span),
+                    else_kw_span,
                     shape,
                 );
                 result.push_str(&else_kw);
@@ -146,6 +150,47 @@ impl Rewrite for ast::Local {
         result.push(';');
         Some(result)
     }
+}
+
+/// When the initializer expression is multi-lined, then the else keyword and opening brace of the
+/// block ( i.e. "else {") should be put on the same line as the end of the initializer expression
+/// if all the following are true:
+///
+/// 1. The initializer expression ends with one or more closing parentheses, square brackets,
+///    or braces
+/// 2. There is nothing else on that line
+/// 3. That line is not indented beyond the indent on the first line of the let keyword
+fn same_line_else_kw_and_brace(
+    init_str: &str,
+    context: &RewriteContext<'_>,
+    else_kw_span: Span,
+    init_shape: Shape,
+) -> bool {
+    if !init_str.contains('\n') {
+        // initializer expression is single lined so the "else {" should be placed on the same line
+        return true;
+    }
+
+    // 1. The initializer expression ends with one or more `)`, `]`, `}`.
+    if !init_str.ends_with([')', ']', '}']) {
+        return false;
+    }
+
+    // 2. There is nothing else on that line
+    // For example, there are no comments
+    let else_kw_snippet = context.snippet(else_kw_span).trim();
+    if else_kw_snippet != "else" {
+        return false;
+    }
+
+    // 3. The last line of the initializer expression is not indented beyond the `let` keyword
+    let indent = init_shape.indent.to_string(context.config);
+    init_str
+        .lines()
+        .last()
+        .expect("initializer expression is multi-lined")
+        .strip_prefix(indent.as_ref())
+        .map_or(false, |l| !l.starts_with(char::is_whitespace))
 }
 
 // FIXME convert to using rewrite style rather than visitor
