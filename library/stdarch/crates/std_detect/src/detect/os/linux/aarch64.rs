@@ -7,7 +7,7 @@ use crate::detect::{bit, cache, Feature};
 /// to read them from /proc/cpuinfo.
 pub(crate) fn detect_features() -> cache::Initializer {
     #[cfg(all(target_arch = "aarch64", target_os = "android"))]
-    {
+    let is_exynos9810 = {
         // Samsung Exynos 9810 has a bug that big and little cores have different
         // ISAs. And on older Android (pre-9), the kernel incorrectly reports
         // that features available only on some cores are available on all cores.
@@ -21,18 +21,19 @@ pub(crate) fn detect_features() -> cache::Initializer {
         };
         // On Exynos, ro.arch is not available on Android 12+, but it is fine
         // because Android 9+ includes the fix.
-        if len > 0 && arch.starts_with(b"exynos9810") {
-            return cache::Initializer::default();
-        }
-    }
+        len > 0 && arch.starts_with(b"exynos9810")
+    };
+    #[cfg(not(all(target_arch = "aarch64", target_os = "android")))]
+    let is_exynos9810 = false;
+
     if let Ok(auxv) = auxvec::auxv() {
         let hwcap: AtHwcap = auxv.into();
-        return hwcap.cache();
+        return hwcap.cache(is_exynos9810);
     }
     #[cfg(feature = "std_detect_file_io")]
     if let Ok(c) = super::cpuinfo::CpuInfo::new() {
         let hwcap: AtHwcap = c.into();
-        return hwcap.cache();
+        return hwcap.cache(is_exynos9810);
     }
     cache::Initializer::default()
 }
@@ -228,7 +229,7 @@ impl AtHwcap {
     ///
     /// The feature dependencies here come directly from LLVM's feature definintions:
     /// https://github.com/llvm/llvm-project/blob/main/llvm/lib/Target/AArch64/AArch64.td
-    fn cache(self) -> cache::Initializer {
+    fn cache(self, is_exynos9810: bool) -> cache::Initializer {
         let mut value = cache::Initializer::default();
         {
             let mut enable_feature = |f, enable| {
@@ -236,6 +237,25 @@ impl AtHwcap {
                     value.set(f as u32);
                 }
             };
+
+            // Samsung Exynos 9810 has a bug that big and little cores have different
+            // ISAs. And on older Android (pre-9), the kernel incorrectly reports
+            // that features available only on some cores are available on all cores.
+            // So, only check features that are known to be available on exynos-m3:
+            // $ rustc --print cfg --target aarch64-linux-android -C target-cpu=exynos-m3 | grep target_feature
+            // See also https://github.com/rust-lang/stdarch/pull/1378#discussion_r1103748342.
+            if is_exynos9810 {
+                enable_feature(Feature::fp, self.fp);
+                enable_feature(Feature::crc, self.crc32);
+                // ASIMD support requires float support - if half-floats are
+                // supported, it also requires half-float support:
+                let asimd = self.fp && self.asimd && (!self.fphp | self.asimdhp);
+                enable_feature(Feature::asimd, asimd);
+                // Cryptographic extensions require ASIMD
+                enable_feature(Feature::aes, self.aes && asimd);
+                enable_feature(Feature::sha2, self.sha1 && self.sha2 && asimd);
+                return value;
+            }
 
             enable_feature(Feature::fp, self.fp);
             // Half-float support requires float support
