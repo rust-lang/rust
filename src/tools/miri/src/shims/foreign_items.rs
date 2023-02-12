@@ -347,7 +347,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Emulates calling the internal __rust_* allocator functions
     fn emulate_allocator(
         &mut self,
-        symbol: Symbol,
         default: impl FnOnce(&mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx, EmulateByNameResult<'mir, 'tcx>> {
         let this = self.eval_context_mut();
@@ -359,11 +358,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         match allocator_kind {
             AllocatorKind::Global => {
-                let (body, instance) = this
-                    .lookup_exported_symbol(symbol)?
-                    .expect("symbol should be present if there is a global allocator");
-
-                Ok(EmulateByNameResult::MirBody(body, instance))
+                // `__rust_*` is defined by `#[global_allocator]` if `#[global_allocator]` is used
+                return Ok(EmulateByNameResult::NotSupported);
             }
             AllocatorKind::Default => {
                 default(this)?;
@@ -558,11 +554,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             // Rust allocation
             "__rust_alloc" | "miri_alloc" => {
-                let [size, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
-                let size = this.read_target_usize(size)?;
-                let align = this.read_target_usize(align)?;
-
                 let default = |this: &mut MiriInterpCx<'mir, 'tcx>| {
+                    let [size, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                    let size = this.read_target_usize(size)?;
+                    let align = this.read_target_usize(align)?;
+
                     Self::check_alloc_request(size, align)?;
 
                     let memory_kind = match link_name.as_str() {
@@ -581,8 +577,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 };
 
                 match link_name.as_str() {
-                    "__rust_alloc" =>
-                        return this.emulate_allocator(Symbol::intern("__rg_alloc"), default),
+                    "__rust_alloc" => return this.emulate_allocator(default),
                     "miri_alloc" => {
                         default(this)?;
                         return Ok(EmulateByNameResult::NeedsJumping);
@@ -591,11 +586,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
             "__rust_alloc_zeroed" => {
-                let [size, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
-                let size = this.read_target_usize(size)?;
-                let align = this.read_target_usize(align)?;
+                return this.emulate_allocator(|this| {
+                    let [size, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                    let size = this.read_target_usize(size)?;
+                    let align = this.read_target_usize(align)?;
 
-                return this.emulate_allocator(Symbol::intern("__rg_alloc_zeroed"), |this| {
                     Self::check_alloc_request(size, align)?;
 
                     let ptr = this.allocate_ptr(
@@ -614,12 +609,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 });
             }
             "__rust_dealloc" | "miri_dealloc" => {
-                let [ptr, old_size, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
-                let ptr = this.read_pointer(ptr)?;
-                let old_size = this.read_target_usize(old_size)?;
-                let align = this.read_target_usize(align)?;
-
                 let default = |this: &mut MiriInterpCx<'mir, 'tcx>| {
+                    let [ptr, old_size, align] =
+                        this.check_shim(abi, Abi::Rust, link_name, args)?;
+                    let ptr = this.read_pointer(ptr)?;
+                    let old_size = this.read_target_usize(old_size)?;
+                    let align = this.read_target_usize(align)?;
+
                     let memory_kind = match link_name.as_str() {
                         "__rust_dealloc" => MiriMemoryKind::Rust,
                         "miri_dealloc" => MiriMemoryKind::Miri,
@@ -635,8 +631,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 };
 
                 match link_name.as_str() {
-                    "__rust_dealloc" =>
-                        return this.emulate_allocator(Symbol::intern("__rg_dealloc"), default),
+                    "__rust_dealloc" => {
+                        return this.emulate_allocator(default);
+                    }
                     "miri_dealloc" => {
                         default(this)?;
                         return Ok(EmulateByNameResult::NeedsJumping);
@@ -645,15 +642,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 }
             }
             "__rust_realloc" => {
-                let [ptr, old_size, align, new_size] =
-                    this.check_shim(abi, Abi::Rust, link_name, args)?;
-                let ptr = this.read_pointer(ptr)?;
-                let old_size = this.read_target_usize(old_size)?;
-                let align = this.read_target_usize(align)?;
-                let new_size = this.read_target_usize(new_size)?;
-                // No need to check old_size; we anyway check that they match the allocation.
+                return this.emulate_allocator(|this| {
+                    let [ptr, old_size, align, new_size] =
+                        this.check_shim(abi, Abi::Rust, link_name, args)?;
+                    let ptr = this.read_pointer(ptr)?;
+                    let old_size = this.read_target_usize(old_size)?;
+                    let align = this.read_target_usize(align)?;
+                    let new_size = this.read_target_usize(new_size)?;
+                    // No need to check old_size; we anyway check that they match the allocation.
 
-                return this.emulate_allocator(Symbol::intern("__rg_realloc"), |this| {
                     Self::check_alloc_request(new_size, align)?;
 
                     let align = Align::from_bytes(align).unwrap();
