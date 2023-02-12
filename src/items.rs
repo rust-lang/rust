@@ -18,7 +18,8 @@ use crate::config::lists::*;
 use crate::config::{BraceStyle, Config, IndentStyle, Version};
 use crate::expr::{
     is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, rewrite_assign_rhs_with,
-    rewrite_assign_rhs_with_comments, rewrite_else_kw_with_comments, RhsAssignKind, RhsTactics,
+    rewrite_assign_rhs_with_comments, rewrite_else_kw_with_comments, rewrite_let_else_block,
+    RhsAssignKind, RhsTactics,
 };
 use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use crate::macros::{rewrite_macro, MacroPosition};
@@ -132,7 +133,13 @@ impl Rewrite for ast::Local {
                     shape,
                 );
                 result.push_str(&else_kw);
-                result.push_str(&block.rewrite(context, shape)?);
+                let allow_single_line = !result.contains('\n');
+                result.push_str(&rewrite_let_else_block(
+                    block,
+                    allow_single_line,
+                    context,
+                    shape,
+                )?);
             };
         }
 

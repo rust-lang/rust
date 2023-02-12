@@ -609,6 +609,16 @@ fn rewrite_block_inner(
     result
 }
 
+/// Rewrite the divergent block of a `let-else` statement.
+pub(crate) fn rewrite_let_else_block(
+    block: &ast::Block,
+    allow_single_line: bool,
+    context: &RewriteContext<'_>,
+    shape: Shape,
+) -> Option<String> {
+    rewrite_block_inner(block, None, None, allow_single_line, context, shape)
+}
+
 // Rewrite condition if the given expression has one.
 pub(crate) fn rewrite_cond(
     context: &RewriteContext<'_>,
