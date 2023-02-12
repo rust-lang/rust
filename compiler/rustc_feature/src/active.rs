@@ -164,6 +164,8 @@ declare_features! (
     (active, multiple_supertrait_upcastable, "CURRENT_RUSTC_VERSION", None, None),
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
     (active, omit_gdb_pretty_printer_section, "1.5.0", None, None),
+    /// Allows using `+bundled,+whole-archive` native libs.
+    (active, packed_bundled_libs, "1.67.0", None, None),
     /// Allows using `#[prelude_import]` on glob `use` items.
     (active, prelude_import, "1.2.0", None, None),
     /// Used to identify crates that contain the profiler runtime.

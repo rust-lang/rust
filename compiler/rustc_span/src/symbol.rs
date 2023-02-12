@@ -1049,6 +1049,7 @@ symbols! {
         overlapping_marker_traits,
         owned_box,
         packed,
+        packed_bundled_libs,
         panic,
         panic_2015,
         panic_2021,
