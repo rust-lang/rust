@@ -1,6 +1,5 @@
 #![deny(unsafe_op_in_unsafe_fn)]
-#![allow(dead_code, unused)]
-#![allow(fuzzy_provenance_casts)]
+#![allow(dead_code, unused, fuzzy_provenance_casts)]
 
 use crate::ffi::CStr;
 use crate::io;
