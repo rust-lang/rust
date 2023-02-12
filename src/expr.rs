@@ -576,6 +576,17 @@ fn rewrite_block(
     context: &RewriteContext<'_>,
     shape: Shape,
 ) -> Option<String> {
+    rewrite_block_inner(block, attrs, label, true, context, shape)
+}
+
+fn rewrite_block_inner(
+    block: &ast::Block,
+    attrs: Option<&[ast::Attribute]>,
+    label: Option<ast::Label>,
+    allow_single_line: bool,
+    context: &RewriteContext<'_>,
+    shape: Shape,
+) -> Option<String> {
     let prefix = block_prefix(context, block, shape)?;
 
     // shape.width is used only for the single line case: either the empty block `{}`,
@@ -586,7 +597,7 @@ fn rewrite_block(
 
     let result = rewrite_block_with_visitor(context, &prefix, block, attrs, label, shape, true);
     if let Some(ref result_str) = result {
-        if result_str.lines().count() <= 3 {
+        if allow_single_line && result_str.lines().count() <= 3 {
             if let rw @ Some(_) =
                 rewrite_single_line_block(context, &prefix, block, attrs, label, shape)
             {
