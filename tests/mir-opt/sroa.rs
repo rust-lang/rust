@@ -68,8 +68,13 @@ fn f(a: *const u32) {
     println!("{}", unsafe { *a.add(2) });
 }
 
+// `f` uses the `&e.a` to access `e.c`. This is UB according to Miri today; however,
+// T-opsem has not finalized that decision and as such rustc should not rely on
+// it. If SROA were to rely on it, it would be (almost) correct to turn `e` into
+// three distinct locals - one for each field - and pass a reference to only one
+// of them to `f`. However, this would lead to a miscompilation because `b` and `c`
+// might no longer appear right after `a` in memory.
 pub fn escaping() {
-    // Verify this struct is not flattened.
     f(&Escaping { a: 1, b: 2, c: g() }.a);
 }
 

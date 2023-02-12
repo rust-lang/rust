@@ -1,3 +1,13 @@
+// This attempts to mutate `a` via a pointer derived from `addr_of!(a)`. That is UB
+// according to Miri. However, the decision to make this UB - and to allow
+// rustc to rely on that fact for the purpose of optimizations - has not been
+// finalized.
+//
+// As such, we include this test to ensure that copy prop does not rely on that
+// fact. Specifically, if `addr_of!(a)` could not be used to modify a, it would
+// be correct for CopyProp to replace all occurrences of `a` with `c` - but that
+// would cause `f(true)` to output `false` instead of `true`.
+
 #![feature(custom_mir, core_intrinsics)]
 #![allow(unused_assignments)]
 extern crate core;
