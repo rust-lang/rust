@@ -123,15 +123,12 @@ public:
       if (tutils->hasDynamicTraceInterface())
         args.push_back(tutils->getDynamicTraceInterface());
 
-      Function *samplefn = Logic.CreateTrace(
-          call.getCalledFunction(), tutils->generativeFunctions, tutils->mode,
-          tutils->hasDynamicTraceInterface());
+      Function *called = getFunctionFromCall(&call);
+      assert(called);
 
-#if LLVM_VERSION_MAJOR >= 11
-      Value *called = call.getCalledOperand();
-#else
-      Value *called = call.getCalledValue();
-#endif
+      Function *samplefn =
+          Logic.CreateTrace(called, tutils->generativeFunctions, tutils->mode,
+                            tutils->hasDynamicTraceInterface());
 
       Instruction *tracecall;
       switch (mode) {
