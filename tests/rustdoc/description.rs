@@ -22,3 +22,9 @@ pub mod foo_mod {
 //   'Only paragraph.'
 /// Only paragraph.
 pub fn foo_fn() {}
+
+// @has 'foo/fn.bar_fn.html' '//meta[@name="description"]/@content' \
+//   'Description with intra-doc link to foo_fn and [nonexistent_item] and foo_fn.'
+#[allow(rustdoc::broken_intra_doc_links)]
+/// Description with intra-doc link to [foo_fn] and [nonexistent_item] and [foo_fn](self::foo_fn).
+pub fn bar_fn() {}

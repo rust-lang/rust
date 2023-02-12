@@ -1176,14 +1176,23 @@ pub(crate) fn short_markdown_summary(markdown: &str, link_names: &[RenderedLink]
 /// - Headings, links, and formatting are stripped.
 /// - Inline code is rendered as-is, surrounded by backticks.
 /// - HTML and code blocks are ignored.
-pub(crate) fn plain_text_summary(md: &str) -> String {
+pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> String {
     if md.is_empty() {
         return String::new();
     }
 
     let mut s = String::with_capacity(md.len() * 3 / 2);
 
-    for event in Parser::new_ext(md, summary_opts()) {
+    let mut replacer = |broken_link: BrokenLink<'_>| {
+        link_names
+            .iter()
+            .find(|link| link.original_text.as_str() == &*broken_link.reference)
+            .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
+    };
+
+    let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
+
+    for event in p {
         match &event {
             Event::Text(text) => s.push_str(text),
             Event::Code(code) => {
