@@ -42,13 +42,13 @@ fn fire() {
     loop {
         // More complex pattern for the identity arm and diverging arm
         let v = match h() {
-            (Some(_), Some(_)) | (None, None) => continue,
             (Some(v), None) | (None, Some(v)) => v,
+            (Some(_), Some(_)) | (None, None) => continue,
         };
         // Custom enums are supported as long as the "else" arm is a simple _
         let v = match build_enum() {
-            _ => continue,
             Variant::Bar(v) | Variant::Baz(v) => v,
+            _ => continue,
         };
     }
 
@@ -69,6 +69,12 @@ fn fire() {
 
     let _value = match f {
         Variant::Bar(_) | Variant::Baz(_) => (),
+        _ => return,
+    };
+
+    let data = [1_u8, 2, 3, 4, 0, 0, 0, 0];
+    let data = match data.as_slice() {
+        [data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0] => data,
         _ => return,
     };
 }
@@ -124,5 +130,24 @@ fn not_fire() {
     let v = match Err(build_enum()) {
         Ok(v) | Err(Variant::Bar(v) | Variant::Baz(v)) => v,
         Err(Variant::Foo) => return,
+    };
+
+    // Issue 10241
+    // The non-divergent arm arrives in second position and
+    // may cover values already matched in the first arm.
+    let v = match h() {
+        (Some(_), Some(_)) | (None, None) => return,
+        (Some(v), _) | (None, Some(v)) => v,
+    };
+
+    let v = match build_enum() {
+        _ => return,
+        Variant::Bar(v) | Variant::Baz(v) => v,
+    };
+
+    let data = [1_u8, 2, 3, 4, 0, 0, 0, 0];
+    let data = match data.as_slice() {
+        [] | [0, 0] => return,
+        [data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ ..] => data,
     };
 }
