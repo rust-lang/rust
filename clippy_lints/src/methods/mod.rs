@@ -3316,6 +3316,7 @@ impl_lint_pass!(Methods => [
     SEEK_FROM_CURRENT,
     SEEK_TO_START_INSTEAD_OF_REWIND,
     NEEDLESS_COLLECT,
+    SUSPICIOUS_COMMAND_ARG_SPACE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
