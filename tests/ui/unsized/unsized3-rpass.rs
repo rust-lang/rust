@@ -59,7 +59,7 @@ pub fn main() {
         }
 
         let data: Box<Foo_<i32>> = Box::new(Foo_ { f: [1, 2, 3] });
-        let x: &Foo<i32> = mem::transmute(slice::from_raw_parts(&*data, 3));
+        let x: &Foo<i32> = mem::transmute(ptr::slice_from_raw_parts(&*data, 3));
         assert_eq!(x.f.len(), 3);
         assert_eq!(x.f[0], 1);
 
@@ -70,7 +70,7 @@ pub fn main() {
 
         let data: Box<_> =
             Box::new(Baz_ { f1: 42, f2: ['a' as u8, 'b' as u8, 'c' as u8, 'd' as u8, 'e' as u8] });
-        let x: &Baz = mem::transmute(slice::from_raw_parts(&*data, 5));
+        let x: &Baz = mem::transmute(ptr::slice_from_raw_parts(&*data, 5));
         assert_eq!(x.f1, 42);
         let chs: Vec<char> = x.f2.chars().collect();
         assert_eq!(chs.len(), 5);
