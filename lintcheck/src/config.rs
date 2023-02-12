@@ -35,7 +35,7 @@ fn get_clap_config() -> ArgMatches {
                 .long("markdown")
                 .help("Change the reports table to use markdown links"),
             Arg::new("recursive")
-                .long("--recursive")
+                .long("recursive")
                 .help("Run clippy on the dependencies of crates specified in crates-toml")
                 .conflicts_with("threads")
                 .conflicts_with("fix"),
