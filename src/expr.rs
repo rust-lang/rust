@@ -1004,6 +1004,46 @@ impl<'a> ControlFlow<'a> {
     }
 }
 
+/// Rewrite the `else` keyword with surrounding comments.
+///
+/// is_last: true if this is an `else` and `false` if this is an `else if` block.
+/// context: rewrite context
+/// span: Span between the end of the last expression and the start of the else block,
+///       which contains the `else` keyword
+/// shape: Shape
+pub(crate) fn rewrite_else_kw_with_comments(
+    is_last: bool,
+    context: &RewriteContext<'_>,
+    span: Span,
+    shape: Shape,
+) -> String {
+    let else_kw_lo = context.snippet_provider.span_before(span, "else");
+    let before_else_kw = mk_sp(span.lo(), else_kw_lo);
+    let before_else_kw_comment = extract_comment(before_else_kw, context, shape);
+
+    let else_kw_hi = context.snippet_provider.span_after(span, "else");
+    let after_else_kw = mk_sp(else_kw_hi, span.hi());
+    let after_else_kw_comment = extract_comment(after_else_kw, context, shape);
+
+    let newline_sep = &shape.indent.to_string_with_newline(context.config);
+    let before_sep = match context.config.control_brace_style() {
+        ControlBraceStyle::AlwaysNextLine | ControlBraceStyle::ClosingNextLine => {
+            newline_sep.as_ref()
+        }
+        ControlBraceStyle::AlwaysSameLine => " ",
+    };
+    let after_sep = match context.config.control_brace_style() {
+        ControlBraceStyle::AlwaysNextLine if is_last => newline_sep.as_ref(),
+        _ => " ",
+    };
+
+    format!(
+        "{}else{}",
+        before_else_kw_comment.as_ref().map_or(before_sep, |s| &**s),
+        after_else_kw_comment.as_ref().map_or(after_sep, |s| &**s),
+    )
+}
+
 impl<'a> Rewrite for ControlFlow<'a> {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         debug!("ControlFlow::rewrite {:?} {:?}", self, shape);
@@ -1070,41 +1110,13 @@ impl<'a> Rewrite for ControlFlow<'a> {
                 }
             };
 
-            let between_kwd_else_block = mk_sp(
-                self.block.span.hi(),
-                context
-                    .snippet_provider
-                    .span_before(mk_sp(self.block.span.hi(), else_block.span.lo()), "else"),
+            let else_kw = rewrite_else_kw_with_comments(
+                last_in_chain,
+                context,
+                self.block.span.between(else_block.span),
+                shape,
             );
-            let between_kwd_else_block_comment =
-                extract_comment(between_kwd_else_block, context, shape);
-
-            let after_else = mk_sp(
-                context
-                    .snippet_provider
-                    .span_after(mk_sp(self.block.span.hi(), else_block.span.lo()), "else"),
-                else_block.span.lo(),
-            );
-            let after_else_comment = extract_comment(after_else, context, shape);
-
-            let between_sep = match context.config.control_brace_style() {
-                ControlBraceStyle::AlwaysNextLine | ControlBraceStyle::ClosingNextLine => {
-                    &*alt_block_sep
-                }
-                ControlBraceStyle::AlwaysSameLine => " ",
-            };
-            let after_sep = match context.config.control_brace_style() {
-                ControlBraceStyle::AlwaysNextLine if last_in_chain => &*alt_block_sep,
-                _ => " ",
-            };
-
-            result.push_str(&format!(
-                "{}else{}",
-                between_kwd_else_block_comment
-                    .as_ref()
-                    .map_or(between_sep, |s| &**s),
-                after_else_comment.as_ref().map_or(after_sep, |s| &**s),
-            ));
+            result.push_str(&else_kw);
             result.push_str(&rewrite?);
         }
 
