@@ -34,6 +34,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::infer::canonical::OriginalQueryValues;
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
@@ -172,7 +173,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 (relation.param_env(), a.ty(), b.ty()),
                 &mut OriginalQueryValues::default(),
             );
-            if let Err(()) = self.tcx.check_const_param_definitely_unequal(canonical) {
+
+            if let Err(NoSolution) = self.tcx.check_tys_might_be_eq(canonical) {
                 self.tcx.sess.delay_span_bug(
                     DUMMY_SP,
                     &format!("cannot relate consts of different types (a={:?}, b={:?})", a, b,),

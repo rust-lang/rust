@@ -6,6 +6,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
+use rustc_infer::traits::query::NoSolution;
 use rustc_infer::{infer::outlives::env::OutlivesEnvironment, traits::FulfillmentError};
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeVisitable};
 use rustc_span::DUMMY_SP;
@@ -134,10 +135,10 @@ pub fn type_allowed_to_implement_copy<'tcx>(
     Ok(())
 }
 
-pub fn check_const_param_definitely_unequal<'tcx>(
+pub fn check_tys_might_be_eq<'tcx>(
     tcx: TyCtxt<'tcx>,
     canonical: Canonical<'tcx, (ParamEnv<'tcx>, Ty<'tcx>, Ty<'tcx>)>,
-) -> Result<(), ()> {
+) -> Result<(), NoSolution> {
     let (infcx, (param_env, ty_a, ty_b), _) =
         tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &canonical);
     let ocx = ObligationCtxt::new(&infcx);
@@ -147,5 +148,5 @@ pub fn check_const_param_definitely_unequal<'tcx>(
     // we don't get errors from obligations being ambiguous.
     let errors = ocx.select_where_possible();
 
-    if errors.len() > 0 || result.is_err() { Err(()) } else { Ok(()) }
+    if errors.len() > 0 || result.is_err() { Err(NoSolution) } else { Ok(()) }
 }
