@@ -858,6 +858,7 @@ impl CrateInfo {
             dependency_formats: tcx.dependency_formats(()).clone(),
             windows_subsystem,
             natvis_debugger_visualizers: Default::default(),
+            feature_packed_bundled_libs: tcx.features().packed_bundled_libs,
         };
         let crates = tcx.crates(());
 
