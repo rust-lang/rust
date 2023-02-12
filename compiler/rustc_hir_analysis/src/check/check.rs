@@ -530,46 +530,33 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
         }
         DefKind::Fn => {} // entirely within check_item_body
         DefKind::Impl { of_trait } => {
-            if of_trait {
-                let it = tcx.hir().item(id);
-                let hir::ItemKind::Impl(impl_) = it.kind else { return };
-                debug!("ItemKind::Impl {} with id {:?}", it.ident, it.owner_id);
-                if let Some(impl_trait_ref) = tcx.impl_trait_ref(it.owner_id) {
-                    check_impl_items_against_trait(
-                        tcx,
-                        it.span,
-                        it.owner_id.def_id,
-                        impl_trait_ref.subst_identity(),
-                        &impl_.items,
-                    );
-                    check_on_unimplemented(tcx, it);
-                }
+            if of_trait && let Some(impl_trait_ref) = tcx.impl_trait_ref(id.owner_id) {
+                check_impl_items_against_trait(
+                    tcx,
+                    id.owner_id.def_id,
+                    impl_trait_ref.subst_identity(),
+                );
+                check_on_unimplemented(tcx, id);
             }
         }
         DefKind::Trait => {
-            let it = tcx.hir().item(id);
-            let hir::ItemKind::Trait(_, _, _, _, items) = it.kind else {
-                return;
-            };
-            check_on_unimplemented(tcx, it);
+            let assoc_items = tcx.associated_items(id.owner_id);
+            check_on_unimplemented(tcx, id);
 
-            for item in items.iter() {
-                let item = tcx.hir().trait_item(item.id);
-                match &item.kind {
-                    hir::TraitItemKind::Fn(sig, _) => {
-                        let abi = sig.header.abi;
-                        fn_maybe_err(tcx, item.ident.span, abi);
+            for assoc_item in assoc_items.in_definition_order() {
+                match assoc_item.kind {
+                    ty::AssocKind::Fn => {
+                        let abi = tcx.fn_sig(assoc_item.def_id).skip_binder().abi();
+                        fn_maybe_err(tcx, assoc_item.ident(tcx).span, abi);
                     }
-                    hir::TraitItemKind::Type(.., Some(default)) => {
-                        let assoc_item = tcx.associated_item(item.owner_id);
+                    ty::AssocKind::Type if assoc_item.defaultness(tcx).has_value() => {
                         let trait_substs =
-                            InternalSubsts::identity_for_item(tcx, it.owner_id.to_def_id());
+                            InternalSubsts::identity_for_item(tcx, id.owner_id.to_def_id());
                         let _: Result<_, rustc_errors::ErrorGuaranteed> = check_type_bounds(
                             tcx,
                             assoc_item,
                             assoc_item,
-                            default.span,
-                            tcx.mk_trait_ref(it.owner_id.to_def_id(), trait_substs),
+                            tcx.mk_trait_ref(id.owner_id.to_def_id(), trait_substs),
                         );
                     }
                     _ => {}
@@ -681,7 +668,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
     }
 }
 
-pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
+pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, item: hir::ItemId) {
     // an error would be reported if this fails.
     let _ = OnUnimplementedDirective::of_item(tcx, item.owner_id.to_def_id());
 }
@@ -691,7 +678,7 @@ pub(super) fn check_specialization_validity<'tcx>(
     trait_def: &ty::TraitDef,
     trait_item: &ty::AssocItem,
     impl_id: DefId,
-    impl_item: &hir::ImplItemRef,
+    impl_item: DefId,
 ) {
     let Ok(ancestors) = trait_def.ancestors(tcx, impl_id) else { return };
     let mut ancestor_impls = ancestors.skip(1).filter_map(|parent| {
@@ -737,10 +724,8 @@ pub(super) fn check_specialization_validity<'tcx>(
 
 fn check_impl_items_against_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
-    full_impl_span: Span,
     impl_id: LocalDefId,
     impl_trait_ref: ty::TraitRef<'tcx>,
-    impl_item_refs: &[hir::ImplItemRef],
 ) {
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
@@ -749,12 +734,14 @@ fn check_impl_items_against_trait<'tcx>(
         return;
     }
 
+    let impl_item_refs = tcx.associated_item_def_ids(impl_id);
+
     // Negative impls are not expected to have any items
     match tcx.impl_polarity(impl_id) {
         ty::ImplPolarity::Reservation | ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {
             if let [first_item_ref, ..] = impl_item_refs {
-                let first_item_span = tcx.hir().impl_item(first_item_ref.id).span;
+                let first_item_span = tcx.def_span(first_item_ref);
                 struct_span_err!(
                     tcx.sess,
                     first_item_span,
@@ -769,43 +756,27 @@ fn check_impl_items_against_trait<'tcx>(
 
     let trait_def = tcx.trait_def(impl_trait_ref.def_id);
 
-    for impl_item in impl_item_refs {
-        let ty_impl_item = tcx.associated_item(impl_item.id.owner_id);
+    for &impl_item in impl_item_refs {
+        let ty_impl_item = tcx.associated_item(impl_item);
         let ty_trait_item = if let Some(trait_item_id) = ty_impl_item.trait_item_def_id {
             tcx.associated_item(trait_item_id)
         } else {
             // Checked in `associated_item`.
-            tcx.sess.delay_span_bug(impl_item.span, "missing associated item in trait");
+            tcx.sess.delay_span_bug(tcx.def_span(impl_item), "missing associated item in trait");
             continue;
         };
-        let impl_item_full = tcx.hir().impl_item(impl_item.id);
-        match impl_item_full.kind {
-            hir::ImplItemKind::Const(..) => {
+        match ty_impl_item.kind {
+            ty::AssocKind::Const => {
                 let _ = tcx.compare_impl_const((
-                    impl_item.id.owner_id.def_id,
+                    impl_item.expect_local(),
                     ty_impl_item.trait_item_def_id.unwrap(),
                 ));
             }
-            hir::ImplItemKind::Fn(..) => {
-                let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
-                compare_impl_method(
-                    tcx,
-                    &ty_impl_item,
-                    &ty_trait_item,
-                    impl_trait_ref,
-                    opt_trait_span,
-                );
+            ty::AssocKind::Fn => {
+                compare_impl_method(tcx, &ty_impl_item, &ty_trait_item, impl_trait_ref);
             }
-            hir::ImplItemKind::Type(impl_ty) => {
-                let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
-                compare_impl_ty(
-                    tcx,
-                    &ty_impl_item,
-                    impl_ty.span,
-                    &ty_trait_item,
-                    impl_trait_ref,
-                    opt_trait_span,
-                );
+            ty::AssocKind::Type => {
+                compare_impl_ty(tcx, &ty_impl_item, &ty_trait_item, impl_trait_ref);
             }
         }
 
@@ -840,6 +811,8 @@ fn check_impl_items_against_trait<'tcx>(
                 .map_or(false, |node_item| !node_item.defining_node.is_from_trait());
 
             if !is_implemented_here {
+                let full_impl_span =
+                    tcx.hir().span_with_body(tcx.hir().local_def_id_to_hir_id(impl_id));
                 match tcx.eval_default_body_stability(trait_item_id, full_impl_span) {
                     EvalResult::Deny { feature, reason, issue, .. } => default_body_is_unstable(
                         tcx,
@@ -866,6 +839,8 @@ fn check_impl_items_against_trait<'tcx>(
         }
 
         if !missing_items.is_empty() {
+            let full_impl_span =
+                tcx.hir().span_with_body(tcx.hir().local_def_id_to_hir_id(impl_id));
             missing_items_err(tcx, tcx.def_span(impl_id), &missing_items, full_impl_span);
         }
 
