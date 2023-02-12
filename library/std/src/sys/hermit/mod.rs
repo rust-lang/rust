@@ -72,11 +72,6 @@ pub fn unsupported_err() -> crate::io::Error {
     )
 }
 
-#[no_mangle]
-pub extern "C" fn floor(x: f64) -> f64 {
-    unsafe { intrinsics::floorf64(x) }
-}
-
 pub fn abort_internal() -> ! {
     unsafe {
         abi::abort();
