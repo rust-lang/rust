@@ -152,14 +152,33 @@ LL | |                 vec![s.to_string()]
 LL | |             }
    | |_____________^ help: try: `s.find('.').map_or_else(|| vec![s.to_string()], |idx| vec![s[..idx].to_string(), s[idx..].to_string()])`
 
+error: use Option::map_or_else instead of an if let/else
+  --> $DIR/option_if_let_else.rs:120:5
+   |
+LL | /     if let Ok(binding) = variable {
+LL | |         println!("Ok {binding}");
+LL | |     } else {
+LL | |         println!("Err");
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     variable.map_or_else(|_| {
+LL +         println!("Err");
+LL +     }, |binding| {
+LL +         println!("Ok {binding}");
+LL +     })
+   |
+
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:133:13
+  --> $DIR/option_if_let_else.rs:142:13
    |
 LL |     let _ = if let Some(x) = optional { x + 2 } else { 5 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `optional.map_or(5, |x| x + 2)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:142:13
+  --> $DIR/option_if_let_else.rs:152:13
    |
 LL |       let _ = if let Some(x) = Some(0) {
    |  _____________^
@@ -181,13 +200,13 @@ LL ~         });
    |
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:170:13
+  --> $DIR/option_if_let_else.rs:180:13
    |
 LL |     let _ = if let Some(x) = Some(0) { s.len() + x } else { s.len() };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(0).map_or(s.len(), |x| s.len() + x)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:174:13
+  --> $DIR/option_if_let_else.rs:184:13
    |
 LL |       let _ = if let Some(x) = Some(0) {
    |  _____________^
@@ -207,7 +226,7 @@ LL ~     });
    |
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:213:13
+  --> $DIR/option_if_let_else.rs:223:13
    |
 LL |       let _ = match s {
    |  _____________^
@@ -217,7 +236,7 @@ LL | |     };
    | |_____^ help: try: `s.map_or(1, |string| string.len())`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:217:13
+  --> $DIR/option_if_let_else.rs:227:13
    |
 LL |       let _ = match Some(10) {
    |  _____________^
@@ -227,7 +246,7 @@ LL | |     };
    | |_____^ help: try: `Some(10).map_or(5, |a| a + 1)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:223:13
+  --> $DIR/option_if_let_else.rs:233:13
    |
 LL |       let _ = match res {
    |  _____________^
@@ -237,7 +256,7 @@ LL | |     };
    | |_____^ help: try: `res.map_or(1, |a| a + 1)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:227:13
+  --> $DIR/option_if_let_else.rs:237:13
    |
 LL |       let _ = match res {
    |  _____________^
@@ -247,10 +266,10 @@ LL | |     };
    | |_____^ help: try: `res.map_or(1, |a| a + 1)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:231:13
+  --> $DIR/option_if_let_else.rs:241:13
    |
 LL |     let _ = if let Ok(a) = res { a + 1 } else { 5 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `res.map_or(5, |a| a + 1)`
 
-error: aborting due to 20 previous errors
+error: aborting due to 21 previous errors
 
