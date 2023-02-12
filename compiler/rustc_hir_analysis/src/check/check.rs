@@ -529,19 +529,21 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
             check_enum(tcx, id.owner_id.def_id);
         }
         DefKind::Fn => {} // entirely within check_item_body
-        DefKind::Impl => {
-            let it = tcx.hir().item(id);
-            let hir::ItemKind::Impl(impl_) = it.kind else { return };
-            debug!("ItemKind::Impl {} with id {:?}", it.ident, it.owner_id);
-            if let Some(impl_trait_ref) = tcx.impl_trait_ref(it.owner_id) {
-                check_impl_items_against_trait(
-                    tcx,
-                    it.span,
-                    it.owner_id.def_id,
-                    impl_trait_ref.subst_identity(),
-                    &impl_.items,
-                );
-                check_on_unimplemented(tcx, it);
+        DefKind::Impl { of_trait } => {
+            if of_trait {
+                let it = tcx.hir().item(id);
+                let hir::ItemKind::Impl(impl_) = it.kind else { return };
+                debug!("ItemKind::Impl {} with id {:?}", it.ident, it.owner_id);
+                if let Some(impl_trait_ref) = tcx.impl_trait_ref(it.owner_id) {
+                    check_impl_items_against_trait(
+                        tcx,
+                        it.span,
+                        it.owner_id.def_id,
+                        impl_trait_ref.subst_identity(),
+                        &impl_.items,
+                    );
+                    check_on_unimplemented(tcx, it);
+                }
             }
         }
         DefKind::Trait => {

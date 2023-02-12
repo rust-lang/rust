@@ -55,7 +55,7 @@ fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let min_specialization = tcx.features().min_specialization;
     let module = tcx.hir_module_items(module_def_id);
     for id in module.items() {
-        if matches!(tcx.def_kind(id.owner_id), DefKind::Impl) {
+        if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. }) {
             enforce_impl_params_are_constrained(tcx, id.owner_id.def_id);
             if min_specialization {
                 check_min_specialization(tcx, id.owner_id.def_id);

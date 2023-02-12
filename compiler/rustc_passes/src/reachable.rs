@@ -320,7 +320,7 @@ fn check_item<'tcx>(
         worklist.push(id.owner_id.def_id);
     }
 
-    if !matches!(tcx.def_kind(id.owner_id), DefKind::Impl) {
+    if !matches!(tcx.def_kind(id.owner_id), DefKind::Impl { of_trait: true }) {
         return;
     }
 

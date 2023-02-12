@@ -1238,7 +1238,7 @@ impl<'v> RootCollector<'_, 'v> {
                     collect_const_value(self.tcx, val, &mut self.output);
                 }
             }
-            DefKind::Impl => {
+            DefKind::Impl { .. } => {
                 if self.mode == MonoItemCollectionMode::Eager {
                     let item = self.tcx.hir().item(id);
                     create_mono_items_for_default_impls(self.tcx, item, self.output);

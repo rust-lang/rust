@@ -116,7 +116,9 @@ pub enum DefKind {
     LifetimeParam,
     /// A use of `global_asm!`.
     GlobalAsm,
-    Impl,
+    Impl {
+        of_trait: bool,
+    },
     Closure,
     Generator,
 }
@@ -155,7 +157,7 @@ impl DefKind {
             DefKind::AnonConst => "constant expression",
             DefKind::InlineConst => "inline constant",
             DefKind::Field => "field",
-            DefKind::Impl => "implementation",
+            DefKind::Impl { .. } => "implementation",
             DefKind::Closure => "closure",
             DefKind::Generator => "generator",
             DefKind::ExternCrate => "extern crate",
@@ -171,7 +173,7 @@ impl DefKind {
             | DefKind::AssocFn
             | DefKind::Enum
             | DefKind::OpaqueTy
-            | DefKind::Impl
+            | DefKind::Impl { .. }
             | DefKind::Use
             | DefKind::InlineConst
             | DefKind::ExternCrate => "an",
@@ -216,7 +218,7 @@ impl DefKind {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
-            | DefKind::Impl
+            | DefKind::Impl { .. }
             | DefKind::ImplTraitPlaceholder => None,
         }
     }
@@ -255,7 +257,7 @@ impl DefKind {
             | DefKind::ForeignMod
             | DefKind::OpaqueTy
             | DefKind::ImplTraitPlaceholder
-            | DefKind::Impl
+            | DefKind::Impl { .. }
             | DefKind::Field
             | DefKind::TyParam
             | DefKind::ConstParam

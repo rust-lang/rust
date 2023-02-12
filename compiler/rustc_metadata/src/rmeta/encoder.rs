@@ -838,7 +838,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::ForeignMod
         | DefKind::OpaqueTy
         | DefKind::ImplTraitPlaceholder
-        | DefKind::Impl
+        | DefKind::Impl { .. }
         | DefKind::Field => true,
         DefKind::TyParam
         | DefKind::ConstParam
@@ -873,7 +873,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::ImplTraitPlaceholder
         | DefKind::Enum
         | DefKind::Union
-        | DefKind::Impl
+        | DefKind::Impl { .. }
         | DefKind::Trait
         | DefKind::TraitAlias
         | DefKind::Macro(..)
@@ -951,7 +951,7 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
         | DefKind::Const
         | DefKind::ForeignMod
         | DefKind::TyAlias
-        | DefKind::Impl
+        | DefKind::Impl { .. }
         | DefKind::Trait
         | DefKind::TraitAlias
         | DefKind::Macro(..)
@@ -988,7 +988,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::InlineConst
         | DefKind::OpaqueTy
         | DefKind::ImplTraitPlaceholder
-        | DefKind::Impl
+        | DefKind::Impl { .. }
         | DefKind::Field
         | DefKind::TyParam
         | DefKind::Closure
@@ -1018,7 +1018,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::TyAlias
         | DefKind::OpaqueTy
         | DefKind::ForeignTy
-        | DefKind::Impl
+        | DefKind::Impl { .. }
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Closure
@@ -1081,7 +1081,7 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::OpaqueTy
         | DefKind::ImplTraitPlaceholder
         | DefKind::ForeignTy
-        | DefKind::Impl
+        | DefKind::Impl { .. }
         | DefKind::AssocFn
         | DefKind::Closure
         | DefKind::Generator
@@ -1860,7 +1860,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             FxHashMap::default();
 
         for id in tcx.hir().items() {
-            if matches!(tcx.def_kind(id.owner_id), DefKind::Impl) {
+            if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. }) {
                 if let Some(trait_ref) = tcx.impl_trait_ref(id.owner_id) {
                     let trait_ref = trait_ref.subst_identity();
 
@@ -2261,7 +2261,7 @@ pub fn provide(providers: &mut Providers) {
 
             let mut trait_impls = Vec::new();
             for id in tcx.hir().items() {
-                if matches!(tcx.def_kind(id.owner_id), DefKind::Impl)
+                if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. })
                     && tcx.impl_trait_ref(id.owner_id).is_some()
                 {
                     trait_impls.push(id.owner_id.to_def_id())

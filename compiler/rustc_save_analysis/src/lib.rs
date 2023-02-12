@@ -733,7 +733,7 @@ impl<'tcx> SaveContext<'tcx> {
                 | HirDefKind::Use
                 | HirDefKind::Field
                 | HirDefKind::GlobalAsm
-                | HirDefKind::Impl
+                | HirDefKind::Impl { .. }
                 | HirDefKind::Closure
                 | HirDefKind::Generator,
                 _,

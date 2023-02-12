@@ -593,7 +593,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::InlineConst
             | DefKind::Field
             | DefKind::GlobalAsm
-            | DefKind::Impl
+            | DefKind::Impl { .. }
             | DefKind::Closure
             | DefKind::Generator => (),
         }
@@ -1997,7 +1997,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
             // Subitems of inherent impls have their own publicity.
             // A trait impl is public when both its type and its trait are public
             // Subitems of trait impls have inherited publicity.
-            DefKind::Impl => {
+            DefKind::Impl { .. } => {
                 let item = tcx.hir().item(id);
                 if let hir::ItemKind::Impl(ref impl_) = item.kind {
                     let impl_vis =
