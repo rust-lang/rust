@@ -142,13 +142,11 @@ function initSearch(rawSearchIndex) {
     }
 
     function itemTypeFromName(typename) {
-        for (let i = 0, len = itemTypes.length; i < len; ++i) {
-            if (itemTypes[i] === typename) {
-                return i;
-            }
+        const index = itemTypes.findIndex(i => i === typename);
+        if (index < 0) {
+            throw new Error("Unknown type filter `" + typename + "`");
         }
-
-        throw new Error("Unknown type filter `" + typename + "`");
+        return index;
     }
 
     /**
