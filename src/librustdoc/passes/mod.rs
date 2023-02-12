@@ -2,7 +2,6 @@
 //! process.
 
 use rustc_middle::ty::TyCtxt;
-use rustc_resolve::rustdoc::DocFragmentKind;
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use std::ops::Range;
 
@@ -118,14 +117,14 @@ pub(crate) fn defaults(show_coverage: bool) -> &'static [ConditionalPass] {
 
 /// Returns a span encompassing all the given attributes.
 pub(crate) fn span_of_attrs(attrs: &clean::Attributes) -> Option<Span> {
-    if attrs.doc_strings.is_empty() {
+    if attrs.big_doc_fragments.is_empty() {
         return None;
     }
-    let start = attrs.doc_strings[0].span;
+    let start = attrs.big_doc_fragments[0].span;
     if start == DUMMY_SP {
         return None;
     }
-    let end = attrs.doc_strings.last().expect("no doc strings provided").span;
+    let end = attrs.big_doc_fragments.last().expect("no doc strings provided").span;
     Some(start.to(end))
 }
 
@@ -140,10 +139,7 @@ pub(crate) fn source_span_for_markdown_range(
     md_range: &Range<usize>,
     attrs: &clean::Attributes,
 ) -> Option<Span> {
-    let is_all_sugared_doc =
-        attrs.doc_strings.iter().all(|frag| frag.kind == DocFragmentKind::SugaredDoc);
-
-    if !is_all_sugared_doc {
+    if !attrs.big_doc_fragments.iter().all(|frag| frag.is_all_sugared_doc) {
         return None;
     }
 

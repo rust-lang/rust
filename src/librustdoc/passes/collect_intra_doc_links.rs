@@ -15,7 +15,7 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::Mutability;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, ty};
-use rustc_resolve::rustdoc::{has_primitive_or_keyword_docs, prepare_to_doc_link_resolution};
+use rustc_resolve::rustdoc::has_primitive_or_keyword_docs;
 use rustc_resolve::rustdoc::{strip_generics_from_path, MalformedGenerics};
 use rustc_session::lint::Lint;
 use rustc_span::hygiene::MacroKind;
@@ -965,14 +965,15 @@ impl LinkCollector<'_, '_> {
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
         // so we know which module it came from.
-        for (item_id, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings) {
+        for frag in &item.attrs.big_doc_fragments {
+            let doc = &frag.doc_combined;
             if !may_have_doc_links(&doc) {
                 continue;
             }
             debug!("combined_docs={}", doc);
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
-            let item_id = item_id.unwrap_or_else(|| item.item_id.expect_def_id());
+            let item_id = frag.item_id.unwrap_or_else(|| item.item_id.expect_def_id());
             let module_id = match self.cx.tcx.def_kind(item_id) {
                 DefKind::Mod if item.inner_docs(self.cx.tcx) => item_id,
                 _ => find_nearest_parent_module(self.cx.tcx, item_id).unwrap(),

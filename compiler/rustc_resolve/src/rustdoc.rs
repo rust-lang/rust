@@ -1,14 +1,14 @@
 use pulldown_cmark::{BrokenLink, Event, LinkType, Options, Parser, Tag};
 use rustc_ast as ast;
 use rustc_ast::util::comments::beautify_doc_string;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use std::{cmp, mem};
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum DocFragmentKind {
+#[derive(PartialEq)]
+enum DocFragmentKind {
     /// A doc fragment created from a `///` or `//!` doc comment.
     SugaredDoc,
     /// A doc fragment created from a "raw" `#[doc=""]` attribute.
@@ -23,9 +23,16 @@ pub enum DocFragmentKind {
 /// Included files are kept separate from inline doc comments so that proper line-number
 /// information can be given when a doctest fails. Sugared doc comments and "raw" doc comments are
 /// kept separate because of issue #42760.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct DocFragment {
-    pub span: Span,
+struct SmallDocFragment {
+    item_id: Option<DefId>,
+    span: Span,
+    doc: Symbol,
+    kind: DocFragmentKind,
+    indent: usize,
+}
+
+#[derive(Clone, Debug)]
+pub struct BigDocFragment {
     /// The item this doc-comment came from.
     /// Used to determine the scope in which doc links in this fragment are resolved.
     /// Typically filled for reexport docs when they are merged into the docs of the
@@ -33,9 +40,9 @@ pub struct DocFragment {
     /// If the id is not filled, which happens for the original reexported item, then
     /// it has to be taken from somewhere else during doc link resolution.
     pub item_id: Option<DefId>,
-    pub doc: Symbol,
-    pub kind: DocFragmentKind,
-    pub indent: usize,
+    pub doc_combined: String,
+    pub is_all_sugared_doc: bool,
+    pub span: Span,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -92,7 +99,7 @@ pub enum MalformedGenerics {
 /// ///    - Bar
 ///
 /// would be parsed as if they were in a code block, which is likely not what the user intended.
-pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
+fn unindent_doc_fragments(docs: &mut [SmallDocFragment]) {
     // `add` is used in case the most common sugared doc syntax is used ("/// "). The other
     // fragments kind's lines are never starting with a whitespace unless they are using some
     // markdown formatting requiring it. Therefore, if the doc block have a mix between the two,
@@ -159,12 +166,12 @@ pub fn unindent_doc_fragments(docs: &mut [DocFragment]) {
     }
 }
 
-/// The goal of this function is to apply the `DocFragment` transformation that is required when
-/// transforming into the final Markdown, which is applying the computed indent to each line in
-/// each doc fragment (a `DocFragment` can contain multiple lines in case of `#[doc = ""]`).
+/// The goal of this function is to apply the `SmallDocFragment` transformation that is required
+/// when transforming into the final Markdown, which is applying the computed indent to each line
+/// in each doc fragment (a `SmallDocFragment` can contain multiple lines in case of `#[doc = ""]`).
 ///
 /// Note: remove the trailing newline where appropriate
-pub fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
+fn add_doc_fragment(out: &mut String, frag: &SmallDocFragment) {
     let s = frag.doc.as_str();
     let mut iter = s.lines();
     if s.is_empty() {
@@ -185,8 +192,8 @@ pub fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
 pub fn attrs_to_doc_fragments<'a>(
     attrs: impl Iterator<Item = (&'a ast::Attribute, Option<DefId>)>,
     doc_only: bool,
-) -> (Vec<DocFragment>, ast::AttrVec) {
-    let mut doc_fragments = Vec::new();
+) -> (Vec<BigDocFragment>, ast::AttrVec) {
+    let mut small_doc_fragments = Vec::new();
     let mut other_attrs = ast::AttrVec::new();
     for (attr, item_id) in attrs {
         if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
@@ -196,32 +203,42 @@ pub fn attrs_to_doc_fragments<'a>(
             } else {
                 DocFragmentKind::RawDoc
             };
-            let fragment = DocFragment { span: attr.span, doc, kind, item_id, indent: 0 };
-            doc_fragments.push(fragment);
+            let fragment = SmallDocFragment { item_id, span: attr.span, doc, kind, indent: 0 };
+            small_doc_fragments.push(fragment);
         } else if !doc_only {
             other_attrs.push(attr.clone());
         }
     }
 
-    unindent_doc_fragments(&mut doc_fragments);
+    // FIXME: Some tests require that docs coming from different places
+    // are all unindented together, we should not do that.
+    unindent_doc_fragments(&mut small_doc_fragments);
 
-    (doc_fragments, other_attrs)
-}
-
-/// Return the doc-comments on this item, grouped by the module they came from.
-/// The module can be different if this is a re-export with added documentation.
-///
-/// The last newline is not trimmed so the produced strings are reusable between
-/// early and late doc link resolution regardless of their position.
-pub fn prepare_to_doc_link_resolution(
-    doc_fragments: &[DocFragment],
-) -> FxHashMap<Option<DefId>, String> {
-    let mut res = FxHashMap::default();
-    for fragment in doc_fragments {
-        let out_str = res.entry(fragment.item_id).or_default();
-        add_doc_fragment(out_str, fragment);
+    let mut grouped_small_doc_fragments: FxIndexMap<_, Vec<_>> = Default::default();
+    for frag in small_doc_fragments {
+        grouped_small_doc_fragments.entry(frag.item_id).or_default().push(frag);
     }
-    res
+
+    let mut big_doc_fragments = Vec::new();
+    for (item_id, small_doc_fragments) in grouped_small_doc_fragments {
+        let mut doc_combined = String::new();
+        let mut is_all_sugared_doc = true;
+        for fragment in &small_doc_fragments {
+            if fragment.kind != DocFragmentKind::SugaredDoc {
+                is_all_sugared_doc = false;
+            }
+            add_doc_fragment(&mut doc_combined, fragment);
+        }
+        let span = |frag: Option<&SmallDocFragment>| frag.map_or(DUMMY_SP, |frag| frag.span);
+        big_doc_fragments.push(BigDocFragment {
+            item_id,
+            doc_combined,
+            is_all_sugared_doc,
+            span: span(small_doc_fragments.first()).to(span(small_doc_fragments.last())),
+        });
+    }
+
+    (big_doc_fragments, other_attrs)
 }
 
 /// Options for rendering Markdown in the main body of documentation.
@@ -389,8 +406,9 @@ pub fn may_be_doc_link(link_type: LinkType) -> bool {
 /// Simplified version of `preprocessed_markdown_links` from rustdoc.
 /// Must return at least the same links as it, but may add some more links on top of that.
 pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<Box<str>> {
-    let (doc_fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
-    let doc = prepare_to_doc_link_resolution(&doc_fragments).into_values().next().unwrap();
+    let (big_doc_fragments, _) =
+        attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
+    let doc = big_doc_fragments.into_iter().next().unwrap().doc_combined;
 
     Parser::new_with_broken_link_callback(
         &doc,

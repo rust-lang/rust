@@ -203,7 +203,7 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
             // doesn't make sense, as all methods on a type are in one single impl block
             clean::ImplItem(_) => {}
             _ => {
-                let has_docs = !i.attrs.doc_strings.is_empty();
+                let has_docs = !i.attrs.big_doc_fragments.is_empty();
                 let mut tests = Tests { found_tests: 0 };
 
                 find_testable_code(

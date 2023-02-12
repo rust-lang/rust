@@ -24,7 +24,7 @@ use rustc_hir_analysis::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_index::IndexVec;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt, Visibility};
-use rustc_resolve::rustdoc::{add_doc_fragment, attrs_to_doc_fragments, inner_docs, DocFragment};
+use rustc_resolve::rustdoc::{attrs_to_doc_fragments, inner_docs, BigDocFragment};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -1068,17 +1068,6 @@ impl<I: Iterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
     }
 }
 
-/// Collapse a collection of [`DocFragment`]s into one string,
-/// handling indentation and newlines as needed.
-pub(crate) fn collapse_doc_fragments(doc_strings: &[DocFragment]) -> String {
-    let mut acc = String::new();
-    for frag in doc_strings {
-        add_doc_fragment(&mut acc, frag);
-    }
-    acc.pop();
-    acc
-}
-
 /// A link that has not yet been rendered.
 ///
 /// This link will be turned into a rendered link by [`Item::links`].
@@ -1116,7 +1105,7 @@ pub struct RenderedLink {
 /// as well as doc comments.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Attributes {
-    pub(crate) doc_strings: Vec<DocFragment>,
+    pub(crate) big_doc_fragments: Vec<BigDocFragment>,
     pub(crate) other_attrs: ast::AttrVec,
 }
 
@@ -1159,33 +1148,23 @@ impl Attributes {
         attrs: impl Iterator<Item = (&'a ast::Attribute, Option<DefId>)>,
         doc_only: bool,
     ) -> Attributes {
-        let (doc_strings, other_attrs) = attrs_to_doc_fragments(attrs, doc_only);
-        Attributes { doc_strings, other_attrs }
+        let (big_doc_fragments, other_attrs) = attrs_to_doc_fragments(attrs, doc_only);
+        Attributes { big_doc_fragments, other_attrs }
     }
 
-    /// Finds the `doc` attribute as a NameValue and returns the corresponding
-    /// value found.
+    /// Same as `collapsed_doc_value`.
     pub(crate) fn doc_value(&self) -> Option<String> {
-        let mut iter = self.doc_strings.iter();
-
-        let ori = iter.next()?;
-        let mut out = String::new();
-        add_doc_fragment(&mut out, ori);
-        for new_frag in iter {
-            add_doc_fragment(&mut out, new_frag);
-        }
-        out.pop();
-        if out.is_empty() { None } else { Some(out) }
+        self.collapsed_doc_value()
     }
 
-    /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
-    /// with newlines.
+    /// Combine all doc strings into a single value.
     pub(crate) fn collapsed_doc_value(&self) -> Option<String> {
-        if self.doc_strings.is_empty() {
-            None
-        } else {
-            Some(collapse_doc_fragments(&self.doc_strings))
+        let mut res = String::new();
+        for frag in &self.big_doc_fragments {
+            res += &frag.doc_combined;
         }
+        res.pop();
+        (!res.is_empty()).then_some(res)
     }
 
     pub(crate) fn get_doc_aliases(&self) -> Box<[Symbol]> {
@@ -1209,18 +1188,18 @@ impl Attributes {
     }
 }
 
-impl PartialEq for Attributes {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.doc_strings == rhs.doc_strings
-            && self
-                .other_attrs
-                .iter()
-                .map(|attr| attr.id)
-                .eq(rhs.other_attrs.iter().map(|attr| attr.id))
-    }
-}
+// impl PartialEq for Attributes {
+//     fn eq(&self, rhs: &Self) -> bool {
+//         self.doc_strings == rhs.doc_strings
+//             && self
+//                 .other_attrs
+//                 .iter()
+//                 .map(|attr| attr.id)
+//                 .eq(rhs.other_attrs.iter().map(|attr| attr.id))
+//     }
+// }
 
-impl Eq for Attributes {}
+// impl Eq for Attributes {}
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericBound {
@@ -2512,7 +2491,6 @@ mod size_asserts {
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(Crate, 64); // frequently moved by-value
-    static_assert_size!(DocFragment, 32);
     static_assert_size!(GenericArg, 32);
     static_assert_size!(GenericArgs, 32);
     static_assert_size!(GenericParamDef, 56);
