@@ -19,7 +19,6 @@ pub(crate) fn run(
     bootstrap_host_compiler: &Compiler,
 ) {
     ABI_CAFE_REPO.fetch(dirs);
-    spawn_and_wait(ABI_CAFE.fetch("cargo", &bootstrap_host_compiler.rustc, dirs));
 
     eprintln!("Building sysroot for abi-cafe");
     build_sysroot::build_sysroot(

@@ -81,8 +81,11 @@ impl CargoProject {
             .arg("--manifest-path")
             .arg(self.manifest_path(dirs))
             .arg("--target-dir")
-            .arg(self.target_dir(dirs))
-            .arg("--frozen");
+            .arg(self.target_dir(dirs));
+
+        if dirs.frozen {
+            cmd.arg("--frozen");
+        }
 
         cmd
     }
@@ -103,23 +106,6 @@ impl CargoProject {
                 compiler.runner.join(" "),
             );
         }
-
-        cmd
-    }
-
-    #[must_use]
-    pub(crate) fn fetch(
-        &self,
-        cargo: impl AsRef<Path>,
-        rustc: impl AsRef<Path>,
-        dirs: &Dirs,
-    ) -> Command {
-        let mut cmd = Command::new(cargo.as_ref());
-
-        cmd.env("RUSTC", rustc.as_ref())
-            .arg("fetch")
-            .arg("--manifest-path")
-            .arg(self.manifest_path(dirs));
 
         cmd
     }

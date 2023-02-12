@@ -78,6 +78,7 @@ pub(crate) fn main() {
     let mut channel = "release";
     let mut sysroot_kind = SysrootKind::Clif;
     let mut use_unstable_features = true;
+    let mut frozen = false;
     while let Some(arg) = args.next().as_deref() {
         match arg {
             "--out-dir" => {
@@ -96,6 +97,7 @@ pub(crate) fn main() {
                 }
             }
             "--no-unstable-features" => use_unstable_features = false,
+            "--frozen" => frozen = true,
             flag if flag.starts_with("-") => arg_error!("Unknown flag {}", flag),
             arg => arg_error!("Unexpected argument {}", arg),
         }
@@ -132,6 +134,7 @@ pub(crate) fn main() {
         download_dir: out_dir.join("download"),
         build_dir: out_dir.join("build"),
         dist_dir: out_dir.join("dist"),
+        frozen,
     };
 
     path::RelPath::BUILD.ensure_exists(&dirs);
