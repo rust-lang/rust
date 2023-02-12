@@ -8,10 +8,10 @@
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_from_proc_macro;
-use hir::def_id::LocalDefId;
 use if_chain::if_chain;
 use rustc_ast::ast::{self, MetaItem, MetaItemKind};
 use rustc_hir as hir;
+use rustc_hir::def_id::LocalDefId;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{DefIdTree, Visibility};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -21,8 +21,7 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Warns if there is missing doc for any documentable item
-    /// (public or private).
+    /// Warns if there is missing doc for any private documentable item
     ///
     /// ### Why is this bad?
     /// Doc is good. *rustc* has a `MISSING_DOCS`
@@ -32,7 +31,7 @@ declare_clippy_lint! {
     #[clippy::version = "pre 1.29.0"]
     pub MISSING_DOCS_IN_PRIVATE_ITEMS,
     restriction,
-    "detects missing documentation for public and private members"
+    "detects missing documentation for private members"
 }
 
 pub struct MissingDoc {
@@ -107,11 +106,14 @@ impl MissingDoc {
             if vis == Visibility::Public || vis != Visibility::Restricted(CRATE_DEF_ID.into()) {
                 return;
             }
+        } else if def_id != CRATE_DEF_ID && cx.effective_visibilities.is_exported(def_id) {
+            return;
         }
 
         let has_doc = attrs
             .iter()
             .any(|a| a.doc_str().is_some() || Self::has_include(a.meta()));
+
         if !has_doc {
             span_lint(
                 cx,
