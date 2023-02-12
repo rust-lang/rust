@@ -2589,7 +2589,7 @@ public:
           if (auto CI = dyn_cast<CallInst>(&Inst)) {
             Function *enzyme_sample = CI->getCalledFunction();
             if (enzyme_sample &&
-                enzyme_sample->getName().startswith("__enzyme_sample")) {
+                enzyme_sample->getName().contains("__enzyme_sample")) {
               if (CI->getNumOperands() < 3) {
                 EmitFailure(
                     "IllegalNumberOfArguments", CI->getDebugLoc(), CI,

@@ -430,7 +430,7 @@ public:
     if (has_dynamic_interface) {
       Function *sample = nullptr;
       for (auto &&interface_func : F->getParent()->functions()) {
-        if (interface_func.getName().startswith("__enzyme_sample")) {
+        if (interface_func.getName().contains("__enzyme_sample")) {
           assert(interface_func.getFunctionType()->getNumParams() >= 3);
           sample = &interface_func;
         }
