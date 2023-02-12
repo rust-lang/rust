@@ -196,6 +196,7 @@ pub(crate) fn main() {
                 &dirs,
                 channel,
                 sysroot_kind,
+                use_unstable_features,
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
                 rustup_toolchain_name.as_deref(),

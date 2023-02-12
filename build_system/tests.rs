@@ -214,6 +214,7 @@ pub(crate) fn run_tests(
     dirs: &Dirs,
     channel: &str,
     sysroot_kind: SysrootKind,
+    use_unstable_features: bool,
     cg_clif_dylib: &CodegenBackend,
     bootstrap_host_compiler: &Compiler,
     rustup_toolchain_name: Option<&str>,
@@ -233,6 +234,7 @@ pub(crate) fn run_tests(
         let runner = TestRunner::new(
             dirs.clone(),
             target_compiler,
+            use_unstable_features,
             bootstrap_host_compiler.triple == target_triple,
         );
 
@@ -262,6 +264,7 @@ pub(crate) fn run_tests(
         let runner = TestRunner::new(
             dirs.clone(),
             target_compiler,
+            use_unstable_features,
             bootstrap_host_compiler.triple == target_triple,
         );
 
@@ -282,12 +285,18 @@ pub(crate) fn run_tests(
 struct TestRunner {
     is_native: bool,
     jit_supported: bool,
+    use_unstable_features: bool,
     dirs: Dirs,
     target_compiler: Compiler,
 }
 
 impl TestRunner {
-    fn new(dirs: Dirs, mut target_compiler: Compiler, is_native: bool) -> Self {
+    fn new(
+        dirs: Dirs,
+        mut target_compiler: Compiler,
+        use_unstable_features: bool,
+        is_native: bool,
+    ) -> Self {
         if let Ok(rustflags) = env::var("RUSTFLAGS") {
             target_compiler.rustflags.push(' ');
             target_compiler.rustflags.push_str(&rustflags);
@@ -302,11 +311,12 @@ impl TestRunner {
             target_compiler.rustflags.push_str(" -Clink-arg=-undefined -Clink-arg=dynamic_lookup");
         }
 
-        let jit_supported = is_native
+        let jit_supported = use_unstable_features
+            && is_native
             && target_compiler.triple.contains("x86_64")
             && !target_compiler.triple.contains("windows");
 
-        Self { is_native, jit_supported, dirs, target_compiler }
+        Self { is_native, jit_supported, use_unstable_features, dirs, target_compiler }
     }
 
     fn run_testsuite(&self, tests: &[TestCase]) {
@@ -325,10 +335,24 @@ impl TestRunner {
             match *cmd {
                 TestCaseCmd::Custom { func } => func(self),
                 TestCaseCmd::BuildLib { source, crate_types } => {
-                    self.run_rustc([source, "--crate-type", crate_types]);
+                    if self.use_unstable_features {
+                        self.run_rustc([source, "--crate-type", crate_types]);
+                    } else {
+                        self.run_rustc([
+                            source,
+                            "--crate-type",
+                            crate_types,
+                            "--cfg",
+                            "no_unstable_features",
+                        ]);
+                    }
                 }
                 TestCaseCmd::BuildBinAndRun { source, args } => {
-                    self.run_rustc([source]);
+                    if self.use_unstable_features {
+                        self.run_rustc([source]);
+                    } else {
+                        self.run_rustc([source, "--cfg", "no_unstable_features"]);
+                    }
                     self.run_out_command(
                         source.split('/').last().unwrap().split('.').next().unwrap(),
                         args,
