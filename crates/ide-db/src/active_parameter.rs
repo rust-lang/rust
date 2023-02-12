@@ -2,10 +2,10 @@
 
 use either::Either;
 use hir::{Semantics, Type};
+use parser::T;
 use syntax::{
-    algo::non_trivia_sibling,
     ast::{self, HasArgList, HasName},
-    AstNode, Direction, SyntaxToken, TextRange,
+    AstNode, NodeOrToken, SyntaxToken,
 };
 
 use crate::RootDatabase;
@@ -59,7 +59,7 @@ pub fn callable_for_node(
     calling_node: &ast::CallableExpr,
     token: &SyntaxToken,
 ) -> Option<(hir::Callable, Option<usize>)> {
-    let callable = match &calling_node {
+    let callable = match calling_node {
         ast::CallableExpr::Call(call) => {
             let expr = call.expr()?;
             sema.type_of_expr(&expr)?.adjusted().as_callable(sema.db)
@@ -67,24 +67,15 @@ pub fn callable_for_node(
         ast::CallableExpr::MethodCall(call) => sema.resolve_method_call_as_callable(call),
     }?;
     let active_param = if let Some(arg_list) = calling_node.arg_list() {
-        let account_for_ws = |arg: &ast::Expr| {
-            let node = arg.syntax().clone();
-            let left = non_trivia_sibling(node.clone().into(), Direction::Prev)
-                .and_then(|it| it.into_token())?
-                .text_range();
-            let right = non_trivia_sibling(node.into(), Direction::Next)
-                .and_then(|it| it.into_token())?
-                .text_range();
-            Some(TextRange::new(left.end(), right.start()))
-        };
-        arg_list
-            .args()
-            .position(|arg| {
-                account_for_ws(&arg)
-                    .unwrap_or(arg.syntax().text_range())
-                    .contains(token.text_range().start())
-            })
-            .or(Some(0))
+        Some(
+            arg_list
+                .syntax()
+                .children_with_tokens()
+                .filter_map(NodeOrToken::into_token)
+                .filter(|t| t.kind() == T![,])
+                .take_while(|t| t.text_range().start() <= token.text_range().start())
+                .count(),
+        )
     } else {
         None
     };

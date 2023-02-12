@@ -12,7 +12,7 @@ use stdx::format_to;
 use syntax::{
     algo,
     ast::{self, HasArgList},
-    match_ast, AstNode, Direction, SyntaxKind, SyntaxToken, TextRange, TextSize,
+    match_ast, AstNode, Direction, SyntaxToken, TextRange, TextSize,
 };
 
 use crate::RootDatabase;
@@ -105,10 +105,10 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
         // Stop at multi-line expressions, since the signature of the outer call is not very
         // helpful inside them.
         if let Some(expr) = ast::Expr::cast(node.clone()) {
-            if expr.syntax().text().contains_char('\n')
-                && expr.syntax().kind() != SyntaxKind::RECORD_EXPR
+            if !matches!(expr, ast::Expr::RecordExpr(..))
+                && expr.syntax().text().contains_char('\n')
             {
-                return None;
+                break;
             }
         }
     }
@@ -122,18 +122,16 @@ fn signature_help_for_call(
     token: SyntaxToken,
 ) -> Option<SignatureHelp> {
     // Find the calling expression and its NameRef
-    let mut node = arg_list.syntax().parent()?;
+    let mut nodes = arg_list.syntax().ancestors().skip(1);
     let calling_node = loop {
-        if let Some(callable) = ast::CallableExpr::cast(node.clone()) {
-            if callable
+        if let Some(callable) = ast::CallableExpr::cast(nodes.next()?) {
+            let inside_callable = callable
                 .arg_list()
-                .map_or(false, |it| it.syntax().text_range().contains(token.text_range().start()))
-            {
+                .map_or(false, |it| it.syntax().text_range().contains(token.text_range().start()));
+            if inside_callable {
                 break callable;
             }
         }
-
-        node = node.parent()?;
     };
 
     let (callable, active_parameter) = callable_for_node(sema, &calling_node, &token)?;
@@ -1591,6 +1589,29 @@ impl S {
             expect![[r#"
                 struct S { t: u8 }
                            ^^^^^
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_enum_in_nested_method_in_lambda() {
+        check(
+            r#"
+enum A {
+    A,
+    B
+}
+
+fn bar(_: A) { }
+
+fn main() {
+    let foo = Foo;
+    std::thread::spawn(move || { bar(A:$0) } );
+}
+"#,
+            expect![[r#"
+                fn bar(_: A)
+                       ^^^^
             "#]],
         );
     }
