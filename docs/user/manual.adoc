@@ -768,14 +768,18 @@ See https://github.com/rust-analyzer/rust-project.json-example for a small examp
 
 You can set the `RA_LOG` environment variable to `rust_analyzer=info` to inspect how rust-analyzer handles config and project loading.
 
-Note that calls to `cargo check` are disabled when using `rust-project.json` by default, so compilation errors and warnings will no longer be sent to your LSP client. To enable these compilation errors you will need to specify explicitly what command rust-analyzer should run to perform the checks using the `checkOnSave.overrideCommand` configuration. As an example, the following configuration explicitly sets `cargo check` as the `checkOnSave` command.
+Note that calls to `cargo check` are disabled when using `rust-project.json` by default, so compilation errors and warnings will no longer be sent to your LSP client.
+To enable these compilation errors you will need to specify explicitly what command rust-analyzer should run to perform the checks using the `rust-analyzer.check.overrideCommand` configuration.
+As an example, the following configuration explicitly sets `cargo check` as the `check` command.
 
 [source,json]
 ----
-{ "rust-analyzer.checkOnSave.overrideCommand": ["cargo", "check", "--message-format=json"] }
+{ "rust-analyzer.check.overrideCommand": ["cargo", "check", "--message-format=json"] }
 ----
 
-The `checkOnSave.overrideCommand` requires the command specified to output json error messages for rust-analyzer to consume. The `--message-format=json` flag does this for `cargo check` so whichever command you use must also output errors in this format. See the <<Configuration>> section for more information.
+`check.overrideCommand` requires the command specified to output json error messages for rust-analyzer to consume.
+The `--message-format=json` flag does this for `cargo check` so whichever command you use must also output errors in this format.
+See the <<Configuration>> section for more information.
 
 == Security
 
@@ -952,7 +956,7 @@ Also note that a full runnable name is something like *run bin_or_example_name*,
 
 Instead of relying on the built-in `cargo check`, you can configure Code to run a command in the background and use the `$rustc-watch` problem matcher to generate inline error markers from its output.
 
-To do this you need to create a new https://code.visualstudio.com/docs/editor/tasks[VS Code Task] and set `rust-analyzer.checkOnSave.enable: false` in preferences.
+To do this you need to create a new https://code.visualstudio.com/docs/editor/tasks[VS Code Task] and set `"rust-analyzer.checkOnSave": false` in preferences.
 
 For example, if you want to run https://crates.io/crates/cargo-watch[`cargo watch`] instead, you might add the following to `.vscode/tasks.json`:
 
