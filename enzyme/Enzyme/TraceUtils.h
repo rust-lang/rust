@@ -489,36 +489,35 @@ public:
 
   CallInst *InsertChoice(IRBuilder<> &Builder, Value *address, Value *score,
                          Value *choice) {
-    auto size = choice->getType()->getPrimitiveSizeInBits() / 8;
     Type *size_type = interface->getChoiceTy()->getParamType(3);
-
-    auto M = interface->getSampleFunction()->getParent();
-    auto &DL = M->getDataLayout();
-    auto pointersize = DL.getPointerSizeInBits();
+    auto choicesize = choice->getType()->getPrimitiveSizeInBits();
 
     Value *retval;
     if (choice->getType()->isPointerTy()) {
       retval = Builder.CreatePointerCast(choice, Builder.getInt8PtrTy());
     } else {
-      IRBuilder<> AllocaBuilder(
-          newFunc->getEntryBlock().getFirstNonPHIOrDbgOrLifetime());
-      auto alloca = AllocaBuilder.CreateAlloca(choice->getType(), nullptr,
-                                               choice->getName() + ".ptr");
-      Builder.CreateStore(choice, alloca);
-      bool fitsInPointer =
-          choice->getType()->getPrimitiveSizeInBits() == pointersize;
-      if (fitsInPointer) {
-        auto dblptr =
-            PointerType::get(Builder.getInt8PtrTy(), DL.getAllocaAddrSpace());
-        retval = Builder.CreateLoad(Builder.getInt8PtrTy(),
-                                    Builder.CreatePointerCast(alloca, dblptr));
+      auto M = interface->getSampleFunction()->getParent();
+      auto &DL = M->getDataLayout();
+      auto pointersize = DL.getPointerSizeInBits();
+      if (choicesize <= pointersize) {
+        auto cast = Builder.CreateBitCast(
+            choice, IntegerType::get(M->getContext(), choicesize));
+        cast = choicesize == pointersize
+                   ? cast
+                   : Builder.CreateZExt(cast, Builder.getIntPtrTy(DL));
+        retval = Builder.CreateIntToPtr(cast, Builder.getInt8PtrTy());
       } else {
+        IRBuilder<> AllocaBuilder(
+            newFunc->getEntryBlock().getFirstNonPHIOrDbgOrLifetime());
+        auto alloca = AllocaBuilder.CreateAlloca(choice->getType(), nullptr,
+                                                 choice->getName() + ".ptr");
+        Builder.CreateStore(choice, alloca);
         retval = alloca;
       }
     }
 
     Value *args[] = {trace, address, score, retval,
-                     ConstantInt::get(size_type, size)};
+                     ConstantInt::get(size_type, choicesize / 8)};
 
     auto call = Builder.CreateCall(interface->insertChoiceTy(),
                                    interface->insertChoice(), args);

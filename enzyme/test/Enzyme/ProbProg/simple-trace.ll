@@ -40,20 +40,16 @@ entry:
 
 ; CHECK: define internal i8* @trace_test()
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %x.ptr = alloca double
-; CHECK-NEXT:   %mu.ptr = alloca double
 ; CHECK-NEXT:   %trace = call i8* @__enzyme_newtrace()
 ; CHECK-NEXT:   %mu = call double @normal(double 0.000000e+00, double 1.000000e+00)
 ; CHECK-NEXT:   %likelihood.mu = call double @normal_logpdf(double 0.000000e+00, double 1.000000e+00, double %mu)
-; CHECK-NEXT:   store double %mu, double* %mu.ptr
-; CHECK-NEXT:   %0 = bitcast double* %mu.ptr to i8**
-; CHECK-NEXT:   %1 = load i8*, i8** %0
+; CHECK-NEXT:   %0 = bitcast double %mu to i64
+; CHECK-NEXT:   %1 = inttoptr i64 %0 to i8*
 ; CHECK-NEXT:   call void @__enzyme_insert_choice(i8* %trace, i8* nocapture readonly getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i64 0, i64 0), double %likelihood.mu, i8* %1, i64 8)
 ; CHECK-NEXT:   %x = call double @normal(double %mu, double 1.000000e+00)
 ; CHECK-NEXT:   %likelihood.x = call double @normal_logpdf(double %mu, double 1.000000e+00, double %x)
-; CHECK-NEXT:   store double %x, double* %x.ptr
-; CHECK-NEXT:   %2 = bitcast double* %x.ptr to i8**
-; CHECK-NEXT:   %3 = load i8*, i8** %2
+; CHECK-NEXT:   %2 = bitcast double %x to i64
+; CHECK-NEXT:   %3 = inttoptr i64 %2 to i8*
 ; CHECK-NEXT:   call void @__enzyme_insert_choice(i8* %trace, i8* nocapture readonly getelementptr inbounds ([2 x i8], [2 x i8]* @.str.1, i64 0, i64 0), double %likelihood.x, i8* %3, i64 8)
 ; CHECK-NEXT:   ret i8* %trace
 ; CHECK-NEXT: }

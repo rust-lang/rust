@@ -96,27 +96,22 @@ entry:
 
 ; CHECK: define internal { double, i8* } @trace_loss(double* %data, i32 %n, i8** %interface)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call.i.ptr = alloca double
-; CHECK-NEXT:   %call1.ptr = alloca double
 ; CHECK-NEXT:   %0 = getelementptr inbounds i8*, i8** %interface, i32 3
 ; CHECK-NEXT:   %1 = load i8*, i8** %0
 ; CHECK-NEXT:   %insert_choice = bitcast i8* %1 to void (i8*, i8*, double, i8*, i64)*
-; CHECK-NEXT:   %call.ptr = alloca double
 ; CHECK-NEXT:   %2 = getelementptr inbounds i8*, i8** %interface, i32 4
 ; CHECK-NEXT:   %3 = load i8*, i8** %2
 ; CHECK-NEXT:   %new_trace = bitcast i8* %3 to i8* ()*
 ; CHECK-NEXT:   %trace = call i8* %new_trace()
 ; CHECK-NEXT:   %call = call double @normal(double 0.000000e+00, double 1.000000e+00)
 ; CHECK-NEXT:   %likelihood.call = call double @normal_logpdf(double 0.000000e+00, double 1.000000e+00, double %call)
-; CHECK-NEXT:   store double %call, double* %call.ptr
-; CHECK-NEXT:   %4 = bitcast double* %call.ptr to i8**
-; CHECK-NEXT:   %5 = load i8*, i8** %4
+; CHECK-NEXT:   %4 = bitcast double %call to i64
+; CHECK-NEXT:   %5 = inttoptr i64 %4 to i8*
 ; CHECK-NEXT:   call void %insert_choice(i8* %trace, i8* nocapture readonly getelementptr inbounds ([2 x i8], [2 x i8]* @.str.1, i64 0, i64 0), double %likelihood.call, i8* %5, i64 8)
 ; CHECK-NEXT:   %call1 = call double @normal(double 0.000000e+00, double 1.000000e+00)
 ; CHECK-NEXT:   %likelihood.call1 = call double @normal_logpdf(double 0.000000e+00, double 1.000000e+00, double %call1)
-; CHECK-NEXT:   store double %call1, double* %call1.ptr
-; CHECK-NEXT:   %6 = bitcast double* %call1.ptr to i8**
-; CHECK-NEXT:   %7 = load i8*, i8** %6
+; CHECK-NEXT:   %6 = bitcast double %call1 to i64
+; CHECK-NEXT:   %7 = inttoptr i64 %6 to i8*
 ; CHECK-NEXT:   call void %insert_choice(i8* %trace, i8* nocapture readonly getelementptr inbounds ([2 x i8], [2 x i8]* @.str.2, i64 0, i64 0), double %likelihood.call1, i8* %7, i64 8)
 ; CHECK-NEXT:   %cmp19.i = icmp sgt i32 %n, 0
 ; CHECK-NEXT:   br i1 %cmp19.i, label %for.body.preheader.i, label %calculate_loss.exit
@@ -134,9 +129,8 @@ entry:
 ; CHECK-NEXT:   %9 = fadd double %mul1, %call1
 ; CHECK-NEXT:   %call.i = call double @normal(double %9, double 1.000000e+00)
 ; CHECK-NEXT:   %likelihood.call.i = call double @normal_logpdf(double %9, double 1.000000e+00, double %call.i)
-; CHECK-NEXT:   store double %call.i, double* %call.i.ptr
-; CHECK-NEXT:   %10 = bitcast double* %call.i.ptr to i8**
-; CHECK-NEXT:   %11 = load i8*, i8** %10
+; CHECK-NEXT:   %10 = bitcast double %call.i to i64
+; CHECK-NEXT:   %11 = inttoptr i64 %10 to i8*
 ; CHECK-NEXT:   call void %insert_choice(i8* %trace, i8* nocapture readonly getelementptr inbounds ([11 x i8], [11 x i8]* @.str, i64 0, i64 0), double %likelihood.call.i, i8* %11, i64 8)
 ; CHECK-NEXT:   %arrayidx3.i = getelementptr inbounds double, double* %data, i64 %indvars.iv.i
 ; CHECK-NEXT:   %12 = load double, double* %arrayidx3.i

@@ -51,9 +51,7 @@ entry:
 
 ; CHECK: define internal i8* @condition_test(i8* %observations)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %x.ptr2 = alloca double
 ; CHECK-NEXT:   %x.ptr = alloca double
-; CHECK-NEXT:   %mu.ptr1 = alloca double
 ; CHECK-NEXT:   %mu.ptr = alloca double
 ; CHECK-NEXT:   %trace = call i8* @__enzyme_newtrace()
 ; CHECK-NEXT:   %has.choice.mu = call i1 @__enzyme_has_choice(i8* %observations, i8* nocapture readonly getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i64 0, i64 0))
@@ -72,9 +70,8 @@ entry:
 ; CHECK: entry.cntd:                                       ; preds = %condition.mu.without.trace, %condition.mu.with.trace
 ; CHECK-NEXT:   %mu = phi double [ %from.trace.mu, %condition.mu.with.trace ], [ %sample.mu, %condition.mu.without.trace ]
 ; CHECK-NEXT:   %likelihood.mu = call double @normal_logpdf(double 0.000000e+00, double 1.000000e+00, double %mu)
-; CHECK-NEXT:   store double %mu, double* %mu.ptr1
-; CHECK-NEXT:   %1 = bitcast double* %mu.ptr1 to i8**
-; CHECK-NEXT:   %2 = load i8*, i8** %1
+; CHECK-NEXT:   %1 = bitcast double %mu to i64
+; CHECK-NEXT:   %2 = inttoptr i64 %1 to i8*
 ; CHECK-NEXT:   call void @__enzyme_insert_choice(i8* %trace, i8* nocapture readonly getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i64 0, i64 0), double %likelihood.mu, i8* %2, i64 8)
 ; CHECK-NEXT:   %has.choice.x = call i1 @__enzyme_has_choice(i8* %observations, i8* nocapture readonly getelementptr inbounds ([2 x i8], [2 x i8]* @.str.1, i64 0, i64 0))
 ; CHECK-NEXT:   br i1 %has.choice.x, label %condition.x.with.trace, label %condition.x.without.trace
@@ -92,9 +89,8 @@ entry:
 ; CHECK: entry.cntd.cntd:                                  ; preds = %condition.x.without.trace, %condition.x.with.trace
 ; CHECK-NEXT:   %x = phi double [ %from.trace.x, %condition.x.with.trace ], [ %sample.x, %condition.x.without.trace ]
 ; CHECK-NEXT:   %likelihood.x = call double @normal_logpdf(double %mu, double 1.000000e+00, double %x)
-; CHECK-NEXT:   store double %x, double* %x.ptr2
-; CHECK-NEXT:   %4 = bitcast double* %x.ptr2 to i8**
-; CHECK-NEXT:   %5 = load i8*, i8** %4
+; CHECK-NEXT:   %4 = bitcast double %x to i64
+; CHECK-NEXT:   %5 = inttoptr i64 %4 to i8*
 ; CHECK-NEXT:   call void @__enzyme_insert_choice(i8* %trace, i8* nocapture readonly getelementptr inbounds ([2 x i8], [2 x i8]* @.str.1, i64 0, i64 0), double %likelihood.x, i8* %5, i64 8)
 ; CHECK-NEXT:   ret i8* %trace
 ; CHECK-NEXT: }
