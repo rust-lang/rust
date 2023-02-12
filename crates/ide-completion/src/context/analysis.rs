@@ -380,7 +380,7 @@ fn expected_type_and_name(
                         sema,
                        token.clone(),
                     ).map(|ap| {
-                        let name = dbg!(ap.ident().map(NameOrNameRef::Name));
+                        let name = ap.ident().map(NameOrNameRef::Name);
 
                         let ty = strip_refs(ap.ty);
                         (Some(ty), name)
@@ -656,8 +656,15 @@ fn classify_name_ref(
     };
     let after_if_expr = |node: SyntaxNode| {
         let prev_expr = (|| {
+            let node = match node.parent().and_then(ast::ExprStmt::cast) {
+                Some(stmt) => stmt.syntax().clone(),
+                None => node,
+            };
             let prev_sibling = non_trivia_sibling(node.into(), Direction::Prev)?.into_node()?;
-            ast::ExprStmt::cast(prev_sibling)?.expr()
+
+            ast::ExprStmt::cast(prev_sibling.clone())
+                .and_then(|it| it.expr())
+                .or_else(|| ast::Expr::cast(prev_sibling))
         })();
         matches!(prev_expr, Some(ast::Expr::IfExpr(_)))
     };
