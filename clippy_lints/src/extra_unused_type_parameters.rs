@@ -23,7 +23,6 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // unused type parameters
     /// fn unused_ty<T>(x: u8) {
     ///     // ..
     /// }
@@ -45,7 +44,7 @@ declare_lint_pass!(ExtraUnusedTypeParameters => [EXTRA_UNUSED_TYPE_PARAMETERS]);
 /// trait bounds those parameters have.
 struct TypeWalker<'cx, 'tcx> {
     cx: &'cx LateContext<'tcx>,
-    /// Collection of all the type parameters and their spans.
+    /// Collection of all the function's type parameters.
     ty_params: FxHashMap<DefId, Span>,
     /// Collection of any (inline) trait bounds corresponding to each type parameter.
     bounds: FxHashMap<DefId, Span>,
@@ -69,8 +68,8 @@ impl<'cx, 'tcx> TypeWalker<'cx, 'tcx> {
             .params
             .iter()
             .filter_map(|param| {
-                if let GenericParamKind::Type { .. } = param.kind {
-                    Some((param.def_id.into(), param.span))
+                if let GenericParamKind::Type { synthetic, .. } = param.kind {
+                    (!synthetic).then_some((param.def_id.into(), param.span))
                 } else {
                     if !param.is_elided_lifetime() {
                         all_params_unused = false;

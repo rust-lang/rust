@@ -71,6 +71,8 @@ where
         .filter_map(move |(i, a)| if i == index { None } else { Some(a) })
 }
 
+fn unused_opaque<A, B>(dummy: impl Default) {}
+
 mod issue10319 {
     fn assert_send<T: Send>() {}
 
