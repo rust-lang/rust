@@ -273,12 +273,12 @@ impl<'cx, 'sdt, 'tcx> SigDropChecker<'cx, 'sdt, 'tcx> {
 
     pub(crate) fn has_sig_drop_attr(&mut self, ty: Ty<'tcx>) -> bool {
         if let Some(adt) = ty.ty_adt_def() {
-            let iter = get_attr(
+            let mut iter = get_attr(
                 self.cx.sess(),
                 self.cx.tcx.get_attrs_unchecked(adt.did()),
                 "has_significant_drop",
             );
-            if iter.count() > 0 {
+            if iter.next().is_some() {
                 return true;
             }
         }
@@ -360,22 +360,7 @@ impl<'cx, 'sdt, 'tcx> Visitor<'tcx> for SigDropFinder<'cx, 'sdt, 'tcx> {
             | hir::ExprKind::Yield(..) => {
                 walk_expr(self, ex);
             },
-            hir::ExprKind::AddrOf(_, _, _)
-            | hir::ExprKind::Block(_, _)
-            | hir::ExprKind::Break(_, _)
-            | hir::ExprKind::Cast(_, _)
-            | hir::ExprKind::Closure { .. }
-            | hir::ExprKind::ConstBlock(_)
-            | hir::ExprKind::Continue(_)
-            | hir::ExprKind::DropTemps(_)
-            | hir::ExprKind::Err
-            | hir::ExprKind::InlineAsm(_)
-            | hir::ExprKind::Let(_)
-            | hir::ExprKind::Lit(_)
-            | hir::ExprKind::Loop(_, _, _, _)
-            | hir::ExprKind::Path(_)
-            | hir::ExprKind::Struct(_, _, _)
-            | hir::ExprKind::Type(_, _) => {},
+            _ => {},
         }
     }
 }
