@@ -871,7 +871,10 @@ pub trait Destruct {}
 #[rustc_deny_explicit_impl]
 pub trait Tuple {}
 
-/// A marker for things
+/// A marker for pointer-like types.
+///
+/// All types that have the same size and alignment as a `usize` or
+/// `*const ()` automatically implement this trait.
 #[unstable(feature = "pointer_like_trait", issue = "none")]
 #[cfg_attr(bootstrap, lang = "pointer_sized")]
 #[cfg_attr(not(bootstrap), lang = "pointer_like")]
