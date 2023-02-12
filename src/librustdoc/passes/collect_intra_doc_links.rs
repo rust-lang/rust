@@ -807,22 +807,12 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
             let parent_node = parent_module.or(parent_node);
-            let mut tmp_links = self
-                .cx
-                .resolver_caches
-                .markdown_links
-                .take()
-                .expect("`markdown_links` are already borrowed");
-            if !tmp_links.contains_key(&doc) {
-                tmp_links.insert(doc.clone(), preprocessed_markdown_links(&doc));
-            }
-            for md_link in &tmp_links[&doc] {
-                let link = self.resolve_link(item, &doc, parent_node, md_link);
+            for md_link in preprocessed_markdown_links(&doc) {
+                let link = self.resolve_link(item, &doc, parent_node, &md_link);
                 if let Some(link) = link {
                     self.cx.cache.intra_doc_links.entry(item.item_id).or_default().push(link);
                 }
             }
-            self.cx.resolver_caches.markdown_links = Some(tmp_links);
         }
 
         if item.is_mod() {

@@ -27,13 +27,11 @@ use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
-use crate::passes::collect_intra_doc_links::PreprocessedMarkdownLink;
 use crate::passes::{self, Condition::*};
 
 pub(crate) use rustc_session::config::{Input, Options, UnstableOptions};
 
 pub(crate) struct ResolverCaches {
-    pub(crate) markdown_links: Option<FxHashMap<String, Vec<PreprocessedMarkdownLink>>>,
     pub(crate) all_trait_impls: Option<Vec<DefId>>,
     pub(crate) all_macro_rules: FxHashMap<Symbol, Res<NodeId>>,
     pub(crate) extern_doc_reachable: DefIdSet,
