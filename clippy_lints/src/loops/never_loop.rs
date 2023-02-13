@@ -68,18 +68,6 @@ fn combine_seq(first: NeverLoopResult, second: NeverLoopResult) -> NeverLoopResu
     }
 }
 
-// Combine two results where both parts are called but not necessarily in order.
-#[must_use]
-fn combine_both(left: NeverLoopResult, right: NeverLoopResult) -> NeverLoopResult {
-    match (left, right) {
-        (NeverLoopResult::MayContinueMainLoop, _) | (_, NeverLoopResult::MayContinueMainLoop) => {
-            NeverLoopResult::MayContinueMainLoop
-        },
-        (NeverLoopResult::AlwaysBreak, _) | (_, NeverLoopResult::AlwaysBreak) => NeverLoopResult::AlwaysBreak,
-        (NeverLoopResult::Otherwise, NeverLoopResult::Otherwise) => NeverLoopResult::Otherwise,
-    }
-}
-
 // Combine two results where only one of the part may have been executed.
 #[must_use]
 fn combine_branches(b1: NeverLoopResult, b2: NeverLoopResult) -> NeverLoopResult {
@@ -139,7 +127,7 @@ fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: H
         ExprKind::Struct(_, fields, base) => {
             let fields = never_loop_expr_all(&mut fields.iter().map(|f| f.expr), ignore_ids, main_loop_id);
             if let Some(base) = base {
-                combine_both(fields, never_loop_expr(base, ignore_ids, main_loop_id))
+                combine_seq(fields, never_loop_expr(base, ignore_ids, main_loop_id))
             } else {
                 fields
             }
@@ -218,7 +206,7 @@ fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: H
                 | InlineAsmOperand::SymFn { .. }
                 | InlineAsmOperand::SymStatic { .. } => NeverLoopResult::Otherwise,
             })
-            .fold(NeverLoopResult::Otherwise, combine_both),
+            .fold(NeverLoopResult::Otherwise, combine_seq),
         ExprKind::Yield(_, _)
         | ExprKind::Closure { .. }
         | ExprKind::Path(_)
@@ -234,7 +222,7 @@ fn never_loop_expr_all<'a, T: Iterator<Item = &'a Expr<'a>>>(
     main_loop_id: HirId,
 ) -> NeverLoopResult {
     es.map(|e| never_loop_expr(e, ignore_ids, main_loop_id))
-        .fold(NeverLoopResult::Otherwise, combine_both)
+        .fold(NeverLoopResult::Otherwise, combine_seq)
 }
 
 fn never_loop_expr_branch<'a, T: Iterator<Item = &'a Expr<'a>>>(
