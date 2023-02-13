@@ -4,6 +4,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
+use rustc_errors::TerminalUrl;
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
@@ -144,6 +145,7 @@ pub(crate) fn new_handler(
                     diagnostic_width,
                     false,
                     unstable_opts.track_diagnostics,
+                    TerminalUrl::No,
                 )
                 .ui_testing(unstable_opts.ui_testing),
             )
@@ -163,6 +165,7 @@ pub(crate) fn new_handler(
                     diagnostic_width,
                     false,
                     unstable_opts.track_diagnostics,
+                    TerminalUrl::No,
                 )
                 .ui_testing(unstable_opts.ui_testing),
             )

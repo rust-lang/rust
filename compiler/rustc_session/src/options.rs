@@ -4,7 +4,7 @@ use crate::early_error;
 use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
-use rustc_errors::LanguageIdentifier;
+use rustc_errors::{LanguageIdentifier, TerminalUrl};
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet};
 use rustc_target::spec::{
     RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
@@ -402,6 +402,8 @@ mod desc {
     pub const parse_code_model: &str = "one of supported code models (`rustc --print code-models`)";
     pub const parse_tls_model: &str = "one of supported TLS models (`rustc --print tls-models`)";
     pub const parse_target_feature: &str = parse_string;
+    pub const parse_terminal_url: &str =
+        "either a boolean (`yes`, `no`, `on`, `off`, etc), or `auto`";
     pub const parse_wasi_exec_model: &str = "either `command` or `reactor`";
     pub const parse_split_debuginfo: &str =
         "one of supported split-debuginfo modes (`off`, `packed`, or `unpacked`)";
@@ -1044,6 +1046,16 @@ mod parse {
         true
     }
 
+    pub(crate) fn parse_terminal_url(slot: &mut TerminalUrl, v: Option<&str>) -> bool {
+        *slot = match v {
+            Some("on" | "" | "yes" | "y") | None => TerminalUrl::Yes,
+            Some("off" | "no" | "n") => TerminalUrl::No,
+            Some("auto") => TerminalUrl::Auto,
+            _ => return false,
+        };
+        true
+    }
+
     pub(crate) fn parse_symbol_mangling_version(
         slot: &mut Option<SymbolManglingVersion>,
         v: Option<&str>,
@@ -1675,6 +1687,8 @@ options! {
         "show extended diagnostic help (default: no)"),
     temps_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "the directory the intermediate files are written to"),
+    terminal_urls: TerminalUrl = (TerminalUrl::No, parse_terminal_url, [UNTRACKED],
+        "use the OSC 8 hyperlink terminal specification to print hyperlinks in the compiler output"),
     #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),

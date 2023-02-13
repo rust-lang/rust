@@ -176,6 +176,7 @@
     -Z                 symbol-mangling-version=val -- which mangling version to use for symbol names ('legacy' (default) or 'v0')
     -Z                                   teach=val -- show extended diagnostic help (default: no)
     -Z                               temps-dir=val -- the directory the intermediate files are written to
+    -Z                           terminal-urls=val -- use the OSC 8 hyperlink terminal specification to print hyperlinks in the compiler output
     -Z                                 thinlto=val -- enable ThinLTO when possible
     -Z                           thir-unsafeck=val -- use the THIR unsafety checker (default: no)
     -Z                                 threads=val -- use a thread pool with N threads

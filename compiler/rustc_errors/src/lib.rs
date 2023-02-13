@@ -573,6 +573,7 @@ impl Handler {
             None,
             flags.macro_backtrace,
             flags.track_diagnostics,
+            TerminalUrl::No,
         ));
         Self::with_emitter_and_flags(emitter, flags)
     }
@@ -1836,6 +1837,13 @@ pub fn add_elided_lifetime_in_path_suggestion(
         suggestion,
         Applicability::MachineApplicable,
     );
+}
+
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum TerminalUrl {
+    No,
+    Yes,
+    Auto,
 }
 
 /// Useful type to use with `Result<>` indicate that an error has already
