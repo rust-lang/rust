@@ -193,7 +193,7 @@ fn get_info_on_unsized_field<'tcx>(
 
     // Have to adjust type for ty::Str
     let unsized_inner_ty = match unsized_inner_ty.kind() {
-        ty::Str => tcx.mk_ty(ty::Uint(ty::UintTy::U8)),
+        ty::Str => tcx.types.u8,
         _ => unsized_inner_ty,
     };
 
@@ -216,7 +216,7 @@ fn create_pointee_place<'tcx>(
 
         let (unsized_inner_ty, num_elems) = get_info_on_unsized_field(ty, valtree, tcx);
         let unsized_inner_ty = match unsized_inner_ty.kind() {
-            ty::Str => tcx.mk_ty(ty::Uint(ty::UintTy::U8)),
+            ty::Str => tcx.types.u8,
             _ => unsized_inner_ty,
         };
         let unsized_inner_ty_size =

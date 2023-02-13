@@ -241,6 +241,11 @@ impl<'tcx> CtxtInterners<'tcx> {
     }
 }
 
+const NUM_PREINTERNED_TY_VARS: u32 = 100;
+const NUM_PREINTERNED_FRESH_TYS: u32 = 20;
+const NUM_PREINTERNED_FRESH_INT_TYS: u32 = 3;
+const NUM_PREINTERNED_FRESH_FLOAT_TYS: u32 = 3;
+
 pub struct CommonTypes<'tcx> {
     pub unit: Ty<'tcx>,
     pub bool: Ty<'tcx>,
@@ -266,7 +271,20 @@ pub struct CommonTypes<'tcx> {
     /// Dummy type used for the `Self` of a `TraitRef` created for converting
     /// a trait object, and which gets removed in `ExistentialTraitRef`.
     /// This type must not appear anywhere in other converted types.
+    /// `Infer(ty::FreshTy(0))` does the job.
     pub trait_object_dummy_self: Ty<'tcx>,
+
+    /// Pre-interned `Infer(ty::TyVar(n))` for small values of `n`.
+    pub ty_vars: Vec<Ty<'tcx>>,
+
+    /// Pre-interned `Infer(ty::FreshTy(n))` for small values of `n`.
+    pub fresh_tys: Vec<Ty<'tcx>>,
+
+    /// Pre-interned `Infer(ty::FreshIntTy(n))` for small values of `n`.
+    pub fresh_int_tys: Vec<Ty<'tcx>>,
+
+    /// Pre-interned `Infer(ty::FreshFloatTy(n))` for small values of `n`.
+    pub fresh_float_tys: Vec<Ty<'tcx>>,
 }
 
 pub struct CommonLifetimes<'tcx> {
@@ -288,6 +306,15 @@ impl<'tcx> CommonTypes<'tcx> {
         untracked: &Untracked,
     ) -> CommonTypes<'tcx> {
         let mk = |ty| interners.intern_ty(ty, sess, untracked);
+
+        let ty_vars =
+            (0..NUM_PREINTERNED_TY_VARS).map(|n| mk(Infer(ty::TyVar(TyVid::from(n))))).collect();
+        let fresh_tys: Vec<_> =
+            (0..NUM_PREINTERNED_FRESH_TYS).map(|n| mk(Infer(ty::FreshTy(n)))).collect();
+        let fresh_int_tys: Vec<_> =
+            (0..NUM_PREINTERNED_FRESH_INT_TYS).map(|n| mk(Infer(ty::FreshIntTy(n)))).collect();
+        let fresh_float_tys: Vec<_> =
+            (0..NUM_PREINTERNED_FRESH_FLOAT_TYS).map(|n| mk(Infer(ty::FreshFloatTy(n)))).collect();
 
         CommonTypes {
             unit: mk(Tuple(List::empty())),
@@ -311,7 +338,12 @@ impl<'tcx> CommonTypes<'tcx> {
             str_: mk(Str),
             self_param: mk(ty::Param(ty::ParamTy { index: 0, name: kw::SelfUpper })),
 
-            trait_object_dummy_self: mk(Infer(ty::FreshTy(0))),
+            trait_object_dummy_self: fresh_tys[0],
+
+            ty_vars,
+            fresh_tys,
+            fresh_int_tys,
+            fresh_float_tys,
         }
     }
 }
@@ -1604,6 +1636,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if *r == kind { r } else { self.mk_region(kind) }
     }
 
+    // Avoid this in favour of more specific `mk_*` methods, where possible.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
     pub fn mk_ty(self, st: TyKind<'tcx>) -> Ty<'tcx> {
@@ -1756,17 +1789,22 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    pub fn mk_array_with_const_len(self, ty: Ty<'tcx>, ct: Const<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(Array(ty, ct))
+    }
+
+    #[inline]
     pub fn mk_slice(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ty(Slice(ty))
     }
 
     #[inline]
     pub fn intern_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
-        self.mk_ty(Tuple(self.intern_type_list(&ts)))
+        if ts.is_empty() { self.types.unit } else { self.mk_ty(Tuple(self.intern_type_list(&ts))) }
     }
 
     pub fn mk_tup<I: InternAs<Ty<'tcx>, Ty<'tcx>>>(self, iter: I) -> I::Output {
-        iter.intern_with(|ts| self.mk_ty(Tuple(self.intern_type_list(&ts))))
+        iter.intern_with(|ts| self.intern_tup(ts))
     }
 
     #[inline]
@@ -1830,7 +1868,7 @@ impl<'tcx> TyCtxt<'tcx> {
         item_def_id: DefId,
         substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
     ) -> Ty<'tcx> {
-        self.mk_ty(Alias(ty::Projection, self.mk_alias_ty(item_def_id, substs)))
+        self.mk_alias(ty::Projection, self.mk_alias_ty(item_def_id, substs))
     }
 
     #[inline]
@@ -1868,28 +1906,54 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_ty_var(self, v: TyVid) -> Ty<'tcx> {
-        self.mk_ty_infer(TyVar(v))
-    }
-
-    #[inline]
     pub fn mk_const(self, kind: impl Into<ty::ConstKind<'tcx>>, ty: Ty<'tcx>) -> Const<'tcx> {
         self.mk_const_internal(ty::ConstData { kind: kind.into(), ty })
     }
 
     #[inline]
+    pub fn mk_ty_var(self, v: TyVid) -> Ty<'tcx> {
+        // Use a pre-interned one when possible.
+        self.types.ty_vars.get(v.as_usize()).copied().unwrap_or_else(|| self.mk_ty(Infer(TyVar(v))))
+    }
+
+    #[inline]
     pub fn mk_int_var(self, v: IntVid) -> Ty<'tcx> {
-        self.mk_ty_infer(IntVar(v))
+        self.mk_ty(Infer(IntVar(v)))
     }
 
     #[inline]
     pub fn mk_float_var(self, v: FloatVid) -> Ty<'tcx> {
-        self.mk_ty_infer(FloatVar(v))
+        self.mk_ty(Infer(FloatVar(v)))
     }
 
     #[inline]
-    pub fn mk_ty_infer(self, it: InferTy) -> Ty<'tcx> {
-        self.mk_ty(Infer(it))
+    pub fn mk_fresh_ty(self, n: u32) -> Ty<'tcx> {
+        // Use a pre-interned one when possible.
+        self.types
+            .fresh_tys
+            .get(n as usize)
+            .copied()
+            .unwrap_or_else(|| self.mk_ty(Infer(ty::FreshTy(n))))
+    }
+
+    #[inline]
+    pub fn mk_fresh_int_ty(self, n: u32) -> Ty<'tcx> {
+        // Use a pre-interned one when possible.
+        self.types
+            .fresh_int_tys
+            .get(n as usize)
+            .copied()
+            .unwrap_or_else(|| self.mk_ty(Infer(ty::FreshIntTy(n))))
+    }
+
+    #[inline]
+    pub fn mk_fresh_float_ty(self, n: u32) -> Ty<'tcx> {
+        // Use a pre-interned one when possible.
+        self.types
+            .fresh_float_tys
+            .get(n as usize)
+            .copied()
+            .unwrap_or_else(|| self.mk_ty(Infer(ty::FreshFloatTy(n))))
     }
 
     #[inline]
@@ -1913,8 +1977,23 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    pub fn mk_bound(self, index: ty::DebruijnIndex, bound_ty: ty::BoundTy) -> Ty<'tcx> {
+        self.mk_ty(Bound(index, bound_ty))
+    }
+
+    #[inline]
+    pub fn mk_placeholder(self, placeholder: ty::PlaceholderType) -> Ty<'tcx> {
+        self.mk_ty(Placeholder(placeholder))
+    }
+
+    #[inline]
+    pub fn mk_alias(self, kind: ty::AliasKind, alias_ty: ty::AliasTy<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(Alias(kind, alias_ty))
+    }
+
+    #[inline]
     pub fn mk_opaque(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(Alias(ty::Opaque, self.mk_alias_ty(def_id, substs)))
+        self.mk_alias(ty::Opaque, self.mk_alias_ty(def_id, substs))
     }
 
     pub fn mk_place_field(self, place: Place<'tcx>, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {

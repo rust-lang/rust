@@ -752,7 +752,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             self.fold_ty(bound_to)
         } else {
             let var = self.canonical_var(info, ty_var.into());
-            self.tcx().mk_ty(ty::Bound(self.binder_index, var.into()))
+            self.tcx().mk_bound(self.binder_index, var.into())
         }
     }
 

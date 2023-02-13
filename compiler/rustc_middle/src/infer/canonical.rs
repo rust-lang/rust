@@ -345,9 +345,9 @@ impl<'tcx> CanonicalVarValues<'tcx> {
             var_values: tcx.mk_substs(infos.iter().enumerate().map(
                 |(i, info)| -> ty::GenericArg<'tcx> {
                     match info.kind {
-                        CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => tcx
-                            .mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_usize(i).into()))
-                            .into(),
+                        CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => {
+                            tcx.mk_bound(ty::INNERMOST, ty::BoundVar::from_usize(i).into()).into()
+                        }
                         CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
                             let br = ty::BoundRegion {
                                 var: ty::BoundVar::from_usize(i),

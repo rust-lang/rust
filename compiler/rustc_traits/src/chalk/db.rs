@@ -588,10 +588,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         _id: chalk_ir::OpaqueTyId<RustInterner<'tcx>>,
     ) -> chalk_ir::Ty<RustInterner<'tcx>> {
         // FIXME(chalk): actually get hidden ty
-        self.interner
-            .tcx
-            .mk_ty(ty::Tuple(self.interner.tcx.intern_type_list(&[])))
-            .lower_into(self.interner)
+        self.interner.tcx.types.unit.lower_into(self.interner)
     }
 
     fn closure_kind(
@@ -721,13 +718,13 @@ impl<'tcx> chalk_ir::UnificationDatabase<RustInterner<'tcx>> for RustIrDatabase<
 fn bound_vars_for_item(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
     InternalSubsts::for_item(tcx, def_id, |param, substs| match param.kind {
         ty::GenericParamDefKind::Type { .. } => tcx
-            .mk_ty(ty::Bound(
+            .mk_bound(
                 ty::INNERMOST,
                 ty::BoundTy {
                     var: ty::BoundVar::from(param.index),
                     kind: ty::BoundTyKind::Param(param.def_id, param.name),
                 },
-            ))
+            )
             .into(),
 
         ty::GenericParamDefKind::Lifetime => {
@@ -790,10 +787,9 @@ impl<'tcx> ty::TypeFolder<'tcx> for ReplaceOpaqueTyFolder<'tcx> {
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) = *ty.kind() {
             if def_id == self.opaque_ty_id.0 && substs == self.identity_substs {
-                return self.tcx.mk_ty(ty::Bound(
-                    self.binder_index,
-                    ty::BoundTy::from(ty::BoundVar::from_u32(0)),
-                ));
+                return self
+                    .tcx
+                    .mk_bound(self.binder_index, ty::BoundTy::from(ty::BoundVar::from_u32(0)));
             }
         }
         ty

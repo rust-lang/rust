@@ -264,9 +264,7 @@ fn check_lang_start_fn<'tcx>(
         // for example `start`'s generic should be a type parameter
         let generics = tcx.generics_of(def_id);
         let fn_generic = generics.param_at(0, tcx);
-        let generic_tykind =
-            ty::Param(ty::ParamTy { index: fn_generic.index, name: fn_generic.name });
-        let generic_ty = tcx.mk_ty(generic_tykind);
+        let generic_ty = tcx.mk_ty_param(fn_generic.index, fn_generic.name);
         let expected_fn_sig =
             tcx.mk_fn_sig([].iter(), &generic_ty, false, hir::Unsafety::Normal, Abi::Rust);
         let expected_ty = tcx.mk_fn_ptr(Binder::dummy(expected_fn_sig));

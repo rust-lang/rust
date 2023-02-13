@@ -273,12 +273,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ct_op: |c| c,
             ty_op: |t| match *t.kind() {
                 ty::Infer(ty::TyVar(_)) => self.tcx.mk_ty_var(ty::TyVid::from_u32(0)),
-                ty::Infer(ty::IntVar(_)) => {
-                    self.tcx.mk_ty_infer(ty::IntVar(ty::IntVid { index: 0 }))
-                }
-                ty::Infer(ty::FloatVar(_)) => {
-                    self.tcx.mk_ty_infer(ty::FloatVar(ty::FloatVid { index: 0 }))
-                }
+                ty::Infer(ty::IntVar(_)) => self.tcx.mk_int_var(ty::IntVid { index: 0 }),
+                ty::Infer(ty::FloatVar(_)) => self.tcx.mk_float_var(ty::FloatVid { index: 0 }),
                 _ => t,
             },
         };
