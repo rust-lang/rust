@@ -151,6 +151,7 @@ error 26: expected `;`, `{`, or `(`
 error 30: expected pattern
 error 31: expected SEMICOLON
 error 53: expected expression
+error 54: expected R_PAREN
 error 54: expected SEMICOLON
 error 54: expected expression, item or let statement
 error 60: expected type
@@ -160,6 +161,7 @@ error 65: expected pattern
 error 65: expected SEMICOLON
 error 65: expected expression, item or let statement
 error 92: expected expression
+error 93: expected R_PAREN
 error 93: expected SEMICOLON
 error 93: expected expression, item or let statement
 error 95: expected expression, item or let statement

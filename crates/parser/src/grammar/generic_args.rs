@@ -5,27 +5,35 @@ pub(super) fn opt_generic_arg_list(p: &mut Parser<'_>, colon_colon_required: boo
     if p.at(T![::]) && p.nth(2) == T![<] {
         m = p.start();
         p.bump(T![::]);
-        p.bump(T![<]);
     } else if !colon_colon_required && p.at(T![<]) && p.nth(1) != T![=] {
         m = p.start();
-        p.bump(T![<]);
     } else {
         return;
     }
 
-    while !p.at(EOF) && !p.at(T![>]) {
-        generic_arg(p);
-        if !p.at(T![>]) && !p.expect(T![,]) {
-            break;
-        }
-    }
-    p.expect(T![>]);
+    delimited(p, T![<], T![>], T![,], GENERIC_ARG_FIRST, generic_arg);
     m.complete(p, GENERIC_ARG_LIST);
 }
 
+const GENERIC_ARG_FIRST: TokenSet = TokenSet::new(&[
+    LIFETIME_IDENT,
+    IDENT,
+    T!['{'],
+    T![true],
+    T![false],
+    T![-],
+    INT_NUMBER,
+    FLOAT_NUMBER,
+    CHAR,
+    BYTE,
+    STRING,
+    BYTE_STRING,
+])
+.union(types::TYPE_FIRST);
+
 // test generic_arg
 // type T = S<i32>;
-fn generic_arg(p: &mut Parser<'_>) {
+fn generic_arg(p: &mut Parser<'_>) -> bool {
     match p.current() {
         LIFETIME_IDENT => lifetime_arg(p),
         T!['{'] | T![true] | T![false] | T![-] => const_arg(p),
@@ -68,8 +76,10 @@ fn generic_arg(p: &mut Parser<'_>) {
                 }
             }
         }
-        _ => type_arg(p),
+        _ if p.at_ts(types::TYPE_FIRST) => type_arg(p),
+        _ => return false,
     }
+    true
 }
 
 // test lifetime_arg

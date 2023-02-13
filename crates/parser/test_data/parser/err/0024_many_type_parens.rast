@@ -168,12 +168,12 @@ SOURCE_FILE
                       L_PAREN "("
                       ERROR
                         QUESTION "?"
-        EXPR_STMT
-          PATH_EXPR
-            PATH
-              PATH_SEGMENT
-                NAME_REF
-                  IDENT "Sized"
+                  TYPE_ARG
+                    PATH_TYPE
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "Sized"
         ERROR
           R_PAREN ")"
         WHITESPACE " "
@@ -291,15 +291,13 @@ SOURCE_FILE
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
-error 88: expected COMMA
 error 88: expected R_ANGLE
 error 121: expected SEMICOLON
 error 121: expected expression, item or let statement
 error 140: expected type
 error 141: expected R_PAREN
 error 141: expected COMMA
-error 141: expected R_ANGLE
-error 141: expected SEMICOLON
+error 146: expected R_ANGLE
 error 146: expected SEMICOLON
 error 146: expected expression, item or let statement
 error 148: expected expression, item or let statement
@@ -309,7 +307,6 @@ error 165: expected expression
 error 168: expected expression
 error 179: expected expression
 error 180: expected SEMICOLON
-error 215: expected COMMA
 error 215: expected R_ANGLE
 error 235: expected SEMICOLON
 error 235: expected expression, item or let statement

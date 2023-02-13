@@ -1,5 +1,7 @@
 mod atom;
 
+use crate::grammar::attributes::ATTRIBUTE_FIRST;
+
 use super::*;
 
 pub(crate) use self::atom::{block_expr, match_arm_list};
@@ -572,27 +574,11 @@ fn cast_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
 fn arg_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['(']));
     let m = p.start();
-    p.bump(T!['(']);
-    while !p.at(T![')']) && !p.at(EOF) {
-        // test arg_with_attr
-        // fn main() {
-        //     foo(#[attr] 92)
-        // }
-        if !expr(p) {
-            break;
-        }
-        if !p.at(T![,]) {
-            if p.at_ts(EXPR_FIRST) {
-                p.error("expected `,`");
-                continue;
-            } else {
-                break;
-            }
-        } else {
-            p.bump(T![,]);
-        }
-    }
-    p.eat(T![')']);
+    // test arg_with_attr
+    // fn main() {
+    //     foo(#[attr] 92)
+    // }
+    delimited(p, T!['('], T![')'], T![,], EXPR_FIRST.union(ATTRIBUTE_FIRST), expr);
     m.complete(p, ARG_LIST);
 }
 

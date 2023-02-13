@@ -118,7 +118,7 @@ pub(super) fn atom_expr(
                     // fn main() {
                     //     'loop: impl
                     // }
-                    p.error("expected a loop");
+                    p.error("expected a loop or block");
                     m.complete(p, ERROR);
                     return None;
                 }

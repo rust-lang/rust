@@ -49,5 +49,5 @@ SOURCE_FILE
         R_CURLY "}"
   WHITESPACE "\n"
 error 6: missing type for function parameter
-error 6: expected COMMA
+error 6: expected `,`
 error 16: missing type for function parameter
