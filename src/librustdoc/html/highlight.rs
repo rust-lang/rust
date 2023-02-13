@@ -96,13 +96,19 @@ fn write_header(out: &mut Buffer, class: &str, extra_content: Option<Buffer>, to
     );
 
     if tooltip != Tooltip::None {
+        let edition_code;
         write!(
             out,
-            "<div class='tooltip'{}>ⓘ</div>",
-            if let Tooltip::Edition(edition_info) = tooltip {
-                format!(" data-edition=\"{}\"", edition_info)
-            } else {
-                String::new()
+            "<a href=\"#\" class=\"tooltip\" title=\"{}\">ⓘ</a>",
+            match tooltip {
+                Tooltip::Ignore => "This example is not tested",
+                Tooltip::CompileFail => "This example deliberately fails to compile",
+                Tooltip::ShouldPanic => "This example panics",
+                Tooltip::Edition(edition) => {
+                    edition_code = format!("This example runs with edition {edition}");
+                    &edition_code
+                }
+                Tooltip::None => unreachable!(),
             },
         );
     }

@@ -211,7 +211,8 @@ Duration = float
 TimerSection = Union[Duration, "Timer"]
 
 
-def iterate_sections(section: TimerSection, name: str, level: int = 0) -> Iterator[Tuple[int, str, Duration]]:
+def iterate_sections(section: TimerSection, name: str, level: int = 0) -> Iterator[
+    Tuple[int, str, Duration]]:
     """
     Hierarchically iterate the sections of a timer, in a depth-first order.
     """
@@ -239,7 +240,7 @@ class Timer:
         start = get_timestamp()
         exc = None
 
-        child_timer = Timer(parent_names=self.parent_names + (name, ))
+        child_timer = Timer(parent_names=self.parent_names + (name,))
         full_name = " > ".join(child_timer.parent_names)
         try:
             LOGGER.info(f"Section `{full_name}` starts")
@@ -648,6 +649,16 @@ def print_binary_sizes(pipeline: Pipeline):
         LOGGER.info(f"Rustc binary size\n{output.getvalue()}")
 
 
+def print_free_disk_space(pipeline: Pipeline):
+    usage = shutil.disk_usage(pipeline.opt_artifacts())
+    total = usage.total
+    used = usage.used
+    free = usage.free
+
+    logging.info(
+        f"Free disk space: {format_bytes(free)} out of total {format_bytes(total)} ({(used / total) * 100:.2f}% used)")
+
+
 def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: List[str]):
     # Clear and prepare tmp directory
     shutil.rmtree(pipeline.opt_artifacts(), ignore_errors=True)
@@ -666,6 +677,7 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
 
         with stage1.section("Gather profiles"):
             gather_llvm_profiles(pipeline)
+        print_free_disk_space(pipeline)
 
     clear_llvm_files(pipeline)
     final_build_args += [
@@ -683,6 +695,7 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
 
         with stage2.section("Gather profiles"):
             gather_rustc_profiles(pipeline)
+        print_free_disk_space(pipeline)
 
     clear_llvm_files(pipeline)
     final_build_args += [
@@ -702,6 +715,7 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
             with stage3.section("Gather profiles"):
                 gather_llvm_bolt_profiles(pipeline)
 
+        print_free_disk_space(pipeline)
         clear_llvm_files(pipeline)
         final_build_args += [
             "--llvm-bolt-profile-use",
@@ -733,5 +747,6 @@ if __name__ == "__main__":
         raise e
     finally:
         timer.print_stats()
+        print_free_disk_space(pipeline)
 
     print_binary_sizes(pipeline)

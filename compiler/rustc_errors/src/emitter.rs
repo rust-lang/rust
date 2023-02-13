@@ -18,7 +18,7 @@ use crate::translation::{to_fluent_args, Translate};
 use crate::{
     diagnostic::DiagnosticLocation, CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage,
     FluentBundle, Handler, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
-    SubstitutionHighlight, SuggestionStyle,
+    SubstitutionHighlight, SuggestionStyle, TerminalUrl,
 };
 use rustc_lint_defs::pluralize;
 
@@ -66,6 +66,7 @@ impl HumanReadableErrorType {
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
         track_diagnostics: bool,
+        terminal_url: TerminalUrl,
     ) -> EmitterWriter {
         let (short, color_config) = self.unzip();
         let color = color_config.suggests_using_colors();
@@ -80,6 +81,7 @@ impl HumanReadableErrorType {
             diagnostic_width,
             macro_backtrace,
             track_diagnostics,
+            terminal_url,
         )
     }
 }
@@ -652,6 +654,7 @@ pub struct EmitterWriter {
 
     macro_backtrace: bool,
     track_diagnostics: bool,
+    terminal_url: TerminalUrl,
 }
 
 #[derive(Debug)]
@@ -672,6 +675,7 @@ impl EmitterWriter {
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
         track_diagnostics: bool,
+        terminal_url: TerminalUrl,
     ) -> EmitterWriter {
         let dst = Destination::from_stderr(color_config);
         EmitterWriter {
@@ -685,6 +689,7 @@ impl EmitterWriter {
             diagnostic_width,
             macro_backtrace,
             track_diagnostics,
+            terminal_url,
         }
     }
 
@@ -699,6 +704,7 @@ impl EmitterWriter {
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
         track_diagnostics: bool,
+        terminal_url: TerminalUrl,
     ) -> EmitterWriter {
         EmitterWriter {
             dst: Raw(dst, colored),
@@ -711,6 +717,7 @@ impl EmitterWriter {
             diagnostic_width,
             macro_backtrace,
             track_diagnostics,
+            terminal_url,
         }
     }
 
@@ -1378,7 +1385,13 @@ impl EmitterWriter {
             // only render error codes, not lint codes
             if let Some(DiagnosticId::Error(ref code)) = *code {
                 buffer.append(0, "[", Style::Level(*level));
-                buffer.append(0, code, Style::Level(*level));
+                let code = if let TerminalUrl::Yes = self.terminal_url {
+                    let path = "https://doc.rust-lang.org/error_codes";
+                    format!("\x1b]8;;{path}/{code}.html\x07{code}\x1b]8;;\x07")
+                } else {
+                    code.clone()
+                };
+                buffer.append(0, &code, Style::Level(*level));
                 buffer.append(0, "]", Style::Level(*level));
                 label_width += 2 + code.len();
             }
