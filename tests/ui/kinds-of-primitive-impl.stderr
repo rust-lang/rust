@@ -1,32 +1,32 @@
 error[E0390]: cannot define inherent `impl` for primitive types
-  --> $DIR/kinds-of-primitive-impl.rs:1:6
+  --> $DIR/kinds-of-primitive-impl.rs:1:1
    |
 LL | impl u8 {
-   |      ^^
+   | ^^^^^^^
    |
    = help: consider using an extension trait instead
 
 error[E0390]: cannot define inherent `impl` for primitive types
-  --> $DIR/kinds-of-primitive-impl.rs:6:6
+  --> $DIR/kinds-of-primitive-impl.rs:6:1
    |
 LL | impl str {
-   |      ^^^
+   | ^^^^^^^^
    |
    = help: consider using an extension trait instead
 
 error[E0390]: cannot define inherent `impl` for primitive types
-  --> $DIR/kinds-of-primitive-impl.rs:12:6
+  --> $DIR/kinds-of-primitive-impl.rs:12:1
    |
 LL | impl char {
-   |      ^^^^
+   | ^^^^^^^^^
    |
    = help: consider using an extension trait instead
 
 error[E0390]: cannot define inherent `impl` for primitive types
-  --> $DIR/kinds-of-primitive-impl.rs:21:6
+  --> $DIR/kinds-of-primitive-impl.rs:21:1
    |
 LL | impl &MyType {
-   |      ^^^^^^^
+   | ^^^^^^^^^^^^
    |
    = help: consider using an extension trait instead
    = note: you could also try moving the reference to uses of `MyType` (such as `self`) within the implementation
