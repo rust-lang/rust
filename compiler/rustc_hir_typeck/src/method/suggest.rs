@@ -1506,18 +1506,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .is_some()
         };
         let found_candidate = found_candidate
-            || found_assoc(tcx.types.i8)
-            || found_assoc(tcx.types.i16)
-            || found_assoc(tcx.types.i32)
-            || found_assoc(tcx.types.i64)
-            || found_assoc(tcx.types.i128)
-            || found_assoc(tcx.types.u8)
-            || found_assoc(tcx.types.u16)
-            || found_assoc(tcx.types.u32)
-            || found_assoc(tcx.types.u64)
-            || found_assoc(tcx.types.u128)
-            || found_assoc(tcx.types.f32)
-            || found_assoc(tcx.types.f32);
+            || found_assoc(tcx.types().i8)
+            || found_assoc(tcx.types().i16)
+            || found_assoc(tcx.types().i32)
+            || found_assoc(tcx.types().i64)
+            || found_assoc(tcx.types().i128)
+            || found_assoc(tcx.types().u8)
+            || found_assoc(tcx.types().u16)
+            || found_assoc(tcx.types().u32)
+            || found_assoc(tcx.types().u64)
+            || found_assoc(tcx.types().u128)
+            || found_assoc(tcx.types().f32)
+            || found_assoc(tcx.types().f32);
         if found_candidate
             && actual.is_numeric()
             && !actual.has_concrete_skeleton()

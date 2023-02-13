@@ -385,7 +385,7 @@ enum DerefTy<'tcx> {
 impl<'tcx> DerefTy<'tcx> {
     fn ty(&self, cx: &LateContext<'tcx>) -> Ty<'tcx> {
         match *self {
-            Self::Str => cx.tcx.types.str_,
+            Self::Str => cx.tcx.types().str_,
             Self::Path => cx.tcx.mk_adt(
                 cx.tcx.adt_def(cx.tcx.get_diagnostic_item(sym::Path).unwrap()),
                 List::empty(),

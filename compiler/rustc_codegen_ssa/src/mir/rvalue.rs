@@ -369,7 +369,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let size = self.evaluate_array_len(bx, place);
                 OperandRef {
                     val: OperandValue::Immediate(size),
-                    layout: bx.cx().layout_of(bx.tcx().types.usize),
+                    layout: bx.cx().layout_of(bx.tcx().types().usize),
                 }
             }
 
@@ -412,7 +412,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     lhs.layout.ty,
                 );
                 let val_ty = op.ty(bx.tcx(), lhs.layout.ty, rhs.layout.ty);
-                let operand_ty = bx.tcx().intern_tup(&[val_ty, bx.tcx().types.bool]);
+                let operand_ty = bx.tcx().intern_tup(&[val_ty, bx.tcx().types().bool]);
                 OperandRef { val: result, layout: bx.cx().layout_of(operand_ty) }
             }
 
@@ -455,7 +455,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let tcx = self.cx.tcx();
                 OperandRef {
                     val: OperandValue::Immediate(val),
-                    layout: self.cx.layout_of(tcx.types.usize),
+                    layout: self.cx.layout_of(tcx.types().usize),
                 }
             }
 

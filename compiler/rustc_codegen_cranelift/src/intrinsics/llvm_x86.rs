@@ -47,7 +47,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 res = fx.bcx.ins().bor(res, a_lane_sign);
             }
 
-            let res = CValue::by_val(res, fx.layout_of(fx.tcx.types.i32));
+            let res = CValue::by_val(res, fx.layout_of(fx.tcx.types().i32));
             ret.write_cvalue(fx, res);
         }
         "llvm.x86.sse2.cmp.ps" | "llvm.x86.sse2.cmp.pd" => {
@@ -168,12 +168,12 @@ fn llvm_add_sub<'tcx>(
 ) {
     assert_eq!(
         a.layout().ty,
-        fx.tcx.types.u64,
+        fx.tcx.types().u64,
         "llvm.x86.addcarry.64/llvm.x86.subborrow.64 second operand must be u64"
     );
     assert_eq!(
         b.layout().ty,
-        fx.tcx.types.u64,
+        fx.tcx.types().u64,
         "llvm.x86.addcarry.64/llvm.x86.subborrow.64 third operand must be u64"
     );
 
@@ -184,14 +184,14 @@ fn llvm_add_sub<'tcx>(
 
     // c + carry -> c + second intermediate carry or borrow respectively
     let cb_in_as_u64 = fx.bcx.ins().uextend(types::I64, cb_in);
-    let cb_in_as_u64 = CValue::by_val(cb_in_as_u64, fx.layout_of(fx.tcx.types.u64));
+    let cb_in_as_u64 = CValue::by_val(cb_in_as_u64, fx.layout_of(fx.tcx.types().u64));
     let int1 = crate::num::codegen_checked_int_binop(fx, bin_op, c, cb_in_as_u64);
     let (c, cb1) = int1.load_scalar_pair(fx);
 
     // carry0 | carry1 -> carry or borrow respectively
     let cb_out = fx.bcx.ins().bor(cb0, cb1);
 
-    let layout = fx.layout_of(fx.tcx.mk_tup([fx.tcx.types.u8, fx.tcx.types.u64].iter()));
+    let layout = fx.layout_of(fx.tcx.mk_tup([fx.tcx.types().u8, fx.tcx.types().u64].iter()));
     let val = CValue::by_val_pair(cb_out, c, layout);
     ret.write_cvalue(fx, val);
 }

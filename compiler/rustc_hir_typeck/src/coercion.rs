@@ -1883,7 +1883,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             // If we only had inputs that were of type `!` (or no
             // inputs at all), then the final type is `!`.
             assert_eq!(self.pushed, 0);
-            fcx.tcx.types.never
+            fcx.tcx.types().never
         }
     }
 }

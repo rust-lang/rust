@@ -409,7 +409,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 | Node::Expr(Expr { kind: ExprKind::Repeat(_, constant), .. })
                     if constant.hir_id() == hir_id =>
                 {
-                    tcx.types.usize
+                    tcx.types().usize
                 }
                 Node::Ty(Ty { kind: TyKind::Typeof(e), .. }) if e.hir_id == hir_id => {
                     tcx.typeck(def_id).node_type(e.hir_id)

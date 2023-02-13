@@ -26,6 +26,12 @@ rustc_queries! {
         desc { "triggering a delay span bug" }
     }
 
+    query types_(_: ()) -> &'tcx crate::ty::context::CommonTypes<'tcx> {
+        desc { "interning some common types" }
+        arena_cache
+        no_hash
+    }
+
     query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
         feedable
         no_hash

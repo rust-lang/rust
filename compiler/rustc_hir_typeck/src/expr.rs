@@ -74,7 +74,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
         mut extend_err: impl FnMut(&mut Diagnostic),
     ) -> Ty<'tcx> {
-        let expected_ty = expected.to_option(&self).unwrap_or(self.tcx.types.bool);
+        let expected_ty = expected.to_option(&self).unwrap_or(self.tcx.types().bool);
         let mut ty = self.check_expr_with_expectation(expr, expected);
 
         // While we don't allow *arbitrary* coercions here, we *do* allow
@@ -310,7 +310,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::Continue(destination) => {
                 if destination.target_id.is_ok() {
-                    tcx.types.never
+                    tcx.types().never
                 } else {
                     // There was an error; make type-check fail.
                     tcx.ty_error()
@@ -704,7 +704,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ctxt.may_break |= !self.diverges.get().is_always();
 
             // the type of a `break` is always `!`, since it diverges
-            tcx.types.never
+            tcx.types().never
         } else {
             // Otherwise, we failed to find the enclosing loop;
             // this can only happen if the `break` was not
@@ -817,7 +817,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
             }
         }
-        self.tcx.types.never
+        self.tcx.types().never
     }
 
     /// `explicit_return` is `true` if we're checking an explicit `return expr`,
@@ -979,7 +979,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         orig_expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let cond_ty = self.check_expr_has_type_or_error(cond_expr, self.tcx.types.bool, |_| {});
+        let cond_ty = self.check_expr_has_type_or_error(cond_expr, self.tcx.types().bool, |_| {});
 
         self.warn_if_unreachable(
             cond_expr.hir_id,
@@ -1047,7 +1047,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
     ) -> Ty<'tcx> {
         let expected_ty = expected.coercion_target_type(self, expr.span);
-        if expected_ty == self.tcx.types.bool {
+        if expected_ty == self.tcx.types().bool {
             // The expected type is `bool` but this will result in `()` so we can reasonably
             // say that the user intended to write `lhs == rhs` instead of `lhs = rhs`.
             // The likely cause of this is `if foo = bar { .. }`.
@@ -1169,7 +1169,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // otherwise check exactly as a let statement
         self.check_decl(let_expr.into());
         // but return a bool, for this is a boolean expression
-        self.tcx.types.bool
+        self.tcx.types().bool
     }
 
     fn check_expr_loop(
@@ -2939,7 +2939,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         if asm.options.contains(ast::InlineAsmOptions::NORETURN) {
-            self.tcx.types.never
+            self.tcx.types().never
         } else {
             self.tcx.mk_unit()
         }

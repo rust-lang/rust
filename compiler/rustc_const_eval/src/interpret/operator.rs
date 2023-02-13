@@ -23,7 +23,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         let (val, overflowed, ty) = self.overflowing_binary_op(op, &left, &right)?;
         debug_assert_eq!(
-            self.tcx.intern_tup(&[ty, self.tcx.types.bool]),
+            self.tcx.intern_tup(&[ty, self.tcx.types().bool]),
             dest.layout.ty,
             "type mismatch for result of {:?}",
             op,
@@ -84,7 +84,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Ge => l >= r,
             _ => span_bug!(self.cur_span(), "Invalid operation on char: {:?}", bin_op),
         };
-        (Scalar::from_bool(res), false, self.tcx.types.bool)
+        (Scalar::from_bool(res), false, self.tcx.types().bool)
     }
 
     fn binary_bool_op(
@@ -107,7 +107,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             BitXor => l ^ r,
             _ => span_bug!(self.cur_span(), "Invalid operation on bool: {:?}", bin_op),
         };
-        (Scalar::from_bool(res), false, self.tcx.types.bool)
+        (Scalar::from_bool(res), false, self.tcx.types().bool)
     }
 
     fn binary_float_op<F: Float + Into<Scalar<M::Provenance>>>(
@@ -120,12 +120,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         use rustc_middle::mir::BinOp::*;
 
         let (val, ty) = match bin_op {
-            Eq => (Scalar::from_bool(l == r), self.tcx.types.bool),
-            Ne => (Scalar::from_bool(l != r), self.tcx.types.bool),
-            Lt => (Scalar::from_bool(l < r), self.tcx.types.bool),
-            Le => (Scalar::from_bool(l <= r), self.tcx.types.bool),
-            Gt => (Scalar::from_bool(l > r), self.tcx.types.bool),
-            Ge => (Scalar::from_bool(l >= r), self.tcx.types.bool),
+            Eq => (Scalar::from_bool(l == r), self.tcx.types().bool),
+            Ne => (Scalar::from_bool(l != r), self.tcx.types().bool),
+            Lt => (Scalar::from_bool(l < r), self.tcx.types().bool),
+            Le => (Scalar::from_bool(l <= r), self.tcx.types().bool),
+            Gt => (Scalar::from_bool(l > r), self.tcx.types().bool),
+            Ge => (Scalar::from_bool(l >= r), self.tcx.types().bool),
             Add => ((l + r).value.into(), ty),
             Sub => ((l - r).value.into(), ty),
             Mul => ((l * r).value.into(), ty),
@@ -217,7 +217,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             if let Some(op) = op {
                 let l = self.sign_extend(l, left_layout) as i128;
                 let r = self.sign_extend(r, right_layout) as i128;
-                return Ok((Scalar::from_bool(op(&l, &r)), false, self.tcx.types.bool));
+                return Ok((Scalar::from_bool(op(&l, &r)), false, self.tcx.types().bool));
             }
             let op: Option<fn(i128, i128) -> (i128, bool)> = match bin_op {
                 Div if r == 0 => throw_ub!(DivisionByZero),
@@ -259,13 +259,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         let (val, ty) = match bin_op {
-            Eq => (Scalar::from_bool(l == r), self.tcx.types.bool),
-            Ne => (Scalar::from_bool(l != r), self.tcx.types.bool),
+            Eq => (Scalar::from_bool(l == r), self.tcx.types().bool),
+            Ne => (Scalar::from_bool(l != r), self.tcx.types().bool),
 
-            Lt => (Scalar::from_bool(l < r), self.tcx.types.bool),
-            Le => (Scalar::from_bool(l <= r), self.tcx.types.bool),
-            Gt => (Scalar::from_bool(l > r), self.tcx.types.bool),
-            Ge => (Scalar::from_bool(l >= r), self.tcx.types.bool),
+            Lt => (Scalar::from_bool(l < r), self.tcx.types().bool),
+            Le => (Scalar::from_bool(l <= r), self.tcx.types().bool),
+            Gt => (Scalar::from_bool(l > r), self.tcx.types().bool),
+            Ge => (Scalar::from_bool(l >= r), self.tcx.types().bool),
 
             BitOr => (Scalar::from_uint(l | r, size), left_layout.ty),
             BitAnd => (Scalar::from_uint(l & r, size), left_layout.ty),
@@ -418,7 +418,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Not => !val,
                     _ => span_bug!(self.cur_span(), "Invalid bool op {:?}", un_op),
                 };
-                Ok((Scalar::from_bool(res), false, self.tcx.types.bool))
+                Ok((Scalar::from_bool(res), false, self.tcx.types().bool))
             }
             ty::Float(fty) => {
                 let res = match (un_op, fty) {

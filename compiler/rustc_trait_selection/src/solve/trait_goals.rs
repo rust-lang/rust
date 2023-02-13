@@ -157,7 +157,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         let self_ty = tcx.erase_regions(goal.predicate.self_ty());
 
         if let Ok(layout) = tcx.layout_of(goal.param_env.and(self_ty))
-            &&  let usize_layout = tcx.layout_of(ty::ParamEnv::empty().and(tcx.types.usize)).unwrap().layout
+            &&  let usize_layout = tcx.layout_of(ty::ParamEnv::empty().and(tcx.types().usize)).unwrap().layout
             && layout.layout.size() == usize_layout.size()
             && layout.layout.align().abi == usize_layout.align().abi
         {

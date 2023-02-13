@@ -166,9 +166,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::variant_count => {
                 let gid = GlobalId { instance, promoted: None };
                 let ty = match intrinsic_name {
-                    sym::pref_align_of | sym::variant_count => self.tcx.types.usize,
-                    sym::needs_drop => self.tcx.types.bool,
-                    sym::type_id => self.tcx.types.u64,
+                    sym::pref_align_of | sym::variant_count => self.tcx.types().usize,
+                    sym::needs_drop => self.tcx.types().bool,
+                    sym::type_id => self.tcx.types().u64,
                     sym::type_name => self.tcx.mk_static_str(),
                     _ => bug!(),
                 };
@@ -322,8 +322,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let a = self.read_pointer(&args[0])?;
                 let b = self.read_pointer(&args[1])?;
 
-                let usize_layout = self.layout_of(self.tcx.types.usize)?;
-                let isize_layout = self.layout_of(self.tcx.types.isize)?;
+                let usize_layout = self.layout_of(self.tcx.types().usize)?;
+                let isize_layout = self.layout_of(self.tcx.types().isize)?;
 
                 // Get offsets for both that are at least relative to the same base.
                 let (a_offset, b_offset) =

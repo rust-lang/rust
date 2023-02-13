@@ -105,8 +105,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // same is true for float variables.)
         let fallback = match ty.kind() {
             _ if let Some(e) = self.tainted_by_errors() => self.tcx.ty_error_with_guaranteed(e),
-            ty::Infer(ty::IntVar(_)) => self.tcx.types.i32,
-            ty::Infer(ty::FloatVar(_)) => self.tcx.types.f64,
+            ty::Infer(ty::IntVar(_)) => self.tcx.types().i32,
+            ty::Infer(ty::FloatVar(_)) => self.tcx.types().f64,
             _ => match diverging_fallback.get(&ty) {
                 Some(&fallback_ty) => fallback_ty,
                 None => return,
@@ -328,10 +328,10 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 // set, see the relationship finding module in
                 // compiler/rustc_trait_selection/src/traits/relationships.rs.
                 debug!("fallback to () - found trait and projection: {:?}", diverging_vid);
-                diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
+                diverging_fallback.insert(diverging_ty, self.tcx.types().unit);
             } else if can_reach_non_diverging {
                 debug!("fallback to () - reached non-diverging: {:?}", diverging_vid);
-                diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
+                diverging_fallback.insert(diverging_ty, self.tcx.types().unit);
             } else {
                 debug!("fallback to ! - all diverging: {:?}", diverging_vid);
                 diverging_fallback.insert(diverging_ty, self.tcx.mk_diverging_default());

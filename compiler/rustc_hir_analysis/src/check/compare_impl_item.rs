@@ -1109,7 +1109,7 @@ fn compare_self_type<'tcx>(
     let self_string = |method: &ty::AssocItem| {
         let untransformed_self_ty = match method.container {
             ty::ImplContainer => impl_trait_ref.self_ty(),
-            ty::TraitContainer => tcx.types.self_param,
+            ty::TraitContainer => tcx.types().self_param,
         };
         let self_arg_ty = tcx.fn_sig(method.def_id).subst_identity().input(0);
         let param_env = ty::ParamEnv::reveal_all();

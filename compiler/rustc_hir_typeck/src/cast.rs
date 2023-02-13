@@ -355,7 +355,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 );
                 err.span_label(self.span, "invalid cast");
                 if self.expr_ty.is_numeric() {
-                    if self.expr_ty == fcx.tcx.types.u32 {
+                    if self.expr_ty == fcx.tcx.types().u32 {
                         match fcx.tcx.sess.source_map().span_to_snippet(self.expr.span) {
                             Ok(snippet) => err.span_suggestion(
                                 self.span,
@@ -366,7 +366,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
                             Err(_) => err.span_help(self.span, "try `char::from_u32` instead"),
                         };
-                    } else if self.expr_ty == fcx.tcx.types.i8 {
+                    } else if self.expr_ty == fcx.tcx.types().i8 {
                         err.span_help(self.span, "try casting from `u8` instead");
                     } else {
                         err.span_help(self.span, "try `char::from_u32` instead (via a `u32`)");

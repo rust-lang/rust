@@ -88,7 +88,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 // Check for -MIN on signed integers
                 if this.check_overflow && op == UnOp::Neg && expr.ty.is_signed() {
-                    let bool_ty = this.tcx.types.bool;
+                    let bool_ty = this.tcx.types().bool;
 
                     let minval = this.minval_literal(expr_span, expr.ty);
                     let is_min = this.temp(bool_ty, expr_span);
@@ -122,7 +122,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 let synth_info = SourceInfo { span: expr_span, scope: synth_scope };
 
-                let size = this.temp(tcx.types.usize, expr_span);
+                let size = this.temp(tcx.types().usize, expr_span);
                 this.cfg.push_assign(
                     block,
                     synth_info,
@@ -130,7 +130,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Rvalue::NullaryOp(NullOp::SizeOf, value.ty),
                 );
 
-                let align = this.temp(tcx.types.usize, expr_span);
+                let align = this.temp(tcx.types().usize, expr_span);
                 this.cfg.push_assign(
                     block,
                     synth_info,
@@ -145,7 +145,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     [],
                     expr_span,
                 );
-                let storage = this.temp(tcx.mk_mut_ptr(tcx.types.u8), expr_span);
+                let storage = this.temp(tcx.mk_mut_ptr(tcx.types().u8), expr_span);
                 let success = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,
@@ -219,7 +219,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     // because sign extension on unsigned types might cause unintended things
                                     let mut range_val =
                                         ConstantKind::from_bits(this.tcx, range, ty::ParamEnv::empty().and(discr_ty));
-                                    let bool_ty = this.tcx.types.bool;
+                                    let bool_ty = this.tcx.types().bool;
                                     if signed {
                                         let scalar_size_extend = scalar.size(&this.tcx).sign_extend(range);
                                         let discr_layout = this.tcx.layout_of(this.param_env.and(discr_ty));
@@ -456,7 +456,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::Use(Operand::Constant(Box::new(Constant {
                     span: expr_span,
                     user_ty: None,
-                    literal: ConstantKind::zero_sized(this.tcx.types.unit),
+                    literal: ConstantKind::zero_sized(this.tcx.types().unit),
                 }))))
             }
 
@@ -518,7 +518,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         rhs: Operand<'tcx>,
     ) -> BlockAnd<Rvalue<'tcx>> {
         let source_info = self.source_info(span);
-        let bool_ty = self.tcx.types.bool;
+        let bool_ty = self.tcx.types().bool;
         if self.check_overflow && op.is_checkable() && ty.is_integral() {
             let result_tup = self.tcx.intern_tup(&[ty, bool_ty]);
             let result_value = self.temp(result_tup, span);

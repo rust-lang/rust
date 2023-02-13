@@ -99,7 +99,7 @@ fn find_sugg_for_if_let<'tcx>(
                     return;
                 };
                 // `None` and `Pending` don't have an inner type.
-                (method, cx.tcx.types.unit)
+                (method, cx.tcx.types().unit)
             } else {
                 return;
             }

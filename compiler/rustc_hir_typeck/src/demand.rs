@@ -965,16 +965,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let map = [
-            (sym::NonZeroU8, tcx.types.u8),
-            (sym::NonZeroU16, tcx.types.u16),
-            (sym::NonZeroU32, tcx.types.u32),
-            (sym::NonZeroU64, tcx.types.u64),
-            (sym::NonZeroU128, tcx.types.u128),
-            (sym::NonZeroI8, tcx.types.i8),
-            (sym::NonZeroI16, tcx.types.i16),
-            (sym::NonZeroI32, tcx.types.i32),
-            (sym::NonZeroI64, tcx.types.i64),
-            (sym::NonZeroI128, tcx.types.i128),
+            (sym::NonZeroU8, tcx.types().u8),
+            (sym::NonZeroU16, tcx.types().u16),
+            (sym::NonZeroU32, tcx.types().u32),
+            (sym::NonZeroU64, tcx.types().u64),
+            (sym::NonZeroU128, tcx.types().u128),
+            (sym::NonZeroI8, tcx.types().i8),
+            (sym::NonZeroI16, tcx.types().i16),
+            (sym::NonZeroI32, tcx.types().i32),
+            (sym::NonZeroI64, tcx.types().i64),
+            (sym::NonZeroI128, tcx.types().i128),
         ];
 
         let Some((s, _)) = map
@@ -1220,7 +1220,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match (&expr.kind, expected.kind(), checked_ty.kind()) {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (exp.kind(), check.kind()) {
-                (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
+                (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types().u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind
                         && let Ok(src) = sm.span_to_snippet(sp)
                         && replace_prefix(&src, "b\"", "\"").is_some()
@@ -1236,7 +1236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ));
                             }
                         }
-                (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
+                (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types().u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind
                         && let Ok(src) = sm.span_to_snippet(sp)
                         && replace_prefix(&src, "\"", "b\"").is_some()
@@ -1463,7 +1463,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // Do not remove `&&` to get to bool, because it might be something like
                             // { a } && b, which we have a separate fixup suggestion that is more
                             // likely correct...
-                            if remove.trim() == "&&" && expected == self.tcx.types.bool {
+                            if remove.trim() == "&&" && expected == self.tcx.types().bool {
                                 Applicability::MaybeIncorrect
                             } else {
                                 Applicability::MachineApplicable

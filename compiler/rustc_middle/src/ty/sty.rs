@@ -554,7 +554,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// The type of the state discriminant used in the generator type.
     #[inline]
     pub fn discr_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        tcx.types.u32
+        tcx.types().u32
     }
 
     /// This returns the types of the MIR locals which had to be stored across suspension points.
@@ -1857,7 +1857,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn sequence_element_type(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
             Array(ty, _) | Slice(ty) => *ty,
-            Str => tcx.types.u8,
+            Str => tcx.types().u8,
             _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
         }
     }
@@ -2217,7 +2217,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Never
             | ty::Tuple(_)
             | ty::Error(_)
-            | ty::Infer(IntVar(_) | FloatVar(_)) => tcx.types.u8,
+            | ty::Infer(IntVar(_) | FloatVar(_)) => tcx.types().u8,
 
             ty::Bound(..)
             | ty::Placeholder(_)
@@ -2261,9 +2261,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::Adt(..)
             // If returned by `struct_tail_without_normalization` this is the empty tuple,
             // a.k.a. unit type, which is Sized
-            | ty::Tuple(..) => (tcx.types.unit, false),
+            | ty::Tuple(..) => (tcx.types().unit, false),
 
-            ty::Str | ty::Slice(_) => (tcx.types.usize, false),
+            ty::Str | ty::Slice(_) => (tcx.types().usize, false),
             ty::Dynamic(..) => {
                 let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
                 (tcx.bound_type_of(dyn_metadata).subst(tcx, &[tail.into()]), false)
@@ -2271,7 +2271,7 @@ impl<'tcx> Ty<'tcx> {
 
             // type parameters only have unit metadata if they're sized, so return true
             // to make sure we double check this during confirmation
-            ty::Param(_) |  ty::Alias(..) => (tcx.types.unit, true),
+            ty::Param(_) |  ty::Alias(..) => (tcx.types().unit, true),
 
             ty::Infer(ty::TyVar(_))
             | ty::Bound(..)

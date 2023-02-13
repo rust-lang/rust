@@ -1279,7 +1279,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let mut bounds = Bounds::default();
         let mut potential_assoc_types = Vec::new();
-        let dummy_self = self.tcx().types.trait_object_dummy_self;
+        let dummy_self = self.tcx().types().trait_object_dummy_self;
         for trait_bound in hir_trait_bounds.iter().rev() {
             if let GenericArgCountResult {
                 correct:
@@ -2680,7 +2680,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         );
                     }
                 });
-                tcx.types.self_param
+                tcx.types().self_param
             }
             Res::SelfTyAlias { alias_to: def_id, forbid_generic, .. } => {
                 // `Self` in impl (we know the concrete type).
@@ -2814,12 +2814,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 });
                 match prim_ty {
-                    hir::PrimTy::Bool => tcx.types.bool,
-                    hir::PrimTy::Char => tcx.types.char,
+                    hir::PrimTy::Bool => tcx.types().bool,
+                    hir::PrimTy::Char => tcx.types().char,
                     hir::PrimTy::Int(it) => tcx.mk_mach_int(ty::int_ty(it)),
                     hir::PrimTy::Uint(uit) => tcx.mk_mach_uint(ty::uint_ty(uit)),
                     hir::PrimTy::Float(ft) => tcx.mk_mach_float(ty::float_ty(ft)),
-                    hir::PrimTy::Str => tcx.types.str_,
+                    hir::PrimTy::Str => tcx.types().str_,
                 }
             }
             Res::Err => {
@@ -2863,7 +2863,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let t = self.ast_ty_to_ty_inner(mt.ty, true, false);
                 tcx.mk_ref(r, ty::TypeAndMut { ty: t, mutbl: mt.mutbl })
             }
-            hir::TyKind::Never => tcx.types.never,
+            hir::TyKind::Never => tcx.types().never,
             hir::TyKind::Tup(fields) => tcx.mk_tup(fields.iter().map(|t| self.ast_ty_to_ty(t))),
             hir::TyKind::BareFn(bf) => {
                 require_c_abi_if_c_variadic(tcx, bf.decl, bf.abi, ast_ty.span);
@@ -2924,7 +2924,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::Array(ty, length) => {
                 let length = match length {
-                    &hir::ArrayLen::Infer(_, span) => self.ct_infer(tcx.types.usize, None, span),
+                    &hir::ArrayLen::Infer(_, span) => self.ct_infer(tcx.types().usize, None, span),
                     hir::ArrayLen::Body(constant) => {
                         ty::Const::from_anon_const(tcx, constant.def_id)
                     }

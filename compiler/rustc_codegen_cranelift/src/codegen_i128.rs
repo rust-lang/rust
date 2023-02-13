@@ -11,10 +11,10 @@ pub(crate) fn maybe_codegen<'tcx>(
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
 ) -> Option<CValue<'tcx>> {
-    if lhs.layout().ty != fx.tcx.types.u128
-        && lhs.layout().ty != fx.tcx.types.i128
-        && rhs.layout().ty != fx.tcx.types.u128
-        && rhs.layout().ty != fx.tcx.types.i128
+    if lhs.layout().ty != fx.tcx.types().u128
+        && lhs.layout().ty != fx.tcx.types().i128
+        && rhs.layout().ty != fx.tcx.types().u128
+        && rhs.layout().ty != fx.tcx.types().i128
     {
         return None;
     }
@@ -29,7 +29,7 @@ pub(crate) fn maybe_codegen<'tcx>(
         BinOp::Add | BinOp::Sub if !checked => None,
         BinOp::Mul if !checked || is_signed => {
             if !checked {
-                let val_ty = if is_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 };
+                let val_ty = if is_signed { fx.tcx.types().i128 } else { fx.tcx.types().u128 };
                 if fx.tcx.sess.target.is_like_windows {
                     let ret_place = CPlace::new_stack_slot(fx, lhs.layout());
                     let (lhs_ptr, lhs_extra) = lhs.force_stack(fx);
@@ -56,8 +56,8 @@ pub(crate) fn maybe_codegen<'tcx>(
                     Some(fx.easy_call("__multi3", &[lhs, rhs], val_ty))
                 }
             } else {
-                let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
-                let oflow = CPlace::new_stack_slot(fx, fx.layout_of(fx.tcx.types.i32));
+                let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types().bool].iter());
+                let oflow = CPlace::new_stack_slot(fx, fx.layout_of(fx.tcx.types().i32));
                 let lhs = lhs.load_scalar(fx);
                 let rhs = rhs.load_scalar(fx);
                 let oflow_ptr = oflow.to_ptr().get_addr(fx);
@@ -78,7 +78,7 @@ pub(crate) fn maybe_codegen<'tcx>(
         }
         BinOp::Add | BinOp::Sub | BinOp::Mul => {
             assert!(checked);
-            let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
+            let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types().bool].iter());
             let out_place = CPlace::new_stack_slot(fx, fx.layout_of(out_ty));
             let (param_types, args) = if fx.tcx.sess.target.is_like_windows {
                 let (lhs_ptr, lhs_extra) = lhs.force_stack(fx);

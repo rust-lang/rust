@@ -660,7 +660,7 @@ fn non_exhaustive_match<'p, 'tcx>(
         scrut_ty,
         if is_variant_list_non_exhaustive { ", which is marked as non-exhaustive" } else { "" }
     ));
-    if (scrut_ty == cx.tcx.types.usize || scrut_ty == cx.tcx.types.isize)
+    if (scrut_ty == cx.tcx.types().usize || scrut_ty == cx.tcx.types().isize)
         && !is_empty_match
         && witnesses.len() == 1
         && matches!(witnesses[0].ctor(), Constructor::NonExhaustive)

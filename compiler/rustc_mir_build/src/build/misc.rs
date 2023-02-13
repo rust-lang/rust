@@ -48,7 +48,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         source_info: SourceInfo,
         value: u64,
     ) -> Place<'tcx> {
-        let usize_ty = self.tcx.types.usize;
+        let usize_ty = self.tcx.types().usize;
         let temp = self.temp(usize_ty, source_info.span);
         self.cfg.push_assign_constant(
             block,

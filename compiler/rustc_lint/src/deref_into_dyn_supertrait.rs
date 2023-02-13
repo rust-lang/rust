@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
             && let ty::Dynamic(data, _, ty::Dyn) = target.kind()
             && let Some(target_principal) = data.principal()
             // `target_principal` is a supertrait of `t_principal`
-            && supertraits(cx.tcx, t_principal.with_self_ty(cx.tcx, cx.tcx.types.trait_object_dummy_self))
+            && supertraits(cx.tcx, t_principal.with_self_ty(cx.tcx, cx.tcx.types().trait_object_dummy_self))
                 .any(|sup| sup.map_bound(|x| ty::ExistentialTraitRef::erase_self_ty(cx.tcx, x)) == target_principal)
         {
             let label = impl_.items.iter().find_map(|i| (i.ident.name == sym::Target).then_some(i.span)).map(|label| SupertraitAsDerefTargetLabel {

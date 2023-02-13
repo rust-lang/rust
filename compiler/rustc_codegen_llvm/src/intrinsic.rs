@@ -143,7 +143,8 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                                     // less than 4 bytes in length. If it is, promote
                                     // the integer to an `i32` and truncate the result
                                     // back to the smaller type.
-                                    let promoted_result = emit_va_arg(self, args[0], tcx.types.i32);
+                                    let promoted_result =
+                                        emit_va_arg(self, args[0], tcx.types().i32);
                                     self.trunc(promoted_result, llret_ty)
                                 } else {
                                     emit_va_arg(self, args[0], ret_ty)
@@ -795,7 +796,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
 
     // Define the type up front for the signature of the rust_try function.
     let tcx = cx.tcx;
-    let i8p = tcx.mk_mut_ptr(tcx.types.i8);
+    let i8p = tcx.mk_mut_ptr(tcx.types().i8);
     // `unsafe fn(*mut i8) -> ()`
     let try_fn_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
         iter::once(i8p),
@@ -815,7 +816,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
     // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
     let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig(
         [try_fn_ty, i8p, catch_fn_ty].into_iter(),
-        tcx.types.i32,
+        tcx.types().i32,
         false,
         hir::Unsafety::Unsafe,
         Abi::Rust,

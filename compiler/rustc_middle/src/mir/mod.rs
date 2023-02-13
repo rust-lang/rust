@@ -2377,7 +2377,7 @@ impl<'tcx> ConstantKind<'tcx> {
     #[inline]
     pub fn from_bool(tcx: TyCtxt<'tcx>, v: bool) -> Self {
         let cv = ConstValue::from_bool(v);
-        Self::Val(cv, tcx.types.bool)
+        Self::Val(cv, tcx.types().bool)
     }
 
     #[inline]
@@ -2387,7 +2387,7 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     pub fn from_usize(tcx: TyCtxt<'tcx>, n: u64) -> Self {
-        let ty = tcx.types.usize;
+        let ty = tcx.types().usize;
         Self::from_bits(tcx, n as u128, ty::ParamEnv::empty().and(ty))
     }
 
@@ -2844,7 +2844,7 @@ fn pretty_print_const_value<'tcx>(
             return Ok(());
         }
 
-        let u8_type = tcx.types.u8;
+        let u8_type = tcx.types().u8;
         match (ct, ty.kind()) {
             // Byte/string slices, printed as (byte) string literals.
             (ConstValue::Slice { data, start, end }, ty::Ref(_, inner, _)) => {

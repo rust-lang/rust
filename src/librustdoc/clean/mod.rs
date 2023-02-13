@@ -1252,7 +1252,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
             if assoc_item.fn_has_self_parameter {
                 let self_ty = match assoc_item.container {
                     ty::ImplContainer => tcx.type_of(assoc_item.container_id(tcx)),
-                    ty::TraitContainer => tcx.types.self_param,
+                    ty::TraitContainer => tcx.types().self_param,
                 };
                 let self_arg_ty = sig.input(0).skip_binder();
                 if self_arg_ty == self_ty {
@@ -1785,7 +1785,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                             pb
                                 // HACK(compiler-errors): Doesn't actually matter what self
                                 // type we put here, because we're only using the GAT's substs.
-                                .with_self_ty(cx.tcx, cx.tcx.types.self_param)
+                                .with_self_ty(cx.tcx, cx.tcx.types().self_param)
                                 .projection_ty
                         }),
                         cx,

@@ -118,9 +118,9 @@ impl<'tcx> ClosureKind {
     /// See `Ty::to_opt_closure_kind` for more details.
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self {
-            ClosureKind::Fn => tcx.types.i8,
-            ClosureKind::FnMut => tcx.types.i16,
-            ClosureKind::FnOnce => tcx.types.i32,
+            ClosureKind::Fn => tcx.types().i8,
+            ClosureKind::FnMut => tcx.types().i16,
+            ClosureKind::FnOnce => tcx.types().i32,
         }
     }
 }

@@ -763,7 +763,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         let unit = Rvalue::Use(Operand::Constant(Box::new(Constant {
                             span: statement.source_info.span,
                             user_ty: None,
-                            literal: ConstantKind::zero_sized(self.tcx.types.unit),
+                            literal: ConstantKind::zero_sized(self.tcx.types().unit),
                         })));
                         mem::replace(rhs, unit)
                     },
@@ -943,7 +943,7 @@ pub fn promote_candidates<'tcx>(
         }
 
         // Declare return place local so that `mir::Body::new` doesn't complain.
-        let initial_locals = iter::once(LocalDecl::new(tcx.types.never, body.span)).collect();
+        let initial_locals = iter::once(LocalDecl::new(tcx.types().never, body.span)).collect();
 
         let mut scope = body.source_scopes[body.source_info(candidate.location).scope].clone();
         scope.parent_scope = None;

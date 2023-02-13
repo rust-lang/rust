@@ -394,7 +394,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 let switch_ty = discr.layout().ty;
                 let discr = discr.load_scalar(fx);
 
-                let use_bool_opt = switch_ty.kind() == fx.tcx.types.bool.kind()
+                let use_bool_opt = switch_ty.kind() == fx.tcx.types().bool.kind()
                     || (targets.iter().count() == 1 && targets.iter().next().unwrap().0 == 0);
                 if use_bool_opt {
                     assert_eq!(targets.iter().count(), 1);
@@ -769,7 +769,7 @@ fn codegen_stmt<'tcx>(
                 }
                 Rvalue::Len(place) => {
                     let place = codegen_place(fx, place);
-                    let usize_layout = fx.layout_of(fx.tcx.types.usize);
+                    let usize_layout = fx.layout_of(fx.tcx.types().usize);
                     let len = codegen_array_len(fx, place);
                     lval.write_cvalue(fx, CValue::by_val(len, usize_layout));
                 }
@@ -787,7 +787,7 @@ fn codegen_stmt<'tcx>(
                         NullOp::SizeOf => layout.size.bytes(),
                         NullOp::AlignOf => layout.align.abi.bytes(),
                     };
-                    let val = CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), val.into());
+                    let val = CValue::const_val(fx, fx.layout_of(fx.tcx.types().usize), val.into());
                     lval.write_cvalue(fx, val);
                 }
                 Rvalue::Aggregate(ref kind, ref operands) => {

@@ -50,7 +50,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriInterpCx<'mir, 'tcx> {
                     Ge => left >= right,
                     _ => bug!(),
                 };
-                (Scalar::from_bool(res), false, self.tcx.types.bool)
+                (Scalar::from_bool(res), false, self.tcx.types().bool)
             }
 
             Offset => {

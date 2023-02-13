@@ -1190,19 +1190,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match lit.node {
             ast::LitKind::Str(..) => tcx.mk_static_str(),
-            ast::LitKind::ByteStr(ref v, _) => {
-                tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types.u8, v.len() as u64))
-            }
-            ast::LitKind::Byte(_) => tcx.types.u8,
-            ast::LitKind::Char(_) => tcx.types.char,
+            ast::LitKind::ByteStr(ref v, _) => tcx
+                .mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types().u8, v.len() as u64)),
+            ast::LitKind::Byte(_) => tcx.types().u8,
+            ast::LitKind::Char(_) => tcx.types().char,
             ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => tcx.mk_mach_int(ty::int_ty(t)),
             ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => tcx.mk_mach_uint(ty::uint_ty(t)),
             ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
-                    ty::Char => Some(tcx.types.u8),
-                    ty::RawPtr(..) => Some(tcx.types.usize),
-                    ty::FnDef(..) | ty::FnPtr(_) => Some(tcx.types.usize),
+                    ty::Char => Some(tcx.types().u8),
+                    ty::RawPtr(..) => Some(tcx.types().usize),
+                    ty::FnDef(..) | ty::FnPtr(_) => Some(tcx.types().usize),
                     _ => None,
                 });
                 opt_ty.unwrap_or_else(|| self.next_int_var())
@@ -1217,7 +1216,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
                 opt_ty.unwrap_or_else(|| self.next_float_var())
             }
-            ast::LitKind::Bool(_) => tcx.types.bool,
+            ast::LitKind::Bool(_) => tcx.types().bool,
             ast::LitKind::Err => tcx.ty_error(),
         }
     }
@@ -1347,7 +1346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let else_ty = self.check_block_with_expected(blk, NoExpectation);
             let cause = self.cause(blk.span, ObligationCauseCode::LetElse);
             if let Some(mut err) =
-                self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
+                self.demand_eqtype_with_origin(&cause, self.tcx.types().never, else_ty)
             {
                 err.emit();
             }
@@ -1522,7 +1521,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         err,
                                     );
                                 }
-                                if expected_ty == self.tcx.types.bool {
+                                if expected_ty == self.tcx.types().bool {
                                     // If this is caused by a missing `let` in a `while let`,
                                     // silence this redundant error, as we already emit E0070.
 

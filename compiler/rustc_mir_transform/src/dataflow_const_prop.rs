@@ -137,7 +137,10 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'tcx> {
                                     // Overflow cannot be reliably propagated. See: https://github.com/rust-lang/rust/pull/101168#issuecomment-1288091446
                                     FlatSet::Top
                                 } else {
-                                    self.wrap_scalar(Scalar::from_bool(false), self.tcx.types.bool)
+                                    self.wrap_scalar(
+                                        Scalar::from_bool(false),
+                                        self.tcx.types().bool,
+                                    )
                                 }
                             }
                             FlatSet::Bottom => FlatSet::Bottom,

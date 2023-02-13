@@ -107,8 +107,8 @@ pub trait IntTypeExt {
 impl IntTypeExt for IntegerType {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self {
-            IntegerType::Pointer(true) => tcx.types.isize,
-            IntegerType::Pointer(false) => tcx.types.usize,
+            IntegerType::Pointer(true) => tcx.types().isize,
+            IntegerType::Pointer(false) => tcx.types().usize,
             IntegerType::Fixed(i, s) => i.to_ty(tcx, *s),
         }
     }

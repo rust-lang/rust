@@ -682,7 +682,7 @@ where
 
         let ptr_ty = tcx.mk_ptr(ty::TypeAndMut { ty: ety, mutbl: hir::Mutability::Mut });
         let ptr = Place::from(self.new_temp(ptr_ty));
-        let can_go = Place::from(self.new_temp(tcx.types.bool));
+        let can_go = Place::from(self.new_temp(tcx.types().bool));
 
         let one = self.constant_usize(1);
         let (ptr_next, cur_next) = if ptr_based {
@@ -771,8 +771,8 @@ where
         }
 
         let move_ = |place: Place<'tcx>| Operand::Move(place);
-        let elem_size = Place::from(self.new_temp(tcx.types.usize));
-        let len = Place::from(self.new_temp(tcx.types.usize));
+        let elem_size = Place::from(self.new_temp(tcx.types().usize));
+        let len = Place::from(self.new_temp(tcx.types().usize));
 
         let base_block = BasicBlockData {
             statements: vec![
@@ -806,7 +806,7 @@ where
     ) -> BasicBlock {
         debug!("drop_loop_pair({:?}, {:?})", ety, ptr_based);
         let tcx = self.tcx();
-        let iter_ty = if ptr_based { tcx.mk_mut_ptr(ety) } else { tcx.types.usize };
+        let iter_ty = if ptr_based { tcx.mk_mut_ptr(ety) } else { tcx.types().usize };
 
         let cur = self.new_temp(iter_ty);
         let length_or_end = if ptr_based { Place::from(self.new_temp(iter_ty)) } else { length };

@@ -380,11 +380,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 | ty::GeneratorWitness(..)
                 | ty::GeneratorWitnessMIR(..)
                 | ty::Never
-                | ty::Foreign(..) => tcx.types.unit,
+                | ty::Foreign(..) => tcx.types().unit,
 
                 ty::Error(e) => tcx.ty_error_with_guaranteed(*e),
 
-                ty::Str | ty::Slice(_) => tcx.types.usize,
+                ty::Str | ty::Slice(_) => tcx.types().usize,
 
                 ty::Dynamic(_, _, _) => {
                     let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
@@ -404,13 +404,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                     return ecx.eq_term_and_make_canonical_response(
                         goal,
                         is_sized_certainty,
-                        tcx.types.unit,
+                        tcx.types().unit,
                     );
                 }
 
                 ty::Adt(def, substs) if def.is_struct() => {
                     match def.non_enum_variant().fields.last() {
-                        None => tcx.types.unit,
+                        None => tcx.types().unit,
                         Some(field_def) => {
                             let self_ty = field_def.ty(tcx, substs);
                             let new_goal = goal.with(
@@ -422,10 +422,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                         }
                     }
                 }
-                ty::Adt(_, _) => tcx.types.unit,
+                ty::Adt(_, _) => tcx.types().unit,
 
                 ty::Tuple(elements) => match elements.last() {
-                    None => tcx.types.unit,
+                    None => tcx.types().unit,
                     Some(&self_ty) => {
                         let new_goal = goal.with(
                             tcx,

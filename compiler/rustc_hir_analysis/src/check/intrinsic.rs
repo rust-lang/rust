@@ -171,7 +171,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             "cxchg" | "cxchgweak" => (
                 1,
                 vec![tcx.mk_mut_ptr(param(0)), param(0), param(0)],
-                tcx.intern_tup(&[param(0), tcx.types.bool]),
+                tcx.intern_tup(&[param(0), tcx.types().bool]),
             ),
             "load" => (1, vec![tcx.mk_imm_ptr(param(0))], param(0)),
             "store" => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)], tcx.mk_unit()),
@@ -188,14 +188,14 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     } else {
         let unsafety = intrinsic_operation_unsafety(tcx, intrinsic_id);
         let (n_tps, inputs, output) = match intrinsic_name {
-            sym::abort => (0, Vec::new(), tcx.types.never),
-            sym::unreachable => (0, Vec::new(), tcx.types.never),
+            sym::abort => (0, Vec::new(), tcx.types().never),
+            sym::unreachable => (0, Vec::new(), tcx.types().never),
             sym::breakpoint => (0, Vec::new(), tcx.mk_unit()),
             sym::size_of | sym::pref_align_of | sym::min_align_of | sym::variant_count => {
-                (1, Vec::new(), tcx.types.usize)
+                (1, Vec::new(), tcx.types().usize)
             }
             sym::size_of_val | sym::min_align_of_val => {
-                (1, vec![tcx.mk_imm_ptr(param(0))], tcx.types.usize)
+                (1, vec![tcx.mk_imm_ptr(param(0))], tcx.types().usize)
             }
             sym::rustc_peek => (1, vec![param(0)], param(0)),
             sym::caller_location => (0, vec![], tcx.caller_location_ty()),
@@ -211,20 +211,20 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 1,
                 vec![
                     tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
-                    tcx.types.i32,
+                    tcx.types().i32,
                 ],
                 tcx.mk_unit(),
             ),
             sym::drop_in_place => (1, vec![tcx.mk_mut_ptr(param(0))], tcx.mk_unit()),
-            sym::needs_drop => (1, Vec::new(), tcx.types.bool),
+            sym::needs_drop => (1, Vec::new(), tcx.types().bool),
 
             sym::type_name => (1, Vec::new(), tcx.mk_static_str()),
-            sym::type_id => (1, Vec::new(), tcx.types.u64),
+            sym::type_id => (1, Vec::new(), tcx.types().u64),
             sym::offset | sym::arith_offset => (
                 1,
                 vec![
                     tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
-                    tcx.types.isize,
+                    tcx.types().isize,
                 ],
                 tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
             ),
@@ -232,7 +232,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 1,
                 vec![
                     tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
-                    tcx.types.usize,
+                    tcx.types().usize,
                 ],
                 tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
             ),
@@ -242,7 +242,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 vec![
                     tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
                     tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Mut }),
-                    tcx.types.usize,
+                    tcx.types().usize,
                 ],
                 tcx.mk_unit(),
             ),
@@ -251,7 +251,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 vec![
                     tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Mut }),
                     tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
-                    tcx.types.usize,
+                    tcx.types().usize,
                 ],
                 tcx.mk_unit(),
             ),
@@ -259,53 +259,57 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 1,
                 vec![
                     tcx.mk_ptr(ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Mut }),
-                    tcx.types.u8,
-                    tcx.types.usize,
+                    tcx.types().u8,
+                    tcx.types().usize,
                 ],
                 tcx.mk_unit(),
             ),
-            sym::sqrtf32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::sqrtf64 => (0, vec![tcx.types.f64], tcx.types.f64),
-            sym::powif32 => (0, vec![tcx.types.f32, tcx.types.i32], tcx.types.f32),
-            sym::powif64 => (0, vec![tcx.types.f64, tcx.types.i32], tcx.types.f64),
-            sym::sinf32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::sinf64 => (0, vec![tcx.types.f64], tcx.types.f64),
-            sym::cosf32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::cosf64 => (0, vec![tcx.types.f64], tcx.types.f64),
-            sym::powf32 => (0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-            sym::powf64 => (0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-            sym::expf32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::expf64 => (0, vec![tcx.types.f64], tcx.types.f64),
-            sym::exp2f32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::exp2f64 => (0, vec![tcx.types.f64], tcx.types.f64),
-            sym::logf32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::logf64 => (0, vec![tcx.types.f64], tcx.types.f64),
-            sym::log10f32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::log10f64 => (0, vec![tcx.types.f64], tcx.types.f64),
-            sym::log2f32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::log2f64 => (0, vec![tcx.types.f64], tcx.types.f64),
-            sym::fmaf32 => (0, vec![tcx.types.f32, tcx.types.f32, tcx.types.f32], tcx.types.f32),
-            sym::fmaf64 => (0, vec![tcx.types.f64, tcx.types.f64, tcx.types.f64], tcx.types.f64),
-            sym::fabsf32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::fabsf64 => (0, vec![tcx.types.f64], tcx.types.f64),
-            sym::minnumf32 => (0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-            sym::minnumf64 => (0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-            sym::maxnumf32 => (0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-            sym::maxnumf64 => (0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-            sym::copysignf32 => (0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-            sym::copysignf64 => (0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-            sym::floorf32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::floorf64 => (0, vec![tcx.types.f64], tcx.types.f64),
-            sym::ceilf32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::ceilf64 => (0, vec![tcx.types.f64], tcx.types.f64),
-            sym::truncf32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::truncf64 => (0, vec![tcx.types.f64], tcx.types.f64),
-            sym::rintf32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::rintf64 => (0, vec![tcx.types.f64], tcx.types.f64),
-            sym::nearbyintf32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::nearbyintf64 => (0, vec![tcx.types.f64], tcx.types.f64),
-            sym::roundf32 => (0, vec![tcx.types.f32], tcx.types.f32),
-            sym::roundf64 => (0, vec![tcx.types.f64], tcx.types.f64),
+            sym::sqrtf32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::sqrtf64 => (0, vec![tcx.types().f64], tcx.types().f64),
+            sym::powif32 => (0, vec![tcx.types().f32, tcx.types().i32], tcx.types().f32),
+            sym::powif64 => (0, vec![tcx.types().f64, tcx.types().i32], tcx.types().f64),
+            sym::sinf32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::sinf64 => (0, vec![tcx.types().f64], tcx.types().f64),
+            sym::cosf32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::cosf64 => (0, vec![tcx.types().f64], tcx.types().f64),
+            sym::powf32 => (0, vec![tcx.types().f32, tcx.types().f32], tcx.types().f32),
+            sym::powf64 => (0, vec![tcx.types().f64, tcx.types().f64], tcx.types().f64),
+            sym::expf32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::expf64 => (0, vec![tcx.types().f64], tcx.types().f64),
+            sym::exp2f32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::exp2f64 => (0, vec![tcx.types().f64], tcx.types().f64),
+            sym::logf32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::logf64 => (0, vec![tcx.types().f64], tcx.types().f64),
+            sym::log10f32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::log10f64 => (0, vec![tcx.types().f64], tcx.types().f64),
+            sym::log2f32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::log2f64 => (0, vec![tcx.types().f64], tcx.types().f64),
+            sym::fmaf32 => {
+                (0, vec![tcx.types().f32, tcx.types().f32, tcx.types().f32], tcx.types().f32)
+            }
+            sym::fmaf64 => {
+                (0, vec![tcx.types().f64, tcx.types().f64, tcx.types().f64], tcx.types().f64)
+            }
+            sym::fabsf32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::fabsf64 => (0, vec![tcx.types().f64], tcx.types().f64),
+            sym::minnumf32 => (0, vec![tcx.types().f32, tcx.types().f32], tcx.types().f32),
+            sym::minnumf64 => (0, vec![tcx.types().f64, tcx.types().f64], tcx.types().f64),
+            sym::maxnumf32 => (0, vec![tcx.types().f32, tcx.types().f32], tcx.types().f32),
+            sym::maxnumf64 => (0, vec![tcx.types().f64, tcx.types().f64], tcx.types().f64),
+            sym::copysignf32 => (0, vec![tcx.types().f32, tcx.types().f32], tcx.types().f32),
+            sym::copysignf64 => (0, vec![tcx.types().f64, tcx.types().f64], tcx.types().f64),
+            sym::floorf32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::floorf64 => (0, vec![tcx.types().f64], tcx.types().f64),
+            sym::ceilf32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::ceilf64 => (0, vec![tcx.types().f64], tcx.types().f64),
+            sym::truncf32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::truncf64 => (0, vec![tcx.types().f64], tcx.types().f64),
+            sym::rintf32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::rintf64 => (0, vec![tcx.types().f64], tcx.types().f64),
+            sym::nearbyintf32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::nearbyintf64 => (0, vec![tcx.types().f64], tcx.types().f64),
+            sym::roundf32 => (0, vec![tcx.types().f32], tcx.types().f32),
+            sym::roundf64 => (0, vec![tcx.types().f64], tcx.types().f64),
 
             sym::volatile_load | sym::unaligned_volatile_load => {
                 (1, vec![tcx.mk_imm_ptr(param(0))], param(0))
@@ -323,27 +327,27 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             | sym::bitreverse => (1, vec![param(0)], param(0)),
 
             sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
-                (1, vec![param(0), param(0)], tcx.intern_tup(&[param(0), tcx.types.bool]))
+                (1, vec![param(0), param(0)], tcx.intern_tup(&[param(0), tcx.types().bool]))
             }
 
             sym::ptr_guaranteed_cmp => {
-                (1, vec![tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0))], tcx.types.u8)
+                (1, vec![tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0))], tcx.types().u8)
             }
 
             sym::const_allocate => {
-                (0, vec![tcx.types.usize, tcx.types.usize], tcx.mk_mut_ptr(tcx.types.u8))
+                (0, vec![tcx.types().usize, tcx.types().usize], tcx.mk_mut_ptr(tcx.types().u8))
             }
             sym::const_deallocate => (
                 0,
-                vec![tcx.mk_mut_ptr(tcx.types.u8), tcx.types.usize, tcx.types.usize],
+                vec![tcx.mk_mut_ptr(tcx.types().u8), tcx.types().usize, tcx.types().usize],
                 tcx.mk_unit(),
             ),
 
             sym::ptr_offset_from => {
-                (1, vec![tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0))], tcx.types.isize)
+                (1, vec![tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0))], tcx.types().isize)
             }
             sym::ptr_offset_from_unsigned => {
-                (1, vec![tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0))], tcx.types.usize)
+                (1, vec![tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0))], tcx.types().usize)
             }
             sym::unchecked_div | sym::unchecked_rem | sym::exact_div => {
                 (1, vec![param(0), param(0)], param(0))
@@ -363,9 +367,9 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             }
             sym::float_to_int_unchecked => (2, vec![param(0)], param(1)),
 
-            sym::assume => (0, vec![tcx.types.bool], tcx.mk_unit()),
-            sym::likely => (0, vec![tcx.types.bool], tcx.types.bool),
-            sym::unlikely => (0, vec![tcx.types.bool], tcx.types.bool),
+            sym::assume => (0, vec![tcx.types().bool], tcx.mk_unit()),
+            sym::likely => (0, vec![tcx.types().bool], tcx.types().bool),
+            sym::unlikely => (0, vec![tcx.types().bool], tcx.types().bool),
 
             sym::discriminant_value => {
                 let assoc_items = tcx.associated_item_def_ids(
@@ -385,7 +389,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             }
 
             kw::Try => {
-                let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);
+                let mut_u8 = tcx.mk_mut_ptr(tcx.types().u8);
                 let try_fn_ty = ty::Binder::dummy(tcx.mk_fn_sig(
                     iter::once(mut_u8),
                     tcx.mk_unit(),
@@ -403,7 +407,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 (
                     0,
                     vec![tcx.mk_fn_ptr(try_fn_ty), mut_u8, tcx.mk_fn_ptr(catch_fn_ty)],
-                    tcx.types.i32,
+                    tcx.types().i32,
                 )
             }
 
@@ -432,7 +436,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                     ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(0, None) };
                 let param_ty =
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)), param(0));
-                (1, vec![param_ty; 2], tcx.types.bool)
+                (1, vec![param_ty; 2], tcx.types().bool)
             }
 
             sym::black_box => (1, vec![param(0)], param(0)),
@@ -440,7 +444,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::const_eval_select => (4, vec![param(0), param(1), param(2)], param(3)),
 
             sym::vtable_size | sym::vtable_align => {
-                (0, vec![tcx.mk_imm_ptr(tcx.mk_unit())], tcx.types.usize)
+                (0, vec![tcx.mk_imm_ptr(tcx.mk_unit())], tcx.types().usize)
             }
 
             other => {
@@ -498,12 +502,12 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         | sym::simd_floor
         | sym::simd_round
         | sym::simd_trunc => (1, vec![param(0)], param(0)),
-        sym::simd_fpowi => (1, vec![param(0), tcx.types.i32], param(0)),
+        sym::simd_fpowi => (1, vec![param(0), tcx.types().i32], param(0)),
         sym::simd_fma => (1, vec![param(0), param(0), param(0)], param(0)),
         sym::simd_gather => (3, vec![param(0), param(1), param(2)], param(0)),
         sym::simd_scatter => (3, vec![param(0), param(1), param(2)], tcx.mk_unit()),
-        sym::simd_insert => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
-        sym::simd_extract => (2, vec![param(0), tcx.types.u32], param(1)),
+        sym::simd_insert => (2, vec![param(0), tcx.types().u32, param(1)], param(0)),
+        sym::simd_extract => (2, vec![param(0), tcx.types().u32], param(1)),
         sym::simd_cast
         | sym::simd_as
         | sym::simd_cast_ptr
@@ -513,7 +517,7 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         sym::simd_select | sym::simd_select_bitmask => {
             (2, vec![param(0), param(1), param(1)], param(1))
         }
-        sym::simd_reduce_all | sym::simd_reduce_any => (1, vec![param(0)], tcx.types.bool),
+        sym::simd_reduce_all | sym::simd_reduce_any => (1, vec![param(0)], tcx.types().bool),
         sym::simd_reduce_add_ordered | sym::simd_reduce_mul_ordered => {
             (2, vec![param(0), param(1)], param(1))
         }
@@ -530,7 +534,7 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         name if name.as_str().starts_with("simd_shuffle") => {
             match name.as_str()["simd_shuffle".len()..].parse() {
                 Ok(n) => {
-                    let params = vec![param(0), param(0), tcx.mk_array(tcx.types.u32, n)];
+                    let params = vec![param(0), param(0), tcx.mk_array(tcx.types().u32, n)];
                     (2, params, param(1))
                 }
                 Err(_) => {

@@ -854,8 +854,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        let usize_layout =
-            self.tcx().layout_of(ty::ParamEnv::empty().and(self.tcx().types.usize)).unwrap().layout;
+        let usize_layout = self
+            .tcx()
+            .layout_of(ty::ParamEnv::empty().and(self.tcx().types().usize))
+            .unwrap()
+            .layout;
         if let Ok(layout) = self.tcx().layout_of(obligation.param_env.and(self_ty))
             && layout.layout.size() == usize_layout.size()
             && layout.layout.align().abi == usize_layout.align().abi

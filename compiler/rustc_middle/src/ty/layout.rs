@@ -33,16 +33,16 @@ impl IntegerExt for Integer {
     #[inline]
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx> {
         match (*self, signed) {
-            (I8, false) => tcx.types.u8,
-            (I16, false) => tcx.types.u16,
-            (I32, false) => tcx.types.u32,
-            (I64, false) => tcx.types.u64,
-            (I128, false) => tcx.types.u128,
-            (I8, true) => tcx.types.i8,
-            (I16, true) => tcx.types.i16,
-            (I32, true) => tcx.types.i32,
-            (I64, true) => tcx.types.i64,
-            (I128, true) => tcx.types.i128,
+            (I8, false) => tcx.types().u8,
+            (I16, false) => tcx.types().u16,
+            (I32, false) => tcx.types().u32,
+            (I64, false) => tcx.types().u64,
+            (I128, false) => tcx.types().u128,
+            (I8, true) => tcx.types().i8,
+            (I16, true) => tcx.types().i16,
+            (I32, true) => tcx.types().i32,
+            (I64, true) => tcx.types().i64,
+            (I128, true) => tcx.types().i128,
         }
     }
 
@@ -126,8 +126,8 @@ impl PrimitiveExt for Primitive {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
-            F32 => tcx.types.f32,
-            F64 => tcx.types.f64,
+            F32 => tcx.types().f32,
+            F64 => tcx.types().f64,
             // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
             Pointer(_) => tcx.mk_mut_ptr(tcx.mk_unit()),
         }
@@ -677,7 +677,7 @@ where
                     }
 
                     let mk_dyn_vtable = || {
-                        tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types.usize, 3))
+                        tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types().usize, 3))
                         /* FIXME: use actual fn pointers
                         Warning: naively computing the number of entries in the
                         vtable by counting the methods on the trait + methods on
@@ -687,7 +687,7 @@ where
                         failed to do it without duplicating a lot of code from
                         other places in the compiler: 2
                         tcx.mk_tup(&[
-                            tcx.mk_array(tcx.types.usize, 3),
+                            tcx.mk_array(tcx.types().usize, 3),
                             tcx.mk_array(Option<fn()>),
                         ])
                         */
@@ -713,7 +713,7 @@ where
                         }
                     } else {
                         match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
-                            ty::Slice(_) | ty::Str => tcx.types.usize,
+                            ty::Slice(_) | ty::Str => tcx.types().usize,
                             ty::Dynamic(_, _, ty::Dyn) => mk_dyn_vtable(),
                             _ => bug!("TyAndLayout::field({:?}): not applicable", this),
                         }
@@ -724,7 +724,7 @@ where
 
                 // Arrays and slices.
                 ty::Array(element, _) | ty::Slice(element) => TyMaybeWithLayout::Ty(element),
-                ty::Str => TyMaybeWithLayout::Ty(tcx.types.u8),
+                ty::Str => TyMaybeWithLayout::Ty(tcx.types().u8),
 
                 // Tuples, generators and closures.
                 ty::Closure(_, ref substs) => field_ty_or_layout(
@@ -770,15 +770,13 @@ where
 
                 ty::Dynamic(_, _, ty::DynStar) => {
                     if i == 0 {
-                        TyMaybeWithLayout::Ty(tcx.types.usize)
+                        TyMaybeWithLayout::Ty(tcx.types().usize)
                     } else if i == 1 {
                         // FIXME(dyn-star) same FIXME as above applies here too
-                        TyMaybeWithLayout::Ty(
-                            tcx.mk_imm_ref(
-                                tcx.lifetimes.re_static,
-                                tcx.mk_array(tcx.types.usize, 3),
-                            ),
-                        )
+                        TyMaybeWithLayout::Ty(tcx.mk_imm_ref(
+                            tcx.lifetimes.re_static,
+                            tcx.mk_array(tcx.types().usize, 3),
+                        ))
                     } else {
                         bug!("no field {i} on dyn*")
                     }

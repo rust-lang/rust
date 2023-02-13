@@ -1013,7 +1013,7 @@ fn check_associated_item(
         let item = tcx.associated_item(item_id);
 
         let self_ty = match item.container {
-            ty::TraitContainer => tcx.types.self_param,
+            ty::TraitContainer => tcx.types().self_param,
             ty::ImplContainer => tcx.type_of(item.container_id(tcx)),
         };
 

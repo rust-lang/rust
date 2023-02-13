@@ -205,7 +205,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let Some(exp_ty) = typeck_results.expr_ty_opt(e) else {return false;};
             let resolved_exp_ty = self.resolve(exp_ty, &e.span);
 
-            elem_ty == resolved_exp_ty && index_ty == self.fcx.tcx.types.usize
+            elem_ty == resolved_exp_ty && index_ty == self.fcx.tcx.types().usize
         } else {
             false
         }

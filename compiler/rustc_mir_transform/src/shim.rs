@@ -641,7 +641,7 @@ fn build_call_shim<'tcx>(
         // Modify fn(self, ...) to fn(self: *mut Self, ...)
         let mut inputs_and_output = sig.inputs_and_output.to_vec();
         let self_arg = &mut inputs_and_output[0];
-        debug_assert!(tcx.generics_of(def_id).has_self && *self_arg == tcx.types.self_param);
+        debug_assert!(tcx.generics_of(def_id).has_self && *self_arg == tcx.types().self_param);
         *self_arg = tcx.mk_mut_ptr(*self_arg);
         sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
     }

@@ -639,8 +639,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr_span: Span,
         source_info: SourceInfo,
     ) -> BasicBlock {
-        let usize_ty = self.tcx.types.usize;
-        let bool_ty = self.tcx.types.bool;
+        let usize_ty = self.tcx.types().usize;
+        let bool_ty = self.tcx.types().bool;
         // bounds check:
         let len = self.temp(usize_ty, expr_span);
         let lt = self.temp(bool_ty, expr_span);

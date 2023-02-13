@@ -188,11 +188,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             }
                             if matches!(mir_op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
                                 // Special handling for boolean-returning operations
-                                assert_eq!(ty, this.tcx.types.bool);
+                                assert_eq!(ty, this.tcx.types().bool);
                                 let val = val.to_bool().unwrap();
                                 bool_to_simd_element(val, dest.layout.size)
                             } else {
-                                assert_ne!(ty, this.tcx.types.bool);
+                                assert_ne!(ty, this.tcx.types().bool);
                                 assert_eq!(ty, dest.layout.ty);
                                 val
                             }

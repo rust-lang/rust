@@ -127,7 +127,7 @@ fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId, trait_: DefId)
     }
     let predicates = cx.tcx.super_predicates_of(child);
     debug_assert!(cx.tcx.generics_of(child).has_self);
-    let self_ty = cx.tcx.types.self_param;
+    let self_ty = cx.tcx.types().self_param;
     predicates
         .predicates
         .iter()

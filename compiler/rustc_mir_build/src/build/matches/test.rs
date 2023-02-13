@@ -245,7 +245,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     let re_erased = tcx.lifetimes.re_erased;
                     let ref_string = self.temp(tcx.mk_imm_ref(re_erased, ty), test.span);
-                    let ref_str_ty = tcx.mk_imm_ref(re_erased, tcx.types.str_);
+                    let ref_str_ty = tcx.mk_imm_ref(re_erased, tcx.types().str_);
                     let ref_str = self.temp(ref_str_ty, test.span);
                     let deref = tcx.require_lang_item(LangItem::Deref, None);
                     let method = trait_method(tcx, deref, sym::deref, [ty]);
@@ -323,7 +323,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestKind::Len { len, op } => {
                 let target_blocks = make_target_blocks(self);
 
-                let usize_ty = self.tcx.types.usize;
+                let usize_ty = self.tcx.types().usize;
                 let actual = self.temp(usize_ty, test.span);
 
                 // actual = len(place)
@@ -361,7 +361,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         left: Operand<'tcx>,
         right: Operand<'tcx>,
     ) {
-        let bool_ty = self.tcx.types.bool;
+        let bool_ty = self.tcx.types().bool;
         let result = self.temp(bool_ty, source_info.span);
 
         // result = op(left, right)
@@ -445,7 +445,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, Some(source_info.span));
         let method = trait_method(self.tcx, eq_def_id, sym::eq, [deref_ty, deref_ty]);
 
-        let bool_ty = self.tcx.types.bool;
+        let bool_ty = self.tcx.types().bool;
         let eq_result = self.temp(bool_ty, source_info.span);
         let eq_block = self.cfg.start_new_block();
         self.cfg.terminate(

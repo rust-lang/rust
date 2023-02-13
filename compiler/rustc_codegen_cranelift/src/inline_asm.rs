@@ -122,10 +122,10 @@ pub(crate) fn codegen_inline_asm<'tcx>(
 
             let (eax, ebx, ecx, edx) = crate::intrinsics::codegen_cpuid_call(fx, leaf, sub_leaf);
 
-            eax_place.write_cvalue(fx, CValue::by_val(eax, fx.layout_of(fx.tcx.types.u32)));
-            ebx_place.write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fx.tcx.types.u32)));
-            ecx_place.write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fx.tcx.types.u32)));
-            edx_place.write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fx.tcx.types.u32)));
+            eax_place.write_cvalue(fx, CValue::by_val(eax, fx.layout_of(fx.tcx.types().u32)));
+            ebx_place.write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fx.tcx.types().u32)));
+            ecx_place.write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fx.tcx.types().u32)));
+            edx_place.write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fx.tcx.types().u32)));
             let destination_block = fx.get_block(destination.unwrap());
             fx.bcx.ins().jump(destination_block, &[]);
             return;
@@ -196,7 +196,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                 _ => unreachable!(),
             };
 
-            let u32_layout = fx.layout_of(fx.tcx.types.u32);
+            let u32_layout = fx.layout_of(fx.tcx.types().u32);
             let zero = fx.bcx.ins().iconst(types::I32, 0);
             lo.write_cvalue(fx, CValue::by_val(zero, u32_layout));
             hi.write_cvalue(fx, CValue::by_val(zero, u32_layout));

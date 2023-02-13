@@ -1225,7 +1225,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 trait_ref,
                 // NOTE: This isn't really right, but the actual type doesn't matter here. It's
                 // just required by `ty::TraitRef`.
-                self.tcx.types.never,
+                self.tcx.types().never,
             );
 
             for (pred, _) in bounds.predicates() {

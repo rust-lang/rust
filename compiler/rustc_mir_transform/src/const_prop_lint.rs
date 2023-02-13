@@ -205,7 +205,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             .filter(|ret_layout| {
                 ret_layout.is_sized() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
             })
-            .unwrap_or_else(|| ecx.layout_of(tcx.types.unit).unwrap());
+            .unwrap_or_else(|| ecx.layout_of(tcx.types().unit).unwrap());
 
         let ret = ecx
             .allocate(ret_layout, MemoryKind::Stack)

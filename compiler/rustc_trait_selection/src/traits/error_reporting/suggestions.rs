@@ -541,7 +541,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ident,
                     kind: hir::ItemKind::Trait(_, _, generics, bounds, _),
                     ..
-                }) if self_ty == self.tcx.types.self_param => {
+                }) if self_ty == self.tcx.types().self_param => {
                     assert!(param_ty);
                     // Restricting `Self` for a single method.
                     suggest_restriction(
@@ -562,7 +562,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     generics,
                     kind: hir::TraitItemKind::Fn(..),
                     ..
-                }) if self_ty == self.tcx.types.self_param => {
+                }) if self_ty == self.tcx.types().self_param => {
                     assert!(param_ty);
                     // Restricting `Self` for a single method.
                     suggest_restriction(

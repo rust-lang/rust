@@ -519,7 +519,7 @@ pub(super) fn super_predicates_that_define_assoc_type(
         let icx = ItemCtxt::new(tcx, trait_def_id);
 
         // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo: Bar + Zed`.
-        let self_param_ty = tcx.types.self_param;
+        let self_param_ty = tcx.types().self_param;
         let superbounds1 = if let Some(assoc_name) = assoc_name {
             icx.astconv().compute_bounds_that_match_assoc_type(self_param_ty, bounds, assoc_name)
         } else {

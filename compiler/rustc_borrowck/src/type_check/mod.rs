@@ -649,7 +649,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             }
             ProjectionElem::Index(i) => {
                 let index_ty = Place::from(i).ty(self.body(), tcx).ty;
-                if index_ty != tcx.types.usize {
+                if index_ty != tcx.types().usize {
                     PlaceTy::from_ty(span_mirbug_and_err!(self, i, "index by non-usize {:?}", i))
                 } else {
                     PlaceTy::from_ty(base_ty.builtin_index().unwrap_or_else(|| {
@@ -1382,15 +1382,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_operand(cond, term_location);
 
                 let cond_ty = cond.ty(body, tcx);
-                if cond_ty != tcx.types.bool {
+                if cond_ty != tcx.types().bool {
                     span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
                 }
 
                 if let AssertKind::BoundsCheck { len, index } = msg {
-                    if len.ty(body, tcx) != tcx.types.usize {
+                    if len.ty(body, tcx) != tcx.types().usize {
                         span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
                     }
-                    if index.ty(body, tcx) != tcx.types.usize {
+                    if index.ty(body, tcx) != tcx.types().usize {
                         span_mirbug!(self, index, "bounds-check index non-usize {:?}", index)
                     }
                 }

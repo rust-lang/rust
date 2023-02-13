@@ -34,7 +34,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                     Rvalue::Use(Operand::Constant(Box::new(Constant {
                                         span: terminator.source_info.span,
                                         user_ty: None,
-                                        literal: ConstantKind::zero_sized(tcx.types.unit),
+                                        literal: ConstantKind::zero_sized(tcx.types().unit),
                                     }))),
                                 ))),
                             });

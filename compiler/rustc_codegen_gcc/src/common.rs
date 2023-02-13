@@ -133,7 +133,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             .1;
         let len = s.len();
         let cs = self.const_ptrcast(str_global.get_address(None),
-            self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self, true)),
+            self.type_ptr_to(self.layout_of(self.tcx.types().str_).gcc_type(self, true)),
         );
         (cs, self.const_usize(len as u64))
     }

@@ -246,6 +246,7 @@ const NUM_PREINTERNED_FRESH_TYS: u32 = 20;
 const NUM_PREINTERNED_FRESH_INT_TYS: u32 = 3;
 const NUM_PREINTERNED_FRESH_FLOAT_TYS: u32 = 3;
 
+#[derive(Debug)]
 pub struct CommonTypes<'tcx> {
     pub unit: Ty<'tcx>,
     pub bool: Ty<'tcx>,
@@ -286,7 +287,6 @@ pub struct CommonTypes<'tcx> {
     /// Pre-interned `Infer(ty::FreshFloatTy(n))` for small values of `n`.
     pub fresh_float_tys: Vec<Ty<'tcx>>,
 }
-
 pub struct CommonLifetimes<'tcx> {
     /// `ReStatic`
     pub re_static: Region<'tcx>,
@@ -300,12 +300,8 @@ pub struct CommonConsts<'tcx> {
 }
 
 impl<'tcx> CommonTypes<'tcx> {
-    fn new(
-        interners: &CtxtInterners<'tcx>,
-        sess: &Session,
-        untracked: &Untracked,
-    ) -> CommonTypes<'tcx> {
-        let mk = |ty| interners.intern_ty(ty, sess, untracked);
+    fn new(tcx: TyCtxt<'tcx>) -> CommonTypes<'tcx> {
+        let mk = |ty| tcx.mk_ty(ty);
 
         let ty_vars =
             (0..NUM_PREINTERNED_TY_VARS).map(|n| mk(Infer(ty::TyVar(TyVid::from(n))))).collect();
@@ -359,24 +355,6 @@ impl<'tcx> CommonLifetimes<'tcx> {
         CommonLifetimes { re_static: mk(ty::ReStatic), re_erased: mk(ty::ReErased) }
     }
 }
-
-impl<'tcx> CommonConsts<'tcx> {
-    fn new(interners: &CtxtInterners<'tcx>, types: &CommonTypes<'tcx>) -> CommonConsts<'tcx> {
-        let mk_const = |c| {
-            Const(Interned::new_unchecked(
-                interners.const_.intern(c, |c| InternedInSet(interners.arena.alloc(c))).0,
-            ))
-        };
-
-        CommonConsts {
-            unit: mk_const(ty::ConstData {
-                kind: ty::ConstKind::Value(ty::ValTree::zst()),
-                ty: types.unit,
-            }),
-        }
-    }
-}
-
 /// This struct contains information regarding the `ReFree(FreeRegion)` corresponding to a lifetime
 /// conflict.
 #[derive(Debug)]
@@ -459,14 +437,8 @@ pub struct GlobalCtxt<'tcx> {
 
     pub prof: SelfProfilerRef,
 
-    /// Common types, pre-interned for your convenience.
-    pub types: CommonTypes<'tcx>,
-
     /// Common lifetimes, pre-interned for your convenience.
     pub lifetimes: CommonLifetimes<'tcx>,
-
-    /// Common consts, pre-interned for your convenience.
-    pub consts: CommonConsts<'tcx>,
 
     untracked: Untracked,
 
@@ -644,9 +616,7 @@ impl<'tcx> TyCtxt<'tcx> {
             s.emit_fatal(err);
         });
         let interners = CtxtInterners::new(arena);
-        let common_types = CommonTypes::new(&interners, s, &untracked);
         let common_lifetimes = CommonLifetimes::new(&interners);
-        let common_consts = CommonConsts::new(&interners, &common_types);
 
         GlobalCtxt {
             sess: s,
@@ -656,9 +626,7 @@ impl<'tcx> TyCtxt<'tcx> {
             interners,
             dep_graph,
             prof: s.prof.clone(),
-            types: common_types,
             lifetimes: common_lifetimes,
-            consts: common_consts,
             untracked,
             on_disk_cache,
             queries,
@@ -1548,6 +1516,11 @@ slice_interners!(
 );
 
 impl<'tcx> TyCtxt<'tcx> {
+    #[inline(always)]
+    pub fn types(self) -> &'tcx CommonTypes<'tcx> {
+        self.types_(())
+    }
+
     /// Given a `fn` type, returns an equivalent `unsafe fn` type;
     /// that is, a `fn` type that is equivalent in every way for being
     /// unsafe.
@@ -1669,36 +1642,36 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn mk_mach_int(self, tm: IntTy) -> Ty<'tcx> {
         match tm {
-            IntTy::Isize => self.types.isize,
-            IntTy::I8 => self.types.i8,
-            IntTy::I16 => self.types.i16,
-            IntTy::I32 => self.types.i32,
-            IntTy::I64 => self.types.i64,
-            IntTy::I128 => self.types.i128,
+            IntTy::Isize => self.types().isize,
+            IntTy::I8 => self.types().i8,
+            IntTy::I16 => self.types().i16,
+            IntTy::I32 => self.types().i32,
+            IntTy::I64 => self.types().i64,
+            IntTy::I128 => self.types().i128,
         }
     }
 
     pub fn mk_mach_uint(self, tm: UintTy) -> Ty<'tcx> {
         match tm {
-            UintTy::Usize => self.types.usize,
-            UintTy::U8 => self.types.u8,
-            UintTy::U16 => self.types.u16,
-            UintTy::U32 => self.types.u32,
-            UintTy::U64 => self.types.u64,
-            UintTy::U128 => self.types.u128,
+            UintTy::Usize => self.types().usize,
+            UintTy::U8 => self.types().u8,
+            UintTy::U16 => self.types().u16,
+            UintTy::U32 => self.types().u32,
+            UintTy::U64 => self.types().u64,
+            UintTy::U128 => self.types().u128,
         }
     }
 
     pub fn mk_mach_float(self, tm: FloatTy) -> Ty<'tcx> {
         match tm {
-            FloatTy::F32 => self.types.f32,
-            FloatTy::F64 => self.types.f64,
+            FloatTy::F32 => self.types().f32,
+            FloatTy::F64 => self.types().f64,
         }
     }
 
     #[inline]
     pub fn mk_static_str(self) -> Ty<'tcx> {
-        self.mk_imm_ref(self.lifetimes.re_static, self.types.str_)
+        self.mk_imm_ref(self.lifetimes.re_static, self.types().str_)
     }
 
     #[inline]
@@ -1800,7 +1773,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn intern_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
-        if ts.is_empty() { self.types.unit } else { self.mk_ty(Tuple(self.intern_type_list(&ts))) }
+        if ts.is_empty() {
+            self.types().unit
+        } else {
+            self.mk_ty(Tuple(self.intern_type_list(&ts)))
+        }
     }
 
     pub fn mk_tup<I: InternAs<Ty<'tcx>, Ty<'tcx>>>(self, iter: I) -> I::Output {
@@ -1809,12 +1786,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_unit(self) -> Ty<'tcx> {
-        self.types.unit
+        self.types().unit
     }
 
     #[inline]
     pub fn mk_diverging_default(self) -> Ty<'tcx> {
-        if self.features().never_type_fallback { self.types.never } else { self.types.unit }
+        if self.features().never_type_fallback { self.types().never } else { self.types().unit }
     }
 
     #[inline]
@@ -1913,7 +1890,11 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_ty_var(self, v: TyVid) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
-        self.types.ty_vars.get(v.as_usize()).copied().unwrap_or_else(|| self.mk_ty(Infer(TyVar(v))))
+        self.types()
+            .ty_vars
+            .get(v.as_usize())
+            .copied()
+            .unwrap_or_else(|| self.mk_ty(Infer(TyVar(v))))
     }
 
     #[inline]
@@ -1929,7 +1910,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_fresh_ty(self, n: u32) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
-        self.types
+        self.types()
             .fresh_tys
             .get(n as usize)
             .copied()
@@ -1939,7 +1920,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_fresh_int_ty(self, n: u32) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
-        self.types
+        self.types()
             .fresh_int_tys
             .get(n as usize)
             .copied()
@@ -1949,7 +1930,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_fresh_float_ty(self, n: u32) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
-        self.types
+        self.types()
             .fresh_float_tys
             .get(n as usize)
             .copied()
@@ -2406,4 +2387,5 @@ pub fn provide(providers: &mut ty::query::Providers) {
     };
     providers.source_span =
         |tcx, def_id| tcx.untracked.source_span.get(def_id).copied().unwrap_or(DUMMY_SP);
+    providers.types_ = |tcx, ()| CommonTypes::new(tcx);
 }

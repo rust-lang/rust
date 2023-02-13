@@ -252,40 +252,40 @@ fn codegen_float_intrinsic_call<'tcx>(
     ret: CPlace<'tcx>,
 ) -> bool {
     let (name, arg_count, ty) = match intrinsic {
-        sym::expf32 => ("expf", 1, fx.tcx.types.f32),
-        sym::expf64 => ("exp", 1, fx.tcx.types.f64),
-        sym::exp2f32 => ("exp2f", 1, fx.tcx.types.f32),
-        sym::exp2f64 => ("exp2", 1, fx.tcx.types.f64),
-        sym::sqrtf32 => ("sqrtf", 1, fx.tcx.types.f32),
-        sym::sqrtf64 => ("sqrt", 1, fx.tcx.types.f64),
-        sym::powif32 => ("__powisf2", 2, fx.tcx.types.f32), // compiler-builtins
-        sym::powif64 => ("__powidf2", 2, fx.tcx.types.f64), // compiler-builtins
-        sym::powf32 => ("powf", 2, fx.tcx.types.f32),
-        sym::powf64 => ("pow", 2, fx.tcx.types.f64),
-        sym::logf32 => ("logf", 1, fx.tcx.types.f32),
-        sym::logf64 => ("log", 1, fx.tcx.types.f64),
-        sym::log2f32 => ("log2f", 1, fx.tcx.types.f32),
-        sym::log2f64 => ("log2", 1, fx.tcx.types.f64),
-        sym::log10f32 => ("log10f", 1, fx.tcx.types.f32),
-        sym::log10f64 => ("log10", 1, fx.tcx.types.f64),
-        sym::fabsf32 => ("fabsf", 1, fx.tcx.types.f32),
-        sym::fabsf64 => ("fabs", 1, fx.tcx.types.f64),
-        sym::fmaf32 => ("fmaf", 3, fx.tcx.types.f32),
-        sym::fmaf64 => ("fma", 3, fx.tcx.types.f64),
-        sym::copysignf32 => ("copysignf", 2, fx.tcx.types.f32),
-        sym::copysignf64 => ("copysign", 2, fx.tcx.types.f64),
-        sym::floorf32 => ("floorf", 1, fx.tcx.types.f32),
-        sym::floorf64 => ("floor", 1, fx.tcx.types.f64),
-        sym::ceilf32 => ("ceilf", 1, fx.tcx.types.f32),
-        sym::ceilf64 => ("ceil", 1, fx.tcx.types.f64),
-        sym::truncf32 => ("truncf", 1, fx.tcx.types.f32),
-        sym::truncf64 => ("trunc", 1, fx.tcx.types.f64),
-        sym::roundf32 => ("roundf", 1, fx.tcx.types.f32),
-        sym::roundf64 => ("round", 1, fx.tcx.types.f64),
-        sym::sinf32 => ("sinf", 1, fx.tcx.types.f32),
-        sym::sinf64 => ("sin", 1, fx.tcx.types.f64),
-        sym::cosf32 => ("cosf", 1, fx.tcx.types.f32),
-        sym::cosf64 => ("cos", 1, fx.tcx.types.f64),
+        sym::expf32 => ("expf", 1, fx.tcx.types().f32),
+        sym::expf64 => ("exp", 1, fx.tcx.types().f64),
+        sym::exp2f32 => ("exp2f", 1, fx.tcx.types().f32),
+        sym::exp2f64 => ("exp2", 1, fx.tcx.types().f64),
+        sym::sqrtf32 => ("sqrtf", 1, fx.tcx.types().f32),
+        sym::sqrtf64 => ("sqrt", 1, fx.tcx.types().f64),
+        sym::powif32 => ("__powisf2", 2, fx.tcx.types().f32), // compiler-builtins
+        sym::powif64 => ("__powidf2", 2, fx.tcx.types().f64), // compiler-builtins
+        sym::powf32 => ("powf", 2, fx.tcx.types().f32),
+        sym::powf64 => ("pow", 2, fx.tcx.types().f64),
+        sym::logf32 => ("logf", 1, fx.tcx.types().f32),
+        sym::logf64 => ("log", 1, fx.tcx.types().f64),
+        sym::log2f32 => ("log2f", 1, fx.tcx.types().f32),
+        sym::log2f64 => ("log2", 1, fx.tcx.types().f64),
+        sym::log10f32 => ("log10f", 1, fx.tcx.types().f32),
+        sym::log10f64 => ("log10", 1, fx.tcx.types().f64),
+        sym::fabsf32 => ("fabsf", 1, fx.tcx.types().f32),
+        sym::fabsf64 => ("fabs", 1, fx.tcx.types().f64),
+        sym::fmaf32 => ("fmaf", 3, fx.tcx.types().f32),
+        sym::fmaf64 => ("fma", 3, fx.tcx.types().f64),
+        sym::copysignf32 => ("copysignf", 2, fx.tcx.types().f32),
+        sym::copysignf64 => ("copysign", 2, fx.tcx.types().f64),
+        sym::floorf32 => ("floorf", 1, fx.tcx.types().f32),
+        sym::floorf64 => ("floor", 1, fx.tcx.types().f64),
+        sym::ceilf32 => ("ceilf", 1, fx.tcx.types().f32),
+        sym::ceilf64 => ("ceil", 1, fx.tcx.types().f64),
+        sym::truncf32 => ("truncf", 1, fx.tcx.types().f32),
+        sym::truncf64 => ("trunc", 1, fx.tcx.types().f64),
+        sym::roundf32 => ("roundf", 1, fx.tcx.types().f32),
+        sym::roundf64 => ("round", 1, fx.tcx.types().f64),
+        sym::sinf32 => ("sinf", 1, fx.tcx.types().f32),
+        sym::sinf64 => ("sin", 1, fx.tcx.types().f64),
+        sym::cosf32 => ("cosf", 1, fx.tcx.types().f32),
+        sym::cosf64 => ("cos", 1, fx.tcx.types().f64),
         _ => return false,
     };
 
@@ -363,7 +363,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
     destination: Option<BasicBlock>,
     source_info: mir::SourceInfo,
 ) {
-    let usize_layout = fx.layout_of(fx.tcx.types.usize);
+    let usize_layout = fx.layout_of(fx.tcx.types().usize);
 
     match intrinsic {
         sym::abort => {
@@ -727,12 +727,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let diff_bytes = fx.bcx.ins().isub(ptr, base);
             // FIXME this can be an exact division.
             let val = if intrinsic == sym::ptr_offset_from_unsigned {
-                let usize_layout = fx.layout_of(fx.tcx.types.usize);
+                let usize_layout = fx.layout_of(fx.tcx.types().usize);
                 // Because diff_bytes ULE isize::MAX, this would be fine as signed,
                 // but unsigned is slightly easier to codegen, so might as well.
                 CValue::by_val(fx.bcx.ins().udiv_imm(diff_bytes, pointee_size as i64), usize_layout)
             } else {
-                let isize_layout = fx.layout_of(fx.tcx.types.isize);
+                let isize_layout = fx.layout_of(fx.tcx.types().isize);
                 CValue::by_val(fx.bcx.ins().sdiv_imm(diff_bytes, pointee_size as i64), isize_layout)
             };
             ret.write_cvalue(fx, val);
@@ -742,7 +742,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
             let val = crate::num::codegen_ptr_binop(fx, BinOp::Eq, a, b).load_scalar(fx);
-            ret.write_cvalue(fx, CValue::by_val(val, fx.layout_of(fx.tcx.types.u8)));
+            ret.write_cvalue(fx, CValue::by_val(val, fx.layout_of(fx.tcx.types().u8)));
         }
 
         sym::caller_location => {
@@ -1087,7 +1087,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let b = b.load_scalar(fx);
 
             let val = crate::num::codegen_float_min(fx, a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f32));
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types().f32));
             ret.write_cvalue(fx, val);
         }
         sym::minnumf64 => {
@@ -1096,7 +1096,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let b = b.load_scalar(fx);
 
             let val = crate::num::codegen_float_min(fx, a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types().f64));
             ret.write_cvalue(fx, val);
         }
         sym::maxnumf32 => {
@@ -1105,7 +1105,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let b = b.load_scalar(fx);
 
             let val = crate::num::codegen_float_max(fx, a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f32));
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types().f32));
             ret.write_cvalue(fx, val);
         }
         sym::maxnumf64 => {
@@ -1114,7 +1114,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let b = b.load_scalar(fx);
 
             let val = crate::num::codegen_float_max(fx, a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
+            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types().f64));
             ret.write_cvalue(fx, val);
         }
 

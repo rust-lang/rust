@@ -588,7 +588,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         _id: chalk_ir::OpaqueTyId<RustInterner<'tcx>>,
     ) -> chalk_ir::Ty<RustInterner<'tcx>> {
         // FIXME(chalk): actually get hidden ty
-        self.interner.tcx.types.unit.lower_into(self.interner)
+        self.interner.tcx.types().unit.lower_into(self.interner)
     }
 
     fn closure_kind(

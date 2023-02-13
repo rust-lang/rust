@@ -193,7 +193,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // This place is not really used because this destination place
                     // should never be used to take values at the end of the failure
                     // block.
-                    let dummy_place = this.temp(this.tcx.types.never, else_block_span);
+                    let dummy_place = this.temp(this.tcx.types().never, else_block_span);
                     let failure_entry = this.cfg.start_new_block();
                     let failure_block;
                     unpack!(

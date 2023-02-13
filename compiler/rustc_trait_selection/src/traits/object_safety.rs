@@ -302,7 +302,7 @@ fn predicate_references_self<'tcx>(
     tcx: TyCtxt<'tcx>,
     (predicate, sp): (ty::Predicate<'tcx>, Span),
 ) -> Option<Span> {
-    let self_ty = tcx.types.self_param;
+    let self_ty = tcx.types().self_param;
     let has_self_ty = |arg: &GenericArg<'tcx>| arg.walk().any(|arg| arg == self_ty.into());
     match predicate.kind().skip_binder() {
         ty::PredicateKind::Clause(ty::Clause::Trait(ref data)) => {
@@ -477,7 +477,7 @@ fn virtual_call_violation_for_method<'tcx>(
     // However, this is already considered object-safe. We allow it as a special case here.
     // FIXME(mikeyhew) get rid of this `if` statement once `receiver_is_dispatchable` allows
     // `Receiver: Unsize<Receiver[Self => dyn Trait]>`.
-    if receiver_ty != tcx.types.self_param {
+    if receiver_ty != tcx.types().self_param {
         if !receiver_is_dispatchable(tcx, method, receiver_ty) {
             let span = if let Some(hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, _),
@@ -583,7 +583,7 @@ fn virtual_call_violation_for_method<'tcx>(
             constness: ty::BoundConstness::NotConst,
             polarity: ty::ImplPolarity::Positive,
         })) = pred.kind().skip_binder()
-            && pred_trait_ref.self_ty() == tcx.types.self_param
+            && pred_trait_ref.self_ty() == tcx.types().self_param
             && tcx.trait_is_auto(pred_trait_ref.def_id)
         {
             // Consider bounds like `Self: Bound<Self>`. Auto traits are not
@@ -747,7 +747,7 @@ fn receiver_is_dispatchable<'tcx>(
 
         // Self: Unsize<U>
         let unsize_predicate = ty::Binder::dummy(
-            tcx.mk_trait_ref(unsize_did, [tcx.types.self_param, unsized_self_ty]),
+            tcx.mk_trait_ref(unsize_did, [tcx.types().self_param, unsized_self_ty]),
         )
         .without_const()
         .to_predicate(tcx);
@@ -842,7 +842,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             match t.kind() {
                 ty::Param(_) => {
-                    if t == self.tcx.types.self_param {
+                    if t == self.tcx.types().self_param {
                         ControlFlow::Break(())
                     } else {
                         ControlFlow::Continue(())

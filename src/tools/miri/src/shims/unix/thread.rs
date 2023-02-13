@@ -24,7 +24,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             start_routine,
             Abi::C { unwind: false },
             func_arg,
-            this.layout_of(this.tcx.types.usize)?,
+            this.layout_of(this.tcx.types().usize)?,
         )?;
 
         Ok(0)

@@ -1546,7 +1546,7 @@ pub trait PrettyPrinter<'tcx>:
             return Ok(self);
         }
 
-        let u8_type = self.tcx().types.u8;
+        let u8_type = self.tcx().types().u8;
         match (valtree, ty.kind()) {
             (ty::ValTree::Branch(_), ty::Ref(_, inner_ty, _)) => match inner_ty.kind() {
                 ty::Slice(t) if *t == u8_type => {

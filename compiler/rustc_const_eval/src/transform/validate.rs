@@ -298,7 +298,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         match elem {
             ProjectionElem::Index(index) => {
                 let index_ty = self.body.local_decls[index].ty;
-                if index_ty != self.tcx.types.usize {
+                if index_ty != self.tcx.types().usize {
                     self.fail(location, format!("bad index ({:?} != usize)", index_ty))
                 }
             }
@@ -457,7 +457,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 match op {
                     Offset => {
                         check_kinds!(a, "Cannot offset non-pointer type {:?}", ty::RawPtr(..));
-                        if b != self.tcx.types.isize && b != self.tcx.types.usize {
+                        if b != self.tcx.types().isize && b != self.tcx.types().usize {
                             self.fail(location, format!("Cannot offset by non-isize type {:?}", b));
                         }
                     }
@@ -723,7 +723,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
 
                 let op_cnt_ty = count.ty(&self.body.local_decls, self.tcx);
-                if op_cnt_ty != self.tcx.types.usize {
+                if op_cnt_ty != self.tcx.types().usize {
                     self.fail(location, format!("bad arg ({:?} != usize)", op_cnt_ty))
                 }
             }
@@ -871,7 +871,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::Assert { cond, target, cleanup, .. } => {
                 let cond_ty = cond.ty(&self.body.local_decls, self.tcx);
-                if cond_ty != self.tcx.types.bool {
+                if cond_ty != self.tcx.types().bool {
                     self.fail(
                         location,
                         format!(

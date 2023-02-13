@@ -34,7 +34,7 @@ independently:
   into the `ty` representation.
 
 - collect: computes the types of each top-level item and enters them into
-  the `tcx.types` table for later use.
+  the `tcx.types()` table for later use.
 
 - coherence: enforces coherence rules, builds some tables.
 
@@ -434,8 +434,8 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
             }
 
             let se_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
-                [tcx.types.isize, tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))].iter().cloned(),
-                tcx.types.isize,
+                [tcx.types().isize, tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types().u8))].iter().cloned(),
+                tcx.types().isize,
                 false,
                 hir::Unsafety::Normal,
                 Abi::Rust,

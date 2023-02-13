@@ -30,7 +30,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If there are no arms, that is a diverging match; a special case.
         if arms.is_empty() {
             self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
-            return tcx.types.never;
+            return tcx.types().never;
         }
 
         self.warn_arms_when_scrutinee_diverges(arms);
@@ -81,7 +81,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.diverges.set(Diverges::Maybe);
                 match g {
                     hir::Guard::If(e) => {
-                        self.check_expr_has_type_or_error(e, tcx.types.bool, |_| {});
+                        self.check_expr_has_type_or_error(e, tcx.types().bool, |_| {});
                     }
                     hir::Guard::IfLet(l) => {
                         self.check_expr_let(l);

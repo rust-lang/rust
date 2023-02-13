@@ -65,7 +65,7 @@ where
     };
 
     // These two lints will go back and forth with each other.
-    if cx.typeck_results().expr_ty(some_expr.expr) == cx.tcx.types.unit
+    if cx.typeck_results().expr_ty(some_expr.expr) == cx.tcx.types().unit
         && !is_lint_allowed(cx, OPTION_MAP_UNIT_FN, expr.hir_id)
     {
         return None;

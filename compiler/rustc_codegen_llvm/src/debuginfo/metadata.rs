@@ -177,7 +177,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
     return_if_di_node_created_in_meantime!(cx, unique_type_id);
 
     let (thin_pointer_size, thin_pointer_align) =
-        cx.size_and_align_of(cx.tcx.mk_imm_ptr(cx.tcx.types.unit));
+        cx.size_and_align_of(cx.tcx.mk_imm_ptr(cx.tcx.types().unit));
     let ptr_type_debuginfo_name = compute_debuginfo_type_name(cx.tcx, ptr_type, true);
 
     match fat_pointer_kind(cx, pointee_type) {
@@ -406,7 +406,7 @@ fn build_slice_type_di_node<'ll, 'tcx>(
 ) -> DINodeCreationResult<'ll> {
     let element_type = match slice_type.kind() {
         ty::Slice(element_type) => *element_type,
-        ty::Str => cx.tcx.types.u8,
+        ty::Str => cx.tcx.types().u8,
         _ => {
             bug!(
                 "Only ty::Slice is valid for build_slice_type_di_node(). Found {:?} instead.",
@@ -1331,14 +1331,14 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
 
     // All function pointers are described as opaque pointers. This could be improved in the future
     // by describing them as actual function pointers.
-    let void_pointer_ty = tcx.mk_imm_ptr(tcx.types.unit);
+    let void_pointer_ty = tcx.mk_imm_ptr(tcx.types().unit);
     let void_pointer_type_di_node = type_di_node(cx, void_pointer_ty);
-    let usize_di_node = type_di_node(cx, tcx.types.usize);
+    let usize_di_node = type_di_node(cx, tcx.types().usize);
     let (pointer_size, pointer_align) = cx.size_and_align_of(void_pointer_ty);
     // If `usize` is not pointer-sized and -aligned then the size and alignment computations
     // for the vtable as a whole would be wrong. Let's make sure this holds even on weird
     // platforms.
-    assert_eq!(cx.size_and_align_of(tcx.types.usize), (pointer_size, pointer_align));
+    assert_eq!(cx.size_and_align_of(tcx.types().usize), (pointer_size, pointer_align));
 
     let vtable_type_name =
         compute_debuginfo_vtable_name(cx.tcx, ty, poly_trait_ref, VTableNameKind::Type);

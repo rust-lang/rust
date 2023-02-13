@@ -1859,8 +1859,8 @@ impl<'tcx> TypeFolder<'tcx> for InferenceLiteralEraser<'tcx> {
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         match ty.kind() {
-            ty::Infer(ty::IntVar(_) | ty::FreshIntTy(_)) => self.tcx.types.i32,
-            ty::Infer(ty::FloatVar(_) | ty::FreshFloatTy(_)) => self.tcx.types.f64,
+            ty::Infer(ty::IntVar(_) | ty::FreshIntTy(_)) => self.tcx.types().i32,
+            ty::Infer(ty::FloatVar(_) | ty::FreshFloatTy(_)) => self.tcx.types().f64,
             _ => ty.super_fold_with(self),
         }
     }

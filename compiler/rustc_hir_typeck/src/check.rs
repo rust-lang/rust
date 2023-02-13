@@ -299,11 +299,11 @@ fn check_lang_start_fn<'tcx>(
 
     // second arg is isize
     if let Some(&argc_arg) = inputs.get(1) {
-        if argc_arg != tcx.types.isize {
+        if argc_arg != tcx.types().isize {
             tcx.sess.emit_err(LangStartIncorrectParam {
                 param_span: decl.inputs[1].span,
                 param_num: 2,
-                expected_ty: tcx.types.isize,
+                expected_ty: tcx.types().isize,
                 found_ty: argc_arg,
             });
         }
@@ -315,7 +315,7 @@ fn check_lang_start_fn<'tcx>(
         if let ty::RawPtr(outer_ptr) = argv_arg.kind() {
             if outer_ptr.mutbl.is_not() {
                 if let ty::RawPtr(inner_ptr) = outer_ptr.ty.kind() {
-                    if inner_ptr.mutbl.is_not() && inner_ptr.ty == tcx.types.u8 {
+                    if inner_ptr.mutbl.is_not() && inner_ptr.ty == tcx.types().u8 {
                         argv_is_okay = true;
                     }
                 }
@@ -324,7 +324,7 @@ fn check_lang_start_fn<'tcx>(
 
         if !argv_is_okay {
             let inner_ptr_ty =
-                tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: tcx.types.u8 });
+                tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: tcx.types().u8 });
             let expected_ty =
                 tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: inner_ptr_ty });
             tcx.sess.emit_err(LangStartIncorrectParam {
@@ -338,21 +338,21 @@ fn check_lang_start_fn<'tcx>(
 
     // fourth arg is `sigpipe: u8`
     if let Some(&sigpipe_arg) = inputs.get(3) {
-        if sigpipe_arg != tcx.types.u8 {
+        if sigpipe_arg != tcx.types().u8 {
             tcx.sess.emit_err(LangStartIncorrectParam {
                 param_span: decl.inputs[3].span,
                 param_num: 4,
-                expected_ty: tcx.types.u8,
+                expected_ty: tcx.types().u8,
                 found_ty: sigpipe_arg,
             });
         }
     }
 
     // output type is isize
-    if fn_sig.output() != tcx.types.isize {
+    if fn_sig.output() != tcx.types().isize {
         tcx.sess.emit_err(LangStartIncorrectRetTy {
             ret_span: decl.output.span(),
-            expected_ty: tcx.types.isize,
+            expected_ty: tcx.types().isize,
             found_ty: fn_sig.output(),
         });
     }

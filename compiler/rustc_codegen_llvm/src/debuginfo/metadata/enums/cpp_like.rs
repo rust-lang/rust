@@ -329,7 +329,7 @@ fn build_single_variant_union_fields<'ll, 'tcx>(
         variant_layout,
     );
 
-    let tag_base_type = cx.tcx.types.u32;
+    let tag_base_type = cx.tcx.types().u32;
     let tag_base_type_di_node = type_di_node(cx, tag_base_type);
     let tag_base_type_align = cx.align_of(tag_base_type);
 
@@ -444,7 +444,7 @@ fn build_union_fields_for_enum<'ll, 'tcx>(
 // It has nothing to do with the tag of the enum and just has to be big enough
 // to hold all variant names.
 fn variant_names_enum_base_type<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> Ty<'tcx> {
-    cx.tcx.types.u32
+    cx.tcx.types().u32
 }
 
 /// This function builds a DW_AT_enumeration_type that contains an entry for
@@ -577,8 +577,8 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                     ));
                 }
                 DiscrKind::Exact128(discr_val) => {
-                    let align = cx.align_of(cx.tcx.types.u64);
-                    let type_di_node = type_di_node(cx, cx.tcx.types.u64);
+                    let align = cx.align_of(cx.tcx.types().u64);
+                    let type_di_node = type_di_node(cx, cx.tcx.types().u64);
                     let Split128 { hi, lo } = split_128(discr_val);
 
                     fields.push(build_assoc_const(
@@ -611,8 +611,8 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                     ));
                 }
                 DiscrKind::Range128(begin, end) => {
-                    let align = cx.align_of(cx.tcx.types.u64);
-                    let type_di_node = type_di_node(cx, cx.tcx.types.u64);
+                    let align = cx.align_of(cx.tcx.types().u64);
+                    let type_di_node = type_di_node(cx, cx.tcx.types().u64);
                     let Split128 { hi: begin_hi, lo: begin_lo } = split_128(begin);
                     let Split128 { hi: end_hi, lo: end_lo } = split_128(end);
 
@@ -817,8 +817,8 @@ fn build_union_fields_for_direct_tag_enum_or_generator<'ll, 'tcx>(
     let is_128_bits = cx.size_of(tag_base_type).bits() > 64;
 
     if is_128_bits {
-        let type_di_node = type_di_node(cx, cx.tcx.types.u64);
-        let size_and_align = cx.size_and_align_of(cx.tcx.types.u64);
+        let type_di_node = type_di_node(cx, cx.tcx.types().u64);
+        let size_and_align = cx.size_and_align_of(cx.tcx.types().u64);
 
         let (lo_offset, hi_offset) = match cx.tcx.data_layout.endian {
             Endian::Little => (0, 8),

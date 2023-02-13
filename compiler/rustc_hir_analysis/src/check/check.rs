@@ -1181,7 +1181,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     }
 
     let repr_type_ty = def.repr().discr_type().to_ty(tcx);
-    if repr_type_ty == tcx.types.i128 || repr_type_ty == tcx.types.u128 {
+    if repr_type_ty == tcx.types().i128 || repr_type_ty == tcx.types().u128 {
         if !tcx.features().repr128 {
             feature_err(
                 &tcx.sess.parse_sess,

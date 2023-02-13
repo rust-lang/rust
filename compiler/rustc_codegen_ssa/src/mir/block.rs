@@ -311,7 +311,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let (test_value, target) = target_iter.next().unwrap();
             let lltrue = helper.llbb_with_cleanup(self, target);
             let llfalse = helper.llbb_with_cleanup(self, targets.otherwise());
-            if switch_ty == bx.tcx().types.bool {
+            if switch_ty == bx.tcx().types().bool {
                 // Don't generate trivial icmps when switching on bool.
                 match test_value {
                     0 => bx.cond_br(discr.immediate(), llfalse, lltrue),
@@ -1541,7 +1541,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             slot
         } else {
             let layout = cx.layout_of(
-                cx.tcx().intern_tup(&[cx.tcx().mk_mut_ptr(cx.tcx().types.u8), cx.tcx().types.i32]),
+                cx.tcx()
+                    .intern_tup(&[cx.tcx().mk_mut_ptr(cx.tcx().types().u8), cx.tcx().types().i32]),
             );
             let slot = PlaceRef::alloca(bx, layout);
             self.personality_slot = Some(slot);
