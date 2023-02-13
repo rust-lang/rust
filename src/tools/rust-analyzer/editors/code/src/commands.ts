@@ -130,11 +130,11 @@ export function joinLines(ctx: CtxInit): Cmd {
 }
 
 export function moveItemUp(ctx: CtxInit): Cmd {
-    return moveItem(ctx, ra.Direction.Up);
+    return moveItem(ctx, "Up");
 }
 
 export function moveItemDown(ctx: CtxInit): Cmd {
-    return moveItem(ctx, ra.Direction.Down);
+    return moveItem(ctx, "Down");
 }
 
 export function moveItem(ctx: CtxInit, direction: ra.Direction): Cmd {

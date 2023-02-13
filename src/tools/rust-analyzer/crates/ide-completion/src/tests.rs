@@ -75,6 +75,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
         skip_glob_imports: true,
     },
     snippets: Vec::new(),
+    limit: None,
 };
 
 pub(crate) fn completion_list(ra_fixture: &str) -> String {

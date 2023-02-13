@@ -30,7 +30,7 @@ use syntax::{
     SyntaxKind::{self, COMMENT, EOF, IDENT, LIFETIME_IDENT},
     SyntaxNode, TextRange, T,
 };
-use tt::{Subtree, TokenId};
+use tt::token_id::{Subtree, TokenId};
 
 use crate::{
     db::DefDatabase, macro_id_to_def_id, nameres::ModuleSource, resolver::HasResolver,
@@ -97,7 +97,9 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         let ast_id = AstId::new(source.file_id, file_ast_id.upcast());
         let kind = MacroDefKind::Declarative(ast_id);
 
-        let macro_def = db.macro_def(MacroDefId { krate, kind, local_inner: false }).unwrap();
+        let macro_def = db
+            .macro_def(MacroDefId { krate, kind, local_inner: false, allow_internal_unsafe: false })
+            .unwrap();
         if let TokenExpander::DeclarativeMacro { mac, def_site_token_map } = &*macro_def {
             let tt = match &macro_ {
                 ast::Macro::MacroRules(mac) => mac.token_tree().unwrap(),
@@ -251,9 +253,9 @@ fn extract_id_ranges(ranges: &mut Vec<(TextRange, TokenId)>, map: &TokenMap, tre
     tree.token_trees.iter().for_each(|tree| match tree {
         tt::TokenTree::Leaf(leaf) => {
             let id = match leaf {
-                tt::Leaf::Literal(it) => it.id,
-                tt::Leaf::Punct(it) => it.id,
-                tt::Leaf::Ident(it) => it.id,
+                tt::Leaf::Literal(it) => it.span,
+                tt::Leaf::Punct(it) => it.span,
+                tt::Leaf::Ident(it) => it.span,
             };
             ranges.extend(map.ranges_by_token(id, SyntaxKind::ERROR).map(|range| (range, id)));
         }

@@ -69,7 +69,7 @@ pub(crate) fn get_changelog(
 :page-layout: post
 
 Commit: commit:{commit}[] +
-Release: release:{today}[]
+Release: release:{today}[] (`TBD`)
 
 == New Features
 
@@ -156,7 +156,7 @@ fn parse_title_line(s: &str) -> PrInfo {
         ("minor: ", PrKind::Skip),
     ];
 
-    for &(prefix, kind) in &PREFIXES {
+    for (prefix, kind) in PREFIXES {
         if lower.starts_with(prefix) {
             let message = match &kind {
                 PrKind::Skip => None,

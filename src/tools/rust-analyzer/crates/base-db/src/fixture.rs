@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 use test_utils::{
     extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER, ESCAPED_CURSOR_MARKER,
 };
-use tt::Subtree;
+use tt::token_id::{Leaf, Subtree, TokenTree};
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
@@ -110,6 +110,7 @@ impl ChangeFixture {
         let mut crates = FxHashMap::default();
         let mut crate_deps = Vec::new();
         let mut default_crate_root: Option<FileId> = None;
+        let mut default_target_data_layout: Option<String> = None;
         let mut default_cfg = CfgOptions::default();
 
         let mut file_set = FileSet::default();
@@ -162,7 +163,10 @@ impl ChangeFixture {
                     Ok(Vec::new()),
                     false,
                     origin,
-                    meta.target_data_layout.as_deref().map(Arc::from),
+                    meta.target_data_layout
+                        .as_deref()
+                        .map(Arc::from)
+                        .ok_or_else(|| "target_data_layout unset".into()),
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none());
@@ -175,6 +179,7 @@ impl ChangeFixture {
                 assert!(default_crate_root.is_none());
                 default_crate_root = Some(file_id);
                 default_cfg = meta.cfg;
+                default_target_data_layout = meta.target_data_layout;
             }
 
             change.change_file(file_id, Some(Arc::new(text)));
@@ -198,7 +203,9 @@ impl ChangeFixture {
                 Ok(Vec::new()),
                 false,
                 CrateOrigin::CratesIo { repo: None, name: None },
-                None,
+                default_target_data_layout
+                    .map(|x| x.into())
+                    .ok_or_else(|| "target_data_layout unset".into()),
             );
         } else {
             for (from, to, prelude) in crate_deps {
@@ -212,8 +219,10 @@ impl ChangeFixture {
                     .unwrap();
             }
         }
-        let target_layout =
-            crate_graph.iter().next().and_then(|it| crate_graph[it].target_layout.clone());
+        let target_layout = crate_graph.iter().next().map_or_else(
+            || Err("target_data_layout unset".into()),
+            |it| crate_graph[it].target_layout.clone(),
+        );
 
         if let Some(mini_core) = mini_core {
             let core_file = file_id;
@@ -301,7 +310,7 @@ impl ChangeFixture {
     }
 }
 
-fn default_test_proc_macros() -> [(String, ProcMacro); 4] {
+fn default_test_proc_macros() -> [(String, ProcMacro); 5] {
     [
         (
             r#"
@@ -357,6 +366,20 @@ pub fn mirror(input: TokenStream) -> TokenStream {
                 name: "mirror".into(),
                 kind: crate::ProcMacroKind::FuncLike,
                 expander: Arc::new(MirrorProcMacroExpander),
+            },
+        ),
+        (
+            r#"
+#[proc_macro]
+pub fn shorten(input: TokenStream) -> TokenStream {
+    loop {}
+}
+"#
+            .into(),
+            ProcMacro {
+                name: "shorten".into(),
+                kind: crate::ProcMacroKind::FuncLike,
+                expander: Arc::new(ShortenProcMacroExpander),
             },
         ),
     ]
@@ -486,17 +509,60 @@ impl ProcMacroExpander for MirrorProcMacroExpander {
         _: &Env,
     ) -> Result<Subtree, ProcMacroExpansionError> {
         fn traverse(input: &Subtree) -> Subtree {
-            let mut res = Subtree::default();
-            res.delimiter = input.delimiter;
+            let mut token_trees = vec![];
             for tt in input.token_trees.iter().rev() {
                 let tt = match tt {
                     tt::TokenTree::Leaf(leaf) => tt::TokenTree::Leaf(leaf.clone()),
                     tt::TokenTree::Subtree(sub) => tt::TokenTree::Subtree(traverse(sub)),
                 };
-                res.token_trees.push(tt);
+                token_trees.push(tt);
             }
-            res
+            Subtree { delimiter: input.delimiter, token_trees }
         }
         Ok(traverse(input))
+    }
+}
+
+// Replaces every literal with an empty string literal and every identifier with its first letter,
+// but retains all tokens' span. Useful for testing we don't assume token hasn't been modified by
+// macros even if it retains its span.
+#[derive(Debug)]
+struct ShortenProcMacroExpander;
+impl ProcMacroExpander for ShortenProcMacroExpander {
+    fn expand(
+        &self,
+        input: &Subtree,
+        _: Option<&Subtree>,
+        _: &Env,
+    ) -> Result<Subtree, ProcMacroExpansionError> {
+        return Ok(traverse(input));
+
+        fn traverse(input: &Subtree) -> Subtree {
+            let token_trees = input
+                .token_trees
+                .iter()
+                .map(|it| match it {
+                    TokenTree::Leaf(leaf) => tt::TokenTree::Leaf(modify_leaf(leaf)),
+                    TokenTree::Subtree(subtree) => tt::TokenTree::Subtree(traverse(subtree)),
+                })
+                .collect();
+            Subtree { delimiter: input.delimiter, token_trees }
+        }
+
+        fn modify_leaf(leaf: &Leaf) -> Leaf {
+            let mut leaf = leaf.clone();
+            match &mut leaf {
+                Leaf::Literal(it) => {
+                    // XXX Currently replaces any literals with an empty string, but supporting
+                    // "shortening" other literals would be nice.
+                    it.text = "\"\"".into();
+                }
+                Leaf::Punct(_) => {}
+                Leaf::Ident(it) => {
+                    it.text = it.text.chars().take(1).collect();
+                }
+            }
+            leaf
+        }
     }
 }

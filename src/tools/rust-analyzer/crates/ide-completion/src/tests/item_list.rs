@@ -215,6 +215,57 @@ fn in_trait_assoc_item_list() {
 }
 
 #[test]
+fn in_trait_assoc_fn_missing_body() {
+    check(
+        r#"trait Foo { fn function(); $0 }"#,
+        expect![[r#"
+            ma makro!(…) macro_rules! makro
+            md module
+            kw const
+            kw crate::
+            kw fn
+            kw self::
+            kw type
+            kw unsafe
+        "#]],
+    );
+}
+
+#[test]
+fn in_trait_assoc_const_missing_body() {
+    check(
+        r#"trait Foo { const CONST: (); $0 }"#,
+        expect![[r#"
+            ma makro!(…) macro_rules! makro
+            md module
+            kw const
+            kw crate::
+            kw fn
+            kw self::
+            kw type
+            kw unsafe
+        "#]],
+    );
+}
+
+#[test]
+fn in_trait_assoc_type_aliases_missing_ty() {
+    check(
+        r#"trait Foo { type Type; $0 }"#,
+        expect![[r#"
+            ma makro!(…) macro_rules! makro
+            md module
+            kw const
+            kw crate::
+            kw fn
+            kw self::
+            kw type
+            kw unsafe
+        "#]],
+    );
+}
+
+#[test]
 fn in_trait_impl_assoc_item_list() {
     check(
         r#"

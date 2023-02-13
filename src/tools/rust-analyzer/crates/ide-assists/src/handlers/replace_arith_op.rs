@@ -81,7 +81,7 @@ fn replace_arith(acc: &mut Assists, ctx: &AssistContext<'_>, kind: ArithKind) ->
     let range = TextRange::new(start, end);
 
     acc.add_group(
-        &GroupLabel("replace_arith".into()),
+        &GroupLabel("Replace arithmetic...".into()),
         kind.assist_id(),
         kind.label(),
         range,

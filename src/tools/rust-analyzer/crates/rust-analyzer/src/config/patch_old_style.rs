@@ -114,16 +114,18 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
     }
 
     // completion_addCallArgumentSnippets completion_addCallParenthesis -> completion_callable_snippets
-    let res = match (
-        copy.pointer("/completion/addCallArgumentSnippets"),
-        copy.pointer("/completion/addCallParenthesis"),
-    ) {
-        (Some(Value::Bool(true)), Some(Value::Bool(true))) => json!("fill_arguments"),
-        (_, Some(Value::Bool(true))) => json!("add_parentheses"),
-        (Some(Value::Bool(false)), Some(Value::Bool(false))) => json!("none"),
-        (_, _) => return,
-    };
-    merge(json, json!({ "completion": { "callable": {"snippets": res }} }));
+    'completion: {
+        let res = match (
+            copy.pointer("/completion/addCallArgumentSnippets"),
+            copy.pointer("/completion/addCallParenthesis"),
+        ) {
+            (Some(Value::Bool(true)), Some(Value::Bool(true))) => json!("fill_arguments"),
+            (_, Some(Value::Bool(true))) => json!("add_parentheses"),
+            (Some(Value::Bool(false)), Some(Value::Bool(false))) => json!("none"),
+            (_, _) => break 'completion,
+        };
+        merge(json, json!({ "completion": { "callable": {"snippets": res }} }));
+    }
 
     // We need to do this due to the checkOnSave_enable -> checkOnSave change, as that key now can either be an object or a bool
     // checkOnSave_* -> check_*
@@ -145,4 +147,24 @@ fn merge(dst: &mut Value, src: Value) {
         }
         (dst, src) => *dst = src,
     }
+}
+
+#[test]
+fn check_on_save_patching() {
+    let mut json = json!({ "checkOnSave": { "overrideCommand": "foo" }});
+    patch_json_for_outdated_configs(&mut json);
+    assert_eq!(
+        json,
+        json!({ "checkOnSave": { "overrideCommand": "foo" }, "check": { "overrideCommand": "foo" }})
+    );
+}
+
+#[test]
+fn check_on_save_patching_enable() {
+    let mut json = json!({ "checkOnSave": { "enable": true, "overrideCommand": "foo" }});
+    patch_json_for_outdated_configs(&mut json);
+    assert_eq!(
+        json,
+        json!({ "checkOnSave": true, "check": { "enable": true, "overrideCommand": "foo" }})
+    );
 }

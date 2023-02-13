@@ -2,7 +2,8 @@
 //! format that works for our parser.
 
 use syntax::{SyntaxKind, SyntaxKind::*, T};
-use tt::buffer::TokenBuffer;
+
+use crate::tt::buffer::TokenBuffer;
 
 pub(crate) fn to_parser_input(buffer: &TokenBuffer<'_>) -> parser::Input {
     let mut res = parser::Input::default();
@@ -44,6 +45,13 @@ pub(crate) fn to_parser_input(buffer: &TokenBuffer<'_>) -> parser::Input {
                             .unwrap_or_else(|| panic!("Fail to convert given literal {:#?}", &lit));
 
                         res.push(kind);
+
+                        if kind == FLOAT_NUMBER && !inner_text.ends_with('.') {
+                            // Tag the token as joint if it is float with a fractional part
+                            // we use this jointness to inform the parser about what token split
+                            // event to emit when we encounter a float literal in a field access
+                            res.was_joint();
+                        }
                     }
                     tt::Leaf::Ident(ident) => match ident.text.as_ref() {
                         "_" => res.push(T![_]),
@@ -70,23 +78,25 @@ pub(crate) fn to_parser_input(buffer: &TokenBuffer<'_>) -> parser::Input {
                 cursor.bump()
             }
             Some(tt::buffer::TokenTreeRef::Subtree(subtree, _)) => {
-                if let Some(d) = subtree.delimiter_kind() {
-                    res.push(match d {
-                        tt::DelimiterKind::Parenthesis => T!['('],
-                        tt::DelimiterKind::Brace => T!['{'],
-                        tt::DelimiterKind::Bracket => T!['['],
-                    });
+                if let Some(kind) = match subtree.delimiter.kind {
+                    tt::DelimiterKind::Parenthesis => Some(T!['(']),
+                    tt::DelimiterKind::Brace => Some(T!['{']),
+                    tt::DelimiterKind::Bracket => Some(T!['[']),
+                    tt::DelimiterKind::Invisible => None,
+                } {
+                    res.push(kind);
                 }
                 cursor.subtree().unwrap()
             }
             None => match cursor.end() {
                 Some(subtree) => {
-                    if let Some(d) = subtree.delimiter_kind() {
-                        res.push(match d {
-                            tt::DelimiterKind::Parenthesis => T![')'],
-                            tt::DelimiterKind::Brace => T!['}'],
-                            tt::DelimiterKind::Bracket => T![']'],
-                        })
+                    if let Some(kind) = match subtree.delimiter.kind {
+                        tt::DelimiterKind::Parenthesis => Some(T![')']),
+                        tt::DelimiterKind::Brace => Some(T!['}']),
+                        tt::DelimiterKind::Bracket => Some(T![']']),
+                        tt::DelimiterKind::Invisible => None,
+                    } {
+                        res.push(kind);
                     }
                     cursor.bump()
                 }

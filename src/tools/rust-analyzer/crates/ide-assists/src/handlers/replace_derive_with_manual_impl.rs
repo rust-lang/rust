@@ -214,7 +214,7 @@ fn impl_def_from_trait(
 
     // Generate a default `impl` function body for the derived trait.
     if let ast::AssocItem::Fn(ref func) = first_assoc_item {
-        let _ = gen_trait_fn_body(func, trait_path, adt);
+        let _ = gen_trait_fn_body(func, trait_path, adt, None);
     };
 
     Some((impl_def, first_assoc_item))

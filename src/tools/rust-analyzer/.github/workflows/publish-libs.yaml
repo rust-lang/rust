@@ -1,0 +1,35 @@
+name: publish-libs
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'lib/**'
+
+jobs:
+  publish-libs:
+    name: publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        run: rustup update --no-self-update stable
+
+      - name: Install cargo-workspaces
+        run: cargo install cargo-workspaces
+
+      - name: Publish Crates
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        shell: bash
+        run: |
+          git config --global user.email "runner@gha.local"
+          git config --global user.name "Github Action"
+          # Remove r-a crates from the workspaces so we don't auto-publish them as well
+          sed -i 's/ "crates\/\*"//' ./Cargo.toml
+          cargo workspaces publish --yes --exact --from-git --no-git-commit --allow-dirty

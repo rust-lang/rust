@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use syntax::{ast, SmolStr, SyntaxKind};
+use syntax::{ast, utils::is_raw_identifier, SmolStr};
 
 /// `Name` is a wrapper around string, which is used in hir for both references
 /// and declarations. In theory, names should also carry hygiene info, but we are
@@ -31,11 +31,6 @@ impl fmt::Display for Name {
             Repr::TupleField(idx) => fmt::Display::fmt(&idx, f),
         }
     }
-}
-
-fn is_raw_identifier(name: &str) -> bool {
-    let is_keyword = SyntaxKind::from_keyword(name).is_some();
-    is_keyword && !matches!(name, "self" | "crate" | "super" | "Self")
 }
 
 impl<'a> fmt::Display for UnescapedName<'a> {
@@ -133,6 +128,14 @@ impl Name {
         }
     }
 
+    /// Returns the text this name represents if it isn't a tuple field.
+    pub fn as_str(&self) -> Option<&str> {
+        match &self.0 {
+            Repr::Text(it) => Some(it),
+            _ => None,
+        }
+    }
+
     /// Returns the textual representation of this name as a [`SmolStr`].
     /// Prefer using this over [`ToString::to_string`] if possible as this conversion is cheaper in
     /// the general case.
@@ -183,7 +186,7 @@ impl AsName for ast::NameOrNameRef {
     }
 }
 
-impl AsName for tt::Ident {
+impl<Span> AsName for tt::Ident<Span> {
     fn as_name(&self) -> Name {
         Name::resolve(&self.text)
     }
@@ -339,6 +342,7 @@ pub mod known {
         recursion_limit,
         feature,
         // known methods of lang items
+        call_once,
         eq,
         ne,
         ge,
