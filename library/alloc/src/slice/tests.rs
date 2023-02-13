@@ -299,7 +299,17 @@ fn test_sort() {
     for i in 0..v.len() {
         v[i] = i as i32;
     }
-    v.sort_by(|_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
+
+    // The original set of elements must be preserved even if Ord is implemented incorrectly, the
+    // function may return with an unspecified order or may panic. In both cases all observable
+    // writes, must be observed.
+
+    // It's ok to panic on Ord violation or to complete.
+    // In both cases the original elements must still be present.
+    let _ = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        v.sort_by(|_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
+    }));
+
     v.sort();
     for i in 0..v.len() {
         assert_eq!(v[i], i as i32);

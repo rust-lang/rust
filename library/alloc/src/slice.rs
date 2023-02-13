@@ -176,21 +176,25 @@ pub(crate) mod hack {
 impl<T> [T] {
     /// Sorts the slice.
     ///
-    /// This sort is stable (i.e., does not reorder equal elements) and *O*(*n* \* log(*n*)) worst-case.
+    /// This sort is stable (i.e., does not reorder equal elements) and *O*(*n* \* log(*n*))
+    /// worst-case. Fully ascending or descending inputs are completed with O(n-1) comparisons.
     ///
     /// When applicable, unstable sorting is preferred because it is generally faster than stable
-    /// sorting and it doesn't allocate auxiliary memory.
-    /// See [`sort_unstable`](slice::sort_unstable).
+    /// sorting and it doesn't allocate auxiliary memory. See
+    /// [`sort_unstable`](slice::sort_unstable).
     ///
     /// # Current implementation
     ///
     /// The current algorithm is an adaptive, iterative merge sort inspired by
-    /// [timsort](https://en.wikipedia.org/wiki/Timsort).
-    /// It is designed to be very fast in cases where the slice is nearly sorted, or consists of
-    /// two or more sorted sequences concatenated one after another.
+    /// [Timsort](https://en.wikipedia.org/wiki/Timsort). It is designed to be very fast in cases
+    /// where the slice is nearly sorted, or consists of two or more sorted sequences concatenated
+    /// one after another. This implementation is adapted from ipn_stable developed by Lukas
+    /// Bergdoll, incorporating ideas for a fast bi-directional merge function from quadsort
+    /// developed by Igor van den Hoven.
     ///
-    /// Also, it allocates temporary storage half the size of `self`, but for short slices a
-    /// non-allocating insertion sort is used instead.
+    /// It allocates temporary storage the size of `self`, if this allocation fails it falls back to
+    /// allocating temporary storage half the size of `self`. For small inputs a non-allocating
+    /// specialized small-sort is used.
     ///
     /// # Examples
     ///
