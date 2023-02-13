@@ -47,7 +47,7 @@ pub(super) fn check(
     for &(method, pos) in &PATTERN_METHODS {
         if_chain! {
             if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty_adjusted(receiver).kind();
-            if *ty.kind() == ty::Str;
+            if ty.is_str();
             if method_name.as_str() == method && args.len() > pos;
             let arg = &args[pos];
             let mut applicability = Applicability::MachineApplicable;
