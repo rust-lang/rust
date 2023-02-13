@@ -34,6 +34,9 @@ pub(crate) fn get_toolchain_name() -> String {
 }
 
 pub(crate) fn get_cargo_path() -> PathBuf {
+    if let Ok(cargo) = std::env::var("CARGO") {
+        return PathBuf::from(cargo);
+    }
     let cargo_path = Command::new("rustup")
         .stderr(Stdio::inherit())
         .args(&["which", "cargo"])
@@ -44,6 +47,9 @@ pub(crate) fn get_cargo_path() -> PathBuf {
 }
 
 pub(crate) fn get_rustc_path() -> PathBuf {
+    if let Ok(rustc) = std::env::var("RUSTC") {
+        return PathBuf::from(rustc);
+    }
     let rustc_path = Command::new("rustup")
         .stderr(Stdio::inherit())
         .args(&["which", "rustc"])
@@ -54,6 +60,9 @@ pub(crate) fn get_rustc_path() -> PathBuf {
 }
 
 pub(crate) fn get_rustdoc_path() -> PathBuf {
+    if let Ok(rustdoc) = std::env::var("RUSTDOC") {
+        return PathBuf::from(rustdoc);
+    }
     let rustc_path = Command::new("rustup")
         .stderr(Stdio::inherit())
         .args(&["which", "rustdoc"])

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{get_file_name, get_rustc_version, get_toolchain_name};
+use super::rustc_info::{get_file_name, get_rustc_version};
 use super::utils::{remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler};
 use super::SysrootKind;
 
@@ -17,6 +17,7 @@ pub(crate) fn build_sysroot(
     sysroot_kind: SysrootKind,
     cg_clif_dylib_src: &Path,
     bootstrap_host_compiler: &Compiler,
+    rustup_toolchain_name: Option<&str>,
     target_triple: String,
 ) -> Compiler {
     eprintln!("[BUILD] sysroot {:?}", sysroot_kind);
@@ -41,18 +42,29 @@ pub(crate) fn build_sysroot(
 
     // Build and copy rustc and cargo wrappers
     let wrapper_base_name = get_file_name(&bootstrap_host_compiler.rustc, "____", "bin");
-    let toolchain_name = get_toolchain_name();
     for wrapper in ["rustc-clif", "rustdoc-clif", "cargo-clif"] {
         let wrapper_name = wrapper_base_name.replace("____", wrapper);
 
         let mut build_cargo_wrapper_cmd = Command::new(&bootstrap_host_compiler.rustc);
         let wrapper_path = DIST_DIR.to_path(dirs).join(&wrapper_name);
         build_cargo_wrapper_cmd
-            .env("TOOLCHAIN_NAME", toolchain_name.clone())
             .arg(RelPath::SCRIPTS.to_path(dirs).join(&format!("{wrapper}.rs")))
             .arg("-o")
             .arg(&wrapper_path)
             .arg("-Cstrip=debuginfo");
+        if let Some(rustup_toolchain_name) = &rustup_toolchain_name {
+            build_cargo_wrapper_cmd
+                .env("TOOLCHAIN_NAME", rustup_toolchain_name)
+                .env_remove("CARGO")
+                .env_remove("RUSTC")
+                .env_remove("RUSTDOC");
+        } else {
+            build_cargo_wrapper_cmd
+                .env_remove("TOOLCHAIN_NAME")
+                .env("CARGO", &bootstrap_host_compiler.cargo)
+                .env("RUSTC", &bootstrap_host_compiler.rustc)
+                .env("RUSTDOC", &bootstrap_host_compiler.rustdoc);
+        }
         spawn_and_wait(build_cargo_wrapper_cmd);
         try_hard_link(wrapper_path, BIN_DIR.to_path(dirs).join(wrapper_name));
     }

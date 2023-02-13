@@ -103,6 +103,14 @@ pub(crate) fn main() {
         }
     }
 
+    let rustup_toolchain_name = match (env::var("CARGO"), env::var("RUSTC"), env::var("RUSTDOC")) {
+        (Ok(_), Ok(_), Ok(_)) => None,
+        (Err(_), Err(_), Err(_)) => Some(rustc_info::get_toolchain_name()),
+        _ => {
+            eprintln!("All of CARGO, RUSTC and RUSTDOC need to be set or none must be set");
+            process::exit(1);
+        }
+    };
     let bootstrap_host_compiler = {
         let cargo = rustc_info::get_cargo_path();
         let rustc = rustc_info::get_rustc_path();
@@ -173,6 +181,7 @@ pub(crate) fn main() {
                 sysroot_kind,
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
+                rustup_toolchain_name.as_deref(),
                 target_triple.clone(),
             );
         }
@@ -181,7 +190,14 @@ pub(crate) fn main() {
                 eprintln!("Abi-cafe doesn't support cross-compilation");
                 process::exit(1);
             }
-            abi_cafe::run(channel, sysroot_kind, &dirs, &cg_clif_dylib, &bootstrap_host_compiler);
+            abi_cafe::run(
+                channel,
+                sysroot_kind,
+                &dirs,
+                &cg_clif_dylib,
+                rustup_toolchain_name.as_deref(),
+                &bootstrap_host_compiler,
+            );
         }
         Command::Build => {
             build_sysroot::build_sysroot(
@@ -190,6 +206,7 @@ pub(crate) fn main() {
                 sysroot_kind,
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
+                rustup_toolchain_name.as_deref(),
                 target_triple,
             );
         }
@@ -200,6 +217,7 @@ pub(crate) fn main() {
                 sysroot_kind,
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
+                rustup_toolchain_name.as_deref(),
                 target_triple,
             );
             bench::benchmark(&dirs, &bootstrap_host_compiler);

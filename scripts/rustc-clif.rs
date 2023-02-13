@@ -30,14 +30,19 @@ fn main() {
     }
     args.extend(passed_args);
 
-    // Ensure that the right toolchain is used
-    env::set_var("RUSTUP_TOOLCHAIN", env!("TOOLCHAIN_NAME"));
+    let rustc = if let Some(rustc) = option_env!("RUSTC") {
+        rustc
+    } else {
+        // Ensure that the right toolchain is used
+        env::set_var("RUSTUP_TOOLCHAIN", option_env!("TOOLCHAIN_NAME").expect("TOOLCHAIN_NAME"));
+        "rustc"
+    };
 
     #[cfg(unix)]
-    panic!("Failed to spawn rustc: {}", Command::new("rustc").args(args).exec());
+    panic!("Failed to spawn rustc: {}", Command::new(rustc).args(args).exec());
 
     #[cfg(not(unix))]
     std::process::exit(
-        Command::new("rustc").args(args).spawn().unwrap().wait().unwrap().code().unwrap_or(1),
+        Command::new(rustc).args(args).spawn().unwrap().wait().unwrap().code().unwrap_or(1),
     );
 }

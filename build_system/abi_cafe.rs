@@ -16,6 +16,7 @@ pub(crate) fn run(
     sysroot_kind: SysrootKind,
     dirs: &Dirs,
     cg_clif_dylib: &Path,
+    rustup_toolchain_name: Option<&str>,
     bootstrap_host_compiler: &Compiler,
 ) {
     ABI_CAFE_REPO.fetch(dirs);
@@ -27,6 +28,7 @@ pub(crate) fn run(
         sysroot_kind,
         cg_clif_dylib,
         bootstrap_host_compiler,
+        rustup_toolchain_name,
         bootstrap_host_compiler.triple.clone(),
     );
 
