@@ -65,7 +65,7 @@ impl Extend<TokenStream> for TokenStream {
             for tkn in item {
                 match tkn {
                     tt::TokenTree::Subtree(subtree)
-                        if subtree.delimiter.kind != tt::DelimiterKind::Invisible =>
+                        if subtree.delimiter.kind == tt::DelimiterKind::Invisible =>
                     {
                         self.token_trees.extend(subtree.token_trees);
                     }
