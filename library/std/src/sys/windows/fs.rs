@@ -1266,7 +1266,12 @@ fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
     // If the fallback fails for any reason we return the original error.
     match File::open(path, &opts) {
         Ok(file) => file.file_attr(),
-        Err(e) if e.raw_os_error() == Some(c::ERROR_SHARING_VIOLATION as _) => {
+        Err(e)
+            if [Some(c::ERROR_SHARING_VIOLATION as _), Some(c::ERROR_ACCESS_DENIED as _)]
+                .contains(&e.raw_os_error()) =>
+        {
+            // `ERROR_ACCESS_DENIED` is returned when the user doesn't have permission for the resource.
+            // One such example is `System Volume Information` as default but can be created as well
             // `ERROR_SHARING_VIOLATION` will almost never be returned.
             // Usually if a file is locked you can still read some metadata.
             // However, there are special system files, such as
