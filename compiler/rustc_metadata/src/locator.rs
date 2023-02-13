@@ -799,14 +799,14 @@ fn get_metadata_section<'p>(
             }
 
             // Length of the compressed stream - this allows linkers to pad the section if they want
-            let usize_len = core::mem::size_of::<u32>();
-            let Ok(len_bytes) = <[u8; 4]>::try_from(&buf[header_len..cmp::min(header_len + usize_len, buf.len())]) else {
+            let u32_len = core::mem::size_of::<u32>();
+            let Ok(len_bytes) = <[u8; 4]>::try_from(&buf[header_len..cmp::min(header_len + u32_len, buf.len())]) else {
                 return Err(MetadataError::LoadFailure("invalid metadata length found".to_string()));
             };
             let compressed_len = u32::from_be_bytes(len_bytes) as usize;
 
             // Header is okay -> inflate the actual metadata
-            let compressed_bytes = &buf[header_len..compressed_len + header_len];
+            let compressed_bytes = &buf[(header_len + u32_len)..(compressed_len + header_len + u32_len)];
             debug!("inflating {} bytes of compressed metadata", compressed_bytes.len());
             // Assume the decompressed data will be at least the size of the compressed data, so we
             // don't have to grow the buffer as much.
