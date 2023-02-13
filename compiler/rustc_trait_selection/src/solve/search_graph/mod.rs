@@ -133,7 +133,6 @@ impl<'tcx> SearchGraph<'tcx> {
         let cache = &mut self.provisional_cache;
         let provisional_entry_index = *cache.lookup_table.get(&goal).unwrap();
         let provisional_entry = &mut cache.entries[provisional_entry_index];
-        let depth = provisional_entry.depth;
         // We eagerly update the response in the cache here. If we have to reevaluate
         // this goal we use the new response when hitting a cycle, and we definitely
         // want to access the final response whenever we look at the cache.
@@ -157,29 +156,41 @@ impl<'tcx> SearchGraph<'tcx> {
             self.stack.push(StackElem { goal, has_been_used: false });
             false
         } else {
-            // If not, we're done with this goal.
-            //
-            // Check whether that this goal doesn't depend on a goal deeper on the stack
-            // and if so, move it and all nested goals to the global cache.
-            //
-            // Note that if any nested goal were to depend on something deeper on the stack,
-            // this would have also updated the depth of the current goal.
-            if depth == self.stack.next_index() {
-                for (i, entry) in cache.entries.drain_enumerated(provisional_entry_index.index()..)
-                {
-                    let actual_index = cache.lookup_table.remove(&entry.goal);
-                    debug_assert_eq!(Some(i), actual_index);
-                    debug_assert!(entry.depth == depth);
-                    cache::try_move_finished_goal_to_global_cache(
-                        tcx,
-                        &mut self.overflow_data,
-                        &self.stack,
-                        entry.goal,
-                        entry.response,
-                    );
-                }
-            }
+            self.try_move_finished_goal_to_global_cache(tcx, &goal);
             true
+        }
+    }
+
+    pub(super) fn try_move_finished_goal_to_global_cache(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        goal: &CanonicalGoal<'tcx>,
+    ) {
+        let cache = &mut self.provisional_cache;
+        let provisional_entry_index = *cache.lookup_table.get(goal).unwrap();
+        let provisional_entry = &mut cache.entries[provisional_entry_index];
+        let depth = provisional_entry.depth;
+
+        // If not, we're done with this goal.
+        //
+        // Check whether that this goal doesn't depend on a goal deeper on the stack
+        // and if so, move it and all nested goals to the global cache.
+        //
+        // Note that if any nested goal were to depend on something deeper on the stack,
+        // this would have also updated the depth of the current goal.
+        if depth == self.stack.next_index() {
+            for (i, entry) in cache.entries.drain_enumerated(provisional_entry_index.index()..) {
+                let actual_index = cache.lookup_table.remove(&entry.goal);
+                debug_assert_eq!(Some(i), actual_index);
+                debug_assert!(entry.depth == depth);
+                cache::try_move_finished_goal_to_global_cache(
+                    tcx,
+                    &mut self.overflow_data,
+                    &self.stack,
+                    entry.goal,
+                    entry.response,
+                );
+            }
         }
     }
 }
