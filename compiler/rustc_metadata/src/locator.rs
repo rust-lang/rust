@@ -789,8 +789,8 @@ fn get_metadata_section<'p>(
                 loader.get_dylib_metadata(target, filename).map_err(MetadataError::LoadFailure)?;
             // The header is uncompressed
             let header_len = METADATA_HEADER.len();
-            let u32_len = core::mem::size_of::<u32>();
-            let data_start = header_len + u32_len;
+            // header + u32 length of data
+            let data_start = header_len + 4;
 
             debug!("checking {} bytes of metadata-version stamp", header_len);
             let header = &buf[..cmp::min(header_len, buf.len())];
