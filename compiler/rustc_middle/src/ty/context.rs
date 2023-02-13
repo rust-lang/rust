@@ -243,10 +243,19 @@ impl<'tcx> CtxtInterners<'tcx> {
     }
 }
 
+// For these preinterned values, an alternative would be to have
+// variable-length vectors that grow as needed. But that turned out to be
+// slightly more complex and no faster.
+
 const NUM_PREINTERNED_TY_VARS: u32 = 100;
 const NUM_PREINTERNED_FRESH_TYS: u32 = 20;
 const NUM_PREINTERNED_FRESH_INT_TYS: u32 = 3;
 const NUM_PREINTERNED_FRESH_FLOAT_TYS: u32 = 3;
+
+// This number may seem high, but it is reached in all but the smallest crates.
+const NUM_PREINTERNED_RE_VARS: u32 = 500;
+const NUM_PREINTERNED_RE_LATE_BOUNDS_I: u32 = 2;
+const NUM_PREINTERNED_RE_LATE_BOUNDS_V: u32 = 20;
 
 pub struct CommonTypes<'tcx> {
     pub unit: Ty<'tcx>,
@@ -295,6 +304,14 @@ pub struct CommonLifetimes<'tcx> {
 
     /// Erased region, used outside of type inference.
     pub re_erased: Region<'tcx>,
+
+    /// Pre-interned `ReVar(ty::RegionVar(n))` for small values of `n`.
+    pub re_vars: Vec<Region<'tcx>>,
+
+    /// Pre-interned values of the form:
+    /// `ReLateBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon(v, None) })
+    /// for small values of `i` and `v`.
+    pub re_late_bounds: Vec<Vec<Region<'tcx>>>,
 }
 
 pub struct CommonConsts<'tcx> {
@@ -358,7 +375,31 @@ impl<'tcx> CommonLifetimes<'tcx> {
             ))
         };
 
-        CommonLifetimes { re_static: mk(ty::ReStatic), re_erased: mk(ty::ReErased) }
+        let re_vars =
+            (0..NUM_PREINTERNED_RE_VARS).map(|n| mk(ty::ReVar(ty::RegionVid::from(n)))).collect();
+
+        let re_late_bounds = (0..NUM_PREINTERNED_RE_LATE_BOUNDS_I)
+            .map(|i| {
+                (0..NUM_PREINTERNED_RE_LATE_BOUNDS_V)
+                    .map(|v| {
+                        mk(ty::ReLateBound(
+                            ty::DebruijnIndex::from(i),
+                            ty::BoundRegion {
+                                var: ty::BoundVar::from(v),
+                                kind: ty::BrAnon(v, None),
+                            },
+                        ))
+                    })
+                    .collect()
+            })
+            .collect();
+
+        CommonLifetimes {
+            re_static: mk(ty::ReStatic),
+            re_erased: mk(ty::ReErased),
+            re_vars,
+            re_late_bounds,
+        }
     }
 }
 
@@ -2002,7 +2043,16 @@ impl<'tcx> TyCtxt<'tcx> {
         debruijn: ty::DebruijnIndex,
         bound_region: ty::BoundRegion,
     ) -> Region<'tcx> {
-        self.intern_region(ty::ReLateBound(debruijn, bound_region))
+        // Use a pre-interned one when possible.
+        if let ty::BoundRegion { var, kind: ty::BrAnon(v, None) } = bound_region
+            && var.as_u32() == v
+            && let Some(inner) = self.lifetimes.re_late_bounds.get(debruijn.as_usize())
+            && let Some(re) = inner.get(v as usize).copied()
+        {
+            re
+        } else {
+            self.intern_region(ty::ReLateBound(debruijn, bound_region))
+        }
     }
 
     #[inline]
@@ -2011,8 +2061,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_re_var(self, vid: ty::RegionVid) -> Region<'tcx> {
-        self.intern_region(ty::ReVar(vid))
+    pub fn mk_re_var(self, v: ty::RegionVid) -> Region<'tcx> {
+        // Use a pre-interned one when possible.
+        self.lifetimes
+            .re_vars
+            .get(v.as_usize())
+            .copied()
+            .unwrap_or_else(|| self.intern_region(ty::ReVar(v)))
     }
 
     #[inline]
