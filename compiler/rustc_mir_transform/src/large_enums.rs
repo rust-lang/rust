@@ -3,7 +3,7 @@ use crate::MirPass;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, AdtDef, Const, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_target::abi::{HasDataLayout, Size, TagEncoding, Variants};
 
@@ -141,10 +141,7 @@ impl EnumSizeOpt {
                         self.candidate(tcx, param_env, ty, &mut alloc_cache)?;
                     let alloc = tcx.global_alloc(alloc_id).unwrap_memory();
 
-                    let tmp_ty = tcx.mk_ty(ty::Array(
-                        tcx.types.usize,
-                        Const::from_target_usize(tcx, num_variants as u64),
-                    ));
+                    let tmp_ty = tcx.mk_array(tcx.types.usize, num_variants as u64);
 
                     let size_array_local = local_decls.push(LocalDecl::new(tmp_ty, span));
                     let store_live = Statement {
