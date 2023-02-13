@@ -13,7 +13,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use stdx::{always, never};
-use syntax::{ast, AstNode, SyntaxNode, TextRange, TextSize};
+use syntax::{ast, utils::is_raw_identifier, AstNode, SmolStr, SyntaxNode, TextRange, TextSize};
 
 use text_edit::TextEdit;
 
@@ -122,7 +122,11 @@ pub(crate) fn will_rename_file(
     let sema = Semantics::new(db);
     let module = sema.to_module_def(file_id)?;
     let def = Definition::Module(module);
-    let mut change = def.rename(&sema, new_name_stem).ok()?;
+    let mut change = if is_raw_identifier(new_name_stem) {
+        def.rename(&sema, &SmolStr::from_iter(["r#", new_name_stem])).ok()?
+    } else {
+        def.rename(&sema, new_name_stem).ok()?
+    };
     change.file_system_edits.clear();
     Some(change)
 }
@@ -555,6 +559,15 @@ impl Foo {
             "'foo",
             r#"mod foo$0 {}"#,
             "error: Invalid name `'foo`: cannot rename module to 'foo",
+        );
+    }
+
+    #[test]
+    fn test_rename_mod_invalid_raw_ident() {
+        check(
+            "r#self",
+            r#"mod foo$0 {}"#,
+            "error: Invalid name: `self` cannot be a raw identifier",
         );
     }
 
@@ -1284,6 +1297,143 @@ mod bar$0;
                 }
                 "#]],
         )
+    }
+
+    #[test]
+    fn test_rename_mod_to_raw_ident() {
+        check_expect(
+            "r#fn",
+            r#"
+//- /lib.rs
+mod foo$0;
+
+fn main() { foo::bar::baz(); }
+
+//- /foo.rs
+pub mod bar;
+
+//- /foo/bar.rs
+pub fn baz() {}
+"#,
+            expect![[r#"
+                SourceChange {
+                    source_file_edits: {
+                        FileId(
+                            0,
+                        ): TextEdit {
+                            indels: [
+                                Indel {
+                                    insert: "r#fn",
+                                    delete: 4..7,
+                                },
+                                Indel {
+                                    insert: "r#fn",
+                                    delete: 22..25,
+                                },
+                            ],
+                        },
+                    },
+                    file_system_edits: [
+                        MoveFile {
+                            src: FileId(
+                                1,
+                            ),
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "fn.rs",
+                            },
+                        },
+                        MoveDir {
+                            src: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "foo",
+                            },
+                            src_id: FileId(
+                                1,
+                            ),
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "fn",
+                            },
+                        },
+                    ],
+                    is_snippet: false,
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_rename_mod_from_raw_ident() {
+        // FIXME: `r#fn` in path expression is not renamed.
+        check_expect(
+            "foo",
+            r#"
+//- /lib.rs
+mod r#fn$0;
+
+fn main() { r#fn::bar::baz(); }
+
+//- /fn.rs
+pub mod bar;
+
+//- /fn/bar.rs
+pub fn baz() {}
+"#,
+            expect![[r#"
+                SourceChange {
+                    source_file_edits: {
+                        FileId(
+                            0,
+                        ): TextEdit {
+                            indels: [
+                                Indel {
+                                    insert: "foo",
+                                    delete: 4..8,
+                                },
+                            ],
+                        },
+                    },
+                    file_system_edits: [
+                        MoveFile {
+                            src: FileId(
+                                1,
+                            ),
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "foo.rs",
+                            },
+                        },
+                        MoveDir {
+                            src: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "fn",
+                            },
+                            src_id: FileId(
+                                1,
+                            ),
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "foo",
+                            },
+                        },
+                    ],
+                    is_snippet: false,
+                }
+            "#]],
+        );
     }
 
     #[test]

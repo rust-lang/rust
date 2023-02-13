@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use syntax::{ast, SmolStr, SyntaxKind};
+use syntax::{ast, utils::is_raw_identifier, SmolStr};
 
 /// `Name` is a wrapper around string, which is used in hir for both references
 /// and declarations. In theory, names should also carry hygiene info, but we are
@@ -31,11 +31,6 @@ impl fmt::Display for Name {
             Repr::TupleField(idx) => fmt::Display::fmt(&idx, f),
         }
     }
-}
-
-fn is_raw_identifier(name: &str) -> bool {
-    let is_keyword = SyntaxKind::from_keyword(name).is_some();
-    is_keyword && !matches!(name, "self" | "crate" | "super" | "Self")
 }
 
 impl<'a> fmt::Display for UnescapedName<'a> {
