@@ -470,14 +470,11 @@ fn layout_of_uncached<'tcx>(
             return Err(LayoutError::Unknown(ty));
         }
 
-        ty::Placeholder(..)
-        | ty::GeneratorWitness(..)
-        | ty::GeneratorWitnessMIR(..)
-        | ty::Infer(_) => {
+        ty::Bound(..) | ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) | ty::Infer(_) => {
             bug!("Layout::compute: unexpected type `{}`", ty)
         }
 
-        ty::Bound(..) | ty::Param(_) | ty::Error(_) => {
+        ty::Placeholder(..) | ty::Param(_) | ty::Error(_) => {
             return Err(LayoutError::Unknown(ty));
         }
     })
