@@ -74,8 +74,8 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     type DepKind = DepKind;
 
     #[inline]
-    fn with_stable_hashing_context<R>(&self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R {
-        TyCtxt::with_stable_hashing_context(*self, f)
+    fn with_stable_hashing_context<R>(self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R {
+        TyCtxt::with_stable_hashing_context(self, f)
     }
 
     #[inline]
