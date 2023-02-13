@@ -1,9 +1,12 @@
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::{FixupError, FixupResult, InferCtxt, Span};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitor};
-use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::fold::{
+    ir::{FallibleTypeFolder, TypeFolder},
+    TypeSuperFoldable,
+};
+use rustc_middle::ty::visit::{ir::TypeVisitor, TypeSuperVisitable};
+use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};
 
 use std::ops::ControlFlow;
 
@@ -28,9 +31,9 @@ impl<'a, 'tcx> OpportunisticVarResolver<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
-        TypeFolder::tcx(&self.shallow_resolver)
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticVarResolver<'a, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        TypeFolder::interner(&self.shallow_resolver)
     }
 
     #[inline]
@@ -70,8 +73,8 @@ impl<'a, 'tcx> OpportunisticRegionResolver<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticRegionResolver<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for OpportunisticRegionResolver<'a, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -92,7 +95,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticRegionResolver<'a, 'tcx> {
                     .borrow_mut()
                     .unwrap_region_constraints()
                     .opportunistic_resolve_var(rid);
-                TypeFolder::tcx(self).reuse_or_mk_region(r, ty::ReVar(resolved))
+                TypeFolder::interner(self).reuse_or_mk_region(r, ty::ReVar(resolved))
             }
             _ => r,
         }
@@ -124,7 +127,7 @@ impl<'a, 'tcx> UnresolvedTypeOrConstFinder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeOrConstFinder<'a, 'tcx> {
+impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for UnresolvedTypeOrConstFinder<'a, 'tcx> {
     type BreakTy = (ty::Term<'tcx>, Option<Span>);
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         let t = self.infcx.shallow_resolve(t);
@@ -208,10 +211,10 @@ struct FullTypeResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> FallibleTypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
+impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for FullTypeResolver<'a, 'tcx> {
     type Error = FixupError<'tcx>;
 
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

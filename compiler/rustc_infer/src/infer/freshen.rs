@@ -33,8 +33,8 @@
 use super::InferCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::infer::unify_key::ToType;
-use rustc_middle::ty::fold::TypeFolder;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitable};
+use rustc_middle::ty::fold::ir::TypeFolder;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
 use std::collections::hash_map::Entry;
 
 pub struct TypeFreshener<'a, 'tcx> {
@@ -105,8 +105,8 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -124,13 +124,13 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::ReError(_)
             | ty::ReErased => {
                 // replace all free regions with 'erased
-                self.tcx().lifetimes.re_erased
+                self.interner().lifetimes.re_erased
             }
             ty::ReStatic => {
                 if self.keep_static {
                     r
                 } else {
-                    self.tcx().lifetimes.re_erased
+                    self.interner().lifetimes.re_erased
                 }
             }
         }

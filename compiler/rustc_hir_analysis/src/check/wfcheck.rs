@@ -16,8 +16,8 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, AdtKind, DefIdTree, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitor,
+    self, ir::TypeVisitor, AdtKind, DefIdTree, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
+    TypeSuperVisitable,
 };
 use rustc_middle::ty::{GenericArgKind, InternalSubsts};
 use rustc_session::parse::feature_err;
@@ -772,7 +772,7 @@ impl<'tcx> GATSubstCollector<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for GATSubstCollector<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATSubstCollector<'tcx> {
     type BreakTy = !;
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -1435,7 +1435,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             struct CountParams {
                 params: FxHashSet<u32>,
             }
-            impl<'tcx> ty::visit::TypeVisitor<'tcx> for CountParams {
+            impl<'tcx> ty::visit::ir::TypeVisitor<TyCtxt<'tcx>> for CountParams {
                 type BreakTy = ();
 
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

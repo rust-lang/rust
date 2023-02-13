@@ -1,6 +1,8 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+#[cfg(not(bootstrap))]
+use rustc_middle::ty::TypeVisitable;
+use rustc_middle::ty::{self, ir::TypeVisitor, Ty, TyCtxt, TypeSuperVisitable};
 use rustc_span::Span;
 use std::ops::ControlFlow;
 
@@ -78,7 +80,7 @@ impl<'tcx> Search<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
     type BreakTy = Ty<'tcx>;
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

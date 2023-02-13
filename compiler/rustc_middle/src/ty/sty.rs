@@ -7,8 +7,10 @@ use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use crate::ty::visit::ValidateBoundVars;
 use crate::ty::InferTy::*;
 use crate::ty::{
-    self, AdtDef, DefIdTree, Discr, FallibleTypeFolder, Term, Ty, TyCtxt, TypeFlags, TypeFoldable,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self,
+    ir::{FallibleTypeFolder, TypeVisitor},
+    AdtDef, DefIdTree, Discr, Term, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable,
 };
 use crate::ty::{List, ParamEnv};
 use hir::def::DefKind;
@@ -1147,10 +1149,10 @@ struct SkipBindersAt<'tcx> {
     index: ty::DebruijnIndex,
 }
 
-impl<'tcx> FallibleTypeFolder<'tcx> for SkipBindersAt<'tcx> {
+impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for SkipBindersAt<'tcx> {
     type Error = ();
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1171,7 +1173,7 @@ impl<'tcx> FallibleTypeFolder<'tcx> for SkipBindersAt<'tcx> {
             if index == self.index {
                 Err(())
             } else {
-                Ok(self.tcx().mk_bound(index.shifted_out(1), bv))
+                Ok(self.interner().mk_bound(index.shifted_out(1), bv))
             }
         } else {
             ty.try_super_fold_with(self)
@@ -1185,7 +1187,7 @@ impl<'tcx> FallibleTypeFolder<'tcx> for SkipBindersAt<'tcx> {
             if index == self.index {
                 Err(())
             } else {
-                Ok(self.tcx().mk_region(ty::ReLateBound(index.shifted_out(1), bv)))
+                Ok(self.interner().mk_region(ty::ReLateBound(index.shifted_out(1), bv)))
             }
         } else {
             r.try_super_fold_with(self)
@@ -1199,7 +1201,7 @@ impl<'tcx> FallibleTypeFolder<'tcx> for SkipBindersAt<'tcx> {
             if index == self.index {
                 Err(())
             } else {
-                Ok(self.tcx().mk_const(
+                Ok(self.interner().mk_const(
                     ty::ConstKind::Bound(index.shifted_out(1), bv),
                     ct.ty().try_fold_with(self)?,
                 ))
@@ -2038,7 +2040,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn contains(self, other: Ty<'tcx>) -> bool {
         struct ContainsTyVisitor<'tcx>(Ty<'tcx>);
 
-        impl<'tcx> TypeVisitor<'tcx> for ContainsTyVisitor<'tcx> {
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsTyVisitor<'tcx> {
             type BreakTy = ();
 
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -2056,7 +2058,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn contains_closure(self) -> bool {
         struct ContainsClosureVisitor;
 
-        impl<'tcx> TypeVisitor<'tcx> for ContainsClosureVisitor {
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsClosureVisitor {
             type BreakTy = ();
 
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

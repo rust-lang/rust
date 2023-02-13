@@ -1,6 +1,6 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitable};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
 use crate::ty::{EarlyBinder, InternalSubsts, SubstsRef};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::Namespace;
@@ -674,8 +674,8 @@ fn polymorphize<'tcx>(
         tcx: TyCtxt<'tcx>,
     }
 
-    impl<'tcx> ty::TypeFolder<'tcx> for PolymorphizationFolder<'tcx> {
-        fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+    impl<'tcx> ty::ir::TypeFolder<TyCtxt<'tcx>> for PolymorphizationFolder<'tcx> {
+        fn interner(&self) -> TyCtxt<'tcx> {
             self.tcx
         }
 

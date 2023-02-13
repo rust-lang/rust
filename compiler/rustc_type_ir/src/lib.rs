@@ -1,6 +1,10 @@
+#![feature(associated_type_defaults)]
 #![feature(fmt_helpers_for_derive)]
+#![feature(get_mut_unchecked)]
 #![feature(min_specialization)]
+#![feature(never_type)]
 #![feature(rustc_attrs)]
+#![feature(unwrap_infallible)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
@@ -18,8 +22,14 @@ use std::hash::Hash;
 use std::mem::discriminant;
 
 pub mod codec;
+pub mod fold;
 pub mod sty;
 pub mod ty_info;
+pub mod visit;
+
+#[macro_use]
+mod macros;
+mod structural_impls;
 
 pub use codec::*;
 pub use sty::*;
@@ -28,13 +38,15 @@ pub use ty_info::*;
 /// Needed so we can use #[derive(HashStable_Generic)]
 pub trait HashStableContext {}
 
-pub trait Interner {
+pub trait Interner: Sized {
     type AdtDef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type SubstsRef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type DefId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type Binder<T>;
     type Ty: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Const: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Region: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type Predicate;
     type TypeAndMut: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Mutability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type Movability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;

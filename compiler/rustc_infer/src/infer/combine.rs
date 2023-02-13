@@ -38,8 +38,8 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{
-    self, AliasKind, FallibleTypeFolder, InferConst, ToPredicate, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable, TypeVisitable,
+    self, ir::FallibleTypeFolder, AliasKind, InferConst, ToPredicate, Ty, TyCtxt, TypeFoldable,
+    TypeSuperFoldable,
 };
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::{Span, DUMMY_SP};
@@ -844,10 +844,10 @@ struct ConstInferUnifier<'cx, 'tcx> {
     target_vid: ty::ConstVid<'tcx>,
 }
 
-impl<'tcx> FallibleTypeFolder<'tcx> for ConstInferUnifier<'_, 'tcx> {
+impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ConstInferUnifier<'_, 'tcx> {
     type Error = TypeError<'tcx>;
 
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -875,7 +875,7 @@ impl<'tcx> FallibleTypeFolder<'tcx> for ConstInferUnifier<'_, 'tcx> {
                             .borrow_mut()
                             .type_variables()
                             .new_var(self.for_universe, origin);
-                        Ok(self.tcx().mk_ty_var(new_var_id))
+                        Ok(self.interner().mk_ty_var(new_var_id))
                     }
                 }
             }
@@ -953,7 +953,7 @@ impl<'tcx> FallibleTypeFolder<'tcx> for ConstInferUnifier<'_, 'tcx> {
                                         },
                                     },
                                 );
-                            Ok(self.tcx().mk_const(new_var_id, c.ty()))
+                            Ok(self.interner().mk_const(new_var_id, c.ty()))
                         }
                     }
                 }

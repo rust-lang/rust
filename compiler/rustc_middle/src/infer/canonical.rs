@@ -42,7 +42,7 @@ pub struct Canonical<'tcx, V> {
 
 pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;
 
-impl<'tcx> ty::TypeFoldable<'tcx> for CanonicalVarInfos<'tcx> {
+impl<'tcx> ty::ir::TypeFoldable<TyCtxt<'tcx>> for CanonicalVarInfos<'tcx> {
     fn try_fold_with<F: ty::FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,

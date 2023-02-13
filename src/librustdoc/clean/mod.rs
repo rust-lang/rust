@@ -20,7 +20,7 @@ use rustc_hir::PredicateOrigin;
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
-use rustc_middle::ty::fold::TypeFolder;
+use rustc_middle::ty::fold::ir::TypeFolder;
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, AdtKind, DefIdTree, EarlyBinder, Ty, TyCtxt};

@@ -35,8 +35,9 @@ use rustc_ast::ast;
 use rustc_middle::traits::{ChalkEnvironmentAndGoal, ChalkRustInterner as RustInterner};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
-    self, Binder, Region, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self,
+    ir::{TypeFolder, TypeVisitor},
+    Binder, Region, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
 };
 use rustc_span::def_id::DefId;
 
@@ -925,7 +926,7 @@ impl<'tcx> BoundVarsCollector<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for BoundVarsCollector<'tcx> {
     fn visit_binder<T: TypeVisitable<'tcx>>(
         &mut self,
         t: &Binder<'tcx, T>,
@@ -1006,8 +1007,8 @@ impl<'a, 'tcx> NamedBoundVarSubstitutor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for NamedBoundVarSubstitutor<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for NamedBoundVarSubstitutor<'a, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1062,8 +1063,8 @@ impl<'tcx> ParamsSubstitutor<'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1138,8 +1139,8 @@ impl<'tcx> ReverseParamsSubstitutor<'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for ReverseParamsSubstitutor<'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseParamsSubstitutor<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1174,7 +1175,7 @@ impl PlaceholdersCollector {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for PlaceholdersCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
             ty::Placeholder(p) if p.universe == self.universe_index => {

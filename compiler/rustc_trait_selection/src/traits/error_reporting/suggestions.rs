@@ -30,10 +30,10 @@ use rustc_middle::hir::map;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{
-    self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
-    GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, InternalSubsts,
-    IsSuggestable, ToPredicate, Ty, TyCtxt, TypeAndMut, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitable, TypeckResults,
+    self, ir::TypeFolder, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind,
+    DefIdTree, GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, InternalSubsts,
+    IsSuggestable, ToPredicate, Ty, TyCtxt, TypeAndMut, TypeFoldable, TypeSuperFoldable,
+    TypeckResults,
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -4081,7 +4081,7 @@ struct ReplaceImplTraitFolder<'tcx> {
     replace_ty: Ty<'tcx>,
 }
 
-impl<'tcx> TypeFolder<'tcx> for ReplaceImplTraitFolder<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceImplTraitFolder<'tcx> {
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Param(ty::ParamTy { index, .. }) = t.kind() {
             if self.param.index == *index {
@@ -4091,7 +4091,7 @@ impl<'tcx> TypeFolder<'tcx> for ReplaceImplTraitFolder<'tcx> {
         t.super_fold_with(self)
     }
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }

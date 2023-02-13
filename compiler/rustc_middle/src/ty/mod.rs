@@ -146,6 +146,10 @@ mod structural_impls;
 mod sty;
 mod typeck_results;
 
+pub mod ir {
+    pub use super::{fold::ir::*, visit::ir::*};
+}
+
 // Data types
 
 pub type RegisteredTools = FxHashSet<Ident>;
@@ -913,13 +917,13 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Term<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for Term<'tcx> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         Ok(self.unpack().try_fold_with(folder)?.pack())
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for Term<'tcx> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.unpack().visit_with(visitor)
     }
@@ -1615,7 +1619,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     fn try_fold_with<F: ty::fold::FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
@@ -1628,7 +1632,7 @@ impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for ParamEnv<'tcx> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.caller_bounds().visit_with(visitor)?;
         self.reveal().visit_with(visitor)

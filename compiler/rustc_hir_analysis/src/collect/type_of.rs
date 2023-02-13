@@ -9,7 +9,7 @@ use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{
-    self, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable,
+    self, ir::TypeFolder, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeSuperFoldable, TypeVisitable,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
@@ -850,8 +850,8 @@ fn infer_placeholder_type<'a>(
         tcx: TyCtxt<'tcx>,
     }
 
-    impl<'tcx> TypeFolder<'tcx> for MakeNameable<'tcx> {
-        fn tcx(&self) -> TyCtxt<'tcx> {
+    impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MakeNameable<'tcx> {
+        fn interner(&self) -> TyCtxt<'tcx> {
             self.tcx
         }
 
