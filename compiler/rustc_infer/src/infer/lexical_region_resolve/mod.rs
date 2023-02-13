@@ -382,7 +382,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // name the placeholder, then the placeholder is
                     // larger; otherwise, the only ancestor is `'static`.
                     Err(placeholder) if empty_ui.can_name(placeholder.universe) => {
-                        self.tcx().mk_region(RePlaceholder(placeholder))
+                        self.tcx().mk_re_placeholder(placeholder)
                     }
                     Err(_) => self.tcx().lifetimes.re_static,
                 };
@@ -1046,7 +1046,7 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
             ty::ReVar(rid) => match self.values[rid] {
                 VarValue::Empty(_) => r,
                 VarValue::Value(r) => r,
-                VarValue::ErrorValue => tcx.re_error_misc(),
+                VarValue::ErrorValue => tcx.mk_re_error_misc(),
             },
             _ => r,
         };

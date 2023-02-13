@@ -458,13 +458,11 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                                         self.tcx.replace_late_bound_regions_uncached(
                                             poly_trait_ref,
                                             |_| {
-                                                self.tcx.mk_region(ty::ReEarlyBound(
-                                                    ty::EarlyBoundRegion {
-                                                        def_id: item_def_id,
-                                                        index: 0,
-                                                        name: Symbol::intern(&lt_name),
-                                                    },
-                                                ))
+                                                self.tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                                                    def_id: item_def_id,
+                                                    index: 0,
+                                                    name: Symbol::intern(&lt_name),
+                                                })
                                             }
                                         ),
                                     ),

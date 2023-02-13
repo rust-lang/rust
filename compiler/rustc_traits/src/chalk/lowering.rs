@@ -521,8 +521,9 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'t
 
 impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'tcx>> {
     fn lower_into(self, interner: RustInterner<'tcx>) -> Region<'tcx> {
-        let kind = match self.data(interner) {
-            chalk_ir::LifetimeData::BoundVar(var) => ty::ReLateBound(
+        let tcx = interner.tcx;
+        match self.data(interner) {
+            chalk_ir::LifetimeData::BoundVar(var) => tcx.mk_re_late_bound(
                 ty::DebruijnIndex::from_u32(var.debruijn.depth()),
                 ty::BoundRegion {
                     var: ty::BoundVar::from_usize(var.index),
@@ -530,15 +531,14 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
                 },
             ),
             chalk_ir::LifetimeData::InferenceVar(_var) => unimplemented!(),
-            chalk_ir::LifetimeData::Placeholder(p) => ty::RePlaceholder(ty::Placeholder {
+            chalk_ir::LifetimeData::Placeholder(p) => tcx.mk_re_placeholder(ty::Placeholder {
                 universe: ty::UniverseIndex::from_usize(p.ui.counter),
                 name: ty::BoundRegionKind::BrAnon(p.idx as u32, None),
             }),
-            chalk_ir::LifetimeData::Static => return interner.tcx.lifetimes.re_static,
-            chalk_ir::LifetimeData::Erased => return interner.tcx.lifetimes.re_erased,
+            chalk_ir::LifetimeData::Static => tcx.lifetimes.re_static,
+            chalk_ir::LifetimeData::Erased => tcx.lifetimes.re_erased,
             chalk_ir::LifetimeData::Phantom(void, _) => match *void {},
-        };
-        interner.tcx.mk_region(kind)
+        }
     }
 }
 
@@ -1025,7 +1025,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for NamedBoundVarSubstitutor<'a, 'tcx> {
                 ty::BrNamed(def_id, _name) => match self.named_parameters.get(&def_id) {
                     Some(idx) => {
                         let new_br = ty::BoundRegion { var: br.var, kind: ty::BrAnon(*idx, None) };
-                        return self.tcx.mk_region(ty::ReLateBound(index, new_br));
+                        return self.tcx.mk_re_late_bound(index, new_br);
                     }
                     None => panic!("Missing `BrNamed`."),
                 },
@@ -1107,7 +1107,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
                         var: ty::BoundVar::from_u32(*idx),
                         kind: ty::BrAnon(*idx, None),
                     };
-                    self.tcx.mk_region(ty::ReLateBound(self.binder_index, br))
+                    self.tcx.mk_re_late_bound(self.binder_index, br)
                 }
                 None => {
                     let idx = self.named_regions.len() as u32;
@@ -1116,7 +1116,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
                         kind: ty::BrAnon(idx, None),
                     };
                     self.named_regions.insert(_re.def_id, idx);
-                    self.tcx.mk_region(ty::ReLateBound(self.binder_index, br))
+                    self.tcx.mk_re_late_bound(self.binder_index, br)
                 }
             },
 

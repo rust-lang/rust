@@ -480,10 +480,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     LangItem::VaList,
                     Some(self.infcx.tcx.def_span(self.mir_def.did)),
                 );
-                let region = self
-                    .infcx
-                    .tcx
-                    .mk_region(ty::ReVar(self.infcx.next_nll_region_var(FR).to_region_vid()));
+                let region =
+                    self.infcx.tcx.mk_re_var(self.infcx.next_nll_region_var(FR).to_region_vid());
                 let va_list_ty = self
                     .infcx
                     .tcx
@@ -636,7 +634,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                     kind: ty::BrEnv,
                 };
-                let env_region = ty::ReLateBound(ty::INNERMOST, br);
+                let env_region = tcx.mk_re_late_bound(ty::INNERMOST, br);
                 let closure_ty = tcx.closure_env_ty(def_id, substs, env_region).unwrap();
 
                 // The "inputs" of the closure in the
@@ -748,10 +746,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     {
         let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
             debug!(?br);
-            let liberated_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
-                scope: all_outlive_scope.to_def_id(),
-                bound_region: br.kind,
-            }));
+            let liberated_region = self.tcx.mk_re_free(all_outlive_scope.to_def_id(), br.kind);
             let region_vid = self.next_nll_region_var(origin);
             indices.insert_late_bound_region(liberated_region, region_vid.to_region_vid());
             debug!(?liberated_region, ?region_vid);
@@ -843,7 +838,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        tcx.fold_regions(value, |region, _| tcx.mk_region(ty::ReVar(self.to_region_vid(region))))
+        tcx.fold_regions(value, |region, _| tcx.mk_re_var(self.to_region_vid(region)))
     }
 }
 
@@ -883,8 +878,7 @@ fn for_each_late_bound_region_in_item<'tcx>(
 
     for bound_var in tcx.late_bound_vars(tcx.hir().local_def_id_to_hir_id(mir_def_id)) {
         let ty::BoundVariableKind::Region(bound_region) = bound_var else { continue; };
-        let liberated_region = tcx
-            .mk_region(ty::ReFree(ty::FreeRegion { scope: mir_def_id.to_def_id(), bound_region }));
+        let liberated_region = tcx.mk_re_free(mir_def_id.to_def_id(), bound_region);
         f(liberated_region);
     }
 }

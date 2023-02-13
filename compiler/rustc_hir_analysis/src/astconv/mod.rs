@@ -234,7 +234,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     var: ty::BoundVar::from_u32(index),
                     kind: ty::BrNamed(def_id, name),
                 };
-                tcx.mk_region(ty::ReLateBound(debruijn, br))
+                tcx.mk_re_late_bound(debruijn, br)
             }
 
             Some(rl::Region::EarlyBound(def_id)) => {
@@ -242,15 +242,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
-                tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }))
+                tcx.mk_re_early_bound(ty::EarlyBoundRegion { def_id, index, name })
             }
 
             Some(rl::Region::Free(scope, id)) => {
                 let name = lifetime_name(id.expect_local());
-                tcx.mk_region(ty::ReFree(ty::FreeRegion {
-                    scope,
-                    bound_region: ty::BrNamed(id, name),
-                }))
+                tcx.mk_re_free(scope, ty::BrNamed(id, name))
 
                 // (*) -- not late-bound, won't change
             }
@@ -263,7 +260,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     // elision. `resolve_lifetime` should have
                     // reported an error in this case -- but if
                     // not, let's error out.
-                    tcx.re_error_with_message(lifetime.ident.span, "unelided lifetime in signature")
+                    tcx.mk_re_error_with_message(
+                        lifetime.ident.span,
+                        "unelided lifetime in signature",
+                    )
                 })
             }
         }
@@ -477,7 +477,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             debug!(?param, "unelided lifetime in signature");
 
                             // This indicates an illegal lifetime in a non-assoc-trait position
-                            tcx.re_error_with_message(self.span, "unelided lifetime in signature")
+                            tcx.mk_re_error_with_message(
+                                self.span,
+                                "unelided lifetime in signature",
+                            )
                         })
                         .into(),
                     GenericParamDefKind::Type { has_default, .. } => {
@@ -1622,7 +1625,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         } else {
                             err.emit()
                         };
-                        tcx.re_error(e)
+                        tcx.mk_re_error(e)
                     })
                 }
             })

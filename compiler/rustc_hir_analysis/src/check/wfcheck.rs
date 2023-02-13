@@ -607,12 +607,11 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
                 // Same for the region. In our example, 'a corresponds
                 // to the 'me parameter.
                 let region_param = gat_generics.param_at(*region_a_idx, tcx);
-                let region_param =
-                    tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
-                        def_id: region_param.def_id,
-                        index: region_param.index,
-                        name: region_param.name,
-                    }));
+                let region_param = tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                    def_id: region_param.def_id,
+                    index: region_param.index,
+                    name: region_param.name,
+                });
                 // The predicate we expect to see. (In our example,
                 // `Self: 'me`.)
                 let clause = ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
@@ -645,20 +644,18 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
                 debug!("required clause: {region_a} must outlive {region_b}");
                 // Translate into the generic parameters of the GAT.
                 let region_a_param = gat_generics.param_at(*region_a_idx, tcx);
-                let region_a_param =
-                    tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
-                        def_id: region_a_param.def_id,
-                        index: region_a_param.index,
-                        name: region_a_param.name,
-                    }));
+                let region_a_param = tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                    def_id: region_a_param.def_id,
+                    index: region_a_param.index,
+                    name: region_a_param.name,
+                });
                 // Same for the region.
                 let region_b_param = gat_generics.param_at(*region_b_idx, tcx);
-                let region_b_param =
-                    tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
-                        def_id: region_b_param.def_id,
-                        index: region_b_param.index,
-                        name: region_b_param.name,
-                    }));
+                let region_b_param = tcx.mk_re_early_bound(ty::EarlyBoundRegion {
+                    def_id: region_b_param.def_id,
+                    index: region_b_param.index,
+                    name: region_b_param.name,
+                });
                 // The predicate we expect to see.
                 let clause = ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
                     ty::OutlivesPredicate(region_a_param, region_b_param),
