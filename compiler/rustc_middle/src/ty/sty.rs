@@ -1171,7 +1171,7 @@ impl<'tcx> FallibleTypeFolder<'tcx> for SkipBindersAt<'tcx> {
             if index == self.index {
                 Err(())
             } else {
-                Ok(self.tcx().mk_ty(ty::Bound(index.shifted_out(1), bv)))
+                Ok(self.tcx().mk_bound(index.shifted_out(1), bv))
             }
         } else {
             ty.try_super_fold_with(self)
@@ -1260,7 +1260,7 @@ impl<'tcx> AliasTy<'tcx> {
     }
 
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        tcx.mk_ty(ty::Alias(self.kind(tcx), self))
+        tcx.mk_alias(self.kind(tcx), self)
     }
 }
 

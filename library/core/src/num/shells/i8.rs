@@ -1,6 +1,4 @@
-//! Constants for the 8-bit signed integer type.
-//!
-//! *[See also the `i8` primitive type][i8].*
+//! Redundant constants module for the [`i8` primitive type][i8].
 //!
 //! New code should use the associated constants directly on the primitive type.
 

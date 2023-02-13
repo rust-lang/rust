@@ -58,14 +58,9 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
         }
     }
 
-    fn freshen_ty<F>(
-        &mut self,
-        opt_ty: Option<Ty<'tcx>>,
-        key: ty::InferTy,
-        freshener: F,
-    ) -> Ty<'tcx>
+    fn freshen_ty<F>(&mut self, opt_ty: Option<Ty<'tcx>>, key: ty::InferTy, mk_fresh: F) -> Ty<'tcx>
     where
-        F: FnOnce(u32) -> ty::InferTy,
+        F: FnOnce(u32) -> Ty<'tcx>,
     {
         if let Some(ty) = opt_ty {
             return ty.fold_with(self);
@@ -76,7 +71,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
             Entry::Vacant(entry) => {
                 let index = self.ty_freshen_count;
                 self.ty_freshen_count += 1;
-                let t = self.infcx.tcx.mk_ty_infer(freshener(index));
+                let t = mk_fresh(index);
                 entry.insert(t);
                 t
             }
@@ -204,7 +199,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
         match v {
             ty::TyVar(v) => {
                 let opt_ty = self.infcx.inner.borrow_mut().type_variables().probe(v).known();
-                Some(self.freshen_ty(opt_ty, ty::TyVar(v), ty::FreshTy))
+                Some(self.freshen_ty(opt_ty, ty::TyVar(v), |n| self.infcx.tcx.mk_fresh_ty(n)))
             }
 
             ty::IntVar(v) => Some(
@@ -216,7 +211,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
                         .probe_value(v)
                         .map(|v| v.to_type(self.infcx.tcx)),
                     ty::IntVar(v),
-                    ty::FreshIntTy,
+                    |n| self.infcx.tcx.mk_fresh_int_ty(n),
                 ),
             ),
 
@@ -229,7 +224,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
                         .probe_value(v)
                         .map(|v| v.to_type(self.infcx.tcx)),
                     ty::FloatVar(v),
-                    ty::FreshFloatTy,
+                    |n| self.infcx.tcx.mk_fresh_float_ty(n),
                 ),
             ),
 

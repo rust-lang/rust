@@ -3572,7 +3572,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 {
                     type_diffs = vec![
                         Sorts(ty::error::ExpectedFound {
-                            expected: self.tcx.mk_ty(ty::Alias(ty::Projection, where_pred.skip_binder().projection_ty)),
+                            expected: self.tcx.mk_alias(ty::Projection, where_pred.skip_binder().projection_ty),
                             found,
                         }),
                     ];

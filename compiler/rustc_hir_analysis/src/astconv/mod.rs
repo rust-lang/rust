@@ -1250,7 +1250,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 //
                 // Calling `skip_binder` is okay, because `add_bounds` expects the `param_ty`
                 // parameter to have a skipped binder.
-                let param_ty = tcx.mk_ty(ty::Alias(ty::Projection, projection_ty.skip_binder()));
+                let param_ty = tcx.mk_alias(ty::Projection, projection_ty.skip_binder());
                 self.add_bounds(param_ty, ast_bounds.iter(), bounds, candidate.bound_vars());
             }
         }
@@ -2930,7 +2930,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 };
 
-                tcx.mk_ty(ty::Array(self.ast_ty_to_ty(ty), length))
+                tcx.mk_array_with_const_len(self.ast_ty_to_ty(ty), length)
             }
             hir::TyKind::Typeof(e) => {
                 let ty_erased = tcx.type_of(e.def_id);

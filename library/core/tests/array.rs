@@ -712,3 +712,28 @@ fn array_try_fill_from() {
     let array = core::array::try_from_iter::<_, 4>(vec);
     assert!(array.is_err());
 }
+
+#[cfg(not(panic = "abort"))]
+#[test]
+fn array_map_drops_unmapped_elements_on_panic() {
+    struct DropCounter<'a>(usize, &'a AtomicUsize);
+    impl Drop for DropCounter<'_> {
+        fn drop(&mut self) {
+            self.1.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    const MAX: usize = 11;
+    for panic_after in 0..MAX {
+        let counter = AtomicUsize::new(0);
+        let a = array::from_fn::<_, 11, _>(|i| DropCounter(i, &counter));
+        let success = std::panic::catch_unwind(|| {
+            let _ = a.map(|x| {
+                assert!(x.0 < panic_after);
+                assert_eq!(counter.load(Ordering::SeqCst), x.0);
+            });
+        });
+        assert!(success.is_err());
+        assert_eq!(counter.load(Ordering::SeqCst), MAX);
+    }
+}
