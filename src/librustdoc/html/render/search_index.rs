@@ -236,7 +236,16 @@ pub(crate) fn build_index<'tcx>(
             crate_data.serialize_field("doc", &self.doc)?;
             crate_data.serialize_field(
                 "t",
-                &self.items.iter().map(|item| &item.ty).collect::<Vec<_>>(),
+                &self
+                    .items
+                    .iter()
+                    .map(|item| {
+                        let n = item.ty as u8;
+                        let c = char::try_from(n + b'A').expect("item types must fit in ASCII");
+                        assert!(c <= 'z', "item types must fit within ASCII printables");
+                        c
+                    })
+                    .collect::<String>(),
             )?;
             crate_data.serialize_field(
                 "n",
