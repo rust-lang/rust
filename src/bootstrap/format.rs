@@ -193,10 +193,46 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     let (tx, rx): (SyncSender<PathBuf>, _) = std::sync::mpsc::sync_channel(128);
     let walker = match paths.get(0) {
         Some(first) => {
-            let mut walker = WalkBuilder::new(first);
+            let find_shortcut_candidates = |p: &PathBuf| {
+                let mut candidates = Vec::new();
+                for candidate in WalkBuilder::new(src.clone()).max_depth(Some(3)).build() {
+                    if let Ok(entry) = candidate {
+                        if let Some(dir_name) = p.file_name() {
+                            if entry.path().is_dir() && entry.file_name() == dir_name {
+                                candidates.push(entry.into_path());
+                            }
+                        }
+                    }
+                }
+                candidates
+            };
+
+            // Only try to look for shortcut candidates for single component paths like
+            // `std` and not for e.g. relative paths like `../library/std`.
+            let should_look_for_shortcut_dir = |p: &PathBuf| p.components().count() == 1;
+
+            let mut walker = if should_look_for_shortcut_dir(first) {
+                if let [single_candidate] = &find_shortcut_candidates(first)[..] {
+                    WalkBuilder::new(single_candidate)
+                } else {
+                    WalkBuilder::new(first)
+                }
+            } else {
+                WalkBuilder::new(first)
+            };
+
             for path in &paths[1..] {
-                walker.add(path);
+                if should_look_for_shortcut_dir(path) {
+                    if let [single_candidate] = &find_shortcut_candidates(path)[..] {
+                        walker.add(single_candidate);
+                    } else {
+                        walker.add(path);
+                    }
+                } else {
+                    walker.add(path);
+                }
             }
+
             walker
         }
         None => WalkBuilder::new(src.clone()),
