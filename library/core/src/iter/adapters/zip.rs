@@ -1,7 +1,7 @@
 use crate::cmp;
 use crate::fmt::{self, Debug};
 use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
-use crate::iter::{InPlaceIterable, SourceIter, TrustedLen};
+use crate::iter::{InPlaceIterable, SourceIter, TrustedLen, UncheckedIterator};
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
@@ -414,6 +414,13 @@ unsafe impl<A, B> TrustedLen for Zip<A, B>
 where
     A: TrustedLen,
     B: TrustedLen,
+{
+}
+
+impl<A, B> UncheckedIterator for Zip<A, B>
+where
+    A: UncheckedIterator,
+    B: UncheckedIterator,
 {
 }
 

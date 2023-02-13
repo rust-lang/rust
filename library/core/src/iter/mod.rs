@@ -450,6 +450,7 @@ pub use self::adapters::{
 pub use self::adapters::{Intersperse, IntersperseWith};
 
 pub(crate) use self::adapters::try_process;
+pub(crate) use self::traits::UncheckedIterator;
 
 mod adapters;
 mod range;

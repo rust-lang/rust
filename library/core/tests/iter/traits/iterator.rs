@@ -582,6 +582,9 @@ fn test_next_chunk() {
     assert_eq!(it.next_chunk().unwrap(), []);
     assert_eq!(it.next_chunk().unwrap(), [4, 5, 6, 7, 8, 9]);
     assert_eq!(it.next_chunk::<4>().unwrap_err().as_slice(), &[10, 11]);
+
+    let mut it = std::iter::repeat_with(|| panic!());
+    assert_eq!(it.next_chunk::<0>().unwrap(), []);
 }
 
 // just tests by whether or not this compiles
