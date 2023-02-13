@@ -1631,13 +1631,6 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    /// Same a `self.mk_region(kind)`, but avoids accessing the interners if
-    /// `*r == kind`.
-    #[inline]
-    pub fn reuse_or_mk_region(self, r: Region<'tcx>, kind: RegionKind<'tcx>) -> Region<'tcx> {
-        if *r == kind { r } else { self.mk_region(kind) }
-    }
-
     // Avoid this in favour of more specific `mk_*` methods, where possible.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]

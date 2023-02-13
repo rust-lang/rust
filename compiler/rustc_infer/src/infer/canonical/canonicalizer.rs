@@ -363,7 +363,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                      opportunistically resolved to {:?}",
                     vid, resolved_vid
                 );
-                let r = self.tcx.reuse_or_mk_region(r, ty::ReVar(resolved_vid));
+                let r = self.tcx.mk_region(ty::ReVar(resolved_vid));
                 self.canonicalize_mode.canonicalize_free_region(self, r)
             }
 

@@ -651,7 +651,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
                 let unified_region = self.unification_table().probe_value(rid);
                 unified_region.0.unwrap_or_else(|| {
                     let root = self.unification_table().find(rid).vid;
-                    tcx.reuse_or_mk_region(region, ty::ReVar(root))
+                    tcx.mk_region(ty::ReVar(root))
                 })
             }
             _ => region,
