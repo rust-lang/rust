@@ -837,9 +837,17 @@ pub trait LintContext: Sized {
                             (use_span, "'_".to_owned())
                         };
                         debug!(?deletion_span, ?use_span);
+
+                        // issue 107998 for the case such as a wrong function pointer type
+                        // `deletion_span` is empty and there is no need to report lifetime uses here
+                        let suggestions = if deletion_span.is_empty() {
+                            vec![(use_span, replace_lt)]
+                        } else {
+                            vec![(deletion_span, String::new()), (use_span, replace_lt)]
+                        };
                         db.multipart_suggestion(
                             msg,
-                            vec![(deletion_span, String::new()), (use_span, replace_lt)],
+                            suggestions,
                             Applicability::MachineApplicable,
                         );
                     }
