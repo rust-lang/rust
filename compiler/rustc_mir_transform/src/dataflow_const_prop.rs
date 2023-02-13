@@ -71,7 +71,7 @@ struct ConstAnalysis<'a, 'tcx> {
 }
 
 impl<'tcx> ConstAnalysis<'_, 'tcx> {
-    fn eval_disciminant(
+    fn eval_discriminant(
         &self,
         enum_ty: Ty<'tcx>,
         variant_index: VariantIdx,
@@ -101,7 +101,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 state.flood_discr(place.as_ref(), &self.map);
                 if self.map.find_discr(place.as_ref()).is_some() {
                     let enum_ty = place.ty(self.local_decls, self.tcx).ty;
-                    if let Some(discr) = self.eval_disciminant(enum_ty, variant_index) {
+                    if let Some(discr) = self.eval_discriminant(enum_ty, variant_index) {
                         state.assign_discr(
                             place.as_ref(),
                             ValueOrPlace::Value(FlatSet::Elem(discr)),
@@ -152,7 +152,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                         && let Some(discr_idx) = self.map().apply(target_idx, TrackElem::Discriminant)
                     {
                         let enum_ty = target.ty(self.local_decls, self.tcx).ty;
-                        if let Some(discr_val) = self.eval_disciminant(enum_ty, variant_index) {
+                        if let Some(discr_val) = self.eval_discriminant(enum_ty, variant_index) {
                             state.insert_value_idx(discr_idx, FlatSet::Elem(discr_val), &self.map);
                         }
                     }
