@@ -176,14 +176,13 @@ declare_rustdoc_lint! {
 
 declare_rustdoc_lint! {
     /// The `documented_local_non_inlined_reexport` lint detects when a reexport
-    /// (`pub use`) of an item from the same crate which doesn't have
-    /// `#[doc(inline)]` is documented.
+    /// (`pub use`) documentation is unused.
     /// This is a `rustdoc` only lint, see the documentation in the [rustdoc book].
     ///
-    /// [rustdoc book]: ../../../rustdoc/lints.html#documented_non_inlined_local_reexport
-    DOCUMENTED_LOCAL_NON_INLINED_REEXPORT,
+    /// [rustdoc book]: ../../../rustdoc/lints.html#unused_reexport_documentation
+    UNUSED_REEXPORT_DOCUMENTATION,
     Warn,
-    "doc comments on local non-inlined reexports are ignored",
+    "doc comments are ignored on some cases for reexports",
 }
 
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
@@ -197,6 +196,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         INVALID_HTML_TAGS,
         BARE_URLS,
         MISSING_CRATE_LEVEL_DOCS,
+        UNUSED_REEXPORT_DOCUMENTATION,
     ]
 });
 
