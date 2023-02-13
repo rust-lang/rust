@@ -9,6 +9,7 @@
 extern crate test;
 
 mod any;
+mod array;
 mod ascii;
 mod char;
 mod fmt;
