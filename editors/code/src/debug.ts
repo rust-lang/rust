@@ -84,7 +84,7 @@ async function getDebugConfiguration(
             debugEngine = vscode.extensions.getExtension(engineId);
             if (debugEngine) break;
         }
-    } else {
+    } else if (debugOptions.engine) {
         debugEngine = vscode.extensions.getExtension(debugOptions.engine);
     }
 

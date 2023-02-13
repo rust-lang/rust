@@ -2,9 +2,11 @@
 name = "vfs-notify"
 version = "0.0.0"
 description = "TBD"
-license = "MIT OR Apache-2.0"
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
@@ -16,5 +18,5 @@ walkdir = "2.3.2"
 crossbeam-channel = "0.5.5"
 notify = "5.0"
 
-vfs = { path = "../vfs", version = "0.0.0" }
-paths = { path = "../paths", version = "0.0.0" }
+vfs.workspace = true
+paths.workspace = true

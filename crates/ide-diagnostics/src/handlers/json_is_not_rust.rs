@@ -99,76 +99,66 @@ pub(crate) fn json_in_items(
             && node.last_token().map(|x| x.kind()) == Some(SyntaxKind::R_CURLY)
         {
             let node_string = node.to_string();
-            if let Ok(it) = serde_json::from_str(&node_string) {
-                if let serde_json::Value::Object(it) = it {
-                    let import_scope = ImportScope::find_insert_use_container(node, sema)?;
-                    let range = node.text_range();
-                    let mut edit = TextEdit::builder();
-                    edit.delete(range);
-                    let mut state = State::default();
-                    let semantics_scope = sema.scope(node)?;
-                    let scope_resolve =
-                        |it| semantics_scope.speculative_resolve(&make::path_from_text(it));
-                    let scope_has = |it| scope_resolve(it).is_some();
-                    let deserialize_resolved = scope_resolve("::serde::Deserialize");
-                    let serialize_resolved = scope_resolve("::serde::Serialize");
-                    state.has_deserialize = deserialize_resolved.is_some();
-                    state.has_serialize = serialize_resolved.is_some();
-                    state.build_struct(&it);
-                    edit.insert(range.start(), state.result);
-                    acc.push(
-                        Diagnostic::new(
-                            "json-is-not-rust",
-                            "JSON syntax is not valid as a Rust item",
-                            range,
-                        )
-                        .severity(Severity::WeakWarning)
-                        .with_fixes(Some(vec![{
-                            let mut scb = SourceChangeBuilder::new(file_id);
-                            let scope = match import_scope {
-                                ImportScope::File(it) => ImportScope::File(scb.make_mut(it)),
-                                ImportScope::Module(it) => ImportScope::Module(scb.make_mut(it)),
-                                ImportScope::Block(it) => ImportScope::Block(scb.make_mut(it)),
-                            };
-                            let current_module = semantics_scope.module();
-                            if !scope_has("Serialize") {
-                                if let Some(PathResolution::Def(it)) = serialize_resolved {
-                                    if let Some(it) = current_module.find_use_path_prefixed(
-                                        sema.db,
-                                        it,
-                                        config.insert_use.prefix_kind,
-                                        config.prefer_no_std,
-                                    ) {
-                                        insert_use(
-                                            &scope,
-                                            mod_path_to_ast(&it),
-                                            &config.insert_use,
-                                        );
-                                    }
+            if let Ok(serde_json::Value::Object(it)) = serde_json::from_str(&node_string) {
+                let import_scope = ImportScope::find_insert_use_container(node, sema)?;
+                let range = node.text_range();
+                let mut edit = TextEdit::builder();
+                edit.delete(range);
+                let mut state = State::default();
+                let semantics_scope = sema.scope(node)?;
+                let scope_resolve =
+                    |it| semantics_scope.speculative_resolve(&make::path_from_text(it));
+                let scope_has = |it| scope_resolve(it).is_some();
+                let deserialize_resolved = scope_resolve("::serde::Deserialize");
+                let serialize_resolved = scope_resolve("::serde::Serialize");
+                state.has_deserialize = deserialize_resolved.is_some();
+                state.has_serialize = serialize_resolved.is_some();
+                state.build_struct(&it);
+                edit.insert(range.start(), state.result);
+                acc.push(
+                    Diagnostic::new(
+                        "json-is-not-rust",
+                        "JSON syntax is not valid as a Rust item",
+                        range,
+                    )
+                    .severity(Severity::WeakWarning)
+                    .with_fixes(Some(vec![{
+                        let mut scb = SourceChangeBuilder::new(file_id);
+                        let scope = match import_scope {
+                            ImportScope::File(it) => ImportScope::File(scb.make_mut(it)),
+                            ImportScope::Module(it) => ImportScope::Module(scb.make_mut(it)),
+                            ImportScope::Block(it) => ImportScope::Block(scb.make_mut(it)),
+                        };
+                        let current_module = semantics_scope.module();
+                        if !scope_has("Serialize") {
+                            if let Some(PathResolution::Def(it)) = serialize_resolved {
+                                if let Some(it) = current_module.find_use_path_prefixed(
+                                    sema.db,
+                                    it,
+                                    config.insert_use.prefix_kind,
+                                    config.prefer_no_std,
+                                ) {
+                                    insert_use(&scope, mod_path_to_ast(&it), &config.insert_use);
                                 }
                             }
-                            if !scope_has("Deserialize") {
-                                if let Some(PathResolution::Def(it)) = deserialize_resolved {
-                                    if let Some(it) = current_module.find_use_path_prefixed(
-                                        sema.db,
-                                        it,
-                                        config.insert_use.prefix_kind,
-                                        config.prefer_no_std,
-                                    ) {
-                                        insert_use(
-                                            &scope,
-                                            mod_path_to_ast(&it),
-                                            &config.insert_use,
-                                        );
-                                    }
+                        }
+                        if !scope_has("Deserialize") {
+                            if let Some(PathResolution::Def(it)) = deserialize_resolved {
+                                if let Some(it) = current_module.find_use_path_prefixed(
+                                    sema.db,
+                                    it,
+                                    config.insert_use.prefix_kind,
+                                    config.prefer_no_std,
+                                ) {
+                                    insert_use(&scope, mod_path_to_ast(&it), &config.insert_use);
                                 }
                             }
-                            let mut sc = scb.finish();
-                            sc.insert_source_edit(file_id, edit.finish());
-                            fix("convert_json_to_struct", "Convert JSON to struct", sc, range)
-                        }])),
-                    );
-                }
+                        }
+                        let mut sc = scb.finish();
+                        sc.insert_source_edit(file_id, edit.finish());
+                        fix("convert_json_to_struct", "Convert JSON to struct", sc, range)
+                    }])),
+                );
             }
         }
         Some(())

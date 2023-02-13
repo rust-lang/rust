@@ -86,6 +86,7 @@ fn foo(a: A) { a.$0 }
                 sn match                  match expr {}
                 sn ref                    &expr
                 sn refm                   &mut expr
+                sn unsafe                 unsafe {}
             "#]],
         );
 
@@ -110,6 +111,7 @@ fn foo() {
                 sn match                  match expr {}
                 sn ref                    &expr
                 sn refm                   &mut expr
+                sn unsafe                 unsafe {}
             "#]],
         );
     }
@@ -136,6 +138,7 @@ fn foo(a: A) { a.$0 }
                 sn match                  match expr {}
                 sn ref                    &expr
                 sn refm                   &mut expr
+                sn unsafe                 unsafe {}
             "#]],
         );
     }

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use base_db::fixture::WithFixture;
 use chalk_ir::{AdtId, TyKind};
 use hir_def::{
@@ -5,20 +7,16 @@ use hir_def::{
     layout::{Layout, LayoutError},
 };
 
-use crate::{test_db::TestDB, Interner, Substitution};
+use crate::{db::HirDatabase, test_db::TestDB, Interner, Substitution};
 
 use super::layout_of_ty;
 
-fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
-    // using unstable cargo features failed, fall back to using plain rustc
-    let mut cmd = std::process::Command::new("rustc");
-    cmd.args(["-Z", "unstable-options", "--print", "target-spec-json"]).env("RUSTC_BOOTSTRAP", "1");
-    let output = cmd.output().unwrap();
-    assert!(output.status.success(), "{}", output.status);
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let target_data_layout =
-        stdout.split_once(r#""data-layout": ""#).unwrap().1.split_once('"').unwrap().0.to_owned();
+fn current_machine_data_layout() -> String {
+    project_model::target_data_layout::get(None, None, &HashMap::default()).unwrap()
+}
 
+fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
+    let target_data_layout = current_machine_data_layout();
     let ra_fixture = format!(
         "{minicore}//- /main.rs crate:test target_data_layout:{target_data_layout}\n{ra_fixture}",
     );
@@ -45,9 +43,52 @@ fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
     layout_of_ty(&db, &goal_ty, module_id.krate())
 }
 
+/// A version of `eval_goal` for types that can not be expressed in ADTs, like closures and `impl Trait`
+fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
+    let target_data_layout = current_machine_data_layout();
+    let ra_fixture = format!(
+        "{minicore}//- /main.rs crate:test target_data_layout:{target_data_layout}\nfn main(){{let goal = {{{ra_fixture}}};}}",
+    );
+
+    let (db, file_id) = TestDB::with_single_file(&ra_fixture);
+    let module_id = db.module_for_file(file_id);
+    let def_map = module_id.def_map(&db);
+    let scope = &def_map[module_id.local_id].scope;
+    let adt_id = scope
+        .declarations()
+        .find_map(|x| match x {
+            hir_def::ModuleDefId::FunctionId(x) => {
+                let name = db.function_data(x).name.to_smol_str();
+                (name == "main").then_some(x)
+            }
+            _ => None,
+        })
+        .unwrap();
+    let hir_body = db.body(adt_id.into());
+    let pat = hir_body
+        .pats
+        .iter()
+        .find(|x| match x.1 {
+            hir_def::expr::Pat::Bind { name, .. } => name.to_smol_str() == "goal",
+            _ => false,
+        })
+        .unwrap()
+        .0;
+    let infer = db.infer(adt_id.into());
+    let goal_ty = infer.type_of_pat[pat].clone();
+    layout_of_ty(&db, &goal_ty, module_id.krate())
+}
+
 #[track_caller]
 fn check_size_and_align(ra_fixture: &str, minicore: &str, size: u64, align: u64) {
     let l = eval_goal(ra_fixture, minicore).unwrap();
+    assert_eq!(l.size.bytes(), size);
+    assert_eq!(l.align.abi.bytes(), align);
+}
+
+#[track_caller]
+fn check_size_and_align_expr(ra_fixture: &str, minicore: &str, size: u64, align: u64) {
+    let l = eval_expr(ra_fixture, minicore).unwrap();
     assert_eq!(l.size.bytes(), size);
     assert_eq!(l.align.abi.bytes(), align);
 }
@@ -85,10 +126,30 @@ macro_rules! size_and_align {
     };
 }
 
+macro_rules! size_and_align_expr {
+    ($($t:tt)*) => {
+        {
+            #[allow(dead_code)]
+            {
+                let val = { $($t)* };
+                check_size_and_align_expr(
+                    stringify!($($t)*),
+                    "",
+                    ::std::mem::size_of_val(&val) as u64,
+                    ::std::mem::align_of_val(&val) as u64,
+                );
+            }
+        }
+    };
+}
+
 #[test]
 fn hello_world() {
     size_and_align! {
         struct Goal(i32);
+    }
+    size_and_align_expr! {
+        2i32
     }
 }
 
@@ -140,6 +201,40 @@ fn generic() {
             field2: [u8; N],
         }
         struct Goal(X<1000>);
+    }
+}
+
+#[test]
+fn return_position_impl_trait() {
+    size_and_align_expr! {
+        trait T {}
+        impl T for i32 {}
+        impl T for i64 {}
+        fn foo() -> impl T { 2i64 }
+        foo()
+    }
+    size_and_align_expr! {
+        trait T {}
+        impl T for i32 {}
+        impl T for i64 {}
+        fn foo() -> (impl T, impl T, impl T) { (2i64, 5i32, 7i32) }
+        foo()
+    }
+    size_and_align_expr! {
+        struct Foo<T>(T, T, (T, T));
+        trait T {}
+        impl T for Foo<i32> {}
+        impl T for Foo<i64> {}
+
+        fn foo() -> Foo<impl T> { Foo(
+            Foo(1i64, 2, (3, 4)),
+            Foo(5, 6, (7, 8)),
+            (
+                Foo(1i64, 2, (3, 4)),
+                Foo(5, 6, (7, 8)),
+            ),
+        ) }
+        foo()
     }
 }
 

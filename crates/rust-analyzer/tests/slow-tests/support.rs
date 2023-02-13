@@ -137,6 +137,7 @@ impl<'a> Project<'a> {
                 })),
                 ..Default::default()
             },
+            Vec::new(),
         );
         config.discovered_projects = Some(discovered_projects);
         config.update(self.config).expect("invalid config");

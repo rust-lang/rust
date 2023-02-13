@@ -67,6 +67,7 @@ use syntax::SmolStr;
 use crate::{
     expander::{Binding, Bindings, ExpandResult, Fragment},
     parser::{MetaVarKind, Op, RepeatKind, Separator},
+    tt,
     tt_iter::TtIter,
     ExpandError, MetaTemplate, ValueResult,
 };
@@ -75,7 +76,8 @@ impl Bindings {
     fn push_optional(&mut self, name: &SmolStr) {
         // FIXME: Do we have a better way to represent an empty token ?
         // Insert an empty subtree for empty token
-        let tt = tt::Subtree::default().into();
+        let tt =
+            tt::Subtree { delimiter: tt::Delimiter::unspecified(), token_trees: vec![] }.into();
         self.inner.insert(name.clone(), Binding::Fragment(Fragment::Tokens(tt)));
     }
 
@@ -462,9 +464,9 @@ fn match_loop_inner<'t>(
             }
             OpDelimited::Op(Op::Subtree { tokens, delimiter }) => {
                 if let Ok(subtree) = src.clone().expect_subtree() {
-                    if subtree.delimiter_kind() == delimiter.map(|it| it.kind) {
+                    if subtree.delimiter.kind == delimiter.kind {
                         item.stack.push(item.dot);
-                        item.dot = tokens.iter_delimited(delimiter.as_ref());
+                        item.dot = tokens.iter_delimited(Some(delimiter));
                         cur_items.push(item);
                     }
                 }
@@ -663,8 +665,8 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
             }
             res.add_err(ExpandError::LeftoverTokens);
 
-            if let Some(error_reover_item) = error_recover_item {
-                res.bindings = bindings_builder.build(&error_reover_item);
+            if let Some(error_recover_item) = error_recover_item {
+                res.bindings = bindings_builder.build(&error_recover_item);
             }
             return res;
         }
@@ -782,7 +784,7 @@ fn match_meta_var(kind: MetaVarKind, input: &mut TtIter<'_>) -> ExpandResult<Opt
                             match neg {
                                 None => lit.into(),
                                 Some(neg) => tt::TokenTree::Subtree(tt::Subtree {
-                                    delimiter: None,
+                                    delimiter: tt::Delimiter::unspecified(),
                                     token_trees: vec![neg, lit.into()],
                                 }),
                             }
@@ -810,7 +812,11 @@ fn collect_vars(collector_fun: &mut impl FnMut(SmolStr), pattern: &MetaTemplate)
 }
 impl MetaTemplate {
     fn iter_delimited<'a>(&'a self, delimited: Option<&'a tt::Delimiter>) -> OpDelimitedIter<'a> {
-        OpDelimitedIter { inner: &self.0, idx: 0, delimited }
+        OpDelimitedIter {
+            inner: &self.0,
+            idx: 0,
+            delimited: delimited.unwrap_or(&tt::Delimiter::UNSPECIFIED),
+        }
     }
 }
 
@@ -824,20 +830,21 @@ enum OpDelimited<'a> {
 #[derive(Debug, Clone, Copy)]
 struct OpDelimitedIter<'a> {
     inner: &'a [Op],
-    delimited: Option<&'a tt::Delimiter>,
+    delimited: &'a tt::Delimiter,
     idx: usize,
 }
 
 impl<'a> OpDelimitedIter<'a> {
     fn is_eof(&self) -> bool {
-        let len = self.inner.len() + if self.delimited.is_some() { 2 } else { 0 };
+        let len = self.inner.len()
+            + if self.delimited.kind != tt::DelimiterKind::Invisible { 2 } else { 0 };
         self.idx >= len
     }
 
     fn peek(&self) -> Option<OpDelimited<'a>> {
-        match self.delimited {
-            None => self.inner.get(self.idx).map(OpDelimited::Op),
-            Some(_) => match self.idx {
+        match self.delimited.kind {
+            tt::DelimiterKind::Invisible => self.inner.get(self.idx).map(OpDelimited::Op),
+            _ => match self.idx {
                 0 => Some(OpDelimited::Open),
                 i if i == self.inner.len() + 1 => Some(OpDelimited::Close),
                 i => self.inner.get(i - 1).map(OpDelimited::Op),
@@ -860,7 +867,8 @@ impl<'a> Iterator for OpDelimitedIter<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.inner.len() + if self.delimited.is_some() { 2 } else { 0 };
+        let len = self.inner.len()
+            + if self.delimited.kind != tt::DelimiterKind::Invisible { 2 } else { 0 };
         let remain = len.saturating_sub(self.idx);
         (remain, Some(remain))
     }
@@ -904,7 +912,10 @@ impl<'a> TtIter<'a> {
             } else {
                 let puncts = self.expect_glued_punct()?;
                 let token_trees = puncts.into_iter().map(|p| tt::Leaf::Punct(p).into()).collect();
-                Ok(tt::TokenTree::Subtree(tt::Subtree { delimiter: None, token_trees }))
+                Ok(tt::TokenTree::Subtree(tt::Subtree {
+                    delimiter: tt::Delimiter::unspecified(),
+                    token_trees,
+                }))
             }
         } else {
             self.next().ok_or(()).cloned()
@@ -919,7 +930,7 @@ impl<'a> TtIter<'a> {
         let ident = self.expect_ident_or_underscore()?;
 
         Ok(tt::Subtree {
-            delimiter: None,
+            delimiter: tt::Delimiter::unspecified(),
             token_trees: vec![
                 tt::Leaf::Punct(*punct).into(),
                 tt::Leaf::Ident(ident.clone()).into(),

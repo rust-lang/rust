@@ -61,7 +61,7 @@ fn _alpha() {}
 fn completes_prelude() {
     check(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs edition:2018 crate:main deps:std
 fn foo() { let x: $0 }
 
 //- /std/lib.rs crate:std
@@ -83,7 +83,7 @@ pub mod prelude {
 fn completes_prelude_macros() {
     check(
         r#"
-//- /main.rs crate:main deps:std
+//- /main.rs edition:2018 crate:main deps:std
 fn f() {$0}
 
 //- /std/lib.rs crate:std
@@ -117,14 +117,14 @@ fn foo() { let x: $0 }
 
 //- /core/lib.rs crate:core
 pub mod prelude {
-    pub mod rust_2018 {
+    pub mod rust_2021 {
         pub struct Option;
     }
 }
 
 //- /std/lib.rs crate:std deps:core
 pub mod prelude {
-    pub mod rust_2018 {
+    pub mod rust_2021 {
         pub struct String;
     }
 }
