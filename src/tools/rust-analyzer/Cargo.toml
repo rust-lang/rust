@@ -2,6 +2,12 @@
 members = ["xtask/", "lib/*", "crates/*"]
 exclude = ["crates/proc-macro-test/imp"]
 
+[workspace.package]
+rust-version = "1.66"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["rust-analyzer team"]
+
 [profile.dev]
 # Disabling debug info speeds up builds a bunch,
 # and we don't rely on it for debugging that much.
@@ -32,3 +38,39 @@ debug = 0
 # ungrammar = { path = "../ungrammar" }
 
 # salsa = { path = "../salsa" }
+
+[workspace.dependencies]
+# local crates
+base-db = { path = "./crates/base-db", version = "0.0.0" }
+cfg = { path = "./crates/cfg", version = "0.0.0" }
+flycheck = { path = "./crates/flycheck", version = "0.0.0" }
+hir = { path = "./crates/hir", version = "0.0.0" }
+hir-def = { path = "./crates/hir-def", version = "0.0.0" }
+hir-expand = { path = "./crates/hir-expand", version = "0.0.0" }
+hir-ty = { path = "./crates/hir-ty", version = "0.0.0" }
+ide = { path = "./crates/ide", version = "0.0.0" }
+ide-assists = { path = "./crates/ide-assists", version = "0.0.0" }
+ide-completion = { path = "./crates/ide-completion", version = "0.0.0" }
+ide-db = { path = "./crates/ide-db", version = "0.0.0" }
+ide-diagnostics = { path = "./crates/ide-diagnostics", version = "0.0.0" }
+ide-ssr = { path = "./crates/ide-ssr", version = "0.0.0" }
+intern = { path = "./crates/intern", version = "0.0.0" }
+limit = { path = "./crates/limit", version = "0.0.0" }
+mbe = { path = "./crates/mbe", version = "0.0.0" }
+parser = { path = "./crates/parser", version = "0.0.0" }
+paths = { path = "./crates/paths", version = "0.0.0" }
+proc-macro-api = { path = "./crates/proc-macro-api", version = "0.0.0" }
+proc-macro-srv = { path = "./crates/proc-macro-srv", version = "0.0.0" }
+proc-macro-srv-cli = { path = "./crates/proc-macro-srv-cli", version = "0.0.0" }
+proc-macro-test = { path = "./crates/proc-macro-test", version = "0.0.0" }
+profile = { path = "./crates/profile", version = "0.0.0" }
+project-model = { path = "./crates/project-model", version = "0.0.0" }
+sourcegen = { path = "./crates/sourcegen", version = "0.0.0" }
+stdx = { path = "./crates/stdx", version = "0.0.0" }
+syntax = { path = "./crates/syntax", version = "0.0.0" }
+test-utils = { path = "./crates/test-utils", version = "0.0.0" }
+text-edit = { path = "./crates/text-edit", version = "0.0.0" }
+toolchain = { path = "./crates/toolchain", version = "0.0.0" }
+tt = { path = "./crates/tt", version = "0.0.0" }
+vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
+vfs = { path = "./crates/vfs", version = "0.0.0" }

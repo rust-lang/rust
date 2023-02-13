@@ -2,9 +2,11 @@
 name = "hir-ty"
 version = "0.0.0"
 description = "TBD"
-license = "MIT OR Apache-2.0"
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
@@ -24,20 +26,21 @@ chalk-ir = "0.88.0"
 chalk-recursive = { version = "0.88.0", default-features = false }
 chalk-derive = "0.88.0"
 la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
-once_cell = "1.15.0"
+once_cell = "1.17.0"
 typed-arena = "2.0.1"
 rustc_index = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_index", default-features = false }
 
-stdx = { path = "../stdx", version = "0.0.0" }
-hir-def = { path = "../hir-def", version = "0.0.0" }
-hir-expand = { path = "../hir-expand", version = "0.0.0" }
-base-db = { path = "../base-db", version = "0.0.0" }
-profile = { path = "../profile", version = "0.0.0" }
-syntax = { path = "../syntax", version = "0.0.0" }
-limit = { path = "../limit", version = "0.0.0" }
+# local deps
+stdx.workspace = true
+intern.workspace = true
+hir-def.workspace = true
+hir-expand.workspace = true
+base-db.workspace = true
+profile.workspace = true
+syntax.workspace = true
+limit.workspace = true
 
 [dev-dependencies]
-test-utils = { path = "../test-utils" }
 expect-test = "1.4.0"
 tracing = "0.1.35"
 tracing-subscriber = { version = "0.3.16", default-features = false, features = [
@@ -45,3 +48,7 @@ tracing-subscriber = { version = "0.3.16", default-features = false, features = 
     "registry",
 ] }
 tracing-tree = "0.2.1"
+project-model = { path = "../project-model" }
+
+# local deps
+test-utils.workspace = true

@@ -4,6 +4,7 @@ use std::{hash::BuildHasherDefault, sync::Arc};
 use base_db::CrateId;
 use hir_expand::name::{name, Name};
 use indexmap::IndexMap;
+use intern::Interned;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
 
@@ -13,7 +14,6 @@ use crate::{
     db::DefDatabase,
     expr::{ExprId, LabelId, PatId},
     generics::{GenericParams, TypeOrConstParamData},
-    intern::Interned,
     item_scope::{BuiltinShadowMode, BUILTIN_SCOPE},
     nameres::DefMap,
     path::{ModPath, PathKind},

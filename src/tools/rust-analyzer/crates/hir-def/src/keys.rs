@@ -2,12 +2,11 @@
 
 use std::marker::PhantomData;
 
-use hir_expand::MacroCallId;
+use hir_expand::{attrs::AttrId, MacroCallId};
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, AstPtr};
 
 use crate::{
-    attr::AttrId,
     dyn_map::{DynMap, Policy},
     ConstId, EnumId, EnumVariantId, FieldId, FunctionId, ImplId, LifetimeParamId, Macro2Id,
     MacroRulesId, ProcMacroId, StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId,

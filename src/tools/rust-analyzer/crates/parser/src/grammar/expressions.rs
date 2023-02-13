@@ -379,7 +379,7 @@ fn postfix_expr(
             // }
             T!['('] if allow_calls => call_expr(p, lhs),
             T!['['] if allow_calls => index_expr(p, lhs),
-            T![.] => match postfix_dot_expr(p, lhs) {
+            T![.] => match postfix_dot_expr::<false>(p, lhs) {
                 Ok(it) => it,
                 Err(it) => {
                     lhs = it;
@@ -393,35 +393,44 @@ fn postfix_expr(
         block_like = BlockLike::NotBlock;
     }
     return (lhs, block_like);
+}
 
-    fn postfix_dot_expr(
-        p: &mut Parser<'_>,
-        lhs: CompletedMarker,
-    ) -> Result<CompletedMarker, CompletedMarker> {
+fn postfix_dot_expr<const FLOAT_RECOVERY: bool>(
+    p: &mut Parser<'_>,
+    lhs: CompletedMarker,
+) -> Result<CompletedMarker, CompletedMarker> {
+    if !FLOAT_RECOVERY {
         assert!(p.at(T![.]));
-        if p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth_at(2, T![::])) {
-            return Ok(method_call_expr(p, lhs));
-        }
-
-        // test await_expr
-        // fn foo() {
-        //     x.await;
-        //     x.0.await;
-        //     x.0().await?.hello();
-        // }
-        if p.nth(1) == T![await] {
-            let m = lhs.precede(p);
-            p.bump(T![.]);
-            p.bump(T![await]);
-            return Ok(m.complete(p, AWAIT_EXPR));
-        }
-
-        if p.at(T![..=]) || p.at(T![..]) {
-            return Err(lhs);
-        }
-
-        Ok(field_expr(p, lhs))
     }
+    let nth1 = if FLOAT_RECOVERY { 0 } else { 1 };
+    let nth2 = if FLOAT_RECOVERY { 1 } else { 2 };
+
+    if p.nth(nth1) == IDENT && (p.nth(nth2) == T!['('] || p.nth_at(nth2, T![::])) {
+        return Ok(method_call_expr::<FLOAT_RECOVERY>(p, lhs));
+    }
+
+    // test await_expr
+    // fn foo() {
+    //     x.await;
+    //     x.0.await;
+    //     x.0().await?.hello();
+    //     x.0.0.await;
+    //     x.0. await;
+    // }
+    if p.nth(nth1) == T![await] {
+        let m = lhs.precede(p);
+        if !FLOAT_RECOVERY {
+            p.bump(T![.]);
+        }
+        p.bump(T![await]);
+        return Ok(m.complete(p, AWAIT_EXPR));
+    }
+
+    if p.at(T![..=]) || p.at(T![..]) {
+        return Err(lhs);
+    }
+
+    field_expr::<FLOAT_RECOVERY>(p, lhs)
 }
 
 // test call_expr
@@ -455,11 +464,22 @@ fn index_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
 // fn foo() {
 //     x.foo();
 //     y.bar::<T>(1, 2,);
+//     x.0.0.call();
+//     x.0. call();
 // }
-fn method_call_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
-    assert!(p.at(T![.]) && p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth_at(2, T![::])));
+fn method_call_expr<const FLOAT_RECOVERY: bool>(
+    p: &mut Parser<'_>,
+    lhs: CompletedMarker,
+) -> CompletedMarker {
+    if FLOAT_RECOVERY {
+        assert!(p.nth(0) == IDENT && (p.nth(1) == T!['('] || p.nth_at(1, T![::])));
+    } else {
+        assert!(p.at(T![.]) && p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth_at(2, T![::])));
+    }
     let m = lhs.precede(p);
-    p.bump_any();
+    if !FLOAT_RECOVERY {
+        p.bump(T![.]);
+    }
     name_ref(p);
     generic_args::opt_generic_arg_list(p, true);
     if p.at(T!['(']) {
@@ -472,21 +492,35 @@ fn method_call_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker
 // fn foo() {
 //     x.foo;
 //     x.0.bar;
+//     x.0.1;
+//     x.0. bar;
 //     x.0();
 // }
-fn field_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
-    assert!(p.at(T![.]));
+fn field_expr<const FLOAT_RECOVERY: bool>(
+    p: &mut Parser<'_>,
+    lhs: CompletedMarker,
+) -> Result<CompletedMarker, CompletedMarker> {
+    if !FLOAT_RECOVERY {
+        assert!(p.at(T![.]));
+    }
     let m = lhs.precede(p);
-    p.bump(T![.]);
+    if !FLOAT_RECOVERY {
+        p.bump(T![.]);
+    }
     if p.at(IDENT) || p.at(INT_NUMBER) {
         name_ref_or_index(p);
     } else if p.at(FLOAT_NUMBER) {
-        // FIXME: How to recover and instead parse INT + T![.]?
-        p.bump_any();
+        return match p.split_float(m) {
+            (true, m) => {
+                let lhs = m.complete(p, FIELD_EXPR);
+                postfix_dot_expr::<true>(p, lhs)
+            }
+            (false, m) => Ok(m.complete(p, FIELD_EXPR)),
+        };
     } else {
         p.error("expected field name or number");
     }
-    m.complete(p, FIELD_EXPR)
+    Ok(m.complete(p, FIELD_EXPR))
 }
 
 // test try_expr

@@ -1,4 +1,4 @@
-name: publish
+name: autopublish
 on:
   workflow_dispatch: # We can add version input when 1.0 is released and scheduled releases are removed
 
@@ -25,7 +25,7 @@ jobs:
       - name: Install cargo-workspaces
         run: cargo install cargo-workspaces
 
-      - name: Release
+      - name: Publish Crates
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
           PATCH: ${{ github.run_number }}

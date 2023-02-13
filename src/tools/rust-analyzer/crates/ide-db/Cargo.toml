@@ -2,9 +2,11 @@
 name = "ide-db"
 version = "0.0.0"
 description = "TBD"
-license = "MIT OR Apache-2.0"
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
@@ -12,29 +14,32 @@ doctest = false
 [dependencies]
 cov-mark = "2.0.0-pre.1"
 tracing = "0.1.35"
-rayon = "1.5.3"
+rayon = "1.6.1"
 fst = { version = "0.4.7", default-features = false }
 rustc-hash = "1.1.0"
-once_cell = "1.15.0"
+once_cell = "1.17.0"
 either = "1.7.0"
 itertools = "0.10.5"
 arrayvec = "0.7.2"
 indexmap = "1.9.1"
 memchr = "2.5.0"
 
-stdx = { path = "../stdx", version = "0.0.0" }
-parser = { path = "../parser", version = "0.0.0" }
-syntax = { path = "../syntax", version = "0.0.0" }
-text-edit = { path = "../text-edit", version = "0.0.0" }
-base-db = { path = "../base-db", version = "0.0.0" }
-profile = { path = "../profile", version = "0.0.0" }
+# local deps
+base-db.workspace = true
+limit.workspace = true
+parser.workspace = true
+profile.workspace = true
+stdx.workspace = true
+syntax.workspace = true
+text-edit.workspace = true
 # ide should depend only on the top-level `hir` package. if you need
 # something from some `hir-xxx` subpackage, reexport the API via `hir`.
-hir = { path = "../hir", version = "0.0.0" }
-limit = { path = "../limit", version = "0.0.0" }
+hir.workspace = true
 
 [dev-dependencies]
-test-utils = { path = "../test-utils" }
-sourcegen = { path = "../sourcegen" }
 xshell = "0.2.2"
 expect-test = "1.4.0"
+
+# local deps
+test-utils.workspace = true
+sourcegen.workspace = true

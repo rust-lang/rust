@@ -10,7 +10,6 @@ mod rustc_wrapper;
 use std::{env, fs, path::Path, process};
 
 use lsp_server::Connection;
-use project_model::ProjectManifest;
 use rust_analyzer::{cli::flags, config::Config, from_json, Result};
 use vfs::AbsPathBuf;
 
@@ -168,7 +167,18 @@ fn run_server() -> Result<()> {
         }
     };
 
-    let mut config = Config::new(root_path, initialize_params.capabilities);
+    let workspace_roots = initialize_params
+        .workspace_folders
+        .map(|workspaces| {
+            workspaces
+                .into_iter()
+                .filter_map(|it| it.uri.to_file_path().ok())
+                .filter_map(|it| AbsPathBuf::try_from(it).ok())
+                .collect::<Vec<_>>()
+        })
+        .filter(|workspaces| !workspaces.is_empty())
+        .unwrap_or_else(|| vec![root_path.clone()]);
+    let mut config = Config::new(root_path, initialize_params.capabilities, workspace_roots);
     if let Some(json) = initialize_params.initialization_options {
         if let Err(e) = config.update(json) {
             use lsp_types::{
@@ -182,8 +192,6 @@ fn run_server() -> Result<()> {
             connection.sender.send(lsp_server::Message::Notification(not)).unwrap();
         }
     }
-
-    config.client_specific_adjustments(&initialize_params.client_info);
 
     let server_capabilities = rust_analyzer::server_capabilities(&config);
 
@@ -204,25 +212,8 @@ fn run_server() -> Result<()> {
         tracing::info!("Client '{}' {}", client_info.name, client_info.version.unwrap_or_default());
     }
 
-    if config.linked_projects().is_empty() && config.detached_files().is_empty() {
-        let workspace_roots = initialize_params
-            .workspace_folders
-            .map(|workspaces| {
-                workspaces
-                    .into_iter()
-                    .filter_map(|it| it.uri.to_file_path().ok())
-                    .filter_map(|it| AbsPathBuf::try_from(it).ok())
-                    .collect::<Vec<_>>()
-            })
-            .filter(|workspaces| !workspaces.is_empty())
-            .unwrap_or_else(|| vec![config.root_path().clone()]);
-
-        let discovered = ProjectManifest::discover_all(&workspace_roots);
-        tracing::info!("discovered projects: {:?}", discovered);
-        if discovered.is_empty() {
-            tracing::error!("failed to find any projects in {:?}", workspace_roots);
-        }
-        config.discovered_projects = Some(discovered);
+    if !config.has_linked_projects() && config.detached_files().is_empty() {
+        config.rediscover_workspaces();
     }
 
     rust_analyzer::main_loop(config, connection)?;

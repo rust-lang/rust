@@ -2,12 +2,11 @@
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
-use hir_expand::MacroCallKind;
+use hir_expand::{attrs::AttrId, MacroCallKind};
 use la_arena::Idx;
 use syntax::ast::{self, AnyHasAttrs};
 
 use crate::{
-    attr::AttrId,
     item_tree::{self, ItemTreeId},
     nameres::LocalModuleId,
     path::ModPath,
@@ -32,9 +31,9 @@ pub enum DefDiagnosticKind {
 
     UnimplementedBuiltinMacro { ast: AstId<ast::Macro> },
 
-    InvalidDeriveTarget { ast: AstId<ast::Item>, id: u32 },
+    InvalidDeriveTarget { ast: AstId<ast::Item>, id: usize },
 
-    MalformedDerive { ast: AstId<ast::Adt>, id: u32 },
+    MalformedDerive { ast: AstId<ast::Adt>, id: usize },
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -120,7 +119,7 @@ impl DefDiagnostic {
     ) -> Self {
         Self {
             in_module: container,
-            kind: DefDiagnosticKind::InvalidDeriveTarget { ast, id: id.ast_index },
+            kind: DefDiagnosticKind::InvalidDeriveTarget { ast, id: id.ast_index() },
         }
     }
 
@@ -131,7 +130,7 @@ impl DefDiagnostic {
     ) -> Self {
         Self {
             in_module: container,
-            kind: DefDiagnosticKind::MalformedDerive { ast, id: id.ast_index },
+            kind: DefDiagnosticKind::MalformedDerive { ast, id: id.ast_index() },
         }
     }
 }
