@@ -24,9 +24,9 @@ fn main() {
 
     // reading from *const
     unsafe {
-        let pointer = &x[0] as *const f32;
+        let pointer = x.as_ptr();
         let pointers =  x4(
-            pointer.offset(0) as *const f32,
+            pointer.offset(0),
             pointer.offset(2),
             pointer.offset(4),
             pointer.offset(6)
@@ -39,9 +39,9 @@ fn main() {
 
     // reading from *mut
     unsafe {
-        let pointer = &mut x[0] as *mut f32;
+        let pointer = x.as_mut_ptr();
         let pointers = x4(
-            pointer.offset(0) as *mut f32,
+            pointer.offset(0),
             pointer.offset(2),
             pointer.offset(4),
             pointer.offset(6)
@@ -54,9 +54,9 @@ fn main() {
 
     // writing to *mut
     unsafe {
-        let pointer = &mut x[0] as *mut f32;
+        let pointer = x.as_mut_ptr();
         let pointers = x4(
-            pointer.offset(0) as *mut f32,
+            pointer.offset(0),
             pointer.offset(2),
             pointer.offset(4),
             pointer.offset(6)
@@ -85,9 +85,9 @@ fn main() {
 
     // reading from *const
     unsafe {
-        let pointer = &y[0] as *const *const f32;
+        let pointer = y.as_ptr();
         let pointers = x4(
-            pointer.offset(0) as *const *const f32,
+            pointer.offset(0),
             pointer.offset(2),
             pointer.offset(4),
             pointer.offset(6)
@@ -100,9 +100,9 @@ fn main() {
 
     // reading from *mut
     unsafe {
-        let pointer = &mut y[0] as *mut *const f32;
+        let pointer = y.as_mut_ptr();
         let pointers = x4(
-            pointer.offset(0) as *mut *const f32,
+            pointer.offset(0),
             pointer.offset(2),
             pointer.offset(4),
             pointer.offset(6)
@@ -115,9 +115,9 @@ fn main() {
 
     // writing to *mut
     unsafe {
-        let pointer = &mut y[0] as *mut *const f32;
+        let pointer = y.as_mut_ptr();
         let pointers = x4(
-            pointer.offset(0) as *mut *const f32,
+            pointer.offset(0),
             pointer.offset(2),
             pointer.offset(4),
             pointer.offset(6)
