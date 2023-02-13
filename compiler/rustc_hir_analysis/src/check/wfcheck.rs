@@ -1716,7 +1716,7 @@ fn receiver_is_valid<'tcx>(
     let cause =
         ObligationCause::new(span, wfcx.body_def_id, traits::ObligationCauseCode::MethodReceiver);
 
-    let can_eq_self = |ty| infcx.can_eq(wfcx.param_env, self_ty, ty).is_ok();
+    let can_eq_self = |ty| infcx.can_eq(wfcx.param_env, self_ty, ty);
 
     // `self: Self` is always valid.
     if can_eq_self(receiver_ty) {

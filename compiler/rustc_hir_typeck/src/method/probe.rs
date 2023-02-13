@@ -936,7 +936,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         return false;
                     }
                 }
-                self.can_sub(self.param_env, fty.output(), expected).is_ok()
+                self.can_sub(self.param_env, fty.output(), expected)
             }),
             _ => false,
         }

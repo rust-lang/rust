@@ -748,10 +748,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let real_ty = real_trait_pred.self_ty();
             // We `erase_late_bound_regions` here because `make_subregion` does not handle
             // `ReLateBound`, and we don't particularly care about the regions.
-            if self
-                .can_eq(obligation.param_env, self.tcx.erase_late_bound_regions(real_ty), arg_ty)
-                .is_err()
-            {
+            if !self.can_eq(
+                obligation.param_env,
+                self.tcx.erase_late_bound_regions(real_ty),
+                arg_ty,
+            ) {
                 continue;
             }
 
@@ -3690,7 +3691,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     let Some((span, (assoc, ty))) = entry else { continue; };
                     if primary_spans.is_empty() || type_diffs.iter().any(|diff| {
                         let Sorts(expected_found) = diff else { return false; };
-                        self.can_eq(param_env, expected_found.found, ty).is_ok()
+                        self.can_eq(param_env, expected_found.found, ty)
                     }) {
                         // FIXME: this doesn't quite work for `Iterator::collect`
                         // because we have `Vec<i32>` and `()`, but we'd want `i32`
@@ -3717,10 +3718,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let ty_str = with_forced_trimmed_paths!(self.ty_to_string(ty));
 
                         let assoc = with_forced_trimmed_paths!(self.tcx.def_path_str(assoc));
-                        if self.can_eq(param_env, ty, *prev_ty).is_err() {
+                        if !self.can_eq(param_env, ty, *prev_ty) {
                             if type_diffs.iter().any(|diff| {
                                 let Sorts(expected_found) = diff else { return false; };
-                                self.can_eq(param_env, expected_found.found, ty).is_ok()
+                                self.can_eq(param_env, expected_found.found, ty)
                             }) {
                                 primary_spans.push(span);
                             }
@@ -3868,7 +3869,7 @@ fn hint_missing_borrow<'tcx>(
         let (found_ty, found_refs) = get_deref_type_and_refs(*found_arg);
         let (expected_ty, expected_refs) = get_deref_type_and_refs(*expected_arg);
 
-        if infcx.can_eq(param_env, found_ty, expected_ty).is_ok() {
+        if infcx.can_eq(param_env, found_ty, expected_ty) {
             // FIXME: This could handle more exotic cases like mutability mismatches too!
             if found_refs.len() < expected_refs.len()
                 && found_refs[..] == expected_refs[expected_refs.len() - found_refs.len()..]
