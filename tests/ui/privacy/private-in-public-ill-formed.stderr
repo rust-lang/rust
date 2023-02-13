@@ -1,19 +1,31 @@
-error[E0118]: no nominal type found for inherent implementation
-  --> $DIR/private-in-public-ill-formed.rs:14:10
+error[E0446]: private type `aliases_pub::Priv` in public interface
+  --> $DIR/private-in-public-ill-formed.rs:15:9
    |
-LL |     impl <Priv as PrivTr>::AssocAlias {
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
-   |
-   = note: either implement a trait on it or create a newtype to wrap it instead
+LL |     struct Priv;
+   |     ----------- `aliases_pub::Priv` declared as private
+...
+LL |         pub fn f(arg: Priv) {}
+   |         ^^^^^^^^^^^^^^^^^^^ can't leak private type
 
-error[E0118]: no nominal type found for inherent implementation
-  --> $DIR/private-in-public-ill-formed.rs:31:10
+error[E0445]: private trait `aliases_pub::PrivTr` in public interface
+  --> $DIR/private-in-public-ill-formed.rs:15:9
    |
-LL |     impl <Priv as PrivTr>::AssocAlias {
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
+LL |     trait PrivTr {
+   |     ------------ `aliases_pub::PrivTr` declared as private
+...
+LL |         pub fn f(arg: Priv) {}
+   |         ^^^^^^^^^^^^^^^^^^^ can't leak private trait
+
+error[E0446]: private type `aliases_pub::Priv` in public interface
+  --> $DIR/private-in-public-ill-formed.rs:15:9
    |
-   = note: either implement a trait on it or create a newtype to wrap it instead
+LL |     struct Priv;
+   |     ----------- `aliases_pub::Priv` declared as private
+...
+LL |         pub fn f(arg: Priv) {}
+   |         ^^^^^^^^^^^^^^^^^^^ can't leak private type
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0118`.
+Some errors have detailed explanations: E0445, E0446.
+For more information about an error, try `rustc --explain E0445`.

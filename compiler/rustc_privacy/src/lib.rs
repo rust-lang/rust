@@ -341,7 +341,15 @@ trait VisibilityLike: Sized {
         effective_visibilities: &EffectiveVisibilities,
     ) -> Self {
         let mut find = FindMin { tcx, effective_visibilities, min: Self::MAX };
-        find.visit(tcx.type_of(def_id));
+        let mut ty = tcx.type_of(def_id);
+        let param_env = tcx.param_env(def_id);
+        // We need this normalization when we check the visibility of a projection so it is applied
+        // to the item behind the projection and not to the projection itself.
+        ty = match tcx.try_normalize_erasing_regions(param_env, ty) {
+            Ok(new_ty) => new_ty,
+            Err(_) => ty,
+        };
+        find.visit(ty);
         if let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
             find.visit_trait(trait_ref.subst_identity());
         }

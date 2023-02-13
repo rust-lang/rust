@@ -12,8 +12,10 @@ mod aliases_pub {
     }
 
     impl <Priv as PrivTr>::AssocAlias {
-        //~^ ERROR no nominal type found for inherent implementation
-        pub fn f(arg: Priv) {} // private type `aliases_pub::Priv` in public interface
+        pub fn f(arg: Priv) {}
+        //~^ ERROR private type `aliases_pub::Priv` in public interface
+        //~| ERROR private type `aliases_pub::Priv` in public interface
+        //~| ERROR private trait `aliases_pub::PrivTr` in public interface
     }
 }
 
@@ -29,7 +31,6 @@ mod aliases_priv {
     }
 
     impl <Priv as PrivTr>::AssocAlias {
-        //~^ ERROR no nominal type found for inherent implementation
         pub fn f(arg: Priv) {} // OK
     }
 }
