@@ -563,6 +563,15 @@ impl Foo {
     }
 
     #[test]
+    fn test_rename_mod_invalid_raw_ident() {
+        check(
+            "r#self",
+            r#"mod foo$0 {}"#,
+            "error: Invalid name: `self` cannot be a raw identifier",
+        );
+    }
+
+    #[test]
     fn test_rename_for_local() {
         check(
             "k",

@@ -537,7 +537,14 @@ impl IdentifierKind {
     pub fn classify(new_name: &str) -> Result<IdentifierKind> {
         match parser::LexedStr::single_token(new_name) {
             Some(res) => match res {
-                (SyntaxKind::IDENT, _) => Ok(IdentifierKind::Ident),
+                (SyntaxKind::IDENT, _) => {
+                    if let Some(inner) = new_name.strip_prefix("r#") {
+                        if matches!(inner, "self" | "crate" | "super" | "Self") {
+                            bail!("Invalid name: `{}` cannot be a raw identifier", inner);
+                        }
+                    }
+                    Ok(IdentifierKind::Ident)
+                }
                 (T![_], _) => Ok(IdentifierKind::Underscore),
                 (SyntaxKind::LIFETIME_IDENT, _) if new_name != "'static" && new_name != "'_" => {
                     Ok(IdentifierKind::Lifetime)
