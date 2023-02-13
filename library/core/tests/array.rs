@@ -700,3 +700,15 @@ fn array_into_iter_rfold() {
     let s = it.rfold(10, |a, b| 10 * a + b);
     assert_eq!(s, 10432);
 }
+
+#[test]
+fn array_try_fill_from() {
+    let vec = vec![0, 1, 2, 3];
+    let array = core::array::try_from_iter::<_, 4>(vec);
+    assert!(array.is_ok());
+    assert_eq!(array.unwrap(), [0, 1, 2, 3]);
+
+    let vec = vec![0, 1, 2];
+    let array = core::array::try_from_iter::<_, 4>(vec);
+    assert!(array.is_err());
+}

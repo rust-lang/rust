@@ -108,6 +108,7 @@
 #![feature(utf8_chunks)]
 #![feature(is_ascii_octdigit)]
 #![feature(get_many_mut)]
+#![feature(try_from_iter)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(fuzzy_provenance_casts)]
 

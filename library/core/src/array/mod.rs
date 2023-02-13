@@ -959,3 +959,32 @@ where
     let mut map = iter.map(NeverShortCircuit);
     try_collect_into_array(&mut map).map(|NeverShortCircuit(arr)| arr)
 }
+
+/// Tries to create an array `[T; N]` from the items of `iter`. If and only if `iter` holds
+/// `>= N` items it returns `OK([T; N])`. Otherwise, `Err(IntoIter<T; N>)` is returned.
+///
+/// # Arguments
+///
+/// * `iter`: Type that implements `IntoIterator` where `Items = T`.
+///
+/// # Example
+///
+/// ```rust
+/// #![feature(try_from_iter)]
+/// let vec = vec![0, 1, 2, 3];
+/// let array = core::array::try_from_iter::<_, 4>(vec);
+/// assert!(array.is_ok());
+/// assert_eq!(array.unwrap(), [0, 1, 2, 3]);
+///
+/// let vec = vec![0, 1, 2];
+/// let array = core::array::try_from_iter::<_, 4>(vec);
+/// assert!(array.is_err());
+/// ```
+#[unstable(feature = "try_from_iter", issue = "none")]
+#[inline]
+pub fn try_from_iter<I, const N: usize>(iter: I) -> Result<[I::Item; N], IntoIter<I::Item, N>>
+where
+    I: IntoIterator,
+{
+    iter.into_iter().next_chunk()
+}
