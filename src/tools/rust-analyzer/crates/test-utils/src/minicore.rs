@@ -28,6 +28,7 @@
 //!     generator: pin
 //!     hash:
 //!     index: sized
+//!     infallible:
 //!     iterator: option
 //!     iterators: iterator, fn
 //!     non_zero:
@@ -40,7 +41,7 @@
 //!     sized:
 //!     slice:
 //!     sync: sized
-//!     try:
+//!     try: infallible
 //!     unsize: sized
 
 pub mod marker {
@@ -105,6 +106,11 @@ pub mod marker {
         impl<T: ?Sized> Copy for &T {}
     }
     // endregion:copy
+
+    // region:fn
+    #[lang = "tuple_trait"]
+    pub trait Tuple {}
+    // endregion:fn
 }
 
 // region:default
@@ -172,6 +178,9 @@ pub mod convert {
         fn as_ref(&self) -> &T;
     }
     // endregion:as_ref
+    // region:infallible
+    pub enum Infallibe {}
+    // endregion:infallible
 }
 
 pub mod ops {
@@ -269,6 +278,24 @@ pub mod ops {
             }
         }
 
+        impl<T, I, const N: usize> Index<I> for [T; N]
+        where
+            I: SliceIndex<[T]>,
+        {
+            type Output = I::Output;
+            fn index(&self, index: I) -> &I::Output {
+                loop {}
+            }
+        }
+        impl<T, I, const N: usize> IndexMut<I> for [T; N]
+        where
+            I: SliceIndex<[T]>,
+        {
+            fn index_mut(&mut self, index: I) -> &mut I::Output {
+                loop {}
+            }
+        }
+
         pub unsafe trait SliceIndex<T: ?Sized> {
             type Output: ?Sized;
         }
@@ -325,19 +352,26 @@ pub mod ops {
 
     // region:fn
     mod function {
+        use crate::marker::Tuple;
+
         #[lang = "fn"]
         #[fundamental]
-        pub trait Fn<Args>: FnMut<Args> {}
+        pub trait Fn<Args: Tuple>: FnMut<Args> {
+            extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+        }
 
         #[lang = "fn_mut"]
         #[fundamental]
-        pub trait FnMut<Args>: FnOnce<Args> {}
+        pub trait FnMut<Args: Tuple>: FnOnce<Args> {
+            extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
+        }
 
         #[lang = "fn_once"]
         #[fundamental]
-        pub trait FnOnce<Args> {
+        pub trait FnOnce<Args: Tuple> {
             #[lang = "fn_once_output"]
             type Output;
+            extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
         }
     }
     pub use self::function::{Fn, FnMut, FnOnce};
@@ -352,7 +386,7 @@ pub mod ops {
             #[lang = "from_residual"]
             fn from_residual(residual: R) -> Self;
         }
-        #[lang = "try"]
+        #[lang = "Try"]
         pub trait Try: FromResidual<Self::Residual> {
             type Output;
             type Residual;

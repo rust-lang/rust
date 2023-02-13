@@ -232,18 +232,66 @@ The `rust-analyzer` binary can be installed via https://brew.sh/[Homebrew].
 $ brew install rust-analyzer
 ----
 
-=== Emacs
+=== VS Code or VSCodium in Flatpak
 
-Note this excellent https://robert.kra.hn/posts/2021-02-07_rust-with-emacs/[guide] from https://github.com/rksm[@rksm].
+Setting up `rust-analyzer` with a Flatpak version of Code is not trivial because of the Flatpak sandbox.
+While the sandbox can be disabled for some directories, `/usr/bin` will always be mounted under `/run/host/usr/bin`.
+This prevents access to the system's C compiler, a system-wide installation of Rust, or any other libraries you might want to link to.
+Some compilers and libraries can be acquired as Flatpak SDKs, such as `org.freedesktop.Sdk.Extension.rust-stable` or `org.freedesktop.Sdk.Extension.llvm15`.
+
+If you use a Flatpak SDK for Rust, there should be no extra steps necessary.
+
+If you want to use Flatpak in combination with `rustup`, the following steps might help:
+
+ - both Rust and `rustup` have to be installed using https://rustup.rs. Distro packages _will not_ work.
+ - you need to launch Code, open a terminal and run `echo $PATH`
+ - using https://flathub.org/apps/details/com.github.tchx84.Flatseal[Flatseal], you must add an environment variable called `PATH`.
+   Set its value to the output from above, appending `:~/.cargo/bin`, where `~` is the path to your home directory.
+   You must replace `~`, as it won't be expanded otherwise.
+ - while Flatseal is open, you must enable access to "All user files"
+
+A C compiler should already be available via `org.freedesktop.Sdk`.
+Any other tools or libraries you will need to acquire  from Flatpak.
+
+=== Emacs
 
 Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 
-Emacs support is maintained as part of the https://github.com/emacs-lsp/lsp-mode[Emacs-LSP] package in https://github.com/emacs-lsp/lsp-mode/blob/master/lsp-rust.el[lsp-rust.el].
+To use `rust-analyzer`, you need to install and enable one of the two popular two popular LSP client implementations for Emacs, https://github.com/joaotavora/eglot[Eglot] or https://github.com/emacs-lsp/lsp-mode[LSP Mode]. Both enable `rust-analyzer` by default in rust buffers if it is available.
 
-1. Install the most recent version of `emacs-lsp` package by following the https://github.com/emacs-lsp/lsp-mode[Emacs-LSP instructions].
-2. Set `lsp-rust-server` to `'rust-analyzer`.
-3. Run `lsp` in a Rust buffer.
-4. (Optionally) bind commands like `lsp-rust-analyzer-join-lines`, `lsp-extend-selection` and `lsp-rust-analyzer-expand-macro` to keys.
+==== Eglot
+
+Eglot is the more minimalistic and lightweight LSP client for Emacs, integrates well with existing Emacs functionality and will be built into Emacs starting from release 29.
+
+After installing Eglot, e.g. via `M-x package-install` (not needed from Emacs 29), you can enable it via the `M-x eglot` command or load it automatically in `rust-mode` via
+
+[source,emacs-lisp]
+----
+(add-hook 'rust-mode-hook 'eglot-ensure)
+----
+
+For more detailed instructions and options see the https://joaotavora.github.io/eglot[Eglot manual] (also available from Emacs via `M-x info`) and the
+https://github.com/joaotavora/eglot/blob/master/README.md[Eglot readme].
+
+Eglot does not support the rust-analyzer extensions to the language-server protocol and does not aim to do so in the future. The https://github.com/nemethf/eglot-x#rust-analyzer-extensions[eglot-x] package adds experimental support for those LSP extensions.
+
+==== LSP Mode
+
+LSP-mode is the original LSP-client for emacs. Compared to Eglot it has a larger codebase and supports more features, like LSP protocol extensions.
+With extension packages like https://github.com/emacs-lsp/lsp-mode[LSP UI] it offers a lot of visual eyecandy.
+Further it integrates well with https://github.com/emacs-lsp/dap-mode[DAP mode] for support of the Debug Adapter Protocol.
+
+You can install LSP-mode via `M-x package-install` and then run it via the `M-x lsp` command or load it automatically in rust buffers with
+
+[source,emacs-lisp]
+----
+(add-hook 'rust-mode-hook 'lsp-deferred)
+----
+
+For more information on how to set up LSP mode and its extension package see the instructions in the https://emacs-lsp.github.io/lsp-mode/page/installation[LSP mode manual].
+Also see the https://emacs-lsp.github.io/lsp-mode/page/lsp-rust-analyzer/[rust-analyzer section] for `rust-analyzer` specific options and commands, which you can optionally bind to keys.
+
+Note the excellent https://robert.kra.hn/posts/2021-02-07_rust-with-emacs/[guide] from https://github.com/rksm[@rksm] on how to set-up Emacs for Rust development with LSP mode and several other packages.
 
 === Vim/NeoVim
 
@@ -487,6 +535,47 @@ https://docs.helix-editor.com/[Helix] supports LSP by default.
 However, it won't install `rust-analyzer` automatically.
 You can follow instructions for installing <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 
+=== Visual Studio 2022
+
+There are multiple rust-analyzer extensions for Visual Studio 2022 on Windows:
+
+==== rust-analyzer.vs
+
+(License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International)
+
+https://marketplace.visualstudio.com/items?itemName=kitamstudios.RustAnalyzer[Visual Studio Marketplace]
+
+https://github.com/kitamstudios/rust-analyzer/[GitHub]
+
+Support for Rust development in the Visual Studio IDE is enabled by the link:https://marketplace.visualstudio.com/items?itemName=kitamstudios.RustAnalyzer[rust-analyzer] package. Either click on the download link or install from IDE's extension manager.
+For now link:https://visualstudio.microsoft.com/downloads/[Visual Studio 2022] is required. All editions are supported viz. Community, Professional & Enterprise.
+The package aims to provide 0-friction installation and therefore comes loaded with most things required including rust-analyzer binary. If anything it needs is missing, appropriate errors / warnings will guide the user. E.g. cargo.exe needs to be in path and the package will tell you as much.
+This package is under rapid active development. So if you encounter any issues please file it at link:https://github.com/kitamstudios/rust-analyzer/[rust-analyzer.vs].
+
+==== VS_RustAnalyzer
+
+(License: GPL)
+
+https://marketplace.visualstudio.com/items?itemName=cchharris.vsrustanalyzer[Visual Studio Marketplace]
+
+https://github.com/cchharris/VS-RustAnalyzer[GitHub]
+
+==== SourceGear Rust
+
+(License: closed source)
+
+https://marketplace.visualstudio.com/items?itemName=SourceGear.SourceGearRust[Visual Studio Marketplace]
+
+https://github.com/sourcegear/rust-vs-extension[GitHub (docs, issues, discussions)]
+
+* Free (no-cost)
+* Supports all editions of Visual Studio 2022 on Windows: Community, Professional, or Enterprise
+
+=== Lapce
+
+https://lapce.dev/[Lapce] has a Rust plugin which you can install directly.
+Unfortunately, it downloads an old version of `rust-analyzer`, but you can set the server path under Settings.
+
 === Crates
 
 There is a package named `ra_ap_rust_analyzer` available on https://crates.io/crates/ra_ap_rust-analyzer[crates.io], for someone who wants to use it programmatically.
@@ -684,14 +773,18 @@ See https://github.com/rust-analyzer/rust-project.json-example for a small examp
 
 You can set the `RA_LOG` environment variable to `rust_analyzer=info` to inspect how rust-analyzer handles config and project loading.
 
-Note that calls to `cargo check` are disabled when using `rust-project.json` by default, so compilation errors and warnings will no longer be sent to your LSP client. To enable these compilation errors you will need to specify explicitly what command rust-analyzer should run to perform the checks using the `checkOnSave.overrideCommand` configuration. As an example, the following configuration explicitly sets `cargo check` as the `checkOnSave` command.
+Note that calls to `cargo check` are disabled when using `rust-project.json` by default, so compilation errors and warnings will no longer be sent to your LSP client.
+To enable these compilation errors you will need to specify explicitly what command rust-analyzer should run to perform the checks using the `rust-analyzer.check.overrideCommand` configuration.
+As an example, the following configuration explicitly sets `cargo check` as the `check` command.
 
 [source,json]
 ----
-{ "rust-analyzer.checkOnSave.overrideCommand": ["cargo", "check", "--message-format=json"] }
+{ "rust-analyzer.check.overrideCommand": ["cargo", "check", "--message-format=json"] }
 ----
 
-The `checkOnSave.overrideCommand` requires the command specified to output json error messages for rust-analyzer to consume. The `--message-format=json` flag does this for `cargo check` so whichever command you use must also output errors in this format. See the <<Configuration>> section for more information.
+`check.overrideCommand` requires the command specified to output json error messages for rust-analyzer to consume.
+The `--message-format=json` flag does this for `cargo check` so whichever command you use must also output errors in this format.
+See the <<Configuration>> section for more information.
 
 == Security
 
@@ -731,6 +824,10 @@ include::./generated_assists.adoc[]
 
 While most errors and warnings provided by rust-analyzer come from the `cargo check` integration, there's a growing number of diagnostics implemented using rust-analyzer's own analysis.
 Some of these diagnostics don't respect `\#[allow]` or `\#[deny]` attributes yet, but can be turned off using the `rust-analyzer.diagnostics.enable`, `rust-analyzer.diagnostics.experimental.enable` or `rust-analyzer.diagnostics.disabled` settings.
+
+=== Clippy
+
+To run `cargo clippy` instead of `cargo check`, you can set `"rust-analyzer.check.command": "clippy"`.
 
 include::./generated_diagnostic.adoc[]
 
@@ -864,7 +961,7 @@ Also note that a full runnable name is something like *run bin_or_example_name*,
 
 Instead of relying on the built-in `cargo check`, you can configure Code to run a command in the background and use the `$rustc-watch` problem matcher to generate inline error markers from its output.
 
-To do this you need to create a new https://code.visualstudio.com/docs/editor/tasks[VS Code Task] and set `rust-analyzer.checkOnSave.enable: false` in preferences.
+To do this you need to create a new https://code.visualstudio.com/docs/editor/tasks[VS Code Task] and set `"rust-analyzer.checkOnSave": false` in preferences.
 
 For example, if you want to run https://crates.io/crates/cargo-watch[`cargo watch`] instead, you might add the following to `.vscode/tasks.json`:
 

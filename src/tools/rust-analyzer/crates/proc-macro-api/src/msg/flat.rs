@@ -38,7 +38,8 @@
 use std::collections::{HashMap, VecDeque};
 
 use serde::{Deserialize, Serialize};
-use tt::TokenId;
+
+use crate::tt::{self, TokenId};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FlatTree {
@@ -52,7 +53,7 @@ pub struct FlatTree {
 
 struct SubtreeRepr {
     id: tt::TokenId,
-    kind: Option<tt::DelimiterKind>,
+    kind: tt::DelimiterKind,
     tt: [u32; 2],
 }
 
@@ -124,19 +125,19 @@ impl FlatTree {
 impl SubtreeRepr {
     fn write(self) -> [u32; 4] {
         let kind = match self.kind {
-            None => 0,
-            Some(tt::DelimiterKind::Parenthesis) => 1,
-            Some(tt::DelimiterKind::Brace) => 2,
-            Some(tt::DelimiterKind::Bracket) => 3,
+            tt::DelimiterKind::Invisible => 0,
+            tt::DelimiterKind::Parenthesis => 1,
+            tt::DelimiterKind::Brace => 2,
+            tt::DelimiterKind::Bracket => 3,
         };
         [self.id.0, kind, self.tt[0], self.tt[1]]
     }
     fn read([id, kind, lo, len]: [u32; 4]) -> SubtreeRepr {
         let kind = match kind {
-            0 => None,
-            1 => Some(tt::DelimiterKind::Parenthesis),
-            2 => Some(tt::DelimiterKind::Brace),
-            3 => Some(tt::DelimiterKind::Bracket),
+            0 => tt::DelimiterKind::Invisible,
+            1 => tt::DelimiterKind::Parenthesis,
+            2 => tt::DelimiterKind::Brace,
+            3 => tt::DelimiterKind::Bracket,
             other => panic!("bad kind {other}"),
         };
         SubtreeRepr { id: TokenId(id), kind, tt: [lo, len] }
@@ -216,7 +217,7 @@ impl<'a> Writer<'a> {
                     tt::Leaf::Literal(lit) => {
                         let idx = self.literal.len() as u32;
                         let text = self.intern(&lit.text);
-                        self.literal.push(LiteralRepr { id: lit.id, text });
+                        self.literal.push(LiteralRepr { id: lit.span, text });
                         idx << 2 | 0b01
                     }
                     tt::Leaf::Punct(punct) => {
@@ -224,14 +225,14 @@ impl<'a> Writer<'a> {
                         self.punct.push(PunctRepr {
                             char: punct.char,
                             spacing: punct.spacing,
-                            id: punct.id,
+                            id: punct.span,
                         });
                         idx << 2 | 0b10
                     }
                     tt::Leaf::Ident(ident) => {
                         let idx = self.ident.len() as u32;
                         let text = self.intern(&ident.text);
-                        self.ident.push(IdentRepr { id: ident.id, text });
+                        self.ident.push(IdentRepr { id: ident.span, text });
                         idx << 2 | 0b11
                     }
                 },
@@ -243,8 +244,8 @@ impl<'a> Writer<'a> {
 
     fn enqueue(&mut self, subtree: &'a tt::Subtree) -> u32 {
         let idx = self.subtree.len();
-        let delimiter_id = subtree.delimiter.map_or(TokenId::unspecified(), |it| it.id);
-        let delimiter_kind = subtree.delimiter.map(|it| it.kind);
+        let delimiter_id = subtree.delimiter.open;
+        let delimiter_kind = subtree.delimiter.kind;
         self.subtree.push(SubtreeRepr { id: delimiter_id, kind: delimiter_kind, tt: [!0, !0] });
         self.work.push_back((idx, subtree));
         idx as u32
@@ -276,7 +277,11 @@ impl Reader {
             let repr = &self.subtree[i];
             let token_trees = &self.token_tree[repr.tt[0] as usize..repr.tt[1] as usize];
             let s = tt::Subtree {
-                delimiter: repr.kind.map(|kind| tt::Delimiter { id: repr.id, kind }),
+                delimiter: tt::Delimiter {
+                    open: repr.id,
+                    close: TokenId::UNSPECIFIED,
+                    kind: repr.kind,
+                },
                 token_trees: token_trees
                     .iter()
                     .copied()
@@ -291,7 +296,7 @@ impl Reader {
                                 let repr = &self.literal[idx];
                                 tt::Leaf::Literal(tt::Literal {
                                     text: self.text[repr.text as usize].as_str().into(),
-                                    id: repr.id,
+                                    span: repr.id,
                                 })
                                 .into()
                             }
@@ -300,7 +305,7 @@ impl Reader {
                                 tt::Leaf::Punct(tt::Punct {
                                     char: repr.char,
                                     spacing: repr.spacing,
-                                    id: repr.id,
+                                    span: repr.id,
                                 })
                                 .into()
                             }
@@ -308,7 +313,7 @@ impl Reader {
                                 let repr = &self.ident[idx];
                                 tt::Leaf::Ident(tt::Ident {
                                     text: self.text[repr.text as usize].as_str().into(),
-                                    id: repr.id,
+                                    span: repr.id,
                                 })
                                 .into()
                             }

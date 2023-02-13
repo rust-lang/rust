@@ -6,6 +6,7 @@ use std::{
 };
 
 use flate2::{write::GzEncoder, Compression};
+use time::OffsetDateTime;
 use xshell::{cmd, Shell};
 use zip::{write::FileOptions, DateTime, ZipWriter};
 
@@ -112,7 +113,8 @@ fn zip(src_path: &Path, symbols_path: Option<&PathBuf>, dest_path: &Path) -> any
         src_path.file_name().unwrap().to_str().unwrap(),
         FileOptions::default()
             .last_modified_time(
-                DateTime::from_time(std::fs::metadata(src_path)?.modified()?.into()).unwrap(),
+                DateTime::try_from(OffsetDateTime::from(std::fs::metadata(src_path)?.modified()?))
+                    .unwrap(),
             )
             .unix_permissions(0o755)
             .compression_method(zip::CompressionMethod::Deflated)
@@ -125,7 +127,10 @@ fn zip(src_path: &Path, symbols_path: Option<&PathBuf>, dest_path: &Path) -> any
             symbols_path.file_name().unwrap().to_str().unwrap(),
             FileOptions::default()
                 .last_modified_time(
-                    DateTime::from_time(std::fs::metadata(src_path)?.modified()?.into()).unwrap(),
+                    DateTime::try_from(OffsetDateTime::from(
+                        std::fs::metadata(src_path)?.modified()?,
+                    ))
+                    .unwrap(),
                 )
                 .compression_method(zip::CompressionMethod::Deflated)
                 .compression_level(Some(9)),

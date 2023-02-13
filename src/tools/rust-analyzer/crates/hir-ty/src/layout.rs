@@ -1,7 +1,5 @@
 //! Compute the binary representation of a type
 
-use std::sync::Arc;
-
 use base_db::CrateId;
 use chalk_ir::{AdtId, TyKind};
 use hir_def::{
@@ -31,19 +29,19 @@ mod adt;
 mod target;
 
 struct LayoutCx<'a> {
-    db: &'a dyn HirDatabase,
     krate: CrateId,
+    target: &'a TargetDataLayout,
 }
 
-impl LayoutCalculator for LayoutCx<'_> {
-    type TargetDataLayoutRef = Arc<TargetDataLayout>;
+impl<'a> LayoutCalculator for LayoutCx<'a> {
+    type TargetDataLayoutRef = &'a TargetDataLayout;
 
     fn delay_bug(&self, txt: &str) {
         never!("{}", txt);
     }
 
-    fn current_data_layout(&self) -> Arc<TargetDataLayout> {
-        self.db.target_data_layout(self.krate)
+    fn current_data_layout(&self) -> &'a TargetDataLayout {
+        self.target
     }
 }
 
@@ -56,7 +54,8 @@ fn scalar(dl: &TargetDataLayout, value: Primitive) -> Layout {
 }
 
 pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Layout, LayoutError> {
-    let cx = LayoutCx { db, krate };
+    let Some(target) = db.target_data_layout(krate) else { return Err(LayoutError::TargetLayoutNotAvailable) };
+    let cx = LayoutCx { krate, target: &target };
     let dl = &*cx.current_data_layout();
     Ok(match ty.kind(Interner) {
         TyKind::Adt(AdtId(def), subst) => db.layout_of_adt(*def, subst.clone())?,
@@ -226,10 +225,21 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
             ptr.valid_range_mut().start = 1;
             Layout::scalar(dl, ptr)
         }
-        TyKind::Closure(_, _)
-        | TyKind::OpaqueType(_, _)
-        | TyKind::Generator(_, _)
-        | TyKind::GeneratorWitness(_, _) => return Err(LayoutError::NotImplemented),
+        TyKind::OpaqueType(opaque_ty_id, _) => {
+            let impl_trait_id = db.lookup_intern_impl_trait_id((*opaque_ty_id).into());
+            match impl_trait_id {
+                crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
+                    let infer = db.infer(func.into());
+                    layout_of_ty(db, &infer.type_of_rpit[idx], krate)?
+                }
+                crate::ImplTraitId::AsyncBlockTypeImplTrait(_, _) => {
+                    return Err(LayoutError::NotImplemented)
+                }
+            }
+        }
+        TyKind::Closure(_, _) | TyKind::Generator(_, _) | TyKind::GeneratorWitness(_, _) => {
+            return Err(LayoutError::NotImplemented)
+        }
         TyKind::AssociatedType(_, _)
         | TyKind::Error
         | TyKind::Alias(_)
@@ -251,17 +261,14 @@ fn layout_of_unit(cx: &LayoutCx<'_>, dl: &TargetDataLayout) -> Result<Layout, La
 
 fn struct_tail_erasing_lifetimes(db: &dyn HirDatabase, pointee: Ty) -> Ty {
     match pointee.kind(Interner) {
-        TyKind::Adt(AdtId(adt), subst) => match adt {
-            &hir_def::AdtId::StructId(i) => {
-                let data = db.struct_data(i);
-                let mut it = data.variant_data.fields().iter().rev();
-                match it.next() {
-                    Some((f, _)) => field_ty(db, i.into(), f, subst),
-                    None => pointee,
-                }
+        TyKind::Adt(AdtId(hir_def::AdtId::StructId(i)), subst) => {
+            let data = db.struct_data(*i);
+            let mut it = data.variant_data.fields().iter().rev();
+            match it.next() {
+                Some((f, _)) => field_ty(db, (*i).into(), f, subst),
+                None => pointee,
             }
-            _ => pointee,
-        },
+        }
         _ => pointee,
     }
 }

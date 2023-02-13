@@ -2,12 +2,13 @@
 use std::{mem, ops::Range, sync::Arc};
 
 use lsp_server::Notification;
+use lsp_types::request::Request;
 
 use crate::{
     from_proto,
     global_state::GlobalState,
     line_index::{LineEndings, LineIndex, PositionEncoding},
-    LspError,
+    lsp_ext, LspError,
 };
 
 pub(crate) fn invalid_params_error(message: String) -> LspError {
@@ -46,20 +47,47 @@ impl GlobalState {
     /// If `additional_info` is [`Some`], appends a note to the notification telling to check the logs.
     /// This will always log `message` + `additional_info` to the server's error log.
     pub(crate) fn show_and_log_error(&mut self, message: String, additional_info: Option<String>) {
-        let mut message = message;
         match additional_info {
             Some(additional_info) => {
-                tracing::error!("{}\n\n{}", &message, &additional_info);
-                if tracing::enabled!(tracing::Level::ERROR) {
-                    message.push_str("\n\nCheck the server logs for additional info.");
+                tracing::error!("{}:\n{}", &message, &additional_info);
+                match self.config.open_server_logs() && tracing::enabled!(tracing::Level::ERROR) {
+                    true => self.send_request::<lsp_types::request::ShowMessageRequest>(
+                        lsp_types::ShowMessageRequestParams {
+                            typ: lsp_types::MessageType::ERROR,
+                            message,
+                            actions: Some(vec![lsp_types::MessageActionItem {
+                                title: "Open server logs".to_owned(),
+                                properties: Default::default(),
+                            }]),
+                        },
+                        |this, resp| {
+                            let lsp_server::Response { error: None, result: Some(result), .. } = resp
+                            else { return };
+                            if let Ok(Some(_item)) = crate::from_json::<
+                                <lsp_types::request::ShowMessageRequest as lsp_types::request::Request>::Result,
+                            >(
+                                lsp_types::request::ShowMessageRequest::METHOD, &result
+                            ) {
+                                this.send_notification::<lsp_ext::OpenServerLogs>(());
+                            }
+                        },
+                    ),
+                    false => self.send_notification::<lsp_types::notification::ShowMessage>(
+                        lsp_types::ShowMessageParams {
+                            typ: lsp_types::MessageType::ERROR,
+                            message,
+                        },
+                    ),
                 }
             }
-            None => tracing::error!("{}", &message),
-        }
+            None => {
+                tracing::error!("{}", &message);
 
-        self.send_notification::<lsp_types::notification::ShowMessage>(
-            lsp_types::ShowMessageParams { typ: lsp_types::MessageType::ERROR, message },
-        )
+                self.send_notification::<lsp_types::notification::ShowMessage>(
+                    lsp_types::ShowMessageParams { typ: lsp_types::MessageType::ERROR, message },
+                );
+            }
+        }
     }
 
     /// rust-analyzer is resilient -- if it fails, this doesn't usually affect
@@ -77,7 +105,7 @@ impl GlobalState {
         let from_source_build = option_env!("POKE_RA_DEVS").is_some();
         let profiling_enabled = std::env::var("RA_PROFILE").is_ok();
         if from_source_build || profiling_enabled {
-            self.show_message(lsp_types::MessageType::ERROR, message)
+            self.show_and_log_error(message, None);
         }
     }
 

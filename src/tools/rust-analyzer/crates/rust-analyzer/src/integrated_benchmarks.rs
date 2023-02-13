@@ -21,7 +21,7 @@ use project_model::CargoConfig;
 use test_utils::project_root;
 use vfs::{AbsPathBuf, VfsPath};
 
-use crate::cli::load_cargo::{load_workspace_at, LoadCargoConfig};
+use crate::cli::load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 
 #[test]
 fn integrated_highlighting_benchmark() {
@@ -36,7 +36,7 @@ fn integrated_highlighting_benchmark() {
     let cargo_config = CargoConfig::default();
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
-        with_proc_macro: false,
+        with_proc_macro_server: ProcMacroServerChoice::None,
         prefill_caches: false,
     };
 
@@ -90,7 +90,7 @@ fn integrated_completion_benchmark() {
     let cargo_config = CargoConfig::default();
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
-        with_proc_macro: false,
+        with_proc_macro_server: ProcMacroServerChoice::None,
         prefill_caches: true,
     };
 
@@ -146,6 +146,7 @@ fn integrated_completion_benchmark() {
             },
             snippets: Vec::new(),
             prefer_no_std: false,
+            limit: None,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -184,6 +185,7 @@ fn integrated_completion_benchmark() {
             },
             snippets: Vec::new(),
             prefer_no_std: false,
+            limit: None,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };

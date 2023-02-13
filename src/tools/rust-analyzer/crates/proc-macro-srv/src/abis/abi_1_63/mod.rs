@@ -11,6 +11,7 @@ mod ra_server;
 use libloading::Library;
 use proc_macro_api::ProcMacroKind;
 
+use super::tt;
 use super::PanicMessage;
 
 pub use ra_server::TokenStream;

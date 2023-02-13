@@ -19,6 +19,12 @@
     "categories": [
         "Programming Languages"
     ],
+    "capabilities": {
+        "untrustedWorkspaces": {
+            "supported": false,
+            "description": "rust-analyzer invokes binaries set up by its configuration as well as the Rust toolchain's binaries. A malicious actor could exploit this to run arbitrary code on your machine."
+        }
+    },
     "engines": {
         "vscode": "^1.66.0"
     },
@@ -539,6 +545,14 @@
                         "string"
                     ]
                 },
+                "rust-analyzer.cargo.sysrootSrc": {
+                    "markdownDescription": "Relative path to the sysroot library sources. If left unset, this will default to\n`{cargo.sysroot}/lib/rustlib/src/rust/library`.\n\nThis option does not take effect until rust-analyzer is restarted.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "string"
+                    ]
+                },
                 "rust-analyzer.cargo.target": {
                     "markdownDescription": "Compilation target override (target triple).",
                     "default": null,
@@ -696,6 +710,15 @@
                         "Add call parentheses.",
                         "Do no snippet completions for callables."
                     ]
+                },
+                "rust-analyzer.completion.limit": {
+                    "markdownDescription": "Maximum number of completions to return. If `None`, the limit is infinite.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "integer"
+                    ],
+                    "minimum": 0
                 },
                 "rust-analyzer.completion.postfix.enable": {
                     "markdownDescription": "Whether to show postfix snippets like `dbg`, `if`, `not`, etc.",
@@ -1036,11 +1059,6 @@
                 "rust-analyzer.inlayHints.lifetimeElisionHints.useParameterNames": {
                     "markdownDescription": "Whether to prefer using parameter names as the name for elided lifetime hints if possible.",
                     "default": false,
-                    "type": "boolean"
-                },
-                "rust-analyzer.inlayHints.locationLinks": {
-                    "markdownDescription": "Whether to use location links for parts of type mentioned in inlay hints.",
-                    "default": true,
                     "type": "boolean"
                 },
                 "rust-analyzer.inlayHints.maxLength": {

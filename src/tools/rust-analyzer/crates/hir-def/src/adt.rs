@@ -2,22 +2,22 @@
 
 use std::sync::Arc;
 
+use crate::tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 use base_db::CrateId;
 use either::Either;
 use hir_expand::{
     name::{AsName, Name},
     HirFileId, InFile,
 };
+use intern::Interned;
 use la_arena::{Arena, ArenaMap};
 use rustc_abi::{Integer, IntegerType};
 use syntax::ast::{self, HasName, HasVisibility};
-use tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 
 use crate::{
     body::{CfgExpander, LowerCtx},
     builtin_type::{BuiltinInt, BuiltinUint},
     db::DefDatabase,
-    intern::Interned,
     item_tree::{AttrOwner, Field, FieldAstId, Fields, ItemTree, ModItem, RawVisibilityId},
     layout::{Align, ReprFlags, ReprOptions},
     nameres::diagnostics::DefDiagnostic,
@@ -82,7 +82,7 @@ fn repr_from_value(
 
 fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
     match tt.delimiter {
-        Some(Delimiter { kind: DelimiterKind::Parenthesis, .. }) => {}
+        Delimiter { kind: DelimiterKind::Parenthesis, .. } => {}
         _ => return None,
     }
 

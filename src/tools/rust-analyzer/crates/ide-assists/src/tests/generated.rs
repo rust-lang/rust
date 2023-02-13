@@ -3,6 +3,31 @@
 use super::check_doc_test;
 
 #[test]
+fn doctest_add_braces() {
+    check_doc_test(
+        "add_braces",
+        r#####"
+fn foo(n: i32) -> i32 {
+    match n {
+        1 =>$0 n + 1,
+        _ => 0
+    }
+}
+"#####,
+        r#####"
+fn foo(n: i32) -> i32 {
+    match n {
+        1 => {
+            n + 1
+        },
+        _ => 0
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_add_explicit_type() {
     check_doc_test(
         "add_explicit_type",
@@ -593,6 +618,21 @@ fn main() {
     let ($0_0, _1) = (1,2);
     let v = _0;
 }
+"#####,
+    )
+}
+
+#[test]
+fn doctest_desugar_doc_comment() {
+    check_doc_test(
+        "desugar_doc_comment",
+        r#####"
+/// Multi-line$0
+/// comment
+"#####,
+        r#####"
+#[doc = r"Multi-line
+comment"]
 "#####,
     )
 }

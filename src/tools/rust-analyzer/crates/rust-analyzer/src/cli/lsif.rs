@@ -15,6 +15,7 @@ use lsp_types::{self, lsif};
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace};
 use vfs::{AbsPathBuf, Vfs};
 
+use crate::cli::load_cargo::ProcMacroServerChoice;
 use crate::cli::{
     flags,
     load_cargo::{load_workspace, LoadCargoConfig},
@@ -291,7 +292,7 @@ impl flags::Lsif {
         let no_progress = &|_| ();
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: true,
-            with_proc_macro: true,
+            with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
         };
         let path = AbsPathBuf::assert(env::current_dir()?.join(&self.path));

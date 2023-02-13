@@ -22,15 +22,15 @@ use hir_def::{
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     data::{ConstData, StaticData},
     expr::{BindingAnnotation, ExprId, ExprOrPatId, PatId},
-    lang_item::LangItemTarget,
+    lang_item::{LangItem, LangItemTarget},
     layout::Integer,
-    path::{path, Path},
+    path::Path,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     type_ref::TypeRef,
     AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, HasModule,
     ItemContainerId, Lookup, TraitId, TypeAliasId, VariantId,
 };
-use hir_expand::name::{name, Name};
+use hir_expand::name::name;
 use itertools::Either;
 use la_arena::ArenaMap;
 use rustc_hash::FxHashMap;
@@ -39,7 +39,7 @@ use stdx::always;
 use crate::{
     db::HirDatabase, fold_tys, fold_tys_and_consts, infer::coerce::CoerceMany,
     lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy, Const, DomainGoal,
-    GenericArg, Goal, ImplTraitId, InEnvironment, Interner, ProjectionTy, Substitution,
+    GenericArg, Goal, ImplTraitId, InEnvironment, Interner, ProjectionTy, RpitId, Substitution,
     TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
@@ -219,6 +219,7 @@ struct InternedStandardTypes {
     unknown: Ty,
     bool_: Ty,
     unit: Ty,
+    never: Ty,
 }
 
 impl Default for InternedStandardTypes {
@@ -227,6 +228,7 @@ impl Default for InternedStandardTypes {
             unknown: TyKind::Error.intern(Interner),
             bool_: TyKind::Scalar(Scalar::Bool).intern(Interner),
             unit: TyKind::Tuple(0, Substitution::empty(Interner)).intern(Interner),
+            never: TyKind::Never.intern(Interner),
         }
     }
 }
@@ -352,6 +354,7 @@ pub struct InferenceResult {
     /// **Note**: When a pattern type is resolved it may still contain
     /// unresolved or missing subpatterns or subpatterns of mismatched types.
     pub type_of_pat: ArenaMap<PatId, Ty>,
+    pub type_of_rpit: ArenaMap<RpitId, Ty>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
     /// Interned common types to return references to.
     standard_types: InternedStandardTypes,
@@ -525,6 +528,9 @@ impl<'a> InferenceContext<'a> {
         for ty in result.type_of_pat.values_mut() {
             *ty = table.resolve_completely(ty.clone());
         }
+        for ty in result.type_of_rpit.iter_mut().map(|x| x.1) {
+            *ty = table.resolve_completely(ty.clone());
+        }
         for mismatch in result.type_mismatches.values_mut() {
             mismatch.expected = table.resolve_completely(mismatch.expected.clone());
             mismatch.actual = table.resolve_completely(mismatch.actual.clone());
@@ -603,7 +609,7 @@ impl<'a> InferenceContext<'a> {
                         _ => unreachable!(),
                     };
                     let bounds = (*rpits).map_ref(|rpits| {
-                        rpits.impl_traits[idx as usize].bounds.map_ref(|it| it.into_iter())
+                        rpits.impl_traits[idx].bounds.map_ref(|it| it.into_iter())
                     });
                     let var = self.table.new_type_var();
                     let var_subst = Substitution::from1(Interner, var.clone());
@@ -616,6 +622,7 @@ impl<'a> InferenceContext<'a> {
                         always!(binders.is_empty(Interner)); // quantified where clauses not yet handled
                         self.push_obligation(var_predicate.cast(Interner));
                     }
+                    self.result.type_of_rpit.insert(idx, var.clone());
                     var
                 },
                 DebruijnIndex::INNERMOST,
@@ -917,104 +924,98 @@ impl<'a> InferenceContext<'a> {
         }
     }
 
-    fn resolve_lang_item(&self, name: Name) -> Option<LangItemTarget> {
+    fn resolve_lang_item(&self, item: LangItem) -> Option<LangItemTarget> {
         let krate = self.resolver.krate();
-        self.db.lang_item(krate, name.to_smol_str())
+        self.db.lang_item(krate, item)
     }
 
     fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
-        let path = path![core::iter::IntoIterator];
-        let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
+        let ItemContainerId::TraitId(trait_) = self.resolve_lang_item(LangItem::IntoIterIntoIter)?
+            .as_function()?
+            .lookup(self.db.upcast()).container
+        else { return None };
         self.db.trait_data(trait_).associated_type_by_name(&name![IntoIter])
     }
 
     fn resolve_iterator_item(&self) -> Option<TypeAliasId> {
-        let path = path![core::iter::Iterator];
-        let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
+        let ItemContainerId::TraitId(trait_) = self.resolve_lang_item(LangItem::IteratorNext)?
+            .as_function()?
+            .lookup(self.db.upcast()).container
+        else { return None };
         self.db.trait_data(trait_).associated_type_by_name(&name![Item])
     }
 
-    fn resolve_ops_try_ok(&self) -> Option<TypeAliasId> {
-        // FIXME resolve via lang_item once try v2 is stable
-        let path = path![core::ops::Try];
-        let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
-        let trait_data = self.db.trait_data(trait_);
-        trait_data
-            // FIXME remove once try v2 is stable
-            .associated_type_by_name(&name![Ok])
-            .or_else(|| trait_data.associated_type_by_name(&name![Output]))
+    fn resolve_output_on(&self, trait_: TraitId) -> Option<TypeAliasId> {
+        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
+    }
+
+    fn resolve_lang_trait(&self, lang: LangItem) -> Option<TraitId> {
+        self.resolve_lang_item(lang)?.as_trait()
+    }
+
+    fn resolve_ops_try_output(&self) -> Option<TypeAliasId> {
+        self.resolve_output_on(self.resolve_lang_trait(LangItem::Try)?)
     }
 
     fn resolve_ops_neg_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self.resolve_lang_item(name![neg])?.as_trait()?;
-        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
+        self.resolve_output_on(self.resolve_lang_trait(LangItem::Neg)?)
     }
 
     fn resolve_ops_not_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self.resolve_lang_item(name![not])?.as_trait()?;
-        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
+        self.resolve_output_on(self.resolve_lang_trait(LangItem::Not)?)
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self
-            .resolver
-            .resolve_known_trait(self.db.upcast(), &path![core::future::IntoFuture])
-            .or_else(|| self.resolve_lang_item(name![future_trait])?.as_trait())?;
-        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
+        let ItemContainerId::TraitId(trait_) = self
+            .resolve_lang_item(LangItem::IntoFutureIntoFuture)?
+            .as_function()?
+            .lookup(self.db.upcast())
+            .container
+        else { return None };
+        self.resolve_output_on(trait_)
     }
 
     fn resolve_boxed_box(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(name![owned_box])?.as_struct()?;
+        let struct_ = self.resolve_lang_item(LangItem::OwnedBox)?.as_struct()?;
         Some(struct_.into())
     }
 
     fn resolve_range_full(&self) -> Option<AdtId> {
-        let path = path![core::ops::RangeFull];
-        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
+        let struct_ = self.resolve_lang_item(LangItem::RangeFull)?.as_struct()?;
         Some(struct_.into())
     }
 
     fn resolve_range(&self) -> Option<AdtId> {
-        let path = path![core::ops::Range];
-        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
+        let struct_ = self.resolve_lang_item(LangItem::Range)?.as_struct()?;
         Some(struct_.into())
     }
 
     fn resolve_range_inclusive(&self) -> Option<AdtId> {
-        let path = path![core::ops::RangeInclusive];
-        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
+        let struct_ = self.resolve_lang_item(LangItem::RangeInclusiveStruct)?.as_struct()?;
         Some(struct_.into())
     }
 
     fn resolve_range_from(&self) -> Option<AdtId> {
-        let path = path![core::ops::RangeFrom];
-        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
+        let struct_ = self.resolve_lang_item(LangItem::RangeFrom)?.as_struct()?;
         Some(struct_.into())
     }
 
     fn resolve_range_to(&self) -> Option<AdtId> {
-        let path = path![core::ops::RangeTo];
-        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
+        let struct_ = self.resolve_lang_item(LangItem::RangeTo)?.as_struct()?;
         Some(struct_.into())
     }
 
     fn resolve_range_to_inclusive(&self) -> Option<AdtId> {
-        let path = path![core::ops::RangeToInclusive];
-        let struct_ = self.resolver.resolve_known_struct(self.db.upcast(), &path)?;
+        let struct_ = self.resolve_lang_item(LangItem::RangeToInclusive)?.as_struct()?;
         Some(struct_.into())
     }
 
-    fn resolve_ops_index(&self) -> Option<TraitId> {
-        self.resolve_lang_item(name![index])?.as_trait()
-    }
-
     fn resolve_ops_index_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self.resolve_ops_index()?;
-        self.db.trait_data(trait_).associated_type_by_name(&name![Output])
+        self.resolve_output_on(self.resolve_lang_trait(LangItem::Index)?)
     }
 
     fn resolve_va_list(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(name![va_list])?.as_struct()?;
+        let struct_ = self.resolve_lang_item(LangItem::VaList)?.as_struct()?;
         Some(struct_.into())
     }
 }
@@ -1025,7 +1026,8 @@ impl<'a> InferenceContext<'a> {
 pub(crate) enum Expectation {
     None,
     HasType(Ty),
-    // Castable(Ty), // rustc has this, we currently just don't propagate an expectation for casts
+    #[allow(dead_code)]
+    Castable(Ty),
     RValueLikeUnsized(Ty),
 }
 
@@ -1039,10 +1041,6 @@ impl Expectation {
         } else {
             Expectation::HasType(ty)
         }
-    }
-
-    fn from_option(ty: Option<Ty>) -> Self {
-        ty.map_or(Expectation::None, Expectation::HasType)
     }
 
     /// The following explanation is copied straight from rustc:
@@ -1082,6 +1080,7 @@ impl Expectation {
         match self {
             Expectation::None => Expectation::None,
             Expectation::HasType(t) => Expectation::HasType(table.resolve_ty_shallow(t)),
+            Expectation::Castable(t) => Expectation::Castable(table.resolve_ty_shallow(t)),
             Expectation::RValueLikeUnsized(t) => {
                 Expectation::RValueLikeUnsized(table.resolve_ty_shallow(t))
             }
@@ -1091,18 +1090,23 @@ impl Expectation {
     fn to_option(&self, table: &mut unify::InferenceTable<'_>) -> Option<Ty> {
         match self.resolve(table) {
             Expectation::None => None,
-            Expectation::HasType(t) |
-            // Expectation::Castable(t) |
-            Expectation::RValueLikeUnsized(t) => Some(t),
+            Expectation::HasType(t)
+            | Expectation::Castable(t)
+            | Expectation::RValueLikeUnsized(t) => Some(t),
         }
     }
 
     fn only_has_type(&self, table: &mut unify::InferenceTable<'_>) -> Option<Ty> {
         match self {
             Expectation::HasType(t) => Some(table.resolve_ty_shallow(t)),
-            // Expectation::Castable(_) |
-            Expectation::RValueLikeUnsized(_) | Expectation::None => None,
+            Expectation::Castable(_) | Expectation::RValueLikeUnsized(_) | Expectation::None => {
+                None
+            }
         }
+    }
+
+    fn coercion_target_type(&self, table: &mut unify::InferenceTable<'_>) -> Ty {
+        self.only_has_type(table).unwrap_or_else(|| table.new_type_var())
     }
 
     /// Comment copied from rustc:

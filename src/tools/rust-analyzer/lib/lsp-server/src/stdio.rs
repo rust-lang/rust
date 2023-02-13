@@ -21,10 +21,7 @@ pub(crate) fn stdio_transport() -> (Sender<Message>, Receiver<Message>, IoThread
         let stdin = stdin();
         let mut stdin = stdin.lock();
         while let Some(msg) = Message::read(&mut stdin)? {
-            let is_exit = match &msg {
-                Message::Notification(n) => n.is_exit(),
-                _ => false,
-            };
+            let is_exit = matches!(&msg, Message::Notification(n) if n.is_exit());
 
             reader_sender.send(msg).unwrap();
 

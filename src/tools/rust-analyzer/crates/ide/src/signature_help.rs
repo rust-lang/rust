@@ -4,13 +4,15 @@
 use std::collections::BTreeSet;
 
 use either::Either;
-use hir::{AssocItem, GenericParam, HasAttrs, HirDisplay, Semantics, Trait};
-use ide_db::{active_parameter::callable_for_node, base_db::FilePosition};
+use hir::{
+    AssocItem, GenericParam, HasAttrs, HirDisplay, ModuleDef, PathResolution, Semantics, Trait,
+};
+use ide_db::{active_parameter::callable_for_node, base_db::FilePosition, FxIndexMap};
 use stdx::format_to;
 use syntax::{
     algo,
     ast::{self, HasArgList},
-    match_ast, AstNode, Direction, SyntaxToken, TextRange, TextSize,
+    match_ast, AstNode, Direction, SyntaxKind, SyntaxToken, TextRange, TextSize,
 };
 
 use crate::RootDatabase;
@@ -37,14 +39,18 @@ impl SignatureHelp {
     }
 
     fn push_call_param(&mut self, param: &str) {
-        self.push_param('(', param);
+        self.push_param("(", param);
     }
 
     fn push_generic_param(&mut self, param: &str) {
-        self.push_param('<', param);
+        self.push_param("<", param);
     }
 
-    fn push_param(&mut self, opening_delim: char, param: &str) {
+    fn push_record_field(&mut self, param: &str) {
+        self.push_param("{ ", param);
+    }
+
+    fn push_param(&mut self, opening_delim: &str, param: &str) {
         if !self.signature.ends_with(opening_delim) {
             self.signature.push_str(", ");
         }
@@ -85,6 +91,13 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
                     }
                     return signature_help_for_generics(&sema, garg_list, token);
                 },
+                ast::RecordExpr(record) => {
+                    let cursor_outside = record.record_expr_field_list().and_then(|list| list.r_curly_token()).as_ref() == Some(&token);
+                    if cursor_outside {
+                        continue;
+                    }
+                    return signature_help_for_record_lit(&sema, record, token);
+                },
                 _ => (),
             }
         }
@@ -92,7 +105,9 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
         // Stop at multi-line expressions, since the signature of the outer call is not very
         // helpful inside them.
         if let Some(expr) = ast::Expr::cast(node.clone()) {
-            if expr.syntax().text().contains_char('\n') {
+            if expr.syntax().text().contains_char('\n')
+                && expr.syntax().kind() != SyntaxKind::RECORD_EXPR
+            {
                 return None;
             }
         }
@@ -366,6 +381,86 @@ fn add_assoc_type_bindings(
             }
         }
     }
+}
+
+fn signature_help_for_record_lit(
+    sema: &Semantics<'_, RootDatabase>,
+    record: ast::RecordExpr,
+    token: SyntaxToken,
+) -> Option<SignatureHelp> {
+    let arg_list = record
+        .syntax()
+        .ancestors()
+        .filter_map(ast::RecordExpr::cast)
+        .find(|list| list.syntax().text_range().contains(token.text_range().start()))?;
+
+    let active_parameter = arg_list
+        .record_expr_field_list()?
+        .fields()
+        .take_while(|arg| arg.syntax().text_range().end() <= token.text_range().start())
+        .count();
+
+    let mut res = SignatureHelp {
+        doc: None,
+        signature: String::new(),
+        parameters: vec![],
+        active_parameter: Some(active_parameter),
+    };
+
+    let fields;
+
+    let db = sema.db;
+    let path_res = sema.resolve_path(&record.path()?)?;
+    if let PathResolution::Def(ModuleDef::Variant(variant)) = path_res {
+        fields = variant.fields(db);
+        let en = variant.parent_enum(db);
+
+        res.doc = en.docs(db).map(|it| it.into());
+        format_to!(res.signature, "enum {}::{} {{ ", en.name(db), variant.name(db));
+    } else {
+        let adt = match path_res {
+            PathResolution::SelfType(imp) => imp.self_ty(db).as_adt()?,
+            PathResolution::Def(ModuleDef::Adt(adt)) => adt,
+            _ => return None,
+        };
+
+        match adt {
+            hir::Adt::Struct(it) => {
+                fields = it.fields(db);
+                res.doc = it.docs(db).map(|it| it.into());
+                format_to!(res.signature, "struct {} {{ ", it.name(db));
+            }
+            hir::Adt::Union(it) => {
+                fields = it.fields(db);
+                res.doc = it.docs(db).map(|it| it.into());
+                format_to!(res.signature, "union {} {{ ", it.name(db));
+            }
+            _ => return None,
+        }
+    }
+
+    let mut fields =
+        fields.into_iter().map(|field| (field.name(db), Some(field))).collect::<FxIndexMap<_, _>>();
+    let mut buf = String::new();
+    for field in record.record_expr_field_list()?.fields() {
+        let Some((field, _, ty)) = sema.resolve_record_field(&field) else { continue };
+        let name = field.name(db);
+        format_to!(buf, "{name}: {}", ty.display_truncated(db, Some(20)));
+        res.push_record_field(&buf);
+        buf.clear();
+
+        if let Some(field) = fields.get_mut(&name) {
+            *field = None;
+        }
+    }
+    for (name, field) in fields {
+        let Some(field) = field else { continue };
+        format_to!(buf, "{name}: {}", field.ty(db).display_truncated(db, Some(20)));
+        res.push_record_field(&buf);
+        buf.clear();
+    }
+    res.signature.push_str(" }");
+    Some(res)
 }
 
 #[cfg(test)]
@@ -1402,6 +1497,100 @@ fn take<C, Error>(
 "#,
             expect![[r#"
                 () -> i32
+            "#]],
+        );
+    }
+
+    #[test]
+    fn record_literal() {
+        check(
+            r#"
+struct Strukt<T, U = ()> {
+    t: T,
+    u: U,
+    unit: (),
+}
+fn f() {
+    Strukt {
+        u: 0,
+        $0
+    }
+}
+"#,
+            expect![[r#"
+                struct Strukt { u: i32, t: T, unit: () }
+                                ------  ^^^^  --------
+            "#]],
+        );
+    }
+
+    #[test]
+    fn record_literal_nonexistent_field() {
+        check(
+            r#"
+struct Strukt {
+    a: u8,
+}
+fn f() {
+    Strukt {
+        b: 8,
+        $0
+    }
+}
+"#,
+            expect![[r#"
+                struct Strukt { a: u8 }
+                                -----
+            "#]],
+        );
+    }
+
+    #[test]
+    fn tuple_variant_record_literal() {
+        check(
+            r#"
+enum Opt {
+    Some(u8),
+}
+fn f() {
+    Opt::Some {$0}
+}
+"#,
+            expect![[r#"
+                enum Opt::Some { 0: u8 }
+                                 ^^^^^
+            "#]],
+        );
+        check(
+            r#"
+enum Opt {
+    Some(u8),
+}
+fn f() {
+    Opt::Some {0:0,$0}
+}
+"#,
+            expect![[r#"
+                enum Opt::Some { 0: u8 }
+                                 -----
+            "#]],
+        );
+    }
+
+    #[test]
+    fn record_literal_self() {
+        check(
+            r#"
+struct S { t: u8 }
+impl S {
+    fn new() -> Self {
+        Self { $0 }
+    }
+}
+        "#,
+            expect![[r#"
+                struct S { t: u8 }
+                           ^^^^^
             "#]],
         );
     }

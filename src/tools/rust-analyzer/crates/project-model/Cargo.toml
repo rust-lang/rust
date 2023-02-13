@@ -2,9 +2,11 @@
 name = "project-model"
 version = "0.0.0"
 description = "TBD"
-license = "MIT OR Apache-2.0"
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
@@ -19,12 +21,13 @@ serde_json = "1.0.86"
 anyhow = "1.0.62"
 la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
 
-cfg = { path = "../cfg", version = "0.0.0" }
-base-db = { path = "../base-db", version = "0.0.0" }
-toolchain = { path = "../toolchain", version = "0.0.0" }
-paths = { path = "../paths", version = "0.0.0" }
-stdx = { path = "../stdx", version = "0.0.0" }
-profile = { path = "../profile", version = "0.0.0" }
+# local deps
+base-db.workspace = true
+cfg.workspace = true
+paths.workspace = true
+profile.workspace = true
+stdx.workspace = true
+toolchain.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.0"

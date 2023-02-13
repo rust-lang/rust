@@ -3200,3 +3200,86 @@ fn func() {
     "#,
     );
 }
+
+// FIXME
+#[test]
+fn castable_to() {
+    check_infer(
+        r#"
+//- minicore: sized
+#[lang = "owned_box"]
+pub struct Box<T: ?Sized> {
+    inner: *mut T,
+}
+impl<T> Box<T> {
+    fn new(t: T) -> Self { loop {} }
+}
+
+fn func() {
+    let x = Box::new([]) as Box<[i32; 0]>;
+}
+"#,
+        expect![[r#"
+            99..100 't': T
+            113..124 '{ loop {} }': Box<T>
+            115..122 'loop {}': !
+            120..122 '{}': ()
+            138..184 '{     ...0]>; }': ()
+            148..149 'x': Box<[i32; 0]>
+            152..160 'Box::new': fn new<[{unknown}; 0]>([{unknown}; 0]) -> Box<[{unknown}; 0]>
+            152..164 'Box::new([])': Box<[{unknown}; 0]>
+            152..181 'Box::n...2; 0]>': Box<[i32; 0]>
+            161..163 '[]': [{unknown}; 0]
+        "#]],
+    );
+}
+
+#[test]
+fn castable_to1() {
+    check_infer(
+        r#"
+struct Ark<T>(T);
+impl<T> Ark<T> {
+    fn foo(&self) -> *const T {
+        &self.0
+    }
+}
+fn f<T>(t: Ark<T>) {
+    Ark::foo(&t) as *const ();
+}
+"#,
+        expect![[r#"
+            47..51 'self': &Ark<T>
+            65..88 '{     ...     }': *const T
+            75..82 '&self.0': &T
+            76..80 'self': &Ark<T>
+            76..82 'self.0': T
+            99..100 't': Ark<T>
+            110..144 '{     ... (); }': ()
+            116..124 'Ark::foo': fn foo<T>(&Ark<T>) -> *const T
+            116..128 'Ark::foo(&t)': *const T
+            116..141 'Ark::f...nst ()': *const ()
+            125..127 '&t': &Ark<T>
+            126..127 't': Ark<T>
+        "#]],
+    );
+}
+
+// FIXME
+#[test]
+fn castable_to2() {
+    check_infer(
+        r#"
+fn func() {
+    let x = &0u32 as *const _;
+}
+"#,
+        expect![[r#"
+            10..44 '{     ...t _; }': ()
+            20..21 'x': *const {unknown}
+            24..29 '&0u32': &u32
+            24..41 '&0u32 ...onst _': *const {unknown}
+            25..29 '0u32': u32
+        "#]],
+    );
+}

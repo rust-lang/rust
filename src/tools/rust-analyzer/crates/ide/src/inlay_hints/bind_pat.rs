@@ -12,9 +12,7 @@ use syntax::{
     match_ast,
 };
 
-use crate::{
-    inlay_hints::closure_has_block_body, InlayHint, InlayHintsConfig, InlayKind, InlayTooltip,
-};
+use crate::{inlay_hints::closure_has_block_body, InlayHint, InlayHintsConfig, InlayKind};
 
 use super::label_of_ty;
 
@@ -22,7 +20,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    file_id: FileId,
+    _file_id: FileId,
     pat: &ast::IdentPat,
 ) -> Option<()> {
     if !config.type_hints {
@@ -50,12 +48,8 @@ pub(super) fn hints(
             Some(name) => name.syntax().text_range(),
             None => pat.syntax().text_range(),
         },
-        kind: InlayKind::TypeHint,
+        kind: InlayKind::Type,
         label,
-        tooltip: pat
-            .name()
-            .map(|it| it.syntax().text_range())
-            .map(|it| InlayTooltip::HoverRanged(file_id, it)),
     });
 
     Some(())
@@ -73,28 +67,23 @@ fn should_not_display_type_hint(
         return true;
     }
 
-    if let Some(hir::Adt::Struct(s)) = pat_ty.as_adt() {
-        if s.fields(db).is_empty() && s.name(db).to_smol_str() == bind_pat.to_string() {
-            return true;
-        }
-    }
-
-    if config.hide_closure_initialization_hints {
-        if let Some(parent) = bind_pat.syntax().parent() {
-            if let Some(it) = ast::LetStmt::cast(parent) {
-                if let Some(ast::Expr::ClosureExpr(closure)) = it.initializer() {
-                    if closure_has_block_body(&closure) {
-                        return true;
-                    }
-                }
-            }
-        }
+    if sema.resolve_bind_pat_to_const(bind_pat).is_some() {
+        return true;
     }
 
     for node in bind_pat.syntax().ancestors() {
         match_ast! {
             match node {
-                ast::LetStmt(it) => return it.ty().is_some(),
+                ast::LetStmt(it) => {
+                    if config.hide_closure_initialization_hints {
+                        if let Some(ast::Expr::ClosureExpr(closure)) = it.initializer() {
+                            if closure_has_block_body(&closure) {
+                                return true;
+                            }
+                        }
+                    }
+                    return it.ty().is_some()
+                },
                 // FIXME: We might wanna show type hints in parameters for non-top level patterns as well
                 ast::Param(it) => return it.ty().is_some(),
                 ast::MatchArm(_) => return pat_is_enum_variant(db, bind_pat, pat_ty),
@@ -194,8 +183,7 @@ mod tests {
     use crate::{fixture, inlay_hints::InlayHintsConfig};
 
     use crate::inlay_hints::tests::{
-        check, check_expect, check_with_config, DISABLED_CONFIG, DISABLED_CONFIG_WITH_LINKS,
-        TEST_CONFIG,
+        check, check_expect, check_with_config, DISABLED_CONFIG, TEST_CONFIG,
     };
     use crate::ClosureReturnTypeHints;
 
@@ -291,7 +279,7 @@ fn main() {
     fn iterator_hint_regression_issue_12674() {
         // Ensure we don't crash while solving the projection type of iterators.
         check_expect(
-            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG_WITH_LINKS },
+            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
             r#"
 //- minicore: iterators
 struct S<T>(T);
@@ -322,22 +310,66 @@ fn main(a: SliceIter<'_, Container>) {
                 [
                     InlayHint {
                         range: 484..554,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
-                            "impl Iterator<Item = impl Iterator<Item = &&str>>",
-                        ],
-                        tooltip: Some(
-                            HoverRanged(
-                                FileId(
-                                    0,
+                            "impl ",
+                            InlayHintLabelPart {
+                                text: "Iterator",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            1,
+                                        ),
+                                        range: 2611..2619,
+                                    },
                                 ),
-                                484..554,
-                            ),
-                        ),
+                                tooltip: "",
+                            },
+                            "<",
+                            InlayHintLabelPart {
+                                text: "Item",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            1,
+                                        ),
+                                        range: 2643..2647,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            " = impl ",
+                            InlayHintLabelPart {
+                                text: "Iterator",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            1,
+                                        ),
+                                        range: 2611..2619,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            "<",
+                            InlayHintLabelPart {
+                                text: "Item",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            1,
+                                        ),
+                                        range: 2643..2647,
+                                    },
+                                ),
+                                tooltip: "",
+                            },
+                            " = &&str>>",
+                        ],
                     },
                     InlayHint {
                         range: 484..485,
-                        kind: ChainingHint,
+                        kind: Chaining,
                         label: [
                             "",
                             InlayHintLabelPart {
@@ -350,6 +382,7 @@ fn main(a: SliceIter<'_, Container>) {
                                         range: 289..298,
                                     },
                                 ),
+                                tooltip: "",
                             },
                             "<",
                             InlayHintLabelPart {
@@ -362,17 +395,10 @@ fn main(a: SliceIter<'_, Container>) {
                                         range: 238..247,
                                     },
                                 ),
+                                tooltip: "",
                             },
                             ">",
                         ],
-                        tooltip: Some(
-                            HoverRanged(
-                                FileId(
-                                    0,
-                                ),
-                                484..485,
-                            ),
-                        ),
                     },
                 ]
             "#]],
@@ -531,6 +557,21 @@ fn main() {
     match Ok(()) {
         Ok(_) => (),
         Err(SyntheticSyntax) => (),
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn const_pats_have_no_type_hints() {
+        check_types(
+            r#"
+const FOO: usize = 0;
+
+fn main() {
+    match 0 {
+        FOO => (),
+        _ => ()
     }
 }"#,
         );

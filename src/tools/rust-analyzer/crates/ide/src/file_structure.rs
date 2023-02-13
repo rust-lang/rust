@@ -160,7 +160,11 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 let label = match target_trait {
                     None => format!("impl {}", target_type.syntax().text()),
                     Some(t) => {
-                        format!("impl {} for {}", t.syntax().text(), target_type.syntax().text(),)
+                        format!("impl {}{} for {}",
+                            it.excl_token().map(|x| x.to_string()).unwrap_or_default(),
+                            t.syntax().text(),
+                            target_type.syntax().text(),
+                        )
                     }
                 };
 
@@ -211,6 +215,29 @@ mod tests {
         let file = SourceFile::parse(ra_fixture).ok().unwrap();
         let structure = file_structure(&file);
         expect.assert_debug_eq(&structure)
+    }
+
+    #[test]
+    fn test_nagative_trait_bound() {
+        let txt = r#"impl !Unpin for Test {}"#;
+        check(
+            txt,
+            expect![[r#"
+        [
+            StructureNode {
+                parent: None,
+                label: "impl !Unpin for Test",
+                navigation_range: 16..20,
+                node_range: 0..23,
+                kind: SymbolKind(
+                    Impl,
+                ),
+                detail: None,
+                deprecated: false,
+            },
+        ]
+        "#]],
+        );
     }
 
     #[test]

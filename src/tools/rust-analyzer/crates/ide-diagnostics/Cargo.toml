@@ -2,9 +2,11 @@
 name = "ide-diagnostics"
 version = "0.0.0"
 description = "TBD"
-license = "MIT OR Apache-2.0"
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
@@ -15,19 +17,21 @@ either = "1.7.0"
 itertools = "0.10.5"
 serde_json = "1.0.86"
 
-profile = { path = "../profile", version = "0.0.0" }
-stdx = { path = "../stdx", version = "0.0.0" }
-syntax = { path = "../syntax", version = "0.0.0" }
-text-edit = { path = "../text-edit", version = "0.0.0" }
-cfg = { path = "../cfg", version = "0.0.0" }
-hir = { path = "../hir", version = "0.0.0" }
-ide-db = { path = "../ide-db", version = "0.0.0" }
+# local deps
+profile.workspace = true
+stdx.workspace = true
+syntax.workspace = true
+text-edit.workspace = true
+cfg.workspace = true
+hir.workspace = true
+ide-db.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.0"
 
-test-utils = { path = "../test-utils" }
-sourcegen = { path = "../sourcegen" }
+# local deps
+test-utils.workspace = true
+sourcegen.workspace = true
 
 [features]
 in-rust-tree = []

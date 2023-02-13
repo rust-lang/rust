@@ -520,6 +520,15 @@ pub fn literal_pat(lit: &str) -> ast::LiteralPat {
     }
 }
 
+pub fn slice_pat(pats: impl IntoIterator<Item = ast::Pat>) -> ast::SlicePat {
+    let pats_str = pats.into_iter().join(", ");
+    return from_text(&format!("[{pats_str}]"));
+
+    fn from_text(text: &str) -> ast::SlicePat {
+        ast_from_text(&format!("fn f() {{ match () {{{text} => ()}} }}"))
+    }
+}
+
 /// Creates a tuple of patterns from an iterator of patterns.
 ///
 /// Invariant: `pats` must be length > 0
@@ -814,6 +823,7 @@ pub fn fn_(
     visibility: Option<ast::Visibility>,
     fn_name: ast::Name,
     type_params: Option<ast::GenericParamList>,
+    where_clause: Option<ast::WhereClause>,
     params: ast::ParamList,
     body: ast::BlockExpr,
     ret_type: Option<ast::RetType>,
@@ -821,6 +831,10 @@ pub fn fn_(
 ) -> ast::Fn {
     let type_params = match type_params {
         Some(type_params) => format!("{type_params}"),
+        None => "".into(),
+    };
+    let where_clause = match where_clause {
+        Some(it) => format!("{it} "),
         None => "".into(),
     };
     let ret_type = match ret_type {
@@ -835,7 +849,7 @@ pub fn fn_(
     let async_literal = if is_async { "async " } else { "" };
 
     ast_from_text(&format!(
-        "{visibility}{async_literal}fn {fn_name}{type_params}{params} {ret_type}{body}",
+        "{visibility}{async_literal}fn {fn_name}{type_params}{params} {ret_type}{where_clause}{body}",
     ))
 }
 

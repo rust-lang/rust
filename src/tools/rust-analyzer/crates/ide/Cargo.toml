@@ -2,9 +2,11 @@
 name = "ide"
 version = "0.0.0"
 description = "TBD"
-license = "MIT OR Apache-2.0"
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
@@ -20,28 +22,31 @@ pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.1", default-features = false }
 url = "2.3.1"
 dot = "0.1.4"
+smallvec = "1.10.0"
 
-stdx = { path = "../stdx", version = "0.0.0" }
-syntax = { path = "../syntax", version = "0.0.0" }
-text-edit = { path = "../text-edit", version = "0.0.0" }
-ide-db = { path = "../ide-db", version = "0.0.0" }
-cfg = { path = "../cfg", version = "0.0.0" }
-profile = { path = "../profile", version = "0.0.0" }
-ide-assists = { path = "../ide-assists", version = "0.0.0" }
-ide-diagnostics = { path = "../ide-diagnostics", version = "0.0.0" }
-ide-ssr = { path = "../ide-ssr", version = "0.0.0" }
-ide-completion = { path = "../ide-completion", version = "0.0.0" }
-
+# local deps
+cfg.workspace = true
+ide-assists.workspace = true
+ide-completion.workspace = true
+ide-db.workspace = true
+ide-diagnostics.workspace = true
+ide-ssr.workspace = true
+profile.workspace = true
+stdx.workspace = true
+syntax.workspace = true
+text-edit.workspace = true
 # ide should depend only on the top-level `hir` package. if you need
 # something from some `hir-xxx` subpackage, reexport the API via `hir`.
-hir = { path = "../hir", version = "0.0.0" }
+hir.workspace = true
 
 [target.'cfg(not(any(target_arch = "wasm32", target_os = "emscripten")))'.dependencies]
-toolchain = { path = "../toolchain", version = "0.0.0" }
+toolchain.workspace = true
 
 [dev-dependencies]
-test-utils = { path = "../test-utils" }
 expect-test = "1.4.0"
+
+# local deps
+test-utils.workspace = true
 
 [features]
 in-rust-tree = ["ide-assists/in-rust-tree", "ide-diagnostics/in-rust-tree"]

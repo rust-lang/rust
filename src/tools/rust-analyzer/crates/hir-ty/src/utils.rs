@@ -11,39 +11,100 @@ use hir_def::{
         GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
         WherePredicateTypeTarget,
     },
-    intern::Interned,
+    lang_item::LangItem,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
     ConstParamId, FunctionId, GenericDefId, ItemContainerId, Lookup, TraitId, TypeAliasId,
     TypeOrConstParamId, TypeParamId,
 };
 use hir_expand::name::Name;
+use intern::Interned;
 use itertools::Either;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
-use syntax::SmolStr;
 
 use crate::{
     db::HirDatabase, ChalkTraitId, Interner, Substitution, TraitRef, TraitRefExt, WhereClause,
 };
 
-pub(crate) fn fn_traits(db: &dyn DefDatabase, krate: CrateId) -> impl Iterator<Item = TraitId> {
-    [
-        db.lang_item(krate, SmolStr::new_inline("fn")),
-        db.lang_item(krate, SmolStr::new_inline("fn_mut")),
-        db.lang_item(krate, SmolStr::new_inline("fn_once")),
-    ]
-    .into_iter()
-    .flatten()
-    .flat_map(|it| it.as_trait())
+pub(crate) fn fn_traits(
+    db: &dyn DefDatabase,
+    krate: CrateId,
+) -> impl Iterator<Item = TraitId> + '_ {
+    [LangItem::Fn, LangItem::FnMut, LangItem::FnOnce]
+        .into_iter()
+        .filter_map(move |lang| db.lang_item(krate, lang))
+        .flat_map(|it| it.as_trait())
 }
 
-fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[TraitId; 4]> {
+/// Returns an iterator over the whole super trait hierarchy (including the
+/// trait itself).
+pub fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[TraitId; 4]> {
+    // we need to take care a bit here to avoid infinite loops in case of cycles
+    // (i.e. if we have `trait A: B; trait B: A;`)
+
+    let mut result = smallvec![trait_];
+    let mut i = 0;
+    while let Some(&t) = result.get(i) {
+        // yeah this is quadratic, but trait hierarchies should be flat
+        // enough that this doesn't matter
+        direct_super_traits(db, t, |tt| {
+            if !result.contains(&tt) {
+                result.push(tt);
+            }
+        });
+        i += 1;
+    }
+    result
+}
+
+/// Given a trait ref (`Self: Trait`), builds all the implied trait refs for
+/// super traits. The original trait ref will be included. So the difference to
+/// `all_super_traits` is that we keep track of type parameters; for example if
+/// we have `Self: Trait<u32, i32>` and `Trait<T, U>: OtherTrait<U>` we'll get
+/// `Self: OtherTrait<i32>`.
+pub(super) fn all_super_trait_refs<T>(
+    db: &dyn HirDatabase,
+    trait_ref: TraitRef,
+    cb: impl FnMut(TraitRef) -> Option<T>,
+) -> Option<T> {
+    let seen = iter::once(trait_ref.trait_id).collect();
+    let mut stack = Vec::new();
+    stack.push(trait_ref);
+    SuperTraits { db, seen, stack }.find_map(cb)
+}
+
+struct SuperTraits<'a> {
+    db: &'a dyn HirDatabase,
+    stack: Vec<TraitRef>,
+    seen: FxHashSet<ChalkTraitId>,
+}
+
+impl<'a> SuperTraits<'a> {
+    fn elaborate(&mut self, trait_ref: &TraitRef) {
+        direct_super_trait_refs(self.db, trait_ref, |trait_ref| {
+            if !self.seen.contains(&trait_ref.trait_id) {
+                self.stack.push(trait_ref);
+            }
+        });
+    }
+}
+
+impl<'a> Iterator for SuperTraits<'a> {
+    type Item = TraitRef;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(next) = self.stack.pop() {
+            self.elaborate(&next);
+            Some(next)
+        } else {
+            None
+        }
+    }
+}
+
+fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
     let resolver = trait_.resolver(db);
-    // returning the iterator directly doesn't easily work because of
-    // lifetime problems, but since there usually shouldn't be more than a
-    // few direct traits this should be fine (we could even use some kind of
-    // SmallVec if performance is a concern)
     let generic_params = db.generic_params(trait_.into());
     let trait_self = generic_params.find_trait_self_param();
     generic_params
@@ -73,18 +134,14 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[Trait
             Some(TypeNs::TraitId(t)) => Some(t),
             _ => None,
         })
-        .collect()
+        .for_each(cb);
 }
 
-fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<TraitRef> {
-    // returning the iterator directly doesn't easily work because of
-    // lifetime problems, but since there usually shouldn't be more than a
-    // few direct traits this should be fine (we could even use some kind of
-    // SmallVec if performance is a concern)
+fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef, cb: impl FnMut(TraitRef)) {
     let generic_params = db.generic_params(trait_ref.hir_trait_id().into());
     let trait_self = match generic_params.find_trait_self_param() {
         Some(p) => TypeOrConstParamId { parent: trait_ref.hir_trait_id().into(), local_id: p },
-        None => return Vec::new(),
+        None => return,
     };
     db.generic_predicates_for_param(trait_self.parent, trait_self, None)
         .iter()
@@ -100,64 +157,7 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<Tr
             })
         })
         .map(|pred| pred.substitute(Interner, &trait_ref.substitution))
-        .collect()
-}
-
-/// Returns an iterator over the whole super trait hierarchy (including the
-/// trait itself).
-pub fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[TraitId; 4]> {
-    // we need to take care a bit here to avoid infinite loops in case of cycles
-    // (i.e. if we have `trait A: B; trait B: A;`)
-
-    let mut result = smallvec![trait_];
-    let mut i = 0;
-    while let Some(&t) = result.get(i) {
-        // yeah this is quadratic, but trait hierarchies should be flat
-        // enough that this doesn't matter
-        for tt in direct_super_traits(db, t) {
-            if !result.contains(&tt) {
-                result.push(tt);
-            }
-        }
-        i += 1;
-    }
-    result
-}
-
-/// Given a trait ref (`Self: Trait`), builds all the implied trait refs for
-/// super traits. The original trait ref will be included. So the difference to
-/// `all_super_traits` is that we keep track of type parameters; for example if
-/// we have `Self: Trait<u32, i32>` and `Trait<T, U>: OtherTrait<U>` we'll get
-/// `Self: OtherTrait<i32>`.
-pub(super) fn all_super_trait_refs(db: &dyn HirDatabase, trait_ref: TraitRef) -> SuperTraits<'_> {
-    SuperTraits { db, seen: iter::once(trait_ref.trait_id).collect(), stack: vec![trait_ref] }
-}
-
-pub(super) struct SuperTraits<'a> {
-    db: &'a dyn HirDatabase,
-    stack: Vec<TraitRef>,
-    seen: FxHashSet<ChalkTraitId>,
-}
-
-impl<'a> SuperTraits<'a> {
-    fn elaborate(&mut self, trait_ref: &TraitRef) {
-        let mut trait_refs = direct_super_trait_refs(self.db, trait_ref);
-        trait_refs.retain(|tr| !self.seen.contains(&tr.trait_id));
-        self.stack.extend(trait_refs);
-    }
-}
-
-impl<'a> Iterator for SuperTraits<'a> {
-    type Item = TraitRef;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(next) = self.stack.pop() {
-            self.elaborate(&next);
-            Some(next)
-        } else {
-            None
-        }
-    }
+        .for_each(cb);
 }
 
 pub(super) fn associated_type_by_name_including_super_traits(
@@ -165,7 +165,7 @@ pub(super) fn associated_type_by_name_including_super_traits(
     trait_ref: TraitRef,
     name: &Name,
 ) -> Option<(TraitRef, TypeAliasId)> {
-    all_super_trait_refs(db, trait_ref).find_map(|t| {
+    all_super_trait_refs(db, trait_ref, |t| {
         let assoc_type = db.trait_data(t.hir_trait_id()).associated_type_by_name(name)?;
         Some((t, assoc_type))
     })
@@ -238,15 +238,18 @@ impl Generics {
 
     /// (parent total, self param, type param list, const param list, impl trait)
     pub(crate) fn provenance_split(&self) -> (usize, usize, usize, usize, usize) {
-        let ty_iter = || self.params.iter().filter_map(|x| x.1.type_param());
-
-        let self_params =
-            ty_iter().filter(|p| p.provenance == TypeParamProvenance::TraitSelf).count();
-        let type_params =
-            ty_iter().filter(|p| p.provenance == TypeParamProvenance::TypeParamList).count();
-        let impl_trait_params =
-            ty_iter().filter(|p| p.provenance == TypeParamProvenance::ArgumentImplTrait).count();
-        let const_params = self.params.iter().filter_map(|x| x.1.const_param()).count();
+        let mut self_params = 0;
+        let mut type_params = 0;
+        let mut impl_trait_params = 0;
+        let mut const_params = 0;
+        self.params.iter().for_each(|(_, data)| match data {
+            TypeOrConstParamData::TypeParamData(p) => match p.provenance {
+                TypeParamProvenance::TypeParamList => type_params += 1,
+                TypeParamProvenance::TraitSelf => self_params += 1,
+                TypeParamProvenance::ArgumentImplTrait => impl_trait_params += 1,
+            },
+            TypeOrConstParamData::ConstParamData(_) => const_params += 1,
+        });
 
         let parent_len = self.parent_generics().map_or(0, Generics::len);
         (parent_len, self_params, type_params, const_params, impl_trait_params)

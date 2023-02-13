@@ -869,7 +869,7 @@ impl Test for T {{
         };
 
         // Enumerate some possible next siblings.
-        for next_sibling in &[
+        for next_sibling in [
             "",
             "fn other_fn() {}", // `const $0 fn` -> `const fn`
             "type OtherType = i32;",

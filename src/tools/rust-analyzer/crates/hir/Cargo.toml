@@ -2,9 +2,11 @@
 name = "hir"
 version = "0.0.0"
 description = "TBD"
-license = "MIT OR Apache-2.0"
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
@@ -15,14 +17,15 @@ either = "1.7.0"
 arrayvec = "0.7.2"
 itertools = "0.10.5"
 smallvec = "1.10.0"
-once_cell = "1.15.0"
+once_cell = "1.17.0"
 
-stdx = { path = "../stdx", version = "0.0.0" }
-syntax = { path = "../syntax", version = "0.0.0" }
-base-db = { path = "../base-db", version = "0.0.0" }
-profile = { path = "../profile", version = "0.0.0" }
-hir-expand = { path = "../hir-expand", version = "0.0.0" }
-hir-def = { path = "../hir-def", version = "0.0.0" }
-hir-ty = { path = "../hir-ty", version = "0.0.0" }
-tt = { path = "../tt", version = "0.0.0" }
-cfg = { path = "../cfg", version = "0.0.0" }
+# local deps
+base-db.workspace = true
+cfg.workspace = true
+hir-def.workspace = true
+hir-expand.workspace = true
+hir-ty.workspace = true
+profile.workspace = true
+stdx.workspace = true
+syntax.workspace = true
+tt.workspace = true

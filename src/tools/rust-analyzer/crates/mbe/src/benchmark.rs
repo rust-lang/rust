@@ -9,7 +9,7 @@ use test_utils::{bench, bench_fixture, skip_slow_tests};
 
 use crate::{
     parser::{MetaVarKind, Op, RepeatKind, Separator},
-    syntax_node_to_token_tree, DeclarativeMacro,
+    syntax_node_to_token_tree, tt, DeclarativeMacro,
 };
 
 #[test]
@@ -91,7 +91,14 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
                 // So we just skip any error cases and try again
                 let mut try_cnt = 0;
                 loop {
-                    let mut subtree = tt::Subtree::default();
+                    let mut subtree = tt::Subtree {
+                        delimiter: tt::Delimiter {
+                            open: tt::TokenId::UNSPECIFIED,
+                            close: tt::TokenId::UNSPECIFIED,
+                            kind: tt::DelimiterKind::Invisible,
+                        },
+                        token_trees: vec![],
+                    };
                     for op in rule.lhs.iter() {
                         collect_from_op(op, &mut subtree, &mut seed);
                     }
@@ -145,7 +152,7 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
             Op::Ident(it) => parent.token_trees.push(tt::Leaf::from(it.clone()).into()),
             Op::Punct(puncts) => {
                 for punct in puncts {
-                    parent.token_trees.push(tt::Leaf::from(punct.clone()).into());
+                    parent.token_trees.push(tt::Leaf::from(*punct).into());
                 }
             }
             Op::Repeat { tokens, kind, separator } => {
@@ -196,12 +203,15 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
             *seed
         }
         fn make_ident(ident: &str) -> tt::TokenTree {
-            tt::Leaf::Ident(tt::Ident { id: tt::TokenId::unspecified(), text: SmolStr::new(ident) })
-                .into()
+            tt::Leaf::Ident(tt::Ident {
+                span: tt::TokenId::unspecified(),
+                text: SmolStr::new(ident),
+            })
+            .into()
         }
         fn make_punct(char: char) -> tt::TokenTree {
             tt::Leaf::Punct(tt::Punct {
-                id: tt::TokenId::unspecified(),
+                span: tt::TokenId::unspecified(),
                 char,
                 spacing: tt::Spacing::Alone,
             })
@@ -209,7 +219,7 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
         }
         fn make_literal(lit: &str) -> tt::TokenTree {
             tt::Leaf::Literal(tt::Literal {
-                id: tt::TokenId::unspecified(),
+                span: tt::TokenId::unspecified(),
                 text: SmolStr::new(lit),
             })
             .into()
@@ -219,7 +229,11 @@ fn invocation_fixtures(rules: &FxHashMap<String, DeclarativeMacro>) -> Vec<(Stri
             token_trees: Option<Vec<tt::TokenTree>>,
         ) -> tt::TokenTree {
             tt::Subtree {
-                delimiter: Some(tt::Delimiter { id: tt::TokenId::unspecified(), kind }),
+                delimiter: tt::Delimiter {
+                    open: tt::TokenId::unspecified(),
+                    close: tt::TokenId::unspecified(),
+                    kind,
+                },
                 token_trees: token_trees.unwrap_or_default(),
             }
             .into()

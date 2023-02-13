@@ -102,24 +102,6 @@ export async function createClient(
                     }
                 },
             },
-            async provideInlayHints(document, viewPort, token, next) {
-                const inlays = await next(document, viewPort, token);
-                if (!inlays) {
-                    return inlays;
-                }
-                // U+200C is a zero-width non-joiner to prevent the editor from forming a ligature
-                // between code and hints
-                for (const inlay of inlays) {
-                    if (typeof inlay.label === "string") {
-                        inlay.label = `\u{200c}${inlay.label}\u{200c}`;
-                    } else if (Array.isArray(inlay.label)) {
-                        for (const it of inlay.label) {
-                            it.value = `\u{200c}${it.value}\u{200c}`;
-                        }
-                    }
-                }
-                return inlays;
-            },
             async handleDiagnostics(
                 uri: vscode.Uri,
                 diagnosticList: vscode.Diagnostic[],
@@ -190,12 +172,10 @@ export async function createClient(
                     )
                     .then(
                         (result) => {
+                            if (!result) return null;
                             const hover = client.protocol2CodeConverter.asHover(result);
-                            if (hover) {
-                                const actions = (<any>result).actions;
-                                if (actions) {
-                                    hover.contents.push(renderHoverActions(actions));
-                                }
+                            if (!!result.actions) {
+                                hover.contents.push(renderHoverActions(result.actions));
                             }
                             return hover;
                         },
@@ -328,25 +308,27 @@ class ExperimentalFeatures implements lc.StaticFeature {
         return { kind: "static" };
     }
     fillClientCapabilities(capabilities: lc.ClientCapabilities): void {
-        const caps: any = capabilities.experimental ?? {};
-        caps.snippetTextEdit = true;
-        caps.codeActionGroup = true;
-        caps.hoverActions = true;
-        caps.serverStatusNotification = true;
-        caps.colorDiagnosticOutput = true;
-        caps.commands = {
-            commands: [
-                "rust-analyzer.runSingle",
-                "rust-analyzer.debugSingle",
-                "rust-analyzer.showReferences",
-                "rust-analyzer.gotoLocation",
-                "editor.action.triggerParameterHints",
-            ],
+        capabilities.experimental = {
+            snippetTextEdit: true,
+            codeActionGroup: true,
+            hoverActions: true,
+            serverStatusNotification: true,
+            colorDiagnosticOutput: true,
+            openServerLogs: true,
+            commands: {
+                commands: [
+                    "rust-analyzer.runSingle",
+                    "rust-analyzer.debugSingle",
+                    "rust-analyzer.showReferences",
+                    "rust-analyzer.gotoLocation",
+                    "editor.action.triggerParameterHints",
+                ],
+            },
+            ...capabilities.experimental,
         };
-        capabilities.experimental = caps;
     }
     initialize(
-        _capabilities: lc.ServerCapabilities<any>,
+        _capabilities: lc.ServerCapabilities,
         _documentSelector: lc.DocumentSelector | undefined
     ): void {}
     dispose(): void {}

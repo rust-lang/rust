@@ -17,6 +17,7 @@ use hir_def::{
         Body, BodySourceMap,
     },
     expr::{ExprId, Pat, PatId},
+    lang_item::LangItem,
     macro_id_to_def_id,
     path::{ModPath, Path, PathKind},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
@@ -37,7 +38,7 @@ use hir_ty::{
         record_literal_missing_fields, record_pattern_missing_fields, unsafe_expressions,
         UnsafeExpr,
     },
-    method_resolution::{self, lang_names_for_bin_op},
+    method_resolution::{self, lang_items_for_bin_op},
     Adjustment, InferenceResult, Interner, Substitution, Ty, TyExt, TyKind, TyLoweringContext,
 };
 use itertools::Itertools;
@@ -294,12 +295,8 @@ impl SourceAnalyzer {
             }
         }
 
-        let future_trait = db
-            .lang_item(self.resolver.krate(), hir_expand::name![future_trait].to_smol_str())?
-            .as_trait()?;
-        let poll_fn = db
-            .lang_item(self.resolver.krate(), hir_expand::name![poll].to_smol_str())?
-            .as_function()?;
+        let future_trait = db.lang_item(self.resolver.krate(), LangItem::Future)?.as_trait()?;
+        let poll_fn = db.lang_item(self.resolver.krate(), LangItem::FuturePoll)?.as_function()?;
         // HACK: subst for `poll()` coincides with that for `Future` because `poll()` itself
         // doesn't have any generic parameters, so we skip building another subst for `poll()`.
         let substs = hir_ty::TyBuilder::subst_for_def(db, future_trait, None).push(ty).build();
@@ -311,14 +308,14 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         prefix_expr: &ast::PrefixExpr,
     ) -> Option<FunctionId> {
-        let lang_item_name = match prefix_expr.op_kind()? {
-            ast::UnaryOp::Deref => name![deref],
-            ast::UnaryOp::Not => name![not],
-            ast::UnaryOp::Neg => name![neg],
+        let (lang_item, fn_name) = match prefix_expr.op_kind()? {
+            ast::UnaryOp::Deref => (LangItem::Deref, name![deref]),
+            ast::UnaryOp::Not => (LangItem::Not, name![not]),
+            ast::UnaryOp::Neg => (LangItem::Neg, name![neg]),
         };
         let ty = self.ty_of_expr(db, &prefix_expr.expr()?)?;
 
-        let (op_trait, op_fn) = self.lang_trait_fn(db, &lang_item_name, &lang_item_name)?;
+        let (op_trait, op_fn) = self.lang_trait_fn(db, lang_item, &fn_name)?;
         // HACK: subst for all methods coincides with that for their trait because the methods
         // don't have any generic parameters, so we skip building another subst for the methods.
         let substs = hir_ty::TyBuilder::subst_for_def(db, op_trait, None).push(ty.clone()).build();
@@ -334,9 +331,7 @@ impl SourceAnalyzer {
         let base_ty = self.ty_of_expr(db, &index_expr.base()?)?;
         let index_ty = self.ty_of_expr(db, &index_expr.index()?)?;
 
-        let lang_item_name = name![index];
-
-        let (op_trait, op_fn) = self.lang_trait_fn(db, &lang_item_name, &lang_item_name)?;
+        let (op_trait, op_fn) = self.lang_trait_fn(db, LangItem::Index, &name![index])?;
         // HACK: subst for all methods coincides with that for their trait because the methods
         // don't have any generic parameters, so we skip building another subst for the methods.
         let substs = hir_ty::TyBuilder::subst_for_def(db, op_trait, None)
@@ -355,8 +350,8 @@ impl SourceAnalyzer {
         let lhs = self.ty_of_expr(db, &binop_expr.lhs()?)?;
         let rhs = self.ty_of_expr(db, &binop_expr.rhs()?)?;
 
-        let (op_trait, op_fn) = lang_names_for_bin_op(op)
-            .and_then(|(name, lang_item)| self.lang_trait_fn(db, &lang_item, &name))?;
+        let (op_trait, op_fn) = lang_items_for_bin_op(op)
+            .and_then(|(name, lang_item)| self.lang_trait_fn(db, lang_item, &name))?;
         // HACK: subst for `index()` coincides with that for `Index` because `index()` itself
         // doesn't have any generic parameters, so we skip building another subst for `index()`.
         let substs = hir_ty::TyBuilder::subst_for_def(db, op_trait, None)
@@ -374,8 +369,7 @@ impl SourceAnalyzer {
     ) -> Option<FunctionId> {
         let ty = self.ty_of_expr(db, &try_expr.expr()?)?;
 
-        let op_fn =
-            db.lang_item(self.resolver.krate(), name![branch].to_smol_str())?.as_function()?;
+        let op_fn = db.lang_item(self.resolver.krate(), LangItem::TryTraitBranch)?.as_function()?;
         let op_trait = match op_fn.lookup(db.upcast()).container {
             ItemContainerId::TraitId(id) => id,
             _ => return None,
@@ -504,7 +498,7 @@ impl SourceAnalyzer {
                         AssocItemId::ConstId(const_id) => {
                             self.resolve_impl_const_or_trait_def(db, const_id, subs).into()
                         }
-                        _ => assoc,
+                        assoc => assoc,
                     };
 
                     return Some(PathResolution::Def(AssocItem::from(assoc).into()));
@@ -517,7 +511,13 @@ impl SourceAnalyzer {
                 prefer_value_ns = true;
             } else if let Some(path_pat) = parent().and_then(ast::PathPat::cast) {
                 let pat_id = self.pat_id(&path_pat.into())?;
-                if let Some((assoc, _)) = infer.assoc_resolutions_for_pat(pat_id) {
+                if let Some((assoc, subs)) = infer.assoc_resolutions_for_pat(pat_id) {
+                    let assoc = match assoc {
+                        AssocItemId::ConstId(const_id) => {
+                            self.resolve_impl_const_or_trait_def(db, const_id, subs).into()
+                        }
+                        assoc => assoc,
+                    };
                     return Some(PathResolution::Def(AssocItem::from(assoc).into()));
                 }
                 if let Some(VariantId::EnumVariantId(variant)) =
@@ -628,7 +628,7 @@ impl SourceAnalyzer {
                                 {
                                     return Some(PathResolution::DeriveHelper(DeriveHelper {
                                         derive: *macro_id,
-                                        idx,
+                                        idx: idx as u32,
                                     }));
                                 }
                             }
@@ -815,10 +815,10 @@ impl SourceAnalyzer {
     fn lang_trait_fn(
         &self,
         db: &dyn HirDatabase,
-        lang_trait: &Name,
+        lang_trait: LangItem,
         method_name: &Name,
     ) -> Option<(TraitId, FunctionId)> {
-        let trait_id = db.lang_item(self.resolver.krate(), lang_trait.to_smol_str())?.as_trait()?;
+        let trait_id = db.lang_item(self.resolver.krate(), lang_trait)?.as_trait()?;
         let fn_id = db.trait_data(trait_id).method_by_name(method_name)?;
         Some((trait_id, fn_id))
     }

@@ -31,58 +31,12 @@ export async function bootstrap(
 
     return path;
 }
-
-async function patchelf(dest: vscode.Uri): Promise<void> {
-    await vscode.window.withProgress(
-        {
-            location: vscode.ProgressLocation.Notification,
-            title: "Patching rust-analyzer for NixOS",
-        },
-        async (progress, _) => {
-            const expression = `
-            {srcStr, pkgs ? import <nixpkgs> {}}:
-                pkgs.stdenv.mkDerivation {
-                    name = "rust-analyzer";
-                    src = /. + srcStr;
-                    phases = [ "installPhase" "fixupPhase" ];
-                    installPhase = "cp $src $out";
-                    fixupPhase = ''
-                    chmod 755 $out
-                    patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out
-                    '';
-                }
-            `;
-            const origFile = vscode.Uri.file(dest.fsPath + "-orig");
-            await vscode.workspace.fs.rename(dest, origFile, { overwrite: true });
-            try {
-                progress.report({ message: "Patching executable", increment: 20 });
-                await new Promise((resolve, reject) => {
-                    const handle = exec(
-                        `nix-build -E - --argstr srcStr '${origFile.fsPath}' -o '${dest.fsPath}'`,
-                        (err, stdout, stderr) => {
-                            if (err != null) {
-                                reject(Error(stderr));
-                            } else {
-                                resolve(stdout);
-                            }
-                        }
-                    );
-                    handle.stdin?.write(expression);
-                    handle.stdin?.end();
-                });
-            } finally {
-                await vscode.workspace.fs.delete(origFile);
-            }
-        }
-    );
-}
-
 async function getServer(
     context: vscode.ExtensionContext,
     config: Config,
     state: PersistentState
 ): Promise<string | undefined> {
-    const explicitPath = serverPath(config);
+    const explicitPath = process.env.__RA_LSP_SERVER_DEBUG ?? config.serverPath;
     if (explicitPath) {
         if (explicitPath.startsWith("~/")) {
             return os.homedir() + explicitPath.slice("~".length);
@@ -131,9 +85,6 @@ async function getServer(
     );
     return undefined;
 }
-function serverPath(config: Config): string | null {
-    return process.env.__RA_LSP_SERVER_DEBUG ?? config.serverPath;
-}
 
 async function isNixOs(): Promise<boolean> {
     try {
@@ -145,4 +96,49 @@ async function isNixOs(): Promise<boolean> {
     } catch {
         return false;
     }
+}
+
+async function patchelf(dest: vscode.Uri): Promise<void> {
+    await vscode.window.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification,
+            title: "Patching rust-analyzer for NixOS",
+        },
+        async (progress, _) => {
+            const expression = `
+            {srcStr, pkgs ? import <nixpkgs> {}}:
+                pkgs.stdenv.mkDerivation {
+                    name = "rust-analyzer";
+                    src = /. + srcStr;
+                    phases = [ "installPhase" "fixupPhase" ];
+                    installPhase = "cp $src $out";
+                    fixupPhase = ''
+                    chmod 755 $out
+                    patchelf --set-interpreter "$(cat $NIX_CC/nix-support/dynamic-linker)" $out
+                    '';
+                }
+            `;
+            const origFile = vscode.Uri.file(dest.fsPath + "-orig");
+            await vscode.workspace.fs.rename(dest, origFile, { overwrite: true });
+            try {
+                progress.report({ message: "Patching executable", increment: 20 });
+                await new Promise((resolve, reject) => {
+                    const handle = exec(
+                        `nix-build -E - --argstr srcStr '${origFile.fsPath}' -o '${dest.fsPath}'`,
+                        (err, stdout, stderr) => {
+                            if (err != null) {
+                                reject(Error(stderr));
+                            } else {
+                                resolve(stdout);
+                            }
+                        }
+                    );
+                    handle.stdin?.write(expression);
+                    handle.stdin?.end();
+                });
+            } finally {
+                await vscode.workspace.fs.delete(origFile);
+            }
+        }
+    );
 }

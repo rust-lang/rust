@@ -3,7 +3,6 @@
 use std::sync::Arc;
 
 use cov_mark::hit;
-use syntax::SmolStr;
 use tracing::debug;
 
 use chalk_ir::{cast::Cast, fold::shift::Shift, CanonicalVarKinds};
@@ -12,7 +11,7 @@ use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 use base_db::CrateId;
 use hir_def::{
     expr::Movability,
-    lang_item::{lang_attr, LangItemTarget},
+    lang_item::{lang_attr, LangItem, LangItemTarget},
     AssocItemId, GenericDefId, HasModule, ItemContainerId, Lookup, ModuleId, TypeAliasId,
 };
 use hir_expand::name::name;
@@ -182,9 +181,9 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         &self,
         well_known_trait: rust_ir::WellKnownTrait,
     ) -> Option<chalk_ir::TraitId<Interner>> {
-        let lang_attr = lang_attr_from_well_known_trait(well_known_trait);
+        let lang_attr = lang_item_from_well_known_trait(well_known_trait);
         let trait_ = match self.db.lang_item(self.krate, lang_attr.into()) {
-            Some(LangItemTarget::TraitId(trait_)) => trait_,
+            Some(LangItemTarget::Trait(trait_)) => trait_,
             _ => return None,
         };
         Some(to_chalk_trait_id(trait_))
@@ -206,7 +205,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     .return_type_impl_traits(func)
                     .expect("impl trait id without impl traits");
                 let (datas, binders) = (*datas).as_ref().into_value_and_skipped_binders();
-                let data = &datas.impl_traits[idx as usize];
+                let data = &datas.impl_traits[idx];
                 let bound = OpaqueTyDatumBound {
                     bounds: make_single_type_binders(data.bounds.skip_binders().to_vec()),
                     where_clauses: chalk_ir::Binders::empty(Interner, vec![]),
@@ -216,7 +215,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
             crate::ImplTraitId::AsyncBlockTypeImplTrait(..) => {
                 if let Some((future_trait, future_output)) = self
                     .db
-                    .lang_item(self.krate, SmolStr::new_inline("future_trait"))
+                    .lang_item(self.krate, LangItem::Future)
                     .and_then(|item| item.as_trait())
                     .and_then(|trait_| {
                         let alias =
@@ -246,7 +245,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     binder.push(crate::wrap_empty_binders(impl_bound));
                     let sized_trait = self
                         .db
-                        .lang_item(self.krate, SmolStr::new_inline("sized"))
+                        .lang_item(self.krate, LangItem::Sized)
                         .and_then(|item| item.as_trait());
                     if let Some(sized_trait_) = sized_trait {
                         let sized_bound = WhereClause::Implemented(TraitRef {
@@ -493,7 +492,7 @@ pub(crate) fn associated_ty_data_query(
 
     if !ctx.unsized_types.borrow().contains(&self_ty) {
         let sized_trait = db
-            .lang_item(resolver.krate(), SmolStr::new_inline("sized"))
+            .lang_item(resolver.krate(), LangItem::Sized)
             .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
         let sized_bound = sized_trait.into_iter().map(|sized_trait| {
             let trait_bound =
@@ -541,8 +540,8 @@ pub(crate) fn trait_datum_query(
     let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
     let associated_ty_ids = trait_data.associated_types().map(to_assoc_type_id).collect();
     let trait_datum_bound = rust_ir::TraitDatumBound { where_clauses };
-    let well_known =
-        lang_attr(db.upcast(), trait_).and_then(|name| well_known_trait_from_lang_attr(&name));
+    let well_known = lang_attr(db.upcast(), trait_)
+        .and_then(|name| well_known_trait_from_lang_item(LangItem::from_str(&name)?));
     let trait_datum = TraitDatum {
         id: trait_id,
         binders: make_binders(db, &generic_params, trait_datum_bound),
@@ -553,42 +552,42 @@ pub(crate) fn trait_datum_query(
     Arc::new(trait_datum)
 }
 
-fn well_known_trait_from_lang_attr(name: &str) -> Option<WellKnownTrait> {
-    Some(match name {
-        "clone" => WellKnownTrait::Clone,
-        "coerce_unsized" => WellKnownTrait::CoerceUnsized,
-        "copy" => WellKnownTrait::Copy,
-        "discriminant_kind" => WellKnownTrait::DiscriminantKind,
-        "dispatch_from_dyn" => WellKnownTrait::DispatchFromDyn,
-        "drop" => WellKnownTrait::Drop,
-        "fn" => WellKnownTrait::Fn,
-        "fn_mut" => WellKnownTrait::FnMut,
-        "fn_once" => WellKnownTrait::FnOnce,
-        "generator" => WellKnownTrait::Generator,
-        "sized" => WellKnownTrait::Sized,
-        "unpin" => WellKnownTrait::Unpin,
-        "unsize" => WellKnownTrait::Unsize,
-        "tuple_trait" => WellKnownTrait::Tuple,
+fn well_known_trait_from_lang_item(item: LangItem) -> Option<WellKnownTrait> {
+    Some(match item {
+        LangItem::Clone => WellKnownTrait::Clone,
+        LangItem::CoerceUnsized => WellKnownTrait::CoerceUnsized,
+        LangItem::Copy => WellKnownTrait::Copy,
+        LangItem::DiscriminantKind => WellKnownTrait::DiscriminantKind,
+        LangItem::DispatchFromDyn => WellKnownTrait::DispatchFromDyn,
+        LangItem::Drop => WellKnownTrait::Drop,
+        LangItem::Fn => WellKnownTrait::Fn,
+        LangItem::FnMut => WellKnownTrait::FnMut,
+        LangItem::FnOnce => WellKnownTrait::FnOnce,
+        LangItem::Generator => WellKnownTrait::Generator,
+        LangItem::Sized => WellKnownTrait::Sized,
+        LangItem::Unpin => WellKnownTrait::Unpin,
+        LangItem::Unsize => WellKnownTrait::Unsize,
+        LangItem::Tuple => WellKnownTrait::Tuple,
         _ => return None,
     })
 }
 
-fn lang_attr_from_well_known_trait(attr: WellKnownTrait) -> &'static str {
-    match attr {
-        WellKnownTrait::Clone => "clone",
-        WellKnownTrait::CoerceUnsized => "coerce_unsized",
-        WellKnownTrait::Copy => "copy",
-        WellKnownTrait::DiscriminantKind => "discriminant_kind",
-        WellKnownTrait::DispatchFromDyn => "dispatch_from_dyn",
-        WellKnownTrait::Drop => "drop",
-        WellKnownTrait::Fn => "fn",
-        WellKnownTrait::FnMut => "fn_mut",
-        WellKnownTrait::FnOnce => "fn_once",
-        WellKnownTrait::Generator => "generator",
-        WellKnownTrait::Sized => "sized",
-        WellKnownTrait::Tuple => "tuple_trait",
-        WellKnownTrait::Unpin => "unpin",
-        WellKnownTrait::Unsize => "unsize",
+fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
+    match trait_ {
+        WellKnownTrait::Clone => LangItem::Clone,
+        WellKnownTrait::CoerceUnsized => LangItem::CoerceUnsized,
+        WellKnownTrait::Copy => LangItem::Copy,
+        WellKnownTrait::DiscriminantKind => LangItem::DiscriminantKind,
+        WellKnownTrait::DispatchFromDyn => LangItem::DispatchFromDyn,
+        WellKnownTrait::Drop => LangItem::Drop,
+        WellKnownTrait::Fn => LangItem::Fn,
+        WellKnownTrait::FnMut => LangItem::FnMut,
+        WellKnownTrait::FnOnce => LangItem::FnOnce,
+        WellKnownTrait::Generator => LangItem::Generator,
+        WellKnownTrait::Sized => LangItem::Sized,
+        WellKnownTrait::Tuple => LangItem::Tuple,
+        WellKnownTrait::Unpin => LangItem::Unpin,
+        WellKnownTrait::Unsize => LangItem::Unsize,
     }
 }
 

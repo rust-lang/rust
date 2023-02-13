@@ -3,15 +3,19 @@
 //! let _: u32  = /* <never-to-any> */ loop {};
 //! let _: &u32 = /* &* */ &mut 0;
 //! ```
-use hir::{Adjust, AutoBorrow, Mutability, OverloadedDeref, PointerCast, Safety, Semantics};
+use hir::{Adjust, Adjustment, AutoBorrow, HirDisplay, Mutability, PointerCast, Safety, Semantics};
 use ide_db::RootDatabase;
 
+use stdx::never;
 use syntax::{
     ast::{self, make, AstNode},
     ted,
 };
 
-use crate::{AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintsConfig, InlayKind};
+use crate::{
+    AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind,
+    InlayTooltip,
+};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -44,27 +48,12 @@ pub(super) fn hints(
         mode_and_needs_parens_for_adjustment_hints(expr, config.adjustment_hints_mode);
 
     if needs_outer_parens {
-        acc.push(InlayHint {
-            range: expr.syntax().text_range(),
-            kind: InlayKind::OpeningParenthesis,
-            label: "(".into(),
-            tooltip: None,
-        });
+        acc.push(InlayHint::opening_paren(expr.syntax().text_range()));
     }
 
     if postfix && needs_inner_parens {
-        acc.push(InlayHint {
-            range: expr.syntax().text_range(),
-            kind: InlayKind::OpeningParenthesis,
-            label: "(".into(),
-            tooltip: None,
-        });
-        acc.push(InlayHint {
-            range: expr.syntax().text_range(),
-            kind: InlayKind::ClosingParenthesis,
-            label: ")".into(),
-            tooltip: None,
-        });
+        acc.push(InlayHint::opening_paren(expr.syntax().text_range()));
+        acc.push(InlayHint::closing_paren(expr.syntax().text_range()));
     }
 
     let (mut tmp0, mut tmp1);
@@ -76,72 +65,71 @@ pub(super) fn hints(
         &mut tmp1
     };
 
-    for adjustment in iter {
-        if adjustment.source == adjustment.target {
+    for Adjustment { source, target, kind } in iter {
+        if source == target {
             continue;
         }
 
         // FIXME: Add some nicer tooltips to each of these
-        let text = match adjustment.kind {
+        let (text, coercion) = match kind {
             Adjust::NeverToAny if config.adjustment_hints == AdjustmentHints::Always => {
-                "<never-to-any>"
+                ("<never-to-any>", "never to any")
             }
-            Adjust::Deref(None) => "*",
-            Adjust::Deref(Some(OverloadedDeref(Mutability::Mut))) => "*",
-            Adjust::Deref(Some(OverloadedDeref(Mutability::Shared))) => "*",
-            Adjust::Borrow(AutoBorrow::Ref(Mutability::Shared)) => "&",
-            Adjust::Borrow(AutoBorrow::Ref(Mutability::Mut)) => "&mut ",
-            Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Shared)) => "&raw const ",
-            Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Mut)) => "&raw mut ",
+            Adjust::Deref(_) => ("*", "dereference"),
+            Adjust::Borrow(AutoBorrow::Ref(Mutability::Shared)) => ("&", "borrow"),
+            Adjust::Borrow(AutoBorrow::Ref(Mutability::Mut)) => ("&mut ", "unique borrow"),
+            Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Shared)) => {
+                ("&raw const ", "const pointer borrow")
+            }
+            Adjust::Borrow(AutoBorrow::RawPtr(Mutability::Mut)) => {
+                ("&raw mut ", "mut pointer borrow")
+            }
             // some of these could be represented via `as` casts, but that's not too nice and
             // handling everything as a prefix expr makes the `(` and `)` insertion easier
             Adjust::Pointer(cast) if config.adjustment_hints == AdjustmentHints::Always => {
                 match cast {
-                    PointerCast::ReifyFnPointer => "<fn-item-to-fn-pointer>",
-                    PointerCast::UnsafeFnPointer => "<safe-fn-pointer-to-unsafe-fn-pointer>",
-                    PointerCast::ClosureFnPointer(Safety::Unsafe) => {
-                        "<closure-to-unsafe-fn-pointer>"
+                    PointerCast::ReifyFnPointer => {
+                        ("<fn-item-to-fn-pointer>", "fn item to fn pointer")
                     }
-                    PointerCast::ClosureFnPointer(Safety::Safe) => "<closure-to-fn-pointer>",
-                    PointerCast::MutToConstPointer => "<mut-ptr-to-const-ptr>",
-                    PointerCast::ArrayToPointer => "<array-ptr-to-element-ptr>",
-                    PointerCast::Unsize => "<unsize>",
+                    PointerCast::UnsafeFnPointer => (
+                        "<safe-fn-pointer-to-unsafe-fn-pointer>",
+                        "safe fn pointer to unsafe fn pointer",
+                    ),
+                    PointerCast::ClosureFnPointer(Safety::Unsafe) => {
+                        ("<closure-to-unsafe-fn-pointer>", "closure to unsafe fn pointer")
+                    }
+                    PointerCast::ClosureFnPointer(Safety::Safe) => {
+                        ("<closure-to-fn-pointer>", "closure to fn pointer")
+                    }
+                    PointerCast::MutToConstPointer => {
+                        ("<mut-ptr-to-const-ptr>", "mut ptr to const ptr")
+                    }
+                    PointerCast::ArrayToPointer => ("<array-ptr-to-element-ptr>", ""),
+                    PointerCast::Unsize => ("<unsize>", "unsize"),
                 }
             }
             _ => continue,
         };
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
-            kind: if postfix {
-                InlayKind::AdjustmentHintPostfix
-            } else {
-                InlayKind::AdjustmentHint
-            },
-            label: if postfix { format!(".{}", text.trim_end()).into() } else { text.into() },
-            tooltip: None,
+            kind: if postfix { InlayKind::AdjustmentPostfix } else { InlayKind::Adjustment },
+            label: InlayHintLabel::simple(
+                if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
+                Some(InlayTooltip::Markdown(format!(
+                    "`{}` → `{}` ({coercion} coercion)",
+                    source.display(sema.db),
+                    target.display(sema.db),
+                ))),
+                None,
+            ),
         });
     }
     if !postfix && needs_inner_parens {
-        acc.push(InlayHint {
-            range: expr.syntax().text_range(),
-            kind: InlayKind::OpeningParenthesis,
-            label: "(".into(),
-            tooltip: None,
-        });
-        acc.push(InlayHint {
-            range: expr.syntax().text_range(),
-            kind: InlayKind::ClosingParenthesis,
-            label: ")".into(),
-            tooltip: None,
-        });
+        acc.push(InlayHint::opening_paren(expr.syntax().text_range()));
+        acc.push(InlayHint::closing_paren(expr.syntax().text_range()));
     }
     if needs_outer_parens {
-        acc.push(InlayHint {
-            range: expr.syntax().text_range(),
-            kind: InlayKind::ClosingParenthesis,
-            label: ")".into(),
-            tooltip: None,
-        });
+        acc.push(InlayHint::closing_paren(expr.syntax().text_range()));
     }
     Some(())
 }
@@ -223,16 +211,21 @@ fn needs_parens_for_adjustment_hints(expr: &ast::Expr, postfix: bool) -> (bool, 
     ted::replace(expr.syntax(), dummy_expr.syntax());
 
     let parent = dummy_expr.syntax().parent();
-    let expr = if postfix {
-        let ast::Expr::TryExpr(e) = &dummy_expr else { unreachable!() };
-        let Some(ast::Expr::ParenExpr(e)) = e.expr() else { unreachable!() };
+    let Some(expr) = (|| {
+        if postfix {
+            let ast::Expr::TryExpr(e) = &dummy_expr else { return None };
+            let Some(ast::Expr::ParenExpr(e)) = e.expr() else { return None };
 
-        e.expr().unwrap()
-    } else {
-        let ast::Expr::RefExpr(e) = &dummy_expr else { unreachable!() };
-        let Some(ast::Expr::ParenExpr(e)) = e.expr() else { unreachable!() };
+            e.expr()
+        } else {
+            let ast::Expr::RefExpr(e) = &dummy_expr else { return None };
+            let Some(ast::Expr::ParenExpr(e)) = e.expr() else { return None };
 
-        e.expr().unwrap()
+            e.expr()
+        }
+    })() else {
+        never!("broken syntax tree?\n{:?}\n{:?}", expr, dummy_expr);
+        return (true, true)
     };
 
     // At this point

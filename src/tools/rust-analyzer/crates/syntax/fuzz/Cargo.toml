@@ -1,18 +1,17 @@
-
 [package]
 name = "syntax-fuzz"
 version = "0.0.1"
 publish = false
 edition = "2021"
-rust-version = "1.65"
+rust-version = "1.66.1"
 
 [package.metadata]
 cargo-fuzz = true
 
 [dependencies]
 syntax = { path = "..", version = "0.0.0" }
-text_edit = { path = "../../text_edit", version = "0.0.0" }
-libfuzzer-sys = { git = "https://github.com/rust-fuzz/libfuzzer-sys.git" }
+text-edit = { path = "../../text-edit", version = "0.0.0" }
+libfuzzer-sys = "0.4.5"
 
 # Prevent this from interfering with workspaces
 [workspace]

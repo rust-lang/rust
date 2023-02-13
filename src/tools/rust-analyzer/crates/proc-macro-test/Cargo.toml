@@ -1,15 +1,20 @@
 [package]
 name = "proc-macro-test"
 version = "0.0.0"
-license = "MIT OR Apache-2.0"
-edition = "2021"
-rust-version = "1.65"
 publish = false
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
 
 [build-dependencies]
-proc-macro-test-impl = { path = "imp", version = "0.0.0" }
-toolchain = { path = "../toolchain", version = "0.0.0" }
 cargo_metadata = "0.15.0"
+
+proc-macro-test-impl = { path = "imp", version = "0.0.0" }
+
+# local deps
+toolchain.workspace = true

@@ -2,9 +2,9 @@ import * as vscode from "vscode";
 import * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
 
-import { Config, substituteVariablesInEnv, substituteVSCodeVariables } from "./config";
+import { Config, substituteVSCodeVariables } from "./config";
 import { createClient } from "./client";
-import { isRustDocument, isRustEditor, log, RustEditor } from "./util";
+import { isRustDocument, isRustEditor, LazyOutputChannel, log, RustEditor } from "./util";
 import { ServerStatusParams } from "./lsp_ext";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
@@ -128,9 +128,7 @@ export class Ctx {
         }
 
         if (!this.traceOutputChannel) {
-            this.traceOutputChannel = vscode.window.createOutputChannel(
-                "Rust Analyzer Language Server Trace"
-            );
+            this.traceOutputChannel = new LazyOutputChannel("Rust Analyzer Language Server Trace");
             this.pushExtCleanup(this.traceOutputChannel);
         }
         if (!this.outputChannel) {
@@ -152,9 +150,7 @@ export class Ctx {
                     throw new Error(message);
                 }
             );
-            const newEnv = substituteVariablesInEnv(
-                Object.assign({}, process.env, this.config.serverExtraEnv)
-            );
+            const newEnv = Object.assign({}, process.env, this.config.serverExtraEnv);
             const run: lc.Executable = {
                 command: this._serverPath,
                 options: { env: newEnv },
@@ -186,6 +182,11 @@ export class Ctx {
                 this._client.onNotification(ra.serverStatus, (params) =>
                     this.setServerStatus(params)
                 )
+            );
+            this.pushClientCleanup(
+                this._client.onNotification(ra.openServerLogs, () => {
+                    this.outputChannel!.show();
+                })
             );
         }
         return this._client;

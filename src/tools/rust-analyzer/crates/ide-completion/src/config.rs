@@ -19,6 +19,7 @@ pub struct CompletionConfig {
     pub insert_use: InsertUseConfig,
     pub prefer_no_std: bool,
     pub snippets: Vec<Snippet>,
+    pub limit: Option<usize>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

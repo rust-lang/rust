@@ -10,9 +10,7 @@ use syntax::{
     match_ast, SyntaxKind, SyntaxNode, T,
 };
 
-use crate::{
-    inlay_hints::InlayHintLabelPart, FileId, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind,
-};
+use crate::{FileId, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -109,15 +107,11 @@ pub(super) fn hints(
         return None;
     }
 
-    let linked_location = config
-        .location_links
-        .then(|| name_range.map(|range| FileRange { file_id, range }))
-        .flatten();
+    let linked_location = name_range.map(|range| FileRange { file_id, range });
     acc.push(InlayHint {
         range: closing_token.text_range(),
-        kind: InlayKind::ClosingBraceHint,
-        label: InlayHintLabel { parts: vec![InlayHintLabelPart { text: label, linked_location }] },
-        tooltip: None, // provided by label part location
+        kind: InlayKind::ClosingBrace,
+        label: InlayHintLabel::simple(label, None, linked_location),
     });
 
     None

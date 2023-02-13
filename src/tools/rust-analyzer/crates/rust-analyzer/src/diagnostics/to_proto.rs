@@ -534,7 +534,7 @@ mod tests {
         let (sender, _) = crossbeam_channel::unbounded();
         let state = GlobalState::new(
             sender,
-            Config::new(workspace_root.to_path_buf(), ClientCapabilities::default()),
+            Config::new(workspace_root.to_path_buf(), ClientCapabilities::default(), Vec::new()),
         );
         let snap = state.snapshot();
         let mut actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root, &snap);

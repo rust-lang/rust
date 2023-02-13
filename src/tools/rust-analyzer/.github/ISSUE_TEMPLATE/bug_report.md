@@ -2,7 +2,7 @@
 name: Bug report
 about: Create a bug report for rust-analyzer.
 title: ''
-labels: ''
+labels: 'C-bug'
 assignees: ''
 
 ---
@@ -22,4 +22,4 @@ Otherwise please try to provide information which will help us to fix the issue 
 
 **rustc version**: (eg. output of `rustc -V`)
 
-**relevant settings**: (eg. client settings, or environment variables like `CARGO`, `RUSTUP_HOME` or `CARGO_HOME`)
+**relevant settings**: (eg. client settings, or environment variables like `CARGO`, `RUSTC`, `RUSTUP_HOME` or `CARGO_HOME`)

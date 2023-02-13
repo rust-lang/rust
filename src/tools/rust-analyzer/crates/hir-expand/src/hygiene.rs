@@ -128,7 +128,7 @@ struct HygieneInfo {
     attr_input_or_mac_def_start: Option<InFile<TextSize>>,
 
     macro_def: Arc<TokenExpander>,
-    macro_arg: Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupUndoInfo)>,
+    macro_arg: Arc<(crate::tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupUndoInfo)>,
     macro_arg_shift: mbe::Shift,
     exp_map: Arc<mbe::TokenMap>,
 }
@@ -191,7 +191,7 @@ fn make_hygiene_info(
             let tt = ast_id
                 .to_node(db)
                 .doc_comments_and_attrs()
-                .nth(invoc_attr_index as usize)
+                .nth(invoc_attr_index.ast_index())
                 .and_then(Either::left)?
                 .token_tree()?;
             Some(InFile::new(ast_id.file_id, tt))

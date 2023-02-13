@@ -1,14 +1,15 @@
 [package]
 name = "rust-analyzer"
 version = "0.0.0"
-authors = ["rust-analyzer Team"]
 homepage = "https://github.com/rust-analyzer/rust-analyzer"
 description = "A language server for the Rust programming language"
 documentation = "https://rust-analyzer.github.io/manual.html"
-license = "MIT OR Apache-2.0"
 autobins = false
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
@@ -31,8 +32,8 @@ rustc-hash = "1.1.0"
 serde = { version = "1.0.137", features = ["derive"] }
 serde_json = { version = "1.0.81", features = ["preserve_order"] }
 threadpool = "1.8.1"
-rayon = "1.5.3"
-num_cpus = "1.13.1"
+rayon = "1.6.1"
+num_cpus = "1.15.0"
 mimalloc = { version = "0.1.30", default-features = false, optional = true }
 lsp-server = { version = "0.7.0", path = "../../lib/lsp-server" }
 tracing = "0.1.35"
@@ -46,26 +47,25 @@ tracing-log = "0.1.3"
 tracing-tree = "0.2.1"
 always-assert = "0.1.2"
 
-stdx = { path = "../stdx", version = "0.0.0" }
-flycheck = { path = "../flycheck", version = "0.0.0" }
-ide = { path = "../ide", version = "0.0.0" }
-ide-db = { path = "../ide-db", version = "0.0.0" }
-profile = { path = "../profile", version = "0.0.0" }
-project-model = { path = "../project-model", version = "0.0.0" }
-syntax = { path = "../syntax", version = "0.0.0" }
-vfs = { path = "../vfs", version = "0.0.0" }
-vfs-notify = { path = "../vfs-notify", version = "0.0.0" }
-cfg = { path = "../cfg", version = "0.0.0" }
-toolchain = { path = "../toolchain", version = "0.0.0" }
-tt = { path = "../tt", version = "0.0.0" }
-proc-macro-api = { path = "../proc-macro-api", version = "0.0.0" }
-
+cfg.workspace = true
+flycheck.workspace = true
+hir-def.workspace = true
+hir-ty.workspace = true
+hir.workspace = true
+ide-db.workspace = true
 # This should only be used in CLI
-ide-ssr = { path = "../ide-ssr", version = "0.0.0" }
-hir = { path = "../hir", version = "0.0.0" }
-hir-def = { path = "../hir-def", version = "0.0.0" }
-hir-ty = { path = "../hir-ty", version = "0.0.0" }
-proc-macro-srv = { path = "../proc-macro-srv", version = "0.0.0" }
+ide-ssr.workspace = true
+ide.workspace = true
+proc-macro-api.workspace = true
+proc-macro-srv.workspace = true
+profile.workspace = true
+project-model.workspace = true
+stdx.workspace = true
+syntax.workspace = true
+toolchain.workspace = true
+tt.workspace = true
+vfs-notify.workspace = true
+vfs.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.3.9"
@@ -78,9 +78,9 @@ expect-test = "1.4.0"
 jod-thread = "0.1.2"
 xshell = "0.2.2"
 
-test-utils = { path = "../test-utils" }
-sourcegen = { path = "../sourcegen" }
-mbe = { path = "../mbe" }
+test-utils.workspace = true
+sourcegen.workspace = true
+mbe.workspace = true
 
 [features]
 jemalloc = ["jemallocator", "profile/jemalloc"]

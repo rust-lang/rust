@@ -20,7 +20,7 @@ use ide_db::{
     SnippetCap,
 };
 use itertools::Itertools;
-use lsp_types::{ClientCapabilities, ClientInfo, MarkupKind};
+use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{
     CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource,
     UnsetTestCrates,
@@ -117,6 +117,11 @@ config_data! {
         ///
         /// This option does not take effect until rust-analyzer is restarted.
         cargo_sysroot: Option<String>    = "\"discover\"",
+        /// Relative path to the sysroot library sources. If left unset, this will default to
+        /// `{cargo.sysroot}/lib/rustlib/src/rust/library`.
+        ///
+        /// This option does not take effect until rust-analyzer is restarted.
+        cargo_sysrootSrc: Option<String>    = "null",
         /// Compilation target override (target triple).
         // FIXME(@poliorcetics): move to multiple targets here too, but this will need more work
         // than `checkOnSave_target`
@@ -195,6 +200,8 @@ config_data! {
         completion_autoself_enable: bool        = "true",
         /// Whether to add parenthesis and argument snippets when completing function.
         completion_callable_snippets: CallableCompletionDef  = "\"fill_arguments\"",
+        /// Maximum number of completions to return. If `None`, the limit is infinite.
+        completion_limit: Option<usize> = "null",
         /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
         completion_postfix_enable: bool         = "true",
         /// Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
@@ -342,8 +349,6 @@ config_data! {
         inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = "\"never\"",
         /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
         inlayHints_lifetimeElisionHints_useParameterNames: bool    = "false",
-        /// Whether to use location links for parts of type mentioned in inlay hints.
-        inlayHints_locationLinks: bool                             = "true",
         /// Maximum length for inlay hints. Set to null to have an unlimited length.
         inlayHints_maxLength: Option<usize>                        = "25",
         /// Whether to show function parameter name inlay hints at the call
@@ -521,6 +526,7 @@ impl Default for ConfigData {
 #[derive(Debug, Clone)]
 pub struct Config {
     pub discovered_projects: Option<Vec<ProjectManifest>>,
+    pub workspace_roots: Vec<AbsPathBuf>,
     caps: lsp_types::ClientCapabilities,
     root_path: AbsPathBuf,
     data: ConfigData,
@@ -717,7 +723,11 @@ impl fmt::Display for ConfigUpdateError {
 }
 
 impl Config {
-    pub fn new(root_path: AbsPathBuf, caps: ClientCapabilities) -> Self {
+    pub fn new(
+        root_path: AbsPathBuf,
+        caps: ClientCapabilities,
+        workspace_roots: Vec<AbsPathBuf>,
+    ) -> Self {
         Config {
             caps,
             data: ConfigData::default(),
@@ -725,20 +735,17 @@ impl Config {
             discovered_projects: None,
             root_path,
             snippets: Default::default(),
+            workspace_roots,
         }
     }
 
-    pub fn client_specific_adjustments(&mut self, client_info: &Option<ClientInfo>) {
-        // FIXME: remove this when we drop support for vscode 1.65 and below
-        if let Some(client) = client_info {
-            if client.name.contains("Code") || client.name.contains("Codium") {
-                if let Some(version) = &client.version {
-                    if version.as_str() < "1.76" {
-                        self.data.inlayHints_locationLinks = false;
-                    }
-                }
-            }
+    pub fn rediscover_workspaces(&mut self) {
+        let discovered = ProjectManifest::discover_all(&self.workspace_roots);
+        tracing::info!("discovered projects: {:?}", discovered);
+        if discovered.is_empty() {
+            tracing::error!("failed to find any projects in {:?}", &self.workspace_roots);
         }
+        self.discovered_projects = Some(discovered);
     }
 
     pub fn update(&mut self, mut json: serde_json::Value) -> Result<(), ConfigUpdateError> {
@@ -837,6 +844,9 @@ macro_rules! try_or_def {
 }
 
 impl Config {
+    pub fn has_linked_projects(&self) -> bool {
+        !self.data.linkedProjects.is_empty()
+    }
     pub fn linked_projects(&self) -> Vec<LinkedProject> {
         match self.data.linkedProjects.as_slice() {
             [] => match self.discovered_projects.as_ref() {
@@ -1004,6 +1014,10 @@ impl Config {
         self.experimental("codeActionGroup")
     }
 
+    pub fn open_server_logs(&self) -> bool {
+        self.experimental("openServerLogs")
+    }
+
     pub fn server_status_notification(&self) -> bool {
         self.experimental("serverStatusNotification")
     }
@@ -1044,7 +1058,7 @@ impl Config {
         &self.data.cargo_extraEnv
     }
 
-    pub fn check_on_save_extra_env(&self) -> FxHashMap<String, String> {
+    pub fn check_extra_env(&self) -> FxHashMap<String, String> {
         let mut extra_env = self.data.cargo_extraEnv.clone();
         extra_env.extend(self.data.check_extraEnv.clone());
         extra_env
@@ -1114,6 +1128,8 @@ impl Config {
                 RustcSource::Path(self.root_path.join(sysroot))
             }
         });
+        let sysroot_src =
+            self.data.cargo_sysrootSrc.as_ref().map(|sysroot| self.root_path.join(sysroot));
 
         CargoConfig {
             features: match &self.data.cargo_features {
@@ -1125,6 +1141,7 @@ impl Config {
             },
             target: self.data.cargo_target.clone(),
             sysroot,
+            sysroot_src,
             rustc_source,
             unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
             wrap_rustc_in_build_scripts: self.data.cargo_buildScripts_useRustcWrapper,
@@ -1165,7 +1182,7 @@ impl Config {
                 FlycheckConfig::CustomCommand {
                     command,
                     args,
-                    extra_env: self.check_on_save_extra_env(),
+                    extra_env: self.check_extra_env(),
                     invocation_strategy: match self.data.check_invocationStrategy {
                         InvocationStrategy::Once => flycheck::InvocationStrategy::Once,
                         InvocationStrategy::PerWorkspace => {
@@ -1210,7 +1227,7 @@ impl Config {
                     CargoFeaturesDef::Selected(it) => it,
                 },
                 extra_args: self.data.check_extraArgs.clone(),
-                extra_env: self.check_on_save_extra_env(),
+                extra_env: self.check_extra_env(),
                 ansi_color_output: self.color_diagnostic_output(),
             },
         }
@@ -1229,7 +1246,6 @@ impl Config {
 
     pub fn inlay_hints(&self) -> InlayHintsConfig {
         InlayHintsConfig {
-            location_links: self.data.inlayHints_locationLinks,
             render_colons: self.data.inlayHints_renderColons,
             type_hints: self.data.inlayHints_typeHints_enable,
             parameter_hints: self.data.inlayHints_parameterHints_enable,
@@ -1329,6 +1345,7 @@ impl Config {
                     .snippet_support?
             )),
             snippets: self.snippets.clone(),
+            limit: self.data.completion_limit,
         }
     }
 
@@ -1409,7 +1426,8 @@ impl Config {
     pub fn hover(&self) -> HoverConfig {
         HoverConfig {
             links_in_hover: self.data.hover_links_enable,
-            documentation: self.data.hover_documentation_enable.then(|| {
+            documentation: self.data.hover_documentation_enable,
+            format: {
                 let is_markdown = try_or_def!(self
                     .caps
                     .text_document
@@ -1425,7 +1443,7 @@ impl Config {
                 } else {
                     HoverDocFormat::PlainText
                 }
-            }),
+            },
             keywords: self.data.hover_documentation_keywords_enable,
         }
     }
@@ -1452,6 +1470,10 @@ impl Config {
 
     pub fn code_lens_refresh(&self) -> bool {
         try_or_def!(self.caps.workspace.as_ref()?.code_lens.as_ref()?.refresh_support?)
+    }
+
+    pub fn inlay_hints_refresh(&self) -> bool {
+        try_or_def!(self.caps.workspace.as_ref()?.inlay_hint.as_ref()?.refresh_support?)
     }
 
     pub fn insert_replace_support(&self) -> bool {

@@ -811,7 +811,7 @@ pub struct S;
     fn prelude() {
         check_found_path(
             r#"
-//- /main.rs crate:main deps:std
+//- /main.rs edition:2018 crate:main deps:std
 $0
 //- /std.rs crate:std
 pub mod prelude {
@@ -852,7 +852,7 @@ pub mod prelude {
     fn imported_prelude() {
         check_found_path(
             r#"
-//- /main.rs crate:main deps:std
+//- /main.rs edition:2018 crate:main deps:std
 use S;
 $0
 //- /std.rs crate:std
@@ -872,7 +872,7 @@ pub mod prelude {
     #[test]
     fn enum_variant_from_prelude() {
         let code = r#"
-//- /main.rs crate:main deps:std
+//- /main.rs edition:2018 crate:main deps:std
 $0
 //- /std.rs crate:std
 pub mod prelude {
@@ -1273,7 +1273,7 @@ fn f() {
     fn prelude_with_inner_items() {
         check_found_path(
             r#"
-//- /main.rs crate:main deps:std
+//- /main.rs edition:2018 crate:main deps:std
 fn f() {
     fn inner() {}
     $0

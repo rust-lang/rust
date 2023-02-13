@@ -2,9 +2,11 @@
 name = "base-db"
 version = "0.0.0"
 description = "TBD"
-license = "MIT OR Apache-2.0"
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
@@ -13,10 +15,11 @@ doctest = false
 salsa = "0.17.0-pre.2"
 rustc-hash = "1.1.0"
 
-syntax = { path = "../syntax", version = "0.0.0" }
-stdx = { path = "../stdx", version = "0.0.0" }
-cfg = { path = "../cfg", version = "0.0.0" }
-profile = { path = "../profile", version = "0.0.0" }
-tt = { path = "../tt", version = "0.0.0" }
-test-utils = { path = "../test-utils", version = "0.0.0" }
-vfs = { path = "../vfs", version = "0.0.0" }
+# local deps
+cfg.workspace = true
+profile.workspace = true
+stdx.workspace = true
+syntax.workspace = true
+test-utils.workspace = true
+tt.workspace = true
+vfs.workspace = true

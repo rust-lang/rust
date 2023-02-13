@@ -44,12 +44,13 @@ use hir_def::{
     expr::{BindingAnnotation, ExprOrPatId, LabelId, Pat, PatId},
     generics::{TypeOrConstParamData, TypeParamProvenance},
     item_tree::ItemTreeNode,
-    lang_item::LangItemTarget,
+    lang_item::{LangItem, LangItemTarget},
     layout::{Layout, LayoutError, ReprOptions},
     nameres::{self, diagnostics::DefDiagnostic},
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
+    type_ref::ConstScalar,
     AdtId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
     EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
     LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
@@ -65,8 +66,9 @@ use hir_ty::{
     primitive::UintTy,
     traits::FnTrait,
     AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
-    GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
-    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, WhereClause,
+    ConcreteConst, ConstValue, GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar,
+    Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind,
+    WhereClause,
 };
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
@@ -107,7 +109,7 @@ pub use {
     cfg::{CfgAtom, CfgExpr, CfgOptions},
     hir_def::{
         adt::StructKind,
-        attr::{Attr, Attrs, AttrsWithOwner, Documentation},
+        attr::{Attrs, AttrsWithOwner, Documentation},
         builtin_attr::AttributeTemplate,
         find_path::PrefixKind,
         import_map,
@@ -122,11 +124,12 @@ pub use {
         ModuleDefId,
     },
     hir_expand::{
+        attrs::Attr,
         name::{known, Name},
         ExpandResult, HirFileId, InFile, MacroFile, Origin,
     },
     hir_ty::{
-        display::{HirDisplay, HirWrite},
+        display::{HirDisplay, HirDisplayError, HirWrite},
         PointerCast, Safety,
     },
 };
@@ -471,8 +474,8 @@ impl Module {
         let def_map = self.id.def_map(db.upcast());
         let children = def_map[self.id.local_id]
             .children
-            .iter()
-            .map(|(_, module_id)| Module { id: def_map.module_id(*module_id) })
+            .values()
+            .map(|module_id| Module { id: def_map.module_id(*module_id) })
             .collect::<Vec<_>>();
         children.into_iter()
     }
@@ -784,7 +787,7 @@ fn precise_macro_call_location(
             let token = (|| {
                 let derive_attr = node
                     .doc_comments_and_attrs()
-                    .nth(*derive_attr_index as usize)
+                    .nth(derive_attr_index.ast_index())
                     .and_then(Either::left)?;
                 let token_tree = derive_attr.meta()?.token_tree()?;
                 let group_by = token_tree
@@ -812,9 +815,11 @@ fn precise_macro_call_location(
             let node = ast_id.to_node(db.upcast());
             let attr = node
                 .doc_comments_and_attrs()
-                .nth((*invoc_attr_index) as usize)
+                .nth(invoc_attr_index.ast_index())
                 .and_then(Either::left)
-                .unwrap_or_else(|| panic!("cannot find attribute #{invoc_attr_index}"));
+                .unwrap_or_else(|| {
+                    panic!("cannot find attribute #{}", invoc_attr_index.ast_index())
+                });
 
             (
                 ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&attr))),
@@ -920,7 +925,7 @@ impl Struct {
     }
 
     pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprOptions> {
-        db.struct_data(self.id).repr.clone()
+        db.struct_data(self.id).repr
     }
 
     pub fn kind(self, db: &dyn HirDatabase) -> StructKind {
@@ -1831,7 +1836,7 @@ pub struct Trait {
 
 impl Trait {
     pub fn lang(db: &dyn HirDatabase, krate: Crate, name: &Name) -> Option<Trait> {
-        db.lang_item(krate.into(), name.to_smol_str())
+        db.lang_item(krate.into(), LangItem::from_name(name)?)
             .and_then(LangItemTarget::as_trait)
             .map(Into::into)
     }
@@ -2126,7 +2131,7 @@ pub enum AssocItem {
     Const(Const),
     TypeAlias(TypeAlias),
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AssocItemContainer {
     Trait(Trait),
     Impl(Impl),
@@ -2160,6 +2165,16 @@ impl AsAssocItem for ModuleDef {
         }
     }
 }
+impl AsAssocItem for DefWithBody {
+    fn as_assoc_item(self, db: &dyn HirDatabase) -> Option<AssocItem> {
+        match self {
+            DefWithBody::Function(it) => it.as_assoc_item(db),
+            DefWithBody::Const(it) => it.as_assoc_item(db),
+            DefWithBody::Static(_) | DefWithBody::Variant(_) => None,
+        }
+    }
+}
+
 fn as_assoc_item<ID, DEF, CTOR, AST>(db: &dyn HirDatabase, ctor: CTOR, id: ID) -> Option<AssocItem>
 where
     ID: Lookup<Data = AssocItemLoc<AST>>,
@@ -2406,7 +2421,7 @@ impl Local {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DeriveHelper {
     pub(crate) derive: MacroId,
-    pub(crate) idx: usize,
+    pub(crate) idx: u32,
 }
 
 impl DeriveHelper {
@@ -2416,15 +2431,18 @@ impl DeriveHelper {
 
     pub fn name(&self, db: &dyn HirDatabase) -> Name {
         match self.derive {
-            MacroId::Macro2Id(it) => {
-                db.macro2_data(it).helpers.as_deref().and_then(|it| it.get(self.idx)).cloned()
-            }
+            MacroId::Macro2Id(it) => db
+                .macro2_data(it)
+                .helpers
+                .as_deref()
+                .and_then(|it| it.get(self.idx as usize))
+                .cloned(),
             MacroId::MacroRulesId(_) => None,
             MacroId::ProcMacroId(proc_macro) => db
                 .proc_macro_data(proc_macro)
                 .helpers
                 .as_deref()
-                .and_then(|it| it.get(self.idx))
+                .and_then(|it| it.get(self.idx as usize))
                 .cloned(),
         }
         .unwrap_or_else(|| Name::missing())
@@ -2435,7 +2453,7 @@ impl DeriveHelper {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct BuiltinAttr {
     krate: Option<CrateId>,
-    idx: usize,
+    idx: u32,
 }
 
 impl BuiltinAttr {
@@ -2444,7 +2462,8 @@ impl BuiltinAttr {
         if let builtin @ Some(_) = Self::builtin(name) {
             return builtin;
         }
-        let idx = db.crate_def_map(krate.id).registered_attrs().iter().position(|it| it == name)?;
+        let idx =
+            db.crate_def_map(krate.id).registered_attrs().iter().position(|it| it == name)? as u32;
         Some(BuiltinAttr { krate: Some(krate.id), idx })
     }
 
@@ -2452,21 +2471,21 @@ impl BuiltinAttr {
         hir_def::builtin_attr::INERT_ATTRIBUTES
             .iter()
             .position(|tool| tool.name == name)
-            .map(|idx| BuiltinAttr { krate: None, idx })
+            .map(|idx| BuiltinAttr { krate: None, idx: idx as u32 })
     }
 
     pub fn name(&self, db: &dyn HirDatabase) -> SmolStr {
         // FIXME: Return a `Name` here
         match self.krate {
-            Some(krate) => db.crate_def_map(krate).registered_attrs()[self.idx].clone(),
-            None => SmolStr::new(hir_def::builtin_attr::INERT_ATTRIBUTES[self.idx].name),
+            Some(krate) => db.crate_def_map(krate).registered_attrs()[self.idx as usize].clone(),
+            None => SmolStr::new(hir_def::builtin_attr::INERT_ATTRIBUTES[self.idx as usize].name),
         }
     }
 
     pub fn template(&self, _: &dyn HirDatabase) -> Option<AttributeTemplate> {
         match self.krate {
             Some(_) => None,
-            None => Some(hir_def::builtin_attr::INERT_ATTRIBUTES[self.idx].template),
+            None => Some(hir_def::builtin_attr::INERT_ATTRIBUTES[self.idx as usize].template),
         }
     }
 }
@@ -2474,7 +2493,7 @@ impl BuiltinAttr {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ToolModule {
     krate: Option<CrateId>,
-    idx: usize,
+    idx: u32,
 }
 
 impl ToolModule {
@@ -2483,7 +2502,8 @@ impl ToolModule {
         if let builtin @ Some(_) = Self::builtin(name) {
             return builtin;
         }
-        let idx = db.crate_def_map(krate.id).registered_tools().iter().position(|it| it == name)?;
+        let idx =
+            db.crate_def_map(krate.id).registered_tools().iter().position(|it| it == name)? as u32;
         Some(ToolModule { krate: Some(krate.id), idx })
     }
 
@@ -2491,14 +2511,14 @@ impl ToolModule {
         hir_def::builtin_attr::TOOL_MODULES
             .iter()
             .position(|&tool| tool == name)
-            .map(|idx| ToolModule { krate: None, idx })
+            .map(|idx| ToolModule { krate: None, idx: idx as u32 })
     }
 
     pub fn name(&self, db: &dyn HirDatabase) -> SmolStr {
         // FIXME: Return a `Name` here
         match self.krate {
-            Some(krate) => db.crate_def_map(krate).registered_tools()[self.idx].clone(),
-            None => SmolStr::new(hir_def::builtin_attr::TOOL_MODULES[self.idx]),
+            Some(krate) => db.crate_def_map(krate).registered_tools()[self.idx as usize].clone(),
+            None => SmolStr::new(hir_def::builtin_attr::TOOL_MODULES[self.idx as usize]),
         }
     }
 }
@@ -2553,6 +2573,14 @@ impl GenericParam {
             GenericParam::TypeParam(it) => it.name(db),
             GenericParam::ConstParam(it) => it.name(db),
             GenericParam::LifetimeParam(it) => it.name(db),
+        }
+    }
+
+    pub fn parent(self) -> GenericDef {
+        match self {
+            GenericParam::TypeParam(it) => it.id.parent().into(),
+            GenericParam::ConstParam(it) => it.id.parent().into(),
+            GenericParam::LifetimeParam(it) => it.id.parent.into(),
         }
     }
 }
@@ -2788,12 +2816,17 @@ impl Impl {
         all
     }
 
-    // FIXME: the return type is wrong. This should be a hir version of
-    // `TraitRef` (to account for parameters and qualifiers)
     pub fn trait_(self, db: &dyn HirDatabase) -> Option<Trait> {
-        let trait_ref = db.impl_trait(self.id)?.skip_binders().clone();
-        let id = hir_ty::from_chalk_trait_id(trait_ref.trait_id);
+        let trait_ref = db.impl_trait(self.id)?;
+        let id = trait_ref.skip_binders().hir_trait_id();
         Some(Trait { id })
+    }
+
+    pub fn trait_ref(self, db: &dyn HirDatabase) -> Option<TraitRef> {
+        let substs = TyBuilder::placeholder_subst(db, self.id);
+        let trait_ref = db.impl_trait(self.id)?.substitute(Interner, &substs);
+        let resolver = self.id.resolver(db.upcast());
+        Some(TraitRef::new_with_resolver(db, &resolver, trait_ref))
     }
 
     pub fn self_ty(self, db: &dyn HirDatabase) -> Type {
@@ -2818,6 +2851,48 @@ impl Impl {
     pub fn is_builtin_derive(self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
         let src = self.source(db)?;
         src.file_id.is_builtin_derive(db.upcast())
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct TraitRef {
+    env: Arc<TraitEnvironment>,
+    trait_ref: hir_ty::TraitRef,
+}
+
+impl TraitRef {
+    pub(crate) fn new_with_resolver(
+        db: &dyn HirDatabase,
+        resolver: &Resolver,
+        trait_ref: hir_ty::TraitRef,
+    ) -> TraitRef {
+        let env = resolver.generic_def().map_or_else(
+            || Arc::new(TraitEnvironment::empty(resolver.krate())),
+            |d| db.trait_environment(d),
+        );
+        TraitRef { env, trait_ref }
+    }
+
+    pub fn trait_(&self) -> Trait {
+        let id = self.trait_ref.hir_trait_id();
+        Trait { id }
+    }
+
+    pub fn self_ty(&self) -> Type {
+        let ty = self.trait_ref.self_type_parameter(Interner);
+        Type { env: self.env.clone(), ty }
+    }
+
+    /// Returns `idx`-th argument of this trait reference if it is a type argument. Note that the
+    /// first argument is the `Self` type.
+    pub fn get_type_argument(&self, idx: usize) -> Option<Type> {
+        self.trait_ref
+            .substitution
+            .as_slice(Interner)
+            .get(idx)
+            .and_then(|arg| arg.ty(Interner))
+            .cloned()
+            .map(|ty| Type { env: self.env.clone(), ty })
     }
 }
 
@@ -2957,7 +3032,7 @@ impl Type {
     /// This function is used in `.await` syntax completion.
     pub fn impls_into_future(&self, db: &dyn HirDatabase) -> bool {
         let trait_ = db
-            .lang_item(self.env.krate, SmolStr::new_inline("into_future"))
+            .lang_item(self.env.krate, LangItem::IntoFutureIntoFuture)
             .and_then(|it| {
                 let into_future_fn = it.as_function()?;
                 let assoc_item = as_assoc_item(db, AssocItem::Function, into_future_fn)?;
@@ -2965,8 +3040,7 @@ impl Type {
                 Some(into_future_trait.id)
             })
             .or_else(|| {
-                let future_trait =
-                    db.lang_item(self.env.krate, SmolStr::new_inline("future_trait"))?;
+                let future_trait = db.lang_item(self.env.krate, LangItem::Future)?;
                 future_trait.as_trait()
             });
 
@@ -3059,9 +3133,9 @@ impl Type {
     }
 
     pub fn is_copy(&self, db: &dyn HirDatabase) -> bool {
-        let lang_item = db.lang_item(self.env.krate, SmolStr::new_inline("copy"));
+        let lang_item = db.lang_item(self.env.krate, LangItem::Copy);
         let copy_trait = match lang_item {
-            Some(LangItemTarget::TraitId(it)) => it,
+            Some(LangItemTarget::Trait(it)) => it,
             _ => return false,
         };
         self.impls_trait(db, copy_trait.into(), &[])
@@ -3088,15 +3162,15 @@ impl Type {
     }
 
     pub fn is_closure(&self) -> bool {
-        matches!(&self.ty.kind(Interner), TyKind::Closure { .. })
+        matches!(self.ty.kind(Interner), TyKind::Closure { .. })
     }
 
     pub fn is_fn(&self) -> bool {
-        matches!(&self.ty.kind(Interner), TyKind::FnDef(..) | TyKind::Function { .. })
+        matches!(self.ty.kind(Interner), TyKind::FnDef(..) | TyKind::Function { .. })
     }
 
     pub fn is_array(&self) -> bool {
-        matches!(&self.ty.kind(Interner), TyKind::Array(..))
+        matches!(self.ty.kind(Interner), TyKind::Array(..))
     }
 
     pub fn is_packed(&self, db: &dyn HirDatabase) -> bool {
@@ -3113,10 +3187,12 @@ impl Type {
     }
 
     pub fn is_raw_ptr(&self) -> bool {
-        matches!(&self.ty.kind(Interner), TyKind::Raw(..))
+        matches!(self.ty.kind(Interner), TyKind::Raw(..))
     }
 
     pub fn contains_unknown(&self) -> bool {
+        // FIXME: When we get rid of `ConstScalar::Unknown`, we can just look at precomputed
+        // `TypeFlags` in `TyData`.
         return go(&self.ty);
 
         fn go(ty: &Ty) -> bool {
@@ -3179,6 +3255,19 @@ impl Type {
                 .collect()
         } else {
             Vec::new()
+        }
+    }
+
+    pub fn as_array(&self, _db: &dyn HirDatabase) -> Option<(Type, usize)> {
+        if let TyKind::Array(ty, len) = &self.ty.kind(Interner) {
+            match len.data(Interner).value {
+                ConstValue::Concrete(ConcreteConst { interned: ConstScalar::UInt(len) }) => {
+                    Some((self.derived(ty.clone()), len as usize))
+                }
+                _ => None,
+            }
+        } else {
+            None
         }
     }
 
@@ -3418,10 +3507,9 @@ impl Type {
         Type { env: self.env.clone(), ty }
     }
 
+    /// Visits every type, including generic arguments, in this type. `cb` is called with type
+    /// itself first, and then with its generic arguments.
     pub fn walk(&self, db: &dyn HirDatabase, mut cb: impl FnMut(Type)) {
-        // TypeWalk::walk for a Ty at first visits parameters and only after that the Ty itself.
-        // We need a different order here.
-
         fn walk_substs(
             db: &dyn HirDatabase,
             type_: &Type,
@@ -3533,6 +3621,14 @@ impl Type {
             }),
             _ => None,
         }
+    }
+
+    /// Returns unique `GenericParam`s contained in this type.
+    pub fn generic_params(&self, db: &dyn HirDatabase) -> FxHashSet<GenericParam> {
+        hir_ty::collect_placeholders(&self.ty, db)
+            .into_iter()
+            .map(|id| TypeOrConstParam { id }.split(db).either_into())
+            .collect()
     }
 }
 

@@ -5,10 +5,11 @@
 use std::{ops::ControlFlow, sync::Arc};
 
 use base_db::{CrateId, Edition};
-use chalk_ir::{cast::Cast, Mutability, UniverseIndex};
+use chalk_ir::{cast::Cast, Mutability, TyKind, UniverseIndex};
 use hir_def::{
-    data::ImplData, item_scope::ItemScope, nameres::DefMap, AssocItemId, BlockId, ConstId,
-    FunctionId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId, ModuleId, TraitId,
+    data::ImplData, item_scope::ItemScope, lang_item::LangItem, nameres::DefMap, AssocItemId,
+    BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId,
+    ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -24,7 +25,7 @@ use crate::{
     static_lifetime, to_chalk_trait_id,
     utils::all_super_traits,
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, ForeignDefId, InEnvironment, Interner,
-    Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
+    Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt,
 };
 
 /// This is used as a key for indexing impls.
@@ -437,49 +438,49 @@ pub fn def_crates(
     }
 }
 
-pub fn lang_names_for_bin_op(op: syntax::ast::BinaryOp) -> Option<(Name, Name)> {
+pub fn lang_items_for_bin_op(op: syntax::ast::BinaryOp) -> Option<(Name, LangItem)> {
     use hir_expand::name;
     use syntax::ast::{ArithOp, BinaryOp, CmpOp, Ordering};
     Some(match op {
         BinaryOp::LogicOp(_) => return None,
         BinaryOp::ArithOp(aop) => match aop {
-            ArithOp::Add => (name!(add), name!(add)),
-            ArithOp::Mul => (name!(mul), name!(mul)),
-            ArithOp::Sub => (name!(sub), name!(sub)),
-            ArithOp::Div => (name!(div), name!(div)),
-            ArithOp::Rem => (name!(rem), name!(rem)),
-            ArithOp::Shl => (name!(shl), name!(shl)),
-            ArithOp::Shr => (name!(shr), name!(shr)),
-            ArithOp::BitXor => (name!(bitxor), name!(bitxor)),
-            ArithOp::BitOr => (name!(bitor), name!(bitor)),
-            ArithOp::BitAnd => (name!(bitand), name!(bitand)),
+            ArithOp::Add => (name![add], LangItem::Add),
+            ArithOp::Mul => (name![mul], LangItem::Mul),
+            ArithOp::Sub => (name![sub], LangItem::Sub),
+            ArithOp::Div => (name![div], LangItem::Div),
+            ArithOp::Rem => (name![rem], LangItem::Rem),
+            ArithOp::Shl => (name![shl], LangItem::Shl),
+            ArithOp::Shr => (name![shr], LangItem::Shr),
+            ArithOp::BitXor => (name![bitxor], LangItem::BitXor),
+            ArithOp::BitOr => (name![bitor], LangItem::BitOr),
+            ArithOp::BitAnd => (name![bitand], LangItem::BitAnd),
         },
         BinaryOp::Assignment { op: Some(aop) } => match aop {
-            ArithOp::Add => (name!(add_assign), name!(add_assign)),
-            ArithOp::Mul => (name!(mul_assign), name!(mul_assign)),
-            ArithOp::Sub => (name!(sub_assign), name!(sub_assign)),
-            ArithOp::Div => (name!(div_assign), name!(div_assign)),
-            ArithOp::Rem => (name!(rem_assign), name!(rem_assign)),
-            ArithOp::Shl => (name!(shl_assign), name!(shl_assign)),
-            ArithOp::Shr => (name!(shr_assign), name!(shr_assign)),
-            ArithOp::BitXor => (name!(bitxor_assign), name!(bitxor_assign)),
-            ArithOp::BitOr => (name!(bitor_assign), name!(bitor_assign)),
-            ArithOp::BitAnd => (name!(bitand_assign), name!(bitand_assign)),
+            ArithOp::Add => (name![add_assign], LangItem::AddAssign),
+            ArithOp::Mul => (name![mul_assign], LangItem::MulAssign),
+            ArithOp::Sub => (name![sub_assign], LangItem::SubAssign),
+            ArithOp::Div => (name![div_assign], LangItem::DivAssign),
+            ArithOp::Rem => (name![rem_assign], LangItem::RemAssign),
+            ArithOp::Shl => (name![shl_assign], LangItem::ShlAssign),
+            ArithOp::Shr => (name![shr_assign], LangItem::ShrAssign),
+            ArithOp::BitXor => (name![bitxor_assign], LangItem::BitXorAssign),
+            ArithOp::BitOr => (name![bitor_assign], LangItem::BitOrAssign),
+            ArithOp::BitAnd => (name![bitand_assign], LangItem::BitAndAssign),
         },
         BinaryOp::CmpOp(cop) => match cop {
-            CmpOp::Eq { negated: false } => (name!(eq), name!(eq)),
-            CmpOp::Eq { negated: true } => (name!(ne), name!(eq)),
+            CmpOp::Eq { negated: false } => (name![eq], LangItem::PartialEq),
+            CmpOp::Eq { negated: true } => (name![ne], LangItem::PartialEq),
             CmpOp::Ord { ordering: Ordering::Less, strict: false } => {
-                (name!(le), name!(partial_ord))
+                (name![le], LangItem::PartialOrd)
             }
             CmpOp::Ord { ordering: Ordering::Less, strict: true } => {
-                (name!(lt), name!(partial_ord))
+                (name![lt], LangItem::PartialOrd)
             }
             CmpOp::Ord { ordering: Ordering::Greater, strict: false } => {
-                (name!(ge), name!(partial_ord))
+                (name![ge], LangItem::PartialOrd)
             }
             CmpOp::Ord { ordering: Ordering::Greater, strict: true } => {
-                (name!(gt), name!(partial_ord))
+                (name![gt], LangItem::PartialOrd)
             }
         },
         BinaryOp::Assignment { op: None } => return None,
@@ -587,24 +588,30 @@ impl ReceiverAdjustments {
                 }
             }
         }
-        if self.unsize_array {
-            ty = match ty.kind(Interner) {
-                TyKind::Array(inner, _) => TyKind::Slice(inner.clone()).intern(Interner),
-                _ => {
-                    never!("unsize_array with non-array {:?}", ty);
-                    ty
-                }
-            };
-            // FIXME this is kind of wrong since the unsize needs to happen to a pointer/reference
-            adjust.push(Adjustment {
-                kind: Adjust::Pointer(PointerCast::Unsize),
-                target: ty.clone(),
-            });
-        }
         if let Some(m) = self.autoref {
             ty = TyKind::Ref(m, static_lifetime(), ty).intern(Interner);
             adjust
                 .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(m)), target: ty.clone() });
+        }
+        if self.unsize_array {
+            ty = 'x: {
+                if let TyKind::Ref(m, l, inner) = ty.kind(Interner) {
+                    if let TyKind::Array(inner, _) = inner.kind(Interner) {
+                        break 'x TyKind::Ref(
+                            m.clone(),
+                            l.clone(),
+                            TyKind::Slice(inner.clone()).intern(Interner),
+                        )
+                        .intern(Interner);
+                    }
+                }
+                never!("unsize_array with non-reference-to-array {:?}", ty);
+                ty
+            };
+            adjust.push(Adjustment {
+                kind: Adjust::Pointer(PointerCast::Unsize),
+                target: ty.clone(),
+            });
         }
         (ty, adjust)
     }
@@ -712,17 +719,17 @@ fn lookup_impl_assoc_item_for_trait_ref(
     let table = InferenceTable::new(db, env);
 
     let impl_data = find_matching_impl(impls, table, trait_ref)?;
-    impl_data.items.iter().find_map(|it| match it {
+    impl_data.items.iter().find_map(|&it| match it {
         AssocItemId::FunctionId(f) => {
-            (db.function_data(*f).name == *name).then_some(AssocItemId::FunctionId(*f))
+            (db.function_data(f).name == *name).then_some(AssocItemId::FunctionId(f))
         }
         AssocItemId::ConstId(c) => db
-            .const_data(*c)
+            .const_data(c)
             .name
             .as_ref()
-            .map(|n| *n == *name)
-            .and_then(|result| if result { Some(AssocItemId::ConstId(*c)) } else { None }),
-        _ => None,
+            .map(|n| n == name)
+            .and_then(|result| if result { Some(AssocItemId::ConstId(c)) } else { None }),
+        AssocItemId::TypeAliasId(_) => None,
     })
 }
 
@@ -1094,13 +1101,13 @@ fn iterate_inherent_methods(
         None => return ControlFlow::Continue(()),
     };
 
-    let (module, block) = match visible_from_module {
+    let (module, mut block) = match visible_from_module {
         VisibleFromModule::Filter(module) => (Some(module), module.containing_block()),
         VisibleFromModule::IncludeBlock(block) => (None, Some(block)),
         VisibleFromModule::None => (None, None),
     };
 
-    if let Some(block_id) = block {
+    while let Some(block_id) = block {
         if let Some(impls) = db.inherent_impls_in_block(block_id) {
             impls_for_self_ty(
                 &impls,
@@ -1113,6 +1120,11 @@ fn iterate_inherent_methods(
                 callback,
             )?;
         }
+
+        block = db
+            .block_def_map(block_id)
+            .and_then(|map| map.parent())
+            .and_then(|module| module.containing_block());
     }
 
     for krate in def_crates {

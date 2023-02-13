@@ -2,9 +2,11 @@
 name = "hir-expand"
 version = "0.0.0"
 description = "TBD"
-license = "MIT OR Apache-2.0"
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
@@ -21,14 +23,16 @@ hashbrown = { version = "0.12.1", features = [
 ], default-features = false }
 smallvec = { version = "1.10.0", features = ["const_new"] }
 
-stdx = { path = "../stdx", version = "0.0.0" }
-base-db = { path = "../base-db", version = "0.0.0" }
-cfg = { path = "../cfg", version = "0.0.0" }
-syntax = { path = "../syntax", version = "0.0.0" }
-profile = { path = "../profile", version = "0.0.0" }
-tt = { path = "../tt", version = "0.0.0" }
-mbe = { path = "../mbe", version = "0.0.0" }
-limit = { path = "../limit", version = "0.0.0" }
+# local deps
+stdx.workspace = true
+intern.workspace = true
+base-db.workspace = true
+cfg.workspace = true
+syntax.workspace = true
+profile.workspace = true
+tt.workspace = true
+mbe.workspace = true
+limit.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.0"

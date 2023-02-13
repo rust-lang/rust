@@ -163,98 +163,22 @@ fn test() {
 }
 
 #[test]
-fn infer_try() {
+fn infer_try_trait() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
+//- minicore: try, result
 fn test() {
     let r: Result<i32, u64> = Result::Ok(1);
     let v = r?;
     v;
 } //^ i32
 
-//- /core.rs crate:core
-pub mod ops {
-    pub trait Try {
-        type Ok;
-        type Error;
-    }
+impl<O, E> core::ops::Try for Result<O, E> {
+    type Output = O;
+    type Error = Result<core::convert::Infallible, E>;
 }
 
-pub mod result {
-    pub enum Result<O, E> {
-        Ok(O),
-        Err(E)
-    }
-
-    impl<O, E> crate::ops::Try for Result<O, E> {
-        type Ok = O;
-        type Error = E;
-    }
-}
-
-pub mod prelude {
-    pub mod rust_2018 {
-        pub use crate::{result::*, ops::*};
-    }
-}
-"#,
-    );
-}
-
-#[test]
-fn infer_try_trait_v2() {
-    check_types(
-        r#"
-//- /main.rs crate:main deps:core
-fn test() {
-    let r: Result<i32, u64> = Result::Ok(1);
-    let v = r?;
-    v;
-} //^ i32
-
-//- /core.rs crate:core
-mod ops {
-    mod try_trait {
-        pub trait Try: FromResidual {
-            type Output;
-            type Residual;
-        }
-        pub trait FromResidual<R = <Self as Try>::Residual> {}
-    }
-
-    pub use self::try_trait::FromResidual;
-    pub use self::try_trait::Try;
-}
-
-mod convert {
-    pub trait From<T> {}
-    impl<T> From<T> for T {}
-}
-
-pub mod result {
-    use crate::convert::From;
-    use crate::ops::{Try, FromResidual};
-
-    pub enum Infallible {}
-    pub enum Result<O, E> {
-        Ok(O),
-        Err(E)
-    }
-
-    impl<O, E> Try for Result<O, E> {
-        type Output = O;
-        type Error = Result<Infallible, E>;
-    }
-
-    impl<T, E, F: From<E>> FromResidual<Result<Infallible, E>> for Result<T, F> {}
-}
-
-pub mod prelude {
-    pub mod rust_2018 {
-        pub use crate::result::*;
-    }
-}
+impl<T, E, F: From<E>> core::ops::FromResidual<Result<core::convert::Infallible, E>> for Result<T, F> {}
 "#,
     );
 }
@@ -263,7 +187,8 @@ pub mod prelude {
 fn infer_for_loop() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core,alloc
+//- minicore: iterator
+//- /main.rs crate:main deps:alloc
 #![no_std]
 use alloc::collections::Vec;
 
@@ -275,23 +200,7 @@ fn test() {
     } //^ &str
 }
 
-//- /core.rs crate:core
-pub mod iter {
-    pub trait IntoIterator {
-        type Item;
-        type IntoIter: Iterator<Item = Self::Item>;
-    }
-    pub trait Iterator {
-        type Item;
-    }
-}
-pub mod prelude {
-    pub mod rust_2018 {
-        pub use crate::iter::*;
-    }
-}
-
-//- /alloc.rs crate:alloc deps:core
+//- /alloc.rs crate:alloc
 #![no_std]
 pub mod collections {
     pub struct Vec<T> {}
@@ -1848,25 +1757,19 @@ fn test() {
 fn fn_trait() {
     check_infer_with_mismatches(
         r#"
-trait FnOnce<Args> {
-    type Output;
-
-    fn call_once(self, args: Args) -> <Self as FnOnce<Args>>::Output;
-}
+//- minicore: fn
 
 fn test<F: FnOnce(u32, u64) -> u128>(f: F) {
     f.call_once((1, 2));
 }"#,
         expect![[r#"
-            56..60 'self': Self
-            62..66 'args': Args
-            149..150 'f': F
-            155..183 '{     ...2)); }': ()
-            161..162 'f': F
-            161..180 'f.call...1, 2))': u128
-            173..179 '(1, 2)': (u32, u64)
-            174..175 '1': u32
-            177..178 '2': u64
+            38..39 'f': F
+            44..72 '{     ...2)); }': ()
+            50..51 'f': F
+            50..69 'f.call...1, 2))': u128
+            62..68 '(1, 2)': (u32, u64)
+            63..64 '1': u32
+            66..67 '2': u64
         "#]],
     );
 }
@@ -1875,12 +1778,7 @@ fn test<F: FnOnce(u32, u64) -> u128>(f: F) {
 fn fn_ptr_and_item() {
     check_infer_with_mismatches(
         r#"
-#[lang="fn_once"]
-trait FnOnce<Args> {
-    type Output;
-
-    fn call_once(self, args: Args) -> Self::Output;
-}
+//- minicore: fn
 
 trait Foo<T> {
     fn foo(&self) -> T;
@@ -1906,27 +1804,25 @@ fn test() {
     opt.map(f);
 }"#,
         expect![[r#"
-            74..78 'self': Self
-            80..84 'args': Args
-            139..143 'self': &Self
-            243..247 'self': &Bar<F>
-            260..271 '{ loop {} }': (A1, R)
-            262..269 'loop {}': !
-            267..269 '{}': ()
-            355..359 'self': Opt<T>
-            361..362 'f': F
-            377..388 '{ loop {} }': Opt<U>
-            379..386 'loop {}': !
-            384..386 '{}': ()
-            402..518 '{     ...(f); }': ()
-            412..415 'bar': Bar<fn(u8) -> u32>
-            441..444 'bar': Bar<fn(u8) -> u32>
-            441..450 'bar.foo()': (u8, u32)
-            461..464 'opt': Opt<u8>
-            483..484 'f': fn(u8) -> u32
-            505..508 'opt': Opt<u8>
-            505..515 'opt.map(f)': Opt<u32>
-            513..514 'f': fn(u8) -> u32
+            28..32 'self': &Self
+            132..136 'self': &Bar<F>
+            149..160 '{ loop {} }': (A1, R)
+            151..158 'loop {}': !
+            156..158 '{}': ()
+            244..248 'self': Opt<T>
+            250..251 'f': F
+            266..277 '{ loop {} }': Opt<U>
+            268..275 'loop {}': !
+            273..275 '{}': ()
+            291..407 '{     ...(f); }': ()
+            301..304 'bar': Bar<fn(u8) -> u32>
+            330..333 'bar': Bar<fn(u8) -> u32>
+            330..339 'bar.foo()': (u8, u32)
+            350..353 'opt': Opt<u8>
+            372..373 'f': fn(u8) -> u32
+            394..397 'opt': Opt<u8>
+            394..404 'opt.map(f)': Opt<u32>
+            402..403 'f': fn(u8) -> u32
         "#]],
     );
 }
@@ -2399,10 +2295,8 @@ fn unselected_projection_in_trait_env_no_cycle() {
     // this is not a cycle
     check_types(
         r#"
-//- /main.rs
-trait Index {
-    type Output;
-}
+//- minicore: index
+use core::ops::Index;
 
 type Key<S: UnificationStoreBase> = <S as UnificationStoreBase>::Key;
 
@@ -2999,40 +2893,17 @@ fn test() {
 fn integer_range_iterate() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
+//- minicore: range, iterator
+//- /main.rs crate:main
 fn test() {
     for x in 0..100 { x; }
 }                   //^ i32
-
-//- /core.rs crate:core
-pub mod ops {
-    pub struct Range<Idx> {
-        pub start: Idx,
-        pub end: Idx,
-    }
-}
-
-pub mod iter {
-    pub trait Iterator {
-        type Item;
-    }
-
-    pub trait IntoIterator {
-        type Item;
-        type IntoIter: Iterator<Item = Self::Item>;
-    }
-
-    impl<T> IntoIterator for T where T: Iterator {
-        type Item = <T as Iterator>::Item;
-        type IntoIter = Self;
-    }
-}
 
 trait Step {}
 impl Step for i32 {}
 impl Step for i64 {}
 
-impl<A: Step> iter::Iterator for ops::Range<A> {
+impl<A: Step> core::iter::Iterator for core::ops::Range<A> {
     type Item = A;
 }
 "#,
@@ -3507,14 +3378,9 @@ trait Request {
 fn bin_op_adt_with_rhs_primitive() {
     check_infer_with_mismatches(
         r#"
-#[lang = "add"]
-pub trait Add<Rhs = Self> {
-    type Output;
-    fn add(self, rhs: Rhs) -> Self::Output;
-}
-
+//- minicore: add
 struct Wrapper(u32);
-impl Add<u32> for Wrapper {
+impl core::ops::Add<u32> for Wrapper {
     type Output = Self;
     fn add(self, rhs: u32) -> Wrapper {
         Wrapper(rhs)
@@ -3527,26 +3393,103 @@ fn main(){
 
 }"#,
         expect![[r#"
-            72..76 'self': Self
-            78..81 'rhs': Rhs
-            192..196 'self': Wrapper
-            198..201 'rhs': u32
-            219..247 '{     ...     }': Wrapper
-            229..236 'Wrapper': Wrapper(u32) -> Wrapper
-            229..241 'Wrapper(rhs)': Wrapper
-            237..240 'rhs': u32
-            259..345 '{     ...um;  }': ()
-            269..276 'wrapped': Wrapper
-            279..286 'Wrapper': Wrapper(u32) -> Wrapper
-            279..290 'Wrapper(10)': Wrapper
-            287..289 '10': u32
-            300..303 'num': u32
-            311..312 '2': u32
-            322..325 'res': Wrapper
-            328..335 'wrapped': Wrapper
-            328..341 'wrapped + num': Wrapper
-            338..341 'num': u32
+            95..99 'self': Wrapper
+            101..104 'rhs': u32
+            122..150 '{     ...     }': Wrapper
+            132..139 'Wrapper': Wrapper(u32) -> Wrapper
+            132..144 'Wrapper(rhs)': Wrapper
+            140..143 'rhs': u32
+            162..248 '{     ...um;  }': ()
+            172..179 'wrapped': Wrapper
+            182..189 'Wrapper': Wrapper(u32) -> Wrapper
+            182..193 'Wrapper(10)': Wrapper
+            190..192 '10': u32
+            203..206 'num': u32
+            214..215 '2': u32
+            225..228 'res': Wrapper
+            231..238 'wrapped': Wrapper
+            231..244 'wrapped + num': Wrapper
+            241..244 'num': u32
         "#]],
+    )
+}
+
+#[test]
+fn builtin_binop_expectation_works_on_single_reference() {
+    check_types(
+        r#"
+//- minicore: add
+use core::ops::Add;
+impl Add<i32> for i32 { type Output = i32 }
+impl Add<&i32> for i32 { type Output = i32 }
+impl Add<u32> for u32 { type Output = u32 }
+impl Add<&u32> for u32 { type Output = u32 }
+
+struct V<T>;
+impl<T> V<T> {
+    fn default() -> Self { loop {} }
+    fn get(&self, _: &T) -> &T { loop {} }
+}
+
+fn take_u32(_: u32) {}
+fn minimized() {
+    let v = V::default();
+    let p = v.get(&0);
+      //^ &u32
+    take_u32(42 + p);
+}
+"#,
+    );
+}
+
+#[test]
+fn no_builtin_binop_expectation_for_general_ty_var() {
+    // FIXME: Ideally type mismatch should be reported on `take_u32(42 - p)`.
+    check_types(
+        r#"
+//- minicore: add
+use core::ops::Add;
+impl Add<i32> for i32 { type Output = i32; }
+impl Add<&i32> for i32 { type Output = i32; }
+// This is needed to prevent chalk from giving unique solution to `i32: Add<&?0>` after applying
+// fallback to integer type variable for `42`.
+impl Add<&()> for i32 { type Output = (); }
+
+struct V<T>;
+impl<T> V<T> {
+    fn default() -> Self { loop {} }
+    fn get(&self) -> &T { loop {} }
+}
+
+fn take_u32(_: u32) {}
+fn minimized() {
+    let v = V::default();
+    let p = v.get();
+      //^ &{unknown}
+    take_u32(42 + p);
+}
+"#,
+    );
+}
+
+#[test]
+fn no_builtin_binop_expectation_for_non_builtin_types() {
+    check_no_mismatches(
+        r#"
+//- minicore: default, eq
+struct S;
+impl Default for S { fn default() -> Self { S } }
+impl Default for i32 { fn default() -> Self { 0 } }
+impl PartialEq<S> for i32 { fn eq(&self, _: &S) -> bool { true } }
+impl PartialEq<i32> for i32 { fn eq(&self, _: &S) -> bool { true } }
+
+fn take_s(_: S) {}
+fn test() {
+    let s = Default::default();
+    let _eq = 0 == s;
+    take_s(s);
+}
+"#,
     )
 }
 

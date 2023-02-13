@@ -24,16 +24,17 @@ fn main() {
 }
 "#,
         expect![[r#"
-            me foo() fn(&self)
-            sn box   Box::new(expr)
-            sn call  function(expr)
-            sn dbg   dbg!(expr)
-            sn dbgr  dbg!(&expr)
-            sn let   let
-            sn letm  let mut
-            sn match match expr {}
-            sn ref   &expr
-            sn refm  &mut expr
+            me foo()  fn(&self)
+            sn box    Box::new(expr)
+            sn call   function(expr)
+            sn dbg    dbg!(expr)
+            sn dbgr   dbg!(&expr)
+            sn let    let
+            sn letm   let mut
+            sn match  match expr {}
+            sn ref    &expr
+            sn refm   &mut expr
+            sn unsafe unsafe {}
         "#]],
     )
 }
@@ -54,16 +55,17 @@ fn main() {
 }
 "#,
         expect![[r#"
-            me foo() fn(&self)
-            sn box   Box::new(expr)
-            sn call  function(expr)
-            sn dbg   dbg!(expr)
-            sn dbgr  dbg!(&expr)
-            sn let   let
-            sn letm  let mut
-            sn match match expr {}
-            sn ref   &expr
-            sn refm  &mut expr
+            me foo()  fn(&self)
+            sn box    Box::new(expr)
+            sn call   function(expr)
+            sn dbg    dbg!(expr)
+            sn dbgr   dbg!(&expr)
+            sn let    let
+            sn letm   let mut
+            sn match  match expr {}
+            sn ref    &expr
+            sn refm   &mut expr
+            sn unsafe unsafe {}
         "#]],
     )
 }
@@ -86,16 +88,17 @@ impl Foo {
 fn main() {}
 "#,
         expect![[r#"
-            me foo() fn(&self)
-            sn box   Box::new(expr)
-            sn call  function(expr)
-            sn dbg   dbg!(expr)
-            sn dbgr  dbg!(&expr)
-            sn let   let
-            sn letm  let mut
-            sn match match expr {}
-            sn ref   &expr
-            sn refm  &mut expr
+            me foo()  fn(&self)
+            sn box    Box::new(expr)
+            sn call   function(expr)
+            sn dbg    dbg!(expr)
+            sn dbgr   dbg!(&expr)
+            sn let    let
+            sn letm   let mut
+            sn match  match expr {}
+            sn ref    &expr
+            sn refm   &mut expr
+            sn unsafe unsafe {}
         "#]],
     )
 }
@@ -118,16 +121,47 @@ impl Foo {
 fn main() {}
 "#,
         expect![[r#"
-            me foo() fn(&self)
-            sn box   Box::new(expr)
-            sn call  function(expr)
-            sn dbg   dbg!(expr)
-            sn dbgr  dbg!(&expr)
-            sn let   let
-            sn letm  let mut
-            sn match match expr {}
-            sn ref   &expr
-            sn refm  &mut expr
+            me foo()  fn(&self)
+            sn box    Box::new(expr)
+            sn call   function(expr)
+            sn dbg    dbg!(expr)
+            sn dbgr   dbg!(&expr)
+            sn let    let
+            sn letm   let mut
+            sn match  match expr {}
+            sn ref    &expr
+            sn refm   &mut expr
+            sn unsafe unsafe {}
         "#]],
+    )
+}
+
+#[test]
+fn issue_13836_str() {
+    check(
+        r#"
+//- proc_macros: shorten
+fn main() {
+    let s = proc_macros::shorten!("text.$0");
+}
+"#,
+        expect![[r#""#]],
+    )
+}
+
+#[test]
+fn issue_13836_ident() {
+    check(
+        r#"
+//- proc_macros: shorten
+struct S;
+impl S {
+    fn foo(&self) {}
+}
+fn main() {
+    let s = proc_macros::shorten!(S.fo$0);
+}
+"#,
+        expect![[r#""#]],
     )
 }

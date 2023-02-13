@@ -2,9 +2,11 @@
 name = "mbe"
 version = "0.0.0"
 description = "TBD"
-license = "MIT OR Apache-2.0"
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
@@ -15,10 +17,11 @@ rustc-hash = "1.1.0"
 smallvec = "1.10.0"
 tracing = "0.1.35"
 
-syntax = { path = "../syntax", version = "0.0.0" }
-parser = { path = "../parser", version = "0.0.0" }
-tt = { path = "../tt", version = "0.0.0" }
-stdx = { path = "../stdx", version = "0.0.0" }
+# local deps
+syntax.workspace = true
+parser.workspace = true
+tt.workspace = true
+stdx.workspace = true
 
 [dev-dependencies]
-test-utils = { path = "../test-utils" }
+test-utils.workspace = true

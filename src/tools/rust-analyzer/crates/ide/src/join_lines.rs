@@ -161,10 +161,8 @@ fn remove_newline(
         }
     }
 
-    if config.join_assignments {
-        if join_assignments(edit, &prev, &next).is_some() {
-            return;
-        }
+    if config.join_assignments && join_assignments(edit, &prev, &next).is_some() {
+        return;
     }
 
     if config.unwrap_trivial_blocks {

@@ -14,8 +14,6 @@ use hashbrown::HashMap;
 use once_cell::sync::OnceCell;
 use rustc_hash::FxHasher;
 
-use crate::generics::GenericParams;
-
 type InternMap<T> = DashMap<Arc<T>, (), BuildHasherDefault<FxHasher>>;
 type Guard<T> = dashmap::RwLockWriteGuard<
     'static,
@@ -204,9 +202,9 @@ pub trait Internable: Hash + Eq + 'static {
 #[doc(hidden)]
 macro_rules! _impl_internable {
     ( $($t:path),+ $(,)? ) => { $(
-        impl Internable for $t {
-            fn storage() -> &'static InternStorage<Self> {
-                static STORAGE: InternStorage<$t> = InternStorage::new();
+        impl $crate::Internable for $t {
+            fn storage() -> &'static $crate::InternStorage<Self> {
+                static STORAGE: $crate::InternStorage<$t> = $crate::InternStorage::new();
                 &STORAGE
             }
         }
@@ -215,13 +213,4 @@ macro_rules! _impl_internable {
 
 pub use crate::_impl_internable as impl_internable;
 
-impl_internable!(
-    crate::type_ref::TypeRef,
-    crate::type_ref::TraitRef,
-    crate::type_ref::TypeBound,
-    crate::path::ModPath,
-    crate::path::GenericArgs,
-    crate::attr::AttrInput,
-    GenericParams,
-    str,
-);
+impl_internable!(str,);

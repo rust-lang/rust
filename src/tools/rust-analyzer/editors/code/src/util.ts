@@ -117,7 +117,7 @@ export function isValidExecutable(path: string): boolean {
 
     const res = spawnSync(path, ["--version"], { encoding: "utf8" });
 
-    const printOutput = res.error && (res.error as any).code !== "ENOENT" ? log.warn : log.debug;
+    const printOutput = res.error ? log.warn : log.info;
     printOutput(path, "--version:", res);
 
     return res.status === 0;
@@ -165,4 +165,50 @@ export function execute(command: string, options: ExecOptions): Promise<string> 
             resolve(stdout.trimEnd());
         });
     });
+}
+
+export class LazyOutputChannel implements vscode.OutputChannel {
+    constructor(name: string) {
+        this.name = name;
+    }
+
+    name: string;
+    _channel: vscode.OutputChannel | undefined;
+
+    get channel(): vscode.OutputChannel {
+        if (!this._channel) {
+            this._channel = vscode.window.createOutputChannel(this.name);
+        }
+        return this._channel;
+    }
+
+    append(value: string): void {
+        this.channel.append(value);
+    }
+    appendLine(value: string): void {
+        this.channel.appendLine(value);
+    }
+    replace(value: string): void {
+        this.channel.replace(value);
+    }
+    clear(): void {
+        if (this._channel) {
+            this._channel.clear();
+        }
+    }
+    show(preserveFocus?: boolean): void;
+    show(column?: vscode.ViewColumn, preserveFocus?: boolean): void;
+    show(column?: any, preserveFocus?: any): void {
+        this.channel.show(column, preserveFocus);
+    }
+    hide(): void {
+        if (this._channel) {
+            this._channel.hide();
+        }
+    }
+    dispose(): void {
+        if (this._channel) {
+            this._channel.dispose();
+        }
+    }
 }

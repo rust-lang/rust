@@ -8,6 +8,7 @@ use chalk_ir::{
 };
 use chalk_solve::infer::ParameterEnaVariableExt;
 use ena::unify::UnifyKey;
+use hir_def::{FunctionId, TraitId};
 use hir_expand::name;
 use stdx::never;
 
@@ -626,18 +627,26 @@ impl<'a> InferenceTable<'a> {
         }
     }
 
-    pub(crate) fn callable_sig(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {
+    pub(crate) fn callable_sig(
+        &mut self,
+        ty: &Ty,
+        num_args: usize,
+    ) -> Option<(Option<(TraitId, FunctionId)>, Vec<Ty>, Ty)> {
         match ty.callable_sig(self.db) {
-            Some(sig) => Some((sig.params().to_vec(), sig.ret().clone())),
+            Some(sig) => Some((None, sig.params().to_vec(), sig.ret().clone())),
             None => self.callable_sig_from_fn_trait(ty, num_args),
         }
     }
 
-    fn callable_sig_from_fn_trait(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {
+    fn callable_sig_from_fn_trait(
+        &mut self,
+        ty: &Ty,
+        num_args: usize,
+    ) -> Option<(Option<(TraitId, FunctionId)>, Vec<Ty>, Ty)> {
         let krate = self.trait_env.krate;
         let fn_once_trait = FnTrait::FnOnce.get_id(self.db, krate)?;
-        let output_assoc_type =
-            self.db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
+        let trait_data = self.db.trait_data(fn_once_trait);
+        let output_assoc_type = trait_data.associated_type_by_name(&name![Output])?;
 
         let mut arg_tys = vec![];
         let arg_ty = TyBuilder::tuple(num_args)
@@ -675,7 +684,11 @@ impl<'a> InferenceTable<'a> {
         if self.db.trait_solve(krate, canonical.value.cast(Interner)).is_some() {
             self.register_obligation(obligation.goal);
             let return_ty = self.normalize_projection_ty(projection);
-            Some((arg_tys, return_ty))
+            Some((
+                Some(fn_once_trait).zip(trait_data.method_by_name(&name!(call_once))),
+                arg_tys,
+                return_ty,
+            ))
         } else {
             None
         }

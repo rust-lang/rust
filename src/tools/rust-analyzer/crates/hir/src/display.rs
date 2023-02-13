@@ -4,6 +4,7 @@ use hir_def::{
     generics::{
         TypeOrConstParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
     },
+    lang_item::LangItem,
     type_ref::{TypeBound, TypeRef},
     AdtId, GenericDefId,
 };
@@ -14,7 +15,6 @@ use hir_ty::{
     },
     Interner, TraitRefExt, WhereClause,
 };
-use syntax::SmolStr;
 
 use crate::{
     Adt, Const, ConstParam, Enum, Field, Function, GenericParam, HasCrate, HasVisibility,
@@ -261,8 +261,7 @@ impl HirDisplay for TypeParam {
             bounds.iter().cloned().map(|b| b.substitute(Interner, &substs)).collect();
         let krate = self.id.parent().krate(f.db).id;
         let sized_trait =
-            f.db.lang_item(krate, SmolStr::new_inline("sized"))
-                .and_then(|lang_item| lang_item.as_trait());
+            f.db.lang_item(krate, LangItem::Sized).and_then(|lang_item| lang_item.as_trait());
         let has_only_sized_bound = predicates.iter().all(move |pred| match pred.skip_binders() {
             WhereClause::Implemented(it) => Some(it.hir_trait_id()) == sized_trait,
             _ => false,
@@ -270,7 +269,7 @@ impl HirDisplay for TypeParam {
         let has_only_not_sized_bound = predicates.is_empty();
         if !has_only_sized_bound || has_only_not_sized_bound {
             let default_sized = SizedByDefault::Sized { anchor: krate };
-            write_bounds_like_dyn_trait_with_prefix(":", &predicates, default_sized, f)?;
+            write_bounds_like_dyn_trait_with_prefix(f, ":", &predicates, default_sized)?;
         }
         Ok(())
     }

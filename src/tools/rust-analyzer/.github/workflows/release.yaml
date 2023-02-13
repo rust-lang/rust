@@ -29,6 +29,9 @@ jobs:
             target: x86_64-pc-windows-msvc
             code-target: win32-x64
           - os: windows-latest
+            target: i686-pc-windows-msvc
+            code-target: win32-ia32
+          - os: windows-latest
             target: aarch64-pc-windows-msvc
             code-target: win32-arm64
           - os: ubuntu-20.04
@@ -229,6 +232,10 @@ jobs:
       - uses: actions/download-artifact@v1
         with:
           name: dist-x86_64-pc-windows-msvc
+          path: dist
+      - uses: actions/download-artifact@v1
+        with:
+          name: dist-i686-pc-windows-msvc
           path: dist
       - uses: actions/download-artifact@v1
         with:

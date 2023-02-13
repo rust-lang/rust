@@ -14,7 +14,7 @@ use ide_db::base_db::{SourceDatabaseExt, VfsPath};
 use itertools::Itertools;
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
-use vfs::{ChangeKind, FileId};
+use vfs::{AbsPathBuf, ChangeKind, FileId};
 
 use crate::{
     config::Config,
@@ -287,8 +287,10 @@ impl GlobalState {
                 || self.fetch_build_data_queue.op_requested());
 
             if became_quiescent {
-                // Project has loaded properly, kick off initial flycheck
-                self.flycheck.iter().for_each(FlycheckHandle::restart);
+                if self.config.check_on_save() {
+                    // Project has loaded properly, kick off initial flycheck
+                    self.flycheck.iter().for_each(FlycheckHandle::restart);
+                }
                 if self.config.prefill_caches() {
                     self.prime_caches_queue.request_op("became quiescent".to_string());
                 }
@@ -305,12 +307,17 @@ impl GlobalState {
                 if self.config.code_lens_refresh() {
                     self.send_request::<lsp_types::request::CodeLensRefresh>((), |_, _| ());
                 }
+
+                // Refresh inlay hints if the client supports it.
+                if self.config.inlay_hints_refresh() {
+                    self.send_request::<lsp_types::request::InlayHintRefreshRequest>((), |_, _| ());
+                }
             }
 
-            if !was_quiescent || state_changed || memdocs_added_or_removed {
-                if self.config.publish_diagnostics() {
-                    self.update_diagnostics()
-                }
+            if (!was_quiescent || state_changed || memdocs_added_or_removed)
+                && self.config.publish_diagnostics()
+            {
+                self.update_diagnostics()
             }
         }
 
@@ -604,8 +611,8 @@ impl GlobalState {
             Ok(())
         });
 
-        if let RequestDispatcher { req: Some(req), global_state: this } = &mut dispatcher {
-            if this.shutdown_requested {
+        match &mut dispatcher {
+            RequestDispatcher { req: Some(req), global_state: this } if this.shutdown_requested => {
                 this.respond(lsp_server::Response::new_err(
                     req.id.clone(),
                     lsp_server::ErrorCode::InvalidRequest as i32,
@@ -613,16 +620,7 @@ impl GlobalState {
                 ));
                 return;
             }
-
-            // Avoid flashing a bunch of unresolved references during initial load.
-            if this.workspaces.is_empty() && !this.is_quiescent() {
-                this.respond(lsp_server::Response::new_err(
-                    req.id.clone(),
-                    lsp_server::ErrorCode::ContentModified as i32,
-                    "waiting for cargo metadata or cargo check".to_owned(),
-                ));
-                return;
-            }
+            _ => (),
         }
 
         dispatcher
@@ -932,6 +930,30 @@ impl GlobalState {
                         }
                     },
                 );
+
+                Ok(())
+            })?
+            .on::<lsp_types::notification::DidChangeWorkspaceFolders>(|this, params| {
+                let config = Arc::make_mut(&mut this.config);
+
+                for workspace in params.event.removed {
+                    let Ok(path) = workspace.uri.to_file_path() else { continue };
+                    let Ok(path) = AbsPathBuf::try_from(path) else { continue };
+                    let Some(position) = config.workspace_roots.iter().position(|it| it == &path) else { continue };
+                    config.workspace_roots.remove(position);
+                }
+
+                let added = params
+                    .event
+                    .added
+                    .into_iter()
+                    .filter_map(|it| it.uri.to_file_path().ok())
+                    .filter_map(|it| AbsPathBuf::try_from(it).ok());
+                config.workspace_roots.extend(added);
+                    if !config.has_linked_projects() && config.detached_files().is_empty() {
+                        config.rediscover_workspaces();
+                        this.fetch_workspaces_queue.request_op("client workspaces changed".to_string())
+                    }
 
                 Ok(())
             })?

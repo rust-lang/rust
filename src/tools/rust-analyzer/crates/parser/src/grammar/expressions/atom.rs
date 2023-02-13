@@ -152,7 +152,7 @@ pub(super) fn atom_expr(
             m.complete(p, BLOCK_EXPR)
         }
 
-        T![static] | T![async] | T![move] | T![|] => closure_expr(p),
+        T![const] | T![static] | T![async] | T![move] | T![|] => closure_expr(p),
         T![for] if la == T![<] => closure_expr(p),
         T![for] => for_expr(p, None),
 
@@ -255,7 +255,7 @@ fn array_expr(p: &mut Parser<'_>) -> CompletedMarker {
 // }
 fn closure_expr(p: &mut Parser<'_>) -> CompletedMarker {
     assert!(match p.current() {
-        T![static] | T![async] | T![move] | T![|] => true,
+        T![const] | T![static] | T![async] | T![move] | T![|] => true,
         T![for] => p.nth(1) == T![<],
         _ => false,
     });
@@ -265,7 +265,9 @@ fn closure_expr(p: &mut Parser<'_>) -> CompletedMarker {
     if p.at(T![for]) {
         types::for_binder(p);
     }
-
+    // test const_closure
+    // fn main() { let cl = const || _ = 0; }
+    p.eat(T![const]);
     p.eat(T![static]);
     p.eat(T![async]);
     p.eat(T![move]);

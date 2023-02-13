@@ -181,6 +181,35 @@ impl<'t> Parser<'t> {
         self.do_bump(kind, 1);
     }
 
+    /// Advances the parser by one token
+    pub(crate) fn split_float(&mut self, mut marker: Marker) -> (bool, Marker) {
+        assert!(self.at(SyntaxKind::FLOAT_NUMBER));
+        // we have parse `<something>.`
+        // `<something>`.0.1
+        // here we need to insert an extra event
+        //
+        // `<something>`. 0. 1;
+        // here we need to change the follow up parse, the return value will cause us to emulate a dot
+        // the actual splitting happens later
+        let ends_in_dot = !self.inp.is_joint(self.pos);
+        if !ends_in_dot {
+            let new_marker = self.start();
+            let idx = marker.pos as usize;
+            match &mut self.events[idx] {
+                Event::Start { forward_parent, kind } => {
+                    *kind = SyntaxKind::FIELD_EXPR;
+                    *forward_parent = Some(new_marker.pos - marker.pos);
+                }
+                _ => unreachable!(),
+            }
+            marker.bomb.defuse();
+            marker = new_marker;
+        };
+        self.pos += 1 as usize;
+        self.push_event(Event::FloatSplitHack { ends_in_dot });
+        (ends_in_dot, marker)
+    }
+
     /// Advances the parser by one token, remapping its kind.
     /// This is useful to create contextual keywords from
     /// identifiers. For example, the lexer creates a `union`

@@ -23,7 +23,6 @@
 //! for the relevant versions of the rust compiler
 //!
 
-mod abi_1_58;
 mod abi_1_63;
 #[cfg(feature = "sysroot-abi")]
 mod abi_sysroot;
@@ -36,12 +35,13 @@ include!(concat!(env!("OUT_DIR"), "/rustc_version.rs"));
 pub(crate) use abi_sysroot::TokenStream as TestTokenStream;
 
 use super::dylib::LoadProcMacroDylibError;
-pub(crate) use abi_1_58::Abi as Abi_1_58;
 pub(crate) use abi_1_63::Abi as Abi_1_63;
 #[cfg(feature = "sysroot-abi")]
 pub(crate) use abi_sysroot::Abi as Abi_Sysroot;
 use libloading::Library;
 use proc_macro_api::{ProcMacroKind, RustCInfo};
+
+use crate::tt;
 
 pub struct PanicMessage {
     message: Option<String>,
@@ -54,7 +54,6 @@ impl PanicMessage {
 }
 
 pub(crate) enum Abi {
-    Abi1_58(Abi_1_58),
     Abi1_63(Abi_1_63),
     #[cfg(feature = "sysroot-abi")]
     AbiSysroot(Abi_Sysroot),
@@ -109,10 +108,6 @@ impl Abi {
         // FIXME: this should use exclusive ranges when they're stable
         // https://github.com/rust-lang/rust/issues/37854
         match (info.version.0, info.version.1) {
-            (1, 58..=62) => {
-                let inner = unsafe { Abi_1_58::from_lib(lib, symbol_name) }?;
-                Ok(Abi::Abi1_58(inner))
-            }
             (1, 63) => {
                 let inner = unsafe { Abi_1_63::from_lib(lib, symbol_name) }?;
                 Ok(Abi::Abi1_63(inner))
@@ -128,7 +123,6 @@ impl Abi {
         attributes: Option<&tt::Subtree>,
     ) -> Result<tt::Subtree, PanicMessage> {
         match self {
-            Self::Abi1_58(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_63(abi) => abi.expand(macro_name, macro_body, attributes),
             #[cfg(feature = "sysroot-abi")]
             Self::AbiSysroot(abi) => abi.expand(macro_name, macro_body, attributes),
@@ -137,7 +131,6 @@ impl Abi {
 
     pub fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
         match self {
-            Self::Abi1_58(abi) => abi.list_macros(),
             Self::Abi1_63(abi) => abi.list_macros(),
             #[cfg(feature = "sysroot-abi")]
             Self::AbiSysroot(abi) => abi.list_macros(),

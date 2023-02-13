@@ -1,11 +1,14 @@
 //! This module contains functions to generate default trait impl function bodies where possible.
 
+use hir::TraitRef;
 use syntax::{
     ast::{self, edit::AstNodeEdit, make, AstNode, BinaryOp, CmpOp, HasName, LogicOp},
     ted,
 };
 
 /// Generate custom trait bodies without default implementation where possible.
+///
+/// If `func` is defined within an existing impl block, pass [`TraitRef`]. Otherwise pass `None`.
 ///
 /// Returns `Option` so that we can use `?` rather than `if let Some`. Returning
 /// `None` means that generating a custom trait body failed, and the body will remain
@@ -14,14 +17,15 @@ pub(crate) fn gen_trait_fn_body(
     func: &ast::Fn,
     trait_path: &ast::Path,
     adt: &ast::Adt,
+    trait_ref: Option<TraitRef>,
 ) -> Option<()> {
     match trait_path.segment()?.name_ref()?.text().as_str() {
         "Clone" => gen_clone_impl(adt, func),
         "Debug" => gen_debug_impl(adt, func),
         "Default" => gen_default_impl(adt, func),
         "Hash" => gen_hash_impl(adt, func),
-        "PartialEq" => gen_partial_eq(adt, func),
-        "PartialOrd" => gen_partial_ord(adt, func),
+        "PartialEq" => gen_partial_eq(adt, func, trait_ref),
+        "PartialOrd" => gen_partial_ord(adt, func, trait_ref),
         _ => None,
     }
 }
@@ -395,7 +399,7 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 }
 
 /// Generate a `PartialEq` impl based on the fields and members of the target type.
-fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -> Option<()> {
     stdx::always!(func.name().map_or(false, |name| name.text() == "eq"));
     fn gen_eq_chain(expr: Option<ast::Expr>, cmp: ast::Expr) -> Option<ast::Expr> {
         match expr {
@@ -423,8 +427,15 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         ast::Pat::IdentPat(make::ident_pat(false, false, make::name(field_name)))
     }
 
-    // FIXME: return `None` if the trait carries a generic type; we can only
-    // generate this code `Self` for the time being.
+    // Check that self type and rhs type match. We don't know how to implement the method
+    // automatically otherwise.
+    if let Some(trait_ref) = trait_ref {
+        let self_ty = trait_ref.self_ty();
+        let rhs_ty = trait_ref.get_type_argument(1)?;
+        if self_ty != rhs_ty {
+            return None;
+        }
+    }
 
     let body = match adt {
         // `PartialEq` cannot be derived for unions, so no default impl can be provided.
@@ -568,7 +579,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 make::block_expr(None, expr).indent(ast::edit::IndentLevel(1))
             }
 
-            // No fields in the body means there's nothing to hash.
+            // No fields in the body means there's nothing to compare.
             None => {
                 let expr = make::expr_literal("true").into();
                 make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1))
@@ -580,7 +591,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
     Some(())
 }
 
-fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
+fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -> Option<()> {
     stdx::always!(func.name().map_or(false, |name| name.text() == "partial_cmp"));
     fn gen_partial_eq_match(match_target: ast::Expr) -> Option<ast::Stmt> {
         let mut arms = vec![];
@@ -605,8 +616,15 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         make::expr_method_call(lhs, method, make::arg_list(Some(rhs)))
     }
 
-    // FIXME: return `None` if the trait carries a generic type; we can only
-    // generate this code `Self` for the time being.
+    // Check that self type and rhs type match. We don't know how to implement the method
+    // automatically otherwise.
+    if let Some(trait_ref) = trait_ref {
+        let self_ty = trait_ref.self_ty();
+        let rhs_ty = trait_ref.get_type_argument(1)?;
+        if self_ty != rhs_ty {
+            return None;
+        }
+    }
 
     let body = match adt {
         // `PartialOrd` cannot be derived for unions, so no default impl can be provided.
