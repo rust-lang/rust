@@ -2,7 +2,7 @@
 
 use itertools::Itertools;
 
-use crate::{ast, match_ast, AstNode};
+use crate::{ast, match_ast, AstNode, SyntaxKind};
 
 pub fn path_to_string_stripping_turbo_fish(path: &ast::Path) -> String {
     path.syntax()
@@ -21,6 +21,11 @@ pub fn path_to_string_stripping_turbo_fish(path: &ast::Path) -> String {
             }
         })
         .join("::")
+}
+
+pub fn is_raw_identifier(name: &str) -> bool {
+    let is_keyword = SyntaxKind::from_keyword(name).is_some();
+    is_keyword && !matches!(name, "self" | "crate" | "super" | "Self")
 }
 
 #[cfg(test)]

@@ -12,7 +12,7 @@
 use itertools::Itertools;
 use stdx::{format_to, never};
 
-use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxToken};
+use crate::{ast, utils::is_raw_identifier, AstNode, SourceFile, SyntaxKind, SyntaxToken};
 
 /// While the parent module defines basic atomic "constructors", the `ext`
 /// module defines shortcuts for common things.
@@ -111,8 +111,7 @@ pub fn name_ref(name_ref: &str) -> ast::NameRef {
     ast_from_text(&format!("fn f() {{ {raw_escape}{name_ref}; }}"))
 }
 fn raw_ident_esc(ident: &str) -> &'static str {
-    let is_keyword = parser::SyntaxKind::from_keyword(ident).is_some();
-    if is_keyword && !matches!(ident, "self" | "crate" | "super" | "Self") {
+    if is_raw_identifier(ident) {
         "r#"
     } else {
         ""
