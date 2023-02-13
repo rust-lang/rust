@@ -170,14 +170,6 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
 ) -> CValue<'tcx> {
-    if bin_op != BinOp::Shl && bin_op != BinOp::Shr {
-        assert_eq!(
-            in_lhs.layout().ty,
-            in_rhs.layout().ty,
-            "checked int binop requires lhs and rhs of same type"
-        );
-    }
-
     let lhs = in_lhs.load_scalar(fx);
     let rhs = in_rhs.load_scalar(fx);
 
@@ -270,21 +262,6 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
                 }
                 _ => unreachable!("invalid non-integer type {}", ty),
             }
-        }
-        BinOp::Shl => {
-            let val = fx.bcx.ins().ishl(lhs, rhs);
-            let ty = fx.bcx.func.dfg.value_type(val);
-            let max_shift = i64::from(ty.bits()) - 1;
-            let has_overflow = fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThan, rhs, max_shift);
-            (val, has_overflow)
-        }
-        BinOp::Shr => {
-            let val =
-                if !signed { fx.bcx.ins().ushr(lhs, rhs) } else { fx.bcx.ins().sshr(lhs, rhs) };
-            let ty = fx.bcx.func.dfg.value_type(val);
-            let max_shift = i64::from(ty.bits()) - 1;
-            let has_overflow = fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThan, rhs, max_shift);
-            (val, has_overflow)
         }
         _ => bug!("binop {:?} on checked int/uint lhs: {:?} rhs: {:?}", bin_op, in_lhs, in_rhs),
     };
