@@ -253,8 +253,44 @@ pub fn test20() {
 pub fn test21() {
     loop {
         'a: {
-            { }
+            {}
             break 'a;
+        }
+    }
+}
+
+// Issue 10304: code after break from block was not considered
+// unreachable code and was considered for further analysis of
+// whether the loop would ever be executed or not.
+pub fn test22() {
+    for _ in 0..10 {
+        'block: {
+            break 'block;
+            return;
+        }
+        println!("looped");
+    }
+}
+
+pub fn test23() {
+    for _ in 0..10 {
+        'block: {
+            for _ in 0..20 {
+                break 'block;
+            }
+        }
+        println!("looped");
+    }
+}
+
+pub fn test24() {
+    'a: for _ in 0..10 {
+        'b: {
+            let x = Some(1);
+            match x {
+                None => break 'a,
+                Some(_) => break 'b,
+            }
         }
     }
 }

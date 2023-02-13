@@ -126,5 +126,18 @@ LL | |         }
 LL | |     }
    | |_____^
 
-error: aborting due to 11 previous errors
+error: this loop never actually loops
+  --> $DIR/never_loop.rs:278:13
+   |
+LL | /             for _ in 0..20 {
+LL | |                 break 'block;
+LL | |             }
+   | |_____________^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL |             if let Some(_) = (0..20).next() {
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 12 previous errors
 
