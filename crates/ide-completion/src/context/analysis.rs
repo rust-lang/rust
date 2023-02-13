@@ -608,16 +608,8 @@ fn classify_name_ref(
 
                 let reciever_is_part_of_indivisible_expression = match &receiver {
                     Some(ast::Expr::IfExpr(_)) => {
-                        let next_sibling = field.dot_token().and_then(|token| {
-                            let dot_token = original_file.covering_element(token.text_range());
-                            let next_sibling = dot_token.as_token().and_then(|t| t.next_token()).and_then(|t| next_non_trivia_sibling(t.into()));
-                            next_sibling
-                        });
-                        match next_sibling {
-                            Some(syntax::NodeOrToken::Node(n)) => n.first_child_or_token().map(|t| t.kind()) == Some(SyntaxKind::ELSE_KW),
-                            Some(syntax::NodeOrToken::Token(t)) => t.kind()  == SyntaxKind::ELSE_KW,
-                            None => false
-                        }
+                        let next_token_kind = next_non_trivia_token(name_ref.syntax().clone()).map(|t| t.kind());
+                        next_token_kind == Some(SyntaxKind::ELSE_KW)
                     },
                     _ => false
                 };
@@ -1332,6 +1324,22 @@ fn previous_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken>
             return Some(inner);
         } else {
             token = inner.prev_token();
+        }
+    }
+    None
+}
+
+fn next_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken> {
+    let mut token = match e.into() {
+        SyntaxElement::Node(n) => n.last_token()?,
+        SyntaxElement::Token(t) => t,
+    }
+    .next_token();
+    while let Some(inner) = token {
+        if !inner.kind().is_trivia() {
+            return Some(inner);
+        } else {
+            token = inner.next_token();
         }
     }
     None
