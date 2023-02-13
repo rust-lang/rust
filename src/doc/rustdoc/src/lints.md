@@ -374,3 +374,51 @@ warning: this URL is not a hyperlink
 
 warning: 2 warnings emitted
 ```
+
+## `unused_reexport_documentation`
+
+This lint in **warn-by-default**. It detects documentation which isn't used on
+reexports. There are two possible cases:
+ * Glob reexports (`pub use *`).
+ * Non-inlined reexport of local item.
+
+```rust
+pub struct Foo;
+
+/// Unused because `Bar` doesn't have its own documentation
+/// page unless we add `#[doc(inline)]` on it.
+pub use Foo as Bar;
+
+/// Documentation from glob imports is never used.
+pub use std::option::*;
+```
+
+Which will give:
+
+```text
+warning: doc comment on glob reexports are always ignored
+ --> unused.rs:7:1
+  |
+7 | /// Documentation from glob imports is never used.
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(rustdoc::unused_reexport_documentation)]` on by default
+
+warning: doc comments on non-inlined reexports of local items are ignored
+ --> unused.rs:3:1
+  |
+3 | /// Unused because `Bar` doesn't have its own documentation
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: the documentation won't be visible because reexports don't have their own page
+help: try adding `#[doc(inline)]`
+  |
+5 | #[doc(inline)] pub use Foo as Bar;
+  | ++++++++++++++
+help: or move the documentation directly on the reexported item
+  |
+3 - /// Unused because `Bar` doesn't have its own documentation
+  |
+
+warning: 2 warnings emitted
+```
