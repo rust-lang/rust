@@ -264,7 +264,6 @@ pub struct CommonTypes<'tcx> {
     pub u128: Ty<'tcx>,
     pub f32: Ty<'tcx>,
     pub f64: Ty<'tcx>,
-    pub str_: Ty<'tcx>,
     pub never: Ty<'tcx>,
     pub self_param: Ty<'tcx>,
 
@@ -335,7 +334,6 @@ impl<'tcx> CommonTypes<'tcx> {
             u128: mk(Uint(ty::UintTy::U128)),
             f32: mk(Float(ty::FloatTy::F32)),
             f64: mk(Float(ty::FloatTy::F64)),
-            str_: mk(Str),
             self_param: mk(ty::Param(ty::ParamTy { index: 0, name: kw::SelfUpper })),
 
             trait_object_dummy_self: fresh_tys[0],
@@ -1696,9 +1694,13 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    pub fn mk_str(self) -> Ty<'tcx> {
+        self.mk_ty(ty::Str)
+    }
+
     #[inline]
     pub fn mk_static_str(self) -> Ty<'tcx> {
-        self.mk_imm_ref(self.lifetimes.re_static, self.types.str_)
+        self.mk_imm_ref(self.lifetimes.re_static, self.mk_str())
     }
 
     #[inline]

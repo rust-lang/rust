@@ -518,7 +518,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         // See https://github.com/rust-lang/rust/issues/90703#issuecomment-1004263455
         Some(match prim {
             Bool => tcx.types.bool,
-            Str => tcx.types.str_,
+            Str => tcx.mk_str(),
             Char => tcx.types.char,
             Never => tcx.types.never,
             I8 => tcx.types.i8,

@@ -205,7 +205,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let len = s.len();
         let cs = consts::ptrcast(
             str_global,
-            self.type_ptr_to(self.layout_of(self.tcx.types.str_).llvm_type(self)),
+            self.type_ptr_to(self.layout_of(self.tcx.mk_str()).llvm_type(self)),
         );
         (cs, self.const_usize(len as u64))
     }

@@ -497,8 +497,8 @@ fn is_to_string_on_string_like<'a>(
         && let GenericArgKind::Type(ty) = generic_arg.unpack()
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
-        && (cx.get_associated_type(ty, deref_trait_id, "Target") == Some(cx.tcx.types.str_) ||
-            implements_trait(cx, ty, as_ref_trait_id, &[cx.tcx.types.str_.into()])) {
+        && (cx.get_associated_type(ty, deref_trait_id, "Target").map_or(false, |ty| ty.is_str()) ||
+            implements_trait(cx, ty, as_ref_trait_id, &[cx.tcx.mk_str().into()])) {
             true
         } else {
             false
