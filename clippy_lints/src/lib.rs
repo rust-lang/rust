@@ -242,6 +242,7 @@ mod ptr;
 mod ptr_offset_with_cast;
 mod pub_use;
 mod question_mark;
+mod question_mark_used;
 mod ranges;
 mod rc_clone_in_vec_init;
 mod read_zero_byte_vec;
@@ -693,6 +694,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(implicit_hasher::ImplicitHasher));
     store.register_late_pass(|_| Box::new(fallible_impl_from::FallibleImplFrom));
     store.register_late_pass(|_| Box::new(question_mark::QuestionMark));
+    store.register_late_pass(|_| Box::new(question_mark_used::QuestionMarkUsed));
     store.register_early_pass(|| Box::new(suspicious_operation_groupings::SuspiciousOperationGroupings));
     store.register_late_pass(|_| Box::new(suspicious_trait_impl::SuspiciousImpl));
     store.register_late_pass(|_| Box::new(map_unit_fn::MapUnit));
