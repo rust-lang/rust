@@ -305,6 +305,7 @@ pub fn create_compressed_metadata_file(
     symbol_name: &str,
 ) -> Vec<u8> {
     let mut compressed = rustc_metadata::METADATA_HEADER.to_vec();
+    compressed.write_all(&(metadata.raw_data().len() as u32).to_be_bytes()).unwrap();
     FrameEncoder::new(&mut compressed).write_all(metadata.raw_data()).unwrap();
     let Some(mut file) = create_object_file(sess) else {
         return compressed.to_vec();
