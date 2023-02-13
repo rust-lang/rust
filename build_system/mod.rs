@@ -81,6 +81,7 @@ pub(crate) fn main() {
     };
 
     let mut out_dir = PathBuf::from(".");
+    let mut download_dir = None;
     let mut channel = "release";
     let mut sysroot_kind = SysrootKind::Clif;
     let mut use_unstable_features = true;
@@ -91,7 +92,12 @@ pub(crate) fn main() {
             "--out-dir" => {
                 out_dir = PathBuf::from(args.next().unwrap_or_else(|| {
                     arg_error!("--out-dir requires argument");
-                }))
+                }));
+            }
+            "--download-dir" => {
+                download_dir = Some(PathBuf::from(args.next().unwrap_or_else(|| {
+                    arg_error!("--download-dir requires argument");
+                })));
             }
             "--debug" => channel = "debug",
             "--sysroot" => {
@@ -152,7 +158,9 @@ pub(crate) fn main() {
     out_dir = current_dir.join(out_dir);
     let dirs = path::Dirs {
         source_dir: current_dir.clone(),
-        download_dir: out_dir.join("download"),
+        download_dir: download_dir
+            .map(|dir| current_dir.join(dir))
+            .unwrap_or_else(|| out_dir.join("download")),
         build_dir: out_dir.join("build"),
         dist_dir: out_dir.join("dist"),
         frozen,

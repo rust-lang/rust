@@ -1,11 +1,11 @@
 The build system of cg_clif.
 
 USAGE:
-    ./y.rs prepare [--out-dir DIR]
-    ./y.rs build [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features] [--frozen]
-    ./y.rs test [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features] [--frozen]
-    ./y.rs abi-cafe [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features] [--frozen]
-    ./y.rs bench [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.rs prepare [--out-dir DIR] [--download-dir DIR]
+    ./y.rs build [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.rs test [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.rs abi-cafe [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.rs bench [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
 
 OPTIONS:
     --debug
@@ -21,6 +21,9 @@ OPTIONS:
     --out-dir DIR
             Specify the directory in which the download, build and dist directories are stored.
             By default this is the working directory.
+
+    --download-dir DIR
+            Specify the directory in which the download directory is stored. Overrides --out-dir.
 
     --no-unstable-features
             Some features are not yet ready for production usage. This option will disable these
