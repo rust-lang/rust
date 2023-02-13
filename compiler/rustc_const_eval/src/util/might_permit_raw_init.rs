@@ -1,5 +1,5 @@
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{ParamEnv, TyCtxt};
+use rustc_middle::ty::{ParamEnv, TyCtxt, TypeVisitable};
 use rustc_session::Limit;
 use rustc_target::abi::{Abi, FieldsShape, InitKind, Scalar, Variants};
 
@@ -108,7 +108,12 @@ fn might_permit_raw_init_lax<'tcx>(
 
     // Special magic check for references and boxes (i.e., special pointer types).
     if let Some(pointee) = this.ty.builtin_deref(false) {
-        let pointee = cx.layout_of(pointee.ty).expect("need to be able to compute layouts");
+        let Ok(pointee) = cx.layout_of(pointee.ty) else {
+            // Reference is too polymorphic, it has a layout but the pointee does not.
+            // So we must assume that there may be some substitution that is valid.
+            assert!(pointee.ty.needs_subst());
+            return true;
+        };
         // We need to ensure that the LLVM attributes `aligned` and `dereferenceable(size)` are satisfied.
         if pointee.align.abi.bytes() > 1 {
             // 0x01-filling is not aligned.
