@@ -63,6 +63,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi;
 use rustc_target::spec::PanicStrategy;
+use std::mem;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -230,7 +231,13 @@ macro_rules! define_callbacks {
                     value: query_provided::$name<'tcx>,
                 ) -> query_values::$name<'tcx> {
                     query_if_arena!([$($modifiers)*]
-                        (&*_tcx.query_system.arenas.$name.alloc(value))
+                        {
+                            if mem::needs_drop::<query_provided::$name<'tcx>>() {
+                                &*_tcx.query_system.arenas.$name.alloc(value)
+                            } else {
+                                &*_tcx.arena.dropless.alloc(value)
+                            }
+                        }
                         (value)
                     )
                 }
