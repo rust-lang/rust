@@ -2,10 +2,8 @@ error[E0271]: expected `callback` to be a fn item that returns `Pin<Box<dyn Futu
   --> $DIR/issue-98634.rs:45:23
    |
 LL |         StructAsync { callback }.await;
-   |                       ^^^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found opaque type
+   |                       ^^^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found future
    |
-   = note:   expected struct `Pin<Box<(dyn Future<Output = ()> + 'static)>>`
-           found opaque type `impl Future<Output = ()>`
 note: required by a bound in `StructAsync`
   --> $DIR/issue-98634.rs:9:35
    |
@@ -16,10 +14,8 @@ error[E0271]: expected `callback` to be a fn item that returns `Pin<Box<dyn Futu
   --> $DIR/issue-98634.rs:45:9
    |
 LL |         StructAsync { callback }.await;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found opaque type
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found future
    |
-   = note:   expected struct `Pin<Box<(dyn Future<Output = ()> + 'static)>>`
-           found opaque type `impl Future<Output = ()>`
 note: required by a bound in `StructAsync`
   --> $DIR/issue-98634.rs:9:35
    |
@@ -30,10 +26,8 @@ error[E0271]: expected `callback` to be a fn item that returns `Pin<Box<dyn Futu
   --> $DIR/issue-98634.rs:45:33
    |
 LL |         StructAsync { callback }.await;
-   |                                 ^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found opaque type
+   |                                 ^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found future
    |
-   = note:   expected struct `Pin<Box<(dyn Future<Output = ()> + 'static)>>`
-           found opaque type `impl Future<Output = ()>`
 note: required by a bound in `StructAsync`
   --> $DIR/issue-98634.rs:9:35
    |

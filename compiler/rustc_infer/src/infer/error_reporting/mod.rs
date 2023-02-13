@@ -1783,14 +1783,24 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             }
                         }))
                     {
-                        diag.note_expected_found_extra(
-                            &expected_label,
-                            expected,
-                            &found_label,
-                            found,
-                            &sort_string(values.expected, exp_p),
-                            &sort_string(values.found, found_p),
-                        );
+                        if let Some(ExpectedFound { found: found_ty, .. }) = exp_found {
+                            // `Future` is a special opaque type that the compiler
+                            // will try to hide in some case such as `async fn`, so
+                            // to make an error more use friendly we will
+                            // avoid to suggest a mismatch type with a
+                            // type that the user usually are not usign
+                            // directly such as `impl Future<Output = u8>`.
+                            if !self.tcx.ty_is_opaque_future(found_ty) {
+                                diag.note_expected_found_extra(
+                                    &expected_label,
+                                    expected,
+                                    &found_label,
+                                    found,
+                                    &sort_string(values.expected, exp_p),
+                                    &sort_string(values.found, found_p),
+                                );
+                            }
+                        }
                     }
                 }
                 _ => {
@@ -2854,6 +2864,7 @@ impl IntoDiagnosticArg for ObligationCauseAsDiagArg<'_> {
 pub enum TyCategory {
     Closure,
     Opaque,
+    OpaqueFuture,
     Generator(hir::GeneratorKind),
     Foreign,
 }
@@ -2863,6 +2874,7 @@ impl TyCategory {
         match self {
             Self::Closure => "closure",
             Self::Opaque => "opaque type",
+            Self::OpaqueFuture => "future",
             Self::Generator(gk) => gk.descr(),
             Self::Foreign => "foreign type",
         }
@@ -2871,7 +2883,11 @@ impl TyCategory {
     pub fn from_ty(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Self, DefId)> {
         match *ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => Some((Self::Opaque, def_id)),
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
+                let kind =
+                    if tcx.ty_is_opaque_future(ty) { Self::OpaqueFuture } else { Self::Opaque };
+                Some((kind, def_id))
+            }
             ty::Generator(def_id, ..) => {
                 Some((Self::Generator(tcx.generator_kind(def_id).unwrap()), def_id))
             }
