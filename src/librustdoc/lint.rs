@@ -174,6 +174,18 @@ declare_rustdoc_lint! {
    "codeblock could not be parsed as valid Rust or is empty"
 }
 
+declare_rustdoc_lint! {
+    /// The `documented_local_non_inlined_reexport` lint detects when a reexport
+    /// (`pub use`) of an item from the same crate which doesn't have
+    /// `#[doc(inline)]` is documented.
+    /// This is a `rustdoc` only lint, see the documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#documented_non_inlined_local_reexport
+    DOCUMENTED_LOCAL_NON_INLINED_REEXPORT,
+    Warn,
+    "doc comments on local non-inlined reexports are ignored",
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
