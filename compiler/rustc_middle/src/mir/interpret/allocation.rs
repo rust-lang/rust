@@ -32,13 +32,7 @@ pub use init_mask::{InitChunk, InitChunkIter};
 
 /// Functionality required for the bytes of an `Allocation`.
 pub trait AllocBytes:
-    Clone
-    + fmt::Debug
-    + Eq
-    + PartialEq
-    + Hash
-    + Deref<Target = [u8]>
-    + DerefMut<Target = [u8]>
+    Clone + fmt::Debug + Eq + PartialEq + Hash + Deref<Target = [u8]> + DerefMut<Target = [u8]>
 {
     /// Adjust the bytes to the specified alignment -- by default, this is a no-op.
     fn adjust_to_align(self, _align: Align) -> Self;
@@ -271,11 +265,7 @@ impl AllocRange {
 // The constructors are all without extra; the extra gets added by a machine hook later.
 impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     /// Creates an allocation from an existing `Bytes` value - this is needed for miri FFI support
-    pub fn from_raw_bytes(
-        bytes: Bytes,
-        align: Align,
-        mutability: Mutability,
-    ) -> Self {
+    pub fn from_raw_bytes(bytes: Bytes, align: Align, mutability: Mutability) -> Self {
         let size = Size::from_bytes(bytes.len());
         Self {
             bytes,

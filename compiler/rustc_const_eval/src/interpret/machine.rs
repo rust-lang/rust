@@ -16,8 +16,8 @@ use rustc_target::spec::abi::Abi as CallAbi;
 use crate::const_eval::CheckAlignment;
 
 use super::{
-    AllocId, AllocRange, Allocation, AllocBytes, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
-    MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar, StackPopUnwind,
+    AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, Frame, ImmTy, InterpCx,
+    InterpResult, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar, StackPopUnwind,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -111,7 +111,10 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Memory's allocation map
     type MemoryMap: AllocMap<
             AllocId,
-            (MemoryKind<Self::MemoryKind>, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>),
+            (
+                MemoryKind<Self::MemoryKind>,
+                Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>,
+            ),
         > + Default
         + Clone;
 
