@@ -307,4 +307,8 @@ fn issue10051() -> Result<String, String> {
     }
 }
 
+fn issue10049(b1: bool, b2: bool, b3: bool) -> u32 {
+    return if b1 { 0 } else { 1 } | if b2 { 2 } else { 3 } | if b3 { 4 } else { 5 };
+}
+
 fn main() {}

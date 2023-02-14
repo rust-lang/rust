@@ -69,31 +69,35 @@ declare_clippy_lint! {
     "using a return statement like `return expr;` where an expression would suffice"
 }
 
-#[derive(PartialEq, Eq, Copy, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 enum RetReplacement {
     Empty,
     Block,
     Unit,
+    IfSequence(String),
+    Expr(String),
 }
 
 impl RetReplacement {
     fn sugg_help(self) -> &'static str {
         match self {
-            Self::Empty => "remove `return`",
+            Self::Empty | Self::Expr(_) => "remove `return`",
             Self::Block => "replace `return` with an empty block",
             Self::Unit => "replace `return` with a unit value",
+            Self::IfSequence(_) => "remove `return` and wrap the sequence with parentheses",
         }
     }
 }
 
 impl ToString for RetReplacement {
     fn to_string(&self) -> String {
-        match *self {
-            Self::Empty => "",
-            Self::Block => "{}",
-            Self::Unit => "()",
+        match self {
+            Self::Empty => String::new(),
+            Self::Block => "{}".to_string(),
+            Self::Unit => "()".to_string(),
+            Self::IfSequence(inner) => format!("({inner})"),
+            Self::Expr(inner) => inner.clone(),
         }
-        .to_string()
     }
 }
 
@@ -210,20 +214,6 @@ fn check_final_expr<'tcx>(
     match &peeled_drop_expr.kind {
         // simple return is always "bad"
         ExprKind::Ret(ref inner) => {
-            // if desugar of `do yeet`, don't lint
-            if let Some(inner_expr) = inner
-                && let ExprKind::Call(path_expr, _) = inner_expr.kind
-                && let ExprKind::Path(QPath::LangItem(LangItem::TryTraitFromYeet, _, _)) = path_expr.kind
-            {
-                return;
-            }
-            if !cx.tcx.hir().attrs(expr.hir_id).is_empty() {
-                return;
-            }
-            let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
-            if borrows {
-                return;
-            }
             // check if expr return nothing
             let ret_span = if inner.is_none() && replacement == RetReplacement::Empty {
                 extend_span_to_previous_non_ws(cx, peeled_drop_expr.span)
@@ -231,7 +221,39 @@ fn check_final_expr<'tcx>(
                 peeled_drop_expr.span
             };
 
-            emit_return_lint(cx, ret_span, semi_spans, inner.as_ref().map(|i| i.span), replacement);
+            let replacement = if let Some(inner_expr) = inner {
+                // if desugar of `do yeet`, don't lint
+                if let ExprKind::Call(path_expr, _) = inner_expr.kind
+                    && let ExprKind::Path(QPath::LangItem(LangItem::TryTraitFromYeet, _, _)) = path_expr.kind
+                {
+                    return;
+                }
+
+                let (snippet, _) = snippet_with_context(
+                    cx,
+                    inner_expr.span,
+                    ret_span.ctxt(),
+                    "..",
+                    &mut Applicability::MachineApplicable,
+                );
+                if expr_contains_if(inner_expr) {
+                    RetReplacement::IfSequence(snippet.to_string())
+                } else {
+                    RetReplacement::Expr(snippet.to_string())
+                }
+            } else {
+                replacement
+            };
+
+            if !cx.tcx.hir().attrs(expr.hir_id).is_empty() {
+                return;
+            }
+            let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
+            if borrows {
+                return;
+            }
+
+            emit_return_lint(cx, ret_span, semi_spans, replacement);
         },
         ExprKind::If(_, then, else_clause_opt) => {
             check_block_return(cx, &then.kind, peeled_drop_expr.span, semi_spans.clone());
@@ -253,29 +275,21 @@ fn check_final_expr<'tcx>(
     }
 }
 
-fn emit_return_lint(
-    cx: &LateContext<'_>,
-    ret_span: Span,
-    semi_spans: Vec<Span>,
-    inner_span: Option<Span>,
-    replacement: RetReplacement,
-) {
+fn expr_contains_if<'tcx>(expr: &'tcx Expr<'tcx>) -> bool {
+    match expr.kind {
+        ExprKind::If(..) => true,
+        ExprKind::Binary(_, left, right) => expr_contains_if(left) || expr_contains_if(right),
+        _ => false,
+    }
+}
+
+fn emit_return_lint(cx: &LateContext<'_>, ret_span: Span, semi_spans: Vec<Span>, replacement: RetReplacement) {
     if ret_span.from_expansion() {
         return;
     }
-    let mut applicability = Applicability::MachineApplicable;
-    let return_replacement = inner_span.map_or_else(
-        || replacement.to_string(),
-        |inner_span| {
-            let (snippet, _) = snippet_with_context(cx, inner_span, ret_span.ctxt(), "..", &mut applicability);
-            snippet.to_string()
-        },
-    );
-    let sugg_help = if inner_span.is_some() {
-        "remove `return`"
-    } else {
-        replacement.sugg_help()
-    };
+    let applicability = Applicability::MachineApplicable;
+    let return_replacement = replacement.to_string();
+    let sugg_help = replacement.sugg_help();
     span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |diag| {
         diag.span_suggestion_hidden(ret_span, sugg_help, return_replacement, applicability);
         // for each parent statement, we need to remove the semicolon
