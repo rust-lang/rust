@@ -502,7 +502,7 @@ impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
                 // expansion, so we use `import_source_files` to ensure that the foreign
                 // source files are actually imported before we call `source_file_by_stable_id`.
                 if stable_id.cnum != LOCAL_CRATE {
-                    self.tcx.cstore_untracked().import_source_files(self.tcx.sess, stable_id.cnum);
+                    self.tcx.cstore(()).import_source_files(self.tcx.sess, stable_id.cnum);
                 }
 
                 source_map
@@ -670,7 +670,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
             expn_id
         } else {
             let index_guess = decoder.foreign_expn_data[&hash];
-            decoder.tcx.cstore_untracked().expn_hash_to_expn_id(
+            decoder.tcx.cstore(()).expn_hash_to_expn_id(
                 decoder.tcx.sess,
                 krate,
                 index_guess,

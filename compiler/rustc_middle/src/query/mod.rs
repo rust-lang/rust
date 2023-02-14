@@ -48,6 +48,13 @@ rustc_queries! {
         desc { "getting the source span" }
     }
 
+    query cstore(key: ()) -> &'tcx rustc_session::cstore::CrateStoreDyn {
+        // Accesses untracked data
+        eval_always
+        no_hash
+        desc { "getting the crate store" }
+    }
+
     /// Represents crate as a whole (as distinct from the top-level crate module).
     /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
     /// we will have to assume that any change means that you need to be recompiled.

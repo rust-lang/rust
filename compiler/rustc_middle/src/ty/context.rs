@@ -2408,4 +2408,5 @@ pub fn provide(providers: &mut ty::query::Providers) {
     };
     providers.source_span =
         |tcx, def_id| tcx.untracked.source_span.get(def_id).copied().unwrap_or(DUMMY_SP);
+    providers.cstore = |tcx, ()| &*tcx.untracked.cstore;
 }
