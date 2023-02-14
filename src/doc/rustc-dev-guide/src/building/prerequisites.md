@@ -29,7 +29,7 @@ laptop. We suggest downloading LLVM from CI so you don't have to build it from s
 
 Like `cargo`, the build system will use as many cores as possible. Sometimes
 this can cause you to run low on memory. You can use `-j` to adjust the number
-concurrent jobs. If a full build takes more than ~45 minutes to an hour, you
+of concurrent jobs. If a full build takes more than ~45 minutes to an hour, you
 are probably spending most of the time swapping memory in and out; try using
 `-j1`.
 
