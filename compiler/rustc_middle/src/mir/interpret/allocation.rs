@@ -271,7 +271,7 @@ impl AllocRange {
 // The constructors are all without extra; the extra gets added by a machine hook later.
 impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     /// Creates an allocation from an existing `Bytes` value - this is needed for miri FFI support
-    pub fn from_raw_bytes<'a>(
+    pub fn from_raw_bytes(
         bytes: Bytes,
         align: Align,
         mutability: Mutability,
