@@ -250,6 +250,15 @@ pub fn test20() {
     }
 }
 
+pub fn test21() {
+    loop {
+        'a: {
+            { }
+            break 'a;
+        }
+    }
+}
+
 fn main() {
     test1();
     test2();

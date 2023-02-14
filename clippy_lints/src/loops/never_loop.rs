@@ -163,7 +163,9 @@ fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: H
                 ignore_ids.push(b.hir_id);
             }
             let ret = never_loop_block(b, ignore_ids, main_loop_id);
-            ignore_ids.pop();
+            if l.is_some() {
+                ignore_ids.pop();
+            }
             ret
         },
         ExprKind::Continue(d) => {
