@@ -901,7 +901,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         }
 
         let len = if let ty::Array(_ty, c) = e.kind() {
-            c.try_eval_usize(tcx, tcx.param_env(def.did()))
+            c.try_eval_target_usize(tcx, tcx.param_env(def.did()))
         } else {
             Some(fields.len() as u64)
         };

@@ -2063,7 +2063,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         len: ty::Const<'tcx>,
         min_len: u64,
     ) -> (Option<Ty<'tcx>>, Ty<'tcx>) {
-        if let Some(len) = len.try_eval_usize(self.tcx, self.param_env) {
+        if let Some(len) = len.try_eval_target_usize(self.tcx, self.param_env) {
             // Now we know the length...
             if slice.is_none() {
                 // ...and since there is no variable-length pattern,

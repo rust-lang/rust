@@ -143,7 +143,7 @@ impl EnumSizeOpt {
 
                     let tmp_ty = tcx.mk_ty(ty::Array(
                         tcx.types.usize,
-                        Const::from_usize(tcx, num_variants as u64),
+                        Const::from_target_usize(tcx, num_variants as u64),
                     ));
 
                     let size_array_local = local_decls.push(LocalDecl::new(tmp_ty, span));

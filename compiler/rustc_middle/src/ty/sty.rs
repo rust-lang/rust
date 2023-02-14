@@ -1879,7 +1879,7 @@ impl<'tcx> Ty<'tcx> {
                         // The way we evaluate the `N` in `[T; N]` here only works since we use
                         // `simd_size_and_type` post-monomorphization. It will probably start to ICE
                         // if we use it in generic code. See the `simd-array-trait` ui test.
-                        (f0_len.eval_usize(tcx, ParamEnv::empty()) as u64, *f0_elem_ty)
+                        (f0_len.eval_target_usize(tcx, ParamEnv::empty()) as u64, *f0_elem_ty)
                     }
                     // Otherwise, the fields of this Adt are the SIMD components (and we assume they
                     // all have the same type).

@@ -1787,7 +1787,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
-        self.mk_ty(Array(ty, ty::Const::from_usize(self, n)))
+        self.mk_ty(Array(ty, ty::Const::from_target_usize(self, n)))
     }
 
     #[inline]

@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use gccjit::{BinaryOp, RValue, Type, ToRValue};
+use gccjit::{BinaryOp, RValue, ToRValue, Type};
 use rustc_codegen_ssa::base::compare_simd_types;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::operand::OperandRef;
@@ -10,52 +10,57 @@ use rustc_hir as hir;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::Align;
 
 use crate::builder::Builder;
 use crate::errors::{
-    InvalidMonomorphizationInvalidFloatVector,
-    InvalidMonomorphizationNotFloat,
-    InvalidMonomorphizationUnrecognized,
-    InvalidMonomorphizationExpectedSignedUnsigned,
-    InvalidMonomorphizationUnsupportedElement,
-    InvalidMonomorphizationInvalidBitmask,
-    InvalidMonomorphizationSimdShuffle,
-    InvalidMonomorphizationExpectedSimd,
-    InvalidMonomorphizationMaskType,
-    InvalidMonomorphizationReturnLength,
-    InvalidMonomorphizationReturnLengthInputType,
-    InvalidMonomorphizationReturnElement,
-    InvalidMonomorphizationReturnType,
-    InvalidMonomorphizationInsertedType,
-    InvalidMonomorphizationReturnIntegerType,
-    InvalidMonomorphizationMismatchedLengths,
-    InvalidMonomorphizationUnsupportedCast,
-    InvalidMonomorphizationUnsupportedOperation
+    InvalidMonomorphizationExpectedSignedUnsigned, InvalidMonomorphizationExpectedSimd,
+    InvalidMonomorphizationInsertedType, InvalidMonomorphizationInvalidBitmask,
+    InvalidMonomorphizationInvalidFloatVector, InvalidMonomorphizationMaskType,
+    InvalidMonomorphizationMismatchedLengths, InvalidMonomorphizationNotFloat,
+    InvalidMonomorphizationReturnElement, InvalidMonomorphizationReturnIntegerType,
+    InvalidMonomorphizationReturnLength, InvalidMonomorphizationReturnLengthInputType,
+    InvalidMonomorphizationReturnType, InvalidMonomorphizationSimdShuffle,
+    InvalidMonomorphizationUnrecognized, InvalidMonomorphizationUnsupportedCast,
+    InvalidMonomorphizationUnsupportedElement, InvalidMonomorphizationUnsupportedOperation,
 };
 use crate::intrinsic;
 
-pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, name: Symbol, callee_ty: Ty<'tcx>, args: &[OperandRef<'tcx, RValue<'gcc>>], ret_ty: Ty<'tcx>, llret_ty: Type<'gcc>, span: Span) -> Result<RValue<'gcc>, ()> {
+pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
+    bx: &mut Builder<'a, 'gcc, 'tcx>,
+    name: Symbol,
+    callee_ty: Ty<'tcx>,
+    args: &[OperandRef<'tcx, RValue<'gcc>>],
+    ret_ty: Ty<'tcx>,
+    llret_ty: Type<'gcc>,
+    span: Span,
+) -> Result<RValue<'gcc>, ()> {
     // macros for error handling:
     macro_rules! return_error {
-        ($err:expr) => {
-            {
-                bx.sess().emit_err($err);
-                return Err(());
-            }
-        }
+        ($err:expr) => {{
+            bx.sess().emit_err($err);
+            return Err(());
+        }};
     }
     macro_rules! require {
         ($cond:expr, $err:expr) => {
             if !$cond {
                 return_error!($err);
             }
-        }
+        };
     }
     macro_rules! require_simd {
         ($ty: expr, $position: expr) => {
-            require!($ty.is_simd(), InvalidMonomorphizationExpectedSimd { span, name, position: $position, found_ty: $ty })
+            require!(
+                $ty.is_simd(),
+                InvalidMonomorphizationExpectedSimd {
+                    span,
+                    name,
+                    position: $position,
+                    found_ty: $ty
+                }
+            )
         };
     }
 
@@ -77,7 +82,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
             ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
             ty::Array(elem, len)
                 if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
-                    && len.try_eval_usize(bx.tcx, ty::ParamEnv::reveal_all())
+                    && len.try_eval_target_usize(bx.tcx, ty::ParamEnv::reveal_all())
                         == Some(expected_bytes) =>
             {
                 let place = PlaceRef::alloca(bx, args[0].layout);
@@ -86,9 +91,13 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                 let ptr = bx.pointercast(place.llval, bx.cx.type_ptr_to(int_ty));
                 bx.load(int_ty, ptr, Align::ONE)
             }
-            _ => return_error!(
-                InvalidMonomorphizationInvalidBitmask { span, name, ty: mask_ty, expected_int_bits, expected_bytes }
-            ),
+            _ => return_error!(InvalidMonomorphizationInvalidBitmask {
+                span,
+                name,
+                ty: mask_ty,
+                expected_int_bits,
+                expected_bytes
+            }),
         };
 
         let arg1 = args[1].immediate();
@@ -129,11 +138,18 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let (out_len, out_ty) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
-            InvalidMonomorphizationReturnLengthInputType { span, name, in_len, in_ty, ret_ty, out_len }
+            InvalidMonomorphizationReturnLengthInputType {
+                span,
+                name,
+                in_len,
+                in_ty,
+                ret_ty,
+                out_len
+            }
         );
         require!(
             bx.type_kind(bx.element_type(llret_ty)) == TypeKind::Integer,
-            InvalidMonomorphizationReturnIntegerType {span, name, ret_ty, out_ty}
+            InvalidMonomorphizationReturnIntegerType { span, name, ret_ty, out_ty }
         );
 
         return Ok(compare_simd_types(
@@ -147,26 +163,26 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
     }
 
     if let Some(stripped) = name.as_str().strip_prefix("simd_shuffle") {
-        let n: u64 =
-            if stripped.is_empty() {
-                // Make sure this is actually an array, since typeck only checks the length-suffixed
-                // version of this intrinsic.
-                match args[2].layout.ty.kind() {
-                    ty::Array(ty, len) if matches!(ty.kind(), ty::Uint(ty::UintTy::U32)) => {
-                        len.try_eval_usize(bx.cx.tcx, ty::ParamEnv::reveal_all()).unwrap_or_else(|| {
-                            span_bug!(span, "could not evaluate shuffle index array length")
-                        })
-                    }
-                    _ => return_error!(
-                        InvalidMonomorphizationSimdShuffle { span, name, ty: args[2].layout.ty }
-                    ),
+        let n: u64 = if stripped.is_empty() {
+            // Make sure this is actually an array, since typeck only checks the length-suffixed
+            // version of this intrinsic.
+            match args[2].layout.ty.kind() {
+                ty::Array(ty, len) if matches!(ty.kind(), ty::Uint(ty::UintTy::U32)) => {
+                    len.try_eval_target_usize(bx.cx.tcx, ty::ParamEnv::reveal_all()).unwrap_or_else(
+                        || span_bug!(span, "could not evaluate shuffle index array length"),
+                    )
                 }
+                _ => return_error!(InvalidMonomorphizationSimdShuffle {
+                    span,
+                    name,
+                    ty: args[2].layout.ty
+                }),
             }
-            else {
-                stripped.parse().unwrap_or_else(|_| {
-                    span_bug!(span, "bad `simd_shuffle` instruction only caught in codegen?")
-                })
-            };
+        } else {
+            stripped.parse().unwrap_or_else(|_| {
+                span_bug!(span, "bad `simd_shuffle` instruction only caught in codegen?")
+            })
+        };
 
         require_simd!(ret_ty, "return");
 
@@ -182,14 +198,10 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
 
         let vector = args[2].immediate();
 
-        return Ok(bx.shuffle_vector(
-            args[0].immediate(),
-            args[1].immediate(),
-            vector,
-        ));
+        return Ok(bx.shuffle_vector(args[0].immediate(), args[1].immediate(), vector));
     }
 
-    #[cfg(feature="master")]
+    #[cfg(feature = "master")]
     if name == sym::simd_insert {
         require!(
             in_elem == arg_tys[2],
@@ -205,44 +217,44 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         // not be an l-value. So, call a builtin to set the element.
         // TODO(antoyo): perhaps we could create a new vector or maybe there's a GIMPLE instruction for that?
         // TODO(antoyo): don't use target specific builtins here.
-        let func_name =
-            match in_len {
-                2 => {
-                    if element_type == bx.i64_type {
-                        "__builtin_ia32_vec_set_v2di"
-                    }
-                    else {
-                        unimplemented!();
-                    }
-                },
-                4 => {
-                    if element_type == bx.i32_type {
-                        "__builtin_ia32_vec_set_v4si"
-                    }
-                    else {
-                        unimplemented!();
-                    }
-                },
-                8 => {
-                    if element_type == bx.i16_type {
-                        "__builtin_ia32_vec_set_v8hi"
-                    }
-                    else {
-                        unimplemented!();
-                    }
-                },
-                _ => unimplemented!("Len: {}", in_len),
-            };
+        let func_name = match in_len {
+            2 => {
+                if element_type == bx.i64_type {
+                    "__builtin_ia32_vec_set_v2di"
+                } else {
+                    unimplemented!();
+                }
+            }
+            4 => {
+                if element_type == bx.i32_type {
+                    "__builtin_ia32_vec_set_v4si"
+                } else {
+                    unimplemented!();
+                }
+            }
+            8 => {
+                if element_type == bx.i16_type {
+                    "__builtin_ia32_vec_set_v8hi"
+                } else {
+                    unimplemented!();
+                }
+            }
+            _ => unimplemented!("Len: {}", in_len),
+        };
         let builtin = bx.context.get_target_builtin_function(func_name);
         let param1_type = builtin.get_param(0).to_rvalue().get_type();
         // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
         let vector = bx.cx.bitcast_if_needed(vector, param1_type);
-        let result = bx.context.new_call(None, builtin, &[vector, value, bx.context.new_cast(None, index, bx.int_type)]);
+        let result = bx.context.new_call(
+            None,
+            builtin,
+            &[vector, value, bx.context.new_cast(None, index, bx.int_type)],
+        );
         // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
         return Ok(bx.context.new_bitcast(None, result, vector.get_type()));
     }
 
-    #[cfg(feature="master")]
+    #[cfg(feature = "master")]
     if name == sym::simd_extract {
         require!(
             ret_ty == in_elem,
@@ -273,7 +285,14 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
             in_len == out_len,
-            InvalidMonomorphizationReturnLengthInputType { span, name, in_len, in_ty, ret_ty, out_len }
+            InvalidMonomorphizationReturnLengthInputType {
+                span,
+                name,
+                in_len,
+                in_ty,
+                ret_ty,
+                out_len
+            }
         );
         // casting cares about nominal type, not just structural type
         if in_elem == out_elem {
@@ -322,19 +341,27 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
 
             let cast_vec_element = |index| {
                 let index = bx.context.new_rvalue_from_int(bx.int_type, index);
-                bx.context.new_cast(None, bx.context.new_array_access(None, array, index).to_rvalue(), out_type)
+                bx.context.new_cast(
+                    None,
+                    bx.context.new_array_access(None, array, index).to_rvalue(),
+                    out_type,
+                )
             };
 
-            bx.context.new_rvalue_from_vector(None, vector_type, &[
-                cast_vec_element(0),
-                cast_vec_element(1),
-                cast_vec_element(2),
-                cast_vec_element(3),
-                cast_vec_element(4),
-                cast_vec_element(5),
-                cast_vec_element(6),
-                cast_vec_element(7),
-            ])
+            bx.context.new_rvalue_from_vector(
+                None,
+                vector_type,
+                &[
+                    cast_vec_element(0),
+                    cast_vec_element(1),
+                    cast_vec_element(2),
+                    cast_vec_element(3),
+                    cast_vec_element(4),
+                    cast_vec_element(5),
+                    cast_vec_element(6),
+                    cast_vec_element(7),
+                ],
+            )
         };
 
         match (in_style, out_style) {
@@ -385,9 +412,14 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
             }
             _ => { /* Unsupported. Fallthrough. */ }
         }
-        return_error!(
-            InvalidMonomorphizationUnsupportedCast { span, name, in_ty, in_elem, ret_ty, out_elem }
-        );
+        return_error!(InvalidMonomorphizationUnsupportedCast {
+            span,
+            name,
+            in_ty,
+            in_elem,
+            ret_ty,
+            out_elem
+        });
     }
 
     macro_rules! arith_binary {
@@ -414,54 +446,60 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         args: &[OperandRef<'tcx, RValue<'gcc>>],
     ) -> Result<RValue<'gcc>, ()> {
         macro_rules! return_error {
-            ($err:expr) => {
-                {
-                    bx.sess().emit_err($err);
-                    return Err(());
-                }
-            }
+            ($err:expr) => {{
+                bx.sess().emit_err($err);
+                return Err(());
+            }};
         }
-        let (elem_ty_str, elem_ty) =
-            if let ty::Float(f) = in_elem.kind() {
-                let elem_ty = bx.cx.type_float_from_ty(*f);
-                match f.bit_width() {
-                    32 => ("f32", elem_ty),
-                    64 => ("f64", elem_ty),
-                    _ => {
-                        return_error!(InvalidMonomorphizationInvalidFloatVector { span, name, elem_ty: f.name_str(), vec_ty: in_ty });
-                    }
+        let (elem_ty_str, elem_ty) = if let ty::Float(f) = in_elem.kind() {
+            let elem_ty = bx.cx.type_float_from_ty(*f);
+            match f.bit_width() {
+                32 => ("f32", elem_ty),
+                64 => ("f64", elem_ty),
+                _ => {
+                    return_error!(InvalidMonomorphizationInvalidFloatVector {
+                        span,
+                        name,
+                        elem_ty: f.name_str(),
+                        vec_ty: in_ty
+                    });
                 }
             }
-            else {
-                return_error!(InvalidMonomorphizationNotFloat { span, name, ty: in_ty });
-            };
+        } else {
+            return_error!(InvalidMonomorphizationNotFloat { span, name, ty: in_ty });
+        };
 
         let vec_ty = bx.cx.type_vector(elem_ty, in_len);
 
-        let (intr_name, fn_ty) =
-            match name {
-                sym::simd_ceil => ("ceil", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_fabs => ("fabs", bx.type_func(&[vec_ty], vec_ty)), // TODO(antoyo): pand with 170141183420855150465331762880109871103
-                sym::simd_fcos => ("cos", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_fexp2 => ("exp2", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_fexp => ("exp", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_flog10 => ("log10", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_flog2 => ("log2", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_flog => ("log", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_floor => ("floor", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_fma => ("fma", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
-                sym::simd_fpowi => ("powi", bx.type_func(&[vec_ty, bx.type_i32()], vec_ty)),
-                sym::simd_fpow => ("pow", bx.type_func(&[vec_ty, vec_ty], vec_ty)),
-                sym::simd_fsin => ("sin", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_fsqrt => ("sqrt", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_round => ("round", bx.type_func(&[vec_ty], vec_ty)),
-                sym::simd_trunc => ("trunc", bx.type_func(&[vec_ty], vec_ty)),
-                _ => return_error!(InvalidMonomorphizationUnrecognized { span, name })
-            };
+        let (intr_name, fn_ty) = match name {
+            sym::simd_ceil => ("ceil", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fabs => ("fabs", bx.type_func(&[vec_ty], vec_ty)), // TODO(antoyo): pand with 170141183420855150465331762880109871103
+            sym::simd_fcos => ("cos", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fexp2 => ("exp2", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fexp => ("exp", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_flog10 => ("log10", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_flog2 => ("log2", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_flog => ("log", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_floor => ("floor", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fma => ("fma", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
+            sym::simd_fpowi => ("powi", bx.type_func(&[vec_ty, bx.type_i32()], vec_ty)),
+            sym::simd_fpow => ("pow", bx.type_func(&[vec_ty, vec_ty], vec_ty)),
+            sym::simd_fsin => ("sin", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fsqrt => ("sqrt", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_round => ("round", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_trunc => ("trunc", bx.type_func(&[vec_ty], vec_ty)),
+            _ => return_error!(InvalidMonomorphizationUnrecognized { span, name }),
+        };
         let llvm_name = &format!("llvm.{0}.v{1}{2}", intr_name, in_len, elem_ty_str);
         let function = intrinsic::llvm::intrinsic(llvm_name, &bx.cx);
         let function: RValue<'gcc> = unsafe { std::mem::transmute(function) };
-        let c = bx.call(fn_ty, None, function, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None);
+        let c = bx.call(
+            fn_ty,
+            None,
+            function,
+            &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+            None,
+        );
         Ok(c)
     }
 
@@ -518,7 +556,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         simd_neg: Int => neg, Float => fneg;
     }
 
-    #[cfg(feature="master")]
+    #[cfg(feature = "master")]
     if name == sym::simd_saturating_add || name == sym::simd_saturating_sub {
         let lhs = args[0].immediate();
         let rhs = args[1].immediate();
@@ -536,18 +574,23 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                 });
             }
         };
-        let builtin_name =
-            match (signed, is_add, in_len, elem_width) {
-                (true, true, 32, 8) => "__builtin_ia32_paddsb256", // TODO(antoyo): cast arguments to unsigned.
-                (false, true, 32, 8) => "__builtin_ia32_paddusb256",
-                (true, true, 16, 16) => "__builtin_ia32_paddsw256",
-                (false, true, 16, 16) => "__builtin_ia32_paddusw256",
-                (true, false, 16, 16) => "__builtin_ia32_psubsw256",
-                (false, false, 16, 16) => "__builtin_ia32_psubusw256",
-                (true, false, 32, 8) => "__builtin_ia32_psubsb256",
-                (false, false, 32, 8) => "__builtin_ia32_psubusb256",
-                _ => unimplemented!("signed: {}, is_add: {}, in_len: {}, elem_width: {}", signed, is_add, in_len, elem_width),
-            };
+        let builtin_name = match (signed, is_add, in_len, elem_width) {
+            (true, true, 32, 8) => "__builtin_ia32_paddsb256", // TODO(antoyo): cast arguments to unsigned.
+            (false, true, 32, 8) => "__builtin_ia32_paddusb256",
+            (true, true, 16, 16) => "__builtin_ia32_paddsw256",
+            (false, true, 16, 16) => "__builtin_ia32_paddusw256",
+            (true, false, 16, 16) => "__builtin_ia32_psubsw256",
+            (false, false, 16, 16) => "__builtin_ia32_psubusw256",
+            (true, false, 32, 8) => "__builtin_ia32_psubsb256",
+            (false, false, 32, 8) => "__builtin_ia32_psubusb256",
+            _ => unimplemented!(
+                "signed: {}, is_add: {}, in_len: {}, elem_width: {}",
+                signed,
+                is_add,
+                in_len,
+                elem_width
+            ),
+        };
         let vec_ty = bx.cx.type_vector(elem_ty, in_len as u64);
 
         let func = bx.context.get_target_builtin_function(builtin_name);
@@ -575,8 +618,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                             // if overflow occurs, the result is the
                             // mathematical result modulo 2^n:
                             Ok(bx.$op(args[1].immediate(), r))
-                        }
-                        else {
+                        } else {
                             Ok(bx.vector_reduce_op(args[0].immediate(), $vec_op))
                         }
                     }
@@ -585,12 +627,17 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                             // ordered arithmetic reductions take an accumulator
                             let acc = args[1].immediate();
                             Ok(bx.$float_reduce(acc, args[0].immediate()))
-                        }
-                        else {
+                        } else {
                             Ok(bx.vector_reduce_op(args[0].immediate(), $vec_op))
                         }
                     }
-                    _ => return_error!(InvalidMonomorphizationUnsupportedElement { span, name, in_ty, elem_ty: in_elem, ret_ty }),
+                    _ => return_error!(InvalidMonomorphizationUnsupportedElement {
+                        span,
+                        name,
+                        in_ty,
+                        elem_ty: in_elem,
+                        ret_ty
+                    }),
                 };
             }
         };
@@ -603,13 +650,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         add,
         0.0 // TODO: Use this argument.
     );
-    arith_red!(
-        simd_reduce_mul_unordered: BinaryOp::Mult,
-        vector_reduce_fmul_fast,
-        false,
-        mul,
-        1.0
-    );
+    arith_red!(simd_reduce_mul_unordered: BinaryOp::Mult, vector_reduce_fmul_fast, false, mul, 1.0);
 
     macro_rules! minmax_red {
         ($name:ident: $reduction:ident) => {
@@ -619,8 +660,16 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                     InvalidMonomorphizationReturnType { span, name, in_elem, in_ty, ret_ty }
                 );
                 return match in_elem.kind() {
-                    ty::Int(_) | ty::Uint(_) | ty::Float(_) => Ok(bx.$reduction(args[0].immediate())),
-                    _ => return_error!(InvalidMonomorphizationUnsupportedElement { span, name, in_ty, elem_ty: in_elem, ret_ty }),
+                    ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
+                        Ok(bx.$reduction(args[0].immediate()))
+                    }
+                    _ => return_error!(InvalidMonomorphizationUnsupportedElement {
+                        span,
+                        name,
+                        in_ty,
+                        elem_ty: in_elem,
+                        ret_ty
+                    }),
                 };
             }
         };
@@ -641,7 +690,13 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                 } else {
                     match in_elem.kind() {
                         ty::Int(_) | ty::Uint(_) => {}
-                        _ => return_error!(InvalidMonomorphizationUnsupportedElement { span, name, in_ty, elem_ty: in_elem, ret_ty }),
+                        _ => return_error!(InvalidMonomorphizationUnsupportedElement {
+                            span,
+                            name,
+                            in_ty,
+                            elem_ty: in_elem,
+                            ret_ty
+                        }),
                     }
 
                     // boolean reductions operate on vectors of i1s:
@@ -654,9 +709,13 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
                         let r = bx.vector_reduce_op(input, $op);
                         Ok(if !$boolean { r } else { bx.zext(r, bx.type_bool()) })
                     }
-                    _ => return_error!(
-                        InvalidMonomorphizationUnsupportedElement { span, name, in_ty, elem_ty: in_elem, ret_ty }
-                    ),
+                    _ => return_error!(InvalidMonomorphizationUnsupportedElement {
+                        span,
+                        name,
+                        in_ty,
+                        elem_ty: in_elem,
+                        ret_ty
+                    }),
                 };
             }
         };

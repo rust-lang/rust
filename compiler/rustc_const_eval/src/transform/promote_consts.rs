@@ -364,31 +364,33 @@ impl<'tcx> Validator<'_, 'tcx> {
                     ProjectionElem::Index(local) => {
                         let mut promotable = false;
                         // Only accept if we can predict the index and are indexing an array.
-                        let val =
-                            if let TempState::Defined { location: loc, .. } = self.temps[local] {
-                                let block = &self.body[loc.block];
-                                if loc.statement_index < block.statements.len() {
-                                    let statement = &block.statements[loc.statement_index];
-                                    match &statement.kind {
-                                        StatementKind::Assign(box (
-                                            _,
-                                            Rvalue::Use(Operand::Constant(c)),
-                                        )) => c.literal.try_eval_usize(self.tcx, self.param_env),
-                                        _ => None,
-                                    }
-                                } else {
-                                    None
+                        let val = if let TempState::Defined { location: loc, .. } =
+                            self.temps[local]
+                        {
+                            let block = &self.body[loc.block];
+                            if loc.statement_index < block.statements.len() {
+                                let statement = &block.statements[loc.statement_index];
+                                match &statement.kind {
+                                    StatementKind::Assign(box (
+                                        _,
+                                        Rvalue::Use(Operand::Constant(c)),
+                                    )) => c.literal.try_eval_target_usize(self.tcx, self.param_env),
+                                    _ => None,
                                 }
                             } else {
                                 None
-                            };
+                            }
+                        } else {
+                            None
+                        };
                         if let Some(idx) = val {
                             // Determine the type of the thing we are indexing.
                             let ty = place_base.ty(self.body, self.tcx).ty;
                             match ty.kind() {
                                 ty::Array(_, len) => {
                                     // It's an array; determine its length.
-                                    if let Some(len) = len.try_eval_usize(self.tcx, self.param_env)
+                                    if let Some(len) =
+                                        len.try_eval_target_usize(self.tcx, self.param_env)
                                     {
                                         // If the index is in-bounds, go ahead.
                                         if idx < len {
@@ -470,7 +472,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // mutably without consequences. However, only &mut []
                 // is allowed right now.
                 if let ty::Array(_, len) = ty.kind() {
-                    match len.try_eval_usize(self.tcx, self.param_env) {
+                    match len.try_eval_target_usize(self.tcx, self.param_env) {
                         Some(0) => {}
                         _ => return Err(Unpromotable),
                     }

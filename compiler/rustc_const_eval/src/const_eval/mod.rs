@@ -107,7 +107,7 @@ pub(crate) fn try_destructure_mir_constant<'tcx>(
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
     let (field_count, variant, down) = match val.ty().kind() {
-        ty::Array(_, len) => (len.eval_usize(tcx, param_env) as usize, None, op),
+        ty::Array(_, len) => (len.eval_target_usize(tcx, param_env) as usize, None, op),
         ty::Adt(def, _) if def.variants().is_empty() => {
             throw_ub!(Unreachable)
         }
