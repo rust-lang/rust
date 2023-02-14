@@ -2100,6 +2100,7 @@ fn get_all_import_attributes<'hir>(
     tcx: TyCtxt<'hir>,
     target_def_id: LocalDefId,
     attributes: &mut Vec<ast::Attribute>,
+    is_inline: bool,
 ) {
     let hir_map = tcx.hir();
     let mut visitor = OneLevelVisitor::new(hir_map, target_def_id);
@@ -2107,7 +2108,7 @@ fn get_all_import_attributes<'hir>(
     // If the item is an import and has at least a path with two parts, we go into it.
     while let hir::ItemKind::Use(path, _) = item.kind && visited.insert(item.hir_id()) {
         // We add the attributes from this import into the list.
-        add_without_unwanted_attributes(attributes, hir_map.attrs(item.hir_id()));
+        add_without_unwanted_attributes(attributes, hir_map.attrs(item.hir_id()), is_inline);
 
         let def_id = if path.segments.len() > 1 {
             match path.segments[path.segments.len() - 2].res {
@@ -2189,7 +2190,16 @@ fn filter_tokens_from_list(
 /// * `doc(inline)`
 /// * `doc(no_inline)`
 /// * `doc(hidden)`
-fn add_without_unwanted_attributes(attrs: &mut Vec<ast::Attribute>, new_attrs: &[ast::Attribute]) {
+fn add_without_unwanted_attributes(
+    attrs: &mut Vec<ast::Attribute>,
+    new_attrs: &[ast::Attribute],
+    is_inline: bool,
+) {
+    // If it's `#[doc(inline)]`, we don't want all attributes, otherwise we keep everything.
+    if !is_inline {
+        attrs.extend_from_slice(new_attrs);
+        return;
+    }
     for attr in new_attrs {
         let mut attr = attr.clone();
         match attr.kind {
@@ -2321,9 +2331,10 @@ fn clean_maybe_renamed_item<'tcx>(
         {
             // First, we add the attributes from the current import.
             extra_attrs.extend_from_slice(inline::load_attrs(cx, import_id.to_def_id()));
+            let is_inline = extra_attrs.lists(sym::doc).get_word_attr(sym::inline).is_some();
             // Then we get all the various imports' attributes.
-            get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut extra_attrs);
-            add_without_unwanted_attributes(&mut extra_attrs, inline::load_attrs(cx, def_id));
+            get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut extra_attrs, is_inline);
+            add_without_unwanted_attributes(&mut extra_attrs, inline::load_attrs(cx, def_id), is_inline);
         } else {
             // We only keep the item's attributes.
             extra_attrs.extend_from_slice(inline::load_attrs(cx, def_id));

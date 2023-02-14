@@ -1,5 +1,6 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/59368>.
-// The goal is to ensure that `doc(hidden)`, `doc(inline)` and `doc(no_inline`)
+// The goal is to ensure that `doc(hidden)`, `doc(inline)` and `doc(no_inline)`
+// are not copied from an item when inlined.
 
 #![crate_name = "foo"]
 #![feature(doc_cfg)]
@@ -15,8 +16,9 @@ pub use Foo as Foo1;
 #[doc(hidden, inline)]
 pub use Foo1 as Foo2;
 
-// First we ensure that none of the other items are generated.
-// @count - '//a[@class="struct"]' 1
+// First we ensure that only the reexport `Bar2` and the inlined struct `Bar`
+// are inlined.
+// @count - '//a[@class="struct"]' 2
 // Then we check that both `cfg` are displayed.
 // @has - '//*[@class="stab portability"]' 'foo'
 // @has - '//*[@class="stab portability"]' 'bar'
@@ -24,3 +26,8 @@ pub use Foo1 as Foo2;
 // @has - '//a[@class="struct"]' 'Bar'
 #[doc(inline)]
 pub use Foo2 as Bar;
+
+// This one should appear but `Bar2` won't be linked because there is no
+// `#[doc(inline)]`.
+// @has - '//*[@id="reexport.Bar2"]' 'pub use Foo2 as Bar2;'
+pub use Foo2 as Bar2;
