@@ -1002,8 +1002,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             self.arena.alloc(hir::GenericArgs::none())
         };
-        let itctx_tait = &ImplTraitContext::TypeAliasesOpaqueTy;
-
         let kind = match &constraint.kind {
             AssocConstraintKind::Equality { term } => {
                 let term = match term {
@@ -1040,7 +1038,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // then to an opaque type).
                     //
                     // FIXME: this is only needed until `impl Trait` is allowed in type aliases.
-                    ImplTraitContext::Disallowed(_) if self.is_in_dyn_type => (true, itctx_tait),
+                    ImplTraitContext::Disallowed(position) if self.is_in_dyn_type => {
+                        self.tcx.sess.emit_err(errors::MisplacedAssocTyBinding {
+                            span: constraint.span,
+                            position: DiagnosticArgFromDisplay(position),
+                        });
+                        (false, itctx)
+                    }
 
                     // We are in the parameter position, but not within a dyn type:
                     //

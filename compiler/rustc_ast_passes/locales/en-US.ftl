@@ -11,9 +11,6 @@ ast_passes_forbidden_let_stable =
 ast_passes_deprecated_where_clause_location =
     where clause not allowed here
 
-ast_passes_forbidden_assoc_constraint =
-    associated type bounds are not allowed within structs, enums, or unions
-
 ast_passes_keyword_lifetime =
     lifetimes cannot use keyword names
 

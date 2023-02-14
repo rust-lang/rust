@@ -19,6 +19,9 @@ ast_lowering_remove_parentheses = remove these parentheses
 ast_lowering_misplaced_impl_trait =
     `impl Trait` only allowed in function and inherent method return types, not in {$position}
 
+ast_lowering_misplaced_assoc_ty_binding =
+    associated type bounds are only allowed in where clauses and function signatures, not in {$position}
+
 ast_lowering_rustc_box_attribute_error =
     #[rustc_box] requires precisely one argument and no other attributes are allowed
 
