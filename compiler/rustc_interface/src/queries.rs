@@ -21,7 +21,6 @@ use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 use std::any::Any;
 use std::cell::{RefCell, RefMut};
-use std::rc::Rc;
 use std::sync::Arc;
 
 /// Represent the result of a query.
@@ -88,7 +87,7 @@ pub struct Queries<'tcx> {
     parse: Query<ast::Crate>,
     crate_name: Query<Symbol>,
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
-    expansion: Query<(Lrc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>,
+    expansion: Query<(Lrc<ast::Crate>, BoxedResolver, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
     // This just points to what's in `gcx_cell`.
     gcx: Query<&'tcx GlobalCtxt<'tcx>>,
@@ -171,8 +170,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn expansion(
         &self,
-    ) -> Result<QueryResult<'_, (Lrc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>>
-    {
+    ) -> Result<QueryResult<'_, (Lrc<ast::Crate>, BoxedResolver, Lrc<LintStore>)>> {
         trace!("expansion");
         self.expansion.compute(|| {
             let crate_name = *self.crate_name()?.borrow();
@@ -188,7 +186,7 @@ impl<'tcx> Queries<'tcx> {
             let krate = resolver.access(|resolver| {
                 passes::configure_and_expand(sess, &lint_store, krate, crate_name, resolver)
             })?;
-            Ok((Lrc::new(krate), Rc::new(RefCell::new(resolver)), lint_store))
+            Ok((Lrc::new(krate), resolver, lint_store))
         })
     }
 
@@ -217,7 +215,7 @@ impl<'tcx> Queries<'tcx> {
                 untracked,
                 global_ctxt: untracked_resolutions,
                 ast_lowering: untracked_resolver_for_lowering,
-            } = BoxedResolver::to_resolver_outputs(resolver);
+            } = resolver.into_outputs();
 
             let gcx = passes::create_global_ctxt(
                 self.compiler,

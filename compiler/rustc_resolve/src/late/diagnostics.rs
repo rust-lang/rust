@@ -2626,7 +2626,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 }
 
 /// Report lifetime/lifetime shadowing as an error.
-pub fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
+pub(super) fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
     let mut err = struct_span_err!(
         sess,
         shadower.span,
@@ -2641,7 +2641,7 @@ pub fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
 
 /// Shadowing involving a label is only a warning for historical reasons.
 //FIXME: make this a proper lint.
-pub fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident) {
+pub(super) fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident) {
     let name = shadower.name;
     let shadower = shadower.span;
     let mut err = sess.struct_span_warn(

@@ -1,4 +1,3 @@
-use rustc_ast::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_data_structures::unord::UnordSet;
@@ -17,7 +16,7 @@ use rustc_session::config::{self, CrateType, ErrorOutputType, ResolveDocLinks};
 use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
-use rustc_span::{source_map, Span, Symbol};
+use rustc_span::{source_map, Span};
 
 use std::cell::RefCell;
 use std::mem;
@@ -32,15 +31,8 @@ use crate::passes::{self, Condition::*};
 
 pub(crate) use rustc_session::config::{Input, Options, UnstableOptions};
 
-pub(crate) struct ResolverCaches {
-    pub(crate) all_trait_impls: Option<Vec<DefId>>,
-    pub(crate) all_macro_rules: FxHashMap<Symbol, Res<NodeId>>,
-    pub(crate) extern_doc_reachable: DefIdSet,
-}
-
 pub(crate) struct DocContext<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
-    pub(crate) resolver_caches: ResolverCaches,
     /// Used for normalization.
     ///
     /// Most of this logic is copied from rustc_lint::late.
@@ -110,12 +102,6 @@ impl<'tcx> DocContext<'tcx> {
             // FIXME: Can this be `Some` for `Auto` or `Blanket`?
             _ => None,
         }
-    }
-
-    pub(crate) fn with_all_trait_impls(&mut self, f: impl FnOnce(&mut Self, &[DefId])) {
-        let all_trait_impls = self.resolver_caches.all_trait_impls.take();
-        f(self, all_trait_impls.as_ref().expect("`all_trait_impls` are already borrowed"));
-        self.resolver_caches.all_trait_impls = all_trait_impls;
     }
 }
 
@@ -305,7 +291,6 @@ pub(crate) fn create_config(
 
 pub(crate) fn run_global_ctxt(
     tcx: TyCtxt<'_>,
-    resolver_caches: ResolverCaches,
     show_coverage: bool,
     render_options: RenderOptions,
     output_format: OutputFormat,
@@ -339,7 +324,6 @@ pub(crate) fn run_global_ctxt(
 
     let mut ctxt = DocContext {
         tcx,
-        resolver_caches,
         param_env: ParamEnv::empty(),
         external_traits: Default::default(),
         active_extern_traits: Default::default(),
@@ -354,9 +338,9 @@ pub(crate) fn run_global_ctxt(
         show_coverage,
     };
 
-    ctxt.cache
-        .effective_visibilities
-        .init(mem::take(&mut ctxt.resolver_caches.extern_doc_reachable));
+    for cnum in tcx.crates(()) {
+        crate::visit_lib::lib_embargo_visit_item(&mut ctxt, cnum.as_def_id());
+    }
 
     // Small hack to force the Sized trait to be present.
     //

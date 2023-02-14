@@ -1169,15 +1169,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Decodes all trait impls in the crate (for rustdoc).
-    fn get_trait_impls(self) -> impl Iterator<Item = (DefId, DefId, Option<SimplifiedType>)> + 'a {
-        self.cdata.trait_impls.iter().flat_map(move |(&(trait_cnum_raw, trait_index), impls)| {
-            let trait_def_id = DefId {
-                krate: self.cnum_map[CrateNum::from_u32(trait_cnum_raw)],
-                index: trait_index,
-            };
-            impls.decode(self).map(move |(impl_index, simplified_self_ty)| {
-                (trait_def_id, self.local_def_id(impl_index), simplified_self_ty)
-            })
+    fn get_trait_impls(self) -> impl Iterator<Item = DefId> + 'a {
+        self.cdata.trait_impls.values().flat_map(move |impls| {
+            impls.decode(self).map(move |(impl_index, _)| self.local_def_id(impl_index))
         })
     }
 

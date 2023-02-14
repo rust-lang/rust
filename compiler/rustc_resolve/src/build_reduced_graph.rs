@@ -1251,6 +1251,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             };
             let binding = (res, vis, span, expansion).to_name_binding(self.r.arenas);
             self.r.set_binding_parent_module(binding, parent_scope.module);
+            self.r.all_macro_rules.insert(ident.name, res);
             if is_macro_export {
                 let import = self.r.arenas.alloc_import(Import {
                     kind: ImportKind::MacroExport,

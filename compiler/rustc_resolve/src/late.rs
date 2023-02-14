@@ -56,7 +56,7 @@ struct BindingInfo {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum PatternSource {
+pub(crate) enum PatternSource {
     Match,
     Let,
     For,
@@ -70,7 +70,7 @@ enum IsRepeatExpr {
 }
 
 impl PatternSource {
-    pub fn descr(self) -> &'static str {
+    fn descr(self) -> &'static str {
         match self {
             PatternSource::Match => "match binding",
             PatternSource::Let => "let binding",
@@ -2374,9 +2374,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // Maintain macro_rules scopes in the same way as during early resolution
                 // for diagnostics and doc links.
                 if macro_def.macro_rules {
-                    let (macro_rules_scope, _) =
-                        self.r.macro_rules_scope(self.r.local_def_id(item.id));
-                    self.parent_scope.macro_rules = macro_rules_scope;
+                    let def_id = self.r.local_def_id(item.id);
+                    self.parent_scope.macro_rules = self.r.macro_rules_scopes[&def_id];
                 }
             }
 

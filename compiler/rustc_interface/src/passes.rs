@@ -35,13 +35,11 @@ use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
 
 use std::any::Any;
-use std::cell::RefCell;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
 use std::marker::PhantomPinned;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
-use std::rc::Rc;
 use std::sync::{Arc, LazyLock};
 use std::{env, fs, iter};
 
@@ -131,21 +129,12 @@ mod boxed_resolver {
             f((&mut *resolver).as_mut().unwrap())
         }
 
-        pub fn to_resolver_outputs(resolver: Rc<RefCell<BoxedResolver>>) -> ty::ResolverOutputs {
-            match Rc::try_unwrap(resolver) {
-                Ok(resolver) => {
-                    let mut resolver = resolver.into_inner();
-                    // SAFETY: The resolver doesn't need to be pinned.
-                    let mut resolver = unsafe {
-                        resolver
-                            .0
-                            .as_mut()
-                            .map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
-                    };
-                    resolver.take().unwrap().into_outputs()
-                }
-                Err(resolver) => resolver.borrow_mut().access(|resolver| resolver.clone_outputs()),
-            }
+        pub fn into_outputs(mut self) -> ty::ResolverOutputs {
+            // SAFETY: The resolver doesn't need to be pinned.
+            let mut resolver = unsafe {
+                self.0.as_mut().map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
+            };
+            resolver.take().unwrap().into_outputs()
         }
     }
 }

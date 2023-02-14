@@ -187,6 +187,7 @@ pub struct ResolverGlobalCtxt {
     pub registered_tools: RegisteredTools,
     pub doc_link_resolutions: FxHashMap<LocalDefId, DocLinkResMap>,
     pub doc_link_traits_in_scope: FxHashMap<LocalDefId, Vec<DefId>>,
+    pub all_macro_rules: FxHashMap<Symbol, Res<ast::NodeId>>,
 }
 
 /// Resolutions that should only be used for lowering.

@@ -21,8 +21,6 @@
 #[macro_use]
 extern crate tracing;
 
-pub use rustc_hir::def::{Namespace, PerNS};
-
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, NodeId, CRATE_NODE_ID};
@@ -32,8 +30,8 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::{Lrc, RwLock};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
-use rustc_hir::def::Namespace::*;
-use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes};
+use rustc_hir::def::Namespace::{self, *};
+use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, Definitions};
@@ -86,7 +84,7 @@ enum Weak {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub enum Determinacy {
+enum Determinacy {
     Determined,
     Undetermined,
 }
@@ -257,7 +255,7 @@ enum VisResolutionError<'a> {
 /// A minimal representation of a path segment. We use this in resolve because we synthesize 'path
 /// segments' which don't have the rest of an AST or HIR `PathSegment`.
 #[derive(Clone, Copy, Debug)]
-pub struct Segment {
+struct Segment {
     ident: Ident,
     id: Option<NodeId>,
     /// Signals whether this `PathSegment` has generic arguments. Used to avoid providing
@@ -380,7 +378,7 @@ impl ModuleOrUniformRoot<'_> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 enum PathResult<'a> {
     Module(ModuleOrUniformRoot<'a>),
     NonModule(PartialRes),
@@ -435,7 +433,7 @@ enum ModuleKind {
 
 impl ModuleKind {
     /// Get name of the module.
-    pub fn name(&self) -> Option<Symbol> {
+    fn name(&self) -> Option<Symbol> {
         match self {
             ModuleKind::Block => None,
             ModuleKind::Def(.., name) => Some(*name),
@@ -471,7 +469,7 @@ type Resolutions<'a> = RefCell<FxIndexMap<BindingKey, &'a RefCell<NameResolution
 /// * curly-braced block with statements
 ///
 /// You can use [`ModuleData::kind`] to determine the kind of module this is.
-pub struct ModuleData<'a> {
+struct ModuleData<'a> {
     /// The direct parent module (it may not be a `mod`, however).
     parent: Option<Module<'a>>,
     /// What kind of module this is, because this may not be a `mod`.
@@ -570,7 +568,7 @@ impl<'a> ModuleData<'a> {
     }
 
     // Public for rustdoc.
-    pub fn def_id(&self) -> DefId {
+    fn def_id(&self) -> DefId {
         self.opt_def_id().expect("`ModuleData::def_id` is called on a block module")
     }
 
@@ -628,7 +626,7 @@ impl<'a> fmt::Debug for ModuleData<'a> {
 
 /// Records a possibly-private value, type, or module definition.
 #[derive(Clone, Debug)]
-pub struct NameBinding<'a> {
+struct NameBinding<'a> {
     kind: NameBindingKind<'a>,
     ambiguity: Option<(&'a NameBinding<'a>, AmbiguityKind)>,
     expansion: LocalExpnId,
@@ -636,7 +634,7 @@ pub struct NameBinding<'a> {
     vis: ty::Visibility<DefId>,
 }
 
-pub trait ToNameBinding<'a> {
+trait ToNameBinding<'a> {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a>;
 }
 
@@ -840,9 +838,9 @@ impl<'a> NameBinding<'a> {
 }
 
 #[derive(Default, Clone)]
-pub struct ExternPreludeEntry<'a> {
+struct ExternPreludeEntry<'a> {
     extern_crate_item: Option<&'a NameBinding<'a>>,
-    pub introduced_by_item: bool,
+    introduced_by_item: bool,
 }
 
 /// Used for better errors for E0773
@@ -1049,6 +1047,7 @@ pub struct Resolver<'a> {
     effective_visibilities: EffectiveVisibilities,
     doc_link_resolutions: FxHashMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxHashMap<LocalDefId, Vec<DefId>>,
+    all_macro_rules: FxHashMap<Symbol, Res>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1147,7 +1146,7 @@ impl<'a> Resolver<'a> {
         self.node_id_to_def_id.get(&node).copied()
     }
 
-    pub fn local_def_id(&self, node: NodeId) -> LocalDefId {
+    fn local_def_id(&self, node: NodeId) -> LocalDefId {
         self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
     }
 
@@ -1198,10 +1197,6 @@ impl<'a> Resolver<'a> {
         } else {
             self.cstore().item_generics_num_lifetimes(def_id, self.session)
         }
-    }
-
-    pub fn sess(&self) -> &'a Session {
-        self.session
     }
 }
 
@@ -1379,6 +1374,7 @@ impl<'a> Resolver<'a> {
             effective_visibilities: Default::default(),
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
+            all_macro_rules: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1399,14 +1395,14 @@ impl<'a> Resolver<'a> {
         self.arenas.new_module(parent, kind, expn_id, span, no_implicit_prelude, module_map)
     }
 
-    pub fn next_node_id(&mut self) -> NodeId {
+    fn next_node_id(&mut self) -> NodeId {
         let start = self.next_node_id;
         let next = start.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
         self.next_node_id = ast::NodeId::from_u32(next);
         start
     }
 
-    pub fn next_node_ids(&mut self, count: usize) -> std::ops::Range<NodeId> {
+    fn next_node_ids(&mut self, count: usize) -> std::ops::Range<NodeId> {
         let start = self.next_node_id;
         let end = start.as_usize().checked_add(count).expect("input too large; ran out of NodeIds");
         self.next_node_id = ast::NodeId::from_usize(end);
@@ -1457,6 +1453,7 @@ impl<'a> Resolver<'a> {
             registered_tools: self.registered_tools,
             doc_link_resolutions: self.doc_link_resolutions,
             doc_link_traits_in_scope: self.doc_link_traits_in_scope,
+            all_macro_rules: self.all_macro_rules,
         };
         let ast_lowering = ty::ResolverAstLowering {
             legacy_const_generic_args: self.legacy_const_generic_args,
@@ -1475,57 +1472,11 @@ impl<'a> Resolver<'a> {
         ResolverOutputs { global_ctxt, ast_lowering, untracked }
     }
 
-    pub fn clone_outputs(&self) -> ResolverOutputs {
-        let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
-        let definitions = self.untracked.definitions.clone();
-        let cstore = Box::new(self.cstore().clone());
-        let untracked =
-            Untracked { cstore, source_span: self.untracked.source_span.clone(), definitions };
-        let global_ctxt = ResolverGlobalCtxt {
-            expn_that_defined: self.expn_that_defined.clone(),
-            visibilities: self.visibilities.clone(),
-            has_pub_restricted: self.has_pub_restricted,
-            extern_crate_map: self.extern_crate_map.clone(),
-            reexport_map: self.reexport_map.clone(),
-            glob_map: self.glob_map.clone(),
-            maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
-            maybe_unused_extern_crates: self.maybe_unused_extern_crates.clone(),
-            extern_prelude: self
-                .extern_prelude
-                .iter()
-                .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
-                .collect(),
-            main_def: self.main_def,
-            trait_impls: self.trait_impls.clone(),
-            proc_macros,
-            confused_type_with_std_module: self.confused_type_with_std_module.clone(),
-            registered_tools: self.registered_tools.clone(),
-            effective_visibilities: self.effective_visibilities.clone(),
-            doc_link_resolutions: self.doc_link_resolutions.clone(),
-            doc_link_traits_in_scope: self.doc_link_traits_in_scope.clone(),
-        };
-        let ast_lowering = ty::ResolverAstLowering {
-            legacy_const_generic_args: self.legacy_const_generic_args.clone(),
-            partial_res_map: self.partial_res_map.clone(),
-            import_res_map: self.import_res_map.clone(),
-            label_res_map: self.label_res_map.clone(),
-            lifetimes_res_map: self.lifetimes_res_map.clone(),
-            extra_lifetime_params_map: self.extra_lifetime_params_map.clone(),
-            next_node_id: self.next_node_id,
-            node_id_to_def_id: self.node_id_to_def_id.clone(),
-            def_id_to_node_id: self.def_id_to_node_id.clone(),
-            trait_map: self.trait_map.clone(),
-            builtin_macro_kinds: self.builtin_macro_kinds.clone(),
-            lifetime_elision_allowed: self.lifetime_elision_allowed.clone(),
-        };
-        ResolverOutputs { global_ctxt, ast_lowering, untracked }
-    }
-
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
         StableHashingContext::new(self.session, &self.untracked)
     }
 
-    pub fn crate_loader(&mut self) -> CrateLoader<'_> {
+    fn crate_loader(&mut self) -> CrateLoader<'_> {
         CrateLoader::new(
             &self.session,
             &*self.metadata_loader,
@@ -1536,7 +1487,7 @@ impl<'a> Resolver<'a> {
         )
     }
 
-    pub fn cstore(&self) -> &CStore {
+    fn cstore(&self) -> &CStore {
         self.untracked.cstore.as_any().downcast_ref().unwrap()
     }
 
@@ -1968,24 +1919,15 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// For rustdoc.
-    pub fn macro_rules_scope(&self, def_id: LocalDefId) -> (MacroRulesScopeRef<'a>, Res) {
-        let scope = *self.macro_rules_scopes.get(&def_id).expect("not a `macro_rules` item");
-        match scope.get() {
-            MacroRulesScope::Binding(mb) => (scope, mb.binding.res()),
-            _ => unreachable!(),
-        }
-    }
-
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
     #[inline]
-    pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
+    fn opt_span(&self, def_id: DefId) -> Option<Span> {
         def_id.as_local().map(|def_id| self.untracked.source_span[def_id])
     }
 
     /// Retrieves the name of the given `DefId`.
     #[inline]
-    pub fn opt_name(&self, def_id: DefId) -> Option<Symbol> {
+    fn opt_name(&self, def_id: DefId) -> Option<Symbol> {
         let def_key = match def_id.as_local() {
             Some(def_id) => self.untracked.definitions.read().def_key(def_id),
             None => self.cstore().def_key(def_id),
@@ -1996,7 +1938,7 @@ impl<'a> Resolver<'a> {
     /// Checks if an expression refers to a function marked with
     /// `#[rustc_legacy_const_generics]` and returns the argument index list
     /// from the attribute.
-    pub fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
+    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
         if let ExprKind::Path(None, path) = &expr.kind {
             // Don't perform legacy const generics rewriting if the path already
             // has generic arguments.
