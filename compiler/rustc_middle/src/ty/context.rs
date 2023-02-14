@@ -981,13 +981,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.untracked.definitions.read()
     }
 
-    /// Note that this is *untracked* and should only be used within the query
-    /// system if the result is otherwise tracked through queries
-    #[inline]
-    pub fn source_span_untracked(self, def_id: LocalDefId) -> Span {
-        self.untracked.source_span.get(def_id).copied().unwrap_or(DUMMY_SP)
-    }
-
     #[inline(always)]
     pub fn with_stable_hashing_context<R>(
         self,

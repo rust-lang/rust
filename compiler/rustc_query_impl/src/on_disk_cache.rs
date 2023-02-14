@@ -695,7 +695,11 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
             let dlo = u32::decode(decoder);
             let dto = u32::decode(decoder);
 
-            let enclosing = decoder.tcx.source_span_untracked(parent.unwrap()).data_untracked();
+            let enclosing = decoder
+                .tcx
+                .dep_graph
+                .with_ignore(|| decoder.tcx.source_span(parent.unwrap()))
+                .data_untracked();
             let span = Span::new(
                 enclosing.lo + BytePos::from_u32(dlo),
                 enclosing.lo + BytePos::from_u32(dto),
