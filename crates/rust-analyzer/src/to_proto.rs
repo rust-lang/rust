@@ -31,8 +31,8 @@ pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::P
     let line_col = line_index.index.line_col(offset);
     match line_index.encoding {
         PositionEncoding::Utf8 => lsp_types::Position::new(line_col.line, line_col.col),
-        PositionEncoding::Utf16 => {
-            let line_col = line_index.index.to_utf16(line_col);
+        PositionEncoding::Wide(enc) => {
+            let line_col = line_index.index.to_wide(enc, line_col);
             lsp_types::Position::new(line_col.line, line_col.col)
         }
     }
@@ -1429,7 +1429,7 @@ fn main() {
         let line_index = LineIndex {
             index: Arc::new(ide::LineIndex::new(text)),
             endings: LineEndings::Unix,
-            encoding: PositionEncoding::Utf16,
+            encoding: PositionEncoding::Utf8,
         };
         let converted: Vec<lsp_types::FoldingRange> =
             folds.into_iter().map(|it| folding_range(text, &line_index, true, it)).collect();
