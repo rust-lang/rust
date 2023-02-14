@@ -564,8 +564,8 @@ impl<'tcx> CPlace<'tcx> {
             CPlaceInner::Var(_local, var) => {
                 if let ty::Array(element, len) = dst_layout.ty.kind() {
                     // Can only happen for vector types
-                    let len =
-                        u32::try_from(len.eval_usize(fx.tcx, ParamEnv::reveal_all())).unwrap();
+                    let len = u32::try_from(len.eval_target_usize(fx.tcx, ParamEnv::reveal_all()))
+                        .unwrap();
                     let vector_ty = fx.clif_type(*element).unwrap().by(len).unwrap();
 
                     let data = match from.0 {
