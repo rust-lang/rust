@@ -26,7 +26,7 @@ fn test_send_trait() {
         //~| HELP: add a dummy let to cause `fptr` to be fully captured
         *fptr.0 = 20;
         //~^ NOTE: in Rust 2018, this closure captures all of `fptr`, but in Rust 2021, it will only capture `fptr.0`
-    });
+    }).join().unwrap();
 }
 
 /* Test Sync Trait Migration */
@@ -47,7 +47,7 @@ fn test_sync_trait() {
         //~| HELP: add a dummy let to cause `fptr` to be fully captured
         *fptr.0.0 = 20;
         //~^ NOTE: in Rust 2018, this closure captures all of `fptr`, but in Rust 2021, it will only capture `fptr.0.0`
-    });
+    }).join().unwrap();
 }
 
 /* Test Clone Trait Migration */

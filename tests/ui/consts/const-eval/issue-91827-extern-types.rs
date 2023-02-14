@@ -28,7 +28,10 @@ pub struct ListImpl<T, const N: usize> {
 
 impl<T> List<T> {
     const fn as_slice(&self) -> &[T] {
-        unsafe { std::slice::from_raw_parts(self.data.as_ptr(), self.len) }
+        unsafe {
+            let ptr = (self as *const List<T>).cast::<usize>().add(1).cast::<T>();
+            std::slice::from_raw_parts(ptr, self.len)
+        }
     }
 }
 

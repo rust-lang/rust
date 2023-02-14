@@ -141,7 +141,7 @@ fn test_multi_traits_issues() {
         //~^ NOTE: in Rust 2018, this closure captures all of `fptr1`, but in Rust 2021, it will only capture `fptr1.0.0`
         *fptr2.0 = 20;
         //~^ NOTE: in Rust 2018, this closure captures all of `fptr2`, but in Rust 2021, it will only capture `fptr2.0`
-    });
+    }).join().unwrap();
 }
 
 fn main() {
