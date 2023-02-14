@@ -1348,7 +1348,7 @@ where
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.get_inner(k) {
-            Some(&(_, ref v)) => Some(v),
+            Some((_, v)) => Some(v),
             None => None,
         }
     }
@@ -1379,7 +1379,7 @@ where
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.get_inner(k) {
-            Some(&(ref key, ref value)) => Some((key, value)),
+            Some((key, value)) => Some((key, value)),
             None => None,
         }
     }
@@ -3360,7 +3360,7 @@ impl<'a, K, V, S, A: Allocator + Clone> RawEntryBuilder<'a, K, V, S, A> {
         F: FnMut(&K) -> bool,
     {
         match self.map.table.get(hash, |(k, _)| is_match(k)) {
-            Some(&(ref key, ref value)) => Some((key, value)),
+            Some((key, value)) => Some((key, value)),
             None => None,
         }
     }
@@ -3756,7 +3756,7 @@ impl<'a, K, V, S, A: Allocator + Clone> RawOccupiedEntryMut<'a, K, V, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_key_value(&self) -> (&K, &V) {
         unsafe {
-            let &(ref key, ref value) = self.elem.as_ref();
+            let (key, value) = self.elem.as_ref();
             (key, value)
         }
     }
@@ -6926,7 +6926,6 @@ mod test_map {
                 }
             });
 
-            #[allow(clippy::let_underscore_drop)] // kind-of a false positive
             for _ in half.by_ref() {}
 
             DROP_VECTOR.with(|v| {
@@ -7254,10 +7253,10 @@ mod test_map {
         map.insert(1, 2);
         map.insert(3, 4);
 
-        let map_str = format!("{:?}", map);
+        let map_str = format!("{map:?}");
 
         assert!(map_str == "{1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
-        assert_eq!(format!("{:?}", empty), "{}");
+        assert_eq!(format!("{empty:?}"), "{}");
     }
 
     #[test]
@@ -7573,7 +7572,7 @@ mod test_map {
                               // Test for #19292
         fn check(m: &HashMap<i32, ()>) {
             for k in m.keys() {
-                assert!(m.contains_key(k), "{} is in keys() but not in the map?", k);
+                assert!(m.contains_key(k), "{k} is in keys() but not in the map?");
             }
         }
 
@@ -7609,7 +7608,7 @@ mod test_map {
                               // Test for #19292
         fn check(m: &HashMap<std::string::String, ()>) {
             for k in m.keys() {
-                assert!(m.contains_key(k), "{} is in keys() but not in the map?", k);
+                assert!(m.contains_key(k), "{k} is in keys() but not in the map?");
             }
         }
 
@@ -8080,7 +8079,7 @@ mod test_map {
                               // Test for #19292
         fn check(m: &HashMap<i32, ()>) {
             for k in m.keys() {
-                assert!(m.contains_key(k), "{} is in keys() but not in the map?", k);
+                assert!(m.contains_key(k), "{k} is in keys() but not in the map?");
             }
         }
 
@@ -8110,7 +8109,7 @@ mod test_map {
                               // Test for #19292
         fn check(m: &HashMap<std::string::String, ()>) {
             for k in m.keys() {
-                assert!(m.contains_key(k), "{} is in keys() but not in the map?", k);
+                assert!(m.contains_key(k), "{k} is in keys() but not in the map?");
             }
         }
 
@@ -8380,7 +8379,7 @@ mod test_map {
                             removed.push(t);
                             left -= 1;
                         } else {
-                            assert!(removed.contains(&(i, 2 * i)), "{} not in {:?}", i, removed);
+                            assert!(removed.contains(&(i, 2 * i)), "{i} not in {removed:?}");
                             let e = map.table.insert(
                                 hash_value,
                                 (i, 2 * i),

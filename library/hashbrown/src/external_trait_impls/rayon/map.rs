@@ -561,10 +561,7 @@ mod test_par_map {
             assert_eq!(value.load(Ordering::Relaxed), 100);
 
             // retain only half
-            let _v: Vec<_> = hm
-                .into_par_iter()
-                .filter(|&(ref key, _)| key.k < 50)
-                .collect();
+            let _v: Vec<_> = hm.into_par_iter().filter(|(key, _)| key.k < 50).collect();
 
             assert_eq!(key.load(Ordering::Relaxed), 50);
             assert_eq!(value.load(Ordering::Relaxed), 50);
@@ -611,7 +608,7 @@ mod test_par_map {
             assert_eq!(value.load(Ordering::Relaxed), 100);
 
             // retain only half
-            let _v: Vec<_> = hm.drain().filter(|&(ref key, _)| key.k < 50).collect();
+            let _v: Vec<_> = hm.drain().filter(|(key, _)| key.k < 50).collect();
             assert!(hm.is_empty());
 
             assert_eq!(key.load(Ordering::Relaxed), 50);
