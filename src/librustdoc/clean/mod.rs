@@ -2126,6 +2126,87 @@ fn get_all_import_attributes<'hir>(
     }
 }
 
+/// When inlining items, we merge its attributes (and all the reexports attributes too) with the
+/// final reexport. For example:
+///
+/// ```
+/// #[doc(hidden, cfg(feature = "foo"))]
+/// pub struct Foo;
+///
+/// #[doc(cfg(feature = "bar"))]
+/// #[doc(hidden, no_inline)]
+/// pub use Foo as Foo1;
+///
+/// #[doc(inline)]
+/// pub use Foo2 as Bar;
+/// ```
+///
+/// So `Bar` at the end will have both `cfg(feature = "...")`. However, we don't want to merge all
+/// attributes so we filter out the following ones:
+/// * `doc(inline)`
+/// * `doc(no_inline)`
+/// * `doc(hidden)`
+fn add_without_unwanted_attributes(attrs: &mut Vec<ast::Attribute>, new_attrs: &[ast::Attribute]) {
+    use rustc_ast::token::{Token, TokenKind};
+    use rustc_ast::tokenstream::{TokenStream, TokenTree};
+
+    for attr in new_attrs {
+        let mut attr = attr.clone();
+        match attr.kind {
+            ast::AttrKind::Normal(ref mut normal) => {
+                if let [ident] = &*normal.item.path.segments {
+                    let ident = ident.ident.name;
+                    if ident == sym::doc {
+                        match normal.item.args {
+                            ast::AttrArgs::Delimited(ref mut args) => {
+                                let mut tokens = Vec::with_capacity(args.tokens.len());
+                                let mut skip_next_comma = false;
+                                for token in args.tokens.clone().into_trees() {
+                                    match token {
+                                        TokenTree::Token(
+                                            Token {
+                                                kind:
+                                                    TokenKind::Ident(
+                                                        sym::hidden | sym::inline | sym::no_inline,
+                                                        _,
+                                                    ),
+                                                ..
+                                            },
+                                            _,
+                                        ) => {
+                                            skip_next_comma = true;
+                                            continue;
+                                        }
+                                        TokenTree::Token(
+                                            Token { kind: TokenKind::Comma, .. },
+                                            _,
+                                        ) if skip_next_comma => {
+                                            skip_next_comma = false;
+                                            continue;
+                                        }
+                                        _ => {}
+                                    }
+                                    skip_next_comma = false;
+                                    tokens.push(token);
+                                }
+                                args.tokens = TokenStream::new(tokens);
+                                attrs.push(attr);
+                            }
+                            ast::AttrArgs::Empty | ast::AttrArgs::Eq(..) => {
+                                attrs.push(attr);
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+            ast::AttrKind::DocComment(..) => {
+                attrs.push(attr);
+            }
+        }
+    }
+}
+
 fn clean_maybe_renamed_item<'tcx>(
     cx: &mut DocContext<'tcx>,
     item: &hir::Item<'tcx>,
@@ -2216,17 +2297,17 @@ fn clean_maybe_renamed_item<'tcx>(
             extra_attrs.extend_from_slice(inline::load_attrs(cx, import_id.to_def_id()));
             // Then we get all the various imports' attributes.
             get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut extra_attrs);
+            add_without_unwanted_attributes(&mut extra_attrs, inline::load_attrs(cx, def_id));
+        } else {
+            // We only keep the item's attributes.
+            extra_attrs.extend_from_slice(inline::load_attrs(cx, def_id));
         }
 
-        let mut item = if !extra_attrs.is_empty() {
-            extra_attrs.extend_from_slice(inline::load_attrs(cx, def_id));
-            let attrs = Attributes::from_ast(&extra_attrs);
-            let cfg = extra_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
+        let attrs = Attributes::from_ast(&extra_attrs);
+        let cfg = extra_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
 
-            Item::from_def_id_and_attrs_and_parts(def_id, Some(name), kind, Box::new(attrs), cfg)
-        } else {
-            Item::from_def_id_and_parts(def_id, Some(name), kind, cx)
-        };
+        let mut item =
+            Item::from_def_id_and_attrs_and_parts(def_id, Some(name), kind, Box::new(attrs), cfg);
         item.inline_stmt_id = import_id.map(|def_id| def_id.to_def_id());
         vec![item]
     })
