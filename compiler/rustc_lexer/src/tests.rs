@@ -235,7 +235,7 @@ fn lifetime() {
     check_lexing(
         "'abc",
         expect![[r#"
-            Token { kind: Lifetime { starts_with_number: false }, len: 4 }
+            Token { kind: Lifetime { starts_with_number: false, contains_emoji: false }, len: 4 }
         "#]],
     );
 }
