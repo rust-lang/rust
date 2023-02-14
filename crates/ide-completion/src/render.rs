@@ -587,6 +587,7 @@ fn main() { Foo::Fo$0 }
                         ),
                         lookup: "Foo{}",
                         detail: "Foo { x: i32, y: i32 }",
+                        trigger_call_info: true,
                     },
                 ]
             "#]],
@@ -614,6 +615,7 @@ fn main() { Foo::Fo$0 }
                         ),
                         lookup: "Foo()",
                         detail: "Foo(i32, i32)",
+                        trigger_call_info: true,
                     },
                 ]
             "#]],
@@ -679,6 +681,7 @@ fn main() { Foo::Fo$0 }
                             Variant,
                         ),
                         detail: "Foo",
+                        trigger_call_info: true,
                     },
                 ]
             "#]],
@@ -745,6 +748,7 @@ fn main() { let _: m::Spam = S$0 }
                             postfix_match: None,
                             is_definite: false,
                         },
+                        trigger_call_info: true,
                     },
                     CompletionItem {
                         label: "m::Spam::Foo",
@@ -770,6 +774,7 @@ fn main() { let _: m::Spam = S$0 }
                             postfix_match: None,
                             is_definite: false,
                         },
+                        trigger_call_info: true,
                     },
                 ]
             "#]],
@@ -942,6 +947,7 @@ use self::E::*;
                         documentation: Documentation(
                             "variant docs",
                         ),
+                        trigger_call_info: true,
                     },
                     CompletionItem {
                         label: "E",
