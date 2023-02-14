@@ -138,6 +138,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
                 resolve_provider: Some(true),
             },
         ))),
+        inline_value_provider: None,
         experimental: Some(json!({
             "externalDocs": true,
             "hoverRange": true,
