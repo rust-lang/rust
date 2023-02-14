@@ -41,17 +41,18 @@
 use crate::cmp;
 use crate::cmp::Ordering;
 use crate::fmt;
+use crate::ops::Range;
 use crate::slice::memchr;
 
 // Pattern
 
-/// A string pattern.
+/// A pattern which can be matched against a [`Haystack`].
 ///
-/// A `Pattern<'a>` expresses that the implementing type
-/// can be used as a string pattern for searching in a [`&'a str`][str].
+/// A `Pattern<H>` expresses that the implementing type can be used as a pattern
+/// for searching in an `H`.
 ///
-/// For example, both `'a'` and `"aa"` are patterns that
-/// would match at index `1` in the string `"baaaab"`.
+/// For example, character `'a'` and string `"aa"` are patterns that would match
+/// at index `1` in the string `"baaaab"`.
 ///
 /// The trait itself acts as a builder for an associated
 /// [`Searcher`] type, which does the actual work of finding
@@ -96,86 +97,126 @@ use crate::slice::memchr;
 /// assert_eq!("abcdef_z".find(|ch| ch > 'd' && ch < 'y'), Some(4));
 /// assert_eq!("abcddd_z".find(|ch| ch > 'd' && ch < 'y'), None);
 /// ```
-pub trait Pattern<'a>: Sized {
-    /// Associated searcher for this pattern
-    type Searcher: Searcher<'a>;
+pub trait Pattern<H: Haystack>: Sized {
+    /// Associated searcher for this pattern.
+    type Searcher: Searcher<H>;
 
     /// Constructs the associated searcher from
     /// `self` and the `haystack` to search in.
-    fn into_searcher(self, haystack: &'a str) -> Self::Searcher;
+    fn into_searcher(self, haystack: H) -> Self::Searcher;
 
-    /// Checks whether the pattern matches anywhere in the haystack
+    /// Checks whether the pattern matches anywhere in the haystack.
     #[inline]
-    fn is_contained_in(self, haystack: &'a str) -> bool {
+    fn is_contained_in(self, haystack: H) -> bool {
         self.into_searcher(haystack).next_match().is_some()
     }
 
-    /// Checks whether the pattern matches at the front of the haystack
+    /// Checks whether the pattern matches at the front of the haystack.
     #[inline]
-    fn is_prefix_of(self, haystack: &'a str) -> bool {
-        matches!(self.into_searcher(haystack).next(), SearchStep::Match(0, _))
+    fn is_prefix_of(self, haystack: H) -> bool {
+        matches!(self.into_searcher(haystack).next(), SearchStep::Match(..))
     }
 
-    /// Checks whether the pattern matches at the back of the haystack
+    /// Checks whether the pattern matches at the back of the haystack.
     #[inline]
-    fn is_suffix_of(self, haystack: &'a str) -> bool
+    fn is_suffix_of(self, haystack: H) -> bool
     where
-        Self::Searcher: ReverseSearcher<'a>,
+        Self::Searcher: ReverseSearcher<H>,
     {
-        matches!(self.into_searcher(haystack).next_back(), SearchStep::Match(_, j) if haystack.len() == j)
+        matches!(self.into_searcher(haystack).next_back(), SearchStep::Match(..))
     }
 
-    /// Removes the pattern from the front of haystack, if it matches.
+    /// Removes the pattern from the front of a haystack, if it matches.
     #[inline]
-    fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
-        if let SearchStep::Match(start, len) = self.into_searcher(haystack).next() {
-            debug_assert_eq!(
-                start, 0,
+    fn strip_prefix_of(self, haystack: H) -> Option<H> {
+        if let SearchStep::Match(start, pos) = self.into_searcher(haystack).next() {
+            // This cannot be debug_assert_eq because StartCursor isn’t Debug.
+            debug_assert!(
+                start == haystack.cursor_at_front(),
                 "The first search step from Searcher \
-                 must include the first character"
+                           must include the first character"
             );
+            let end = haystack.cursor_at_back();
             // SAFETY: `Searcher` is known to return valid indices.
-            unsafe { Some(haystack.get_unchecked(len..)) }
+            Some(unsafe { haystack.get_unchecked(pos..end) })
         } else {
             None
         }
     }
 
-    /// Removes the pattern from the back of haystack, if it matches.
+    /// Removes the pattern from the back of a haystack, if it matches.
     #[inline]
-    fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str>
+    fn strip_suffix_of(self, haystack: H) -> Option<H>
     where
-        Self::Searcher: ReverseSearcher<'a>,
+        Self::Searcher: ReverseSearcher<H>,
     {
-        if let SearchStep::Match(start, end) = self.into_searcher(haystack).next_back() {
-            debug_assert_eq!(
-                end,
-                haystack.len(),
+        if let SearchStep::Match(pos, end) = self.into_searcher(haystack).next_back() {
+            // This cannot be debug_assert_eq because StartCursor isn’t Debug.
+            debug_assert!(
+                end == haystack.cursor_at_back(),
                 "The first search step from ReverseSearcher \
-                 must include the last character"
+                           must include the last character"
             );
+            let start = haystack.cursor_at_front();
             // SAFETY: `Searcher` is known to return valid indices.
-            unsafe { Some(haystack.get_unchecked(..start)) }
+            Some(unsafe { haystack.get_unchecked(start..pos) })
         } else {
             None
         }
     }
 }
 
+// Haystack
+
+/// A type which can be searched in using a [`Pattern`].
+///
+/// The trait is used in combination with [`Pattern`] trait to express a pattern
+/// that can be used to search for elements in given haystack.
+pub trait Haystack: Sized + Copy {
+    /// A cursor representing position in the haystack or its end.
+    type Cursor: Copy + PartialEq;
+
+    /// Returns cursor pointing at the beginning of the haystack.
+    fn cursor_at_front(self) -> Self::Cursor;
+
+    /// Returns cursor pointing at the end of the haystack.
+    fn cursor_at_back(self) -> Self::Cursor;
+
+    /// Returns whether the haystack is empty.
+    fn is_empty(self) -> bool {
+        self.cursor_at_front() == self.cursor_at_back()
+    }
+
+    /// Returns portions of the haystack indicated by the cursor range.
+    ///
+    /// # Safety
+    ///
+    /// Range’s start and end must be valid haystack split positions.
+    /// Furthermore, start mustn’t point at position after end.
+    ///
+    /// A valid split positions are:
+    /// - the front of the haystack (as returned by
+    ///   [`cursor_at_front()`][Self::cursor_at_front],
+    /// - the back of the haystack (as returned by
+    ///   [`cursor_at_back()`][Self::cursor_at_back] or
+    /// - any cursor returned by a [`Searcher`] or [`ReverseSearcher`].
+    unsafe fn get_unchecked(self, range: Range<Self::Cursor>) -> Self;
+}
+
 // Searcher
 
 /// Result of calling [`Searcher::next()`] or [`ReverseSearcher::next_back()`].
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum SearchStep {
+pub enum SearchStep<T = usize> {
     /// Expresses that a match of the pattern has been found at
     /// `haystack[a..b]`.
-    Match(usize, usize),
+    Match(T, T),
     /// Expresses that `haystack[a..b]` has been rejected as a possible match
     /// of the pattern.
     ///
     /// Note that there might be more than one `Reject` between two `Match`es,
     /// there is no requirement for them to be combined into one.
-    Reject(usize, usize),
+    Reject(T, T),
     /// Expresses that every byte of the haystack has been visited, ending
     /// the iteration.
     Done,
@@ -193,11 +234,11 @@ pub enum SearchStep {
 /// [`next()`][Searcher::next] methods are required to lie on valid utf8
 /// boundaries in the haystack. This enables consumers of this trait to
 /// slice the haystack without additional runtime checks.
-pub unsafe trait Searcher<'a> {
+pub unsafe trait Searcher<H: Haystack> {
     /// Getter for the underlying string to be searched in
     ///
     /// Will always return the same [`&str`][str].
-    fn haystack(&self) -> &'a str;
+    fn haystack(&self) -> H;
 
     /// Performs the next search step starting from the front.
     ///
@@ -220,7 +261,7 @@ pub unsafe trait Searcher<'a> {
     /// As an example, the pattern `"aaa"` and the haystack `"cbaaaaab"`
     /// might produce the stream
     /// `[Reject(0, 1), Reject(1, 2), Match(2, 5), Reject(5, 8)]`
-    fn next(&mut self) -> SearchStep;
+    fn next(&mut self) -> SearchStep<H::Cursor>;
 
     /// Finds the next [`Match`][SearchStep::Match] result. See [`next()`][Searcher::next].
     ///
@@ -229,7 +270,7 @@ pub unsafe trait Searcher<'a> {
     /// `(start_match, end_match)`, where start_match is the index of where
     /// the match begins, and end_match is the index after the end of the match.
     #[inline]
-    fn next_match(&mut self) -> Option<(usize, usize)> {
+    fn next_match(&mut self) -> Option<(H::Cursor, H::Cursor)> {
         loop {
             match self.next() {
                 SearchStep::Match(a, b) => return Some((a, b)),
@@ -245,7 +286,7 @@ pub unsafe trait Searcher<'a> {
     /// Unlike [`next()`][Searcher::next], there is no guarantee that the returned ranges
     /// of this and [`next_match`][Searcher::next_match] will overlap.
     #[inline]
-    fn next_reject(&mut self) -> Option<(usize, usize)> {
+    fn next_reject(&mut self) -> Option<(H::Cursor, H::Cursor)> {
         loop {
             match self.next() {
                 SearchStep::Reject(a, b) => return Some((a, b)),
@@ -270,7 +311,7 @@ pub unsafe trait Searcher<'a> {
 ///
 /// For the reason why this trait is marked unsafe, see the
 /// parent trait [`Searcher`].
-pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
+pub unsafe trait ReverseSearcher<H: Haystack>: Searcher<H> {
     /// Performs the next search step starting from the back.
     ///
     /// - Returns [`Match(a, b)`][SearchStep::Match] if `haystack[a..b]`
@@ -292,12 +333,12 @@ pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
     /// As an example, the pattern `"aaa"` and the haystack `"cbaaaaab"`
     /// might produce the stream
     /// `[Reject(7, 8), Match(4, 7), Reject(1, 4), Reject(0, 1)]`.
-    fn next_back(&mut self) -> SearchStep;
+    fn next_back(&mut self) -> SearchStep<H::Cursor>;
 
     /// Finds the next [`Match`][SearchStep::Match] result.
     /// See [`next_back()`][ReverseSearcher::next_back].
     #[inline]
-    fn next_match_back(&mut self) -> Option<(usize, usize)> {
+    fn next_match_back(&mut self) -> Option<(H::Cursor, H::Cursor)> {
         loop {
             match self.next_back() {
                 SearchStep::Match(a, b) => return Some((a, b)),
@@ -310,7 +351,7 @@ pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
     /// Finds the next [`Reject`][SearchStep::Reject] result.
     /// See [`next_back()`][ReverseSearcher::next_back].
     #[inline]
-    fn next_reject_back(&mut self) -> Option<(usize, usize)> {
+    fn next_reject_back(&mut self) -> Option<(H::Cursor, H::Cursor)> {
         loop {
             match self.next_back() {
                 SearchStep::Reject(a, b) => return Some((a, b)),
@@ -342,13 +383,41 @@ pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
 /// `(&str)::Searcher` is not a `DoubleEndedSearcher` because
 /// the pattern `"aa"` in the haystack `"aaa"` matches as either
 /// `"[aa]a"` or `"a[aa]"`, depending from which side it is searched.
-pub trait DoubleEndedSearcher<'a>: ReverseSearcher<'a> {}
+pub trait DoubleEndedSearcher<H: Haystack>: ReverseSearcher<H> {}
+
+/////////////////////////////////////////////////////////////////////////////
+// Impl for Haystack
+/////////////////////////////////////////////////////////////////////////////
+
+impl<'a> Haystack for &'a str {
+    type Cursor = usize;
+
+    #[inline(always)]
+    fn cursor_at_front(self) -> usize {
+        0
+    }
+    #[inline(always)]
+    fn cursor_at_back(self) -> usize {
+        self.len()
+    }
+
+    #[inline(always)]
+    fn is_empty(self) -> bool {
+        self.is_empty()
+    }
+
+    #[inline(always)]
+    unsafe fn get_unchecked(self, range: Range<usize>) -> Self {
+        // SAFETY: Caller promises position is a character boundary.
+        unsafe { self.get_unchecked(range) }
+    }
+}
 
 /////////////////////////////////////////////////////////////////////////////
 // Impl for char
 /////////////////////////////////////////////////////////////////////////////
 
-/// Associated type for `<char as Pattern<'a>>::Searcher`.
+/// Associated type for `<char as Pattern<H>>::Searcher`.
 #[derive(Clone, Debug)]
 pub struct CharSearcher<'a> {
     haystack: &'a str,
@@ -375,7 +444,7 @@ pub struct CharSearcher<'a> {
     utf8_encoded: [u8; 4],
 }
 
-unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
+unsafe impl<'a> Searcher<&'a str> for CharSearcher<'a> {
     #[inline]
     fn haystack(&self) -> &'a str {
         self.haystack
@@ -453,7 +522,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     // let next_reject use the default implementation from the Searcher trait
 }
 
-unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
+unsafe impl<'a> ReverseSearcher<&'a str> for CharSearcher<'a> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
         let old_finger = self.finger_back;
@@ -527,7 +596,7 @@ unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
     // let next_reject_back use the default implementation from the Searcher trait
 }
 
-impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
+impl<'a> DoubleEndedSearcher<&'a str> for CharSearcher<'a> {}
 
 /// Searches for chars that are equal to a given [`char`].
 ///
@@ -536,7 +605,7 @@ impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
 /// ```
 /// assert_eq!("Hello world".find('o'), Some(4));
 /// ```
-impl<'a> Pattern<'a> for char {
+impl<'a> Pattern<&'a str> for char {
     type Searcher = CharSearcher<'a>;
 
     #[inline]
@@ -576,7 +645,7 @@ impl<'a> Pattern<'a> for char {
     #[inline]
     fn is_suffix_of(self, haystack: &'a str) -> bool
     where
-        Self::Searcher: ReverseSearcher<'a>,
+        Self::Searcher: ReverseSearcher<&'a str>,
     {
         self.encode_utf8(&mut [0u8; 4]).is_suffix_of(haystack)
     }
@@ -584,7 +653,7 @@ impl<'a> Pattern<'a> for char {
     #[inline]
     fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str>
     where
-        Self::Searcher: ReverseSearcher<'a>,
+        Self::Searcher: ReverseSearcher<&'a str>,
     {
         self.encode_utf8(&mut [0u8; 4]).strip_suffix_of(haystack)
     }
@@ -639,7 +708,7 @@ struct MultiCharEqSearcher<'a, C: MultiCharEq> {
     char_indices: super::CharIndices<'a>,
 }
 
-impl<'a, C: MultiCharEq> Pattern<'a> for MultiCharEqPattern<C> {
+impl<'a, C: MultiCharEq> Pattern<&'a str> for MultiCharEqPattern<C> {
     type Searcher = MultiCharEqSearcher<'a, C>;
 
     #[inline]
@@ -648,7 +717,7 @@ impl<'a, C: MultiCharEq> Pattern<'a> for MultiCharEqPattern<C> {
     }
 }
 
-unsafe impl<'a, C: MultiCharEq> Searcher<'a> for MultiCharEqSearcher<'a, C> {
+unsafe impl<'a, C: MultiCharEq> Searcher<&'a str> for MultiCharEqSearcher<'a, C> {
     #[inline]
     fn haystack(&self) -> &'a str {
         self.haystack
@@ -673,7 +742,7 @@ unsafe impl<'a, C: MultiCharEq> Searcher<'a> for MultiCharEqSearcher<'a, C> {
     }
 }
 
-unsafe impl<'a, C: MultiCharEq> ReverseSearcher<'a> for MultiCharEqSearcher<'a, C> {
+unsafe impl<'a, C: MultiCharEq> ReverseSearcher<&'a str> for MultiCharEqSearcher<'a, C> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
         let s = &mut self.char_indices;
@@ -693,7 +762,7 @@ unsafe impl<'a, C: MultiCharEq> ReverseSearcher<'a> for MultiCharEqSearcher<'a, 
     }
 }
 
-impl<'a, C: MultiCharEq> DoubleEndedSearcher<'a> for MultiCharEqSearcher<'a, C> {}
+impl<'a, C: MultiCharEq> DoubleEndedSearcher<&'a str> for MultiCharEqSearcher<'a, C> {}
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -724,7 +793,7 @@ macro_rules! pattern_methods {
         #[inline]
         fn is_suffix_of(self, haystack: &'a str) -> bool
         where
-            $t: ReverseSearcher<'a>,
+            $t: ReverseSearcher<&'a str>,
         {
             ($pmap)(self).is_suffix_of(haystack)
         }
@@ -732,7 +801,7 @@ macro_rules! pattern_methods {
         #[inline]
         fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str>
         where
-            $t: ReverseSearcher<'a>,
+            $t: ReverseSearcher<&'a str>,
         {
             ($pmap)(self).strip_suffix_of(haystack)
         }
@@ -774,16 +843,16 @@ macro_rules! searcher_methods {
     };
 }
 
-/// Associated type for `<[char; N] as Pattern<'a>>::Searcher`.
+/// Associated type for `<[char; N] as Pattern<&'a str>>::Searcher`.
 #[derive(Clone, Debug)]
 pub struct CharArraySearcher<'a, const N: usize>(
-    <MultiCharEqPattern<[char; N]> as Pattern<'a>>::Searcher,
+    <MultiCharEqPattern<[char; N]> as Pattern<&'a str>>::Searcher,
 );
 
-/// Associated type for `<&[char; N] as Pattern<'a>>::Searcher`.
+/// Associated type for `<&[char; N] as Pattern<&'a str>>::Searcher`.
 #[derive(Clone, Debug)]
 pub struct CharArrayRefSearcher<'a, 'b, const N: usize>(
-    <MultiCharEqPattern<&'b [char; N]> as Pattern<'a>>::Searcher,
+    <MultiCharEqPattern<&'b [char; N]> as Pattern<&'a str>>::Searcher,
 );
 
 /// Searches for chars that are equal to any of the [`char`]s in the array.
@@ -794,15 +863,15 @@ pub struct CharArrayRefSearcher<'a, 'b, const N: usize>(
 /// assert_eq!("Hello world".find(['l', 'l']), Some(2));
 /// assert_eq!("Hello world".find(['l', 'l']), Some(2));
 /// ```
-impl<'a, const N: usize> Pattern<'a> for [char; N] {
+impl<'a, const N: usize> Pattern<&'a str> for [char; N] {
     pattern_methods!(CharArraySearcher<'a, N>, MultiCharEqPattern, CharArraySearcher);
 }
 
-unsafe impl<'a, const N: usize> Searcher<'a> for CharArraySearcher<'a, N> {
+unsafe impl<'a, const N: usize> Searcher<&'a str> for CharArraySearcher<'a, N> {
     searcher_methods!(forward);
 }
 
-unsafe impl<'a, const N: usize> ReverseSearcher<'a> for CharArraySearcher<'a, N> {
+unsafe impl<'a, const N: usize> ReverseSearcher<&'a str> for CharArraySearcher<'a, N> {
     searcher_methods!(reverse);
 }
 
@@ -814,15 +883,15 @@ unsafe impl<'a, const N: usize> ReverseSearcher<'a> for CharArraySearcher<'a, N>
 /// assert_eq!("Hello world".find(&['l', 'l']), Some(2));
 /// assert_eq!("Hello world".find(&['l', 'l']), Some(2));
 /// ```
-impl<'a, 'b, const N: usize> Pattern<'a> for &'b [char; N] {
+impl<'a, 'b, const N: usize> Pattern<&'a str> for &'b [char; N] {
     pattern_methods!(CharArrayRefSearcher<'a, 'b, N>, MultiCharEqPattern, CharArrayRefSearcher);
 }
 
-unsafe impl<'a, 'b, const N: usize> Searcher<'a> for CharArrayRefSearcher<'a, 'b, N> {
+unsafe impl<'a, 'b, const N: usize> Searcher<&'a str> for CharArrayRefSearcher<'a, 'b, N> {
     searcher_methods!(forward);
 }
 
-unsafe impl<'a, 'b, const N: usize> ReverseSearcher<'a> for CharArrayRefSearcher<'a, 'b, N> {
+unsafe impl<'a, 'b, const N: usize> ReverseSearcher<&'a str> for CharArrayRefSearcher<'a, 'b, N> {
     searcher_methods!(reverse);
 }
 
@@ -832,19 +901,21 @@ unsafe impl<'a, 'b, const N: usize> ReverseSearcher<'a> for CharArrayRefSearcher
 
 // Todo: Change / Remove due to ambiguity in meaning.
 
-/// Associated type for `<&[char] as Pattern<'a>>::Searcher`.
+/// Associated type for `<&[char] as Pattern<&'a str>>::Searcher`.
 #[derive(Clone, Debug)]
-pub struct CharSliceSearcher<'a, 'b>(<MultiCharEqPattern<&'b [char]> as Pattern<'a>>::Searcher);
+pub struct CharSliceSearcher<'a, 'b>(
+    <MultiCharEqPattern<&'b [char]> as Pattern<&'a str>>::Searcher,
+);
 
-unsafe impl<'a, 'b> Searcher<'a> for CharSliceSearcher<'a, 'b> {
+unsafe impl<'a, 'b> Searcher<&'a str> for CharSliceSearcher<'a, 'b> {
     searcher_methods!(forward);
 }
 
-unsafe impl<'a, 'b> ReverseSearcher<'a> for CharSliceSearcher<'a, 'b> {
+unsafe impl<'a, 'b> ReverseSearcher<&'a str> for CharSliceSearcher<'a, 'b> {
     searcher_methods!(reverse);
 }
 
-impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
+impl<'a, 'b> DoubleEndedSearcher<&'a str> for CharSliceSearcher<'a, 'b> {}
 
 /// Searches for chars that are equal to any of the [`char`]s in the slice.
 ///
@@ -854,7 +925,7 @@ impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
 /// assert_eq!("Hello world".find(&['l', 'l'] as &[_]), Some(2));
 /// assert_eq!("Hello world".find(&['l', 'l'][..]), Some(2));
 /// ```
-impl<'a, 'b> Pattern<'a> for &'b [char] {
+impl<'a, 'b> Pattern<&'a str> for &'b [char] {
     pattern_methods!(CharSliceSearcher<'a, 'b>, MultiCharEqPattern, CharSliceSearcher);
 }
 
@@ -862,9 +933,9 @@ impl<'a, 'b> Pattern<'a> for &'b [char] {
 // Impl for F: FnMut(char) -> bool
 /////////////////////////////////////////////////////////////////////////////
 
-/// Associated type for `<F as Pattern<'a>>::Searcher`.
+/// Associated type for `<F as Pattern<&'a str>>::Searcher`.
 #[derive(Clone)]
-pub struct CharPredicateSearcher<'a, F>(<MultiCharEqPattern<F> as Pattern<'a>>::Searcher)
+pub struct CharPredicateSearcher<'a, F>(<MultiCharEqPattern<F> as Pattern<&'a str>>::Searcher)
 where
     F: FnMut(char) -> bool;
 
@@ -879,21 +950,24 @@ where
             .finish()
     }
 }
-unsafe impl<'a, F> Searcher<'a> for CharPredicateSearcher<'a, F>
+unsafe impl<'a, F> Searcher<&'a str> for CharPredicateSearcher<'a, F>
 where
     F: FnMut(char) -> bool,
 {
     searcher_methods!(forward);
 }
 
-unsafe impl<'a, F> ReverseSearcher<'a> for CharPredicateSearcher<'a, F>
+unsafe impl<'a, F> ReverseSearcher<&'a str> for CharPredicateSearcher<'a, F>
 where
     F: FnMut(char) -> bool,
 {
     searcher_methods!(reverse);
 }
 
-impl<'a, F> DoubleEndedSearcher<'a> for CharPredicateSearcher<'a, F> where F: FnMut(char) -> bool {}
+impl<'a, F> DoubleEndedSearcher<&'a str> for CharPredicateSearcher<'a, F> where
+    F: FnMut(char) -> bool
+{
+}
 
 /// Searches for [`char`]s that match the given predicate.
 ///
@@ -903,7 +977,7 @@ impl<'a, F> DoubleEndedSearcher<'a> for CharPredicateSearcher<'a, F> where F: Fn
 /// assert_eq!("Hello world".find(char::is_uppercase), Some(0));
 /// assert_eq!("Hello world".find(|c| "aeiou".contains(c)), Some(1));
 /// ```
-impl<'a, F> Pattern<'a> for F
+impl<'a, F> Pattern<&'a str> for F
 where
     F: FnMut(char) -> bool,
 {
@@ -915,7 +989,7 @@ where
 /////////////////////////////////////////////////////////////////////////////
 
 /// Delegates to the `&str` impl.
-impl<'a, 'b, 'c> Pattern<'a> for &'c &'b str {
+impl<'a, 'b, 'c> Pattern<&'a str> for &'c &'b str {
     pattern_methods!(StrSearcher<'a, 'b>, |&s| s, |s| s);
 }
 
@@ -933,7 +1007,7 @@ impl<'a, 'b, 'c> Pattern<'a> for &'c &'b str {
 /// ```
 /// assert_eq!("Hello world".find("world"), Some(6));
 /// ```
-impl<'a, 'b> Pattern<'a> for &'b str {
+impl<'a, 'b> Pattern<&'a str> for &'b str {
     type Searcher = StrSearcher<'a, 'b>;
 
     #[inline]
@@ -1008,7 +1082,7 @@ impl<'a, 'b> Pattern<'a> for &'b str {
 /////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug)]
-/// Associated type for `<&str as Pattern<'a>>::Searcher`.
+/// Associated type for `<&str as Pattern<&'a str>>::Searcher`.
 pub struct StrSearcher<'a, 'b> {
     haystack: &'a str,
     needle: &'b str,
@@ -1059,7 +1133,7 @@ impl<'a, 'b> StrSearcher<'a, 'b> {
     }
 }
 
-unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
+unsafe impl<'a, 'b> Searcher<&'a str> for StrSearcher<'a, 'b> {
     #[inline]
     fn haystack(&self) -> &'a str {
         self.haystack
@@ -1149,7 +1223,7 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
     }
 }
 
-unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
+unsafe impl<'a, 'b> ReverseSearcher<&'a str> for StrSearcher<'a, 'b> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
         match self.searcher {

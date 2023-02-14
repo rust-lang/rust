@@ -3,7 +3,7 @@ fn strip_lf(s: &str) -> &str {
     //~^ ERROR expected a `FnMut<(char,)>` closure, found `u8`
     //~| NOTE expected an `FnMut<(char,)>` closure, found `u8`
     //~| HELP the trait `FnMut<(char,)>` is not implemented for `u8`
-    //~| HELP the following other types implement trait `Pattern<'a>`:
+    //~| HELP the following other types implement trait `Pattern<&'a str>`:
     //~| NOTE required for `u8` to implement `Pattern<'_>`
 
 }

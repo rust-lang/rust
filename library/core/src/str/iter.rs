@@ -361,7 +361,7 @@ macro_rules! derive_pattern_clone {
     (clone $t:ident with |$s:ident| $e:expr) => {
         impl<'a, P> Clone for $t<'a, P>
         where
-            P: Pattern<'a, Searcher: Clone>,
+            P: Pattern<&'a str, Searcher: Clone>,
         {
             fn clone(&self) -> Self {
                 let $s = self;
@@ -374,7 +374,7 @@ macro_rules! derive_pattern_clone {
 /// This macro generates two public iterator structs
 /// wrapping a private internal one that makes use of the `Pattern` API.
 ///
-/// For all patterns `P: Pattern<'a>` the following items will be
+/// For all patterns `P: Pattern<&'a str>` the following items will be
 /// generated (generics omitted):
 ///
 /// struct $forward_iterator($internal_iterator);
@@ -434,12 +434,14 @@ macro_rules! generate_pattern_iterators {
     } => {
         $(#[$forward_iterator_attribute])*
         $(#[$common_stability_attribute])*
-        pub struct $forward_iterator<'a, P: Pattern<'a>>(pub(super) $internal_iterator<'a, P>);
+        pub struct $forward_iterator<'a, P: Pattern<&'a str>>(
+            pub(super) $internal_iterator<'a, P>
+        );
 
         $(#[$common_stability_attribute])*
         impl<'a, P> fmt::Debug for $forward_iterator<'a, P>
         where
-            P: Pattern<'a, Searcher: fmt::Debug>,
+            P: Pattern<&'a str, Searcher: fmt::Debug>,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_tuple(stringify!($forward_iterator))
@@ -449,7 +451,7 @@ macro_rules! generate_pattern_iterators {
         }
 
         $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> Iterator for $forward_iterator<'a, P> {
+        impl<'a, P: Pattern<&'a str>> Iterator for $forward_iterator<'a, P> {
             type Item = $iterty;
 
             #[inline]
@@ -461,7 +463,7 @@ macro_rules! generate_pattern_iterators {
         $(#[$common_stability_attribute])*
         impl<'a, P> Clone for $forward_iterator<'a, P>
         where
-            P: Pattern<'a, Searcher: Clone>,
+            P: Pattern<&'a str, Searcher: Clone>,
         {
             fn clone(&self) -> Self {
                 $forward_iterator(self.0.clone())
@@ -470,12 +472,14 @@ macro_rules! generate_pattern_iterators {
 
         $(#[$reverse_iterator_attribute])*
         $(#[$common_stability_attribute])*
-        pub struct $reverse_iterator<'a, P: Pattern<'a>>(pub(super) $internal_iterator<'a, P>);
+        pub struct $reverse_iterator<'a, P: Pattern<&'a str>>(
+            pub(super) $internal_iterator<'a, P>
+        );
 
         $(#[$common_stability_attribute])*
         impl<'a, P> fmt::Debug for $reverse_iterator<'a, P>
         where
-            P: Pattern<'a, Searcher: fmt::Debug>,
+            P: Pattern<&'a str, Searcher: fmt::Debug>,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_tuple(stringify!($reverse_iterator))
@@ -487,7 +491,7 @@ macro_rules! generate_pattern_iterators {
         $(#[$common_stability_attribute])*
         impl<'a, P> Iterator for $reverse_iterator<'a, P>
         where
-            P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+            P: Pattern<&'a str, Searcher: ReverseSearcher<&'a str>>,
         {
             type Item = $iterty;
 
@@ -500,7 +504,7 @@ macro_rules! generate_pattern_iterators {
         $(#[$common_stability_attribute])*
         impl<'a, P> Clone for $reverse_iterator<'a, P>
         where
-            P: Pattern<'a, Searcher: Clone>,
+            P: Pattern<&'a str, Searcher: Clone>,
         {
             fn clone(&self) -> Self {
                 $reverse_iterator(self.0.clone())
@@ -508,12 +512,12 @@ macro_rules! generate_pattern_iterators {
         }
 
         #[stable(feature = "fused", since = "1.26.0")]
-        impl<'a, P: Pattern<'a>> FusedIterator for $forward_iterator<'a, P> {}
+        impl<'a, P: Pattern<&'a str>> FusedIterator for $forward_iterator<'a, P> {}
 
         #[stable(feature = "fused", since = "1.26.0")]
         impl<'a, P> FusedIterator for $reverse_iterator<'a, P>
         where
-            P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+            P: Pattern<&'a str, Searcher: ReverseSearcher<&'a str>>,
         {}
 
         generate_pattern_iterators!($($t)* with $(#[$common_stability_attribute])*,
@@ -528,7 +532,7 @@ macro_rules! generate_pattern_iterators {
         $(#[$common_stability_attribute])*
         impl<'a, P> DoubleEndedIterator for $forward_iterator<'a, P>
         where
-            P: Pattern<'a, Searcher: DoubleEndedSearcher<'a>>,
+            P: Pattern<&'a str, Searcher: DoubleEndedSearcher<&'a str>>,
         {
             #[inline]
             fn next_back(&mut self) -> Option<$iterty> {
@@ -539,7 +543,7 @@ macro_rules! generate_pattern_iterators {
         $(#[$common_stability_attribute])*
         impl<'a, P> DoubleEndedIterator for $reverse_iterator<'a, P>
         where
-            P: Pattern<'a, Searcher: DoubleEndedSearcher<'a>>,
+            P: Pattern<&'a str, Searcher: DoubleEndedSearcher<&'a str>>,
         {
             #[inline]
             fn next_back(&mut self) -> Option<$iterty> {
@@ -559,7 +563,7 @@ derive_pattern_clone! {
     with |s| SplitInternal { matcher: s.matcher.clone(), ..*s }
 }
 
-pub(super) struct SplitInternal<'a, P: Pattern<'a>> {
+pub(super) struct SplitInternal<'a, P: Pattern<&'a str>> {
     pub(super) start: usize,
     pub(super) end: usize,
     pub(super) matcher: P::Searcher,
@@ -569,7 +573,7 @@ pub(super) struct SplitInternal<'a, P: Pattern<'a>> {
 
 impl<'a, P> fmt::Debug for SplitInternal<'a, P>
 where
-    P: Pattern<'a, Searcher: fmt::Debug>,
+    P: Pattern<&'a str, Searcher: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitInternal")
@@ -582,7 +586,7 @@ where
     }
 }
 
-impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
+impl<'a, P: Pattern<&'a str>> SplitInternal<'a, P> {
     #[inline]
     fn get_end(&mut self) -> Option<&'a str> {
         if !self.finished {
@@ -639,7 +643,7 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str>
     where
-        P::Searcher: ReverseSearcher<'a>,
+        P::Searcher: ReverseSearcher<&'a str>,
     {
         if self.finished {
             return None;
@@ -676,7 +680,7 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
     #[inline]
     fn next_back_inclusive(&mut self) -> Option<&'a str>
     where
-        P::Searcher: ReverseSearcher<'a>,
+        P::Searcher: ReverseSearcher<&'a str>,
     {
         if self.finished {
             return None;
@@ -746,7 +750,7 @@ generate_pattern_iterators! {
     delegate double ended;
 }
 
-impl<'a, P: Pattern<'a>> Split<'a, P> {
+impl<'a, P: Pattern<&'a str>> Split<'a, P> {
     /// Returns remainder of the split string.
     ///
     /// If the iterator is empty, returns `None`.
@@ -769,7 +773,7 @@ impl<'a, P: Pattern<'a>> Split<'a, P> {
     }
 }
 
-impl<'a, P: Pattern<'a>> RSplit<'a, P> {
+impl<'a, P: Pattern<&'a str>> RSplit<'a, P> {
     /// Returns remainder of the split string.
     ///
     /// If the iterator is empty, returns `None`.
@@ -810,7 +814,7 @@ generate_pattern_iterators! {
     delegate double ended;
 }
 
-impl<'a, P: Pattern<'a>> SplitTerminator<'a, P> {
+impl<'a, P: Pattern<&'a str>> SplitTerminator<'a, P> {
     /// Returns remainder of the split string.
     ///
     /// If the iterator is empty, returns `None`.
@@ -833,7 +837,7 @@ impl<'a, P: Pattern<'a>> SplitTerminator<'a, P> {
     }
 }
 
-impl<'a, P: Pattern<'a>> RSplitTerminator<'a, P> {
+impl<'a, P: Pattern<&'a str>> RSplitTerminator<'a, P> {
     /// Returns remainder of the split string.
     ///
     /// If the iterator is empty, returns `None`.
@@ -861,7 +865,7 @@ derive_pattern_clone! {
     with |s| SplitNInternal { iter: s.iter.clone(), ..*s }
 }
 
-pub(super) struct SplitNInternal<'a, P: Pattern<'a>> {
+pub(super) struct SplitNInternal<'a, P: Pattern<&'a str>> {
     pub(super) iter: SplitInternal<'a, P>,
     /// The number of splits remaining
     pub(super) count: usize,
@@ -869,7 +873,7 @@ pub(super) struct SplitNInternal<'a, P: Pattern<'a>> {
 
 impl<'a, P> fmt::Debug for SplitNInternal<'a, P>
 where
-    P: Pattern<'a, Searcher: fmt::Debug>,
+    P: Pattern<&'a str, Searcher: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitNInternal")
@@ -879,7 +883,7 @@ where
     }
 }
 
-impl<'a, P: Pattern<'a>> SplitNInternal<'a, P> {
+impl<'a, P: Pattern<&'a str>> SplitNInternal<'a, P> {
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
         match self.count {
@@ -898,7 +902,7 @@ impl<'a, P: Pattern<'a>> SplitNInternal<'a, P> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str>
     where
-        P::Searcher: ReverseSearcher<'a>,
+        P::Searcher: ReverseSearcher<&'a str>,
     {
         match self.count {
             0 => None,
@@ -937,7 +941,7 @@ generate_pattern_iterators! {
     delegate single ended;
 }
 
-impl<'a, P: Pattern<'a>> SplitN<'a, P> {
+impl<'a, P: Pattern<&'a str>> SplitN<'a, P> {
     /// Returns remainder of the split string.
     ///
     /// If the iterator is empty, returns `None`.
@@ -960,7 +964,7 @@ impl<'a, P: Pattern<'a>> SplitN<'a, P> {
     }
 }
 
-impl<'a, P: Pattern<'a>> RSplitN<'a, P> {
+impl<'a, P: Pattern<&'a str>> RSplitN<'a, P> {
     /// Returns remainder of the split string.
     ///
     /// If the iterator is empty, returns `None`.
@@ -988,18 +992,18 @@ derive_pattern_clone! {
     with |s| MatchIndicesInternal(s.0.clone())
 }
 
-pub(super) struct MatchIndicesInternal<'a, P: Pattern<'a>>(pub(super) P::Searcher);
+pub(super) struct MatchIndicesInternal<'a, P: Pattern<&'a str>>(pub(super) P::Searcher);
 
 impl<'a, P> fmt::Debug for MatchIndicesInternal<'a, P>
 where
-    P: Pattern<'a, Searcher: fmt::Debug>,
+    P: Pattern<&'a str, Searcher: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("MatchIndicesInternal").field(&self.0).finish()
     }
 }
 
-impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
+impl<'a, P: Pattern<&'a str>> MatchIndicesInternal<'a, P> {
     #[inline]
     fn next(&mut self) -> Option<(usize, &'a str)> {
         self.0
@@ -1011,7 +1015,7 @@ impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
     #[inline]
     fn next_back(&mut self) -> Option<(usize, &'a str)>
     where
-        P::Searcher: ReverseSearcher<'a>,
+        P::Searcher: ReverseSearcher<&'a str>,
     {
         self.0
             .next_match_back()
@@ -1043,18 +1047,18 @@ derive_pattern_clone! {
     with |s| MatchesInternal(s.0.clone())
 }
 
-pub(super) struct MatchesInternal<'a, P: Pattern<'a>>(pub(super) P::Searcher);
+pub(super) struct MatchesInternal<'a, P: Pattern<&'a str>>(pub(super) P::Searcher);
 
 impl<'a, P> fmt::Debug for MatchesInternal<'a, P>
 where
-    P: Pattern<'a, Searcher: fmt::Debug>,
+    P: Pattern<&'a str, Searcher: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("MatchesInternal").field(&self.0).finish()
     }
 }
 
-impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
+impl<'a, P: Pattern<&'a str>> MatchesInternal<'a, P> {
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
         // SAFETY: `Searcher` guarantees that `start` and `end` lie on unicode boundaries.
@@ -1067,7 +1071,7 @@ impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str>
     where
-        P::Searcher: ReverseSearcher<'a>,
+        P::Searcher: ReverseSearcher<&'a str>,
     {
         // SAFETY: `Searcher` guarantees that `start` and `end` lie on unicode boundaries.
         self.0.next_match_back().map(|(a, b)| unsafe {
@@ -1213,7 +1217,7 @@ pub struct SplitAsciiWhitespace<'a> {
 ///
 /// [`split_inclusive`]: str::split_inclusive
 #[stable(feature = "split_inclusive", since = "1.51.0")]
-pub struct SplitInclusive<'a, P: Pattern<'a>>(pub(super) SplitInternal<'a, P>);
+pub struct SplitInclusive<'a, P: Pattern<&'a str>>(pub(super) SplitInternal<'a, P>);
 
 #[stable(feature = "split_whitespace", since = "1.1.0")]
 impl<'a> Iterator for SplitWhitespace<'a> {
@@ -1335,7 +1339,7 @@ impl<'a> SplitAsciiWhitespace<'a> {
 }
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
-impl<'a, P: Pattern<'a>> Iterator for SplitInclusive<'a, P> {
+impl<'a, P: Pattern<&'a str>> Iterator for SplitInclusive<'a, P> {
     type Item = &'a str;
 
     #[inline]
@@ -1345,7 +1349,7 @@ impl<'a, P: Pattern<'a>> Iterator for SplitInclusive<'a, P> {
 }
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
-impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitInclusive<'a, P> {
+impl<'a, P: Pattern<&'a str, Searcher: fmt::Debug>> fmt::Debug for SplitInclusive<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitInclusive").field("0", &self.0).finish()
     }
@@ -1353,14 +1357,14 @@ impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitInclusive<'a,
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "split_inclusive", since = "1.51.0")]
-impl<'a, P: Pattern<'a, Searcher: Clone>> Clone for SplitInclusive<'a, P> {
+impl<'a, P: Pattern<&'a str, Searcher: Clone>> Clone for SplitInclusive<'a, P> {
     fn clone(&self) -> Self {
         SplitInclusive(self.0.clone())
     }
 }
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
-impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
+impl<'a, P: Pattern<&'a str, Searcher: ReverseSearcher<&'a str>>> DoubleEndedIterator
     for SplitInclusive<'a, P>
 {
     #[inline]
@@ -1370,9 +1374,9 @@ impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
 }
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
-impl<'a, P: Pattern<'a>> FusedIterator for SplitInclusive<'a, P> {}
+impl<'a, P: Pattern<&'a str>> FusedIterator for SplitInclusive<'a, P> {}
 
-impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
+impl<'a, P: Pattern<&'a str>> SplitInclusive<'a, P> {
     /// Returns remainder of the split string.
     ///
     /// If the iterator is empty, returns `None`.

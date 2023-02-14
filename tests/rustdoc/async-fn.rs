@@ -46,7 +46,7 @@ impl Foo {
     pub async fn mut_self(mut self, mut first: usize) {}
 }
 
-pub trait Pattern<'a> {}
+pub trait Pattern<&'a str> {}
 
 pub trait Trait<const N: usize> {}
 // @has async_fn/fn.const_generics.html
@@ -91,5 +91,5 @@ impl Foo {
 // @has - '//pre[@class="rust item-decl"]' "pub async fn named<'a, 'b>(foo: &'a str) -> &'b str"
 pub async fn named<'a, 'b>(foo: &'a str) -> &'b str {}
 // @has async_fn/fn.named_trait.html
-// @has - '//pre[@class="rust item-decl"]' "pub async fn named_trait<'a, 'b>(foo: impl Pattern<'a>) -> impl Pattern<'b>"
-pub async fn named_trait<'a, 'b>(foo: impl Pattern<'a>) -> impl Pattern<'b> {}
+// @has - '//pre[@class="rust item-decl"]' "pub async fn named_trait<'a, 'b>(foo: impl Pattern<&'a str>) -> impl Pattern<'b>"
+pub async fn named_trait<'a, 'b>(foo: impl Pattern<&'a str>) -> impl Pattern<'b> {}

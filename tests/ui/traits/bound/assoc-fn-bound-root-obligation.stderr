@@ -5,7 +5,7 @@ LL |     s.strip_suffix(b'\n').unwrap_or(s)
    |       ^^^^^^^^^^^^ expected an `FnMut<(char,)>` closure, found `u8`
    |
    = help: the trait `FnMut<(char,)>` is not implemented for `u8`
-   = help: the following other types implement trait `Pattern<'a>`:
+   = help: the following other types implement trait `Pattern<&'a str>`:
              &'b String
              &'b [char; N]
              &'b [char]
