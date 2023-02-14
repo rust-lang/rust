@@ -16,7 +16,7 @@ rustc-hash = "1.1.0"
 either = "1.7.0"
 arrayvec = "0.7.2"
 itertools = "0.10.5"
-smallvec = "1.10.0"
+smallvec.workspace = true
 once_cell = "1.17.0"
 
 # local deps
