@@ -223,7 +223,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 _ => Some(ConsiderAddingAwait::BothFuturesHelp),
             },
             (_, Some(ty)) if self.same_type_modulo_infer(exp_found.expected, ty) => {
-                Some(ConsiderAddingAwait::FutureSuggWithNote { span: exp_span.shrink_to_hi() })
+                // FIXME: Seems like we can't have a suggestion and a note with different spans in a single subdiagnostic
+                diag.subdiagnostic(ConsiderAddingAwait::FutureSugg {
+                    span: exp_span.shrink_to_hi(),
+                });
+                Some(ConsiderAddingAwait::FutureSuggNote { span: exp_span })
             }
             (Some(ty), _) if self.same_type_modulo_infer(ty, exp_found.found) => match cause.code()
             {

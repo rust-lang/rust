@@ -1072,14 +1072,8 @@ pub enum ConsiderAddingAwait {
         #[primary_span]
         span: Span,
     },
-    #[suggestion(
-        infer_await_future,
-        code = ".await",
-        style = "verbose",
-        applicability = "maybe-incorrect"
-    )]
     #[note(infer_await_note)]
-    FutureSuggWithNote {
+    FutureSuggNote {
         #[primary_span]
         span: Span,
     },
