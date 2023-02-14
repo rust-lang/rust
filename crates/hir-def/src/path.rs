@@ -49,7 +49,7 @@ pub struct Path {
 /// also includes bindings of associated types, like in `Iterator<Item = Foo>`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenericArgs {
-    pub args: Vec<GenericArg>,
+    pub args: Box<[GenericArg]>,
     /// This specifies whether the args contain a Self type as the first
     /// element. This is the case for path segments like `<T as Trait>`, where
     /// `T` is actually a type parameter for the path `Trait` specifying the
@@ -57,7 +57,7 @@ pub struct GenericArgs {
     /// is left out.
     pub has_self_type: bool,
     /// Associated type bindings like in `Iterator<Item = T>`.
-    pub bindings: Vec<AssociatedTypeBinding>,
+    pub bindings: Box<[AssociatedTypeBinding]>,
     /// Whether these generic args were desugared from `Trait(Arg) -> Output`
     /// parenthesis notation typically used for the `Fn` traits.
     pub desugared_from_fn: bool,
@@ -77,7 +77,7 @@ pub struct AssociatedTypeBinding {
     /// Bounds for the associated type, like in `Iterator<Item:
     /// SomeOtherTrait>`. (This is the unstable `associated_type_bounds`
     /// feature.)
-    pub bounds: Vec<Interned<TypeBound>>,
+    pub bounds: Box<[Interned<TypeBound>]>,
 }
 
 /// A single generic argument.
@@ -212,9 +212,9 @@ impl GenericArgs {
 
     pub(crate) fn empty() -> GenericArgs {
         GenericArgs {
-            args: Vec::new(),
+            args: Box::default(),
             has_self_type: false,
-            bindings: Vec::new(),
+            bindings: Box::default(),
             desugared_from_fn: false,
         }
     }
