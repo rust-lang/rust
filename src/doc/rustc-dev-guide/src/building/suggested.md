@@ -19,6 +19,8 @@ You can also install the hook as a step of running `./x.py setup`!
 
 ## Configuring `rust-analyzer` for `rustc`
 
+### Visual Studio Code
+
 `rust-analyzer` can help you check and format your code whenever you save
 a file. By default, `rust-analyzer` runs the `cargo check` and `rustfmt`
 commands, but you can override these commands to use more adapted versions
@@ -30,9 +32,6 @@ stage 0 rustfmt to format them.
 If you have enough free disk space and you would like to be able to run `x.py` commands while
 rust-analyzer runs in the background, you can also add `--build-dir build-rust-analyzer` to the
 `overrideCommand` to avoid x.py locking.
-
-If you're running `coc.nvim`, you can use `:CocLocalConfig` to create a
-`.vim/coc-settings.json` and copy the settings from [this file](https://github.com/rust-lang/rust/blob/master/src/etc/vscode_settings.json).
 
 If running `./x.py check` on save is inconvenient, in VS Code you can use a [Build
 Task] instead:
@@ -55,6 +54,35 @@ Task] instead:
 ```
 
 [Build Task]: https://code.visualstudio.com/docs/editor/tasks
+
+
+### Neovim
+
+For Neovim users there are several options for configuring for rustc. The easiest way is by using 
+[neoconf.nvim](https://github.com/folke/neoconf.nvim/), which allows for project-local
+configuration files with the native LSP. The steps for how to use it are below. Note that requires 
+Rust-Analyzer to already be configured with Neovim. Steps for this can be 
+[found here](https://rust-analyzer.github.io/manual.html#nvim-lsp).
+
+1. First install the plugin. This can be done by following the steps in the README.
+2. Run `x.py setup`, which will have a prompt for it to create a `.vscode/settings.json` file. 
+`neoconf` is able to read and update Rust-Analyzer settings automatically when the project is 
+opened when this file is detected.
+
+If you're running `coc.nvim`, you can use `:CocLocalConfig` to create a
+`.vim/coc-settings.json` and copy the settings from 
+[this file](https://github.com/rust-lang/rust/blob/master/src/etc/vscode_settings.json).
+
+Another way is without a plugin, and creating your own logic in your configuration. To do this you 
+must translate the JSON to Lua yourself. The translation is 1:1 and fairly straight-forward. It 
+must be put in the `["rust-analyzer"]` key of the setup table, which is 
+[shown here](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#rust_analyzer)
+
+If you would like to use the build task that is described above, you may either make your own 
+command in your config, or you can install a plugin such as 
+[overseer.nvim](https://github.com/stevearc/overseer.nvim) that can [read VSCode's `task.json` 
+files](https://github.com/stevearc/overseer.nvim/blob/master/doc/guides.md#vs-code-tasks), and 
+follow the same instructions as above.
 
 ## Check, check, and check again
 
