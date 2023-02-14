@@ -65,6 +65,10 @@ declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 impl<'tcx> LateLintPass<'tcx> for HashMapPass {
     #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if expr.span.from_expansion() {
+            return;
+        }
+
         let Some(higher::If { cond: cond_expr, then: then_expr, r#else: else_expr }) = higher::If::hir(expr) else {
             return
         };
