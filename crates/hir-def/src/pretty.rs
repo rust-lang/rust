@@ -71,7 +71,7 @@ pub(crate) fn print_generic_args(generics: &GenericArgs, buf: &mut dyn Write) ->
         first = false;
         print_generic_arg(arg, buf)?;
     }
-    for binding in &generics.bindings {
+    for binding in generics.bindings.iter() {
         if !first {
             write!(buf, ", ")?;
         }

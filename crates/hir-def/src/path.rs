@@ -57,7 +57,7 @@ pub struct GenericArgs {
     /// is left out.
     pub has_self_type: bool,
     /// Associated type bindings like in `Iterator<Item = T>`.
-    pub bindings: Vec<AssociatedTypeBinding>,
+    pub bindings: Box<[AssociatedTypeBinding]>,
     /// Whether these generic args were desugared from `Trait(Arg) -> Output`
     /// parenthesis notation typically used for the `Fn` traits.
     pub desugared_from_fn: bool,
@@ -214,7 +214,7 @@ impl GenericArgs {
         GenericArgs {
             args: Vec::new(),
             has_self_type: false,
-            bindings: Vec::new(),
+            bindings: Box::default(),
             desugared_from_fn: false,
         }
     }

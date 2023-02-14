@@ -208,7 +208,12 @@ pub(super) fn lower_generic_args(
     if args.is_empty() && bindings.is_empty() {
         return None;
     }
-    Some(GenericArgs { args, has_self_type: false, bindings, desugared_from_fn: false })
+    Some(GenericArgs {
+        args,
+        has_self_type: false,
+        bindings: bindings.into_boxed_slice(),
+        desugared_from_fn: false,
+    })
 }
 
 /// Collect `GenericArgs` from the parts of a fn-like path, i.e. `Fn(X, Y)
@@ -219,7 +224,6 @@ fn lower_generic_args_from_fn_path(
     ret_type: Option<ast::RetType>,
 ) -> Option<GenericArgs> {
     let mut args = Vec::new();
-    let mut bindings = Vec::new();
     let params = params?;
     let mut param_types = Vec::new();
     for param in params.params() {
@@ -228,23 +232,23 @@ fn lower_generic_args_from_fn_path(
     }
     let arg = GenericArg::Type(TypeRef::Tuple(param_types));
     args.push(arg);
-    if let Some(ret_type) = ret_type {
+    let bindings = if let Some(ret_type) = ret_type {
         let type_ref = TypeRef::from_ast_opt(ctx, ret_type.ty());
-        bindings.push(AssociatedTypeBinding {
+        Box::new([AssociatedTypeBinding {
             name: name![Output],
             args: None,
             type_ref: Some(type_ref),
             bounds: Box::default(),
-        });
+        }])
     } else {
         // -> ()
         let type_ref = TypeRef::Tuple(Vec::new());
-        bindings.push(AssociatedTypeBinding {
+        Box::new([AssociatedTypeBinding {
             name: name![Output],
             args: None,
             type_ref: Some(type_ref),
             bounds: Box::default(),
-        });
-    }
+        }])
+    };
     Some(GenericArgs { args, has_self_type: false, bindings, desugared_from_fn: true })
 }

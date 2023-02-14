@@ -301,7 +301,7 @@ impl TypeRef {
                             | crate::path::GenericArg::Lifetime(_) => {}
                         }
                     }
-                    for binding in &args_and_bindings.bindings {
+                    for binding in args_and_bindings.bindings.iter() {
                         if let Some(type_ref) = &binding.type_ref {
                             go(type_ref, f);
                         }

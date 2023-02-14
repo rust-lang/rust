@@ -1431,7 +1431,7 @@ impl HirDisplay for Path {
                     }
                     arg.hir_fmt(f)?;
                 }
-                for binding in &generic_args.bindings {
+                for binding in generic_args.bindings.iter() {
                     if first {
                         first = false;
                     } else {

@@ -1025,7 +1025,7 @@ impl<'a> TyLoweringContext<'a> {
         last_segment
             .into_iter()
             .filter_map(|segment| segment.args_and_bindings)
-            .flat_map(|args_and_bindings| &args_and_bindings.bindings)
+            .flat_map(|args_and_bindings| args_and_bindings.bindings.iter())
             .flat_map(move |binding| {
                 let found = associated_type_by_name_including_super_traits(
                     self.db,
