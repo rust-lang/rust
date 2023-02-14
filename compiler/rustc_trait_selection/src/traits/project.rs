@@ -401,6 +401,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         depth: usize,
         obligations: &'a mut Vec<PredicateObligation<'tcx>>,
     ) -> AssocTypeNormalizer<'a, 'b, 'tcx> {
+        let trait_solver_next = selcx.tcx().trait_solver_next();
         AssocTypeNormalizer {
             selcx,
             param_env,
@@ -408,7 +409,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
             obligations,
             depth,
             universes: vec![],
-            eager_inference_replacement: true,
+            eager_inference_replacement: !trait_solver_next && true,
         }
     }
 
