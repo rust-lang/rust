@@ -1,6 +1,6 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::{self, Binder, Ty, TyCtxt, TyKind, TypeFoldable, TypeSuperFoldable, TypeVisitable};
+use crate::ty::{self, Binder, Ty, TyCtxt, TyKind, TypeFoldable, TypeSuperFoldable};
 use crate::ty::{EarlyBinder, InternalSubsts, SubstsRef};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::Namespace;
