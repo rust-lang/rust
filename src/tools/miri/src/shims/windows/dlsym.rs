@@ -67,10 +67,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     byte_offset,
                     _key,
                 ] = check_arg_count(args)?;
-                let handle = this.read_machine_isize(handle)?;
+                let handle = this.read_target_isize(handle)?;
                 let buf = this.read_pointer(buf)?;
                 let n = this.read_scalar(n)?.to_u32()?;
-                let byte_offset = this.read_machine_usize(byte_offset)?; // is actually a pointer
+                let byte_offset = this.read_target_usize(byte_offset)?; // is actually a pointer
                 let io_status_block = this.deref_operand(io_status_block)?;
 
                 if byte_offset != 0 {
@@ -104,7 +104,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     let io_status_information =
                         this.mplace_field_named(&io_status_block, "Information")?;
                     this.write_scalar(
-                        Scalar::from_machine_usize(n.into(), this),
+                        Scalar::from_target_usize(n.into(), this),
                         &io_status_information.into(),
                     )?;
                 }

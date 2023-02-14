@@ -119,18 +119,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // argument, we have to also check all arguments *before* it to ensure that they
                 // have the right type.
 
-                let sys_getrandom = this.eval_libc("SYS_getrandom").to_machine_usize(this)?;
+                let sys_getrandom = this.eval_libc("SYS_getrandom").to_target_usize(this)?;
 
-                let sys_statx = this.eval_libc("SYS_statx").to_machine_usize(this)?;
+                let sys_statx = this.eval_libc("SYS_statx").to_target_usize(this)?;
 
-                let sys_futex = this.eval_libc("SYS_futex").to_machine_usize(this)?;
+                let sys_futex = this.eval_libc("SYS_futex").to_target_usize(this)?;
 
                 if args.is_empty() {
                     throw_ub_format!(
                         "incorrect number of arguments for syscall: got 0, expected at least 1"
                     );
                 }
-                match this.read_machine_usize(&args[0])? {
+                match this.read_target_usize(&args[0])? {
                     // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
                     // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
                     id if id == sys_getrandom => {
@@ -155,7 +155,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         }
                         let result =
                             this.linux_statx(&args[1], &args[2], &args[3], &args[4], &args[5])?;
-                        this.write_scalar(Scalar::from_machine_isize(result.into(), this), dest)?;
+                        this.write_scalar(Scalar::from_target_isize(result.into(), this), dest)?;
                     }
                     // `futex` is used by some synchonization primitives.
                     id if id == sys_futex => {
@@ -178,7 +178,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [pid, cpusetsize, mask] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.read_scalar(pid)?.to_i32()?;
-                this.read_machine_usize(cpusetsize)?;
+                this.read_target_usize(cpusetsize)?;
                 this.deref_operand(mask)?;
                 // FIXME: we just return an error; `num_cpus` then falls back to `sysconf`.
                 let einval = this.eval_libc("EINVAL");
@@ -210,7 +210,7 @@ fn getrandom<'tcx>(
     dest: &PlaceTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx> {
     let ptr = this.read_pointer(ptr)?;
-    let len = this.read_machine_usize(len)?;
+    let len = this.read_target_usize(len)?;
 
     // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
     // neither of which have any effect on our current PRNG.
@@ -218,6 +218,6 @@ fn getrandom<'tcx>(
     let _flags = this.read_scalar(flags)?.to_i32();
 
     this.gen_random(ptr, len)?;
-    this.write_scalar(Scalar::from_machine_usize(len, this), dest)?;
+    this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
     Ok(())
 }

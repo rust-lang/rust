@@ -19,29 +19,29 @@ pub trait PointerArithmetic: HasDataLayout {
 
     #[inline(always)]
     fn max_size_of_val(&self) -> Size {
-        Size::from_bytes(self.machine_isize_max())
+        Size::from_bytes(self.target_isize_max())
     }
 
     #[inline]
-    fn machine_usize_max(&self) -> u64 {
+    fn target_usize_max(&self) -> u64 {
         self.pointer_size().unsigned_int_max().try_into().unwrap()
     }
 
     #[inline]
-    fn machine_isize_min(&self) -> i64 {
+    fn target_isize_min(&self) -> i64 {
         self.pointer_size().signed_int_min().try_into().unwrap()
     }
 
     #[inline]
-    fn machine_isize_max(&self) -> i64 {
+    fn target_isize_max(&self) -> i64 {
         self.pointer_size().signed_int_max().try_into().unwrap()
     }
 
     #[inline]
-    fn machine_usize_to_isize(&self, val: u64) -> i64 {
+    fn target_usize_to_isize(&self, val: u64) -> i64 {
         let val = val as i64;
         // Now wrap-around into the machine_isize range.
-        if val > self.machine_isize_max() {
+        if val > self.target_isize_max() {
             // This can only happen if the ptr size is < 64, so we know max_usize_plus_1 fits into
             // i64.
             debug_assert!(self.pointer_size().bits() < 64);
@@ -76,11 +76,11 @@ pub trait PointerArithmetic: HasDataLayout {
         let n = i.unsigned_abs();
         if i >= 0 {
             let (val, over) = self.overflowing_offset(val, n);
-            (val, over || i > self.machine_isize_max())
+            (val, over || i > self.target_isize_max())
         } else {
             let res = val.overflowing_sub(n);
             let (val, over) = self.truncate_to_ptr(res);
-            (val, over || i < self.machine_isize_min())
+            (val, over || i < self.target_isize_min())
         }
     }
 
