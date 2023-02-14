@@ -23,13 +23,15 @@
 
 mod data {
     include!("data/mod.rs");
-    include!("data/any.rs");
+    impl_data_provider!(super::BakedDataProvider);
+    impl_any_provider!(super::BakedDataProvider);
 }
 
-pub use data::BakedDataProvider;
+#[non_exhaustive]
+pub struct BakedDataProvider;
 
 pub const fn baked_data_provider() -> BakedDataProvider {
-    data::BakedDataProvider
+    BakedDataProvider
 }
 
 pub mod supported_locales {
