@@ -64,6 +64,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::Node;
 use rustc_middle::dep_graph::DepContext;
@@ -1984,6 +1985,70 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // we try to suggest to add the missing `let` for `if let Some(..) = expr`
                         (ty::Bool, ty::Tuple(list)) => if list.len() == 0 {
                             self.suggest_let_for_letchains(&mut err, &trace.cause, span);
+                        }
+                        (ty::Array(_, _), ty::Array(_, _)) => 'block: {
+                            let hir = self.tcx.hir();
+                            let TypeError::FixedArraySize(sz) = terr else {
+                                break 'block;
+                            };
+                            let tykind = match hir.find_by_def_id(trace.cause.body_id) {
+                                Some(hir::Node::Item(hir::Item {
+                                    kind: hir::ItemKind::Fn(_, _, body_id),
+                                    ..
+                                })) => {
+                                    let body = hir.body(*body_id);
+                                    struct LetVisitor<'v> {
+                                        span: Span,
+                                        result: Option<&'v hir::Ty<'v>>,
+                                    }
+                                    impl<'v> Visitor<'v> for LetVisitor<'v> {
+                                        fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) {
+                                            if self.result.is_some() {
+                                                return;
+                                            }
+                                            // Find a local statement where the initializer has
+                                            // the same span as the error and the type is specified.
+                                            if let hir::Stmt {
+                                                kind: hir::StmtKind::Local(hir::Local {
+                                                    init: Some(hir::Expr {
+                                                        span: init_span,
+                                                        ..
+                                                    }),
+                                                    ty: Some(array_ty),
+                                                    ..
+                                                }),
+                                                ..
+                                            } = s
+                                            && init_span == &self.span {
+                                                self.result = Some(*array_ty);
+                                            }
+                                        }
+                                    }
+                                    let mut visitor = LetVisitor {span, result: None};
+                                    visitor.visit_body(body);
+                                    visitor.result.map(|r| &r.peel_refs().kind)
+                                }
+                                Some(hir::Node::Item(hir::Item {
+                                    kind: hir::ItemKind::Const(ty, _),
+                                    ..
+                                })) => {
+                                    Some(&ty.peel_refs().kind)
+                                }
+                                _ => None
+                            };
+
+                            if let Some(tykind) = tykind
+                                && let hir::TyKind::Array(_, length) = tykind
+                                && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
+                                && let Some(span) = self.tcx.hir().opt_span(*hir_id)
+                            {
+                                err.span_suggestion(
+                                    span,
+                                    "consider specifying the actual array length",
+                                    sz.found,
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
                         }
                         _ => {}
                     }
