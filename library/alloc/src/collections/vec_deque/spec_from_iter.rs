@@ -12,7 +12,6 @@ pub(super) trait SpecFromIterCo<T, I> {
     fn spec_from_iter_co(iter: I) -> Self;
 }
 
-#[allow(unused_braces)]
 impl<T, I> SpecFromIter<T, I> for VecDeque<T>
 where
     I: Iterator<Item = T>,
@@ -26,7 +25,6 @@ where
     }
 }
 
-#[allow(unused_braces)]
 impl<T> SpecFromIter<T, crate::vec::IntoIter<T>> for VecDeque<T> {
     #[inline]
     fn spec_from_iter(iterator: crate::vec::IntoIter<T>) -> Self {
@@ -34,7 +32,6 @@ impl<T> SpecFromIter<T, crate::vec::IntoIter<T>> for VecDeque<T> {
     }
 }
 
-#[allow(unused_braces)]
 impl<T> SpecFromIter<T, IntoIter<T>> for VecDeque<T> {
     #[inline]
     fn spec_from_iter(iterator: IntoIter<T>) -> Self {

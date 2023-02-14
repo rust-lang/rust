@@ -106,9 +106,10 @@ impl const CoAllocMetaBase for CoAllocMetaPlain {
 /// `#![feature(adt_const_params)]` are stable) to a dedicated struct/enum. Hence:
 /// - DO NOT mix this/cast this with/to `u8`, `u16`, (nor any other integer); and
 /// - DO NOT hard code any values, but use `CO_ALLOCATOR_SUPPORTS_META_YES` and `CO_ALLOCATOR_SUPPORTS_META_NO`.
-///
+// @FIXME Once ICE is fixed: Change to `u32` (or any other unused unsinged integer type, and other
+// than `usize`, so we can't mix it up with `usize`).
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
-pub type CoAllocatorMetaNumSlots = u32;
+pub type CoAllocatorMetaNumSlots = usize;
 
 /// Indicating that an Allocator supports coallocation (if a type of the allocated instances supports it, too).
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]

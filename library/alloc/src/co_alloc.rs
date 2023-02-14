@@ -21,11 +21,11 @@
 /// - DO NOT hard code any values; and
 /// - DO NOT mix this/cast this with/to `u8`, `u16`, `usize` (nor any other integer).
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
-pub type CoAllocPref = u8;
+pub type CoAllocPref = usize; //u8;
 
-/// `CoAllocMetaNumSlotsPref` values indicate a type (but not an allocator) prefers to coallocate by
-/// carrying metadata, or not. (In either user space, or `std` space). Used as an argument to macro
-/// call of `co_alloc_pref`, which generates a `CoAllocPref` value.
+/// `CoAllocMetaNumSlotsPref` values indicate that a type (but not necessarily an allocator) prefers
+/// to coallocate by carrying metadata, or not. (In either user space, or `std` or `alloc` space).
+/// Used as an argument to macro call of `co_alloc_pref`, which generates a `CoAllocPref` value.
 ///
 /// Currently this indicates only the (preferred) number of `CoAllocMetaBase` slots being used
 /// (either 1 = coallocation, or 0 = no coallocation). However, in the future this type may have
