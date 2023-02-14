@@ -471,6 +471,8 @@ pub enum StashKey {
     /// When an invalid lifetime e.g. `'2` should be reinterpreted
     /// as a char literal in the parser
     LifetimeIsChar,
+    /// When an invalid lifetime e.g. `'🐱` contains emoji.
+    LifetimeContainsEmoji,
     /// Maybe there was a typo where a comma was forgotten before
     /// FRU syntax
     MaybeFruTypo,
