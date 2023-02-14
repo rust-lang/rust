@@ -200,6 +200,10 @@ macro_rules! define_callbacks {
 
             $(pub type $name<'tcx> = $V;)*
         }
+
+        /// This module specifies the type returned from query providers and the type used for
+        /// decoding. For regular queries this is the declared returned type `V`, but
+        /// `arena_cache` will use `<V as Deref>::Target` instead.
         #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_provided {
             use super::*;
@@ -208,12 +212,17 @@ macro_rules! define_callbacks {
                 pub type $name<'tcx> = query_if_arena!([$($modifiers)*] (<$V as Deref>::Target) ($V));
             )*
         }
+
+        /// This module has a function per query which takes a `query_provided` value and coverts
+        /// it to a regular `V` value by allocating it on an arena if the query has the
+        /// `arena_cache` modifier. This will happen when computing the query using a provider or
+        /// decoding a stored result.
         #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_provided_to_value {
             use super::*;
 
             $(
-                #[inline]
+                #[inline(always)]
                 pub fn $name<'tcx>(
                     _tcx: TyCtxt<'tcx>,
                     value: query_provided::$name<'tcx>,
