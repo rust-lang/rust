@@ -187,7 +187,7 @@ pub(super) fn lower_generic_args(
                             .map(|it| Interned::new(TypeBound::from_ast(lower_ctx, it)))
                             .collect()
                     } else {
-                        Vec::new()
+                        Box::default()
                     };
                     bindings.push(AssociatedTypeBinding { name, args, type_ref, bounds });
                 }
@@ -234,7 +234,7 @@ fn lower_generic_args_from_fn_path(
             name: name![Output],
             args: None,
             type_ref: Some(type_ref),
-            bounds: Vec::new(),
+            bounds: Box::default(),
         });
     } else {
         // -> ()
@@ -243,7 +243,7 @@ fn lower_generic_args_from_fn_path(
             name: name![Output],
             args: None,
             type_ref: Some(type_ref),
-            bounds: Vec::new(),
+            bounds: Box::default(),
         });
     }
     Some(GenericArgs { args, has_self_type: false, bindings, desugared_from_fn: true })

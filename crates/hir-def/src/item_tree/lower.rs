@@ -664,7 +664,7 @@ fn desugar_future_path(orig: TypeRef) -> Path {
         name: name![Output],
         args: None,
         type_ref: Some(orig),
-        bounds: Vec::new(),
+        bounds: Box::default(),
     };
     last.bindings.push(binding);
     generic_args.push(Some(Interned::new(last)));

@@ -305,7 +305,7 @@ impl TypeRef {
                         if let Some(type_ref) = &binding.type_ref {
                             go(type_ref, f);
                         }
-                        for bound in &binding.bounds {
+                        for bound in binding.bounds.iter() {
                             match bound.as_ref() {
                                 TypeBound::Path(path, _) | TypeBound::ForLifetime(_, path) => {
                                     go_path(path, f)

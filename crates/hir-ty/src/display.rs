@@ -1445,7 +1445,7 @@ impl HirDisplay for Path {
                         }
                         None => {
                             write!(f, ": ")?;
-                            f.write_joined(&binding.bounds, " + ")?;
+                            f.write_joined(binding.bounds.iter(), " + ")?;
                         }
                     }
                 }
