@@ -186,8 +186,8 @@ impl<'tcx> Queries<'tcx> {
     pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
         self.gcx.compute(|| {
             let crate_name = *self.crate_name()?.borrow();
-            let (krate, resolver_outputs, lint_store) = {
-                let (krate, lint_store) = self.register_plugins()?.steal();
+            let (krate, lint_store) = self.register_plugins()?.steal();
+            let (krate, resolver_outputs) = {
                 let _timer = self.session().timer("configure_and_expand");
                 let sess = self.session();
 
@@ -206,7 +206,7 @@ impl<'tcx> Queries<'tcx> {
                     crate_name,
                     &mut resolver,
                 )?;
-                (Lrc::new(krate), resolver.into_outputs(), lint_store)
+                (Lrc::new(krate), resolver.into_outputs())
             };
 
             let ty::ResolverOutputs {
