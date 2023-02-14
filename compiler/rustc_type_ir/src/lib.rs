@@ -1,6 +1,5 @@
 #![feature(associated_type_defaults)]
 #![feature(fmt_helpers_for_derive)]
-#![feature(get_mut_unchecked)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
