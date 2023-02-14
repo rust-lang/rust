@@ -128,10 +128,7 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
 
 impl CStore {
     pub fn from_tcx(tcx: TyCtxt<'_>) -> &CStore {
-        tcx.cstore_untracked()
-            .as_any()
-            .downcast_ref::<CStore>()
-            .expect("`tcx.cstore` is not a `CStore`")
+        tcx.cstore(()).as_any().downcast_ref::<CStore>().expect("`tcx.cstore` is not a `CStore`")
     }
 
     fn alloc_new_crate_num(&mut self) -> CrateNum {
