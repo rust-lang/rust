@@ -13,7 +13,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// of the given projection. This allows us to proceed with projections
     /// while they cannot be resolved yet due to missing information or
     /// simply due to the lack of access to the trait resolution machinery.
-    pub fn _infer_projection(
+    pub fn infer_projection(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         projection_ty: ty::AliasTy<'tcx>,
