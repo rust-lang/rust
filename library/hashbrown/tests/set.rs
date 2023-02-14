@@ -27,7 +27,7 @@ fn test_hashset_insert_remove() {
             assert_eq!(m.insert(x.clone()), true);
         }
         for (i, x) in tx.iter().enumerate() {
-            println!("removing {} {:?}", i, x);
+            println!("removing {i} {x:?}");
             assert_eq!(m.remove(x), true);
         }
     }
