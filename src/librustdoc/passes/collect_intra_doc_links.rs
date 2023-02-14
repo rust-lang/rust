@@ -1710,7 +1710,7 @@ fn resolution_failure(
                         Res::Primitive(_) => None,
                     };
                     let is_struct_variant = |did| {
-                        if let ty::Adt(def, _) = tcx.type_of(did).kind()
+                        if let ty::Adt(def, _) = tcx.type_of(did).subst_identity().kind()
                         && def.is_enum()
                         && let Some(variant) = def.variants().iter().find(|v| v.name == res.name(tcx)) {
                             // ctor is `None` if variant is a struct
