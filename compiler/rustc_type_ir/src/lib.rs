@@ -39,35 +39,35 @@ pub use ty_info::*;
 pub trait HashStableContext {}
 
 pub trait Interner: Sized {
-    type AdtDef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type SubstsRef: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type DefId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type AdtDef: Clone + Debug + Hash + Ord;
+    type SubstsRef: Clone + Debug + Hash + Ord;
+    type DefId: Clone + Debug + Hash + Ord;
     type Binder<T>;
-    type Ty: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type Const: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type Region: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type Ty: Clone + Debug + Hash + Ord;
+    type Const: Clone + Debug + Hash + Ord;
+    type Region: Clone + Debug + Hash + Ord;
     type Predicate;
-    type TypeAndMut: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type Mutability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type Movability: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type PolyFnSig: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type ListBinderExistentialPredicate: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type BinderListTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type ListTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type AliasTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type ParamTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type BoundTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type PlaceholderType: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type InferTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type ErrorGuaranteed: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type TypeAndMut: Clone + Debug + Hash + Ord;
+    type Mutability: Clone + Debug + Hash + Ord;
+    type Movability: Clone + Debug + Hash + Ord;
+    type PolyFnSig: Clone + Debug + Hash + Ord;
+    type ListBinderExistentialPredicate: Clone + Debug + Hash + Ord;
+    type BinderListTy: Clone + Debug + Hash + Ord;
+    type ListTy: Clone + Debug + Hash + Ord;
+    type AliasTy: Clone + Debug + Hash + Ord;
+    type ParamTy: Clone + Debug + Hash + Ord;
+    type BoundTy: Clone + Debug + Hash + Ord;
+    type PlaceholderType: Clone + Debug + Hash + Ord;
+    type InferTy: Clone + Debug + Hash + Ord;
+    type ErrorGuaranteed: Clone + Debug + Hash + Ord;
     type PredicateKind: Clone + Debug + Hash + PartialEq + Eq;
-    type AllocId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type AllocId: Clone + Debug + Hash + Ord;
 
-    type EarlyBoundRegion: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type BoundRegion: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type FreeRegion: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type RegionVid: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type PlaceholderRegion: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type EarlyBoundRegion: Clone + Debug + Hash + Ord;
+    type BoundRegion: Clone + Debug + Hash + Ord;
+    type FreeRegion: Clone + Debug + Hash + Ord;
+    type RegionVid: Clone + Debug + Hash + Ord;
+    type PlaceholderRegion: Clone + Debug + Hash + Ord;
 }
 
 pub trait InternAs<T: ?Sized, R> {
