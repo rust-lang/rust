@@ -2388,13 +2388,15 @@ impl<'tcx> TyCtxt<'tcx> {
         self.trait_def(trait_def_id).has_auto_impl
     }
 
+    /// Returns `true` if this is coinductive, either because it is
+    /// an auto trait or because it has the `#[rustc_coinductive]` attribute.
+    pub fn trait_is_coinductive(self, trait_def_id: DefId) -> bool {
+        self.trait_def(trait_def_id).is_coinductive
+    }
+
     /// Returns `true` if this is a trait alias.
     pub fn trait_is_alias(self, trait_def_id: DefId) -> bool {
         self.def_kind(trait_def_id) == DefKind::TraitAlias
-    }
-
-    pub fn trait_is_coinductive(self, trait_def_id: DefId) -> bool {
-        self.trait_is_auto(trait_def_id) || self.lang_items().sized_trait() == Some(trait_def_id)
     }
 
     /// Returns layout of a generator. Layout might be unavailable if the

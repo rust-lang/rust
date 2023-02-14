@@ -1,4 +1,3 @@
-// min-llvm-version: 14.0
 // ignore-debug: the debug assertions get in the way
 // compile-flags: -O -Z merge-functions=disabled
 #![crate_type = "lib"]

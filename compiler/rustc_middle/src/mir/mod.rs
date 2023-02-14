@@ -27,7 +27,6 @@ use polonius_engine::Atom;
 pub use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
@@ -62,7 +61,6 @@ pub use terminator::*;
 
 pub mod traversal;
 mod type_foldable;
-mod type_visitable;
 pub mod visit;
 
 pub use self::generic_graph::graphviz_safe_def_name;

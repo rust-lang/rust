@@ -346,7 +346,7 @@ pub fn is_non_aggregate_primitive_type(ty: Ty<'_>) -> bool {
 pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
     match *ty.kind() {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
-        ty::Ref(_, inner, _) if *inner.kind() == ty::Str => true,
+        ty::Ref(_, inner, _) if inner.is_str() => true,
         ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(inner_type),
         ty::Tuple(inner_types) => inner_types.iter().all(is_recursively_primitive_type),
         _ => false,

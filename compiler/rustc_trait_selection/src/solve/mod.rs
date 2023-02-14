@@ -255,12 +255,18 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         // call `exists<U> <T as Trait>::Assoc == U` to enable better caching. This goal
         // could constrain `U` to `u32` which would cause this check to result in a
         // solver cycle.
-        if cfg!(debug_assertions) && has_changed && !self.in_projection_eq_hack {
+        if cfg!(debug_assertions)
+            && has_changed
+            && !self.in_projection_eq_hack
+            && !self.search_graph.in_cycle()
+        {
             let mut orig_values = OriginalQueryValues::default();
             let canonical_goal = self.infcx.canonicalize_query(goal, &mut orig_values);
             let canonical_response =
                 EvalCtxt::evaluate_canonical_goal(self.tcx(), self.search_graph, canonical_goal)?;
-            assert!(canonical_response.value.var_values.is_identity());
+            if !canonical_response.value.var_values.is_identity() {
+                bug!("unstable result: {goal:?} {canonical_goal:?} {canonical_response:?}");
+            }
             assert_eq!(certainty, canonical_response.value.certainty);
         }
 

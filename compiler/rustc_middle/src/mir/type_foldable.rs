@@ -47,9 +47,3 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<PlaceElem<'tcx>> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_place_elems(v))
     }
 }
-
-impl<'tcx, R: Idx, C: Idx> TypeFoldable<TyCtxt<'tcx>> for BitMatrix<R, C> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
-        Ok(self)
-    }
-}

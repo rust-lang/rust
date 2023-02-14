@@ -152,13 +152,7 @@ pub fn time_trace_profiler_finish(file_name: &Path) {
 pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]> {
     let arch = if sess.target.arch == "x86_64" { "x86" } else { &*sess.target.arch };
     match (arch, s) {
-        ("x86", "sse4.2") => {
-            if get_version() >= (14, 0, 0) {
-                smallvec!["sse4.2", "crc32"]
-            } else {
-                smallvec!["sse4.2"]
-            }
-        }
+        ("x86", "sse4.2") => smallvec!["sse4.2", "crc32"],
         ("x86", "pclmulqdq") => smallvec!["pclmul"],
         ("x86", "rdrand") => smallvec!["rdrnd"],
         ("x86", "bmi1") => smallvec!["bmi"],
@@ -217,7 +211,7 @@ pub fn check_tied_features(
 /// Must express features in the way Rust understands them
 pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     let target_machine = create_informational_target_machine(sess);
-    let mut features: Vec<Symbol> = supported_target_features(sess)
+    supported_target_features(sess)
         .iter()
         .filter_map(|&(feature, gate)| {
             if sess.is_nightly_build() || allow_unstable || gate.is_none() {
@@ -237,16 +231,7 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
             true
         })
         .map(|feature| Symbol::intern(feature))
-        .collect();
-
-    // LLVM 14 changed the ABI for i128 arguments to __float/__fix builtins on Win64
-    // (see https://reviews.llvm.org/D110413). This unstable target feature is intended for use
-    // by compiler-builtins, to export the builtins with the expected, LLVM-version-dependent ABI.
-    // The target feature can be dropped once we no longer support older LLVM versions.
-    if sess.is_nightly_build() && get_version() >= (14, 0, 0) {
-        features.push(Symbol::intern("llvm14-builtins-abi"));
-    }
-    features
+        .collect()
 }
 
 pub fn print_version() {
@@ -493,11 +478,6 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
         })
         .flatten();
     features.extend(feats);
-
-    // FIXME: Move v8a to target definition list when earliest supported LLVM is 14.
-    if get_version() >= (14, 0, 0) && sess.target.arch == "aarch64" {
-        features.push("+v8a".into());
-    }
 
     if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
         sess.emit_err(TargetFeatureDisableOrEnable {

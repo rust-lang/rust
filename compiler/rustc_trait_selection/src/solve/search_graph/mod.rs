@@ -43,6 +43,24 @@ impl<'tcx> SearchGraph<'tcx> {
             && !self.overflow_data.did_overflow()
     }
 
+    /// Whether we're currently in a cycle. This should only be used
+    /// for debug assertions.
+    pub(super) fn in_cycle(&self) -> bool {
+        if let Some(stack_depth) = self.stack.last() {
+            // Either the current goal on the stack is the root of a cycle...
+            if self.stack[stack_depth].has_been_used {
+                return true;
+            }
+
+            // ...or it depends on a goal with a lower depth.
+            let current_goal = self.stack[stack_depth].goal;
+            let entry_index = self.provisional_cache.lookup_table[&current_goal];
+            self.provisional_cache.entries[entry_index].depth != stack_depth
+        } else {
+            false
+        }
+    }
+
     /// Tries putting the new goal on the stack, returning an error if it is already cached.
     ///
     /// This correctly updates the provisional cache if there is a cycle.

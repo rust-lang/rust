@@ -156,6 +156,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::rustc_dirty
                 | sym::rustc_if_this_changed
                 | sym::rustc_then_this_would_need => self.check_rustc_dirty_clean(&attr),
+                sym::rustc_coinductive => self.check_rustc_coinductive(&attr, span, target),
                 sym::cmse_nonsecure_entry => {
                     self.check_cmse_nonsecure_entry(hir_id, attr, span, target)
                 }
@@ -1605,6 +1606,20 @@ impl CheckAttrVisitor<'_> {
         } else {
             self.tcx.sess.emit_err(errors::RustcDirtyClean { span: attr.span });
             false
+        }
+    }
+
+    /// Checks if the `#[rustc_coinductive]` attribute is applied to a trait.
+    fn check_rustc_coinductive(&self, attr: &Attribute, span: Span, target: Target) -> bool {
+        match target {
+            Target::Trait => true,
+            _ => {
+                self.tcx.sess.emit_err(errors::AttrShouldBeAppliedToTrait {
+                    attr_span: attr.span,
+                    defn_span: span,
+                });
+                false
+            }
         }
     }
 

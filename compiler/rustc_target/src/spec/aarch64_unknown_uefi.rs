@@ -9,6 +9,7 @@ pub fn target() -> Target {
 
     base.max_atomic_width = Some(128);
     base.add_pre_link_args(LinkerFlavor::Msvc(Lld::No), &["/machine:arm64"]);
+    base.features = "+v8a".into();
 
     Target {
         llvm_target: "aarch64-unknown-windows".into(),
