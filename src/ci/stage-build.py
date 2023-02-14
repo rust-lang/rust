@@ -6,6 +6,7 @@
 import contextlib
 import getpass
 import glob
+import json
 import logging
 import os
 import pprint
@@ -17,7 +18,8 @@ import traceback
 import urllib.request
 from io import StringIO
 from pathlib import Path
-from typing import Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union
+from typing import Callable, ContextManager, Dict, Iterable, Iterator, List, Optional, \
+    Tuple, Union
 
 PGO_HOST = os.environ["PGO_HOST"]
 
@@ -115,6 +117,9 @@ class Pipeline:
     def llvm_bolt_profile_merged_file(self) -> Path:
         return self.opt_artifacts() / "bolt.profdata"
 
+    def metrics_path(self) -> Path:
+        return self.build_root() / "build" / "metrics.json"
+
 
 class LinuxPipeline(Pipeline):
     def checkout_path(self) -> Path:
@@ -208,32 +213,27 @@ def get_timestamp() -> float:
 
 
 Duration = float
-TimerSection = Union[Duration, "Timer"]
 
 
-def iterate_sections(section: TimerSection, name: str, level: int = 0) -> Iterator[
+def iterate_timers(timer: "Timer", name: str, level: int = 0) -> Iterator[
     Tuple[int, str, Duration]]:
     """
-    Hierarchically iterate the sections of a timer, in a depth-first order.
+    Hierarchically iterate the children of a timer, in a depth-first order.
     """
-    if isinstance(section, Duration):
-        yield (level, name, section)
-    elif isinstance(section, Timer):
-        yield (level, name, section.total_duration())
-        for (child_name, child_section) in section.sections:
-            yield from iterate_sections(child_section, child_name, level=level + 1)
-    else:
-        assert False
+    yield (level, name, timer.total_duration())
+    for (child_name, child_timer) in timer.children:
+        yield from iterate_timers(child_timer, child_name, level=level + 1)
 
 
 class Timer:
     def __init__(self, parent_names: Tuple[str, ...] = ()):
-        self.sections: List[Tuple[str, TimerSection]] = []
+        self.children: List[Tuple[str, Timer]] = []
         self.section_active = False
         self.parent_names = parent_names
+        self.duration_excluding_children: Duration = 0
 
     @contextlib.contextmanager
-    def section(self, name: str) -> "Timer":
+    def section(self, name: str) -> ContextManager["Timer"]:
         assert not self.section_active
         self.section_active = True
 
@@ -252,10 +252,8 @@ class Timer:
             end = get_timestamp()
             duration = end - start
 
-            if child_timer.has_children():
-                self.sections.append((name, child_timer))
-            else:
-                self.sections.append((name, duration))
+            child_timer.duration_excluding_children = duration - child_timer.total_duration()
+            self.add_child(name, child_timer)
             if exc is None:
                 LOGGER.info(f"Section `{full_name}` ended: OK ({duration:.2f}s)")
             else:
@@ -263,22 +261,17 @@ class Timer:
             self.section_active = False
 
     def total_duration(self) -> Duration:
-        duration = 0
-        for (_, section) in self.sections:
-            if isinstance(section, Duration):
-                duration += section
-            else:
-                duration += section.total_duration()
-        return duration
+        return self.duration_excluding_children + sum(
+            c.total_duration() for (_, c) in self.children)
 
     def has_children(self) -> bool:
-        return len(self.sections) > 0
+        return len(self.children) > 0
 
     def print_stats(self):
         rows = []
-        for (child_name, child_section) in self.sections:
-            for (level, name, duration) in iterate_sections(child_section, child_name, level=0):
-                label = f"{' ' * level}{name}:"
+        for (child_name, child_timer) in self.children:
+            for (level, name, duration) in iterate_timers(child_timer, child_name, level=0):
+                label = f"{'  ' * level}{name}:"
                 rows.append((label, duration))
 
         # Empty row
@@ -305,6 +298,60 @@ class Timer:
                 print(f"{label:<{max_label_length}} {value}", file=output)
             print(divider, file=output, end="")
             LOGGER.info(f"Timer results\n{output.getvalue()}")
+
+    def add_child(self, name: str, timer: "Timer"):
+        self.children.append((name, timer))
+
+    def add_duration(self, name: str, duration: Duration):
+        timer = Timer(parent_names=self.parent_names + (name,))
+        timer.duration_excluding_children = duration
+        self.add_child(name, timer)
+
+
+class BuildStep:
+    def __init__(self, type: str, children: List["BuildStep"], duration: float):
+        self.type = type
+        self.children = children
+        self.duration = duration
+
+    def find_all_by_type(self, type: str) -> Iterator["BuildStep"]:
+        if type == self.type:
+            yield self
+        for child in self.children:
+            yield from child.find_all_by_type(type)
+
+    def __repr__(self):
+        return f"BuildStep(type={self.type}, duration={self.duration}, children={len(self.children)})"
+
+
+def load_last_metrics(path: Path) -> BuildStep:
+    """
+    Loads the metrics of the most recent bootstrap execution from a metrics.json file.
+    """
+    with open(path, "r") as f:
+        metrics = json.load(f)
+    invocation = metrics["invocations"][-1]
+
+    def parse(entry) -> Optional[BuildStep]:
+        if "kind" not in entry or entry["kind"] != "rustbuild_step":
+            return None
+        type = entry.get("type", "")
+        duration = entry.get("duration_excluding_children_sec", 0)
+        children = []
+
+        for child in entry.get("children", ()):
+            step = parse(child)
+            if step is not None:
+                children.append(step)
+                duration += step.duration
+        return BuildStep(type=type, children=children, duration=duration)
+
+    children = [parse(child) for child in invocation.get("children", ())]
+    return BuildStep(
+        type="root",
+        children=children,
+        duration=invocation.get("duration_including_children_sec", 0)
+    )
 
 
 @contextlib.contextmanager
@@ -645,7 +692,7 @@ def print_binary_sizes(pipeline: Pipeline):
     with StringIO() as output:
         for path in paths:
             path_str = f"{path.name}:"
-            print(f"{path_str:<30}{format_bytes(path.stat().st_size):>14}", file=output)
+            print(f"{path_str:<50}{format_bytes(path.stat().st_size):>14}", file=output)
         LOGGER.info(f"Rustc binary size\n{output.getvalue()}")
 
 
@@ -659,6 +706,44 @@ def print_free_disk_space(pipeline: Pipeline):
         f"Free disk space: {format_bytes(free)} out of total {format_bytes(total)} ({(used / total) * 100:.2f}% used)")
 
 
+def log_metrics(step: BuildStep):
+    substeps: List[Tuple[int, BuildStep]] = []
+
+    def visit(step: BuildStep, level: int):
+        substeps.append((level, step))
+        for child in step.children:
+            visit(child, level=level + 1)
+
+    visit(step, 0)
+
+    output = StringIO()
+    for (level, step) in substeps:
+        label = f"{'.' * level}{step.type}"
+        print(f"{label:<65}{step.duration:>8.2f}s", file=output)
+    logging.info(f"Build step durations\n{output.getvalue()}")
+
+
+def record_metrics(pipeline: Pipeline, timer: Timer):
+    metrics = load_last_metrics(pipeline.metrics_path())
+    if metrics is None:
+        return
+    llvm_steps = tuple(metrics.find_all_by_type("bootstrap::native::Llvm"))
+    assert len(llvm_steps) > 0
+    llvm_duration = sum(step.duration for step in llvm_steps)
+
+    rustc_steps = tuple(metrics.find_all_by_type("bootstrap::compile::Rustc"))
+    assert len(rustc_steps) > 0
+    rustc_duration = sum(step.duration for step in rustc_steps)
+
+    # The LLVM step is part of the Rustc step
+    rustc_duration -= llvm_duration
+
+    timer.add_duration("LLVM", llvm_duration)
+    timer.add_duration("Rustc", rustc_duration)
+
+    log_metrics(metrics)
+
+
 def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: List[str]):
     # Clear and prepare tmp directory
     shutil.rmtree(pipeline.opt_artifacts(), ignore_errors=True)
@@ -668,12 +753,13 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
 
     # Stage 1: Build rustc + PGO instrumented LLVM
     with timer.section("Stage 1 (LLVM PGO)") as stage1:
-        with stage1.section("Build rustc and LLVM"):
+        with stage1.section("Build rustc and LLVM") as rustc_build:
             build_rustc(pipeline, args=[
                 "--llvm-profile-generate"
             ], env=dict(
                 LLVM_PROFILE_DIR=str(pipeline.llvm_profile_dir_root() / "prof-%p")
             ))
+            record_metrics(pipeline, rustc_build)
 
         with stage1.section("Gather profiles"):
             gather_llvm_profiles(pipeline)
@@ -687,11 +773,12 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
 
     # Stage 2: Build PGO instrumented rustc + LLVM
     with timer.section("Stage 2 (rustc PGO)") as stage2:
-        with stage2.section("Build rustc and LLVM"):
+        with stage2.section("Build rustc and LLVM") as rustc_build:
             build_rustc(pipeline, args=[
                 "--rust-profile-generate",
                 pipeline.rustc_profile_dir_root()
             ])
+            record_metrics(pipeline, rustc_build)
 
         with stage2.section("Gather profiles"):
             gather_rustc_profiles(pipeline)
@@ -706,12 +793,14 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
     # Stage 3: Build rustc + BOLT instrumented LLVM
     if pipeline.supports_bolt():
         with timer.section("Stage 3 (LLVM BOLT)") as stage3:
-            with stage3.section("Build rustc and LLVM"):
+            with stage3.section("Build rustc and LLVM") as rustc_build:
                 build_rustc(pipeline, args=[
                     "--llvm-profile-use",
                     pipeline.llvm_profile_merged_file(),
                     "--llvm-bolt-profile-generate",
                 ])
+                record_metrics(pipeline, rustc_build)
+
             with stage3.section("Gather profiles"):
                 gather_llvm_bolt_profiles(pipeline)
 
@@ -723,8 +812,9 @@ def execute_build_pipeline(timer: Timer, pipeline: Pipeline, final_build_args: L
         ]
 
     # Stage 4: Build PGO optimized rustc + PGO/BOLT optimized LLVM
-    with timer.section("Stage 4 (final build)"):
+    with timer.section("Stage 4 (final build)") as stage4:
         cmd(final_build_args)
+        record_metrics(pipeline, stage4)
 
 
 if __name__ == "__main__":
