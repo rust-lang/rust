@@ -6,7 +6,8 @@ use rustc_middle::mir::{
     BinOp, Body, Constant, ConstantKind, LocalDecls, Operand, Place, ProjectionElem, Rvalue,
     SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnOp,
 };
-use rustc_middle::ty::{self, layout::TyAndLayout, ParamEnv, ParamEnvAnd, SubstsRef, Ty, TyCtxt};
+use rustc_middle::ty::layout::LayoutError;
+use rustc_middle::ty::{self, ParamEnv, ParamEnvAnd, SubstsRef, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 
 pub struct InstCombine;
@@ -230,38 +231,41 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
 
         // Check this is a foldable intrinsic before we query the layout of our generic parameter
         let Some(assert_panics) = intrinsic_assert_panics(intrinsic_name) else { return; };
-        let Ok(layout) = self.tcx.layout_of(self.param_env.and(ty)) else { return; };
-        if assert_panics(self.tcx, self.param_env.and(layout)) {
-            // If we know the assert panics, indicate to later opts that the call diverges
-            *target = None;
-        } else {
-            // If we know the assert does not panic, turn the call into a Goto
-            terminator.kind = TerminatorKind::Goto { target: *target_block };
+        match assert_panics(self.tcx, self.param_env.and(ty)) {
+            // We don't know the layout, don't touch the assertion
+            Err(_) => {}
+            Ok(true) => {
+                // If we know the assert panics, indicate to later opts that the call diverges
+                *target = None;
+            }
+            Ok(false) => {
+                // If we know the assert does not panic, turn the call into a Goto
+                terminator.kind = TerminatorKind::Goto { target: *target_block };
+            }
         }
     }
 }
 
 fn intrinsic_assert_panics<'tcx>(
     intrinsic_name: Symbol,
-) -> Option<fn(TyCtxt<'tcx>, ParamEnvAnd<'tcx, TyAndLayout<'tcx>>) -> bool> {
+) -> Option<fn(TyCtxt<'tcx>, ParamEnvAnd<'tcx, Ty<'tcx>>) -> Result<bool, LayoutError<'tcx>>> {
     fn inhabited_predicate<'tcx>(
-        _tcx: TyCtxt<'tcx>,
-        param_env_and_layout: ParamEnvAnd<'tcx, TyAndLayout<'tcx>>,
-    ) -> bool {
-        let (_param_env, layout) = param_env_and_layout.into_parts();
-        layout.abi.is_uninhabited()
+        tcx: TyCtxt<'tcx>,
+        param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
+    ) -> Result<bool, LayoutError<'tcx>> {
+        Ok(tcx.layout_of(param_env_and_ty)?.abi.is_uninhabited())
     }
     fn zero_valid_predicate<'tcx>(
         tcx: TyCtxt<'tcx>,
-        param_env_and_layout: ParamEnvAnd<'tcx, TyAndLayout<'tcx>>,
-    ) -> bool {
-        !tcx.permits_zero_init(param_env_and_layout)
+        param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
+    ) -> Result<bool, LayoutError<'tcx>> {
+        Ok(!tcx.permits_zero_init(param_env_and_ty)?)
     }
     fn mem_uninitialized_valid_predicate<'tcx>(
         tcx: TyCtxt<'tcx>,
-        param_env_and_layout: ParamEnvAnd<'tcx, TyAndLayout<'tcx>>,
-    ) -> bool {
-        !tcx.permits_uninit_init(param_env_and_layout)
+        param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
+    ) -> Result<bool, LayoutError<'tcx>> {
+        Ok(!tcx.permits_uninit_init(param_env_and_ty)?)
     }
 
     match intrinsic_name {
