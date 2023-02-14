@@ -33,7 +33,7 @@ pub(super) fn check<'tcx>(
                     if (method_name.ident.name == sym::as_str || method_name.ident.name == sym::as_ref) && {
                         let arg_type = cx.typeck_results().expr_ty(receiver);
                         let base_type = arg_type.peel_refs();
-                        *base_type.kind() == ty::Str || is_type_lang_item(cx, base_type, hir::LangItem::String)
+                        base_type.is_str() || is_type_lang_item(cx, base_type, hir::LangItem::String)
                     } {
                         receiver
                     } else {
@@ -54,7 +54,7 @@ pub(super) fn check<'tcx>(
             return false;
         }
         if let ty::Ref(_, ty, ..) = arg_ty.kind() {
-            if *ty.kind() == ty::Str && can_be_static_str(cx, arg) {
+            if ty.is_str() && can_be_static_str(cx, arg) {
                 return false;
             }
         };
