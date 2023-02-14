@@ -5,7 +5,6 @@ use clippy_utils::ty::is_type_lang_item;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_middle::ty;
 
 use super::STRING_EXTEND_CHARS;
 
@@ -17,7 +16,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
         let target = &arglists[0].0;
         let self_ty = cx.typeck_results().expr_ty(target).peel_refs();
-        let ref_str = if *self_ty.kind() == ty::Str {
+        let ref_str = if self_ty.is_str() {
             if matches!(target.kind, hir::ExprKind::Index(..)) {
                 "&"
             } else {
