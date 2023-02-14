@@ -25,7 +25,7 @@ use rustc_plugin_impl as plugin;
 use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
-use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, MetadataLoaderDyn, Untracked};
+use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn, Untracked};
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
@@ -532,7 +532,7 @@ fn escape_dep_env(symbol: Symbol) -> String {
 
 fn write_out_deps(
     sess: &Session,
-    cstore: &CrateStoreDyn,
+    tcx: TyCtxt<'_>,
     outputs: &OutputFilenames,
     out_filenames: &[PathBuf],
 ) {
@@ -584,9 +584,8 @@ fn write_out_deps(
                 }
             }
 
-            let cstore = cstore.as_any().downcast_ref::<CStore>().unwrap();
-            for cnum in cstore.crates_untracked() {
-                let source = cstore.crate_source_untracked(cnum);
+            for &cnum in tcx.crates(()) {
+                let source = tcx.used_crate_source(cnum);
                 if let Some((path, _)) = &source.dylib {
                     files.push(escape_dep_filename(&path.display().to_string()));
                 }
@@ -677,7 +676,7 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
         }
     }
 
-    write_out_deps(sess, tcx.cstore_untracked(), &outputs, &output_paths);
+    write_out_deps(sess, tcx, &outputs, &output_paths);
 
     let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
         && sess.opts.output_types.len() == 1;
