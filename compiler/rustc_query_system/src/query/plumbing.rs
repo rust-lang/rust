@@ -425,8 +425,7 @@ where
     // Fast path for when incr. comp. is off.
     if !dep_graph.is_fully_enabled() {
         let prof_timer = qcx.dep_context().profiler().query_provider();
-        let result =
-            qcx.start_query(job_id, Q::DEPTH_LIMIT, None, || Q::compute(*qcx.dep_context(), key));
+        let result = qcx.start_query(job_id, Q::DEPTH_LIMIT, None, || Q::compute(qcx, key));
         let dep_node_index = dep_graph.next_virtual_depnode_index();
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
         return (result, dep_node_index);
@@ -452,16 +451,15 @@ where
     let (result, dep_node_index) =
         qcx.start_query(job_id, Q::DEPTH_LIMIT, Some(&diagnostics), || {
             if Q::ANON {
-                return dep_graph.with_anon_task(*qcx.dep_context(), Q::DEP_KIND, || {
-                    Q::compute(*qcx.dep_context(), key)
-                });
+                return dep_graph
+                    .with_anon_task(*qcx.dep_context(), Q::DEP_KIND, || Q::compute(qcx, key));
             }
 
             // `to_dep_node` is expensive for some `DepKind`s.
             let dep_node =
                 dep_node_opt.unwrap_or_else(|| Q::construct_dep_node(*qcx.dep_context(), &key));
 
-            dep_graph.with_task(dep_node, *qcx.dep_context(), key, Q::compute, Q::HASH_RESULT)
+            dep_graph.with_task(dep_node, qcx, key, Q::compute, Q::HASH_RESULT)
         });
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
@@ -552,7 +550,7 @@ where
     let prof_timer = qcx.dep_context().profiler().query_provider();
 
     // The dep-graph for this computation is already in-place.
-    let result = dep_graph.with_ignore(|| Q::compute(*qcx.dep_context(), key.clone()));
+    let result = dep_graph.with_ignore(|| Q::compute(qcx, key.clone()));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 

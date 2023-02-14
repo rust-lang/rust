@@ -278,13 +278,13 @@ macro_rules! hash_result {
 
 macro_rules! get_provider {
     ([][$tcx:expr, $name:ident, $key:expr]) => {{
-        $tcx.query_system.local_providers.$name
+        $tcx.queries.local_providers.$name
     }};
     ([(separate_provide_extern) $($rest:tt)*][$tcx:expr, $name:ident, $key:expr]) => {{
         if $key.query_crate_is_local() {
-            $tcx.query_system.local_providers.$name
+            $tcx.queries.local_providers.$name
         } else {
-            $tcx.query_system.extern_providers.$name
+            $tcx.queries.extern_providers.$name
         }
     }};
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
@@ -500,12 +500,11 @@ macro_rules! define_queries {
             }
 
             #[inline]
-            // key is only sometimes used
             #[allow(unused_variables)]
-            fn compute(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value {
+            fn compute(qcx: QueryCtxt<'tcx>, key: Self::Key) -> Self::Value {
                 query_provided_to_value::$name(
-                    tcx,
-                    get_provider!([$($modifiers)*][tcx, $name, key])(tcx, key)
+                    qcx.tcx,
+                    get_provider!([$($modifiers)*][qcx, $name, key])(qcx.tcx, key)
                 )
             }
 
@@ -664,12 +663,18 @@ macro_rules! define_queries {
     }
 }
 
-use crate::OnDiskCache;
+use crate::{ExternProviders, OnDiskCache, Providers};
 
 impl<'tcx> Queries<'tcx> {
-    pub fn new(on_disk_cache: Option<OnDiskCache<'tcx>>) -> Self {
+    pub fn new(
+        local_providers: Providers,
+        extern_providers: ExternProviders,
+        on_disk_cache: Option<OnDiskCache<'tcx>>,
+    ) -> Self {
         use crate::query_structs;
         Queries {
+            local_providers: Box::new(local_providers),
+            extern_providers: Box::new(extern_providers),
             query_structs: make_dep_kind_array!(query_structs).to_vec(),
             on_disk_cache,
             jobs: AtomicU64::new(1),
@@ -683,6 +688,8 @@ macro_rules! define_queries_struct {
      input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
         #[derive(Default)]
         pub struct Queries<'tcx> {
+            local_providers: Box<Providers>,
+            extern_providers: Box<ExternProviders>,
             query_structs: Vec<$crate::plumbing::QueryStruct<'tcx>>,
             pub on_disk_cache: Option<OnDiskCache<'tcx>>,
             jobs: AtomicU64,

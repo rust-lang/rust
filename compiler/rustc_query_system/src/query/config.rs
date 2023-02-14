@@ -39,7 +39,7 @@ pub trait QueryConfig<Qcx: QueryContext> {
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn execute_query(tcx: Qcx::DepContext, k: Self::Key) -> Self::Value;
 
-    fn compute(tcx: Qcx::DepContext, key: Self::Key) -> Self::Value;
+    fn compute(tcx: Qcx, key: Self::Key) -> Self::Value;
 
     fn try_load_from_disk(qcx: Qcx, idx: &Self::Key) -> TryLoadFromDisk<Qcx, Self>;
 
