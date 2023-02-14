@@ -26,6 +26,7 @@
 #![feature(test)]
 #![feature(thread_id_value)]
 #![feature(vec_into_raw_parts)]
+#![feature(get_mut_unchecked)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
