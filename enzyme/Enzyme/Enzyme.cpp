@@ -1894,11 +1894,12 @@ public:
         Logic.CreateTrace(F, generativeFunctions, mode, has_dynamic_interface);
 
     Value *trace =
-        Builder.CreateCall(newFunc->getFunctionType(), newFunc, args);
-    if (!F->getReturnType()->isVoidTy())
-      trace = Builder.CreateExtractValue(trace, {1});
+        Builder.CreateCall(interface->newTraceTy(), interface->newTrace(), {});
 
-    // try to cast i8* returned from trace to CI->getRetType....
+    args.push_back(trace);
+
+    Builder.CreateCall(newFunc->getFunctionType(), newFunc, args);
+
     if (CI->getType() != trace->getType())
       trace = Builder.CreatePointerCast(trace, CI->getType());
 

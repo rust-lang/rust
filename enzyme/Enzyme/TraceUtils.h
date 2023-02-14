@@ -26,7 +26,7 @@ class TraceUtils {
 private:
   TraceInterface *interface;
   Value *dynamic_interface = nullptr;
-  Instruction *trace;
+  Value *trace;
   Value *observations = nullptr;
 
 public:
@@ -70,10 +70,9 @@ public:
     if (mode == ProbProgMode::Condition)
       params.push_back(traceType);
 
-    Type *RetTy = traceType;
-    if (!oldFunc->getReturnType()->isVoidTy())
-      RetTy = StructType::get(Context, {oldFunc->getReturnType(), traceType});
+    params.push_back(traceType);
 
+    Type *RetTy = oldFunc->getReturnType();
     FunctionType *FTy = FunctionType::get(RetTy, params, oldFunc->isVarArg());
 
     Twine Name = (mode == ProbProgMode::Condition ? "condition_" : "trace_") +
@@ -94,7 +93,7 @@ public:
     }
 
     if (has_dynamic_interface) {
-      auto arg = newFunc->arg_end() - (1 + (mode == ProbProgMode::Condition));
+      auto arg = newFunc->arg_end() - (2 + (mode == ProbProgMode::Condition));
       dynamic_interface = arg;
       arg->setName("interface");
       arg->addAttr(Attribute::ReadOnly);
@@ -102,12 +101,18 @@ public:
     }
 
     if (mode == ProbProgMode::Condition) {
-      auto arg = newFunc->arg_end() - 1;
+      auto arg = newFunc->arg_end() - 2;
       observations = arg;
       arg->setName("observations");
       if (oldFunc->getReturnType()->isVoidTy())
         arg->addAttr(Attribute::Returned);
     }
+
+    auto arg = newFunc->arg_end() - 1;
+    trace = arg;
+    arg->setName("trace");
+    if (oldFunc->getReturnType()->isVoidTy())
+      arg->addAttr(Attribute::Returned);
 
     SmallVector<ReturnInst *, 4> Returns;
 #if LLVM_VERSION_MAJOR >= 13
@@ -125,38 +130,6 @@ public:
       interface = new DynamicTraceInterface(dynamic_interface, newFunc);
     } else {
       interface = new StaticTraceInterface(F->getParent());
-    }
-
-    // Create trace for current function
-
-    IRBuilder<> Builder(
-        newFunc->getEntryBlock().getFirstNonPHIOrDbgOrLifetime());
-    Builder.SetCurrentDebugLocation(oldFunc->getEntryBlock()
-                                        .getFirstNonPHIOrDbgOrLifetime()
-                                        ->getDebugLoc());
-
-    trace = CreateTrace(Builder);
-
-    // Replace returns with ret trace
-
-    SmallVector<ReturnInst *, 3> toReplace;
-    for (auto &&BB : *newFunc) {
-      for (auto &&Inst : BB) {
-        if (auto Ret = dyn_cast<ReturnInst>(&Inst)) {
-          toReplace.push_back(Ret);
-        }
-      }
-    }
-
-    for (auto Ret : toReplace) {
-      IRBuilder<> Builder(Ret);
-      if (Ret->getReturnValue()) {
-        Value *retvals[2] = {Ret->getReturnValue(), trace};
-        Builder.CreateAggregateRet(retvals, 2);
-      } else {
-        Builder.CreateRet(trace);
-      }
-      Ret->eraseFromParent();
     }
   };
 

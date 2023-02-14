@@ -33,14 +33,14 @@ entry:
 
 ; CHECK: define i8* @generate()
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call i8* @trace_test()
+; CHECK-NEXT:   %0 = call i8* @__enzyme_newtrace()
+; CHECK-NEXT:   call void @trace_test(i8* %0)
 ; CHECK-NEXT:   ret i8* %0
 ; CHECK-NEXT: }
 
 
-; CHECK: define internal i8* @trace_test()
+; CHECK: define internal void @trace_test(i8* %trace)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %trace = call i8* @__enzyme_newtrace()
 ; CHECK-NEXT:   %mu = call double @normal(double 0.000000e+00, double 1.000000e+00)
 ; CHECK-NEXT:   %likelihood.mu = call double @normal_logpdf(double 0.000000e+00, double 1.000000e+00, double %mu)
 ; CHECK-NEXT:   %0 = bitcast double %mu to i64
@@ -51,5 +51,5 @@ entry:
 ; CHECK-NEXT:   %2 = bitcast double %x to i64
 ; CHECK-NEXT:   %3 = inttoptr i64 %2 to i8*
 ; CHECK-NEXT:   call void @__enzyme_insert_choice(i8* %trace, i8* nocapture readonly getelementptr inbounds ([2 x i8], [2 x i8]* @.str.1, i64 0, i64 0), double %likelihood.x, i8* %3, i64 8)
-; CHECK-NEXT:   ret i8* %trace
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

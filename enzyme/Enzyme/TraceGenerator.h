@@ -88,9 +88,11 @@ public:
         {
           ElseTerm->getParent()->setName("condition." + call.getName() +
                                          ".without.trace");
-          ElseChoice =
+
+          auto choice =
               Builder.CreateCall(samplefn->getFunctionType(), samplefn,
                                  sample_args, "sample." + call.getName());
+          ElseChoice = choice;
         }
 
         Builder.SetInsertPoint(new_call);
@@ -132,11 +134,16 @@ public:
           Logic.CreateTrace(called, tutils->generativeFunctions, tutils->mode,
                             tutils->hasDynamicTraceInterface());
 
+      auto trace = tutils->CreateTrace(Builder);
+
       Instruction *tracecall;
       switch (mode) {
       case ProbProgMode::Trace: {
-        tracecall = Builder.CreateCall(samplefn->getFunctionType(), samplefn,
-                                       args, "trace." + called->getName());
+        SmallVector<Value *, 2> args_and_trace = SmallVector(args);
+        args_and_trace.push_back(trace);
+        tracecall =
+            Builder.CreateCall(samplefn->getFunctionType(), samplefn,
+                               args_and_trace, "trace." + called->getName());
         break;
       }
       case ProbProgMode::Condition: {
@@ -158,8 +165,9 @@ public:
           ThenTerm->getParent()->setName("condition." + call.getName() +
                                          ".with.trace");
           SmallVector<Value *, 2> args_and_cond = SmallVector(args);
-          auto trace = tutils->GetTrace(Builder, address,
-                                        called->getName() + ".subtrace");
+          auto observations = tutils->GetTrace(Builder, address,
+                                               called->getName() + ".subtrace");
+          args_and_cond.push_back(observations);
           args_and_cond.push_back(trace);
           ThenTracecall = Builder.CreateCall(samplefn->getFunctionType(),
                                              samplefn, args_and_cond,
@@ -171,8 +179,9 @@ public:
           ElseTerm->getParent()->setName("condition." + call.getName() +
                                          ".without.trace");
           SmallVector<Value *, 2> args_and_null = SmallVector(args);
-          auto trace = ConstantPointerNull::get(cast<PointerType>(
+          auto observations = ConstantPointerNull::get(cast<PointerType>(
               tutils->getTraceInterface()->newTraceTy()->getReturnType()));
+          args_and_null.push_back(observations);
           args_and_null.push_back(trace);
           ElseTracecall =
               Builder.CreateCall(samplefn->getFunctionType(), samplefn,
@@ -188,14 +197,10 @@ public:
       }
       }
 
-      Value *ret = Builder.CreateExtractValue(tracecall, {0});
-      Value *subtrace = Builder.CreateExtractValue(
-          tracecall, {1}, "newtrace." + called->getName());
+      tutils->InsertCall(Builder, address, trace);
 
-      tutils->InsertCall(Builder, address, subtrace);
-
-      ret->takeName(new_call);
-      new_call->replaceAllUsesWith(ret);
+      tracecall->takeName(new_call);
+      new_call->replaceAllUsesWith(tracecall);
       new_call->eraseFromParent();
     }
   }

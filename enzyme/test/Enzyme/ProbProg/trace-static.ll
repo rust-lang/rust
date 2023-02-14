@@ -90,15 +90,14 @@ entry:
 
 ; CHECK: define i8* @generate(double* %data, i32 %n)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { double, i8* } @trace_loss(double* %data, i32 %n)
-; CHECK-NEXT:   %1 = extractvalue { double, i8* } %0, 1
-; CHECK-NEXT:   ret i8* %1
+; CHECK-NEXT:   %0 = call i8* @__enzyme_newtrace()
+; CHECK-NEXT:   %1 = call double @trace_loss(double* %data, i32 %n, i8* %0)
+; CHECK-NEXT:   ret i8* %0
 ; CHECK-NEXT: }
 
 
-; CHECK: define internal { double, i8* } @trace_loss(double* %data, i32 %n)
+; CHECK: define internal double @trace_loss(double* %data, i32 %n, i8* %trace)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %trace = call i8* @__enzyme_newtrace()
 ; CHECK-NEXT:   %call = call double @normal(double 0.000000e+00, double 1.000000e+00)
 ; CHECK-NEXT:   %likelihood.call = call double @normal_logpdf(double 0.000000e+00, double 1.000000e+00, double %call)
 ; CHECK-NEXT:   %0 = bitcast double %call to i64
@@ -139,7 +138,5 @@ entry:
 
 ; CHECK: calculate_loss.exit:                              ; preds = %for.body.i, %entry
 ; CHECK-NEXT:   %loss.0.lcssa.i = phi double [ 0.000000e+00, %entry ], [ %9, %for.body.i ]
-; CHECK-NEXT:   %mrv = insertvalue { double, i8* } {{(undef|poison)}}, double %loss.0.lcssa.i, 0
-; CHECK-NEXT:   %mrv1 = insertvalue { double, i8* } %mrv, i8* %trace, 1
-; CHECK-NEXT:   ret { double, i8* } %mrv1
+; CHECK-NEXT:   ret double %loss.0.lcssa.i
 ; CHECK-NEXT: }

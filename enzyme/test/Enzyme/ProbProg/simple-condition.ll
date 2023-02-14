@@ -44,16 +44,15 @@ entry:
 ; CHECK: define i8* @condition(i8* %trace)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load i32, i32* @enzyme_condition
-; CHECK-NEXT:   %1 = call i8* @condition_test(i8* %trace)
+; CHECK-NEXT:   %1 = call i8* @__enzyme_newtrace()
+; CHECK-NEXT:   call void @condition_test(i8* %trace, i8* %1)
 ; CHECK-NEXT:   ret i8* %1
 ; CHECK-NEXT: }
 
-
-; CHECK: define internal i8* @condition_test(i8* %observations)
+; CHECK: define internal void @condition_test(i8* %observations, i8* %trace)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %x.ptr = alloca double
 ; CHECK-NEXT:   %mu.ptr = alloca double
-; CHECK-NEXT:   %trace = call i8* @__enzyme_newtrace()
 ; CHECK-NEXT:   %has.choice.mu = call i1 @__enzyme_has_choice(i8* %observations, i8* nocapture readonly getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i64 0, i64 0))
 ; CHECK-NEXT:   br i1 %has.choice.mu, label %condition.mu.with.trace, label %condition.mu.without.trace
 
@@ -92,5 +91,5 @@ entry:
 ; CHECK-NEXT:   %4 = bitcast double %x to i64
 ; CHECK-NEXT:   %5 = inttoptr i64 %4 to i8*
 ; CHECK-NEXT:   call void @__enzyme_insert_choice(i8* %trace, i8* nocapture readonly getelementptr inbounds ([2 x i8], [2 x i8]* @.str.1, i64 0, i64 0), double %likelihood.x, i8* %5, i64 8)
-; CHECK-NEXT:   ret i8* %trace
+; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
