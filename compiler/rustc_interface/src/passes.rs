@@ -530,14 +530,9 @@ fn escape_dep_env(symbol: Symbol) -> String {
     escaped
 }
 
-fn write_out_deps(
-    sess: &Session,
-    tcx: TyCtxt<'_>,
-    outputs: &OutputFilenames,
-    out_filenames: &[PathBuf],
-) {
+fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[PathBuf]) {
     // Write out dependency rules to the dep-info file if requested
-    if !sess.opts.output_types.contains_key(&OutputType::DepInfo) {
+    if !tcx.sess.opts.output_types.contains_key(&OutputType::DepInfo) {
         return;
     }
     let deps_filename = outputs.path(OutputType::DepInfo);
@@ -545,7 +540,8 @@ fn write_out_deps(
     let result: io::Result<()> = try {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
-        let mut files: Vec<String> = sess
+        let mut files: Vec<String> = tcx
+            .sess
             .source_map()
             .files()
             .iter()
@@ -556,7 +552,7 @@ fn write_out_deps(
 
         // Account for explicitly marked-to-track files
         // (e.g. accessed in proc macros).
-        let file_depinfo = sess.parse_sess.file_depinfo.borrow();
+        let file_depinfo = tcx.sess.parse_sess.file_depinfo.borrow();
 
         let normalize_path = |path: PathBuf| {
             let file = FileName::from(path);
@@ -568,15 +564,15 @@ fn write_out_deps(
         files.extend(extra_tracked_files);
 
         // We also need to track used PGO profile files
-        if let Some(ref profile_instr) = sess.opts.cg.profile_use {
+        if let Some(ref profile_instr) = tcx.sess.opts.cg.profile_use {
             files.push(normalize_path(profile_instr.as_path().to_path_buf()));
         }
-        if let Some(ref profile_sample) = sess.opts.unstable_opts.profile_sample_use {
+        if let Some(ref profile_sample) = tcx.sess.opts.unstable_opts.profile_sample_use {
             files.push(normalize_path(profile_sample.as_path().to_path_buf()));
         }
 
-        if sess.binary_dep_depinfo() {
-            if let Some(ref backend) = sess.opts.unstable_opts.codegen_backend {
+        if tcx.sess.binary_dep_depinfo() {
+            if let Some(ref backend) = tcx.sess.opts.unstable_opts.codegen_backend {
                 if backend.contains('.') {
                     // If the backend name contain a `.`, it is the path to an external dynamic
                     // library. If not, it is not a path.
@@ -611,7 +607,7 @@ fn write_out_deps(
         }
 
         // Emit special comments with information about accessed environment variables.
-        let env_depinfo = sess.parse_sess.env_depinfo.borrow();
+        let env_depinfo = tcx.sess.parse_sess.env_depinfo.borrow();
         if !env_depinfo.is_empty() {
             let mut envs: Vec<_> = env_depinfo
                 .iter()
@@ -631,14 +627,15 @@ fn write_out_deps(
 
     match result {
         Ok(_) => {
-            if sess.opts.json_artifact_notifications {
-                sess.parse_sess
+            if tcx.sess.opts.json_artifact_notifications {
+                tcx.sess
+                    .parse_sess
                     .span_diagnostic
                     .emit_artifact_notification(&deps_filename, "dep-info");
             }
         }
         Err(error) => {
-            sess.emit_fatal(errors::ErrorWritingDependencies { path: &deps_filename, error });
+            tcx.sess.emit_fatal(errors::ErrorWritingDependencies { path: &deps_filename, error });
         }
     }
 }
@@ -676,7 +673,7 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
         }
     }
 
-    write_out_deps(sess, tcx, &outputs, &output_paths);
+    write_out_deps(tcx, &outputs, &output_paths);
 
     let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
         && sess.opts.output_types.len() == 1;
