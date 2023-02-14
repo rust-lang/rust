@@ -323,13 +323,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut param_found = FxHashMap::default();
                 if self.can_eq(self.param_env, ty, found).is_ok() {
                     // We only point at the first place where the found type was inferred.
-                    for (i, param_ty) in sig.inputs().skip_binder().iter().skip(1).enumerate() {
+                    for (param_ty, arg) in sig.inputs().skip_binder().iter().skip(1).zip(args) {
                         if def_self_ty.contains(*param_ty) && let ty::Param(_) = param_ty.kind() {
                             // We found an argument that references a type parameter in `Self`,
                             // so we assume that this is the argument that caused the found
                             // type, which we know already because of `can_eq` above was first
                             // inferred in this method call.
-                            let arg = &args[i];
                             let arg_ty = self.node_ty(arg.hir_id);
                             if !arg.span.overlaps(mismatch_span) {
                                 err.span_label(
