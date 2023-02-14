@@ -11,6 +11,8 @@ pub(crate) mod types;
 pub(crate) mod utils;
 
 use rustc_ast as ast;
+use rustc_ast::token::{Token, TokenKind};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_hir as hir;
@@ -2081,8 +2083,8 @@ impl<'hir> hir::intravisit::Visitor<'hir> for OneLevelVisitor<'hir> {
     fn visit_item(&mut self, item: &'hir hir::Item<'hir>) {
         if self.item.is_none()
             && item.ident == self.looking_for
-            && matches!(item.kind, hir::ItemKind::Use(_, _))
-            || item.owner_id.def_id == self.target_def_id
+            && (matches!(item.kind, hir::ItemKind::Use(_, _))
+                || item.owner_id.def_id == self.target_def_id)
         {
             self.item = Some(item);
         }
@@ -2103,33 +2105,74 @@ fn get_all_import_attributes<'hir>(
     let mut visitor = OneLevelVisitor::new(hir_map, target_def_id);
     let mut visited = FxHashSet::default();
     // If the item is an import and has at least a path with two parts, we go into it.
-    while let hir::ItemKind::Use(path, _) = item.kind &&
-        path.segments.len() > 1 &&
-        let hir::def::Res::Def(_, def_id) = path.segments[path.segments.len() - 2].res &&
-        visited.insert(def_id)
-    {
-        if let Some(hir::Node::Item(parent_item)) = hir_map.get_if_local(def_id) {
-            // We add the attributes from this import into the list.
-            attributes.extend_from_slice(hir_map.attrs(item.hir_id()));
-            // We get the `Ident` we will be looking for into `item`.
-            let looking_for = path.segments[path.segments.len() - 1].ident;
-            visitor.reset(looking_for);
-            hir::intravisit::walk_item(&mut visitor, parent_item);
-            if let Some(i) = visitor.item {
-                item = i;
-            } else {
-                break;
+    while let hir::ItemKind::Use(path, _) = item.kind && visited.insert(item.hir_id()) {
+        // We add the attributes from this import into the list.
+        add_without_unwanted_attributes(attributes, hir_map.attrs(item.hir_id()));
+
+        let def_id = if path.segments.len() > 1 {
+            match path.segments[path.segments.len() - 2].res {
+                hir::def::Res::Def(_, def_id) => def_id,
+                _ => break,
             }
+        } else {
+            // If the path doesn't have a parent, then the parent is the current module.
+            tcx.parent(item.owner_id.def_id.to_def_id())
+        };
+
+        let Some(parent) = hir_map.get_if_local(def_id) else { break };
+
+        // We get the `Ident` we will be looking for into `item`.
+        let looking_for = path.segments[path.segments.len() - 1].ident;
+        visitor.reset(looking_for);
+
+        match parent {
+            hir::Node::Item(parent_item) => {
+                hir::intravisit::walk_item(&mut visitor, parent_item);
+            }
+            hir::Node::Crate(m) => {
+                hir::intravisit::walk_mod(
+                    &mut visitor,
+                    m,
+                    tcx.local_def_id_to_hir_id(def_id.as_local().unwrap()),
+                );
+            }
+            _ => break,
+        }
+        if let Some(i) = visitor.item {
+            item = i;
         } else {
             break;
         }
     }
 }
 
+fn filter_tokens_from_list(
+    args_tokens: TokenStream,
+    should_retain: impl Fn(&TokenTree) -> bool,
+) -> Vec<TokenTree> {
+    let mut tokens = Vec::with_capacity(args_tokens.len());
+    let mut skip_next_comma = false;
+    for token in args_tokens.into_trees() {
+        match token {
+            TokenTree::Token(Token { kind: TokenKind::Comma, .. }, _) if skip_next_comma => {
+                skip_next_comma = false;
+            }
+            token if should_retain(&token) => {
+                skip_next_comma = false;
+                tokens.push(token);
+            }
+            _ => {
+                skip_next_comma = true;
+            }
+        }
+    }
+    tokens
+}
+
 /// When inlining items, we merge its attributes (and all the reexports attributes too) with the
 /// final reexport. For example:
 ///
-/// ```
+/// ```ignore (just an example)
 /// #[doc(hidden, cfg(feature = "foo"))]
 /// pub struct Foo;
 ///
@@ -2147,55 +2190,38 @@ fn get_all_import_attributes<'hir>(
 /// * `doc(no_inline)`
 /// * `doc(hidden)`
 fn add_without_unwanted_attributes(attrs: &mut Vec<ast::Attribute>, new_attrs: &[ast::Attribute]) {
-    use rustc_ast::token::{Token, TokenKind};
-    use rustc_ast::tokenstream::{TokenStream, TokenTree};
-
     for attr in new_attrs {
         let mut attr = attr.clone();
         match attr.kind {
             ast::AttrKind::Normal(ref mut normal) => {
-                if let [ident] = &*normal.item.path.segments {
-                    let ident = ident.ident.name;
-                    if ident == sym::doc {
-                        match normal.item.args {
-                            ast::AttrArgs::Delimited(ref mut args) => {
-                                let mut tokens = Vec::with_capacity(args.tokens.len());
-                                let mut skip_next_comma = false;
-                                for token in args.tokens.clone().into_trees() {
-                                    match token {
+                if let [ident] = &*normal.item.path.segments &&
+                    let ident = ident.ident.name &&
+                    ident == sym::doc
+                {
+                    match normal.item.args {
+                        ast::AttrArgs::Delimited(ref mut args) => {
+                            let tokens =
+                                filter_tokens_from_list(args.tokens.clone(), |token| {
+                                    !matches!(
+                                        token,
                                         TokenTree::Token(
                                             Token {
-                                                kind:
-                                                    TokenKind::Ident(
-                                                        sym::hidden | sym::inline | sym::no_inline,
-                                                        _,
-                                                    ),
+                                                kind: TokenKind::Ident(
+                                                    sym::hidden | sym::inline | sym::no_inline,
+                                                    _,
+                                                ),
                                                 ..
                                             },
                                             _,
-                                        ) => {
-                                            skip_next_comma = true;
-                                            continue;
-                                        }
-                                        TokenTree::Token(
-                                            Token { kind: TokenKind::Comma, .. },
-                                            _,
-                                        ) if skip_next_comma => {
-                                            skip_next_comma = false;
-                                            continue;
-                                        }
-                                        _ => {}
-                                    }
-                                    skip_next_comma = false;
-                                    tokens.push(token);
-                                }
-                                args.tokens = TokenStream::new(tokens);
-                                attrs.push(attr);
-                            }
-                            ast::AttrArgs::Empty | ast::AttrArgs::Eq(..) => {
-                                attrs.push(attr);
-                                continue;
-                            }
+                                        ),
+                                    )
+                                });
+                            args.tokens = TokenStream::new(tokens);
+                            attrs.push(attr);
+                        }
+                        ast::AttrArgs::Empty | ast::AttrArgs::Eq(..) => {
+                            attrs.push(attr);
+                            continue;
                         }
                     }
                 }
