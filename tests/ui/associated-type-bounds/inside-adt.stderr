@@ -5,125 +5,52 @@ LL | struct S1 { f: dyn Iterator<Item: Copy> }
    |                             ^^^^^^^^^^
 
 error: associated type bounds are only allowed in where clauses and function signatures, not in field type
-  --> $DIR/inside-adt.rs:8:33
+  --> $DIR/inside-adt.rs:7:33
    |
 LL | struct S2 { f: Box<dyn Iterator<Item: Copy>> }
    |                                 ^^^^^^^^^^
 
 error: associated type bounds are only allowed in where clauses and function signatures, not in field type
-  --> $DIR/inside-adt.rs:11:29
+  --> $DIR/inside-adt.rs:9:29
    |
 LL | struct S3 { f: dyn Iterator<Item: 'static> }
    |                             ^^^^^^^^^^^^^
 
 error: associated type bounds are only allowed in where clauses and function signatures, not in field type
-  --> $DIR/inside-adt.rs:15:26
+  --> $DIR/inside-adt.rs:12:26
    |
 LL | enum E1 { V(dyn Iterator<Item: Copy>) }
    |                          ^^^^^^^^^^
 
 error: associated type bounds are only allowed in where clauses and function signatures, not in field type
-  --> $DIR/inside-adt.rs:18:30
+  --> $DIR/inside-adt.rs:14:30
    |
 LL | enum E2 { V(Box<dyn Iterator<Item: Copy>>) }
    |                              ^^^^^^^^^^
 
 error: associated type bounds are only allowed in where clauses and function signatures, not in field type
-  --> $DIR/inside-adt.rs:21:26
+  --> $DIR/inside-adt.rs:16:26
    |
 LL | enum E3 { V(dyn Iterator<Item: 'static>) }
    |                          ^^^^^^^^^^^^^
 
 error: associated type bounds are only allowed in where clauses and function signatures, not in field type
-  --> $DIR/inside-adt.rs:25:41
+  --> $DIR/inside-adt.rs:19:41
    |
 LL | union U1 { f: ManuallyDrop<dyn Iterator<Item: Copy>> }
    |                                         ^^^^^^^^^^
 
 error: associated type bounds are only allowed in where clauses and function signatures, not in field type
-  --> $DIR/inside-adt.rs:28:45
+  --> $DIR/inside-adt.rs:21:45
    |
 LL | union U2 { f: ManuallyDrop<Box<dyn Iterator<Item: Copy>>> }
    |                                             ^^^^^^^^^^
 
 error: associated type bounds are only allowed in where clauses and function signatures, not in field type
-  --> $DIR/inside-adt.rs:31:41
+  --> $DIR/inside-adt.rs:23:41
    |
 LL | union U3 { f: ManuallyDrop<dyn Iterator<Item: 'static>> }
    |                                         ^^^^^^^^^^^^^
 
-error[E0191]: the value of the associated type `Item` (from trait `Iterator`) must be specified
-  --> $DIR/inside-adt.rs:5:20
-   |
-LL | struct S1 { f: dyn Iterator<Item: Copy> }
-   |                    ^^^^^^^^^^^^^^^^^^^^
-   |                    |
-   |                    associated type `Item` must be specified
-   |                    help: specify the associated types: `Iterator<Item: Copy, Item = Type>`
+error: aborting due to 9 previous errors
 
-error[E0191]: the value of the associated type `Item` (from trait `Iterator`) must be specified
-  --> $DIR/inside-adt.rs:8:24
-   |
-LL | struct S2 { f: Box<dyn Iterator<Item: Copy>> }
-   |                        ^^^^^^^^^^^^^^^^^^^^
-   |                        |
-   |                        associated type `Item` must be specified
-   |                        help: specify the associated types: `Iterator<Item: Copy, Item = Type>`
-
-error[E0191]: the value of the associated type `Item` (from trait `Iterator`) must be specified
-  --> $DIR/inside-adt.rs:11:20
-   |
-LL | struct S3 { f: dyn Iterator<Item: 'static> }
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^ help: specify the associated type: `Iterator<Item: 'static, Item = Type>`
-
-error[E0191]: the value of the associated type `Item` (from trait `Iterator`) must be specified
-  --> $DIR/inside-adt.rs:15:17
-   |
-LL | enum E1 { V(dyn Iterator<Item: Copy>) }
-   |                 ^^^^^^^^^^^^^^^^^^^^
-   |                 |
-   |                 associated type `Item` must be specified
-   |                 help: specify the associated types: `Iterator<Item: Copy, Item = Type>`
-
-error[E0191]: the value of the associated type `Item` (from trait `Iterator`) must be specified
-  --> $DIR/inside-adt.rs:18:21
-   |
-LL | enum E2 { V(Box<dyn Iterator<Item: Copy>>) }
-   |                     ^^^^^^^^^^^^^^^^^^^^
-   |                     |
-   |                     associated type `Item` must be specified
-   |                     help: specify the associated types: `Iterator<Item: Copy, Item = Type>`
-
-error[E0191]: the value of the associated type `Item` (from trait `Iterator`) must be specified
-  --> $DIR/inside-adt.rs:21:17
-   |
-LL | enum E3 { V(dyn Iterator<Item: 'static>) }
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^ help: specify the associated type: `Iterator<Item: 'static, Item = Type>`
-
-error[E0191]: the value of the associated type `Item` (from trait `Iterator`) must be specified
-  --> $DIR/inside-adt.rs:25:32
-   |
-LL | union U1 { f: ManuallyDrop<dyn Iterator<Item: Copy>> }
-   |                                ^^^^^^^^^^^^^^^^^^^^
-   |                                |
-   |                                associated type `Item` must be specified
-   |                                help: specify the associated types: `Iterator<Item: Copy, Item = Type>`
-
-error[E0191]: the value of the associated type `Item` (from trait `Iterator`) must be specified
-  --> $DIR/inside-adt.rs:28:36
-   |
-LL | union U2 { f: ManuallyDrop<Box<dyn Iterator<Item: Copy>>> }
-   |                                    ^^^^^^^^^^^^^^^^^^^^
-   |                                    |
-   |                                    associated type `Item` must be specified
-   |                                    help: specify the associated types: `Iterator<Item: Copy, Item = Type>`
-
-error[E0191]: the value of the associated type `Item` (from trait `Iterator`) must be specified
-  --> $DIR/inside-adt.rs:31:32
-   |
-LL | union U3 { f: ManuallyDrop<dyn Iterator<Item: 'static>> }
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^ help: specify the associated type: `Iterator<Item: 'static, Item = Type>`
-
-error: aborting due to 18 previous errors
-
-For more information about this error, try `rustc --explain E0191`.

@@ -9,6 +9,5 @@ trait Trait2 {}
 // It's not possible to insert a universal `impl Trait` here!
 impl dyn Trait<Item: Trait2> {}
 //~^ ERROR associated type bounds are only allowed in where clauses and function signatures
-//~| ERROR the value of the associated type `Item` (from trait `Trait`) must be specified
 
 fn main() {}
