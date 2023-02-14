@@ -97,6 +97,7 @@ unsafe impl<T: Sync + ?Sized> Send for &T {}
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 #[rustc_specialization_trait]
 #[rustc_deny_explicit_impl]
+#[cfg_attr(not(bootstrap), rustc_coinductive)]
 pub trait Sized {
     // Empty.
 }
