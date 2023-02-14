@@ -482,16 +482,16 @@ impl Item {
     }
 
     pub(crate) fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
-        use crate::html::format::href;
+        use crate::html::format::{href, link_tooltip};
 
         cx.cache()
             .intra_doc_links
             .get(&self.item_id)
             .map_or(&[][..], |v| v.as_slice())
             .iter()
-            .filter_map(|ItemLink { link: s, link_text, page_id: did, ref fragment }| {
-                debug!(?did);
-                if let Ok((mut href, ..)) = href(*did, cx) {
+            .filter_map(|ItemLink { link: s, link_text, page_id: id, ref fragment }| {
+                debug!(?id);
+                if let Ok((mut href, ..)) = href(*id, cx) {
                     debug!(?href);
                     if let Some(ref fragment) = *fragment {
                         fragment.render(&mut href, cx.tcx())
@@ -499,6 +499,7 @@ impl Item {
                     Some(RenderedLink {
                         original_text: s.clone(),
                         new_text: link_text.clone(),
+                        tooltip: link_tooltip(*id, fragment, cx),
                         href,
                     })
                 } else {
@@ -523,6 +524,7 @@ impl Item {
                 original_text: s.clone(),
                 new_text: link_text.clone(),
                 href: String::new(),
+                tooltip: String::new(),
             })
             .collect()
     }
@@ -1040,6 +1042,8 @@ pub struct RenderedLink {
     pub(crate) new_text: String,
     /// The URL to put in the `href`
     pub(crate) href: String,
+    /// The tooltip.
+    pub(crate) tooltip: String,
 }
 
 /// The attributes on an [`Item`], including attributes like `#[derive(...)]` and `#[inline]`,

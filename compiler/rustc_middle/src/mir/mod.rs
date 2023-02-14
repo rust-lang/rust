@@ -2344,9 +2344,13 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<u64> {
+    pub fn try_eval_target_usize(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Option<u64> {
         match self {
-            Self::Ty(ct) => ct.try_eval_usize(tcx, param_env),
+            Self::Ty(ct) => ct.try_eval_target_usize(tcx, param_env),
             Self::Val(val, _) => val.try_to_machine_usize(tcx),
             Self::Unevaluated(uneval, _) => {
                 match tcx.const_eval_resolve(param_env, *uneval, None) {

@@ -857,7 +857,7 @@ fn codegen_stmt<'tcx>(
 fn codegen_array_len<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, place: CPlace<'tcx>) -> Value {
     match *place.layout().ty.kind() {
         ty::Array(_elem_ty, len) => {
-            let len = fx.monomorphize(len).eval_usize(fx.tcx, ParamEnv::reveal_all()) as i64;
+            let len = fx.monomorphize(len).eval_target_usize(fx.tcx, ParamEnv::reveal_all()) as i64;
             fx.bcx.ins().iconst(fx.pointer_type, len)
         }
         ty::Slice(_elem_ty) => {

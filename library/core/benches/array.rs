@@ -11,9 +11,9 @@ macro_rules! map_array {
     };
 }
 
-map_array!(map_8byte_8byte_8, 0u64, 1u64, 800);
-map_array!(map_8byte_8byte_64, 0u64, 1u64, 6400);
-map_array!(map_8byte_8byte_256, 0u64, 1u64, 25600);
+map_array!(map_8byte_8byte_8, 0u64, 1u64, 80);
+map_array!(map_8byte_8byte_64, 0u64, 1u64, 640);
+map_array!(map_8byte_8byte_256, 0u64, 1u64, 2560);
 
-map_array!(map_8byte_256byte_256, 0u64, [0u64; 4], 25600);
-map_array!(map_256byte_8byte_256, [0u64; 4], 0u64, 25600);
+map_array!(map_8byte_256byte_256, 0u64, [0u64; 4], 2560);
+map_array!(map_256byte_8byte_256, [0u64; 4], 0u64, 2560);

@@ -1845,7 +1845,7 @@ fn check_must_not_suspend_ty<'tcx>(
                 param_env,
                 SuspendCheckData {
                     descr_pre,
-                    plural_len: len.try_eval_usize(tcx, param_env).unwrap_or(0) as usize + 1,
+                    plural_len: len.try_eval_target_usize(tcx, param_env).unwrap_or(0) as usize + 1,
                     ..data
                 },
             )

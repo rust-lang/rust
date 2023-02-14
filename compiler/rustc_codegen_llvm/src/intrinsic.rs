@@ -877,7 +877,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => args[0].immediate(),
             ty::Array(elem, len)
                 if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
-                    && len.try_eval_usize(bx.tcx, ty::ParamEnv::reveal_all())
+                    && len.try_eval_target_usize(bx.tcx, ty::ParamEnv::reveal_all())
                         == Some(expected_bytes) =>
             {
                 let place = PlaceRef::alloca(bx, args[0].layout);
@@ -957,9 +957,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             // version of this intrinsic.
             match args[2].layout.ty.kind() {
                 ty::Array(ty, len) if matches!(ty.kind(), ty::Uint(ty::UintTy::U32)) => {
-                    len.try_eval_usize(bx.cx.tcx, ty::ParamEnv::reveal_all()).unwrap_or_else(|| {
-                        span_bug!(span, "could not evaluate shuffle index array length")
-                    })
+                    len.try_eval_target_usize(bx.cx.tcx, ty::ParamEnv::reveal_all()).unwrap_or_else(
+                        || span_bug!(span, "could not evaluate shuffle index array length"),
+                    )
                 }
                 _ => return_error!(InvalidMonomorphization::SimdShuffle {
                     span,
@@ -1123,7 +1123,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
             ty::Array(elem, len)
                 if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
-                    && len.try_eval_usize(bx.tcx, ty::ParamEnv::reveal_all())
+                    && len.try_eval_target_usize(bx.tcx, ty::ParamEnv::reveal_all())
                         == Some(expected_bytes) =>
             {
                 // Zero-extend iN to the array length:

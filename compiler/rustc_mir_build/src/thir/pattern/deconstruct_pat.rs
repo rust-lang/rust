@@ -922,8 +922,8 @@ impl<'tcx> SplitWildcard<'tcx> {
         // `cx.is_uninhabited()`).
         let all_ctors = match pcx.ty.kind() {
             ty::Bool => smallvec![make_range(0, 1)],
-            ty::Array(sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
-                let len = len.eval_usize(cx.tcx, cx.param_env) as usize;
+            ty::Array(sub_ty, len) if len.try_eval_target_usize(cx.tcx, cx.param_env).is_some() => {
+                let len = len.eval_target_usize(cx.tcx, cx.param_env) as usize;
                 if len != 0 && cx.is_uninhabited(*sub_ty) {
                     smallvec![]
                 } else {
@@ -1406,7 +1406,9 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
             }
             PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
                 let array_len = match pat.ty.kind() {
-                    ty::Array(_, length) => Some(length.eval_usize(cx.tcx, cx.param_env) as usize),
+                    ty::Array(_, length) => {
+                        Some(length.eval_target_usize(cx.tcx, cx.param_env) as usize)
+                    }
                     ty::Slice(_) => None,
                     _ => span_bug!(pat.span, "bad ty {:?} for slice pattern", pat.ty),
                 };
