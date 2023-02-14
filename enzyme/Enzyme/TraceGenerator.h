@@ -16,6 +16,8 @@
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
 #include "FunctionUtils.h"
+#include "TraceInterface.h"
+#include "TraceUtils.h"
 #include "Utils.h"
 
 using namespace llvm;
