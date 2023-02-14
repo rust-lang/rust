@@ -468,8 +468,8 @@ This was probably unintentional and should be reverted before this PR is merged.
 If this was intentional then you can ignore this comment.
 """
 
-[mentions."src/tools/x/src/main.rs"]
-message = "`src/tools/x/src/main.rs` was changed. Bump version of Cargo.toml in `src/tools/x` ."
+[mentions."src/tools/x"]
+message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x` so tidy will suggest installing the new version."
 
 [assign]
 warn_non_default_branch = true
