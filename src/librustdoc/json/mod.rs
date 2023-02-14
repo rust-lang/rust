@@ -28,7 +28,7 @@ use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::FormatRenderer;
-use crate::json::conversions::{id_from_item, id_from_item_inner, IntoWithTcx};
+use crate::json::conversions::{id_from_item, id_from_item_default, IntoWithTcx};
 use crate::{clean, try_err};
 
 #[derive(Clone)]
@@ -243,7 +243,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .chain(&self.cache.external_paths)
                 .map(|(&k, &(ref path, kind))| {
                     (
-                        id_from_item_inner(k.into(), self.tcx, None, None),
+                        id_from_item_default(k.into(), self.tcx),
                         types::ItemSummary {
                             crate_id: k.krate.as_u32(),
                             path: path.iter().map(|s| s.to_string()).collect(),

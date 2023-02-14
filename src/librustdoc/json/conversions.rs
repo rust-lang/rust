@@ -38,7 +38,7 @@ impl JsonRenderer<'_> {
                     Some(UrlFragment::UserWritten(_)) | None => *page_id,
                 };
 
-                (link.clone(), id_from_item_inner(id.into(), self.tcx, None, None))
+                (link.clone(), id_from_item_default(id.into(), self.tcx))
             })
             .collect();
         let docs = item.attrs.collapsed_doc_value();
@@ -108,7 +108,7 @@ impl JsonRenderer<'_> {
             Some(ty::Visibility::Public) => Visibility::Public,
             Some(ty::Visibility::Restricted(did)) if did.is_crate_root() => Visibility::Crate,
             Some(ty::Visibility::Restricted(did)) => Visibility::Restricted {
-                parent: id_from_item_inner(did.into(), self.tcx, None, None),
+                parent: id_from_item_default(did.into(), self.tcx),
                 path: self.tcx.def_path(did).to_string_no_crate_verbose(),
             },
         }
@@ -205,14 +205,25 @@ impl FromWithTcx<clean::TypeBindingKind> for TypeBindingKind {
     }
 }
 
+#[inline]
+pub(crate) fn id_from_item_default(item_id: ItemId, tcx: TyCtxt<'_>) -> Id {
+    id_from_item_inner(item_id, tcx, None, None)
+}
+
 /// It generates an ID as follows:
 ///
-/// `CRATE_ID:ITEM_ID[:NAME_ID]` (if there is no name, NAME_ID is not generated).
+/// `CRATE_ID:ITEM_ID[:NAME_ID][-EXTRA]`:
+///   * If there is no `name`, `NAME_ID` is not generated.
+///   * If there is no `extra`, `EXTRA` is not generated.
+///
+/// * `name` is the item's name if available (it's not for impl blocks for example).
+/// * `extra` is used for reexports: it contains the ID of the reexported item. It is used to allow
+///   to have items with the same name but different types to both appear in the generated JSON.
 pub(crate) fn id_from_item_inner(
     item_id: ItemId,
     tcx: TyCtxt<'_>,
-    extra: Option<&Id>,
     name: Option<Symbol>,
+    extra: Option<&Id>,
 ) -> Id {
     struct DisplayDefId<'a, 'b>(DefId, TyCtxt<'a>, Option<&'b Id>, Option<Symbol>);
 
@@ -275,9 +286,9 @@ pub(crate) fn id_from_item(item: &clean::Item, tcx: TyCtxt<'_>) -> Id {
         clean::ItemKind::ImportItem(ref import) => {
             let extra =
                 import.source.did.map(ItemId::from).map(|i| id_from_item_inner(i, tcx, None, None));
-            id_from_item_inner(item.item_id, tcx, extra.as_ref(), item.name)
+            id_from_item_inner(item.item_id, tcx, item.name, extra.as_ref())
         }
-        _ => id_from_item_inner(item.item_id, tcx, None, item.name),
+        _ => id_from_item_inner(item.item_id, tcx, item.name, None),
     }
 }
 
@@ -551,7 +562,7 @@ impl FromWithTcx<clean::Path> for Path {
     fn from_tcx(path: clean::Path, tcx: TyCtxt<'_>) -> Path {
         Path {
             name: path.whole_name(),
-            id: id_from_item_inner(path.def_id().into(), tcx, None, None),
+            id: id_from_item_default(path.def_id().into(), tcx),
             args: path.segments.last().map(|args| Box::new(args.clone().args.into_tcx(tcx))),
         }
     }
@@ -728,7 +739,7 @@ impl FromWithTcx<clean::Import> for Import {
         Import {
             source: import.source.path.whole_name(),
             name,
-            id: import.source.did.map(ItemId::from).map(|i| id_from_item_inner(i, tcx, None, None)),
+            id: import.source.did.map(ItemId::from).map(|i| id_from_item_default(i, tcx)),
             glob,
         }
     }
