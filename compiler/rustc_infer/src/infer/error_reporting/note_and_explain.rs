@@ -504,7 +504,9 @@ fn foo(&self) -> Self::T { String::new() }
         let methods: Vec<(Span, String)> = items
             .in_definition_order()
             .filter(|item| {
-                ty::AssocKind::Fn == item.kind && Some(item.name) != current_method_ident
+                ty::AssocKind::Fn == item.kind
+                    && Some(item.name) != current_method_ident
+                    && !tcx.is_doc_hidden(item.def_id)
             })
             .filter_map(|item| {
                 let method = tcx.fn_sig(item.def_id).subst_identity();
