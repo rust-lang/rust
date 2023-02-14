@@ -627,7 +627,10 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
+    #[allow(unused_braces)]
+    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A>
+    where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:
+    {
         // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)
     }
@@ -981,12 +984,18 @@ where
 // public in the crate and has the Allocator parameter so that
 // vec::clone_from use it too.
 #[cfg(not(no_global_oom_handling))]
-pub(crate) trait SpecCloneIntoVec<T, A: Allocator> {
+#[allow(unused_braces)]
+pub(crate) trait SpecCloneIntoVec<T, A: Allocator>
+where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:
+{
     fn clone_into(&self, target: &mut Vec<T, A>);
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: Clone, A: Allocator> SpecCloneIntoVec<T, A> for [T] {
+#[allow(unused_braces)]
+impl<T: Clone, A: Allocator> SpecCloneIntoVec<T, A> for [T]
+where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:
+{
     default fn clone_into(&self, target: &mut Vec<T, A>) {
         // drop anything in target that will not be overwritten
         target.truncate(self.len());
@@ -1002,7 +1011,10 @@ impl<T: Clone, A: Allocator> SpecCloneIntoVec<T, A> for [T] {
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: Copy, A: Allocator> SpecCloneIntoVec<T, A> for [T] {
+#[allow(unused_braces)]
+impl<T: Copy, A: Allocator> SpecCloneIntoVec<T, A> for [T]
+where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:
+{
     fn clone_into(&self, target: &mut Vec<T, A>) {
         target.clear();
         target.extend_from_slice(self);
