@@ -43,6 +43,7 @@ where
 {
     type Item = T;
 
+    #[inline]
     fn next(&mut self) -> Option<T> {
         self.it.next().copied()
     }
