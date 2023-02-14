@@ -1,4 +1,4 @@
-use crate::middle::resolve_lifetime as rl;
+use crate::middle::resolve_bound_vars as rbv;
 use hir::{
     intravisit::{self, Visitor},
     GenericParamKind, HirId, Node,
@@ -394,10 +394,11 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
                 return;
             }
 
-            match self.tcx.named_region(lt.hir_id) {
-                Some(rl::Region::Static | rl::Region::EarlyBound(..)) => {}
-                Some(rl::Region::LateBound(debruijn, _, _)) if debruijn < self.outer_index => {}
-                Some(rl::Region::LateBound(..) | rl::Region::Free(..)) | None => {
+            match self.tcx.named_bound_var(lt.hir_id) {
+                Some(rbv::ResolvedArg::StaticLifetime | rbv::ResolvedArg::EarlyBound(..)) => {}
+                Some(rbv::ResolvedArg::LateBound(debruijn, _, _))
+                    if debruijn < self.outer_index => {}
+                Some(rbv::ResolvedArg::LateBound(..) | rbv::ResolvedArg::Free(..)) | None => {
                     self.has_late_bound_regions = Some(lt.ident.span);
                 }
             }

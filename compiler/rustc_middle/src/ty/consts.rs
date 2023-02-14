@@ -1,7 +1,9 @@
+use crate::middle::resolve_bound_vars as rbv;
 use crate::mir::interpret::LitToConstInput;
 use crate::ty::{self, DefIdTree, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::HashStable;
 use std::fmt;
@@ -125,16 +127,27 @@ impl<'tcx> Const<'tcx> {
             }
         }
 
-        use hir::{def::DefKind::ConstParam, def::Res, ExprKind, Path, QPath};
         match expr.kind {
-            ExprKind::Path(QPath::Resolved(_, &Path { res: Res::Def(ConstParam, def_id), .. })) => {
-                // Find the name and index of the const parameter by indexing the generics of
-                // the parent item and construct a `ParamConst`.
-                let item_def_id = tcx.parent(def_id);
-                let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&def_id];
-                let name = tcx.item_name(def_id);
-                Some(tcx.mk_const(ty::ParamConst::new(index, name), ty))
+            hir::ExprKind::Path(hir::QPath::Resolved(
+                _,
+                &hir::Path { res: Res::Def(DefKind::ConstParam, def_id), .. },
+            )) => {
+                match tcx.named_bound_var(expr.hir_id) {
+                    Some(rbv::ResolvedArg::EarlyBound(_)) => {
+                        // Find the name and index of the const parameter by indexing the generics of
+                        // the parent item and construct a `ParamConst`.
+                        let item_def_id = tcx.parent(def_id);
+                        let generics = tcx.generics_of(item_def_id);
+                        let index = generics.param_def_id_to_index[&def_id];
+                        let name = tcx.item_name(def_id);
+                        Some(tcx.mk_const(ty::ParamConst::new(index, name), ty))
+                    }
+                    Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => Some(tcx.mk_const(
+                        ty::ConstKind::Bound(debruijn, ty::BoundVar::from_u32(index)),
+                        ty,
+                    )),
+                    arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", expr.hir_id),
+                }
             }
             _ => None,
         }

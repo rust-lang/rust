@@ -88,7 +88,7 @@ pub fn feature_err<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
     span: impl Into<MultiSpan>,
-    explain: &str,
+    explain: impl Into<DiagnosticMessage>,
 ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     feature_err_issue(sess, feature, span, GateIssue::Language, explain)
 }
@@ -103,7 +103,7 @@ pub fn feature_err_issue<'a>(
     feature: Symbol,
     span: impl Into<MultiSpan>,
     issue: GateIssue,
-    explain: &str,
+    explain: impl Into<DiagnosticMessage>,
 ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     let span = span.into();
 
@@ -114,7 +114,7 @@ pub fn feature_err_issue<'a>(
             .map(|err| err.cancel());
     }
 
-    let mut err = sess.create_err(FeatureGateError { span, explain });
+    let mut err = sess.create_err(FeatureGateError { span, explain: explain.into() });
     add_feature_diagnostics_for_issue(&mut err, sess, feature, issue);
     err
 }

@@ -1,14 +1,21 @@
-error: only lifetime parameters can be used in this context
+error[E0658]: only lifetime parameters can be used in this context
   --> $DIR/hrtb-wrong-kind.rs:1:18
    |
 LL | fn a() where for<T> T: Copy {}
    |                  ^
+   |
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
 
-error: only lifetime parameters can be used in this context
+error[E0658]: only lifetime parameters can be used in this context
   --> $DIR/hrtb-wrong-kind.rs:4:24
    |
 LL | fn b() where for<const C: usize> [(); C]: Copy {}
    |                        ^
+   |
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0658`.
