@@ -533,7 +533,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// It is up to the caller to take sufficient care when using this address:
     /// there could be provenance or uninit memory in there, and other memory
     /// accesses could invalidate the exposed pointer.
-    pub fn alloc_base_addr(&self, id: AllocId) -> InterpResult<'tcx, *const ()> {
+    pub fn alloc_base_addr(&self, id: AllocId) -> InterpResult<'tcx, *const u8> {
         let alloc = self.get_alloc_raw(id)?;
         Ok(alloc.base_addr())
     }
