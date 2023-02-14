@@ -45,8 +45,11 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
                                 )
                             })
                             .map(Interned::new);
+                        if let Some(_) = args {
+                            generic_args.resize(segments.len(), None);
+                            generic_args.push(args);
+                        }
                         segments.push(name);
-                        generic_args.push(args)
                     }
                     Either::Right(crate_id) => {
                         kind = PathKind::DollarCrate(crate_id);
@@ -56,7 +59,6 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
             }
             ast::PathSegmentKind::SelfTypeKw => {
                 segments.push(name![Self]);
-                generic_args.push(None)
             }
             ast::PathSegmentKind::Type { type_ref, trait_ref } => {
                 assert!(path.qualifier().is_none()); // this can only occur at the first segment
@@ -77,11 +79,15 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
                         kind = mod_path.kind;
 
                         segments.extend(mod_path.segments().iter().cloned().rev());
-                        generic_args.extend(Vec::from(path_generic_args).into_iter().rev());
+                        if let Some(path_generic_args) = path_generic_args {
+                            generic_args.resize(segments.len() - num_segments, None);
+                            generic_args.extend(Vec::from(path_generic_args).into_iter().rev());
+                        } else {
+                            generic_args.resize(segments.len(), None);
+                        }
 
                         // Insert the type reference (T in the above example) as Self parameter for the trait
-                        let last_segment =
-                            generic_args.iter_mut().rev().nth(num_segments.saturating_sub(1))?;
+                        let last_segment = generic_args.get_mut(segments.len() - num_segments)?;
                         let mut args_inner = match last_segment {
                             Some(it) => it.as_ref().clone(),
                             None => GenericArgs::empty(),
@@ -115,7 +121,10 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
         };
     }
     segments.reverse();
-    generic_args.reverse();
+    if !generic_args.is_empty() {
+        generic_args.resize(segments.len(), None);
+        generic_args.reverse();
+    }
 
     if segments.is_empty() && kind == PathKind::Plain && type_anchor.is_none() {
         // plain empty paths don't exist, this means we got a single `self` segment as our path
@@ -135,7 +144,11 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
     }
 
     let mod_path = Interned::new(ModPath::from_segments(kind, segments));
-    return Some(Path { type_anchor, mod_path, generic_args: generic_args.into() });
+    return Some(Path {
+        type_anchor,
+        mod_path,
+        generic_args: if generic_args.is_empty() { None } else { Some(generic_args.into()) },
+    });
 
     fn qualifier(path: &ast::Path) -> Option<ast::Path> {
         if let Some(q) = path.qualifier() {
