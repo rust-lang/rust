@@ -455,15 +455,21 @@ impl<'a> FindUsages<'a> {
         }
 
         let find_nodes = move |name: &str, node: &syntax::SyntaxNode, offset: TextSize| {
-            node.token_at_offset(offset).find(|it| it.text() == name).map(|token| {
-                // FIXME: There should be optimization potential here
-                // Currently we try to descend everything we find which
-                // means we call `Semantics::descend_into_macros` on
-                // every textual hit. That function is notoriously
-                // expensive even for things that do not get down mapped
-                // into macros.
-                sema.descend_into_macros(token).into_iter().filter_map(|it| it.parent())
-            })
+            node.token_at_offset(offset)
+                .find(|it| {
+                    // `name` is stripped of raw ident prefix. See the comment on name retrieval above.
+                    it.text().trim_start_matches("r#") == name
+                })
+                .into_iter()
+                .flat_map(|token| {
+                    // FIXME: There should be optimization potential here
+                    // Currently we try to descend everything we find which
+                    // means we call `Semantics::descend_into_macros` on
+                    // every textual hit. That function is notoriously
+                    // expensive even for things that do not get down mapped
+                    // into macros.
+                    sema.descend_into_macros(token).into_iter().filter_map(|it| it.parent())
+                })
         };
 
         for (text, file_id, search_range) in scope_files(sema, &search_scope) {
@@ -471,30 +477,23 @@ impl<'a> FindUsages<'a> {
 
             // Search for occurrences of the items name
             for offset in match_indices(&text, finder, search_range) {
-                if let Some(iter) = find_nodes(name, &tree, offset) {
-                    for name in iter.filter_map(ast::NameLike::cast) {
-                        if match name {
-                            ast::NameLike::NameRef(name_ref) => {
-                                self.found_name_ref(&name_ref, sink)
-                            }
-                            ast::NameLike::Name(name) => self.found_name(&name, sink),
-                            ast::NameLike::Lifetime(lifetime) => {
-                                self.found_lifetime(&lifetime, sink)
-                            }
-                        } {
-                            return;
-                        }
+                for name in find_nodes(name, &tree, offset).filter_map(ast::NameLike::cast) {
+                    if match name {
+                        ast::NameLike::NameRef(name_ref) => self.found_name_ref(&name_ref, sink),
+                        ast::NameLike::Name(name) => self.found_name(&name, sink),
+                        ast::NameLike::Lifetime(lifetime) => self.found_lifetime(&lifetime, sink),
+                    } {
+                        return;
                     }
                 }
             }
             // Search for occurrences of the `Self` referring to our type
             if let Some((self_ty, finder)) = &include_self_kw_refs {
                 for offset in match_indices(&text, finder, search_range) {
-                    if let Some(iter) = find_nodes("Self", &tree, offset) {
-                        for name_ref in iter.filter_map(ast::NameRef::cast) {
-                            if self.found_self_ty_name_ref(self_ty, &name_ref, sink) {
-                                return;
-                            }
+                    for name_ref in find_nodes("Self", &tree, offset).filter_map(ast::NameRef::cast)
+                    {
+                        if self.found_self_ty_name_ref(self_ty, &name_ref, sink) {
+                            return;
                         }
                     }
                 }
@@ -513,21 +512,21 @@ impl<'a> FindUsages<'a> {
                 let tree = Lazy::new(move || sema.parse(file_id).syntax().clone());
 
                 for offset in match_indices(&text, finder, search_range) {
-                    if let Some(iter) = find_nodes("super", &tree, offset) {
-                        for name_ref in iter.filter_map(ast::NameRef::cast) {
-                            if self.found_name_ref(&name_ref, sink) {
-                                return;
-                            }
+                    for name_ref in
+                        find_nodes("super", &tree, offset).filter_map(ast::NameRef::cast)
+                    {
+                        if self.found_name_ref(&name_ref, sink) {
+                            return;
                         }
                     }
                 }
                 if let Some(finder) = &is_crate_root {
                     for offset in match_indices(&text, finder, search_range) {
-                        if let Some(iter) = find_nodes("crate", &tree, offset) {
-                            for name_ref in iter.filter_map(ast::NameRef::cast) {
-                                if self.found_name_ref(&name_ref, sink) {
-                                    return;
-                                }
+                        for name_ref in
+                            find_nodes("crate", &tree, offset).filter_map(ast::NameRef::cast)
+                        {
+                            if self.found_name_ref(&name_ref, sink) {
+                                return;
                             }
                         }
                     }
@@ -566,11 +565,10 @@ impl<'a> FindUsages<'a> {
                 let finder = &Finder::new("self");
 
                 for offset in match_indices(&text, finder, search_range) {
-                    if let Some(iter) = find_nodes("self", &tree, offset) {
-                        for name_ref in iter.filter_map(ast::NameRef::cast) {
-                            if self.found_self_module_name_ref(&name_ref, sink) {
-                                return;
-                            }
+                    for name_ref in find_nodes("self", &tree, offset).filter_map(ast::NameRef::cast)
+                    {
+                        if self.found_self_module_name_ref(&name_ref, sink) {
+                            return;
                         }
                     }
                 }

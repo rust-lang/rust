@@ -1371,7 +1371,6 @@ pub fn baz() {}
 
     #[test]
     fn test_rename_mod_from_raw_ident() {
-        // FIXME: `r#fn` in path expression is not renamed.
         check_expect(
             "foo",
             r#"
@@ -1396,6 +1395,10 @@ pub fn baz() {}
                                 Indel {
                                     insert: "foo",
                                     delete: 4..8,
+                                },
+                                Indel {
+                                    insert: "foo",
+                                    delete: 23..27,
                                 },
                             ],
                         },
