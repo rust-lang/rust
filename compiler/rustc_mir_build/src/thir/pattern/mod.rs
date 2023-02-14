@@ -18,7 +18,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
 use rustc_index::Idx;
 use rustc_middle::mir::interpret::{
-    ConstValue, ErrorHandled, LitToConstError, LitToConstInput, Scalar,
+    ConstValue, ErrorHandled, GlobalId, LitToConstError, LitToConstInput, Scalar,
 };
 use rustc_middle::mir::{self, UserTypeProjection};
 use rustc_middle::mir::{BorrowKind, Mutability};
@@ -518,16 +518,22 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
         };
 
-        // `mir_const_qualif` must be called with the `DefId` of the item where the const is
-        // defined, not where it is declared. The difference is significant for associated
-        // constants.
-        let mir_structural_match_violation = self.tcx.mir_const_qualif(instance.def_id()).custom_eq;
-        debug!("mir_structural_match_violation({:?}) -> {}", qpath, mir_structural_match_violation);
+        let cid = GlobalId { instance, promoted: None };
+        // Prefer
+        let const_value = self
+            .tcx
+            .const_eval_global_id_for_typeck(param_env_reveal_all, cid, Some(span))
+            .and_then(|val| match val {
+                Some(valtree) => Ok(mir::ConstantKind::Ty(self.tcx.mk_const(valtree, ty))),
+                None => self
+                    .tcx
+                    .const_eval_global_id(param_env_reveal_all, cid, Some(span))
+                    .map(|lit| mir::ConstantKind::Val(lit, ty)),
+            });
 
-        match self.tcx.const_eval_instance(param_env_reveal_all, instance, Some(span)) {
-            Ok(literal) => {
-                let const_ = mir::ConstantKind::Val(literal, ty);
-                let pattern = self.const_to_pat(const_, id, span, mir_structural_match_violation);
+        match const_value {
+            Ok(const_) => {
+                let pattern = self.const_to_pat(const_, id, span, Some(instance.def_id()));
 
                 if !is_associated_const {
                     return pattern;
@@ -578,9 +584,21 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         span: Span,
     ) -> PatKind<'tcx> {
         let value = mir::ConstantKind::from_inline_const(self.tcx, anon_const.def_id);
-
-        // Evaluate early like we do in `lower_path`.
-        let value = value.eval(self.tcx, self.param_env);
+        let value = match value {
+            mir::ConstantKind::Ty(_) => value,
+            // Evaluate early like we do in `lower_path`.
+            mir::ConstantKind::Unevaluated(ct, ty) => {
+                let ct = ty::UnevaluatedConst { def: ct.def, substs: ct.substs };
+                if let Ok(Some(valtree)) =
+                    self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
+                {
+                    mir::ConstantKind::Ty(self.tcx.mk_const(valtree, ty))
+                } else {
+                    value.eval(self.tcx, self.param_env)
+                }
+            }
+            mir::ConstantKind::Val(_, _) => unreachable!(),
+        };
 
         match value {
             mir::ConstantKind::Ty(c) => match c.kind() {
@@ -591,15 +609,17 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 ConstKind::Error(_) => {
                     return PatKind::Wild;
                 }
-                _ => bug!("Expected ConstKind::Param"),
+                _ => {}
             },
-            mir::ConstantKind::Val(_, _) => self.const_to_pat(value, id, span, false).kind,
+            mir::ConstantKind::Val(_, _) => {}
             mir::ConstantKind::Unevaluated(..) => {
                 // If we land here it means the const can't be evaluated because it's `TooGeneric`.
                 self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
                 return PatKind::Wild;
             }
         }
+
+        self.const_to_pat(value, id, span, None).kind
     }
 
     /// Converts literals, paths and negation of literals to patterns.
@@ -626,8 +646,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let lit_input =
             LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
-        match self.tcx.at(expr.span).lit_to_mir_constant(lit_input) {
-            Ok(constant) => self.const_to_pat(constant, expr.hir_id, lit.span, false).kind,
+        match self
+            .tcx
+            .at(expr.span)
+            .lit_to_const(lit_input)
+            .map(mir::ConstantKind::Ty)
+            .or_else(|_| self.tcx.at(expr.span).lit_to_mir_constant(lit_input))
+        {
+            Ok(constant) => self.const_to_pat(constant, expr.hir_id, lit.span, None).kind,
             Err(LitToConstError::Reported(_)) => PatKind::Wild,
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }
@@ -806,6 +832,9 @@ pub(crate) fn compare_const_vals<'tcx>(
                 mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(a)), _a_ty),
                 mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(b)), _b_ty),
             ) => return Some(a.cmp(&b)),
+            (mir::ConstantKind::Ty(a), mir::ConstantKind::Ty(b)) => {
+                return Some(a.kind().cmp(&b.kind()));
+            }
             _ => {}
         },
     }

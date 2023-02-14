@@ -2487,8 +2487,8 @@ impl<'tcx> ConstantKind<'tcx> {
         if let Some(lit_input) = lit_input {
             // If an error occurred, ignore that it's a literal and leave reporting the error up to
             // mir.
-            match tcx.at(expr.span).lit_to_mir_constant(lit_input) {
-                Ok(c) => return c,
+            match tcx.at(expr.span).lit_to_const(lit_input) {
+                Ok(c) => return Self::Ty(c),
                 Err(_) => {}
             }
         }

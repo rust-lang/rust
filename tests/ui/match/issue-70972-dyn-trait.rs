@@ -4,7 +4,7 @@ fn main() {
     let a: &dyn Send = &7u32;
     match a {
         F => panic!(),
-        //~^ ERROR `&dyn Send` cannot be used in patterns
+        //~^ ERROR `dyn Send` cannot be used in patterns
         _ => {}
     }
 }
