@@ -323,7 +323,7 @@ impl fmt::Display for UndefinedBehaviorInfo {
                 write!(
                     f,
                     "{msg}{pointer} is a dangling pointer (it has no provenance)",
-                    pointer = Pointer::<Option<AllocId>>::from_addr(*i),
+                    pointer = Pointer::<Option<AllocId>>::from_addr_invalid(*i),
                 )
             }
             AlignmentCheckFailed { required, has } => write!(
