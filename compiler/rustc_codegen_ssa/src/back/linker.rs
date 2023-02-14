@@ -1207,10 +1207,9 @@ impl<'a> Linker for WasmLd<'a> {
             | LinkOutputKind::DynamicPicExe
             | LinkOutputKind::StaticNoPicExe
             | LinkOutputKind::StaticPicExe => {}
-            LinkOutputKind::DynamicDylib | LinkOutputKind::StaticDylib => {
-                self.cmd.arg("--no-entry");
-            }
-            LinkOutputKind::WasiReactorExe => {
+            LinkOutputKind::DynamicDylib
+            | LinkOutputKind::StaticDylib
+            | LinkOutputKind::WasiReactorExe => {
                 self.cmd.arg("--entry");
                 self.cmd.arg("_initialize");
             }
