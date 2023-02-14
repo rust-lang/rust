@@ -605,6 +605,18 @@ fn classify_name_ref(
                     },
                     _ => false,
                 };
+
+                let reciever_is_part_of_indivisible_expression = match &receiver {
+                    Some(ast::Expr::IfExpr(_)) => {
+                        let next_token_kind = next_non_trivia_token(name_ref.syntax().clone()).map(|t| t.kind());
+                        next_token_kind == Some(SyntaxKind::ELSE_KW)
+                    },
+                    _ => false
+                };
+                if reciever_is_part_of_indivisible_expression {
+                    return None;
+                }
+
                 let kind = NameRefKind::DotAccess(DotAccess {
                     receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
                     kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal },
@@ -1312,6 +1324,22 @@ fn previous_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken>
             return Some(inner);
         } else {
             token = inner.prev_token();
+        }
+    }
+    None
+}
+
+fn next_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken> {
+    let mut token = match e.into() {
+        SyntaxElement::Node(n) => n.last_token()?,
+        SyntaxElement::Token(t) => t,
+    }
+    .next_token();
+    while let Some(inner) = token {
+        if !inner.kind().is_trivia() {
+            return Some(inner);
+        } else {
+            token = inner.next_token();
         }
     }
     None
