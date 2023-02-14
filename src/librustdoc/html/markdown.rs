@@ -360,6 +360,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                     trace!("it matched");
                     assert!(self.shortcut_link.is_none(), "shortcut links cannot be nested");
                     self.shortcut_link = Some(link);
+                    if title.is_empty() && !link.tooltip.is_empty() {
+                        *title = CowStr::Borrowed(link.tooltip.as_ref());
+                    }
                 }
             }
             // Now that we're done with the shortcut link, don't replace any more text.
@@ -410,9 +413,12 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             }
             // If this is a link, but not a shortcut link,
             // replace the URL, since the broken_link_callback was not called.
-            Some(Event::Start(Tag::Link(_, dest, _))) => {
+            Some(Event::Start(Tag::Link(_, dest, title))) => {
                 if let Some(link) = self.links.iter().find(|&link| *link.original_text == **dest) {
                     *dest = CowStr::Borrowed(link.href.as_ref());
+                    if title.is_empty() && !link.tooltip.is_empty() {
+                        *title = CowStr::Borrowed(link.tooltip.as_ref());
+                    }
                 }
             }
             // Anything else couldn't have been a valid Rust path, so no need to replace the text.
@@ -976,7 +982,7 @@ impl Markdown<'_> {
             links
                 .iter()
                 .find(|link| link.original_text.as_str() == &*broken_link.reference)
-                .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
+                .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
         let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut replacer));
@@ -1059,7 +1065,7 @@ impl MarkdownSummaryLine<'_> {
             links
                 .iter()
                 .find(|link| link.original_text.as_str() == &*broken_link.reference)
-                .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
+                .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
         let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer))
@@ -1106,7 +1112,7 @@ fn markdown_summary_with_limit(
         link_names
             .iter()
             .find(|link| link.original_text.as_str() == &*broken_link.reference)
-            .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
+            .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
     };
 
     let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
@@ -1187,7 +1193,7 @@ pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> Strin
         link_names
             .iter()
             .find(|link| link.original_text.as_str() == &*broken_link.reference)
-            .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
+            .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
     };
 
     let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
