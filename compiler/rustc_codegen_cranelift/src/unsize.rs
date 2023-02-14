@@ -24,7 +24,7 @@ pub(crate) fn unsized_info<'tcx>(
         (&ty::Array(_, len), &ty::Slice(_)) => fx
             .bcx
             .ins()
-            .iconst(fx.pointer_type, len.eval_usize(fx.tcx, ParamEnv::reveal_all()) as i64),
+            .iconst(fx.pointer_type, len.eval_target_usize(fx.tcx, ParamEnv::reveal_all()) as i64),
         (
             &ty::Dynamic(ref data_a, _, src_dyn_kind),
             &ty::Dynamic(ref data_b, _, target_dyn_kind),

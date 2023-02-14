@@ -473,7 +473,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // that this is merely a ZST and it is already eligible for promotion.
                     // This may require an RFC?
                     /*
-                    ty::Array(_, len) if len.try_eval_usize(cx.tcx, cx.param_env) == Some(0)
+                    ty::Array(_, len) if len.try_eval_target_usize(cx.tcx, cx.param_env) == Some(0)
                         => true,
                     */
                     _ => false,

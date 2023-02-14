@@ -416,7 +416,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             ty::Slice(..) => PatKind::Slice { prefix, slice, suffix },
             // Fixed-length array, `[T; len]`.
             ty::Array(_, len) => {
-                let len = len.eval_usize(self.tcx, self.param_env);
+                let len = len.eval_target_usize(self.tcx, self.param_env);
                 assert!(len >= prefix.len() as u64 + suffix.len() as u64);
                 PatKind::Array { prefix, slice, suffix }
             }

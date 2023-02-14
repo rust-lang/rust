@@ -175,7 +175,7 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     /// Creates an interned usize constant.
-    pub fn from_usize(tcx: TyCtxt<'tcx>, n: u64) -> Self {
+    pub fn from_target_usize(tcx: TyCtxt<'tcx>, n: u64) -> Self {
         Self::from_bits(tcx, n as u128, ParamEnv::empty().and(tcx.types.usize))
     }
 
@@ -201,7 +201,11 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn try_eval_usize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<u64> {
+    pub fn try_eval_target_usize(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+    ) -> Option<u64> {
         self.kind().eval(tcx, param_env).try_to_machine_usize(tcx)
     }
 
@@ -229,8 +233,8 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     /// Panics if the value cannot be evaluated or doesn't contain a valid `usize`.
-    pub fn eval_usize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u64 {
-        self.try_eval_usize(tcx, param_env)
+    pub fn eval_target_usize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u64 {
+        self.try_eval_target_usize(tcx, param_env)
             .unwrap_or_else(|| bug!("expected usize, got {:#?}", self))
     }
 

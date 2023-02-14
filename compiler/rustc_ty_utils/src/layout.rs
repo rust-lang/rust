@@ -209,7 +209,8 @@ fn layout_of_uncached<'tcx>(
                 }
             }
 
-            let count = count.try_eval_usize(tcx, param_env).ok_or(LayoutError::Unknown(ty))?;
+            let count =
+                count.try_eval_target_usize(tcx, param_env).ok_or(LayoutError::Unknown(ty))?;
             let element = cx.layout_of(element)?;
             let size = element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow(ty))?;
 
