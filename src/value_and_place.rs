@@ -3,6 +3,7 @@
 use crate::prelude::*;
 
 use cranelift_codegen::ir::immediates::Offset32;
+use cranelift_codegen::ir::{InstructionData, Opcode};
 
 fn codegen_field<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
@@ -457,6 +458,7 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
+    #[track_caller]
     pub(crate) fn to_ptr(self) -> Pointer {
         match self.to_ptr_maybe_unsized() {
             (ptr, None) => ptr,
@@ -464,6 +466,7 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
+    #[track_caller]
     pub(crate) fn to_ptr_maybe_unsized(self) -> (Pointer, Option<Value>) {
         match self.inner {
             CPlaceInner::Addr(ptr, extra) => (ptr, extra),
@@ -787,7 +790,36 @@ impl<'tcx> CPlace<'tcx> {
         index: Value,
     ) -> CPlace<'tcx> {
         let (elem_layout, ptr) = match self.layout().ty.kind() {
-            ty::Array(elem_ty, _) => (fx.layout_of(*elem_ty), self.to_ptr()),
+            ty::Array(elem_ty, _) => {
+                let elem_layout = fx.layout_of(*elem_ty);
+                match self.inner {
+                    CPlaceInner::Var(local, var) => {
+                        // This is a hack to handle `vector_val.0[1]`. It doesn't allow dynamic
+                        // indexing.
+                        let lane_idx = match fx.bcx.func.dfg.insts
+                            [fx.bcx.func.dfg.value_def(index).unwrap_inst()]
+                        {
+                            InstructionData::UnaryImm { opcode: Opcode::Iconst, imm } => imm,
+                            _ => bug!(
+                                "Dynamic indexing into a vector type is not supported: {self:?}[{index}]"
+                            ),
+                        };
+                        return CPlace {
+                            inner: CPlaceInner::VarLane(
+                                local,
+                                var,
+                                lane_idx.bits().try_into().unwrap(),
+                            ),
+                            layout: elem_layout,
+                        };
+                    }
+                    CPlaceInner::Addr(addr, None) => (elem_layout, addr),
+                    CPlaceInner::Addr(_, Some(_))
+                    | CPlaceInner::VarPair(_, _, _)
+                    | CPlaceInner::VarLane(_, _, _) => bug!("Can't index into {self:?}"),
+                }
+                // FIXME use VarLane in case of Var with simd type
+            }
             ty::Slice(elem_ty) => (fx.layout_of(*elem_ty), self.to_ptr_maybe_unsized().0),
             _ => bug!("place_index({:?})", self.layout().ty),
         };
