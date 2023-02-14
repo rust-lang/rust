@@ -1,6 +1,5 @@
 // needs-sanitizer-support
 // needs-sanitizer-memory
-// min-llvm-version: 14.0.0
 //
 // revisions: unoptimized optimized
 //

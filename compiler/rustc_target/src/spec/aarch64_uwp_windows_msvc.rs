@@ -3,6 +3,7 @@ use crate::spec::Target;
 pub fn target() -> Target {
     let mut base = super::windows_uwp_msvc_base::opts();
     base.max_atomic_width = Some(128);
+    base.features = "+v8a".into();
 
     Target {
         llvm_target: "aarch64-pc-windows-msvc".into(),

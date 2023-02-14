@@ -14,7 +14,7 @@ pub fn target() -> Target {
     let opts = TargetOptions {
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
-        features: "+strict-align,+neon,+fp-armv8".into(),
+        features: "+v8a,+strict-align,+neon,+fp-armv8".into(),
         supported_sanitizers: SanitizerSet::KCFI,
         relocation_model: RelocModel::Static,
         disable_redzone: true,
