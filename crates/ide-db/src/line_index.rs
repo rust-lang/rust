@@ -7,7 +7,7 @@ use syntax::{TextRange, TextSize};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineIndex {
-    /// Offset the the beginning of each line, zero-based.
+    /// Offset the beginning of each line, zero-based.
     pub(crate) newlines: Vec<TextSize>,
     /// List of non-ASCII characters on each line.
     pub(crate) line_wide_chars: NoHashHashMap<u32, Vec<WideChar>>,
