@@ -8,7 +8,8 @@ mod tests;
 use std::borrow::Cow;
 use std::fmt;
 use std::hash;
-use std::ops::Range;
+use std::hash::Hash;
+use std::ops::{Deref, DerefMut, Range};
 use std::ptr;
 
 use either::{Left, Right};
@@ -29,6 +30,54 @@ use provenance_map::*;
 
 pub use init_mask::{InitChunk, InitChunkIter};
 
+/// Functionality required for the bytes of an `Allocation`.
+pub trait AllocBytes:
+    Clone
+    + fmt::Debug
+    + Eq
+    + PartialEq
+    + Hash
+    + Deref<Target = [u8]>
+    + DerefMut<Target = [u8]>
+{
+    /// Adjust the bytes to the specified alignment -- by default, this is a no-op.
+    fn adjust_to_align(self, _align: Align) -> Self;
+
+    /// Create an `AllocBytes` from a slice of `u8`.
+    fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self;
+
+    /// Create a zeroed `AllocBytes` of the specified size and alignment;
+    /// call the callback error handler if there is an error in allocating the memory.
+    fn zeroed<'tcx, F: Fn() -> InterpError<'tcx>>(
+        size: Size,
+        _align: Align,
+        handle_alloc_fail: F,
+    ) -> Result<Self, InterpError<'tcx>>;
+}
+
+// Default `bytes` for `Allocation` is a `Box<[u8]>`.
+impl AllocBytes for Box<[u8]> {
+    fn adjust_to_align(self, _align: Align) -> Self {
+        self
+    }
+
+    fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, _align: Align) -> Self {
+        Box::<[u8]>::from(slice.into())
+    }
+
+    fn zeroed<'tcx, F: Fn() -> InterpError<'tcx>>(
+        size: Size,
+        _align: Align,
+        handle_alloc_fail: F,
+    ) -> Result<Self, InterpError<'tcx>> {
+        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize())
+            .map_err(|_| handle_alloc_fail())?;
+        // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
+        let bytes = unsafe { bytes.assume_init() };
+        Ok(bytes)
+    }
+}
+
 /// This type represents an Allocation in the Miri/CTFE core engine.
 ///
 /// Its public API is rather low-level, working directly with allocation offsets and a custom error
@@ -38,10 +87,10 @@ pub use init_mask::{InitChunk, InitChunkIter};
 // hashed. (see the `Hash` impl below for more details), so the impl is not derived.
 #[derive(Clone, Eq, PartialEq, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
-pub struct Allocation<Prov: Provenance = AllocId, Extra = ()> {
+pub struct Allocation<Prov: Provenance = AllocId, Extra = (), Bytes = Box<[u8]>> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
-    bytes: Box<[u8]>,
+    bytes: Bytes,
     /// Maps from byte addresses to extra provenance data for each pointer.
     /// Only the first byte of a pointer is inserted into the map; i.e.,
     /// every entry in this map applies to `pointer_size` consecutive bytes starting
@@ -220,14 +269,14 @@ impl AllocRange {
 }
 
 // The constructors are all without extra; the extra gets added by a machine hook later.
-impl<Prov: Provenance> Allocation<Prov> {
+impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     /// Creates an allocation initialized by the given bytes
     pub fn from_bytes<'a>(
         slice: impl Into<Cow<'a, [u8]>>,
         align: Align,
         mutability: Mutability,
     ) -> Self {
-        let bytes = Box::<[u8]>::from(slice.into());
+        let bytes = Bytes::from_bytes(slice, align);
         let size = Size::from_bytes(bytes.len());
         Self {
             bytes,
@@ -248,7 +297,7 @@ impl<Prov: Provenance> Allocation<Prov> {
     ///
     /// If `panic_on_fail` is true, this will never return `Err`.
     pub fn uninit<'tcx>(size: Size, align: Align, panic_on_fail: bool) -> InterpResult<'tcx, Self> {
-        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).map_err(|_| {
+        let handle_alloc_fail = || -> InterpError<'tcx> {
             // This results in an error that can happen non-deterministically, since the memory
             // available to the compiler can change between runs. Normally queries are always
             // deterministic. However, we can be non-deterministic here because all uses of const
@@ -261,9 +310,10 @@ impl<Prov: Provenance> Allocation<Prov> {
                 tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
             });
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
-        })?;
-        // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
-        let bytes = unsafe { bytes.assume_init() };
+        };
+
+        let bytes = Bytes::zeroed(size, align, handle_alloc_fail)?;
+
         Ok(Allocation {
             bytes,
             provenance: ProvenanceMap::new(),
@@ -275,7 +325,7 @@ impl<Prov: Provenance> Allocation<Prov> {
     }
 }
 
-impl Allocation {
+impl<Bytes: AllocBytes> Allocation<AllocId, (), Bytes> {
     /// Adjust allocation from the ones in tcx to a custom Machine instance
     /// with a different Provenance and Extra type.
     pub fn adjust_from_tcx<Prov: Provenance, Extra, Err>(
@@ -283,9 +333,11 @@ impl Allocation {
         cx: &impl HasDataLayout,
         extra: Extra,
         mut adjust_ptr: impl FnMut(Pointer<AllocId>) -> Result<Pointer<Prov>, Err>,
-    ) -> Result<Allocation<Prov, Extra>, Err> {
-        // Compute new pointer provenance, which also adjusts the bytes.
-        let mut bytes = self.bytes;
+    ) -> Result<Allocation<Prov, Extra, Bytes>, Err> {
+        // Compute new pointer provenance, which also adjusts the bytes, and realign the pointer if
+        // necessary.
+        let mut bytes = self.bytes.adjust_to_align(self.align);
+
         let mut new_provenance = Vec::with_capacity(self.provenance.ptrs().len());
         let ptr_size = cx.data_layout().pointer_size.bytes_usize();
         let endian = cx.data_layout().endian;
@@ -311,7 +363,7 @@ impl Allocation {
 }
 
 /// Raw accessors. Provide access to otherwise private bytes.
-impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
+impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> {
     pub fn len(&self) -> usize {
         self.bytes.len()
     }
@@ -340,7 +392,11 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
 }
 
 /// Byte accessors.
-impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
+impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> {
+    pub fn base_addr(&self) -> *const u8 {
+        self.bytes.as_ptr()
+    }
+
     /// This is the entirely abstraction-violating way to just grab the raw bytes without
     /// caring about provenance or initialization.
     ///
@@ -412,7 +468,7 @@ impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
 }
 
 /// Reading and writing.
-impl<Prov: Provenance, Extra> Allocation<Prov, Extra> {
+impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> {
     /// Sets the init bit for the given range.
     fn mark_init(&mut self, range: AllocRange, is_init: bool) {
         if range.size.bytes() == 0 {
