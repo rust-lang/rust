@@ -682,13 +682,16 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "language items are subject to change",
     ),
     rustc_attr!(
-        rustc_pass_by_value, Normal,
-        template!(Word), ErrorFollowing,
+        rustc_pass_by_value, Normal, template!(Word), ErrorFollowing,
         "#[rustc_pass_by_value] is used to mark types that must be passed by value instead of reference."
     ),
     rustc_attr!(
         rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, @only_local: true,
         "#![rustc_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
+    ),
+    rustc_attr!(
+        rustc_coinductive, AttributeType::Normal, template!(Word), WarnFollowing, @only_local: true,
+        "#![rustc_coinductive] changes a trait to be coinductive, allowing cycles in the trait solver."
     ),
     rustc_attr!(
         rustc_allow_incoherent_impl, AttributeType::Normal, template!(Word), ErrorFollowing, @only_local: true,
