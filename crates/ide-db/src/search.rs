@@ -455,15 +455,20 @@ impl<'a> FindUsages<'a> {
         }
 
         let find_nodes = move |name: &str, node: &syntax::SyntaxNode, offset: TextSize| {
-            node.token_at_offset(offset).find(|it| it.text() == name).map(|token| {
-                // FIXME: There should be optimization potential here
-                // Currently we try to descend everything we find which
-                // means we call `Semantics::descend_into_macros` on
-                // every textual hit. That function is notoriously
-                // expensive even for things that do not get down mapped
-                // into macros.
-                sema.descend_into_macros(token).into_iter().filter_map(|it| it.parent())
-            })
+            node.token_at_offset(offset)
+                .find(|it| {
+                    // `name` is stripped of raw ident prefix. See the comment on name retrieval above.
+                    it.text().trim_start_matches("r#") == name
+                })
+                .map(|token| {
+                    // FIXME: There should be optimization potential here
+                    // Currently we try to descend everything we find which
+                    // means we call `Semantics::descend_into_macros` on
+                    // every textual hit. That function is notoriously
+                    // expensive even for things that do not get down mapped
+                    // into macros.
+                    sema.descend_into_macros(token).into_iter().filter_map(|it| it.parent())
+                })
         };
 
         for (text, file_id, search_range) in scope_files(sema, &search_scope) {
