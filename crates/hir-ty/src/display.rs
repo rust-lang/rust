@@ -1419,7 +1419,7 @@ impl HirDisplay for Path {
 
                 write!(f, "<")?;
                 let mut first = true;
-                for arg in &generic_args.args {
+                for arg in generic_args.args.iter() {
                     if first {
                         first = false;
                         if generic_args.has_self_type {

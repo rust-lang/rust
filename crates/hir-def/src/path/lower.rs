@@ -1,5 +1,7 @@
 //! Transforms syntax into `Path` objects, ideally with accounting for hygiene
 
+use std::iter;
+
 use crate::type_ref::ConstScalarOrPath;
 
 use either::Either;
@@ -86,15 +88,26 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
                             generic_args.resize(segments.len(), None);
                         }
 
+                        let self_type = GenericArg::Type(self_type);
+
                         // Insert the type reference (T in the above example) as Self parameter for the trait
                         let last_segment = generic_args.get_mut(segments.len() - num_segments)?;
-                        let mut args_inner = match last_segment {
-                            Some(it) => it.as_ref().clone(),
-                            None => GenericArgs::empty(),
-                        };
-                        args_inner.has_self_type = true;
-                        args_inner.args.insert(0, GenericArg::Type(self_type));
-                        *last_segment = Some(Interned::new(args_inner));
+                        *last_segment = Some(Interned::new(match last_segment.take() {
+                            Some(it) => GenericArgs {
+                                args: iter::once(self_type)
+                                    .chain(it.args.iter().cloned())
+                                    .collect(),
+
+                                has_self_type: true,
+                                bindings: it.bindings.clone(),
+                                desugared_from_fn: it.desugared_from_fn,
+                            },
+                            None => GenericArgs {
+                                args: Box::new([self_type]),
+                                has_self_type: true,
+                                ..GenericArgs::empty()
+                            },
+                        }));
                     }
                 }
             }
@@ -209,7 +222,7 @@ pub(super) fn lower_generic_args(
         return None;
     }
     Some(GenericArgs {
-        args,
+        args: args.into_boxed_slice(),
         has_self_type: false,
         bindings: bindings.into_boxed_slice(),
         desugared_from_fn: false,
@@ -223,15 +236,13 @@ fn lower_generic_args_from_fn_path(
     params: Option<ast::ParamList>,
     ret_type: Option<ast::RetType>,
 ) -> Option<GenericArgs> {
-    let mut args = Vec::new();
     let params = params?;
     let mut param_types = Vec::new();
     for param in params.params() {
         let type_ref = TypeRef::from_ast_opt(ctx, param.ty());
         param_types.push(type_ref);
     }
-    let arg = GenericArg::Type(TypeRef::Tuple(param_types));
-    args.push(arg);
+    let args = Box::new([GenericArg::Type(TypeRef::Tuple(param_types))]);
     let bindings = if let Some(ret_type) = ret_type {
         let type_ref = TypeRef::from_ast_opt(ctx, ret_type.ty());
         Box::new([AssociatedTypeBinding {

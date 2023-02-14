@@ -292,7 +292,7 @@ impl TypeRef {
             }
             for segment in path.segments().iter() {
                 if let Some(args_and_bindings) = segment.args_and_bindings {
-                    for arg in &args_and_bindings.args {
+                    for arg in args_and_bindings.args.iter() {
                         match arg {
                             crate::path::GenericArg::Type(type_ref) => {
                                 go(type_ref, f);
