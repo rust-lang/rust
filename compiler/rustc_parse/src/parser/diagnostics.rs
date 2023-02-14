@@ -284,7 +284,7 @@ impl<'a> Parser<'a> {
         self.sess.source_map().span_to_snippet(span)
     }
 
-    pub(super) fn expected_ident_found(&self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    pub(super) fn expected_ident_found(&mut self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let valid_follow = &[
             TokenKind::Eq,
             TokenKind::Colon,
@@ -324,7 +324,61 @@ impl<'a> Parser<'a> {
             suggest_raw,
             suggest_remove_comma,
         };
-        err.into_diagnostic(&self.sess.span_diagnostic)
+        let mut err = err.into_diagnostic(&self.sess.span_diagnostic);
+
+        // if the token we have is a `<`
+        // it *might* be a misplaced generic
+        if self.token == token::Lt {
+            // all keywords that could have generic applied
+            let valid_prev_keywords =
+                [kw::Fn, kw::Type, kw::Struct, kw::Enum, kw::Union, kw::Trait];
+
+            // If we've expected an identifier,
+            // and the current token is a '<'
+            // if the previous token is a valid keyword
+            // that might use a generic, then suggest a correct
+            // generic placement (later on)
+            let maybe_keyword = self.prev_token.clone();
+            if valid_prev_keywords.into_iter().any(|x| maybe_keyword.is_keyword(x)) {
+                // if we have a valid keyword, attempt to parse generics
+                // also obtain the keywords symbol
+                match self.parse_generics() {
+                    Ok(generic) => {
+                        if let TokenKind::Ident(symbol, _) = maybe_keyword.kind {
+                            let ident_name = symbol;
+                            // at this point, we've found something like
+                            // `fn <T>id`
+                            // and current token should be Ident with the item name (i.e. the function name)
+                            // if there is a `<` after the fn name, then don't show a suggestion, show help
+
+                            if !self.look_ahead(1, |t| *t == token::Lt) &&
+                                let Ok(snippet) = self.sess.source_map().span_to_snippet(generic.span) {
+                                    err.multipart_suggestion_verbose(
+                                        format!("place the generic parameter name after the {ident_name} name"),
+                                        vec![
+                                            (self.token.span.shrink_to_hi(), snippet),
+                                            (generic.span, String::new())
+                                        ],
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                } else {
+                                    err.help(format!(
+                                        "place the generic parameter name after the {ident_name} name"
+                                    ));
+                                }
+                        }
+                    }
+                    Err(err) => {
+                        // if there's an error parsing the generics,
+                        // then don't do a misplaced generics suggestion
+                        // and emit the expected ident error instead;
+                        err.cancel();
+                    }
+                }
+            }
+        }
+
+        err
     }
 
     pub(super) fn expected_one_of_not_found(
