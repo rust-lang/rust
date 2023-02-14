@@ -491,6 +491,8 @@ pub use core::mem;
 pub use core::ops;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::option;
+#[unstable(feature = "pattern", issue = "27721")]
+pub use core::pattern;
 #[stable(feature = "pin", since = "1.33.0")]
 pub use core::pin;
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -55,9 +55,9 @@ use core::ops::AddAssign;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
+use core::pattern::Pattern;
 use core::ptr;
 use core::slice;
-use core::str::pattern::Pattern;
 #[cfg(not(no_global_oom_handling))]
 use core::str::Utf8Chunks;
 
@@ -1373,7 +1373,7 @@ impl String {
     where
         P: for<'x> Pattern<&'x str>,
     {
-        use core::str::pattern::Searcher;
+        use core::pattern::Searcher;
 
         let rejections = {
             let mut searcher = pat.into_searcher(self);

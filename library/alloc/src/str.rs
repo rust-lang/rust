@@ -10,8 +10,8 @@
 use core::borrow::{Borrow, BorrowMut};
 use core::iter::FusedIterator;
 use core::mem;
+use core::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use core::ptr;
-use core::str::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use core::unicode::conversions;
 
 use crate::borrow::ToOwned;

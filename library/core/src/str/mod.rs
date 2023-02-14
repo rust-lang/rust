@@ -13,12 +13,10 @@ mod iter;
 mod traits;
 mod validations;
 
-use self::pattern::Pattern;
-use self::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
-
 use crate::ascii;
 use crate::char::{self, EscapeDebugExtArgs};
 use crate::mem;
+use crate::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use crate::slice::{self, SliceIndex};
 
 pub mod pattern;

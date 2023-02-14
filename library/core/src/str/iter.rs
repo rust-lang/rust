@@ -7,11 +7,10 @@ use crate::iter::{Copied, Filter, FusedIterator, Map, TrustedLen};
 use crate::iter::{TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::ops::Try;
 use crate::option;
+use crate::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use crate::slice::{self, Split as SliceSplit};
 
 use super::from_utf8_unchecked;
-use super::pattern::Pattern;
-use super::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
 use super::validations::{next_code_point, next_code_point_reverse};
 use super::LinesMap;
 use super::{BytesIsNotEmpty, UnsafeBytesToStr};
