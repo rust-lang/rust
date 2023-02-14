@@ -450,7 +450,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         .into()
                     }
                     (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
-                        let ty = tcx.at(self.span).type_of(param.def_id).subst_identity();
+                        let ty = tcx
+                            .at(self.span)
+                            .type_of(param.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic");
                         if self.astconv.allow_ty_infer() {
                             self.astconv.ct_infer(ty, Some(param), inf.span).into()
                         } else {
@@ -503,7 +507,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         }
                     }
                     GenericParamDefKind::Const { has_default } => {
-                        let ty = tcx.at(self.span).type_of(param.def_id).subst_identity();
+                        let ty = tcx
+                            .at(self.span)
+                            .type_of(param.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic");
                         if ty.references_error() {
                             return tcx.const_error(ty).into();
                         }

@@ -508,7 +508,12 @@ fn clean_generic_param_def<'tcx>(
             GenericParamDefKind::Const {
                 did: def.def_id,
                 ty: Box::new(clean_middle_ty(
-                    ty::Binder::dummy(cx.tcx.type_of(def.def_id).subst_identity()),
+                    ty::Binder::dummy(
+                        cx.tcx
+                            .type_of(def.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic"),
+                    ),
                     cx,
                     Some(def.def_id),
                 )),

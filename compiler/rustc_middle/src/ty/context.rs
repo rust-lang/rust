@@ -2002,7 +2002,9 @@ impl<'tcx> TyCtxt<'tcx> {
             GenericParamDefKind::Const { .. } => self
                 .mk_const(
                     ParamConst { index: param.index, name: param.name },
-                    self.type_of(param.def_id).subst_identity(),
+                    self.type_of(param.def_id)
+                        .no_bound_vars()
+                        .expect("const parameter types cannot be generic"),
                 )
                 .into(),
         }

@@ -1228,7 +1228,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let tcx = self.fcx.tcx();
                         self.fcx
                             .ct_infer(
-                                tcx.type_of(param.def_id).subst_identity(),
+                                tcx.type_of(param.def_id)
+                                    .no_bound_vars()
+                                    .expect("const parameter types cannot be generic"),
                                 Some(param),
                                 inf.span,
                             )

@@ -386,7 +386,9 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         let tcx = self.cfcx.tcx();
                         self.cfcx
                             .ct_infer(
-                                tcx.type_of(param.def_id).subst_identity(),
+                                tcx.type_of(param.def_id)
+                                    .no_bound_vars()
+                                    .expect("const parameter types cannot be generic"),
                                 Some(param),
                                 inf.span,
                             )
