@@ -1,4 +1,4 @@
-# The Rustc Driver and Interface
+# `rustc_driver` and `rustc_interface`
 
 The [`rustc_driver`] is essentially `rustc`'s `main()` function. It acts as
 the glue for running the various phases of the compiler in the correct order,

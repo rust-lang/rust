@@ -75,7 +75,7 @@
 
 - [Prologue](./part-3-intro.md)
 - [Command-line arguments](./cli.md)
-- [The Rustc Driver and Interface](./rustc-driver.md)
+- [rustc_driver and rustc_interface](./rustc-driver.md)
     - [Example: Type checking](./rustc-driver-interacting-with-the-ast.md)
     - [Example: Getting diagnostics](./rustc-driver-getting-diagnostics.md)
 - [Syntax and the AST](./syntax-intro.md)
