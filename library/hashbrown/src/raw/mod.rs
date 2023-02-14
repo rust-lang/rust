@@ -1315,6 +1315,28 @@ impl<A: Allocator + Clone> RawTableInner<A> {
 
     /// Sets a control byte, and possibly also the replicated control byte at
     /// the end of the array.
+    ///
+    /// This function does not make any changes to the `data` parts of the table,
+    /// or any changes to the the `items` or `growth_left` field of the table.
+    ///
+    /// # Safety
+    ///
+    /// You must observe the following safety rules when calling this function:
+    ///
+    /// * The [`RawTableInner`] has already been allocated;
+    ///
+    /// * The `index` must not be greater than the `RawTableInner.bucket_mask`, i.e.
+    ///   `index <= RawTableInner.bucket_mask` or, in other words, `(index + 1)` must
+    ///   be no greater than the number returned by the function [`RawTableInner::buckets`].
+    ///
+    /// Calling this function on a table that has not been allocated results in [`undefined behavior`].
+    ///
+    /// See also [`Bucket::as_ptr`] method, for more information about of properly removing
+    /// or saving `data element` from / into the [`RawTable`] / [`RawTableInner`].
+    ///
+    /// [`RawTableInner::buckets`]: RawTableInner::buckets
+    /// [`Bucket::as_ptr`]: Bucket::as_ptr
+    /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     unsafe fn set_ctrl(&self, index: usize, ctrl: u8) {
         // Replicate the first Group::WIDTH control bytes at the end of
@@ -1335,8 +1357,12 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         // ---------------------------------------------
         // | [A] | [B] | [EMPTY] | [EMPTY] | [A] | [B] |
         // ---------------------------------------------
+
+        // This is the same as `(index.wrapping_sub(Group::WIDTH)) % self.buckets() + Group::WIDTH`
+        // because the number of buckets is a power of two, and `self.bucket_mask = self.buckets() - 1`.
         let index2 = ((index.wrapping_sub(Group::WIDTH)) & self.bucket_mask) + Group::WIDTH;
 
+        // SAFETY: The caller must uphold the safety rules for the [`RawTableInner::set_ctrl`]
         *self.ctrl(index) = ctrl;
         *self.ctrl(index2) = ctrl;
     }
