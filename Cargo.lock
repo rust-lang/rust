@@ -1174,6 +1174,7 @@ dependencies = [
  "limit",
  "rustc-ap-rustc_lexer",
  "sourcegen",
+ "stdx",
 ]
 
 [[package]]

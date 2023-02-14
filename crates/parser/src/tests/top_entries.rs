@@ -65,7 +65,7 @@ fn macro_stmt() {
             MACRO_STMTS
               ERROR
                 SHEBANG "#!/usr/bin/rust"
-            error 0: expected expression
+            error 0: expected expression, item or let statement
         "##]],
     );
     check(

@@ -40,26 +40,28 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         T!['{'],
         T!['['],
         T![|],
-        T![move],
-        T![box],
-        T![if],
-        T![while],
-        T![match],
-        T![unsafe],
-        T![return],
-        T![yield],
-        T![do],
-        T![break],
-        T![continue],
         T![async],
-        T![try],
+        T![box],
+        T![break],
         T![const],
-        T![loop],
+        T![continue],
+        T![do],
         T![for],
+        T![if],
+        T![let],
+        T![loop],
+        T![match],
+        T![move],
+        T![return],
+        T![static],
+        T![try],
+        T![unsafe],
+        T![while],
+        T![yield],
         LIFETIME_IDENT,
     ]));
 
-const EXPR_RECOVERY_SET: TokenSet = TokenSet::new(&[T![let]]);
+pub(super) const EXPR_RECOVERY_SET: TokenSet = TokenSet::new(&[T![')'], T![']']]);
 
 pub(super) fn atom_expr(
     p: &mut Parser<'_>,
@@ -116,7 +118,7 @@ pub(super) fn atom_expr(
                     // fn main() {
                     //     'loop: impl
                     // }
-                    p.error("expected a loop");
+                    p.error("expected a loop or block");
                     m.complete(p, ERROR);
                     return None;
                 }
@@ -157,7 +159,7 @@ pub(super) fn atom_expr(
         T![for] => for_expr(p, None),
 
         _ => {
-            p.err_recover("expected expression", EXPR_RECOVERY_SET);
+            p.err_and_bump("expected expression");
             return None;
         }
     };
