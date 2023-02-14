@@ -414,7 +414,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Linking:
-    gated!(naked, Normal, template!(Word), WarnFollowing, @only_local: true, naked_functions, experimental!(naked)),
+    gated!(
+        naked, Normal, template!(Word), WarnFollowing, @only_local: true,
+        naked_functions, experimental!(naked)
+    ),
 
     // Plugins:
     BuiltinAttribute {
@@ -441,7 +444,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     // RFC #1268
     gated!(
-        marker, Normal, template!(Word), WarnFollowing, marker_trait_attr, experimental!(marker)
+        marker, Normal, template!(Word), WarnFollowing, @only_local: true,
+        marker_trait_attr, experimental!(marker)
     ),
     gated!(
         thread_local, Normal, template!(Word), WarnFollowing,
