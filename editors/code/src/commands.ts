@@ -87,6 +87,12 @@ export function shuffleCrateGraph(ctx: CtxInit): Cmd {
     };
 }
 
+export function triggerParameterHints(_: CtxInit): Cmd {
+    return async () => {
+        await vscode.commands.executeCommand("editor.action.triggerParameterHints");
+    };
+}
+
 export function matchingBrace(ctx: CtxInit): Cmd {
     return async () => {
         const editor = ctx.activeRustEditor;

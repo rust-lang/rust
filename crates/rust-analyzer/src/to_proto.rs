@@ -1360,7 +1360,7 @@ pub(crate) mod command {
     pub(crate) fn trigger_parameter_hints() -> lsp_types::Command {
         lsp_types::Command {
             title: "triggerParameterHints".into(),
-            command: "editor.action.triggerParameterHints".into(),
+            command: "rust-analyzer.triggerParameterHints".into(),
             arguments: None,
         }
     }
