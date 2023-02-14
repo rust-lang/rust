@@ -55,7 +55,7 @@ use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::CrateType;
-use rustc_session::cstore::{CrateStoreDyn, Untracked};
+use rustc_session::cstore::Untracked;
 use rustc_session::lint::Lint;
 use rustc_session::Limit;
 use rustc_session::Session;
