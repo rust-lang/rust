@@ -711,6 +711,7 @@ dependencies = [
  "limit",
  "memchr",
  "once_cell",
+ "oorandom",
  "parser",
  "profile",
  "rayon",
