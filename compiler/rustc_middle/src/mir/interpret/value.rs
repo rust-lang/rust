@@ -322,7 +322,7 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
             Right(ptr) => Ok(ptr.into()),
             Left(bits) => {
                 let addr = u64::try_from(bits).unwrap();
-                Ok(Pointer::from_addr(addr))
+                Ok(Pointer::from_addr_invalid(addr))
             }
         }
     }
