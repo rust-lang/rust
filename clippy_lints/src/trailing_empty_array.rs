@@ -62,7 +62,7 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'_>, item: &Item<'_
 
         // Then check if that that array zero-sized
         let length = Const::from_anon_const(cx.tcx, length.def_id);
-        let length = length.try_eval_usize(cx.tcx, cx.param_env);
+        let length = length.try_eval_target_usize(cx.tcx, cx.param_env);
         if let Some(length) = length;
         then {
             length == 0

@@ -109,7 +109,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
             if let Some(range) = higher::Range::hir(index) {
                 // Ranged indexes, i.e., &x[n..m], &x[n..], &x[..n] and &x[..]
                 if let ty::Array(_, s) = ty.kind() {
-                    let size: u128 = if let Some(size) = s.try_eval_usize(cx.tcx, cx.param_env) {
+                    let size: u128 = if let Some(size) = s.try_eval_target_usize(cx.tcx, cx.param_env) {
                         size.into()
                     } else {
                         return;
