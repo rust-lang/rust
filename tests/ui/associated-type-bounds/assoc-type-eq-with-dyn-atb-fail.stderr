@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `String: Copy` is not satisfied
-  --> $DIR/assoc-type-eq-with-dyn-atb-fail.rs:32:18
+  --> $DIR/assoc-type-eq-with-dyn-atb-fail.rs:33:18
    |
 LL |     fn func() -> Self::Out {
    |                  ^^^^^^^^^ the trait `Copy` is not implemented for `String`

@@ -9,6 +9,7 @@
 // we check that the spans for the error message are sane here.
 
 #![feature(associated_type_bounds)]
+#![feature(type_alias_impl_trait)]
 
 fn main() {}
 

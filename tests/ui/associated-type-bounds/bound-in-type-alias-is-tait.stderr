@@ -1,0 +1,21 @@
+error[E0658]: associated type bounds are unstable in this position
+  --> $DIR/bound-in-type-alias-is-tait.rs:7:18
+   |
+LL | type X = dyn Foo<Assoc: Send>;
+   |                  ^^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = help: the bound lowers to a type alias `impl Trait` here, which is unstable
+
+error: unconstrained opaque type
+  --> $DIR/bound-in-type-alias-is-tait.rs:7:18
+   |
+LL | type X = dyn Foo<Assoc: Send>;
+   |                  ^^^^^^^^^^^
+   |
+   = note: `X` must be used in combination with a concrete type within the same module
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

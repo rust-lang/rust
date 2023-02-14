@@ -133,6 +133,18 @@ impl<'a> PostExpansionVisitor<'a> {
                 }
                 visit::walk_ty(self, ty);
             }
+            fn visit_assoc_constraint(&mut self, constraint: &AssocConstraint) {
+                if let AssocConstraintKind::Bound { .. } = constraint.kind {
+                    gate_feature_post!(
+                        &self.vis,
+                        type_alias_impl_trait,
+                        constraint.span,
+                        "associated type bounds are unstable in this position",
+                        "the bound lowers to a type alias `impl Trait` here, which is unstable"
+                    )
+                }
+                visit::walk_assoc_constraint(self, constraint)
+            }
         }
         ImplTraitVisitor { vis: self }.visit_ty(ty);
     }
