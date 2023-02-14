@@ -270,6 +270,23 @@ impl AllocRange {
 
 // The constructors are all without extra; the extra gets added by a machine hook later.
 impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
+    /// Creates an allocation from an existing `Bytes` value - this is needed for miri FFI support
+    pub fn from_raw_bytes<'a>(
+        bytes: Bytes,
+        align: Align,
+        mutability: Mutability,
+    ) -> Self {
+        let size = Size::from_bytes(bytes.len());
+        Self {
+            bytes,
+            provenance: ProvenanceMap::new(),
+            init_mask: InitMask::new(size, true),
+            align,
+            mutability,
+            extra: (),
+        }
+    }
+
     /// Creates an allocation initialized by the given bytes
     pub fn from_bytes<'a>(
         slice: impl Into<Cow<'a, [u8]>>,
