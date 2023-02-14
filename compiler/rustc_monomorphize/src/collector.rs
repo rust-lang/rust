@@ -1191,8 +1191,8 @@ impl<'v> RootCollector<'_, 'v> {
     fn process_item(&mut self, id: hir::ItemId) {
         match self.tcx.def_kind(id.owner_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union => {
-                if self.tcx.generics_of(id.owner_id).count() == 0
-                    && self.mode == MonoItemCollectionMode::Eager
+                if self.mode == MonoItemCollectionMode::Eager
+                    && self.tcx.generics_of(id.owner_id).count() == 0
                 {
                     debug!("RootCollector: ADT drop-glue for `{id:?}`",);
 

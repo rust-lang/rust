@@ -38,7 +38,6 @@ fn do_orphan_check_impl<'tcx>(
     def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
     let trait_def_id = trait_ref.def_id;
-    let sp = tcx.def_span(def_id);
 
     match traits::orphan_check(tcx, def_id.to_def_id()) {
         Ok(()) => {}
@@ -48,6 +47,7 @@ fn do_orphan_check_impl<'tcx>(
                 bug!("{:?} is not an impl: {:?}", def_id, item);
             };
             let tr = impl_.of_trait.as_ref().unwrap();
+            let sp = tcx.def_span(def_id);
 
             emit_orphan_check_error(
                 tcx,
@@ -237,7 +237,10 @@ fn do_orphan_check_impl<'tcx>(
             | ty::GeneratorWitnessMIR(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
-            | ty::Infer(..) => span_bug!(sp, "weird self type for autotrait impl"),
+            | ty::Infer(..) => {
+                let sp = tcx.def_span(def_id);
+                span_bug!(sp, "weird self type for autotrait impl")
+            }
 
             ty::Error(..) => (LocalImpl::Allow, NonlocalImpl::Allow),
         };
@@ -256,6 +259,7 @@ fn do_orphan_check_impl<'tcx>(
                                 is one of the trait object's trait bounds",
                         trait = tcx.def_path_str(trait_def_id),
                     );
+                    let sp = tcx.def_span(def_id);
                     let reported =
                         struct_span_err!(tcx.sess, sp, E0321, "{}", msg).note(label).emit();
                     return Err(reported);
@@ -284,6 +288,7 @@ fn do_orphan_check_impl<'tcx>(
                             non-struct/enum type",
                 )),
             } {
+                let sp = tcx.def_span(def_id);
                 let reported =
                     struct_span_err!(tcx.sess, sp, E0321, "{}", msg).span_label(sp, label).emit();
                 return Err(reported);
