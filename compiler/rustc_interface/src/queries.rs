@@ -13,7 +13,7 @@ use rustc_incremental::DepGraphFuture;
 use rustc_lint::LintStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
+use rustc_middle::ty::{self, GlobalCtxt, TyCtxt};
 use rustc_query_impl::Queries as TcxQueries;
 use rustc_resolve::Resolver;
 use rustc_session::config::{self, OutputFilenames, OutputType};
@@ -88,7 +88,6 @@ pub struct Queries<'tcx> {
     parse: Query<ast::Crate>,
     crate_name: Query<Symbol>,
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
-    expansion: Query<(Lrc<ast::Crate>, ResolverOutputs, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
     // This just points to what's in `gcx_cell`.
     gcx: Query<&'tcx GlobalCtxt<'tcx>>,
@@ -107,7 +106,6 @@ impl<'tcx> Queries<'tcx> {
             parse: Default::default(),
             crate_name: Default::default(),
             register_plugins: Default::default(),
-            expansion: Default::default(),
             dep_graph: Default::default(),
             gcx: Default::default(),
             ongoing_codegen: Default::default(),
@@ -169,30 +167,6 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn expansion(
-        &self,
-    ) -> Result<QueryResult<'_, (Lrc<ast::Crate>, ResolverOutputs, Lrc<LintStore>)>> {
-        trace!("expansion");
-        self.expansion.compute(|| {
-            let crate_name = *self.crate_name()?.borrow();
-            let (krate, lint_store) = self.register_plugins()?.steal();
-            let _timer = self.session().timer("configure_and_expand");
-            let sess = self.session();
-
-            let arenas = Resolver::arenas();
-            let mut resolver = Resolver::new(
-                sess,
-                &krate,
-                crate_name,
-                self.codegen_backend().metadata_loader(),
-                &arenas,
-            );
-            let krate =
-                passes::configure_and_expand(sess, &lint_store, krate, crate_name, &mut resolver)?;
-            Ok((Lrc::new(krate), resolver.into_outputs(), lint_store))
-        })
-    }
-
     fn dep_graph(&self) -> Result<QueryResult<'_, DepGraph>> {
         self.dep_graph.compute(|| {
             let sess = self.session();
@@ -212,7 +186,28 @@ impl<'tcx> Queries<'tcx> {
     pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
         self.gcx.compute(|| {
             let crate_name = *self.crate_name()?.borrow();
-            let (krate, resolver_outputs, lint_store) = self.expansion()?.steal();
+            let (krate, resolver_outputs, lint_store) = {
+                let (krate, lint_store) = self.register_plugins()?.steal();
+                let _timer = self.session().timer("configure_and_expand");
+                let sess = self.session();
+
+                let arenas = Resolver::arenas();
+                let mut resolver = Resolver::new(
+                    sess,
+                    &krate,
+                    crate_name,
+                    self.codegen_backend().metadata_loader(),
+                    &arenas,
+                );
+                let krate = passes::configure_and_expand(
+                    sess,
+                    &lint_store,
+                    krate,
+                    crate_name,
+                    &mut resolver,
+                )?;
+                (Lrc::new(krate), resolver.into_outputs(), lint_store)
+            };
 
             let ty::ResolverOutputs {
                 untracked,
