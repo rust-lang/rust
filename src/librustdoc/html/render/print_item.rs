@@ -10,7 +10,7 @@ use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{self, Adt, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_target::abi::{LayoutS, Primitive, TagEncoding, VariantIdx, Variants};
+use rustc_target::abi::{LayoutS, Primitive, TagEncoding, Variants};
 use std::cmp::Ordering;
 use std::fmt;
 use std::rc::Rc;
@@ -1833,7 +1833,7 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
 }
 
 fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
-    fn write_size_of_layout(w: &mut Buffer, layout: &LayoutS<VariantIdx>, tag_size: u64) {
+    fn write_size_of_layout(w: &mut Buffer, layout: &LayoutS, tag_size: u64) {
         if layout.abi.is_unsized() {
             write!(w, "(unsized)");
         } else {
