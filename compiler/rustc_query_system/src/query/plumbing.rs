@@ -257,10 +257,6 @@ where
         // Forget ourself so our destructor won't poison the query
         mem::forget(self);
 
-        // Mark as complete before we remove the job from the active state
-        // so no other thread can re-execute this query.
-        cache.complete(key.clone(), result, dep_node_index);
-
         let job = {
             #[cfg(parallel_compiler)]
             let mut lock = state.active.get_shard_by_value(&key).lock();
@@ -271,6 +267,7 @@ where
                 QueryResult::Poisoned => panic!(),
             }
         };
+        cache.complete(key, result, dep_node_index);
 
         job.signal_complete();
     }
