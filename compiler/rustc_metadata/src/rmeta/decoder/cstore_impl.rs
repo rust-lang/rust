@@ -16,7 +16,7 @@ use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, TyCtxt, Visibility};
-use rustc_session::cstore::{CrateSource, CrateStore};
+use rustc_session::cstore::CrateStore;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::source_map::{Span, Spanned};
@@ -562,10 +562,6 @@ impl CStore {
         self.get_crate_data(def.krate).get_fn_has_self_parameter(def.index, sess)
     }
 
-    pub fn crate_source_untracked(&self, cnum: CrateNum) -> Lrc<CrateSource> {
-        self.get_crate_data(cnum).source.clone()
-    }
-
     pub fn get_span_untracked(&self, def_id: DefId, sess: &Session) -> Span {
         self.get_crate_data(def_id.krate).get_span(def_id.index, sess)
     }
@@ -574,7 +570,7 @@ impl CStore {
         self.get_crate_data(def.krate).def_kind(def.index)
     }
 
-    pub fn crates_untracked(&self) -> impl Iterator<Item = CrateNum> + '_ {
+    fn crates_untracked(&self) -> impl Iterator<Item = CrateNum> + '_ {
         self.iter_crate_data().map(|(cnum, _)| cnum)
     }
 
