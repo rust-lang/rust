@@ -50,7 +50,7 @@ impl OverflowData {
     }
 }
 
-pub(crate) trait OverflowHandler<'tcx> {
+pub(in crate::solve) trait OverflowHandler<'tcx> {
     fn search_graph(&mut self) -> &mut SearchGraph<'tcx>;
 
     fn repeat_while_none<T>(

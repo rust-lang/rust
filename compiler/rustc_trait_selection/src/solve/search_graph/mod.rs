@@ -1,9 +1,9 @@
 mod cache;
-pub(crate) mod overflow;
+mod overflow;
 
 use self::cache::ProvisionalEntry;
 use super::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
-use crate::solve::search_graph::overflow::OverflowHandler;
+pub(super) use crate::solve::search_graph::overflow::OverflowHandler;
 use cache::ProvisionalCache;
 use overflow::OverflowData;
 use rustc_index::vec::IndexVec;
@@ -14,12 +14,12 @@ rustc_index::newtype_index! {
     pub struct StackDepth {}
 }
 
-pub(crate) struct StackElem<'tcx> {
+struct StackElem<'tcx> {
     goal: CanonicalGoal<'tcx>,
     has_been_used: bool,
 }
 
-pub(crate) struct SearchGraph<'tcx> {
+pub(super) struct SearchGraph<'tcx> {
     /// The stack of goals currently being computed.
     ///
     /// An element is *deeper* in the stack if its index is *lower*.
@@ -47,7 +47,7 @@ impl<'tcx> SearchGraph<'tcx> {
     ///
     /// This correctly updates the provisional cache if there is a cycle.
     #[instrument(level = "debug", skip(self, tcx), ret)]
-    pub(super) fn try_push_stack(
+    fn try_push_stack(
         &mut self,
         tcx: TyCtxt<'tcx>,
         goal: CanonicalGoal<'tcx>,
@@ -122,7 +122,7 @@ impl<'tcx> SearchGraph<'tcx> {
     ///
     /// FIXME: Refer to the rustc-dev-guide entry once it exists.
     #[instrument(level = "debug", skip(self, tcx, actual_goal), ret)]
-    pub(super) fn try_finalize_goal(
+    fn try_finalize_goal(
         &mut self,
         tcx: TyCtxt<'tcx>,
         actual_goal: CanonicalGoal<'tcx>,
@@ -163,7 +163,7 @@ impl<'tcx> SearchGraph<'tcx> {
         }
     }
 
-    pub(super) fn try_move_finished_goal_to_global_cache(
+    fn try_move_finished_goal_to_global_cache(
         &mut self,
         tcx: TyCtxt<'tcx>,
         stack_elem: StackElem<'tcx>,
