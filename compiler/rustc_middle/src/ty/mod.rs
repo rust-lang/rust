@@ -2301,6 +2301,16 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    pub fn trait_method(self, trait_def_id: DefId, method_name: Symbol) -> DefId {
+        // The unhygienic comparison here is acceptable because this is only
+        // used on known traits.
+        self.associated_items(trait_def_id)
+            .filter_by_name_unhygienic(method_name)
+            .find(|item| item.kind == ty::AssocKind::Fn)
+            .expect("trait method not found")
+            .def_id
+    }
+
     // FIXME(@lcnr): Remove this function.
     pub fn get_attrs_unchecked(self, did: DefId) -> &'tcx [ast::Attribute] {
         if let Some(did) = did.as_local() {

@@ -837,15 +837,9 @@ fn trait_method<'tcx>(
     method_name: Symbol,
     substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
 ) -> ConstantKind<'tcx> {
-    // The unhygienic comparison here is acceptable because this is only
-    // used on known traits.
-    let item = tcx
-        .associated_items(trait_def_id)
-        .filter_by_name_unhygienic(method_name)
-        .find(|item| item.kind == ty::AssocKind::Fn)
-        .expect("trait method not found");
+    let def_id = tcx.trait_method(trait_def_id, method_name);
 
-    let method_ty = tcx.mk_fn_def(item.def_id, substs);
+    let method_ty = tcx.mk_fn_def(def_id, substs);
 
     ConstantKind::zero_sized(method_ty)
 }
