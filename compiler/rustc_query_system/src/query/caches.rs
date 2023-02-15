@@ -92,7 +92,7 @@ where
         let mut lock = self.cache.lock();
         // We may be overwriting another value. This is all right, since the dep-graph
         // will check that the fingerprint matches.
-        lock.insert(key, (value.clone(), index));
+        lock.insert(key, (value, index));
         value
     }
 
@@ -153,7 +153,7 @@ where
 
     #[inline]
     fn complete(&self, _key: (), value: V, index: DepNodeIndex) -> Self::Stored {
-        *self.cache.lock() = Some((value.clone(), index));
+        *self.cache.lock() = Some((value, index));
         value
     }
 
@@ -283,7 +283,7 @@ where
         let mut lock = self.cache.get_shard_by_hash(key.index() as u64).lock();
         #[cfg(not(parallel_compiler))]
         let mut lock = self.cache.lock();
-        lock.insert(key, (value.clone(), index));
+        lock.insert(key, (value, index));
         value
     }
 
