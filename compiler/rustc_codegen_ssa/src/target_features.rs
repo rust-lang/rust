@@ -286,6 +286,7 @@ const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("mutable-globals", Some(sym::wasm_target_feature)),
     ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
     ("reference-types", Some(sym::wasm_target_feature)),
+    ("relaxed-simd", Some(sym::wasm_target_feature)),
     ("sign-ext", Some(sym::wasm_target_feature)),
     ("simd128", None),
     // tidy-alphabetical-end
