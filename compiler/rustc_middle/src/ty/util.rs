@@ -167,7 +167,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 | DefKind::Fn
                 | DefKind::AssocFn
                 | DefKind::AssocConst
-                | DefKind::Impl,
+                | DefKind::Impl { .. },
                 def_id,
             ) => Some(def_id),
             Res::Err => None,

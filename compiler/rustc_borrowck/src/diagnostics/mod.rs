@@ -1182,13 +1182,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
                     }
                     let parent_did = tcx.parent(method_did);
-                    let parent_self_ty = (tcx.def_kind(parent_did)
-                        == rustc_hir::def::DefKind::Impl)
-                        .then_some(parent_did)
-                        .and_then(|did| match tcx.type_of(did).kind() {
-                            ty::Adt(def, ..) => Some(def.did()),
-                            _ => None,
-                        });
+                    let parent_self_ty =
+                        matches!(tcx.def_kind(parent_did), rustc_hir::def::DefKind::Impl { .. })
+                            .then_some(parent_did)
+                            .and_then(|did| match tcx.type_of(did).kind() {
+                                ty::Adt(def, ..) => Some(def.did()),
+                                _ => None,
+                            });
                     let is_option_or_result = parent_self_ty.map_or(false, |def_id| {
                         matches!(tcx.get_diagnostic_name(def_id), Some(sym::Option | sym::Result))
                     });

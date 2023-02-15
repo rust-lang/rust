@@ -202,8 +202,7 @@ fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'_>, impl_did: LocalDefId)
 fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}", impl_did);
 
-    let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_did);
-    let span = tcx.hir().span(impl_hir_id);
+    let span = tcx.def_span(impl_did);
 
     let dispatch_from_dyn_trait = tcx.require_lang_item(LangItem::DispatchFromDyn, Some(span));
 
