@@ -55,5 +55,13 @@ LL |     fn unused_ty_impl<T>(&self) {}
    |
    = help: consider removing the parameter
 
-error: aborting due to 7 previous errors
+error: type parameters go unused in function definition
+  --> $DIR/extra_unused_type_parameters.rs:74:17
+   |
+LL | fn unused_opaque<A, B>(dummy: impl Default) {}
+   |                 ^^^^^^
+   |
+   = help: consider removing the parameters
+
+error: aborting due to 8 previous errors
 
