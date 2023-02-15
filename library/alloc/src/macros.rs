@@ -125,14 +125,32 @@ macro_rules! __rust_force_expr {
     };
 }
 
-// ----- CoAlloc constant-like macros:
+// ----- CoAlloc ICE workaround macro:
+/// This "validates" type of a given `const` expression, and it casts it. That helps to prevent mix ups with macros/integer constant values.
+#[doc(hidden)]
+#[macro_export]
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]macro_rules! check_type_and_cast {
+    // Use the following for compile-time/build check only. And use it
+    // with a hard-coded `0` version of `meta_num_slots` - otherwise you get an ICE.
+    // 
+    /*($e:expr, $t_check:ty, $t_cast:ty) => {
+        ($e + 0 as $t_check) as $t_cast
+    }*/
+    // Use the following to build for testing/using, while rustc causes an ICE with the above and
+    // with a full version of `meta_num_slots`.
+    ($e:expr, $t_check:ty, $t_cast:ty) => {
+        $e
+    }
+}
 
+// ----- CoAlloc constant-like macros:
 /// Coallocation option/parameter about using metadata that does prefer to use meta data. This is of type [::alloc::co_alloc::CoAllocMetaNumSlotsPref] (but not a whole []::alloc::co_alloc::CoAllocPref]).
+#[doc(hidden)]
 #[unstable(feature = "global_co_alloc_meta", issue = "none")]
 #[macro_export]
 macro_rules! CO_ALLOC_PREF_NUM_META_SLOTS_ONE {
     () => {
-        (1 as $crate::co_alloc::CoAllocMetaNumSlotsPref)
+        $crate::check_type_and_cast!(1, i32, $crate::co_alloc::CoAllocMetaNumSlotsPref)
     };
 }
 
@@ -141,7 +159,7 @@ macro_rules! CO_ALLOC_PREF_NUM_META_SLOTS_ONE {
 #[macro_export]
 macro_rules! CO_ALLOC_PREF_NUM_META_SLOTS_ZERO {
     () => {
-        (0 as $crate::co_alloc::CoAllocMetaNumSlotsPref)
+        $crate::check_type_and_cast!(0, i32, $crate::co_alloc::CoAllocMetaNumSlotsPref)
     };
 }
 
@@ -150,7 +168,7 @@ macro_rules! CO_ALLOC_PREF_NUM_META_SLOTS_ZERO {
 #[macro_export]
 macro_rules! CO_ALLOC_PREF_NUM_META_SLOTS_DEFAULT {
     () => {
-        (0 as $crate::co_alloc::CoAllocMetaNumSlotsPref)
+        $crate::check_type_and_cast!(0, i32, $crate::co_alloc::CoAllocMetaNumSlotsPref)
     };
 }
 
@@ -167,6 +185,7 @@ macro_rules! CO_ALLOC_PREF_NUM_META_SLOTS_DEFAULT {
 #[macro_export]
 macro_rules! CO_ALLOC_PREF_META_YES {
     () => {
+        //1usize
         $crate::co_alloc_pref!($crate::CO_ALLOC_PREF_NUM_META_SLOTS_ONE!())
     };
 }
@@ -184,6 +203,7 @@ macro_rules! CO_ALLOC_PREF_META_YES {
 #[macro_export]
 macro_rules! CO_ALLOC_PREF_META_NO {
     () => {
+        //0usize
         $crate::co_alloc_pref!($crate::CO_ALLOC_PREF_NUM_META_SLOTS_ZERO!())
     };
 }
@@ -202,6 +222,7 @@ macro_rules! CO_ALLOC_PREF_META_NO {
 #[macro_export]
 macro_rules! CO_ALLOC_PREF_META_DEFAULT {
     () => {
+        //0usize
         $crate::co_alloc_pref!($crate::CO_ALLOC_PREF_NUM_META_SLOTS_DEFAULT!())
     };
 }
@@ -211,6 +232,7 @@ macro_rules! CO_ALLOC_PREF_META_DEFAULT {
 #[macro_export]
 macro_rules! CO_ALLOC_PREF_DEFAULT {
     () => {
+        //0usize
         $crate::CO_ALLOC_PREF_META_DEFAULT!()
     };
 }
@@ -221,6 +243,7 @@ macro_rules! CO_ALLOC_PREF_DEFAULT {
 #[macro_export]
 macro_rules! SHORT_TERM_VEC_CO_ALLOC_PREF {
     () => {
+        //0usize
         $crate::CO_ALLOC_PREF_META_NO!()
     };
 }
@@ -242,8 +265,8 @@ macro_rules! co_alloc_pref {
     // report the incorrect type of $meta_pref (if $meta_pref were some other integer, casting would
     // compile, and we would not be notified).
     ($meta_pref:expr) => {
-        (($meta_pref + (0 as $crate::co_alloc::CoAllocMetaNumSlotsPref))
-            as $crate::co_alloc::CoAllocPref)
+        $crate::check_type_and_cast!($meta_pref,$crate::co_alloc::CoAllocMetaNumSlotsPref,
+            $crate::co_alloc::CoAllocPref)
     };
 }
 
@@ -267,18 +290,29 @@ macro_rules! co_alloc_pref {
 #[unstable(feature = "global_co_alloc", issue = "none")]
 #[macro_export]
 macro_rules! meta_num_slots {
-    // Generating, for example, (0 as usize), here, triggers an ICE.
-
-    // This "validates" types of both params - to prevent mix ups.
-    // @FIXME remove this comment line: Removing/commenting out the part: <$alloc as ::core::alloc::Allocator>::CO_ALLOC_META_NUM_SLOTS +
-    // does NOT fix the ICE (unless there are multiple ICE's).
+    // @FIXME Use this only
+    // - once the ICE gets fixed, or
+    // - (until the ICE is fixed) with a related change in `check_type_and_cast` that makes it pass
+    // the given expression (parameter) unchecked & uncast.
+    /*($alloc:ty, $co_alloc_pref:expr) => {
+        $crate::check_type_and_cast!(<$alloc as ::core::alloc::Allocator>::CO_ALLOC_META_NUM_SLOTS,::core::alloc::CoAllocatorMetaNumSlots,
+        usize) *
+        $crate::check_type_and_cast!($co_alloc_pref, $crate::co_alloc::CoAllocPref, usize)
+    };*/
+    // Use for testing & production, until ICE gets fixed. (Regardless of $co_alloc_pref.)
+    //
+    // Why still ICE?!
     ($alloc:ty, $co_alloc_pref:expr) => {
-        /*(
-            ((<$alloc as ::core::alloc::Allocator>::CO_ALLOC_META_NUM_SLOTS + (0 as ::core::alloc::CoAllocatorMetaNumSlots))0
-            as usize)
-        * ($co_alloc_pref + (0 as $crate::co_alloc::CoAllocPref))
-         as usize)*/0usize
-    };
+        // The following fails here - even if not used from meta_num_slots_default nor from meta_num_slots_global!
+        //<$alloc as ::core::alloc::Allocator>::CO_ALLOC_META_NUM_SLOTS
+        //<$crate::alloc::Global as ::core::alloc::Allocator>::CO_ALLOC_META_NUM_SLOTS
+        //1usize
+        $co_alloc_pref
+    }
+    // Use for testing & production as enforcing no meta.
+    /*($alloc:ty, $co_alloc_pref:expr) => {
+        0usize // compiles
+    }*/
 }
 // -\---> replace with something like:
 /*
@@ -304,7 +338,10 @@ macro_rules! meta_num_slots_default {
     // Can't generate if ... {1} else {0}
     // because it's "overly complex generic constant".
     ($alloc:ty) => {
+        // EITHER of the following are OK here
         $crate::meta_num_slots!($alloc, $crate::CO_ALLOC_PREF_DEFAULT!())
+        //<$alloc as ::core::alloc::Allocator>::CO_ALLOC_META_NUM_SLOTS
+        //<$crate::alloc::Global as ::core::alloc::Allocator>::CO_ALLOC_META_NUM_SLOTS
     };
 }
 
@@ -320,10 +357,13 @@ macro_rules! meta_num_slots_default {
 #[macro_export]
 macro_rules! meta_num_slots_global {
     ($co_alloc_pref:expr) => {
+        // EITHER of the following are OK here
         $crate::meta_num_slots!($crate::alloc::Global, $co_alloc_pref)
+        // The following is OK here:
+        //<$crate::alloc::Global as ::core::alloc::Allocator>::CO_ALLOC_META_NUM_SLOTS
     };
 }
-
+/*
 /// Like `meta_num_slots`, but for `Global allocator and default coallocation preference
 /// (`CO_ALLOC_PREF_DEFAULT`).
 ///
@@ -336,3 +376,4 @@ macro_rules! meta_num_slots_default_global {
         $crate::meta_num_slots!($crate::alloc::Global, $crate::CO_ALLOC_PREF_DEFAULT!())
     };
 }
+*/
