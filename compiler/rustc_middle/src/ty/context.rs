@@ -149,7 +149,7 @@ pub struct CtxtInterners<'tcx> {
     const_: InternedSet<'tcx, ConstData<'tcx>>,
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
-    layout: InternedSet<'tcx, LayoutS<VariantIdx>>,
+    layout: InternedSet<'tcx, LayoutS>,
     adt_def: InternedSet<'tcx, AdtDefData>,
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<'tcx>>,
 }
@@ -1520,7 +1520,7 @@ direct_interners! {
     region: mk_region(RegionKind<'tcx>): Region -> Region<'tcx>,
     const_: mk_const_internal(ConstData<'tcx>): Const -> Const<'tcx>,
     const_allocation: intern_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
-    layout: intern_layout(LayoutS<VariantIdx>): Layout -> Layout<'tcx>,
+    layout: intern_layout(LayoutS): Layout -> Layout<'tcx>,
     adt_def: intern_adt_def(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: intern_external_constraints(ExternalConstraintsData<'tcx>): ExternalConstraints -> ExternalConstraints<'tcx>,
 }
