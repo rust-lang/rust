@@ -466,10 +466,8 @@ impl<'a> PeekIter<'a> {
     }
     /// Returns the next item after the current one. It doesn't interfere with `peek_next` output.
     fn peek(&mut self) -> Option<&(TokenKind, &'a str)> {
-        if self.stored.is_empty() {
-            if let Some(next) = self.iter.next() {
-                self.stored.push_back(next);
-            }
+        if self.stored.is_empty() && let Some(next) = self.iter.next() {
+            self.stored.push_back(next);
         }
         self.stored.front()
     }
