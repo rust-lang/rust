@@ -420,7 +420,7 @@ where
 /// Read is implemented for `VecDeque<u8>` by consuming bytes from the front of the `VecDeque`.
 #[stable(feature = "vecdeque_read_write", since = "1.63.0")]
 #[allow(unused_braces)]
-impl<A: Allocator, const _CO_ALLOC_PREF: CoAllocPref> Read for VecDeque<u8, A, _CO_ALLOC_PREF>
+impl<A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Read for VecDeque<u8, A, CO_ALLOC_PREF>
 where
     [(); { meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
@@ -448,7 +448,7 @@ where
 /// Write is implemented for `VecDeque<u8>` by appending to the `VecDeque`, growing it as needed.
 #[stable(feature = "vecdeque_read_write", since = "1.63.0")]
 #[allow(unused_braces)]
-impl<A: Allocator, const _CO_ALLOC_PREF: CoAllocPref> Write for VecDeque<u8, A, _CO_ALLOC_PREF>
+impl<A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Write for VecDeque<u8, A, CO_ALLOC_PREF>
 where
     [(); { meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {

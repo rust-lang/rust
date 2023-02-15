@@ -629,7 +629,7 @@ impl<T> [T] {
     #[inline]
     #[allow(unused_braces)]
     pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A>
-    where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:
+    where [(); { crate::meta_num_slots_default!(A) }]:
     {
         // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)
@@ -986,7 +986,7 @@ where
 #[cfg(not(no_global_oom_handling))]
 #[allow(unused_braces)]
 pub(crate) trait SpecCloneIntoVec<T, A: Allocator>
-where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:
+where [(); { crate::meta_num_slots_default!(A) }]:
 {
     fn clone_into(&self, target: &mut Vec<T, A>);
 }
@@ -994,7 +994,7 @@ where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:
 #[cfg(not(no_global_oom_handling))]
 #[allow(unused_braces)]
 impl<T: Clone, A: Allocator> SpecCloneIntoVec<T, A> for [T]
-where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:
+where [(); { crate::meta_num_slots_default!(A) }]:
 {
     default fn clone_into(&self, target: &mut Vec<T, A>) {
         // drop anything in target that will not be overwritten
@@ -1013,7 +1013,7 @@ where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:
 #[cfg(not(no_global_oom_handling))]
 #[allow(unused_braces)]
 impl<T: Copy, A: Allocator> SpecCloneIntoVec<T, A> for [T]
-where [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:
+where [(); { crate::meta_num_slots_default!(A) }]:
 {
     fn clone_into(&self, target: &mut Vec<T, A>) {
         target.clear();
