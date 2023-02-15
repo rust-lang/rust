@@ -792,8 +792,27 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       toreturn->setDebugLoc(getNewFromOriginal(load->getDebugLoc()));
     toreturn->setMetadata(LLVMContext::MD_tbaa,
                           load->getMetadata(LLVMContext::MD_tbaa));
-    toreturn->setMetadata(LLVMContext::MD_invariant_group,
-                          load->getMetadata(LLVMContext::MD_invariant_group));
+    auto invar_group = load->getMetadata(LLVMContext::MD_invariant_group);
+    if (!invar_group) {
+      bool legal = true;
+      if (load->getParent()->getParent() != newFunc)
+        legal = false;
+      else if (auto norig = isOriginal(load))
+        for (const auto &pair : rematerializableAllocations) {
+          for (auto V : pair.second.loads)
+            if (V == norig) {
+              legal = false;
+              break;
+            }
+          if (!legal)
+            break;
+        }
+      if (legal) {
+        invar_group = MDNode::getDistinct(load->getContext(), {});
+        load->setMetadata(LLVMContext::MD_invariant_group, invar_group);
+      }
+    }
+    toreturn->setMetadata(LLVMContext::MD_invariant_group, invar_group);
     // TODO adding to cache only legal if no alias of any future writes
     if (permitCache)
       unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] = toreturn;

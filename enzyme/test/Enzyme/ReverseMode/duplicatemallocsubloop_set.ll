@@ -129,16 +129,16 @@ attributes #9 = { nounwind }
 ; CHECK-NEXT:   %_unwrap = trunc i64 %"iv'ac.0" to i32
 ; CHECK-NEXT:   %"a13'ipg_unwrap" = getelementptr inbounds double, double* %"a0'", i32 %_unwrap
 ; CHECK-NEXT:   %2 = load double, double* %"a13'ipg_unwrap", align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %"a13'ipg_unwrap", align 8, !alias.scope !11, !noalias !14
+; CHECK-NEXT:   store double 0.000000e+00, double* %"a13'ipg_unwrap", align 8, !alias.scope ![[scope11:[0-9]+]], !noalias ![[scope14:[0-9]+]]
 ; CHECK-NEXT:   %a6_unwrap = bitcast i8* %remat_a5 to double*
 ; CHECK-NEXT:   %"a6'ipc_unwrap" = bitcast i8* %"a5'mi" to double*
 ; CHECK-NEXT:   call void @diffef(double* %a6_unwrap, double* %"a6'ipc_unwrap", double %2)
-; CHECK-NEXT:   %3 = load double, double* %"a6'ipc_unwrap", align 8, !noalias !10
-; CHECK-NEXT:   store double 0.000000e+00, double* %"a6'ipc_unwrap", align 8, !alias.scope !16, !noalias !19
+; CHECK-NEXT:   %3 = load double, double* %"a6'ipc_unwrap", align 8, !noalias ![[scope10:[0-9]+]]
+; CHECK-NEXT:   store double 0.000000e+00, double* %"a6'ipc_unwrap", align 8, !alias.scope ![[scope16:[0-9]+]], !noalias ![[scope19:[0-9]+]]
 ; CHECK-NEXT:   %"a10'ipg_unwrap" = getelementptr inbounds double, double* %"a1'", i32 %_unwrap
-; CHECK-NEXT:   %4 = load double, double* %"a10'ipg_unwrap", align 8, !alias.scope !21, !noalias !24
+; CHECK-NEXT:   %4 = load double, double* %"a10'ipg_unwrap", align 8, !alias.scope ![[scope21:[0-9]+]], !noalias ![[scope24:[0-9]+]]
 ; CHECK-NEXT:   %5 = fadd fast double %4, %3
-; CHECK-NEXT:   store double %5, double* %"a10'ipg_unwrap", align 8, !alias.scope !21, !noalias !24
+; CHECK-NEXT:   store double %5, double* %"a10'ipg_unwrap", align 8, !alias.scope ![[scope21]], !noalias ![[scope24]]
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* %"a5'mi", i8 0, i64 8, i1 false)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"a5'mi")
 ; CHECK-NEXT:   tail call void @free(i8* %remat_a5)

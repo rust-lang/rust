@@ -139,7 +139,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK: for.body4.lr.ph:                                  ; preds = %for.cond1.preheader
 ; CHECK-NEXT:   %[[a3:.+]] = load i32, i32* %N, align 4, !tbaa !2
 ; CHECK-NEXT:   %[[a4:.+]] = getelementptr inbounds i32, i32* %[[malloccache12]], i64 %iv
-; CHECK-NEXT:   store i32 %[[a3]], i32* %[[a4]], align 4, !tbaa !2, !invariant.group !8
+; CHECK-NEXT:   store i32 %[[a3]], i32* %[[a4]], align 4, !tbaa !2, !invariant.group ![[INVG:[0-9]+]]
 ; CHECK-NEXT:   %[[a5:.+]] = sext i32 %[[a3]] to i64
 ; CHECK-NEXT:   br label %for.body4
 
@@ -212,7 +212,7 @@ attributes #9 = { noreturn nounwind }
 
 ; CHECK: invertfor.cond.cleanup3.loopexit:                 ; preds = %invertfor.cond.cleanup3
 ; CHECK-NEXT:   %[[a25:.+]] = getelementptr inbounds i32, i32* %[[malloccache12]], i64 %"iv'ac.0"
-; CHECK-NEXT:   %[[a26:.+]] = load i32, i32* %[[a25]], align 4, !tbaa !2, !invariant.group !8
+; CHECK-NEXT:   %[[a26:.+]] = load i32, i32* %[[a25]], align 4, !tbaa !2, !invariant.group ![[INVG]]
 ; CHECK-NEXT:   %[[_unwrap17:.+]] = sext i32 %[[a26]] to i64
 ; TODO-CHECK-NEXT:   %[[_unwrap14:.+]] = icmp sgt i64 %[[_unwrap17]], 1
 ; TODO-CHECK-NEXT:   %[[smax_unwrap19:.+]] = select i1 %[[_unwrap14]], i64 %[[_unwrap17]], i64 1
