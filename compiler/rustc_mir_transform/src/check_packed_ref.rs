@@ -42,12 +42,12 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
             if util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
                 let def_id = self.body.source.instance.def_id();
                 if let Some(impl_def_id) = self.tcx.impl_of_method(def_id)
-                    && self.tcx.is_builtin_derive(impl_def_id)
+                    && self.tcx.is_builtin_derived(impl_def_id)
                 {
                     // If we ever reach here it means that the generated derive
                     // code is somehow doing an unaligned reference, which it
                     // shouldn't do.
-                    unreachable!();
+                    span_bug!(self.source_info.span, "builtin derive created an unaligned reference");
                 } else {
                     struct_span_err!(
                         self.tcx.sess,

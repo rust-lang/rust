@@ -190,7 +190,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
             },
             ExprKind::Index(target, _idx) => {
                 let e_ty = cx.typeck_results().expr_ty(target).peel_refs();
-                if matches!(e_ty.kind(), ty::Str) || is_type_lang_item(cx, e_ty, LangItem::String) {
+                if e_ty.is_str() || is_type_lang_item(cx, e_ty, LangItem::String) {
                     span_lint(
                         cx,
                         STRING_SLICE,
@@ -407,7 +407,7 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
             if path.ident.name == sym::to_string;
             let ty = cx.typeck_results().expr_ty(self_arg);
             if let ty::Ref(_, ty, ..) = ty.kind();
-            if *ty.kind() == ty::Str;
+            if ty.is_str();
             then {
                 span_lint_and_help(
                     cx,

@@ -17,7 +17,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::PlaceholderRegion;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{ReEarlyBound, ReErased, ReFree, ReStatic};
+use rustc_middle::ty::{ReEarlyBound, ReErased, ReError, ReFree, ReStatic};
 use rustc_middle::ty::{ReLateBound, RePlaceholder, ReVar};
 use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::Span;
@@ -215,6 +215,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 // nothing lives longer than `'static`
                 Ok(self.tcx().lifetimes.re_static)
             }
+
+            ReError(_) => Ok(a_region),
 
             ReEarlyBound(_) | ReFree(_) => {
                 // All empty regions are less than early-bound, free,
@@ -436,7 +438,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
             (VarValue::Value(a), VarValue::Empty(_)) => {
                 match *a {
-                    ReLateBound(..) | ReErased => {
+                    ReLateBound(..) | ReErased | ReError(_) => {
                         bug!("cannot relate region: {:?}", a);
                     }
 
@@ -465,7 +467,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
             (VarValue::Empty(a_ui), VarValue::Value(b)) => {
                 match *b {
-                    ReLateBound(..) | ReErased => {
+                    ReLateBound(..) | ReErased | ReError(_) => {
                         bug!("cannot relate region: {:?}", b);
                     }
 
@@ -545,6 +547,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     b
                 );
             }
+
+            (ReError(_), _) => a,
+
+            (_, ReError(_)) => b,
 
             (ReStatic, _) | (_, ReStatic) => {
                 // nothing lives longer than `'static`
@@ -1040,7 +1046,7 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
             ty::ReVar(rid) => match self.values[rid] {
                 VarValue::Empty(_) => r,
                 VarValue::Value(r) => r,
-                VarValue::ErrorValue => tcx.lifetimes.re_static,
+                VarValue::ErrorValue => tcx.re_error_misc(),
             },
             _ => r,
         };

@@ -1,4 +1,3 @@
-use crate::char;
 use crate::convert::TryFrom;
 use crate::mem;
 use crate::ops::{self, Try};

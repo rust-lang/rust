@@ -809,7 +809,10 @@ pub struct DerefClosure {
 ///
 /// note: this only works on single line immutable closures with exactly one input parameter.
 pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Option<DerefClosure> {
-    if let hir::ExprKind::Closure(&Closure { fn_decl, def_id, body, .. }) = closure.kind {
+    if let hir::ExprKind::Closure(&Closure {
+        fn_decl, def_id, body, ..
+    }) = closure.kind
+    {
         let closure_body = cx.tcx.hir().body(body);
         // is closure arg a type annotated double reference (i.e.: `|x: &&i32| ...`)
         // a type annotation is present if param `kind` is different from `TyKind::Infer`

@@ -1,12 +1,15 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use crate::traits::{self, ObligationCause};
+use crate::traits::{self, ObligationCause, ObligationCtxt};
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
+use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
+use rustc_infer::traits::query::NoSolution;
 use rustc_infer::{infer::outlives::env::OutlivesEnvironment, traits::FulfillmentError};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeVisitable};
+use rustc_span::DUMMY_SP;
 
 use super::outlives_bounds::InferCtxtExt;
 
@@ -130,4 +133,20 @@ pub fn type_allowed_to_implement_copy<'tcx>(
     }
 
     Ok(())
+}
+
+pub fn check_tys_might_be_eq<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    canonical: Canonical<'tcx, (ParamEnv<'tcx>, Ty<'tcx>, Ty<'tcx>)>,
+) -> Result<(), NoSolution> {
+    let (infcx, (param_env, ty_a, ty_b), _) =
+        tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &canonical);
+    let ocx = ObligationCtxt::new(&infcx);
+
+    let result = ocx.eq(&ObligationCause::dummy(), param_env, ty_a, ty_b);
+    // use `select_where_possible` instead of `select_all_or_error` so that
+    // we don't get errors from obligations being ambiguous.
+    let errors = ocx.select_where_possible();
+
+    if errors.len() > 0 || result.is_err() { Err(NoSolution) } else { Ok(()) }
 }

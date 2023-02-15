@@ -8,7 +8,7 @@ LL |     assert_eq!("a".is_empty(), false);
 help: replace it with `assert!(..)`
    |
 LL -     assert_eq!("a".is_empty(), false);
-LL +     assert!("a".is_empty());
+LL +     assert!(!"a".is_empty());
    |
 
 error: used `assert_eq!` with a literal bool
@@ -68,7 +68,7 @@ LL |     assert_ne!("".is_empty(), true);
 help: replace it with `assert!(..)`
    |
 LL -     assert_ne!("".is_empty(), true);
-LL +     assert!("".is_empty());
+LL +     assert!(!"".is_empty());
    |
 
 error: used `assert_ne!` with a literal bool
@@ -80,7 +80,7 @@ LL |     assert_ne!(true, "".is_empty());
 help: replace it with `assert!(..)`
    |
 LL -     assert_ne!(true, "".is_empty());
-LL +     assert!("".is_empty());
+LL +     assert!(!"".is_empty());
    |
 
 error: used `assert_ne!` with a literal bool
@@ -92,7 +92,7 @@ LL |     assert_ne!(b, true);
 help: replace it with `assert!(..)`
    |
 LL -     assert_ne!(b, true);
-LL +     assert!(b);
+LL +     assert!(!b);
    |
 
 error: used `debug_assert_eq!` with a literal bool
@@ -104,7 +104,7 @@ LL |     debug_assert_eq!("a".is_empty(), false);
 help: replace it with `debug_assert!(..)`
    |
 LL -     debug_assert_eq!("a".is_empty(), false);
-LL +     debug_assert!("a".is_empty());
+LL +     debug_assert!(!"a".is_empty());
    |
 
 error: used `debug_assert_eq!` with a literal bool
@@ -164,7 +164,7 @@ LL |     debug_assert_ne!("".is_empty(), true);
 help: replace it with `debug_assert!(..)`
    |
 LL -     debug_assert_ne!("".is_empty(), true);
-LL +     debug_assert!("".is_empty());
+LL +     debug_assert!(!"".is_empty());
    |
 
 error: used `debug_assert_ne!` with a literal bool
@@ -176,7 +176,7 @@ LL |     debug_assert_ne!(true, "".is_empty());
 help: replace it with `debug_assert!(..)`
    |
 LL -     debug_assert_ne!(true, "".is_empty());
-LL +     debug_assert!("".is_empty());
+LL +     debug_assert!(!"".is_empty());
    |
 
 error: used `debug_assert_ne!` with a literal bool
@@ -188,7 +188,7 @@ LL |     debug_assert_ne!(b, true);
 help: replace it with `debug_assert!(..)`
    |
 LL -     debug_assert_ne!(b, true);
-LL +     debug_assert!(b);
+LL +     debug_assert!(!b);
    |
 
 error: used `assert_eq!` with a literal bool
@@ -200,7 +200,7 @@ LL |     assert_eq!("a".is_empty(), false, "tadam {}", 1);
 help: replace it with `assert!(..)`
    |
 LL -     assert_eq!("a".is_empty(), false, "tadam {}", 1);
-LL +     assert!("a".is_empty(), "tadam {}", 1);
+LL +     assert!(!"a".is_empty(), "tadam {}", 1);
    |
 
 error: used `assert_eq!` with a literal bool
@@ -212,7 +212,7 @@ LL |     assert_eq!("a".is_empty(), false, "tadam {}", true);
 help: replace it with `assert!(..)`
    |
 LL -     assert_eq!("a".is_empty(), false, "tadam {}", true);
-LL +     assert!("a".is_empty(), "tadam {}", true);
+LL +     assert!(!"a".is_empty(), "tadam {}", true);
    |
 
 error: used `assert_eq!` with a literal bool
@@ -224,7 +224,7 @@ LL |     assert_eq!(false, "a".is_empty(), "tadam {}", true);
 help: replace it with `assert!(..)`
    |
 LL -     assert_eq!(false, "a".is_empty(), "tadam {}", true);
-LL +     assert!("a".is_empty(), "tadam {}", true);
+LL +     assert!(!"a".is_empty(), "tadam {}", true);
    |
 
 error: used `debug_assert_eq!` with a literal bool
@@ -236,7 +236,7 @@ LL |     debug_assert_eq!("a".is_empty(), false, "tadam {}", 1);
 help: replace it with `debug_assert!(..)`
    |
 LL -     debug_assert_eq!("a".is_empty(), false, "tadam {}", 1);
-LL +     debug_assert!("a".is_empty(), "tadam {}", 1);
+LL +     debug_assert!(!"a".is_empty(), "tadam {}", 1);
    |
 
 error: used `debug_assert_eq!` with a literal bool
@@ -248,7 +248,7 @@ LL |     debug_assert_eq!("a".is_empty(), false, "tadam {}", true);
 help: replace it with `debug_assert!(..)`
    |
 LL -     debug_assert_eq!("a".is_empty(), false, "tadam {}", true);
-LL +     debug_assert!("a".is_empty(), "tadam {}", true);
+LL +     debug_assert!(!"a".is_empty(), "tadam {}", true);
    |
 
 error: used `debug_assert_eq!` with a literal bool
@@ -260,7 +260,7 @@ LL |     debug_assert_eq!(false, "a".is_empty(), "tadam {}", true);
 help: replace it with `debug_assert!(..)`
    |
 LL -     debug_assert_eq!(false, "a".is_empty(), "tadam {}", true);
-LL +     debug_assert!("a".is_empty(), "tadam {}", true);
+LL +     debug_assert!(!"a".is_empty(), "tadam {}", true);
    |
 
 error: used `assert_eq!` with a literal bool
@@ -299,5 +299,101 @@ LL -     renamed!(b, true);
 LL +     debug_assert!(b);
    |
 
-error: aborting due to 25 previous errors
+error: used `assert_eq!` with a literal bool
+  --> $DIR/bool_assert_comparison.rs:162:5
+   |
+LL |     assert_eq!("".is_empty(), true);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `assert!(..)`
+   |
+LL -     assert_eq!("".is_empty(), true);
+LL +     assert!("".is_empty());
+   |
+
+error: used `assert_ne!` with a literal bool
+  --> $DIR/bool_assert_comparison.rs:163:5
+   |
+LL |     assert_ne!("".is_empty(), false);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `assert!(..)`
+   |
+LL -     assert_ne!("".is_empty(), false);
+LL +     assert!("".is_empty());
+   |
+
+error: used `assert_ne!` with a literal bool
+  --> $DIR/bool_assert_comparison.rs:164:5
+   |
+LL |     assert_ne!("requires negation".is_empty(), true);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `assert!(..)`
+   |
+LL -     assert_ne!("requires negation".is_empty(), true);
+LL +     assert!(!"requires negation".is_empty());
+   |
+
+error: used `assert_eq!` with a literal bool
+  --> $DIR/bool_assert_comparison.rs:165:5
+   |
+LL |     assert_eq!("requires negation".is_empty(), false);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `assert!(..)`
+   |
+LL -     assert_eq!("requires negation".is_empty(), false);
+LL +     assert!(!"requires negation".is_empty());
+   |
+
+error: used `debug_assert_eq!` with a literal bool
+  --> $DIR/bool_assert_comparison.rs:167:5
+   |
+LL |     debug_assert_eq!("".is_empty(), true);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `debug_assert!(..)`
+   |
+LL -     debug_assert_eq!("".is_empty(), true);
+LL +     debug_assert!("".is_empty());
+   |
+
+error: used `debug_assert_ne!` with a literal bool
+  --> $DIR/bool_assert_comparison.rs:168:5
+   |
+LL |     debug_assert_ne!("".is_empty(), false);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `debug_assert!(..)`
+   |
+LL -     debug_assert_ne!("".is_empty(), false);
+LL +     debug_assert!("".is_empty());
+   |
+
+error: used `debug_assert_ne!` with a literal bool
+  --> $DIR/bool_assert_comparison.rs:169:5
+   |
+LL |     debug_assert_ne!("requires negation".is_empty(), true);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `debug_assert!(..)`
+   |
+LL -     debug_assert_ne!("requires negation".is_empty(), true);
+LL +     debug_assert!(!"requires negation".is_empty());
+   |
+
+error: used `debug_assert_eq!` with a literal bool
+  --> $DIR/bool_assert_comparison.rs:170:5
+   |
+LL |     debug_assert_eq!("requires negation".is_empty(), false);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace it with `debug_assert!(..)`
+   |
+LL -     debug_assert_eq!("requires negation".is_empty(), false);
+LL +     debug_assert!(!"requires negation".is_empty());
+   |
+
+error: aborting due to 33 previous errors
 

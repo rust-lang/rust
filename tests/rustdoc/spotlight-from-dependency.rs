@@ -3,7 +3,7 @@
 use std::iter::Iterator;
 
 // @has foo/struct.Odd.html
-// @has - '//*[@id="method.new"]//a[@class="notable-traits"]/@data-ty' 'Odd'
+// @has - '//*[@id="method.new"]//a[@class="tooltip"]/@data-notable-ty' 'Odd'
 // @snapshot odd - '//script[@id="notable-traits-data"]'
 pub struct Odd {
     current: usize,

@@ -24,6 +24,7 @@ use rustc_errors::registry::Registry;
 use rustc_errors::{
     error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
     ErrorGuaranteed, FluentBundle, IntoDiagnostic, LazyFallbackBundle, MultiSpan, Noted,
+    TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -156,7 +157,7 @@ pub struct Session {
     /// `-C metadata` arguments passed to the compiler. Its value forms a unique
     /// global identifier for the crate. It is used to allow multiple crates
     /// with the same name to coexist. See the
-    /// `rustc_codegen_llvm::back::symbol_names` module for more information.
+    /// `rustc_symbol_mangling` crate for more information.
     pub stable_crate_id: OnceCell<StableCrateId>,
 
     features: OnceCell<rustc_feature::Features>,
@@ -1273,6 +1274,19 @@ fn default_emitter(
 ) -> Box<dyn Emitter + sync::Send> {
     let macro_backtrace = sopts.unstable_opts.macro_backtrace;
     let track_diagnostics = sopts.unstable_opts.track_diagnostics;
+    let terminal_url = match sopts.unstable_opts.terminal_urls {
+        TerminalUrl::Auto => {
+            match (std::env::var("COLORTERM").as_deref(), std::env::var("TERM").as_deref()) {
+                (Ok("truecolor"), Ok("xterm-256color"))
+                    if sopts.unstable_features.is_nightly_build() =>
+                {
+                    TerminalUrl::Yes
+                }
+                _ => TerminalUrl::No,
+            }
+        }
+        t => t,
+    };
     match sopts.error_format {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
@@ -1297,6 +1311,7 @@ fn default_emitter(
                     sopts.diagnostic_width,
                     macro_backtrace,
                     track_diagnostics,
+                    terminal_url,
                 );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
@@ -1312,6 +1327,7 @@ fn default_emitter(
                 sopts.diagnostic_width,
                 macro_backtrace,
                 track_diagnostics,
+                terminal_url,
             )
             .ui_testing(sopts.unstable_opts.ui_testing),
         ),
@@ -1589,6 +1605,10 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     {
         sess.emit_err(errors::SplitDebugInfoUnstablePlatform { debuginfo: sess.split_debuginfo() });
     }
+
+    if sess.opts.unstable_opts.instrument_xray.is_some() && !sess.target.options.supports_xray {
+        sess.emit_err(errors::InstrumentationNotSupported { us: "XRay".to_string() });
+    }
 }
 
 /// Holds data on the current incremental compilation session, if there is one.
@@ -1624,6 +1644,7 @@ fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler
                 None,
                 false,
                 false,
+                TerminalUrl::No,
             ))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(JsonEmitter::basic(
@@ -1634,6 +1655,7 @@ fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler
             None,
             false,
             false,
+            TerminalUrl::No,
         )),
     };
     rustc_errors::Handler::with_emitter(true, None, emitter)

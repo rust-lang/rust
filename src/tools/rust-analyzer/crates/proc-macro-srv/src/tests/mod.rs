@@ -8,7 +8,7 @@ use expect_test::expect;
 
 #[test]
 fn test_derive_empty() {
-    assert_expand("DeriveEmpty", r#"struct S;"#, expect![[r#"SUBTREE $"#]]);
+    assert_expand("DeriveEmpty", r#"struct S;"#, expect!["SUBTREE $$ 4294967295 4294967295"]);
 }
 
 #[test]
@@ -17,10 +17,10 @@ fn test_derive_error() {
         "DeriveError",
         r#"struct S;"#,
         expect![[r##"
-            SUBTREE $
+            SUBTREE $$ 4294967295 4294967295
               IDENT   compile_error 4294967295
               PUNCH   ! [alone] 4294967295
-              SUBTREE () 4294967295
+              SUBTREE () 4294967295 4294967295
                 LITERAL "#[derive(DeriveError)] struct S ;" 4294967295
               PUNCH   ; [alone] 4294967295"##]],
     );
@@ -32,14 +32,14 @@ fn test_fn_like_macro_noop() {
         "fn_like_noop",
         r#"ident, 0, 1, []"#,
         expect![[r#"
-            SUBTREE $
+            SUBTREE $$ 4294967295 4294967295
               IDENT   ident 4294967295
               PUNCH   , [alone] 4294967295
               LITERAL 0 4294967295
               PUNCH   , [alone] 4294967295
               LITERAL 1 4294967295
               PUNCH   , [alone] 4294967295
-              SUBTREE [] 4294967295"#]],
+              SUBTREE [] 4294967295 4294967295"#]],
     );
 }
 
@@ -49,10 +49,10 @@ fn test_fn_like_macro_clone_ident_subtree() {
         "fn_like_clone_tokens",
         r#"ident, []"#,
         expect![[r#"
-            SUBTREE $
+            SUBTREE $$ 4294967295 4294967295
               IDENT   ident 4294967295
               PUNCH   , [alone] 4294967295
-              SUBTREE [] 4294967295"#]],
+              SUBTREE [] 4294967295 4294967295"#]],
     );
 }
 
@@ -62,7 +62,7 @@ fn test_fn_like_macro_clone_raw_ident() {
         "fn_like_clone_tokens",
         "r#async",
         expect![[r#"
-            SUBTREE $
+            SUBTREE $$ 4294967295 4294967295
               IDENT   r#async 4294967295"#]],
     );
 }
@@ -73,7 +73,7 @@ fn test_fn_like_mk_literals() {
         "fn_like_mk_literals",
         r#""#,
         expect![[r#"
-            SUBTREE $
+            SUBTREE $$ 4294967295 4294967295
               LITERAL b"byte_string" 4294967295
               LITERAL 'c' 4294967295
               LITERAL "string" 4294967295
@@ -90,7 +90,7 @@ fn test_fn_like_mk_idents() {
         "fn_like_mk_idents",
         r#""#,
         expect![[r#"
-            SUBTREE $
+            SUBTREE $$ 4294967295 4294967295
               IDENT   standard 4294967295
               IDENT   r#raw 4294967295"#]],
     );
@@ -102,7 +102,7 @@ fn test_fn_like_macro_clone_literals() {
         "fn_like_clone_tokens",
         r#"1u16, 2_u32, -4i64, 3.14f32, "hello bridge""#,
         expect![[r#"
-            SUBTREE $
+            SUBTREE $$ 4294967295 4294967295
               LITERAL 1u16 4294967295
               PUNCH   , [alone] 4294967295
               LITERAL 2_u32 4294967295
@@ -126,10 +126,10 @@ fn test_attr_macro() {
         r#"mod m {}"#,
         r#"some arguments"#,
         expect![[r##"
-            SUBTREE $
+            SUBTREE $$ 4294967295 4294967295
               IDENT   compile_error 4294967295
               PUNCH   ! [alone] 4294967295
-              SUBTREE () 4294967295
+              SUBTREE () 4294967295 4294967295
                 LITERAL "#[attr_error(some arguments)] mod m {}" 4294967295
               PUNCH   ; [alone] 4294967295"##]],
     );

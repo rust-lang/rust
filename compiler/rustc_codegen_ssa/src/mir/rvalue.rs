@@ -100,8 +100,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
 
-                let count =
-                    self.monomorphize(count).eval_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
+                let count = self
+                    .monomorphize(count)
+                    .eval_target_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
 
                 bx.write_operand_repeatedly(cg_elem, count, dest);
             }
@@ -492,7 +493,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(index) = place.as_local() {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.kind() {
-                    let n = n.eval_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
+                    let n = n.eval_target_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
                     return bx.cx().const_usize(n);
                 }
             }

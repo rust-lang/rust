@@ -1,6 +1,6 @@
 //! TokenStream implementation used by sysroot ABI
 
-use tt::TokenTree;
+use crate::tt::{self, TokenTree};
 
 #[derive(Debug, Default, Clone)]
 pub struct TokenStream {
@@ -13,7 +13,7 @@ impl TokenStream {
     }
 
     pub fn with_subtree(subtree: tt::Subtree) -> Self {
-        if subtree.delimiter.is_some() {
+        if subtree.delimiter.kind != tt::DelimiterKind::Invisible {
             TokenStream { token_trees: vec![TokenTree::Subtree(subtree)] }
         } else {
             TokenStream { token_trees: subtree.token_trees }
@@ -21,7 +21,7 @@ impl TokenStream {
     }
 
     pub fn into_subtree(self) -> tt::Subtree {
-        tt::Subtree { delimiter: None, token_trees: self.token_trees }
+        tt::Subtree { delimiter: tt::Delimiter::UNSPECIFIED, token_trees: self.token_trees }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -64,7 +64,9 @@ impl Extend<TokenStream> for TokenStream {
         for item in streams {
             for tkn in item {
                 match tkn {
-                    tt::TokenTree::Subtree(subtree) if subtree.delimiter.is_none() => {
+                    tt::TokenTree::Subtree(subtree)
+                        if subtree.delimiter.kind == tt::DelimiterKind::Invisible =>
+                    {
                         self.token_trees.extend(subtree.token_trees);
                     }
                     _ => {
@@ -84,7 +86,7 @@ pub struct TokenStreamBuilder {
 pub mod token_stream {
     use std::str::FromStr;
 
-    use super::{TokenStream, TokenTree};
+    use super::{tt, TokenStream, TokenTree};
 
     /// An iterator over `TokenStream`'s `TokenTree`s.
     /// The iteration is "shallow", e.g., the iterator doesn't recurse into delimited groups,
@@ -121,15 +123,17 @@ pub mod token_stream {
 
     impl ToString for TokenStream {
         fn to_string(&self) -> String {
-            tt::pretty(&self.token_trees)
+            ::tt::pretty(&self.token_trees)
         }
     }
 
     fn subtree_replace_token_ids_with_unspecified(subtree: tt::Subtree) -> tt::Subtree {
         tt::Subtree {
-            delimiter: subtree
-                .delimiter
-                .map(|d| tt::Delimiter { id: tt::TokenId::unspecified(), ..d }),
+            delimiter: tt::Delimiter {
+                open: tt::TokenId::UNSPECIFIED,
+                close: tt::TokenId::UNSPECIFIED,
+                ..subtree.delimiter
+            },
             token_trees: subtree
                 .token_trees
                 .into_iter()
@@ -152,13 +156,13 @@ pub mod token_stream {
     fn leaf_replace_token_ids_with_unspecified(leaf: tt::Leaf) -> tt::Leaf {
         match leaf {
             tt::Leaf::Literal(lit) => {
-                tt::Leaf::Literal(tt::Literal { id: tt::TokenId::unspecified(), ..lit })
+                tt::Leaf::Literal(tt::Literal { span: tt::TokenId::unspecified(), ..lit })
             }
             tt::Leaf::Punct(punct) => {
-                tt::Leaf::Punct(tt::Punct { id: tt::TokenId::unspecified(), ..punct })
+                tt::Leaf::Punct(tt::Punct { span: tt::TokenId::unspecified(), ..punct })
             }
             tt::Leaf::Ident(ident) => {
-                tt::Leaf::Ident(tt::Ident { id: tt::TokenId::unspecified(), ..ident })
+                tt::Leaf::Ident(tt::Ident { span: tt::TokenId::unspecified(), ..ident })
             }
         }
     }

@@ -3,7 +3,9 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::ObligationCauseCode;
-use rustc_middle::ty::{self, DefIdTree, Ty, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::ty::{
+    self, ir::TypeVisitor, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+};
 use rustc_span::{self, Span};
 use rustc_trait_selection::traits;
 
@@ -247,7 +249,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         t: T,
     ) -> Option<ty::GenericArg<'tcx>> {
         struct FindAmbiguousParameter<'a, 'tcx>(&'a FnCtxt<'a, 'tcx>, DefId);
-        impl<'tcx> TypeVisitor<'tcx> for FindAmbiguousParameter<'_, 'tcx> {
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindAmbiguousParameter<'_, 'tcx> {
             type BreakTy = ty::GenericArg<'tcx>;
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
                 if let Some(origin) = self.0.type_var_origin(ty)
@@ -802,18 +804,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut walk = ty.walk();
         while let Some(arg) = walk.next() {
             if arg == param_to_point_at {
-            return true;
-        } else if let ty::GenericArgKind::Type(ty) = arg.unpack()
-            && let ty::Alias(ty::Projection, ..) = ty.kind()
-        {
-            // This logic may seem a bit strange, but typically when
-            // we have a projection type in a function signature, the
-            // argument that's being passed into that signature is
-            // not actually constraining that projection's substs in
-            // a meaningful way. So we skip it, and see improvements
-            // in some UI tests.
-            walk.skip_current_subtree();
-        }
+                return true;
+            }
+            if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                && let ty::Alias(ty::Projection, ..) = ty.kind()
+            {
+                // This logic may seem a bit strange, but typically when
+                // we have a projection type in a function signature, the
+                // argument that's being passed into that signature is
+                // not actually constraining that projection's substs in
+                // a meaningful way. So we skip it, and see improvements
+                // in some UI tests.
+                walk.skip_current_subtree();
+            }
         }
         false
     }

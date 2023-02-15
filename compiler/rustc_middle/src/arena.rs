@@ -8,7 +8,7 @@
 macro_rules! arena_types {
     ($macro:path) => (
         $macro!([
-            [] layout: rustc_target::abi::LayoutS<rustc_target::abi::VariantIdx>,
+            [] layout: rustc_target::abi::LayoutS,
             [] fn_abi: rustc_target::abi::call::FnAbi<'tcx, rustc_middle::ty::Ty<'tcx>>,
             // AdtDef are interned and compared by address
             [decode] adt_def: rustc_middle::ty::AdtDefData,
@@ -113,6 +113,7 @@ macro_rules! arena_types {
             [decode] trait_impl_trait_tys: rustc_data_structures::fx::FxHashMap<rustc_hir::def_id::DefId, rustc_middle::ty::Ty<'tcx>>,
             [] bit_set_u32: rustc_index::bit_set::BitSet<u32>,
             [] external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<'tcx>,
+            [decode] doc_link_resolutions: rustc_hir::def::DocLinkResMap,
         ]);
     )
 }

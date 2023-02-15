@@ -174,6 +174,14 @@ h1, h2, h3, h4 {
 .top-doc .docblock > h4 {
 	border-bottom: 1px solid var(--headings-border-bottom-color);
 }
+/* while line-height 1.5 is required for any "block of text",
+	which WCAG defines as more than one sentence, it looks weird for
+	very large main headers */
+h1, h2 {
+	line-height: 1.25;
+	padding-top: 3px;
+	padding-bottom: 9px;
+}
 h3.code-header {
 	font-size: 1.125rem; /* 18px */
 }
@@ -707,8 +715,8 @@ h2.small-section-header > .anchor {
 .main-heading a:hover,
 .example-wrap > pre.rust a:hover,
 .all-items a:hover,
-.docblock a:not(.test-arrow):not(.scrape-help):hover,
-.docblock-short a:not(.test-arrow):not(.scrape-help):hover,
+.docblock a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover,
+.docblock-short a:not(.test-arrow):not(.scrape-help):not(.tooltip):hover,
 .item-info a {
 	text-decoration: underline;
 }
@@ -1101,44 +1109,8 @@ pre.rust .doccomment {
 	display: block;
 	left: -25px;
 	top: 5px;
-}
-
-.example-wrap .tooltip:hover::after {
-	padding: 5px 3px 3px 3px;
-	border-radius: 6px;
-	margin-left: 5px;
-	font-size: 1rem;
-	border: 1px solid var(--border-color);
-	position: absolute;
-	width: max-content;
-	top: -2px;
-	z-index: 1;
-	background-color: var(--tooltip-background-color);
-	color: var(--tooltip-color);
-}
-
-.example-wrap .tooltip:hover::before {
-	content: " ";
-	position: absolute;
-	top: 50%;
-	left: 16px;
-	margin-top: -5px;
-	z-index: 1;
-	border: 5px solid transparent;
-	border-right-color: var(--tooltip-background-color);
-}
-
-.example-wrap.ignore .tooltip:hover::after {
-	content: "This example is not tested";
-}
-.example-wrap.compile_fail .tooltip:hover::after {
-	content: "This example deliberately fails to compile";
-}
-.example-wrap.should_panic .tooltip:hover::after {
-	content: "This example panics";
-}
-.example-wrap.edition .tooltip:hover::after {
-	content: "This code runs with edition " attr(data-edition);
+	margin: 0;
+	line-height: 1;
 }
 
 .example-wrap.compile_fail .tooltip,
@@ -1205,7 +1177,7 @@ a.test-arrow:hover {
 	border-right: 3px solid var(--target-border-color);
 }
 
-.notable-traits {
+.code-header a.tooltip {
 	color: inherit;
 	margin-right: 15px;
 	position: relative;
@@ -1214,7 +1186,7 @@ a.test-arrow:hover {
 /* placeholder thunk so that the mouse can easily travel from "(i)" to popover
 	the resulting "hover tunnel" is a stepped triangle, approximating
 	https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown */
-.notable-traits:hover::after {
+a.tooltip:hover::after {
 	position: absolute;
 	top: calc(100% - 10px);
 	left: -15px;
@@ -1223,11 +1195,11 @@ a.test-arrow:hover {
 	content: "\00a0";
 }
 
-.notable .content {
+.popover.tooltip .content {
 	margin: 0.25em 0.5em;
 }
 
-.notable .content pre, .notable .content code {
+.popover.tooltip .content pre, .popover.tooltip .content code {
 	background: transparent;
 	margin: 0;
 	padding: 0;
@@ -1235,7 +1207,7 @@ a.test-arrow:hover {
 	white-space: pre-wrap;
 }
 
-.notable .content > h3:first-child {
+.popover.tooltip .content > h3:first-child {
 	margin: 0 0 5px 0;
 }
 

@@ -2,7 +2,7 @@ use expect_test::{expect, Expect};
 use ide_db::base_db::{FileLoader, FileRange};
 use syntax::TextRange;
 
-use crate::{fixture, hover::HoverDocFormat, HoverConfig};
+use crate::{fixture, HoverConfig, HoverDocFormat};
 
 fn check_hover_no_result(ra_fixture: &str) {
     let (analysis, position) = fixture::position(ra_fixture);
@@ -10,8 +10,9 @@ fn check_hover_no_result(ra_fixture: &str) {
         .hover(
             &HoverConfig {
                 links_in_hover: true,
-                documentation: Some(HoverDocFormat::Markdown),
+                documentation: true,
                 keywords: true,
+                format: HoverDocFormat::Markdown,
             },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
@@ -26,8 +27,9 @@ fn check(ra_fixture: &str, expect: Expect) {
         .hover(
             &HoverConfig {
                 links_in_hover: true,
-                documentation: Some(HoverDocFormat::Markdown),
+                documentation: true,
                 keywords: true,
+                format: HoverDocFormat::Markdown,
             },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
@@ -47,8 +49,9 @@ fn check_hover_no_links(ra_fixture: &str, expect: Expect) {
         .hover(
             &HoverConfig {
                 links_in_hover: false,
-                documentation: Some(HoverDocFormat::Markdown),
+                documentation: true,
                 keywords: true,
+                format: HoverDocFormat::Markdown,
             },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
@@ -68,8 +71,9 @@ fn check_hover_no_markdown(ra_fixture: &str, expect: Expect) {
         .hover(
             &HoverConfig {
                 links_in_hover: true,
-                documentation: Some(HoverDocFormat::PlainText),
+                documentation: true,
                 keywords: true,
+                format: HoverDocFormat::PlainText,
             },
             FileRange { file_id: position.file_id, range: TextRange::empty(position.offset) },
         )
@@ -89,8 +93,9 @@ fn check_actions(ra_fixture: &str, expect: Expect) {
         .hover(
             &HoverConfig {
                 links_in_hover: true,
-                documentation: Some(HoverDocFormat::Markdown),
+                documentation: true,
                 keywords: true,
+                format: HoverDocFormat::Markdown,
             },
             FileRange { file_id, range: position.range_or_empty() },
         )
@@ -105,8 +110,9 @@ fn check_hover_range(ra_fixture: &str, expect: Expect) {
         .hover(
             &HoverConfig {
                 links_in_hover: false,
-                documentation: Some(HoverDocFormat::Markdown),
+                documentation: true,
                 keywords: true,
+                format: HoverDocFormat::Markdown,
             },
             range,
         )
@@ -121,8 +127,9 @@ fn check_hover_range_no_results(ra_fixture: &str) {
         .hover(
             &HoverConfig {
                 links_in_hover: false,
-                documentation: Some(HoverDocFormat::Markdown),
+                documentation: true,
                 keywords: true,
+                format: HoverDocFormat::Markdown,
             },
             range,
         )
@@ -207,37 +214,20 @@ m!(ab$0c);
 }
 
 #[test]
-fn hover_shows_type_of_an_expression() {
-    check(
-        r#"
-pub fn foo() -> u32 { 1 }
-
-fn main() {
-    let foo_test = foo()$0;
-}
-"#,
-        expect![[r#"
-            *foo()*
-            ```rust
-            u32
-            ```
-        "#]],
-    );
-}
-
-#[test]
 fn hover_remove_markdown_if_configured() {
     check_hover_no_markdown(
         r#"
 pub fn foo() -> u32 { 1 }
 
 fn main() {
-    let foo_test = foo()$0;
+    let foo_test = foo$0();
 }
 "#,
         expect![[r#"
-            *foo()*
-            u32
+            *foo*
+            test
+
+            pub fn foo() -> u32
         "#]],
     );
 }
@@ -293,33 +283,6 @@ fn main() { let foo_test = fo$0o(); }
 
                 ```rust
                 pub fn foo() -> u32
-                ```
-            "#]],
-    );
-
-    // Multiple candidates but results are ambiguous.
-    check(
-        r#"
-//- /a.rs
-pub fn foo() -> u32 { 1 }
-
-//- /b.rs
-pub fn foo() -> &str { "" }
-
-//- /c.rs
-pub fn foo(a: u32, b: u32) {}
-
-//- /main.rs
-mod a;
-mod b;
-mod c;
-
-fn main() { let foo_test = fo$0o(); }
-        "#,
-        expect![[r#"
-                *foo*
-                ```rust
-                {unknown}
                 ```
             "#]],
     );
@@ -527,6 +490,7 @@ fn hover_field_offset() {
     // Hovering over the field when instantiating
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
 struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
 "#,
         expect![[r#"
@@ -548,6 +512,7 @@ fn hover_shows_struct_field_info() {
     // Hovering over the field when instantiating
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
 struct Foo { field_a: u32 }
 
 fn main() {
@@ -570,6 +535,7 @@ fn main() {
     // Hovering over the field in the definition
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
 struct Foo { field_a$0: u32 }
 
 fn main() {
@@ -1184,33 +1150,19 @@ fn test_hover_through_func_in_macro_recursive() {
 macro_rules! id_deep { ($($tt:tt)*) => { $($tt)* } }
 macro_rules! id { ($($tt:tt)*) => { id_deep!($($tt)*) } }
 fn bar() -> u32 { 0 }
-fn foo() { let a = id!([0u32, bar($0)] ); }
+fn foo() { let a = id!([0u32, bar$0()] ); }
 "#,
         expect![[r#"
-                *bar()*
-                ```rust
-                u32
-                ```
-            "#]],
-    );
-}
+            *bar*
 
-#[test]
-fn test_hover_through_literal_string_in_macro() {
-    check(
-        r#"
-macro_rules! arr { ($($tt:tt)*) => { [$($tt)*] } }
-fn foo() {
-    let mastered_for_itunes = "";
-    let _ = arr!("Tr$0acks", &mastered_for_itunes);
-}
-"#,
-        expect![[r#"
-                *"Tracks"*
-                ```rust
-                &str
-                ```
-            "#]],
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn bar() -> u32
+            ```
+        "#]],
     );
 }
 
@@ -1515,6 +1467,8 @@ fn my() {}
 fn test_hover_struct_doc_comment() {
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
+
 /// This is an example
 /// multiline doc
 ///
@@ -1573,7 +1527,7 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar // size = 0, align = 1
+            struct Bar
             ```
 
             ---
@@ -1602,7 +1556,7 @@ fn foo() { let bar = Ba$0r; }
             ```
 
             ```rust
-            struct Bar // size = 0, align = 1
+            struct Bar
             ```
 
             ---
@@ -1630,7 +1584,7 @@ pub struct B$0ar
             ```
 
             ```rust
-            pub struct Bar // size = 0, align = 1
+            pub struct Bar
             ```
 
             ---
@@ -1657,7 +1611,7 @@ pub struct B$0ar
             ```
 
             ```rust
-            pub struct Bar // size = 0, align = 1
+            pub struct Bar
             ```
 
             ---
@@ -2959,6 +2913,8 @@ fn main() { let foo_test = name_with_dashes::wrapper::Thing::new$0(); }
 fn hover_field_pat_shorthand_ref_match_ergonomics() {
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
+
 struct S {
     f: i32,
 }
@@ -4398,6 +4354,7 @@ fn main() {
 fn hover_intra_doc_links() {
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
 
 pub mod theitem {
     /// This is the item. Cool!
@@ -4539,7 +4496,7 @@ trait A where
 fn string_shadowed_with_inner_items() {
     check(
         r#"
-//- /main.rs crate:main deps:alloc
+//- /main.rs crate:main deps:alloc target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
 
 /// Custom `String` type.
 struct String;
@@ -5234,7 +5191,7 @@ foo_macro!(
             ```
 
             ```rust
-            pub struct Foo // size = 0, align = 1
+            pub struct Foo
             ```
 
             ---
@@ -5248,6 +5205,8 @@ foo_macro!(
 fn hover_intra_in_attr() {
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
+
 #[doc = "Doc comment for [`Foo$0`]"]
 pub struct Foo(i32);
 "#,
@@ -5368,6 +5327,8 @@ enum Enum {
 fn hover_record_variant_field() {
     check(
         r#"
+//- /main.rs target_data_layout:e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128
+
 enum Enum {
     RecordV { field$0: u32 }
 }
@@ -5571,5 +5532,83 @@ fn main() {
             ..
             ```
         "#]],
+    );
+}
+
+#[test]
+fn hover_underscore_pat() {
+    check(
+        r#"
+fn main() {
+    let _$0 = 0;
+}
+"#,
+        expect![[r#"
+            *_*
+            ```rust
+            i32
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    let (_$0,) = (0,);
+}
+"#,
+        expect![[r#"
+            *_*
+            ```rust
+            i32
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_underscore_expr() {
+    check(
+        r#"
+fn main() {
+    _$0 = 0;
+}
+"#,
+        expect![[r#"
+            *_*
+            ```rust
+            i32
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    (_$0,) = (0,);
+}
+"#,
+        expect![[r#"
+            *_*
+            ```rust
+            i32
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn hover_underscore_type() {
+    check_hover_no_result(
+        r#"
+fn main() {
+    let x: _$0 = 0;
+}
+"#,
+    );
+    check_hover_no_result(
+        r#"
+fn main() {
+    let x: (_$0,) = (0,);
+}
+"#,
     );
 }

@@ -9,7 +9,7 @@ use ide_db::base_db::SourceDatabaseExt;
 
 use crate::cli::{
     flags,
-    load_cargo::{load_workspace_at, LoadCargoConfig},
+    load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice},
 };
 
 impl flags::Diagnostics {
@@ -17,7 +17,7 @@ impl flags::Diagnostics {
         let cargo_config = Default::default();
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: !self.disable_build_scripts,
-            with_proc_macro: !self.disable_proc_macros,
+            with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
         };
         let (host, _vfs, _proc_macro) =

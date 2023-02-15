@@ -323,10 +323,10 @@ impl Query {
                         if symbol.name != self.query {
                             continue;
                         }
-                    } else if self.case_sensitive {
-                        if self.query.chars().any(|c| !symbol.name.contains(c)) {
-                            continue;
-                        }
+                    } else if self.case_sensitive
+                        && self.query.chars().any(|c| !symbol.name.contains(c))
+                    {
+                        continue;
                     }
 
                     res.push(symbol.clone());

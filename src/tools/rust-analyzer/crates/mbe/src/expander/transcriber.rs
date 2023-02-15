@@ -2,11 +2,11 @@
 //! `$ident => foo`, interpolates variables in the template, to get `fn foo() {}`
 
 use syntax::SmolStr;
-use tt::{Delimiter, Subtree};
 
 use crate::{
     expander::{Binding, Bindings, Fragment},
     parser::{MetaVarKind, Op, RepeatKind, Separator},
+    tt::{self, Delimiter},
     ExpandError, ExpandResult, MetaTemplate,
 };
 
@@ -44,22 +44,23 @@ impl Bindings {
             Binding::Missing(it) => Ok(match it {
                 MetaVarKind::Stmt => {
                     Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
-                        id: tt::TokenId::unspecified(),
+                        span: tt::TokenId::unspecified(),
                         char: ';',
                         spacing: tt::Spacing::Alone,
                     })))
                 }
                 MetaVarKind::Block => Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree {
-                    delimiter: Some(tt::Delimiter {
-                        id: tt::TokenId::unspecified(),
+                    delimiter: tt::Delimiter {
+                        open: tt::TokenId::unspecified(),
+                        close: tt::TokenId::unspecified(),
                         kind: tt::DelimiterKind::Brace,
-                    }),
+                    },
                     token_trees: vec![],
                 })),
                 // FIXME: Meta and Item should get proper defaults
                 MetaVarKind::Meta | MetaVarKind::Item | MetaVarKind::Tt | MetaVarKind::Vis => {
                     Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree {
-                        delimiter: None,
+                        delimiter: tt::Delimiter::UNSPECIFIED,
                         token_trees: vec![],
                     }))
                 }
@@ -71,19 +72,19 @@ impl Bindings {
                 | MetaVarKind::Ident => {
                     Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                         text: SmolStr::new_inline("missing"),
-                        id: tt::TokenId::unspecified(),
+                        span: tt::TokenId::unspecified(),
                     })))
                 }
                 MetaVarKind::Lifetime => {
                     Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                         text: SmolStr::new_inline("'missing"),
-                        id: tt::TokenId::unspecified(),
+                        span: tt::TokenId::unspecified(),
                     })))
                 }
                 MetaVarKind::Literal => {
                     Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                         text: SmolStr::new_inline("\"missing\""),
-                        id: tt::TokenId::unspecified(),
+                        span: tt::TokenId::unspecified(),
                     })))
                 }
             }),
@@ -138,12 +139,12 @@ fn expand_subtree(
             Op::Ident(it) => arena.push(tt::Leaf::from(it.clone()).into()),
             Op::Punct(puncts) => {
                 for punct in puncts {
-                    arena.push(tt::Leaf::from(punct.clone()).into());
+                    arena.push(tt::Leaf::from(*punct).into());
                 }
             }
             Op::Subtree { tokens, delimiter } => {
                 let ExpandResult { value: tt, err: e } =
-                    expand_subtree(ctx, tokens, *delimiter, arena);
+                    expand_subtree(ctx, tokens, Some(*delimiter), arena);
                 err = err.or(e);
                 arena.push(tt.into());
             }
@@ -170,7 +171,7 @@ fn expand_subtree(
                 arena.push(
                     tt::Leaf::Literal(tt::Literal {
                         text: index.to_string().into(),
-                        id: tt::TokenId::unspecified(),
+                        span: tt::TokenId::unspecified(),
                     })
                     .into(),
                 );
@@ -179,7 +180,13 @@ fn expand_subtree(
     }
     // drain the elements added in this instance of expand_subtree
     let tts = arena.drain(start_elements..).collect();
-    ExpandResult { value: tt::Subtree { delimiter, token_trees: tts }, err }
+    ExpandResult {
+        value: tt::Subtree {
+            delimiter: delimiter.unwrap_or_else(tt::Delimiter::unspecified),
+            token_trees: tts,
+        },
+        err,
+    }
 }
 
 fn expand_var(ctx: &mut ExpandCtx<'_>, v: &SmolStr, id: tt::TokenId) -> ExpandResult<Fragment> {
@@ -201,18 +208,25 @@ fn expand_var(ctx: &mut ExpandCtx<'_>, v: &SmolStr, id: tt::TokenId) -> ExpandRe
         // ```
         // We just treat it a normal tokens
         let tt = tt::Subtree {
-            delimiter: None,
+            delimiter: tt::Delimiter::UNSPECIFIED,
             token_trees: vec![
-                tt::Leaf::from(tt::Punct { char: '$', spacing: tt::Spacing::Alone, id }).into(),
-                tt::Leaf::from(tt::Ident { text: v.clone(), id }).into(),
+                tt::Leaf::from(tt::Punct { char: '$', spacing: tt::Spacing::Alone, span: id })
+                    .into(),
+                tt::Leaf::from(tt::Ident { text: v.clone(), span: id }).into(),
             ],
         }
         .into();
         ExpandResult::ok(Fragment::Tokens(tt))
     } else {
         ctx.bindings.get(v, &mut ctx.nesting).map_or_else(
-            |e| ExpandResult { value: Fragment::Tokens(tt::TokenTree::empty()), err: Some(e) },
-            |it| ExpandResult::ok(it),
+            |e| ExpandResult {
+                value: Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree {
+                    delimiter: tt::Delimiter::unspecified(),
+                    token_trees: vec![],
+                })),
+                err: Some(e),
+            },
+            ExpandResult::ok,
         )
     }
 }
@@ -249,7 +263,10 @@ fn expand_repeat(
                 ctx
             );
             return ExpandResult {
-                value: Fragment::Tokens(Subtree::default().into()),
+                value: Fragment::Tokens(
+                    tt::Subtree { delimiter: tt::Delimiter::unspecified(), token_trees: vec![] }
+                        .into(),
+                ),
                 err: Some(ExpandError::LimitExceeded),
             };
         }
@@ -258,7 +275,7 @@ fn expand_repeat(
             continue;
         }
 
-        t.delimiter = None;
+        t.delimiter = tt::Delimiter::unspecified();
         push_subtree(&mut buf, t);
 
         if let Some(sep) = separator {
@@ -292,7 +309,7 @@ fn expand_repeat(
 
     // Check if it is a single token subtree without any delimiter
     // e.g {Delimiter:None> ['>'] /Delimiter:None>}
-    let tt = tt::Subtree { delimiter: None, token_trees: buf }.into();
+    let tt = tt::Subtree { delimiter: tt::Delimiter::unspecified(), token_trees: buf }.into();
 
     if RepeatKind::OneOrMore == kind && counter == 0 {
         return ExpandResult {
@@ -307,11 +324,12 @@ fn push_fragment(buf: &mut Vec<tt::TokenTree>, fragment: Fragment) {
     match fragment {
         Fragment::Tokens(tt::TokenTree::Subtree(tt)) => push_subtree(buf, tt),
         Fragment::Expr(tt::TokenTree::Subtree(mut tt)) => {
-            if tt.delimiter.is_none() {
-                tt.delimiter = Some(tt::Delimiter {
-                    id: tt::TokenId::unspecified(),
+            if tt.delimiter.kind == tt::DelimiterKind::Invisible {
+                tt.delimiter = tt::Delimiter {
+                    open: tt::TokenId::UNSPECIFIED,
+                    close: tt::TokenId::UNSPECIFIED,
                     kind: tt::DelimiterKind::Parenthesis,
-                })
+                };
             }
             buf.push(tt.into())
         }
@@ -320,8 +338,8 @@ fn push_fragment(buf: &mut Vec<tt::TokenTree>, fragment: Fragment) {
 }
 
 fn push_subtree(buf: &mut Vec<tt::TokenTree>, tt: tt::Subtree) {
-    match tt.delimiter {
-        None => buf.extend(tt.token_trees),
-        Some(_) => buf.push(tt.into()),
+    match tt.delimiter.kind {
+        tt::DelimiterKind::Invisible => buf.extend(tt.token_trees),
+        _ => buf.push(tt.into()),
     }
 }

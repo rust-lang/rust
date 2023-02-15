@@ -1,4 +1,3 @@
-use super::bench::SIMPLE_RAYTRACER;
 use super::build_sysroot::{self, SYSROOT_SRC};
 use super::config;
 use super::path::{Dirs, RelPath};
@@ -133,10 +132,6 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             build_cmd.arg("--workspace").arg("--tests");
             spawn_and_wait(build_cmd);
         }
-    }),
-    TestCase::custom("test.simple-raytracer", &|runner| {
-        SIMPLE_RAYTRACER.clean(&runner.dirs);
-        spawn_and_wait(SIMPLE_RAYTRACER.build(&runner.target_compiler, &runner.dirs));
     }),
     TestCase::custom("test.libcore", &|runner| {
         LIBCORE_TESTS.clean(&runner.dirs);

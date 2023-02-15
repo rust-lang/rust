@@ -18,10 +18,10 @@
 #[cfg(test)]
 mod tests;
 
+use core::char::{encode_utf16_raw, encode_utf8_raw};
 use core::str::next_code_point;
 
 use crate::borrow::Cow;
-use crate::char;
 use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
@@ -235,7 +235,7 @@ impl Wtf8Buf {
     /// This does **not** include the WTF-8 concatenation check or `is_known_utf8` check.
     fn push_code_point_unchecked(&mut self, code_point: CodePoint) {
         let mut bytes = [0; 4];
-        let bytes = char::encode_utf8_raw(code_point.value, &mut bytes);
+        let bytes = encode_utf8_raw(code_point.value, &mut bytes);
         self.bytes.extend_from_slice(bytes)
     }
 
@@ -939,7 +939,7 @@ impl<'a> Iterator for EncodeWide<'a> {
 
         let mut buf = [0; 2];
         self.code_points.next().map(|code_point| {
-            let n = char::encode_utf16_raw(code_point.value, &mut buf).len();
+            let n = encode_utf16_raw(code_point.value, &mut buf).len();
             if n == 2 {
                 self.extra = buf[1];
             }

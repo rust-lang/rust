@@ -264,10 +264,7 @@ impl FlagComputation {
                 term,
             })) => {
                 self.add_projection_ty(projection_ty);
-                match term.unpack() {
-                    ty::TermKind::Ty(ty) => self.add_ty(ty),
-                    ty::TermKind::Const(c) => self.add_const(c),
-                }
+                self.add_term(term);
             }
             ty::PredicateKind::WellFormed(arg) => {
                 self.add_substs(slice::from_ref(&arg));
@@ -287,6 +284,10 @@ impl FlagComputation {
                 self.add_ty(ty);
             }
             ty::PredicateKind::Ambiguous => {}
+            ty::PredicateKind::AliasEq(t1, t2) => {
+                self.add_term(t1);
+                self.add_term(t2);
+            }
         }
     }
 
@@ -378,6 +379,13 @@ impl FlagComputation {
                 GenericArgKind::Lifetime(lt) => self.add_region(lt),
                 GenericArgKind::Const(ct) => self.add_const(ct),
             }
+        }
+    }
+
+    fn add_term(&mut self, term: ty::Term<'_>) {
+        match term.unpack() {
+            ty::TermKind::Ty(ty) => self.add_ty(ty),
+            ty::TermKind::Const(ct) => self.add_const(ct),
         }
     }
 }

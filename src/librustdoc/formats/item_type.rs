@@ -21,6 +21,7 @@ use crate::clean;
 /// a heading, edit the listing in `html/render.rs`, function `sidebar_module`. This uses an
 /// ordering based on a helper function inside `item_module`, in the same file.
 #[derive(Copy, PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
+#[repr(u8)]
 pub(crate) enum ItemType {
     Module = 0,
     ExternCrate = 1,

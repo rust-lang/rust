@@ -2,10 +2,12 @@
 name = "ide-ssr"
 version = "0.0.0"
 description = "Structural search and replace of Rust code"
-license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust-analyzer"
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
@@ -14,13 +16,16 @@ doctest = false
 cov-mark = "2.0.0-pre.1"
 itertools = "0.10.5"
 
-text-edit = { path = "../text-edit", version = "0.0.0" }
-parser = { path = "../parser", version = "0.0.0" }
-syntax = { path = "../syntax", version = "0.0.0" }
-ide-db = { path = "../ide-db", version = "0.0.0" }
-hir = { path = "../hir", version = "0.0.0" }
-stdx = { path = "../stdx", version = "0.0.0" }
+# local deps
+hir.workspace = true
+ide-db.workspace = true
+parser.workspace = true
+stdx.workspace = true
+syntax.workspace = true
+text-edit.workspace = true
 
 [dev-dependencies]
-test-utils = { path = "../test-utils" }
 expect-test = "1.4.0"
+
+# local deps
+test-utils.workspace = true

@@ -22,8 +22,6 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let mut s = [1, 2, 3];
     /// let ptr: *mut u32 = s.as_mut_ptr();
@@ -332,8 +330,6 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let ptr: *mut u8 = &mut 10u8 as *mut u8;
     ///
@@ -395,8 +391,6 @@ impl<T: ?Sized> *mut T {
     /// [the module documentation]: crate::ptr#safety
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// #![feature(ptr_as_uninit)]
@@ -460,8 +454,6 @@ impl<T: ?Sized> *mut T {
     /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let mut s = [1, 2, 3];
@@ -538,8 +530,6 @@ impl<T: ?Sized> *mut T {
     /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// // Iterate using a raw pointer in increments of two elements
@@ -659,8 +649,6 @@ impl<T: ?Sized> *mut T {
     /// [the module documentation]: crate::ptr#safety
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let mut s = [1, 2, 3];
@@ -1010,8 +998,6 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let s: &str = "123";
     /// let ptr: *const u8 = s.as_ptr();
@@ -1095,8 +1081,6 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let s: &str = "123";
     ///
@@ -1173,8 +1157,6 @@ impl<T: ?Sized> *mut T {
     /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// // Iterate using a raw pointer in increments of two elements
@@ -1253,8 +1235,6 @@ impl<T: ?Sized> *mut T {
     /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// // Iterate using a raw pointer in increments of two elements (backwards)
@@ -1627,7 +1607,6 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Examples
     ///
-    /// Basic usage:
     /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(pointer_byte_offsets)]
@@ -1752,7 +1731,6 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Examples
     ///
-    /// Basic usage:
     /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(pointer_byte_offsets)]

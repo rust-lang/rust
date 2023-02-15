@@ -1,6 +1,6 @@
 use crate::errors::{FailedWritingFile, RustcErrorFatal, RustcErrorUnexpectedAnnotation};
 use crate::interface::{Compiler, Result};
-use crate::passes::{self, BoxedResolver, QueryContext};
+use crate::passes;
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -15,13 +15,13 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::{self, GlobalCtxt, TyCtxt};
 use rustc_query_impl::Queries as TcxQueries;
+use rustc_resolve::Resolver;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 use rustc_session::{output::find_crate_name, Session};
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 use std::any::Any;
 use std::cell::{RefCell, RefMut};
-use std::rc::Rc;
 use std::sync::Arc;
 
 /// Represent the result of a query.
@@ -64,7 +64,7 @@ impl<'a, T> std::ops::DerefMut for QueryResult<'a, T> {
     }
 }
 
-impl<'a, 'tcx> QueryResult<'a, QueryContext<'tcx>> {
+impl<'a, 'tcx> QueryResult<'a, &'tcx GlobalCtxt<'tcx>> {
     pub fn enter<T>(&mut self, f: impl FnOnce(TyCtxt<'tcx>) -> T) -> T {
         (*self.0).get_mut().enter(f)
     }
@@ -78,7 +78,7 @@ impl<T> Default for Query<T> {
 
 pub struct Queries<'tcx> {
     compiler: &'tcx Compiler,
-    gcx: OnceCell<GlobalCtxt<'tcx>>,
+    gcx_cell: OnceCell<GlobalCtxt<'tcx>>,
     queries: OnceCell<TcxQueries<'tcx>>,
 
     arena: WorkerLocal<Arena<'tcx>>,
@@ -88,9 +88,9 @@ pub struct Queries<'tcx> {
     parse: Query<ast::Crate>,
     crate_name: Query<Symbol>,
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
-    expansion: Query<(Lrc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
-    global_ctxt: Query<QueryContext<'tcx>>,
+    // This just points to what's in `gcx_cell`.
+    gcx: Query<&'tcx GlobalCtxt<'tcx>>,
     ongoing_codegen: Query<Box<dyn Any>>,
 }
 
@@ -98,7 +98,7 @@ impl<'tcx> Queries<'tcx> {
     pub fn new(compiler: &'tcx Compiler) -> Queries<'tcx> {
         Queries {
             compiler,
-            gcx: OnceCell::new(),
+            gcx_cell: OnceCell::new(),
             queries: OnceCell::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
             hir_arena: WorkerLocal::new(|_| rustc_hir::Arena::default()),
@@ -106,9 +106,8 @@ impl<'tcx> Queries<'tcx> {
             parse: Default::default(),
             crate_name: Default::default(),
             register_plugins: Default::default(),
-            expansion: Default::default(),
             dep_graph: Default::default(),
-            global_ctxt: Default::default(),
+            gcx: Default::default(),
             ongoing_codegen: Default::default(),
         }
     }
@@ -168,29 +167,6 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn expansion(
-        &self,
-    ) -> Result<QueryResult<'_, (Lrc<ast::Crate>, Rc<RefCell<BoxedResolver>>, Lrc<LintStore>)>>
-    {
-        trace!("expansion");
-        self.expansion.compute(|| {
-            let crate_name = *self.crate_name()?.borrow();
-            let (krate, lint_store) = self.register_plugins()?.steal();
-            let _timer = self.session().timer("configure_and_expand");
-            let sess = self.session();
-            let mut resolver = passes::create_resolver(
-                sess.clone(),
-                self.codegen_backend().metadata_loader(),
-                &krate,
-                crate_name,
-            );
-            let krate = resolver.access(|resolver| {
-                passes::configure_and_expand(sess, &lint_store, krate, crate_name, resolver)
-            })?;
-            Ok((Lrc::new(krate), Rc::new(RefCell::new(resolver)), lint_store))
-        })
-    }
-
     fn dep_graph(&self) -> Result<QueryResult<'_, DepGraph>> {
         self.dep_graph.compute(|| {
             let sess = self.session();
@@ -207,29 +183,50 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, QueryContext<'tcx>>> {
-        self.global_ctxt.compute(|| {
+    pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
+        self.gcx.compute(|| {
             let crate_name = *self.crate_name()?.borrow();
-            let (krate, resolver, lint_store) = self.expansion()?.steal();
+            let (krate, lint_store) = self.register_plugins()?.steal();
+            let (krate, resolver_outputs) = {
+                let _timer = self.session().timer("configure_and_expand");
+                let sess = self.session();
+
+                let arenas = Resolver::arenas();
+                let mut resolver = Resolver::new(
+                    sess,
+                    &krate,
+                    crate_name,
+                    self.codegen_backend().metadata_loader(),
+                    &arenas,
+                );
+                let krate = passes::configure_and_expand(
+                    sess,
+                    &lint_store,
+                    krate,
+                    crate_name,
+                    &mut resolver,
+                )?;
+                (Lrc::new(krate), resolver.into_outputs())
+            };
 
             let ty::ResolverOutputs {
                 untracked,
                 global_ctxt: untracked_resolutions,
                 ast_lowering: untracked_resolver_for_lowering,
-            } = BoxedResolver::to_resolver_outputs(resolver);
+            } = resolver_outputs;
 
-            let mut qcx = passes::create_global_ctxt(
+            let gcx = passes::create_global_ctxt(
                 self.compiler,
                 lint_store,
                 self.dep_graph()?.steal(),
                 untracked,
                 &self.queries,
-                &self.gcx,
+                &self.gcx_cell,
                 &self.arena,
                 &self.hir_arena,
             );
 
-            qcx.enter(|tcx| {
+            gcx.enter(|tcx| {
                 let feed = tcx.feed_unit_query();
                 feed.resolver_for_lowering(
                     tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, krate))),
@@ -239,7 +236,7 @@ impl<'tcx> Queries<'tcx> {
                 let feed = tcx.feed_local_crate();
                 feed.crate_name(crate_name);
             });
-            Ok(qcx)
+            Ok(gcx)
         })
     }
 
@@ -387,7 +384,7 @@ impl Compiler {
 
         // NOTE: intentionally does not compute the global context if it hasn't been built yet,
         // since that likely means there was a parse error.
-        if let Some(Ok(gcx)) = &mut *queries.global_ctxt.result.borrow_mut() {
+        if let Some(Ok(gcx)) = &mut *queries.gcx.result.borrow_mut() {
             let gcx = gcx.get_mut();
             // We assume that no queries are run past here. If there are new queries
             // after this point, they'll show up as "<unknown>" in self-profiling data.

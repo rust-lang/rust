@@ -75,6 +75,7 @@ pub struct Vfs {
 }
 
 /// Changed file in the [`Vfs`].
+#[derive(Debug)]
 pub struct ChangedFile {
     /// Id of the changed file
     pub file_id: FileId,
@@ -161,9 +162,9 @@ impl Vfs {
         let file_id = self.alloc_file_id(path);
         let change_kind = match (&self.get(file_id), &contents) {
             (None, None) => return false,
+            (Some(old), Some(new)) if old == new => return false,
             (None, Some(_)) => ChangeKind::Create,
             (Some(_), None) => ChangeKind::Delete,
-            (Some(old), Some(new)) if old == new => return false,
             (Some(_), Some(_)) => ChangeKind::Modify,
         };
 

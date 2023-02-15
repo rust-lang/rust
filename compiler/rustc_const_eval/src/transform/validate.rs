@@ -13,7 +13,7 @@ use rustc_middle::mir::{
     RetagKind, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind, Terminator,
     TerminatorKind, UnOp, START_BLOCK,
 };
-use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitable};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
@@ -228,6 +228,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Fast path before we normalize.
         if src == dest {
             // Equal types, all is good.
+            return true;
+        }
+
+        // We sometimes have to use `defining_opaque_types` for subtyping
+        // to succeed here and figuring out how exactly that should work
+        // is annoying. It is harmless enough to just not validate anything
+        // in that case. We still check this after analysis as all opque
+        // types have been revealed at this point.
+        if (src, dest).has_opaque_types() {
             return true;
         }
 

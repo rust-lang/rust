@@ -50,6 +50,42 @@ impl OverflowData {
     }
 }
 
+pub(in crate::solve) trait OverflowHandler<'tcx> {
+    fn search_graph(&mut self) -> &mut SearchGraph<'tcx>;
+
+    fn repeat_while_none<T>(
+        &mut self,
+        on_overflow: impl FnOnce(&mut Self) -> Result<T, NoSolution>,
+        mut loop_body: impl FnMut(&mut Self) -> Option<Result<T, NoSolution>>,
+    ) -> Result<T, NoSolution> {
+        let start_depth = self.search_graph().overflow_data.additional_depth;
+        let depth = self.search_graph().stack.len();
+        while !self.search_graph().overflow_data.has_overflow(depth) {
+            if let Some(result) = loop_body(self) {
+                self.search_graph().overflow_data.additional_depth = start_depth;
+                return result;
+            }
+
+            self.search_graph().overflow_data.additional_depth += 1;
+        }
+        self.search_graph().overflow_data.additional_depth = start_depth;
+        self.search_graph().overflow_data.deal_with_overflow();
+        on_overflow(self)
+    }
+}
+
+impl<'tcx> OverflowHandler<'tcx> for EvalCtxt<'_, 'tcx> {
+    fn search_graph(&mut self) -> &mut SearchGraph<'tcx> {
+        &mut self.search_graph
+    }
+}
+
+impl<'tcx> OverflowHandler<'tcx> for SearchGraph<'tcx> {
+    fn search_graph(&mut self) -> &mut SearchGraph<'tcx> {
+        self
+    }
+}
+
 impl<'tcx> SearchGraph<'tcx> {
     pub fn deal_with_overflow(
         &mut self,
@@ -58,27 +94,5 @@ impl<'tcx> SearchGraph<'tcx> {
     ) -> QueryResult<'tcx> {
         self.overflow_data.deal_with_overflow();
         response_no_constraints(tcx, goal, Certainty::Maybe(MaybeCause::Overflow))
-    }
-}
-
-impl<'tcx> EvalCtxt<'_, 'tcx> {
-    /// A `while`-loop which tracks overflow.
-    pub fn repeat_while_none(
-        &mut self,
-        mut loop_body: impl FnMut(&mut Self) -> Option<Result<Certainty, NoSolution>>,
-    ) -> Result<Certainty, NoSolution> {
-        let start_depth = self.search_graph.overflow_data.additional_depth;
-        let depth = self.search_graph.stack.len();
-        while !self.search_graph.overflow_data.has_overflow(depth) {
-            if let Some(result) = loop_body(self) {
-                self.search_graph.overflow_data.additional_depth = start_depth;
-                return result;
-            }
-
-            self.search_graph.overflow_data.additional_depth += 1;
-        }
-        self.search_graph.overflow_data.additional_depth = start_depth;
-        self.search_graph.overflow_data.deal_with_overflow();
-        Ok(Certainty::Maybe(MaybeCause::Overflow))
     }
 }

@@ -5,9 +5,9 @@ use std::path::Path;
 use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
 use super::rustc_info::get_file_name;
-use super::utils::{hyperfine_command, is_ci, spawn_and_wait, CargoProject, Compiler};
+use super::utils::{hyperfine_command, spawn_and_wait, CargoProject, Compiler};
 
-pub(crate) static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
+static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "ebobby",
     "simple-raytracer",
     "804a7a21b9e673a482797aa289a18ed480e4d813",
@@ -15,10 +15,10 @@ pub(crate) static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
 );
 
 // Use a separate target dir for the initial LLVM build to reduce unnecessary recompiles
-pub(crate) static SIMPLE_RAYTRACER_LLVM: CargoProject =
+static SIMPLE_RAYTRACER_LLVM: CargoProject =
     CargoProject::new(&SIMPLE_RAYTRACER_REPO.source_dir(), "simple_raytracer_llvm");
 
-pub(crate) static SIMPLE_RAYTRACER: CargoProject =
+static SIMPLE_RAYTRACER: CargoProject =
     CargoProject::new(&SIMPLE_RAYTRACER_REPO.source_dir(), "simple_raytracer");
 
 pub(crate) fn benchmark(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
@@ -30,6 +30,15 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         eprintln!("Hyperfine not installed");
         eprintln!("Hint: Try `cargo install hyperfine` to install hyperfine");
         std::process::exit(1);
+    }
+
+    if !SIMPLE_RAYTRACER_REPO.source_dir().to_path(dirs).exists() {
+        SIMPLE_RAYTRACER_REPO.fetch(dirs);
+        spawn_and_wait(SIMPLE_RAYTRACER.fetch(
+            &bootstrap_host_compiler.cargo,
+            &bootstrap_host_compiler.rustc,
+            dirs,
+        ));
     }
 
     eprintln!("[LLVM BUILD] simple-raytracer");
@@ -45,10 +54,7 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
     )
     .unwrap();
 
-    let run_runs = env::var("RUN_RUNS")
-        .unwrap_or(if is_ci() { "2" } else { "10" }.to_string())
-        .parse()
-        .unwrap();
+    let bench_runs = env::var("BENCH_RUNS").unwrap_or_else(|_| "10".to_string()).parse().unwrap();
 
     eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
     let cargo_clif =
@@ -57,24 +63,24 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
     let target_dir = SIMPLE_RAYTRACER.target_dir(dirs);
 
     let clean_cmd = format!(
-        "cargo clean --manifest-path {manifest_path} --target-dir {target_dir}",
+        "RUSTC=rustc cargo clean --manifest-path {manifest_path} --target-dir {target_dir}",
         manifest_path = manifest_path.display(),
         target_dir = target_dir.display(),
     );
     let llvm_build_cmd = format!(
-        "cargo build --manifest-path {manifest_path} --target-dir {target_dir}",
+        "RUSTC=rustc cargo build --manifest-path {manifest_path} --target-dir {target_dir}",
         manifest_path = manifest_path.display(),
         target_dir = target_dir.display(),
     );
     let clif_build_cmd = format!(
-        "{cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir}",
+        "RUSTC=rustc {cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir}",
         cargo_clif = cargo_clif.display(),
         manifest_path = manifest_path.display(),
         target_dir = target_dir.display(),
     );
 
     let bench_compile =
-        hyperfine_command(1, run_runs, Some(&clean_cmd), &llvm_build_cmd, &clif_build_cmd);
+        hyperfine_command(1, bench_runs, Some(&clean_cmd), &llvm_build_cmd, &clif_build_cmd);
 
     spawn_and_wait(bench_compile);
 
@@ -87,7 +93,7 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
 
     let mut bench_run = hyperfine_command(
         0,
-        run_runs,
+        bench_runs,
         None,
         Path::new(".").join(get_file_name("raytracer_cg_llvm", "bin")).to_str().unwrap(),
         Path::new(".").join(get_file_name("raytracer_cg_clif", "bin")).to_str().unwrap(),

@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_diag_trait_item;
 use clippy_utils::source::snippet_with_context;
 use if_chain::if_chain;
@@ -17,19 +17,31 @@ pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) -
         let input_type = cx.typeck_results().expr_ty(expr);
         if let ty::Adt(adt, _) = cx.typeck_results().expr_ty(expr).kind();
         if cx.tcx.is_diagnostic_item(sym::Cow, adt.did());
+
         then {
             let mut app = Applicability::MaybeIncorrect;
             let recv_snip = snippet_with_context(cx, recv.span, expr.span.ctxt(), "..", &mut app).0;
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 SUSPICIOUS_TO_OWNED,
                 expr.span,
                 &with_forced_trimmed_paths!(format!(
                     "this `to_owned` call clones the {input_type} itself and does not cause the {input_type} contents to become owned"
                 )),
-                "consider using, depending on intent",
-                format!("{recv_snip}.clone()` or `{recv_snip}.into_owned()"),
-                app,
+                |diag| {
+                    diag.span_suggestion(
+                        expr.span,
+                        "depending on intent, either make the Cow an Owned variant",
+                        format!("{recv_snip}.into_owned()"),
+                        app
+                    );
+                    diag.span_suggestion(
+                        expr.span,
+                        "or clone the Cow itself",
+                        format!("{recv_snip}.clone()"),
+                        app
+                    );
+                }
             );
             return true;
         }

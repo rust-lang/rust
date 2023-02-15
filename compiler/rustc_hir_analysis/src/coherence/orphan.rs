@@ -8,7 +8,7 @@ use rustc_hir as hir;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IgnoreRegions;
 use rustc_middle::ty::{
-    self, AliasKind, ImplPolarity, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, ir::TypeVisitor, AliasKind, ImplPolarity, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
 };
 use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -552,7 +552,7 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
         seen: FxHashSet<DefId>,
     }
 
-    impl<'tcx> TypeVisitor<'tcx> for DisableAutoTraitVisitor<'tcx> {
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for DisableAutoTraitVisitor<'tcx> {
         type BreakTy = ();
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             let tcx = self.tcx;

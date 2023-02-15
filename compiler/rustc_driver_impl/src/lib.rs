@@ -23,7 +23,7 @@ use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
-use rustc_errors::{ErrorGuaranteed, PResult};
+use rustc_errors::{ErrorGuaranteed, PResult, TerminalUrl};
 use rustc_feature::find_gated_cfg;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
@@ -624,7 +624,10 @@ fn print_crate_info(
                 println!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
             }
             FileNames | CrateName => {
-                let attrs = attrs.as_ref().unwrap();
+                let Some(attrs) = attrs.as_ref() else {
+                    // no crate attributes, print out an error and exit
+                    return Compilation::Continue;
+                };
                 let t_outputs = rustc_interface::util::build_output_filenames(attrs, sess);
                 let id = rustc_session::output::find_crate_name(sess, attrs);
                 if *req == PrintRequest::CrateName {
@@ -1188,6 +1191,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
         None,
         false,
         false,
+        TerminalUrl::No,
     ));
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
 

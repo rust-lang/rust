@@ -6,6 +6,7 @@ pub fn target() -> Target {
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
     base.stack_probes = StackProbeType::X86;
+    base.supports_xray = true;
 
     Target {
         llvm_target: "x86_64-unknown-openbsd".into(),

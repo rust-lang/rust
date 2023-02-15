@@ -36,7 +36,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, LifetimeRes, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
@@ -46,7 +46,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::cstore::Untracked;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{ExpnId, Span};
+use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 use rustc_type_ir::WithCachedTypeInfo;
@@ -146,6 +146,10 @@ mod structural_impls;
 mod sty;
 mod typeck_results;
 
+pub mod ir {
+    pub use super::{fold::ir::*, visit::ir::*};
+}
+
 // Data types
 
 pub type RegisteredTools = FxHashSet<Ident>;
@@ -181,6 +185,9 @@ pub struct ResolverGlobalCtxt {
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: FxHashMap<Span, Span>,
     pub registered_tools: RegisteredTools,
+    pub doc_link_resolutions: FxHashMap<LocalDefId, DocLinkResMap>,
+    pub doc_link_traits_in_scope: FxHashMap<LocalDefId, Vec<DefId>>,
+    pub all_macro_rules: FxHashMap<Symbol, Res<ast::NodeId>>,
 }
 
 /// Resolutions that should only be used for lowering.
@@ -545,6 +552,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(Clause::RegionOutlives(_))
             | PredicateKind::Clause(Clause::TypeOutlives(_))
             | PredicateKind::Clause(Clause::Projection(_))
+            | PredicateKind::AliasEq(..)
             | PredicateKind::ObjectSafe(_)
             | PredicateKind::ClosureKind(_, _, _)
             | PredicateKind::Subtype(_)
@@ -632,6 +640,12 @@ pub enum PredicateKind<'tcx> {
     /// A marker predicate that is always ambiguous.
     /// Used for coherence to mark opaque types as possibly equal to each other but ambiguous.
     Ambiguous,
+
+    /// Separate from `Clause::Projection` which is used for normalization in new solver.
+    /// This predicate requires two terms to be equal to eachother.
+    ///
+    /// Only used for new solver
+    AliasEq(Term<'tcx>, Term<'tcx>),
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -904,13 +918,13 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Term<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for Term<'tcx> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         Ok(self.unpack().try_fold_with(folder)?.pack())
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for Term<'tcx> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.unpack().visit_with(visitor)
     }
@@ -961,6 +975,33 @@ impl<'tcx> Term<'tcx> {
         match self.unpack() {
             TermKind::Ty(ty) => ty.into(),
             TermKind::Const(c) => c.into(),
+        }
+    }
+
+    /// This function returns `None` for `AliasKind::Opaque`.
+    ///
+    /// FIXME: rename `AliasTy` to `AliasTerm` and make sure we correctly
+    /// deal with constants.
+    pub fn to_alias_term_no_opaque(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
+        match self.unpack() {
+            TermKind::Ty(ty) => match ty.kind() {
+                ty::Alias(kind, alias_ty) => match kind {
+                    AliasKind::Projection => Some(*alias_ty),
+                    AliasKind::Opaque => None,
+                },
+                _ => None,
+            },
+            TermKind::Const(ct) => match ct.kind() {
+                ConstKind::Unevaluated(uv) => Some(tcx.mk_alias_ty(uv.def.did, uv.substs)),
+                _ => None,
+            },
+        }
+    }
+
+    pub fn is_infer(&self) -> bool {
+        match self.unpack() {
+            TermKind::Ty(ty) => ty.is_ty_or_numeric_infer(),
+            TermKind::Const(ct) => ct.is_ct_infer(),
         }
     }
 }
@@ -1152,6 +1193,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(Clause::Trait(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Projection(..))
+            | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
@@ -1171,6 +1213,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(Clause::Projection(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Trait(..))
+            | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
@@ -1191,6 +1234,7 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(Clause::TypeOutlives(data)) => Some(predicate.rebind(data)),
             PredicateKind::Clause(Clause::Trait(..))
             | PredicateKind::Clause(Clause::Projection(..))
+            | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
@@ -1576,7 +1620,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     fn try_fold_with<F: ty::fold::FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
@@ -1589,7 +1633,7 @@ impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for ParamEnv<'tcx> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.caller_bounds().visit_with(visitor)?;
         self.reveal().visit_with(visitor)
@@ -2344,13 +2388,15 @@ impl<'tcx> TyCtxt<'tcx> {
         self.trait_def(trait_def_id).has_auto_impl
     }
 
+    /// Returns `true` if this is coinductive, either because it is
+    /// an auto trait or because it has the `#[rustc_coinductive]` attribute.
+    pub fn trait_is_coinductive(self, trait_def_id: DefId) -> bool {
+        self.trait_def(trait_def_id).is_coinductive
+    }
+
     /// Returns `true` if this is a trait alias.
     pub fn trait_is_alias(self, trait_def_id: DefId) -> bool {
         self.def_kind(trait_def_id) == DefKind::TraitAlias
-    }
-
-    pub fn trait_is_coinductive(self, trait_def_id: DefId) -> bool {
-        self.trait_is_auto(trait_def_id) || self.lang_items().sized_trait() == Some(trait_def_id)
     }
 
     /// Returns layout of a generator. Layout might be unavailable if the
@@ -2390,8 +2436,23 @@ impl<'tcx> TyCtxt<'tcx> {
         None
     }
 
-    /// If the given `DefId` belongs to a trait that was automatically derived, returns `true`.
-    pub fn is_builtin_derive(self, def_id: DefId) -> bool {
+    /// Check if the given `DefId` is `#\[automatically_derived\], *and*
+    /// whether it was produced by expanding a builtin derive macro.
+    pub fn is_builtin_derived(self, def_id: DefId) -> bool {
+        if self.is_automatically_derived(def_id)
+            && let Some(def_id) = def_id.as_local()
+            && let outer = self.def_span(def_id).ctxt().outer_expn_data()
+            && matches!(outer.kind, ExpnKind::Macro(MacroKind::Derive, _))
+            && self.has_attr(outer.macro_def_id.unwrap(), sym::rustc_builtin_macro)
+        {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Check if the given `DefId` is `#\[automatically_derived\]`.
+    pub fn is_automatically_derived(self, def_id: DefId) -> bool {
         self.has_attr(def_id, sym::automatically_derived)
     }
 

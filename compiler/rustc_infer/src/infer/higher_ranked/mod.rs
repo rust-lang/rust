@@ -88,10 +88,10 @@ impl<'tcx> InferCtxt<'tcx> {
                 }))
             },
             types: &mut |bound_ty: ty::BoundTy| {
-                self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+                self.tcx.mk_placeholder(ty::PlaceholderType {
                     universe: next_universe,
                     name: bound_ty.kind,
-                }))
+                })
             },
             consts: &mut |bound_var: ty::BoundVar, ty| {
                 self.tcx

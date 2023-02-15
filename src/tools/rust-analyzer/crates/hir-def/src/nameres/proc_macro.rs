@@ -1,9 +1,9 @@
 //! Nameres-specific procedural macro data and helpers.
 
 use hir_expand::name::{AsName, Name};
-use tt::{Leaf, TokenTree};
 
 use crate::attr::Attrs;
+use crate::tt::{Leaf, TokenTree};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ProcMacroDef {

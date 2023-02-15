@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use hir_expand::{name::Name, AstId, ExpandResult, HirFileId, InFile, MacroCallId, MacroDefKind};
+use intern::Interned;
 use smallvec::SmallVec;
 use syntax::ast;
 
@@ -10,7 +11,6 @@ use crate::{
     attr::Attrs,
     body::{Expander, Mark},
     db::DefDatabase,
-    intern::Interned,
     item_tree::{self, AssocItem, FnFlags, ItemTree, ItemTreeId, ModItem, Param, TreeId},
     nameres::{
         attr_resolution::ResolvedAttr,
@@ -142,7 +142,7 @@ impl FunctionData {
     }
 }
 
-fn parse_rustc_legacy_const_generics(tt: &tt::Subtree) -> Box<[u32]> {
+fn parse_rustc_legacy_const_generics(tt: &crate::tt::Subtree) -> Box<[u32]> {
     let mut indices = Vec::new();
     for args in tt.token_trees.chunks(2) {
         match &args[0] {

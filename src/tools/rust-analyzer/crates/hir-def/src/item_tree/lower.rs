@@ -99,7 +99,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_mod_item(&mut self, item: &ast::Item) -> Option<ModItem> {
-        let attrs = RawAttrs::new(self.db, item, self.hygiene());
+        let attrs = RawAttrs::new(self.db.upcast(), item, self.hygiene());
         let item: ModItem = match item {
             ast::Item::Struct(ast) => self.lower_struct(ast)?.into(),
             ast::Item::Union(ast) => self.lower_union(ast)?.into(),
@@ -173,7 +173,7 @@ impl<'a> Ctx<'a> {
         for field in fields.fields() {
             if let Some(data) = self.lower_record_field(&field) {
                 let idx = self.data().fields.alloc(data);
-                self.add_attrs(idx.into(), RawAttrs::new(self.db, &field, self.hygiene()));
+                self.add_attrs(idx.into(), RawAttrs::new(self.db.upcast(), &field, self.hygiene()));
             }
         }
         let end = self.next_field_idx();
@@ -194,7 +194,7 @@ impl<'a> Ctx<'a> {
         for (i, field) in fields.fields().enumerate() {
             let data = self.lower_tuple_field(i, &field);
             let idx = self.data().fields.alloc(data);
-            self.add_attrs(idx.into(), RawAttrs::new(self.db, &field, self.hygiene()));
+            self.add_attrs(idx.into(), RawAttrs::new(self.db.upcast(), &field, self.hygiene()));
         }
         let end = self.next_field_idx();
         IdxRange::new(start..end)
@@ -239,7 +239,10 @@ impl<'a> Ctx<'a> {
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
                 let idx = self.data().variants.alloc(data);
-                self.add_attrs(idx.into(), RawAttrs::new(self.db, &variant, self.hygiene()));
+                self.add_attrs(
+                    idx.into(),
+                    RawAttrs::new(self.db.upcast(), &variant, self.hygiene()),
+                );
             }
         }
         let end = self.next_variant_idx();
@@ -283,7 +286,10 @@ impl<'a> Ctx<'a> {
                 };
                 let ty = Interned::new(self_type);
                 let idx = self.data().params.alloc(Param::Normal(None, ty));
-                self.add_attrs(idx.into(), RawAttrs::new(self.db, &self_param, self.hygiene()));
+                self.add_attrs(
+                    idx.into(),
+                    RawAttrs::new(self.db.upcast(), &self_param, self.hygiene()),
+                );
                 has_self_param = true;
             }
             for param in param_list.params() {
@@ -307,7 +313,7 @@ impl<'a> Ctx<'a> {
                         self.data().params.alloc(Param::Normal(name, ty))
                     }
                 };
-                self.add_attrs(idx.into(), RawAttrs::new(self.db, &param, self.hygiene()));
+                self.add_attrs(idx.into(), RawAttrs::new(self.db.upcast(), &param, self.hygiene()));
             }
         }
         let end_param = self.next_param_idx();
@@ -442,7 +448,7 @@ impl<'a> Ctx<'a> {
         let items = trait_def.assoc_item_list().map(|list| {
             list.assoc_items()
                 .filter_map(|item| {
-                    let attrs = RawAttrs::new(self.db, &item, self.hygiene());
+                    let attrs = RawAttrs::new(self.db.upcast(), &item, self.hygiene());
                     self.lower_assoc_item(&item).map(|item| {
                         self.add_attrs(ModItem::from(item).into(), attrs);
                         item
@@ -471,7 +477,7 @@ impl<'a> Ctx<'a> {
             .flat_map(|it| it.assoc_items())
             .filter_map(|item| {
                 let assoc = self.lower_assoc_item(&item)?;
-                let attrs = RawAttrs::new(self.db, &item, self.hygiene());
+                let attrs = RawAttrs::new(self.db.upcast(), &item, self.hygiene());
                 self.add_attrs(ModItem::from(assoc).into(), attrs);
                 Some(assoc)
             })
@@ -541,7 +547,7 @@ impl<'a> Ctx<'a> {
                     // (in other words, the knowledge that they're in an extern block must not be used).
                     // This is because an extern block can contain macros whose ItemTree's top-level items
                     // should be considered to be in an extern block too.
-                    let attrs = RawAttrs::new(self.db, &item, self.hygiene());
+                    let attrs = RawAttrs::new(self.db.upcast(), &item, self.hygiene());
                     let id: ModItem = match item {
                         ast::ExternItem::Fn(ast) => self.lower_function(&ast)?.into(),
                         ast::ExternItem::Static(ast) => self.lower_static(&ast)?.into(),

@@ -54,7 +54,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 
     trace!(
         "eval_body_using_ecx: pushing stack frame for global: {}{}",
-        with_no_trimmed_paths!(ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id()))),
+        with_no_trimmed_paths!(ecx.tcx.def_path_str(cid.instance.def_id())),
         cid.promoted.map_or_else(String::new, |p| format!("::promoted[{:?}]", p))
     );
 

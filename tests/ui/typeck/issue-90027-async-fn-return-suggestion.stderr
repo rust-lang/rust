@@ -18,10 +18,13 @@ error[E0308]: mismatched types
   --> $DIR/issue-90027-async-fn-return-suggestion.rs:14:5
    |
 LL |     hello()
-   |     ^^^^^^^ expected `()`, found opaque type
+   |     ^^^^^^^ expected `()`, found future
    |
-   = note: expected unit type `()`
-            found opaque type `impl Future<Output = ()>`
+note: calling an async function returns a future
+  --> $DIR/issue-90027-async-fn-return-suggestion.rs:14:5
+   |
+LL |     hello()
+   |     ^^^^^^^
 help: consider `await`ing on the `Future`
    |
 LL |     hello().await

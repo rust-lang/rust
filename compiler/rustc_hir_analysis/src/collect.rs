@@ -934,9 +934,10 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
     }
 
     let is_marker = tcx.has_attr(def_id, sym::marker);
+    let rustc_coinductive = tcx.has_attr(def_id, sym::rustc_coinductive);
     let skip_array_during_method_dispatch =
         tcx.has_attr(def_id, sym::rustc_skip_array_during_method_dispatch);
-    let spec_kind = if tcx.has_attr(def_id, sym::rustc_unsafe_specialization_marker) {
+    let specialization_kind = if tcx.has_attr(def_id, sym::rustc_unsafe_specialization_marker) {
         ty::trait_def::TraitSpecializationKind::Marker
     } else if tcx.has_attr(def_id, sym::rustc_specialization_trait) {
         ty::trait_def::TraitSpecializationKind::AlwaysApplicable
@@ -1036,16 +1037,17 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
             no_dups.then_some(list)
         });
 
-    ty::TraitDef::new(
+    ty::TraitDef {
         def_id,
         unsafety,
         paren_sugar,
-        is_auto,
+        has_auto_impl: is_auto,
         is_marker,
+        is_coinductive: rustc_coinductive || is_auto,
         skip_array_during_method_dispatch,
-        spec_kind,
+        specialization_kind,
         must_implement_one_of,
-    )
+    }
 }
 
 fn are_suggestable_generic_args(generic_args: &[hir::GenericArg<'_>]) -> bool {

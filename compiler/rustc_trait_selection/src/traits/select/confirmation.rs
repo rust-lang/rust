@@ -527,13 +527,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 let kind = ty::BoundTyKind::Param(param.def_id, param.name);
                                 let bound_var = ty::BoundVariableKind::Ty(kind);
                                 bound_vars.push(bound_var);
-                                tcx.mk_ty(ty::Bound(
+                                tcx.mk_bound(
                                     ty::INNERMOST,
                                     ty::BoundTy {
                                         var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                                         kind,
                                     },
-                                ))
+                                )
                                 .into()
                             }
                             GenericParamDefKind::Lifetime => {

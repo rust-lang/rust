@@ -78,7 +78,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         sub: Region<'tcx>,
         sup: Region<'tcx>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        match origin {
+        let mut err = match origin {
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
                 let mut err = self.report_and_explain_type_error(trace, terr);
@@ -299,7 +299,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 );
                 err
             }
+        };
+        if sub.is_error() || sup.is_error() {
+            err.delay_as_bug();
         }
+        err
     }
 
     pub fn suggest_copy_trait_method_bounds(

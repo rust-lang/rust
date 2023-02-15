@@ -27,6 +27,7 @@ use super::{
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::traits::error_reporting::TypeErrCtxtExt;
+use crate::traits::project::try_normalize_with_depth_to;
 use crate::traits::project::ProjectAndUnifyResult;
 use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
@@ -48,7 +49,7 @@ use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
-use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable};
 use rustc_session::config::TraitSolver;
 use rustc_span::symbol::sym;
 
@@ -991,6 +992,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for chalk")
                 }
+                ty::PredicateKind::AliasEq(..) => {
+                    bug!("AliasEq is only used for new solver")
+                }
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
             }
         })
@@ -1046,7 +1050,51 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Ok(cycle_result);
         }
 
-        let (result, dep_node) = self.in_task(|this| this.evaluate_stack(&stack));
+        let (result, dep_node) = self.in_task(|this| {
+            let mut result = this.evaluate_stack(&stack)?;
+
+            // fix issue #103563, we don't normalize
+            // nested obligations which produced by `TraitDef` candidate
+            // (i.e. using bounds on assoc items as assumptions).
+            // because we don't have enough information to
+            // normalize these obligations before evaluating.
+            // so we will try to normalize the obligation and evaluate again.
+            // we will replace it with new solver in the future.
+            if EvaluationResult::EvaluatedToErr == result
+                && fresh_trait_pred.has_projections()
+                && fresh_trait_pred.is_global()
+            {
+                let mut nested_obligations = Vec::new();
+                let predicate = try_normalize_with_depth_to(
+                    this,
+                    param_env,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    obligation.predicate,
+                    &mut nested_obligations,
+                );
+                if predicate != obligation.predicate {
+                    let mut nested_result = EvaluationResult::EvaluatedToOk;
+                    for obligation in nested_obligations {
+                        nested_result = cmp::max(
+                            this.evaluate_predicate_recursively(stack.list(), obligation)?,
+                            nested_result,
+                        );
+                    }
+
+                    if nested_result.must_apply_modulo_regions() {
+                        let obligation = obligation.with(this.tcx(), predicate);
+                        result = cmp::max(
+                            nested_result,
+                            this.evaluate_trait_predicate_recursively(stack.list(), obligation)?,
+                        );
+                    }
+                }
+            }
+
+            Ok::<_, OverflowError>(result)
+        });
+
         let result = result?;
 
         if !result.must_apply_modulo_regions() {

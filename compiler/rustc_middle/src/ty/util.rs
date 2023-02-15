@@ -4,8 +4,8 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
-    self, DefIdTree, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitable,
+    self, ir::TypeFolder, DefIdTree, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable,
+    TypeSuperFoldable,
 };
 use crate::ty::{GenericArgKind, SubstsRef};
 use rustc_apfloat::Float as _;
@@ -842,8 +842,8 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for OpaqueTypeExpander<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1343,7 +1343,7 @@ where
             for t in iter {
                 new_list.push(t.try_fold_with(folder)?)
             }
-            Ok(intern(folder.tcx(), &new_list))
+            Ok(intern(folder.interner(), &new_list))
         }
         Some((_, Err(err))) => {
             return Err(err);

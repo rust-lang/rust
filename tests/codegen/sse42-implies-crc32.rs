@@ -1,5 +1,4 @@
 // only-x86_64
-// min-llvm-version: 14.0
 // compile-flags: -Copt-level=3
 
 #![crate_type = "lib"]

@@ -1,9 +1,5 @@
-// known-bug: unknown
 // compile-flags: -Ztrait-solver=next
-// failure-status: 101
-// normalize-stderr-test "note: .*\n\n" -> ""
-// normalize-stderr-test "thread 'rustc' panicked.*\n" -> ""
-// rustc-env:RUST_BACKTRACE=0
+// check-pass
 
 // This tests checks that we update results in the provisional cache when
 // we pop a goal from the stack.

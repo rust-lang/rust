@@ -1594,12 +1594,14 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     // Ignore projections, as they can only be global
                     // if the trait bound is global
                     Clause(Clause::Projection(..)) |
+                    AliasEq(..) |
                     // Ignore bounds that a user can't type
                     WellFormed(..) |
                     ObjectSafe(..) |
                     ClosureKind(..) |
                     Subtype(..) |
                     Coerce(..) |
+                    // FIXME(generic_const_exprs): `ConstEvaluatable` can be written
                     ConstEvaluatable(..) |
                     ConstEquate(..) |
                     Ambiguous |
@@ -2603,7 +2605,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     ty.tuple_fields().iter().find_map(|field| ty_find_init_error(cx, field, init))
                 }
                 Array(ty, len) => {
-                    if matches!(len.try_eval_usize(cx.tcx, cx.param_env), Some(v) if v > 0) {
+                    if matches!(len.try_eval_target_usize(cx.tcx, cx.param_env), Some(v) if v > 0) {
                         // Array length known at array non-empty -- recurse.
                         ty_find_init_error(cx, *ty, init)
                     } else {

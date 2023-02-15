@@ -1,4 +1,3 @@
-pub use crate::passes::BoxedResolver;
 use crate::util;
 
 use rustc_ast::token;

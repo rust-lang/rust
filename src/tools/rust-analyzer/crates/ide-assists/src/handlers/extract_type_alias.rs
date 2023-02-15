@@ -1,9 +1,6 @@
 use either::Either;
 use ide_db::syntax_helpers::node_ext::walk_ty;
-use syntax::{
-    ast::{self, edit::IndentLevel, make, AstNode, HasGenericParams, HasName},
-    match_ast,
-};
+use syntax::ast::{self, edit::IndentLevel, make, AstNode, HasGenericParams, HasName};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -31,15 +28,8 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
 
     let ty = ctx.find_node_at_range::<ast::Type>()?;
     let item = ty.syntax().ancestors().find_map(ast::Item::cast)?;
-    let assoc_owner = item.syntax().ancestors().nth(2).and_then(|it| {
-        match_ast! {
-            match it {
-                ast::Trait(tr) => Some(Either::Left(tr)),
-                ast::Impl(impl_) => Some(Either::Right(impl_)),
-                _ => None,
-            }
-        }
-    });
+    let assoc_owner =
+        item.syntax().ancestors().nth(2).and_then(Either::<ast::Trait, ast::Impl>::cast);
     let node = assoc_owner.as_ref().map_or_else(
         || item.syntax(),
         |impl_| impl_.as_ref().either(AstNode::syntax, AstNode::syntax),
@@ -161,19 +151,17 @@ fn collect_used_generics<'gp>(
                     .and_then(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
             ),
             ast::Type::ArrayType(ar) => {
-                if let Some(expr) = ar.expr() {
-                    if let ast::Expr::PathExpr(p) = expr {
-                        if let Some(path) = p.path() {
-                            if let Some(name_ref) = path.as_single_name_ref() {
-                                if let Some(param) = known_generics.iter().find(|gp| {
-                                    if let ast::GenericParam::ConstParam(cp) = gp {
-                                        cp.name().map_or(false, |n| n.text() == name_ref.text())
-                                    } else {
-                                        false
-                                    }
-                                }) {
-                                    generics.push(param);
+                if let Some(ast::Expr::PathExpr(p)) = ar.expr() {
+                    if let Some(path) = p.path() {
+                        if let Some(name_ref) = path.as_single_name_ref() {
+                            if let Some(param) = known_generics.iter().find(|gp| {
+                                if let ast::GenericParam::ConstParam(cp) = gp {
+                                    cp.name().map_or(false, |n| n.text() == name_ref.text())
+                                } else {
+                                    false
                                 }
+                            }) {
+                                generics.push(param);
                             }
                         }
                     }

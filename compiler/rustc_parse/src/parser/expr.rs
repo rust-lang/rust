@@ -5,6 +5,7 @@ use super::{
     AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions,
     SemiColonMode, SeqSep, TokenExpectType, TokenType, TrailingToken,
 };
+
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use core::mem;
@@ -1017,7 +1018,7 @@ impl<'a> Parser<'a> {
     fn error_unexpected_after_dot(&self) {
         // FIXME Could factor this out into non_fatal_unexpected or something.
         let actual = pprust::token_to_string(&self.token);
-        self.struct_span_err(self.token.span, &format!("unexpected token: `{actual}`")).emit();
+        self.sess.emit_err(errors::UnexpectedTokenAfterDot { span: self.token.span, actual });
     }
 
     // We need an identifier or integer, but the next token is a float.

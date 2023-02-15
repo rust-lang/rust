@@ -41,7 +41,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // #55810: Type check patterns first so we get types for all bindings.
         let scrut_span = scrut.span.find_ancestor_inside(expr.span).unwrap_or(scrut.span);
         for arm in arms {
-            self.check_pat_top(&arm.pat, scrutinee_ty, Some(scrut_span), true);
+            self.check_pat_top(&arm.pat, scrutinee_ty, Some(scrut_span), Some(scrut));
         }
 
         // Now typecheck the blocks.

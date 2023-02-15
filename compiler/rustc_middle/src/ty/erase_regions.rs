@@ -1,5 +1,4 @@
-use crate::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use crate::ty::visit::TypeVisitable;
+use crate::ty::fold::{ir::TypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::{self, Ty, TyCtxt, TypeFlags};
 
 pub(super) fn provide(providers: &mut ty::query::Providers) {
@@ -35,8 +34,8 @@ struct RegionEraserVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserVisitor<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

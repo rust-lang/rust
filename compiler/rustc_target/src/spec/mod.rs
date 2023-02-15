@@ -1718,6 +1718,9 @@ pub struct TargetOptions {
     /// The ABI of entry function.
     /// Default value is `Conv::C`, i.e. C call convention
     pub entry_abi: Conv,
+
+    /// Whether the target supports XRay instrumentation.
+    pub supports_xray: bool,
 }
 
 /// Add arguments for the given flavor and also for its "twin" flavors
@@ -1937,6 +1940,7 @@ impl Default for TargetOptions {
             supports_stack_protector: true,
             entry_name: "main".into(),
             entry_abi: Conv::C,
+            supports_xray: false,
         }
     }
 }
@@ -2592,6 +2596,7 @@ impl Target {
         key!(supports_stack_protector, bool);
         key!(entry_name);
         key!(entry_abi, Conv)?;
+        key!(supports_xray, bool);
 
         if base.is_builtin {
             // This can cause unfortunate ICEs later down the line.
@@ -2845,6 +2850,7 @@ impl ToJson for Target {
         target_option_val!(supports_stack_protector);
         target_option_val!(entry_name);
         target_option_val!(entry_abi);
+        target_option_val!(supports_xray);
 
         if let Some(abi) = self.default_adjusted_cabi {
             d.insert("default-adjusted-cabi".into(), Abi::name(abi).to_json());

@@ -392,9 +392,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
-        let is_exported = cx
-            .effective_visibilities
-            .is_exported(field.def_id);
+        let is_exported = cx.effective_visibilities.is_exported(field.def_id);
 
         self.check_ty(
             cx,

@@ -8,9 +8,11 @@
 use std::{iter, sync::Arc};
 
 use chalk_ir::{cast::Cast, BoundVar, Goal, Mutability, TyVariableKind};
-use hir_def::{expr::ExprId, lang_item::LangItemTarget};
+use hir_def::{
+    expr::ExprId,
+    lang_item::{LangItem, LangItemTarget},
+};
 use stdx::always;
-use syntax::SmolStr;
 
 use crate::{
     autoderef::{Autoderef, AutoderefKind},
@@ -570,11 +572,10 @@ impl<'a> InferenceTable<'a> {
             reborrow.as_ref().map_or_else(|| from_ty.clone(), |(_, adj)| adj.target.clone());
 
         let krate = self.trait_env.krate;
-        let coerce_unsized_trait =
-            match self.db.lang_item(krate, SmolStr::new_inline("coerce_unsized")) {
-                Some(LangItemTarget::TraitId(trait_)) => trait_,
-                _ => return Err(TypeError),
-            };
+        let coerce_unsized_trait = match self.db.lang_item(krate, LangItem::CoerceUnsized) {
+            Some(LangItemTarget::Trait(trait_)) => trait_,
+            _ => return Err(TypeError),
+        };
 
         let coerce_unsized_tref = {
             let b = TyBuilder::trait_ref(self.db, coerce_unsized_trait);

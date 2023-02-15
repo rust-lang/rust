@@ -49,10 +49,10 @@ Guard](https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard)
 platform security feature. This flag is currently ignored for non-Windows targets.
 It takes one of the following values:
 
-* `y`, `yes`, `on`, `checks`, or no value: enable Control Flow Guard.
+* `y`, `yes`, `on`, `true`, `checks`, or no value: enable Control Flow Guard.
 * `nochecks`: emit Control Flow Guard metadata without runtime enforcement checks (this
 should only be used for testing purposes as it does not provide security enforcement).
-* `n`, `no`, `off`: do not enable Control Flow Guard (the default).
+* `n`, `no`, `off`, `false`: do not enable Control Flow Guard (the default).
 
 ## debug-assertions
 
@@ -60,8 +60,8 @@ This flag lets you turn `cfg(debug_assertions)` [conditional
 compilation](../../reference/conditional-compilation.md#debug_assertions) on
 or off. It takes one of the following values:
 
-* `y`, `yes`, `on`, or no value: enable debug-assertions.
-* `n`, `no`, or `off`: disable debug-assertions.
+* `y`, `yes`, `on`, `true`, or no value: enable debug-assertions.
+* `n`, `no`, `off` or `false`: disable debug-assertions.
 
 If not specified, debug assertions are automatically enabled only if the
 [opt-level](#opt-level) is 0.
@@ -82,8 +82,8 @@ Note: The [`-g` flag][option-g-debug] is an alias for `-C debuginfo=2`.
 This flag controls whether or not the linker includes its default libraries.
 It takes one of the following values:
 
-* `y`, `yes`, `on`, or no value: include default libraries (the default).
-* `n`, `no`, or `off`: exclude default libraries.
+* `y`, `yes`, `on`, `true` or no value: include default libraries (the default).
+* `n`, `no`, `off` or `false`: exclude default libraries.
 
 For example, for gcc flavor linkers, this issues the `-nodefaultlibs` flag to
 the linker.
@@ -93,8 +93,8 @@ the linker.
 This flag controls whether or not the compiler embeds LLVM bitcode into object
 files. It takes one of the following values:
 
-* `y`, `yes`, `on`, or no value: put bitcode in rlibs (the default).
-* `n`, `no`, or `off`: omit bitcode from rlibs.
+* `y`, `yes`, `on`, `true` or no value: put bitcode in rlibs (the default).
+* `n`, `no`, `off` or `false`: omit bitcode from rlibs.
 
 LLVM bitcode is required when rustc is performing link-time optimization (LTO).
 It is also required on some targets like iOS ones where vendors look for LLVM
@@ -135,8 +135,8 @@ flag][option-emit] for more information.
 This flag forces the use of frame pointers. It takes one of the following
 values:
 
-* `y`, `yes`, `on`, or no value: force-enable frame pointers.
-* `n`, `no`, or `off`: do not force-enable frame pointers. This does
+* `y`, `yes`, `on`, `true` or no value: force-enable frame pointers.
+* `n`, `no`, `off` or `false`: do not force-enable frame pointers. This does
   not necessarily mean frame pointers will be removed.
 
 The default behaviour, if frame pointers are not force-enabled, depends on the
@@ -147,8 +147,8 @@ target.
 This flag forces the generation of unwind tables. It takes one of the following
 values:
 
-* `y`, `yes`, `on`, or no value: Unwind tables are forced to be generated.
-* `n`, `no`, or `off`: Unwind tables are not forced to be generated. If unwind
+* `y`, `yes`, `on`, `true` or no value: Unwind tables are forced to be generated.
+* `n`, `no`, `off` or `false`: Unwind tables are not forced to be generated. If unwind
   tables are required by the target an error will be emitted.
 
 The default if not specified depends on the target.
@@ -202,8 +202,8 @@ options should be separated by spaces.
 This flag controls whether the linker will keep dead code. It takes one of
 the following values:
 
-* `y`, `yes`, `on`, or no value: keep dead code.
-* `n`, `no`, or `off`: remove dead code (the default).
+* `y`, `yes`, `on`, `true` or no value: keep dead code.
+* `n`, `no`, `off` or `false`: remove dead code (the default).
 
 An example of when this flag might be useful is when trying to construct code coverage
 metrics.
@@ -215,8 +215,8 @@ linker will use libraries and objects shipped with Rust instead or those in the 
 It takes one of the following values:
 
 * no value: rustc will use heuristic to disable self-contained mode if system has necessary tools.
-* `y`, `yes`, `on`: use only libraries/objects shipped with Rust.
-* `n`, `no`, or `off`: rely on the user or the linker to provide non-Rust libraries/objects.
+* `y`, `yes`, `on`, `true`: use only libraries/objects shipped with Rust.
+* `n`, `no`, `off` or `false`: rely on the user or the linker to provide non-Rust libraries/objects.
 
 This allows overriding cases when detection fails or user wants to use shipped libraries.
 
@@ -261,8 +261,8 @@ This flag defers LTO optimizations to the linker. See
 [linker-plugin-LTO](../linker-plugin-lto.md) for more details. It takes one of
 the following values:
 
-* `y`, `yes`, `on`, or no value: enable linker plugin LTO.
-* `n`, `no`, or `off`: disable linker plugin LTO (the default).
+* `y`, `yes`, `on`, `true` or no value: enable linker plugin LTO.
+* `n`, `no`, `off` or `false`: disable linker plugin LTO (the default).
 * A path to the linker plugin.
 
 More specifically this flag will cause the compiler to replace its typical
@@ -292,9 +292,9 @@ optimizations](https://llvm.org/docs/LinkTimeOptimization.html) to produce
 better optimized code, using whole-program analysis, at the cost of longer
 linking time. It takes one of the following values:
 
-* `y`, `yes`, `on`, `fat`, or no value: perform "fat" LTO which attempts to
+* `y`, `yes`, `on`, `true`, `fat`, or no value: perform "fat" LTO which attempts to
   perform optimizations across all crates within the dependency graph.
-* `n`, `no`, `off`: disables LTO.
+* `n`, `no`, `off`, `false`: disables LTO.
 * `thin`: perform ["thin"
   LTO](http://blog.llvm.org/2016/06/thinlto-scalable-and-incremental-lto.html).
   This is similar to "fat", but takes substantially less time to run while
@@ -333,8 +333,8 @@ This flag allows you to disable [the
 red zone](https://en.wikipedia.org/wiki/Red_zone_\(computing\)). It takes one
 of the following values:
 
-* `y`, `yes`, `on`, or no value: disable the red zone.
-* `n`, `no`, or `off`: enable the red zone.
+* `y`, `yes`, `on`, `true` or no value: disable the red zone.
+* `n`, `no`, `off` or `false`: enable the red zone.
 
 The default behaviour, if the flag is not specified, depends on the target.
 
@@ -376,8 +376,8 @@ overflow](../../reference/expressions/operator-expr.md#overflow). When
 overflow-checks are enabled, a panic will occur on overflow. This flag takes
 one of the following values:
 
-* `y`, `yes`, `on`, or no value: enable overflow checks.
-* `n`, `no`, or `off`: disable overflow checks.
+* `y`, `yes`, `on`, `true` or no value: enable overflow checks.
+* `n`, `no`, `off` or `false`: disable overflow checks.
 
 If not specified, overflow checks are enabled if
 [debug-assertions](#debug-assertions) are enabled, disabled otherwise.
@@ -409,8 +409,8 @@ for determining whether or not it is possible to statically or dynamically
 link with a dependency. For example, `cdylib` crate types may only use static
 linkage. This flag takes one of the following values:
 
-* `y`, `yes`, `on`, or no value: use dynamic linking.
-* `n`, `no`, or `off`: use static linking (the default).
+* `y`, `yes`, `on`, `true` or no value: use dynamic linking.
+* `n`, `no`, `off` or `false`: use static linking (the default).
 
 ## profile-generate
 
@@ -487,24 +487,24 @@ The list of passes should be separated by spaces.
 This flag controls whether [`rpath`](https://en.wikipedia.org/wiki/Rpath) is
 enabled. It takes one of the following values:
 
-* `y`, `yes`, `on`, or no value: enable rpath.
-* `n`, `no`, or `off`: disable rpath (the default).
+* `y`, `yes`, `on`, `true` or no value: enable rpath.
+* `n`, `no`, `off` or `false`: disable rpath (the default).
 
 ## save-temps
 
 This flag controls whether temporary files generated during compilation are
 deleted once compilation finishes. It takes one of the following values:
 
-* `y`, `yes`, `on`, or no value: save temporary files.
-* `n`, `no`, or `off`: delete temporary files (the default).
+* `y`, `yes`, `on`, `true` or no value: save temporary files.
+* `n`, `no`, `off` or `false`: delete temporary files (the default).
 
 ## soft-float
 
 This option controls whether `rustc` generates code that emulates floating
 point instructions in software. It takes one of the following values:
 
-* `y`, `yes`, `on`, or no value: use soft floats.
-* `n`, `no`, or `off`: use hardware floats (the default).
+* `y`, `yes`, `on`, `true` or no value: use soft floats.
+* `n`, `no`, `off` or `false`: use hardware floats (the default).
 
 ## split-debuginfo
 

@@ -124,7 +124,7 @@ impl<'tcx> InferCtxt<'tcx> {
             CanonicalVarKind::PlaceholderTy(ty::PlaceholderType { universe, name }) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderType { universe: universe_mapped, name };
-                self.tcx.mk_ty(ty::Placeholder(placeholder_mapped)).into()
+                self.tcx.mk_placeholder(placeholder_mapped).into()
             }
 
             CanonicalVarKind::Region(ui) => self

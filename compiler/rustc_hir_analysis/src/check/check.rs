@@ -121,7 +121,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
 
         let param_env = tcx.param_env(item_def_id);
         for field in &def.non_enum_variant().fields {
-            let field_ty = field.ty(tcx, substs);
+            let field_ty = tcx.normalize_erasing_regions(param_env, field.ty(tcx, substs));
 
             if !allowed_union_field(field_ty, tcx, param_env) {
                 let (field_span, ty_span) = match tcx.hir().get_if_local(field.did) {
@@ -261,7 +261,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
         selftys: Vec<(Span, Option<String>)>,
     }
 
-    impl<'tcx> ty::visit::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
+    impl<'tcx> ty::visit::ir::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueVisitor<'tcx> {
         type BreakTy = Ty<'tcx>;
 
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -901,7 +901,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         }
 
         let len = if let ty::Array(_ty, c) = e.kind() {
-            c.try_eval_usize(tcx, tcx.param_env(def.did()))
+            c.try_eval_target_usize(tcx, tcx.param_env(def.did()))
         } else {
             Some(fields.len() as u64)
         };
@@ -1447,7 +1447,7 @@ fn opaque_type_cycle_error(
                     opaques: Vec<DefId>,
                     closures: Vec<DefId>,
                 }
-                impl<'tcx> ty::visit::TypeVisitor<'tcx> for OpaqueTypeCollector {
+                impl<'tcx> ty::visit::ir::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector {
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                         match *t.kind() {
                             ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {

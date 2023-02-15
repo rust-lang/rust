@@ -63,6 +63,14 @@ fn combine_or(file: &str) -> Result<(), Error> {
     Ok(())
 }
 
+fn is_ok_err<T: io::Read + io::Write>(s: &mut T) {
+    s.write(b"ok").is_ok();
+    s.write(b"err").is_err();
+    let mut buf = [0u8; 0];
+    s.read(&mut buf).is_ok();
+    s.read(&mut buf).is_err();
+}
+
 async fn bad_async_write<W: AsyncWrite + Unpin>(w: &mut W) {
     w.write(b"hello world").await.unwrap();
 }

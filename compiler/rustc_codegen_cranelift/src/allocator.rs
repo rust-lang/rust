@@ -70,37 +70,13 @@ fn codegen_inner(
             params: arg_tys.iter().cloned().map(AbiParam::new).collect(),
             returns: output.into_iter().map(AbiParam::new).collect(),
         };
-
-        let caller_name = format!("__rust_{}", method.name);
-        let callee_name = kind.fn_name(method.name);
-
-        let func_id = module.declare_function(&caller_name, Linkage::Export, &sig).unwrap();
-
-        let callee_func_id = module.declare_function(&callee_name, Linkage::Import, &sig).unwrap();
-
-        let mut ctx = Context::new();
-        ctx.func.signature = sig.clone();
-        {
-            let mut func_ctx = FunctionBuilderContext::new();
-            let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
-
-            let block = bcx.create_block();
-            bcx.switch_to_block(block);
-            let args = arg_tys
-                .into_iter()
-                .map(|ty| bcx.append_block_param(block, ty))
-                .collect::<Vec<Value>>();
-
-            let callee_func_ref = module.declare_func_in_func(callee_func_id, &mut bcx.func);
-            let call_inst = bcx.ins().call(callee_func_ref, &args);
-            let results = bcx.inst_results(call_inst).to_vec(); // Clone to prevent borrow error
-
-            bcx.ins().return_(&results);
-            bcx.seal_all_blocks();
-            bcx.finalize();
-        }
-        module.define_function(func_id, &mut ctx).unwrap();
-        unwind_context.add_function(func_id, &ctx, module.isa());
+        crate::common::create_wrapper_function(
+            module,
+            unwind_context,
+            sig,
+            &format!("__rust_{}", method.name),
+            &kind.fn_name(method.name),
+        );
     }
 
     let sig = Signature {
@@ -108,36 +84,13 @@ fn codegen_inner(
         params: vec![AbiParam::new(usize_ty), AbiParam::new(usize_ty)],
         returns: vec![],
     };
-
-    let callee_name = alloc_error_handler_kind.fn_name(sym::oom);
-
-    let func_id =
-        module.declare_function("__rust_alloc_error_handler", Linkage::Export, &sig).unwrap();
-
-    let callee_func_id = module.declare_function(&callee_name, Linkage::Import, &sig).unwrap();
-
-    let mut ctx = Context::new();
-    ctx.func.signature = sig;
-    {
-        let mut func_ctx = FunctionBuilderContext::new();
-        let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
-
-        let block = bcx.create_block();
-        bcx.switch_to_block(block);
-        let args = (&[usize_ty, usize_ty])
-            .iter()
-            .map(|&ty| bcx.append_block_param(block, ty))
-            .collect::<Vec<Value>>();
-
-        let callee_func_ref = module.declare_func_in_func(callee_func_id, &mut bcx.func);
-        bcx.ins().call(callee_func_ref, &args);
-
-        bcx.ins().trap(TrapCode::UnreachableCodeReached);
-        bcx.seal_all_blocks();
-        bcx.finalize();
-    }
-    module.define_function(func_id, &mut ctx).unwrap();
-    unwind_context.add_function(func_id, &ctx, module.isa());
+    crate::common::create_wrapper_function(
+        module,
+        unwind_context,
+        sig,
+        "__rust_alloc_error_handler",
+        &alloc_error_handler_kind.fn_name(sym::oom),
+    );
 
     let data_id = module.declare_data(OomStrategy::SYMBOL, Linkage::Export, false, false).unwrap();
     let mut data_ctx = DataContext::new();

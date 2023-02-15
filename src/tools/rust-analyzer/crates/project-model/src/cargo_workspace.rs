@@ -96,6 +96,7 @@ pub struct CargoConfig {
     pub target: Option<String>,
     /// Sysroot loading behavior
     pub sysroot: Option<RustcSource>,
+    pub sysroot_src: Option<AbsPathBuf>,
     /// rustc private crate source
     pub rustc_source: Option<RustcSource>,
     /// crates to disable `#[cfg(test)]` on

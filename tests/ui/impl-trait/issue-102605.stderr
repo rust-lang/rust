@@ -2,12 +2,15 @@ error[E0308]: mismatched types
   --> $DIR/issue-102605.rs:13:20
    |
 LL |     convert_result(foo())
-   |     -------------- ^^^^^ expected `Result<(), _>`, found opaque type
+   |     -------------- ^^^^^ expected `Result<(), _>`, found future
    |     |
    |     arguments to this function are incorrect
    |
-   = note:     expected enum `Result<(), _>`
-           found opaque type `impl Future<Output = Result<(), String>>`
+note: calling an async function returns a future
+  --> $DIR/issue-102605.rs:13:20
+   |
+LL |     convert_result(foo())
+   |                    ^^^^^
 note: function defined here
   --> $DIR/issue-102605.rs:7:4
    |

@@ -19,7 +19,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{
-    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, ir::TypeVisitor, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
 };
 use rustc_middle::ty::{Predicate, ToPredicate};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
@@ -327,6 +327,8 @@ fn predicate_references_self<'tcx>(
             // possible alternatives.
             if data.projection_ty.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
         }
+        ty::PredicateKind::AliasEq(..) => bug!("`AliasEq` not allowed as assumption"),
+
         ty::PredicateKind::WellFormed(..)
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
@@ -334,6 +336,7 @@ fn predicate_references_self<'tcx>(
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::Subtype(..)
         | ty::PredicateKind::Coerce(..)
+        // FIXME(generic_const_exprs): this can mention `Self`
         | ty::PredicateKind::ConstEvaluatable(..)
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::Ambiguous
@@ -368,6 +371,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::AliasEq(..)
             | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => false,
         }
@@ -646,11 +650,9 @@ fn object_ty_for_trait<'tcx>(
             debug!(?obligation);
             let pred = obligation.predicate.to_opt_poly_projection_pred()?;
             Some(pred.map_bound(|p| {
-                ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
-                    def_id: p.projection_ty.def_id,
-                    substs: p.projection_ty.substs,
-                    term: p.term,
-                })
+                ty::ExistentialPredicate::Projection(ty::ExistentialProjection::erase_self_ty(
+                    tcx, p,
+                ))
             }))
         })
         .collect();
@@ -834,7 +836,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
         supertraits: Option<Vec<DefId>>,
     }
 
-    impl<'tcx> TypeVisitor<'tcx> for IllegalSelfTypeVisitor<'tcx> {
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
         type BreakTy = ();
 
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

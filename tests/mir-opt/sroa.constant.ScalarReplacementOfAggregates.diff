@@ -1,0 +1,46 @@
+- // MIR for `constant` before ScalarReplacementOfAggregates
++ // MIR for `constant` after ScalarReplacementOfAggregates
+  
+  fn constant() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/sroa.rs:+0:15: +0:15
+      let _1: (usize, u8);                 // in scope 0 at $DIR/sroa.rs:+2:9: +2:10
++     let _4: usize;                       // in scope 0 at $DIR/sroa.rs:+2:9: +2:10
++     let _5: u8;                          // in scope 0 at $DIR/sroa.rs:+2:9: +2:10
+      scope 1 {
+-         debug y => _1;                   // in scope 1 at $DIR/sroa.rs:+2:9: +2:10
++         debug y => (usize, u8){ .0 => _4, .1 => _5, }; // in scope 1 at $DIR/sroa.rs:+2:9: +2:10
+          let _2: usize;                   // in scope 1 at $DIR/sroa.rs:+3:9: +3:10
+          scope 2 {
+              debug t => _2;               // in scope 2 at $DIR/sroa.rs:+3:9: +3:10
+              let _3: u8;                  // in scope 2 at $DIR/sroa.rs:+4:9: +4:10
+              scope 3 {
+                  debug u => _3;           // in scope 3 at $DIR/sroa.rs:+4:9: +4:10
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);                 // scope 0 at $DIR/sroa.rs:+2:9: +2:10
++         StorageLive(_4);                 // scope 0 at $DIR/sroa.rs:+2:9: +2:10
++         StorageLive(_5);                 // scope 0 at $DIR/sroa.rs:+2:9: +2:10
++         nop;                             // scope 0 at $DIR/sroa.rs:+2:9: +2:10
+          _1 = const _;                    // scope 0 at $DIR/sroa.rs:+2:13: +2:14
++         _4 = move (_1.0: usize);         // scope 1 at $DIR/sroa.rs:+3:9: +3:10
++         _5 = move (_1.1: u8);            // scope 1 at $DIR/sroa.rs:+3:9: +3:10
+          StorageLive(_2);                 // scope 1 at $DIR/sroa.rs:+3:9: +3:10
+-         _2 = (_1.0: usize);              // scope 1 at $DIR/sroa.rs:+3:13: +3:16
++         _2 = _4;                         // scope 1 at $DIR/sroa.rs:+3:13: +3:16
+          StorageLive(_3);                 // scope 2 at $DIR/sroa.rs:+4:9: +4:10
+-         _3 = (_1.1: u8);                 // scope 2 at $DIR/sroa.rs:+4:13: +4:16
++         _3 = _5;                         // scope 2 at $DIR/sroa.rs:+4:13: +4:16
+          _0 = const ();                   // scope 0 at $DIR/sroa.rs:+0:15: +5:2
+          StorageDead(_3);                 // scope 2 at $DIR/sroa.rs:+5:1: +5:2
+          StorageDead(_2);                 // scope 1 at $DIR/sroa.rs:+5:1: +5:2
+-         StorageDead(_1);                 // scope 0 at $DIR/sroa.rs:+5:1: +5:2
++         StorageDead(_4);                 // scope 0 at $DIR/sroa.rs:+5:1: +5:2
++         StorageDead(_5);                 // scope 0 at $DIR/sroa.rs:+5:1: +5:2
++         nop;                             // scope 0 at $DIR/sroa.rs:+5:1: +5:2
+          return;                          // scope 0 at $DIR/sroa.rs:+5:2: +5:2
+      }
+  }
+  

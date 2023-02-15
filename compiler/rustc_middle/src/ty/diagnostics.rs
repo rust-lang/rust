@@ -3,9 +3,10 @@
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    visit::TypeVisitable, AliasTy, Const, ConstKind, DefIdTree, FallibleTypeFolder, InferConst,
-    InferTy, Opaque, PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitor,
+    ir::{FallibleTypeFolder, TypeVisitor},
+    visit::TypeVisitable,
+    AliasTy, Const, ConstKind, DefIdTree, InferConst, InferTy, Opaque, PolyTraitPredicate,
+    Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -460,7 +461,7 @@ pub struct IsSuggestableVisitor<'tcx> {
     infer_suggestable: bool,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
     type BreakTy = ();
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -535,10 +536,10 @@ pub struct MakeSuggestableFolder<'tcx> {
     infer_suggestable: bool,
 }
 
-impl<'tcx> FallibleTypeFolder<'tcx> for MakeSuggestableFolder<'tcx> {
+impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
     type Error = ();
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
