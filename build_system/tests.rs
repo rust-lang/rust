@@ -277,7 +277,7 @@ struct TestRunner {
 }
 
 impl TestRunner {
-    pub fn new(dirs: Dirs, mut target_compiler: Compiler, is_native: bool) -> Self {
+    fn new(dirs: Dirs, mut target_compiler: Compiler, is_native: bool) -> Self {
         if let Ok(rustflags) = env::var("RUSTFLAGS") {
             target_compiler.rustflags.push(' ');
             target_compiler.rustflags.push_str(&rustflags);
@@ -299,7 +299,7 @@ impl TestRunner {
         Self { is_native, jit_supported, dirs, target_compiler }
     }
 
-    pub fn run_testsuite(&self, tests: &[TestCase]) {
+    fn run_testsuite(&self, tests: &[TestCase]) {
         for TestCase { config, cmd } in tests {
             let (tag, testname) = config.split_once('.').unwrap();
             let tag = tag.to_uppercase();
@@ -384,7 +384,7 @@ impl TestRunner {
         spawn_and_wait(self.rustc_command(args));
     }
 
-    fn run_out_command<'a>(&self, name: &str, args: &[&str]) {
+    fn run_out_command(&self, name: &str, args: &[&str]) {
         let mut full_cmd = vec![];
 
         // Prepend the RUN_WRAPPER's

@@ -7,6 +7,10 @@ rustc $0 -o ${0/.rs/.bin} -Cdebuginfo=1 --edition 2021
 exec ${0/.rs/.bin} $@
 */
 
+#![warn(rust_2018_idioms)]
+#![warn(unused_lifetimes)]
+#![warn(unreachable_pub)]
+
 //! The build system for cg_clif
 //!
 //! # Manual compilation
