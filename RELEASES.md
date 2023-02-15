@@ -1,3 +1,10 @@
+Version 1.67.1 (2023-02-09)
+===========================
+
+- [Fix interoperability with thin archives.](https://github.com/rust-lang/rust/pull/107360)
+- [Fix an internal error in the compiler build process.](https://github.com/rust-lang/rust/pull/105624)
+- [Downgrade `clippy::uninlined_format_args` to pedantic.](https://github.com/rust-lang/rust-clippy/pull/10265)
+
 Version 1.67.0 (2023-01-26)
 ==========================
 

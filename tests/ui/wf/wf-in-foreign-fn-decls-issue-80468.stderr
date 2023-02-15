@@ -4,34 +4,11 @@ error[E0726]: implicit elided lifetime not allowed here
 LL | impl Trait for Ref {}
    |                ^^^ expected lifetime parameter
    |
-   = note: assuming a `'static` lifetime...
 help: indicate the anonymous lifetime
    |
 LL | impl Trait for Ref<'_> {}
    |                   ++++
 
-error: incompatible lifetime on type
-  --> $DIR/wf-in-foreign-fn-decls-issue-80468.rs:16:21
-   |
-LL |     pub fn repro(_: Wrapper<Ref>);
-   |                     ^^^^^^^^^^^^
-   |
-note: because this has an unmet lifetime requirement
-  --> $DIR/wf-in-foreign-fn-decls-issue-80468.rs:8:23
-   |
-LL | pub struct Wrapper<T: Trait>(T);
-   |                       ^^^^^ introduces a `'static` lifetime requirement
-note: the anonymous lifetime as defined here...
-  --> $DIR/wf-in-foreign-fn-decls-issue-80468.rs:16:29
-   |
-LL |     pub fn repro(_: Wrapper<Ref>);
-   |                             ^^^
-note: ...does not necessarily outlive the static lifetime introduced by the compatible `impl`
-  --> $DIR/wf-in-foreign-fn-decls-issue-80468.rs:13:1
-   |
-LL | impl Trait for Ref {}
-   | ^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0726`.

@@ -1,4 +1,7 @@
 // check-pass
+// compile-flags: -Zvalidate-mir
+
+// Using -Zvalidate-mir as a regression test for #107346.
 
 trait Duh {}
 

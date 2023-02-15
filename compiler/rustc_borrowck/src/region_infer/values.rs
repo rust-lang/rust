@@ -187,6 +187,7 @@ pub(crate) struct PlaceholderIndices {
 }
 
 impl PlaceholderIndices {
+    /// Returns the `PlaceholderIndex` for the inserted `PlaceholderRegion`
     pub(crate) fn insert(&mut self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
         let (index, _) = self.indices.insert_full(placeholder);
         index.into()

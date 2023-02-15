@@ -149,3 +149,22 @@ macro_rules! almost_complete_range {
         let _ = '0'..'9';
     };
 }
+
+#[macro_export]
+macro_rules! unsafe_macro {
+    () => {
+        unsafe {
+            *core::ptr::null::<()>();
+            *core::ptr::null::<()>();
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! needless_lifetime {
+    () => {
+        fn needless_lifetime<'a>(x: &'a u8) -> &'a u8 {
+            unimplemented!()
+        }
+    };
+}

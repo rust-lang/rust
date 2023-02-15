@@ -1,3 +1,4 @@
+use ide_db::syntax_helpers::insert_whitespace_into_node::insert_ws_into;
 use syntax::ast::{self, AstNode};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -35,7 +36,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 pub(crate) fn inline_macro(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let unexpanded = ctx.find_node_at_offset::<ast::MacroCall>()?;
-    let expanded = ctx.sema.expand(&unexpanded)?.clone_for_update();
+    let expanded = insert_ws_into(ctx.sema.expand(&unexpanded)?.clone_for_update());
 
     let text_range = unexpanded.syntax().text_range();
 
@@ -229,5 +230,28 @@ fn f() { let result = foo$0!(); }
 fn f() { let result = foo$0(); }
 "#,
         );
+    }
+
+    #[test]
+    fn inline_macro_with_whitespace() {
+        check_assist(
+            inline_macro,
+            r#"
+macro_rules! whitespace {
+    () => {
+        if true {}
+    };
+}
+fn f() { whitespace$0!(); }
+"#,
+            r#"
+macro_rules! whitespace {
+    () => {
+        if true {}
+    };
+}
+fn f() { if true{}; }
+"#,
+        )
     }
 }

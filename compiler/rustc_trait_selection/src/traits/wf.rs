@@ -187,6 +187,9 @@ pub fn predicate_obligations<'tcx>(
         ty::PredicateKind::TypeWellFormedFromEnv(..) => {
             bug!("TypeWellFormedFromEnv is only used for Chalk")
         }
+        ty::PredicateKind::AliasEq(..) => {
+            bug!("We should only wf check where clauses and `AliasEq` is not a `Clause`")
+        }
     }
 
     wf.normalize(infcx)
@@ -876,7 +879,7 @@ pub fn object_region_bounds<'tcx>(
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically
     // a placeholder type.
-    let open_ty = tcx.mk_ty_infer(ty::FreshTy(0));
+    let open_ty = tcx.mk_fresh_ty(0);
 
     let predicates = existential_predicates.iter().filter_map(|predicate| {
         if let ty::ExistentialPredicate::Projection(_) = predicate.skip_binder() {
@@ -928,6 +931,7 @@ pub(crate) fn required_region_bounds<'tcx>(
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
+                | ty::PredicateKind::AliasEq(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
                 ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
                     ref t,

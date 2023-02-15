@@ -18,7 +18,7 @@ use super::search_index::build_index;
 use super::write_shared::write_shared;
 use super::{
     collect_spans_and_sources, print_sidebar, scrape_examples_help, sidebar_module_like, AllTypes,
-    LinkFromSrc, NameDoc, StylePath,
+    LinkFromSrc, StylePath,
 };
 
 use crate::clean::{self, types::ExternalLocation, ExternalCrate};
@@ -182,7 +182,10 @@ impl<'tcx> Context<'tcx> {
         };
         title.push_str(" - Rust");
         let tyname = it.type_();
-        let desc = it.doc_value().as_ref().map(|doc| plain_text_summary(doc));
+        let desc = it
+            .doc_value()
+            .as_ref()
+            .map(|doc| plain_text_summary(doc, &it.link_names(&self.cache())));
         let desc = if let Some(desc) = desc {
             desc
         } else if it.is_crate() {
@@ -256,7 +259,7 @@ impl<'tcx> Context<'tcx> {
     }
 
     /// Construct a map of items shown in the sidebar to a plain-text summary of their docs.
-    fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<NameDoc>> {
+    fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<String>> {
         // BTreeMap instead of HashMap to get a sorted output
         let mut map: BTreeMap<_, Vec<_>> = BTreeMap::new();
         let mut inserted: FxHashMap<ItemType, FxHashSet<Symbol>> = FxHashMap::default();
@@ -274,10 +277,7 @@ impl<'tcx> Context<'tcx> {
             if inserted.entry(short).or_default().insert(myname) {
                 let short = short.to_string();
                 let myname = myname.to_string();
-                map.entry(short).or_default().push((
-                    myname,
-                    Some(item.doc_value().map_or_else(String::new, |s| plain_text_summary(&s))),
-                ));
+                map.entry(short).or_default().push(myname);
             }
         }
 

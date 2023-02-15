@@ -103,3 +103,19 @@ pub trait T {
 macro_rules! m {
     () => {};
 }
+
+///[`TestEnum::Variant1::field_name`]
+//~^ ERROR unresolved link
+//~| NOTE variant `Variant1` has no such field
+pub enum TestEnum {
+    Variant1 {},
+    Variant2 { field_name: u64 },
+}
+
+///[`TestEnumNoFields::Variant1::field_name`]
+//~^ ERROR unresolved link
+//~| NOTE `Variant1` is a variant, not a module or type, and cannot have associated items
+pub enum TestEnumNoFields {
+    Variant1 (),
+    Variant2 {},
+}

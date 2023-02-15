@@ -49,8 +49,8 @@ impl<'a> UnusedImport<'a> {
     }
 }
 
-struct UnusedImportCheckVisitor<'a, 'b> {
-    r: &'a mut Resolver<'b>,
+struct UnusedImportCheckVisitor<'a, 'b, 'tcx> {
+    r: &'a mut Resolver<'b, 'tcx>,
     /// All the (so far) unused imports, grouped path list
     unused_imports: FxIndexMap<ast::NodeId, UnusedImport<'a>>,
     base_use_tree: Option<&'a ast::UseTree>,
@@ -58,7 +58,7 @@ struct UnusedImportCheckVisitor<'a, 'b> {
     item_span: Span,
 }
 
-impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
+impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     // We have information about whether `use` (import) items are actually
     // used now. If an import is not used at all, we signal a lint error.
     fn check_import(&mut self, id: ast::NodeId) {
@@ -94,7 +94,7 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
+impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         self.item_span = item.span_with_attributes();
 
@@ -222,7 +222,7 @@ fn calc_unused_spans(
     }
 }
 
-impl Resolver<'_> {
+impl Resolver<'_, '_> {
     pub(crate) fn check_unused(&mut self, krate: &ast::Crate) {
         for import in self.potentially_unused_imports.iter() {
             match import.kind {

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use super::path::{Dirs, RelPath};
 use super::rustc_info::get_file_name;
-use super::utils::{is_ci, CargoProject, Compiler};
+use super::utils::{is_ci, is_ci_opt, CargoProject, Compiler};
 
 pub(crate) static CG_CLIF: CargoProject = CargoProject::new(&RelPath::SOURCE, "cg_clif");
 
@@ -26,7 +26,9 @@ pub(crate) fn build_backend(
         // Disabling incr comp reduces cache size and incr comp doesn't save as much on CI anyway
         cmd.env("CARGO_BUILD_INCREMENTAL", "false");
 
-        cmd.env("CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS", "true");
+        if !is_ci_opt() {
+            cmd.env("CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS", "true");
+        }
     }
 
     if use_unstable_features {

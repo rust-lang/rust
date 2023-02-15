@@ -585,3 +585,118 @@ parse_negative_bounds_not_supported = negative bounds are not supported
 parse_help_set_edition_cargo = set `edition = "{$edition}"` in `Cargo.toml`
 parse_help_set_edition_standalone = pass `--edition {$edition}` to `rustc`
 parse_note_edition_guide = for more on editions, read https://doc.rust-lang.org/edition-guide
+
+parse_unexpected_token_after_dot = unexpected token: `{$actual}`
+
+parse_cannot_be_raw_ident = `{$ident}` cannot be a raw identifier
+
+parse_cr_doc_comment = bare CR not allowed in {$block ->
+    [true] block doc-comment
+    *[false] doc-comment
+}
+
+parse_no_digits_literal = no valid digits found for number
+
+parse_invalid_digit_literal = invalid digit for a base {$base} literal
+
+parse_empty_exponent_float = expected at least one digit in exponent
+
+parse_float_literal_unsupported_base = {$base} float literal is not supported
+
+parse_more_than_one_char = character literal may only contain one codepoint
+    .followed_by = this `{$chr}` is followed by the combining {$len ->
+        [one] mark
+        *[other] marks
+        } `{$escaped_marks}`
+    .non_printing = there are non-printing characters, the full sequence is `{$escaped}`
+    .consider_normalized = consider using the normalized form `{$ch}` of this character
+    .remove_non = consider removing the non-printing characters
+    .use_double_quotes = if you meant to write a {$is_byte ->
+        [true] byte string
+        *[false] `str`
+        } literal, use double quotes
+
+parse_no_brace_unicode_escape = incorrect unicode escape sequence
+    .label = {parse_no_brace_unicode_escape}
+    .use_braces = format of unicode escape sequences uses braces
+    .format_of_unicode = format of unicode escape sequences is `\u{"{...}"}`
+
+parse_invalid_unicode_escape = invalid unicode character escape
+    .label = invalid escape
+    .help = unicode escape must {$surrogate ->
+    [true] not be a surrogate
+    *[false] be at most 10FFFF
+    }
+
+parse_escape_only_char = {$byte ->
+    [true] byte
+    *[false] character
+    } constant must be escaped: `{$escaped_msg}`
+    .escape = escape the character
+
+parse_bare_cr = {$double_quotes ->
+    [true] bare CR not allowed in string, use `\r` instead
+    *[false] character constant must be escaped: `\r`
+    }
+    .escape = escape the character
+
+parse_bare_cr_in_raw_string = bare CR not allowed in raw string
+
+parse_too_short_hex_escape = numeric character escape is too short
+
+parse_invalid_char_in_escape = {parse_invalid_char_in_escape_msg}: `{$ch}`
+    .label = {parse_invalid_char_in_escape_msg}
+
+parse_invalid_char_in_escape_msg = invalid character in {$is_hex ->
+    [true] numeric character
+    *[false] unicode
+    } escape
+
+parse_out_of_range_hex_escape = out of range hex escape
+    .label = must be a character in the range [\x00-\x7f]
+
+parse_leading_underscore_unicode_escape = {parse_leading_underscore_unicode_escape_label}: `_`
+parse_leading_underscore_unicode_escape_label = invalid start of unicode escape
+
+parse_overlong_unicode_escape = overlong unicode escape
+    .label = must have at most 6 hex digits
+
+parse_unclosed_unicode_escape = unterminated unicode escape
+    .label = missing a closing `{"}"}`
+    .terminate = terminate the unicode escape
+
+parse_unicode_escape_in_byte = unicode escape in byte string
+    .label = {parse_unicode_escape_in_byte}
+    .help = unicode escape sequences cannot be used as a byte or in a byte string
+
+parse_empty_unicode_escape = empty unicode escape
+    .label = this escape must have at least 1 hex digit
+
+parse_zero_chars = empty character literal
+    .label = {parse_zero_chars}
+
+parse_lone_slash = invalid trailing slash in literal
+    .label = {parse_lone_slash}
+
+parse_unskipped_whitespace = non-ASCII whitespace symbol '{$ch}' is not skipped
+    .label = {parse_unskipped_whitespace}
+
+parse_multiple_skipped_lines = multiple lines skipped by escaped newline
+    .label = skipping everything up to and including this point
+
+parse_unknown_prefix = prefix `{$prefix}` is unknown
+    .label = unknown prefix
+    .note =  prefixed identifiers and literals are reserved since Rust 2021
+    .suggestion_br = use `br` for a raw byte string
+    .suggestion_whitespace = consider inserting whitespace here
+
+parse_too_many_hashes = too many `#` symbols: raw strings may be delimited by up to 255 `#` symbols, but found {$num}
+
+parse_unknown_start_of_token = unknown start of token: {$escaped}
+    .sugg_quotes = Unicode characters '“' (Left Double Quotation Mark) and '”' (Right Double Quotation Mark) look like '{$ascii_str}' ({$ascii_name}), but are not
+    .sugg_other = Unicode character '{$ch}' ({$u_name}) looks like '{$ascii_str}' ({$ascii_name}), but it is not
+    .help_null = source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
+    .note_repeats = character appears {$repeats ->
+        [one] once more
+        *[other] {$repeats} more times
+    }

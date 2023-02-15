@@ -181,16 +181,24 @@ fn push_debuginfo_type_name<'tcx>(
                 push_debuginfo_type_name(tcx, inner_type, true, output, visited);
                 match len.kind() {
                     ty::ConstKind::Param(param) => write!(output, ",{}>", param.name).unwrap(),
-                    _ => write!(output, ",{}>", len.eval_usize(tcx, ty::ParamEnv::reveal_all()))
-                        .unwrap(),
+                    _ => write!(
+                        output,
+                        ",{}>",
+                        len.eval_target_usize(tcx, ty::ParamEnv::reveal_all())
+                    )
+                    .unwrap(),
                 }
             } else {
                 output.push('[');
                 push_debuginfo_type_name(tcx, inner_type, true, output, visited);
                 match len.kind() {
                     ty::ConstKind::Param(param) => write!(output, "; {}]", param.name).unwrap(),
-                    _ => write!(output, "; {}]", len.eval_usize(tcx, ty::ParamEnv::reveal_all()))
-                        .unwrap(),
+                    _ => write!(
+                        output,
+                        "; {}]",
+                        len.eval_target_usize(tcx, ty::ParamEnv::reveal_all())
+                    )
+                    .unwrap(),
                 }
             }
         }

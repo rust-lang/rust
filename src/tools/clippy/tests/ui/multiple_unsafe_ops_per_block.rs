@@ -1,8 +1,12 @@
+// aux-build:macro_rules.rs
 #![allow(unused)]
 #![allow(deref_nullptr)]
 #![allow(clippy::unnecessary_operation)]
 #![allow(clippy::drop_copy)]
 #![warn(clippy::multiple_unsafe_ops_per_block)]
+
+#[macro_use]
+extern crate macro_rules;
 
 use core::arch::asm;
 
@@ -105,6 +109,11 @@ unsafe fn read_char_bad(ptr: *const u8) -> char {
 unsafe fn read_char_good(ptr: *const u8) -> char {
     let int_value = unsafe { *ptr.cast::<u32>() };
     unsafe { core::char::from_u32_unchecked(int_value) }
+}
+
+// no lint
+fn issue10259() {
+    unsafe_macro!();
 }
 
 fn main() {}

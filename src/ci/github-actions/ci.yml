@@ -300,7 +300,7 @@ jobs:
             <<: *job-linux-xl
             tidy: true
 
-          - name: x86_64-gnu-llvm-13
+          - name: x86_64-gnu-llvm-14
             <<: *job-linux-xl
             tidy: false
 
@@ -459,12 +459,7 @@ jobs:
               RUST_BACKTRACE: 1
             <<: *job-linux-xl
 
-          - name: x86_64-gnu-llvm-13
-            env:
-              RUST_BACKTRACE: 1
-            <<: *job-linux-xl
-
-          - name: x86_64-gnu-llvm-13-stage1
+          - name: x86_64-gnu-llvm-14-stage1
             env:
               RUST_BACKTRACE: 1
             <<: *job-linux-xl

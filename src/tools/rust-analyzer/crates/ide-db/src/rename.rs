@@ -190,6 +190,7 @@ fn rename_mod(
 
     let InFile { file_id, value: def_source } = module.definition_source(sema.db);
     if let ModuleSource::SourceFile(..) = def_source {
+        let new_name = new_name.trim_start_matches("r#");
         let anchor = file_id.original_file(sema.db);
 
         let is_mod_rs = module.is_mod_rs(sema.db);
@@ -207,9 +208,13 @@ fn rename_mod(
         //  - Module has submodules defined in separate files
         let dir_paths = match (is_mod_rs, has_detached_child, module.name(sema.db)) {
             // Go up one level since the anchor is inside the dir we're trying to rename
-            (true, _, Some(mod_name)) => Some((format!("../{mod_name}"), format!("../{new_name}"))),
+            (true, _, Some(mod_name)) => {
+                Some((format!("../{}", mod_name.unescaped()), format!("../{new_name}")))
+            }
             // The anchor is on the same level as target dir
-            (false, true, Some(mod_name)) => Some((mod_name.to_string(), new_name.to_string())),
+            (false, true, Some(mod_name)) => {
+                Some((mod_name.unescaped().to_string(), new_name.to_string()))
+            }
             _ => None,
         };
 
@@ -263,11 +268,10 @@ fn rename_reference(
         Definition::GenericParam(hir::GenericParam::LifetimeParam(_)) | Definition::Label(_)
     ) {
         match ident_kind {
-            IdentifierKind::Ident | IdentifierKind::Underscore => {
-                cov_mark::hit!(rename_not_a_lifetime_ident_ref);
+            IdentifierKind::Underscore => {
                 bail!("Invalid name `{}`: not a lifetime identifier", new_name);
             }
-            IdentifierKind::Lifetime => cov_mark::hit!(rename_lifetime),
+            _ => cov_mark::hit!(rename_lifetime),
         }
     } else {
         match ident_kind {
@@ -334,11 +338,17 @@ pub fn source_edit_from_references(
             }
             _ => false,
         };
-        if !has_emitted_edit {
-            if !edited_ranges.contains(&range.start()) {
-                edit.replace(range, new_name.to_string());
-                edited_ranges.push(range.start());
-            }
+        if !has_emitted_edit && !edited_ranges.contains(&range.start()) {
+            let (range, new_name) = match name {
+                ast::NameLike::Lifetime(_) => (
+                    TextRange::new(range.start() + syntax::TextSize::from(1), range.end()),
+                    new_name.strip_prefix('\'').unwrap_or(new_name).to_owned(),
+                ),
+                _ => (range, new_name.to_owned()),
+            };
+
+            edit.replace(range, new_name);
+            edited_ranges.push(range.start());
         }
     }
 
@@ -391,19 +401,17 @@ fn source_edit_from_name_ref(
                         edit.delete(TextRange::new(s, e));
                         return true;
                     }
-                } else if init == name_ref {
-                    if field_name.text() == new_name {
-                        cov_mark::hit!(test_rename_local_put_init_shorthand);
-                        // Foo { field: local } -> Foo { field }
-                        //            ^^^^^^^ delete this
+                } else if init == name_ref && field_name.text() == new_name {
+                    cov_mark::hit!(test_rename_local_put_init_shorthand);
+                    // Foo { field: local } -> Foo { field }
+                    //            ^^^^^^^ delete this
 
-                        // same names, we can use a shorthand here instead.
-                        // we do not want to erase attributes hence this range start
-                        let s = field_name.syntax().text_range().end();
-                        let e = init.syntax().text_range().end();
-                        edit.delete(TextRange::new(s, e));
-                        return true;
-                    }
+                    // same names, we can use a shorthand here instead.
+                    // we do not want to erase attributes hence this range start
+                    let s = field_name.syntax().text_range().end();
+                    let e = init.syntax().text_range().end();
+                    edit.delete(TextRange::new(s, e));
+                    return true;
                 }
             }
             // init shorthand
@@ -505,7 +513,15 @@ fn source_edit_from_def(
         }
     }
     if edit.is_empty() {
-        edit.replace(range, new_name.to_string());
+        let (range, new_name) = match def {
+            Definition::GenericParam(hir::GenericParam::LifetimeParam(_))
+            | Definition::Label(_) => (
+                TextRange::new(range.start() + syntax::TextSize::from(1), range.end()),
+                new_name.strip_prefix('\'').unwrap_or(new_name).to_owned(),
+            ),
+            _ => (range, new_name.to_owned()),
+        };
+        edit.replace(range, new_name);
     }
     Ok((file_id, edit.finish()))
 }
@@ -521,13 +537,17 @@ impl IdentifierKind {
     pub fn classify(new_name: &str) -> Result<IdentifierKind> {
         match parser::LexedStr::single_token(new_name) {
             Some(res) => match res {
-                (SyntaxKind::IDENT, _) => Ok(IdentifierKind::Ident),
+                (SyntaxKind::IDENT, _) => {
+                    if let Some(inner) = new_name.strip_prefix("r#") {
+                        if matches!(inner, "self" | "crate" | "super" | "Self") {
+                            bail!("Invalid name: `{}` cannot be a raw identifier", inner);
+                        }
+                    }
+                    Ok(IdentifierKind::Ident)
+                }
                 (T![_], _) => Ok(IdentifierKind::Underscore),
                 (SyntaxKind::LIFETIME_IDENT, _) if new_name != "'static" && new_name != "'_" => {
                     Ok(IdentifierKind::Lifetime)
-                }
-                (SyntaxKind::LIFETIME_IDENT, _) => {
-                    bail!("Invalid name `{}`: not a lifetime identifier", new_name)
                 }
                 (_, Some(syntax_error)) => bail!("Invalid name `{}`: {}", new_name, syntax_error),
                 (_, None) => bail!("Invalid name `{}`: not an identifier", new_name),

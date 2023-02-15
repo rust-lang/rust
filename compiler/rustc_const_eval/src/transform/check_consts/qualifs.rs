@@ -217,10 +217,10 @@ impl Qualif for CustomEq {
 
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
-        adt: AdtDef<'tcx>,
+        def: AdtDef<'tcx>,
         substs: SubstsRef<'tcx>,
     ) -> bool {
-        let ty = cx.tcx.mk_ty(ty::Adt(adt, substs));
+        let ty = cx.tcx.mk_adt(def, substs);
         !ty.is_structural_eq_shallow(cx.tcx)
     }
 }

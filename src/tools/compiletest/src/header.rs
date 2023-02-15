@@ -941,6 +941,7 @@ pub fn make_test_description<R: Read>(
     let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_memtag = util::MEMTAG_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_shadow_call_stack = util::SHADOWCALLSTACK_SUPPORTED_TARGETS.contains(&&*config.target);
+    let has_xray = util::XRAY_SUPPORTED_TARGETS.contains(&&*config.target);
 
     // For tests using the `needs-rust-lld` directive (e.g. for `-Zgcc-ld=lld`), we need to find
     // whether `rust-lld` is present in the compiler under test.
@@ -1019,6 +1020,7 @@ pub fn make_test_description<R: Read>(
                 && config.parse_name_directive(ln, "needs-sanitizer-shadow-call-stack")
         );
         reason!(!config.can_unwind() && config.parse_name_directive(ln, "needs-unwind"));
+        reason!(!has_xray && config.parse_name_directive(ln, "needs-xray"));
         reason!(
             config.target == "wasm32-unknown-unknown"
                 && config.parse_name_directive(ln, directives::CHECK_RUN_RESULTS)

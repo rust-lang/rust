@@ -166,7 +166,7 @@ impl MutableKeyType {
             Ref(_, inner_ty, mutbl) => mutbl == hir::Mutability::Mut || self.is_interior_mutable_type(cx, inner_ty),
             Slice(inner_ty) => self.is_interior_mutable_type(cx, inner_ty),
             Array(inner_ty, size) => {
-                size.try_eval_usize(cx.tcx, cx.param_env).map_or(true, |u| u != 0)
+                size.try_eval_target_usize(cx.tcx, cx.param_env).map_or(true, |u| u != 0)
                     && self.is_interior_mutable_type(cx, inner_ty)
             },
             Tuple(fields) => fields.iter().any(|ty| self.is_interior_mutable_type(cx, ty)),

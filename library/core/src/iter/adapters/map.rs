@@ -2,7 +2,7 @@ use crate::fmt;
 use crate::iter::adapters::{
     zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
-use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
+use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen, UncheckedIterator};
 use crate::ops::Try;
 
 /// An iterator that maps the values of `iter` with `f`.
@@ -185,6 +185,19 @@ where
     I: TrustedLen,
     F: FnMut(I::Item) -> B,
 {
+}
+
+impl<B, I, F> UncheckedIterator for Map<I, F>
+where
+    I: UncheckedIterator,
+    F: FnMut(I::Item) -> B,
+{
+    unsafe fn next_unchecked(&mut self) -> B {
+        // SAFETY: `Map` is 1:1 with the inner iterator, so if the caller promised
+        // that there's an element left, the inner iterator has one too.
+        let item = unsafe { self.iter.next_unchecked() };
+        (self.f)(item)
+    }
 }
 
 #[doc(hidden)]

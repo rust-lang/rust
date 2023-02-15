@@ -46,7 +46,6 @@ error[E0726]: implicit elided lifetime not allowed here
 LL | impl<'self> Serializable<str> for &'self str {
    |             ^^^^^^^^^^^^^^^^^ expected lifetime parameter
    |
-   = note: assuming a `'static` lifetime...
 help: indicate the anonymous lifetime
    |
 LL | impl<'self> Serializable<'_, str> for &'self str {

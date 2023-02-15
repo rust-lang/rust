@@ -537,7 +537,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         // then it would be "stable" at least for the impl.
         // We gate usages of it using `feature(const_trait_impl)` anyways
         // so there is no unstable leakage
-        if self.tcx.is_builtin_derive(def_id.to_def_id()) {
+        if self.tcx.is_automatically_derived(def_id.to_def_id()) {
             return;
         }
 

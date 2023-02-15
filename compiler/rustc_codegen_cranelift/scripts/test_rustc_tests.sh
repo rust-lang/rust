@@ -91,6 +91,7 @@ rm tests/ui/proc-macro/proc-macro-deprecated-attr.rs # same
 rm tests/ui/proc-macro/quote-debug.rs # same
 rm tests/ui/proc-macro/no-missing-docs.rs # same
 rm tests/ui/rust-2018/proc-macro-crate-in-paths.rs # same
+rm tests/ui/proc-macro/allowed-signatures.rs # same
 
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended

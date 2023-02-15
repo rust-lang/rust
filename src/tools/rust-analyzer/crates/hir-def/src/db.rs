@@ -4,8 +4,9 @@ use std::sync::Arc;
 use base_db::{salsa, CrateId, SourceDatabase, Upcast};
 use either::Either;
 use hir_expand::{db::AstDatabase, HirFileId};
+use intern::Interned;
 use la_arena::ArenaMap;
-use syntax::{ast, AstPtr, SmolStr};
+use syntax::{ast, AstPtr};
 
 use crate::{
     adt::{EnumData, StructData},
@@ -17,9 +18,8 @@ use crate::{
     },
     generics::GenericParams,
     import_map::ImportMap,
-    intern::Interned,
     item_tree::{AttrOwner, ItemTree},
-    lang_item::{LangItemTarget, LangItems},
+    lang_item::{LangItem, LangItemTarget, LangItems},
     nameres::{diagnostics::DefDiagnostic, DefMap},
     visibility::{self, Visibility},
     AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, ExternBlockId,
@@ -183,7 +183,7 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     fn crate_lang_items(&self, krate: CrateId) -> Arc<LangItems>;
 
     #[salsa::invoke(LangItems::lang_item_query)]
-    fn lang_item(&self, start_crate: CrateId, item: SmolStr) -> Option<LangItemTarget>;
+    fn lang_item(&self, start_crate: CrateId, item: LangItem) -> Option<LangItemTarget>;
 
     #[salsa::invoke(ImportMap::import_map_query)]
     fn import_map(&self, krate: CrateId) -> Arc<ImportMap>;

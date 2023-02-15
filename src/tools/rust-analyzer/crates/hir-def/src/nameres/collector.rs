@@ -10,6 +10,7 @@ use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
     ast_id_map::FileAstId,
+    attrs::{Attr, AttrId},
     builtin_attr_macro::find_builtin_attr,
     builtin_derive_macro::find_builtin_derive,
     builtin_fn_macro::find_builtin_macro,
@@ -26,7 +27,7 @@ use stdx::always;
 use syntax::{ast, SmolStr};
 
 use crate::{
-    attr::{Attr, AttrId, Attrs},
+    attr::Attrs,
     attr_macro_as_call_id,
     db::DefDatabase,
     derive_macro_as_call_id,
@@ -45,6 +46,7 @@ use crate::{
     },
     path::{ImportAlias, ModPath, PathKind},
     per_ns::PerNs,
+    tt,
     visibility::{RawVisibility, Visibility},
     AdtId, AstId, AstIdWithPath, ConstLoc, EnumLoc, EnumVariantId, ExternBlockLoc, FunctionId,
     FunctionLoc, ImplLoc, Intern, ItemContainerId, LocalModuleId, Macro2Id, Macro2Loc,
@@ -82,7 +84,8 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
                 .enumerate()
                 .map(|(idx, it)| {
                     // FIXME: a hacky way to create a Name from string.
-                    let name = tt::Ident { text: it.name.clone(), id: tt::TokenId::unspecified() };
+                    let name =
+                        tt::Ident { text: it.name.clone(), span: tt::TokenId::unspecified() };
                     (
                         name.as_name(),
                         ProcMacroExpander::new(def_map.krate, base_db::ProcMacroId(idx as u32)),
@@ -450,8 +453,11 @@ impl DefCollector<'_> {
                         directive.module_id,
                         MacroCallKind::Attr {
                             ast_id: ast_id.ast_id,
-                            attr_args: Default::default(),
-                            invoc_attr_index: attr.id.ast_index,
+                            attr_args: std::sync::Arc::new((
+                                tt::Subtree::empty(),
+                                Default::default(),
+                            )),
+                            invoc_attr_index: attr.id,
                             is_derive: false,
                         },
                         attr.path().clone(),
@@ -1406,7 +1412,7 @@ impl DefCollector<'_> {
                         directive.module_id,
                         MacroCallKind::Derive {
                             ast_id: ast_id.ast_id,
-                            derive_attr_index: derive_attr.ast_index,
+                            derive_attr_index: *derive_attr,
                             derive_index: *derive_pos as u32,
                         },
                         ast_id.path.clone(),
@@ -1599,17 +1605,15 @@ impl ModCollector<'_, '_> {
                         FunctionLoc { container, id: ItemTreeId::new(self.tree_id, id) }.intern(db);
 
                     let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
-                    if self.def_collector.is_proc_macro {
-                        if self.module_id == def_map.root {
-                            if let Some(proc_macro) = attrs.parse_proc_macro_decl(&it.name) {
-                                let crate_root = def_map.module_id(def_map.root);
-                                self.def_collector.export_proc_macro(
-                                    proc_macro,
-                                    ItemTreeId::new(self.tree_id, id),
-                                    fn_id,
-                                    crate_root,
-                                );
-                            }
+                    if self.def_collector.is_proc_macro && self.module_id == def_map.root {
+                        if let Some(proc_macro) = attrs.parse_proc_macro_decl(&it.name) {
+                            let crate_root = def_map.module_id(def_map.root);
+                            self.def_collector.export_proc_macro(
+                                proc_macro,
+                                ItemTreeId::new(self.tree_id, id),
+                                fn_id,
+                                crate_root,
+                            );
                         }
                     }
 
@@ -1948,7 +1952,8 @@ impl ModCollector<'_, '_> {
             let name = match attrs.by_key("rustc_builtin_macro").string_value() {
                 Some(it) => {
                     // FIXME: a hacky way to create a Name from string.
-                    name = tt::Ident { text: it.clone(), id: tt::TokenId::unspecified() }.as_name();
+                    name =
+                        tt::Ident { text: it.clone(), span: tt::TokenId::unspecified() }.as_name();
                     &name
                 }
                 None => {
@@ -1983,11 +1988,13 @@ impl ModCollector<'_, '_> {
             // Case 2: normal `macro_rules!` macro
             MacroExpander::Declarative
         };
+        let allow_internal_unsafe = attrs.by_key("allow_internal_unsafe").exists();
 
         let macro_id = MacroRulesLoc {
             container: module,
             id: ItemTreeId::new(self.tree_id, id),
             local_inner,
+            allow_internal_unsafe,
             expander,
         }
         .intern(self.def_collector.db);
@@ -2047,10 +2054,15 @@ impl ModCollector<'_, '_> {
             // Case 2: normal `macro`
             MacroExpander::Declarative
         };
+        let allow_internal_unsafe = attrs.by_key("allow_internal_unsafe").exists();
 
-        let macro_id =
-            Macro2Loc { container: module, id: ItemTreeId::new(self.tree_id, id), expander }
-                .intern(self.def_collector.db);
+        let macro_id = Macro2Loc {
+            container: module,
+            id: ItemTreeId::new(self.tree_id, id),
+            expander,
+            allow_internal_unsafe,
+        }
+        .intern(self.def_collector.db);
         self.def_collector.define_macro_def(
             self.module_id,
             mac.name.clone(),

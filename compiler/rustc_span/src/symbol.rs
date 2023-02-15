@@ -1224,6 +1224,7 @@ symbols! {
         rustc_capture_analysis,
         rustc_clean,
         rustc_coherence_is_core,
+        rustc_coinductive,
         rustc_const_stable,
         rustc_const_unstable,
         rustc_conversion_suggestion,

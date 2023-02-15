@@ -21,16 +21,28 @@ impl<'tcx> InferCtxt<'tcx> {
         recursion_depth: usize,
         obligations: &mut Vec<PredicateObligation<'tcx>>,
     ) -> Ty<'tcx> {
-        let def_id = projection_ty.def_id;
-        let ty_var = self.next_ty_var(TypeVariableOrigin {
-            kind: TypeVariableOriginKind::NormalizeProjectionType,
-            span: self.tcx.def_span(def_id),
-        });
-        let projection =
-            ty::Binder::dummy(ty::ProjectionPredicate { projection_ty, term: ty_var.into() });
-        let obligation =
-            Obligation::with_depth(self.tcx, cause, recursion_depth, param_env, projection);
-        obligations.push(obligation);
-        ty_var
+        if self.tcx.trait_solver_next() {
+            // FIXME(-Ztrait-solver=next): Instead of branching here,
+            // completely change the normalization routine with the new solver.
+            //
+            // The new solver correctly handles projection equality so this hack
+            // is not necessary. if re-enabled it should emit `PredicateKind::AliasEq`
+            // not `PredicateKind::Clause(Clause::Projection(..))` as in the new solver
+            // `Projection` is used as `normalizes-to` which will fail for `<T as Trait>::Assoc eq ?0`.
+            return projection_ty.to_ty(self.tcx);
+        } else {
+            let def_id = projection_ty.def_id;
+            let ty_var = self.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::NormalizeProjectionType,
+                span: self.tcx.def_span(def_id),
+            });
+            let projection = ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::Projection(
+                ty::ProjectionPredicate { projection_ty, term: ty_var.into() },
+            )));
+            let obligation =
+                Obligation::with_depth(self.tcx, cause, recursion_depth, param_env, projection);
+            obligations.push(obligation);
+            ty_var
+        }
     }
 }

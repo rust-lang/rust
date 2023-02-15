@@ -378,7 +378,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 let nonexported = !tcx.has_attr(def_id, sym::macro_export);
 
                 if is_macro_2_0 || nonexported || self.inlining {
-                    self.add_to_current_mod(item, renamed, None);
+                    self.add_to_current_mod(item, renamed, import_id);
                 }
             }
             hir::ItemKind::Mod(ref m) => {

@@ -138,3 +138,11 @@ pub const fn i64(val: i64) -> u32 {
 pub const fn i128(val: i128) -> u32 {
     u128(val as u128)
 }
+
+/// Instantiate this panic logic once, rather than for all the ilog methods
+/// on every single primitive type.
+#[cold]
+#[track_caller]
+pub const fn panic_for_nonpositive_argument() -> ! {
+    panic!("argument of integer logarithm must be positive")
+}

@@ -1,0 +1,11 @@
+error[]8;;https://doc.rust-lang.org/error_codes/E0308.htmlE0308]8;;]: mismatched types
+  --> $DIR/terminal_urls.rs:3:9
+   |
+LL |     let () = 4;
+   |         ^^   - this expression has type `{integer}`
+   |         |
+   |         expected integer, found `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

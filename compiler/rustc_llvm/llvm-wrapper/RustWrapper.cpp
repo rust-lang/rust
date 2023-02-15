@@ -63,11 +63,7 @@ static LLVM_THREAD_LOCAL char *LastError;
 //
 // Notably it exits the process with code 101, unlike LLVM's default of 1.
 static void FatalErrorHandler(void *UserData,
-#if LLVM_VERSION_LT(14, 0)
-                              const std::string& Reason,
-#else
                               const char* Reason,
-#endif
                               bool GenCrashDiag) {
   // Do the same thing that the default error handler does.
   std::cerr << "LLVM ERROR: " << Reason << std::endl;
@@ -249,18 +245,10 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
 template<typename T> static inline void AddAttributes(T *t, unsigned Index,
                                                       LLVMAttributeRef *Attrs, size_t AttrsLen) {
   AttributeList PAL = t->getAttributes();
-  AttributeList PALNew;
-#if LLVM_VERSION_LT(14, 0)
-  AttrBuilder B;
-  for (LLVMAttributeRef Attr : makeArrayRef(Attrs, AttrsLen))
-    B.addAttribute(unwrap(Attr));
-  PALNew = PAL.addAttributes(t->getContext(), Index, B);
-#else
   AttrBuilder B(t->getContext());
   for (LLVMAttributeRef Attr : ArrayRef<LLVMAttributeRef>(Attrs, AttrsLen))
     B.addAttribute(unwrap(Attr));
-  PALNew = PAL.addAttributesAtIndex(t->getContext(), Index, B);
-#endif
+  AttributeList PALNew = PAL.addAttributesAtIndex(t->getContext(), Index, B);
   t->setAttributes(PALNew);
 }
 

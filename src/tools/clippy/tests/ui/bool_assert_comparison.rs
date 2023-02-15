@@ -158,4 +158,14 @@ fn main() {
         }};
     }
     in_macro!(a);
+
+    assert_eq!("".is_empty(), true);
+    assert_ne!("".is_empty(), false);
+    assert_ne!("requires negation".is_empty(), true);
+    assert_eq!("requires negation".is_empty(), false);
+
+    debug_assert_eq!("".is_empty(), true);
+    debug_assert_ne!("".is_empty(), false);
+    debug_assert_ne!("requires negation".is_empty(), true);
+    debug_assert_eq!("requires negation".is_empty(), false);
 }

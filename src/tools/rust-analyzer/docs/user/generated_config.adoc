@@ -99,6 +99,14 @@ Unsetting this disables sysroot loading.
 
 This option does not take effect until rust-analyzer is restarted.
 --
+[[rust-analyzer.cargo.sysrootSrc]]rust-analyzer.cargo.sysrootSrc (default: `null`)::
++
+--
+Relative path to the sysroot library sources. If left unset, this will default to
+`{cargo.sysroot}/lib/rustlib/src/rust/library`.
+
+This option does not take effect until rust-analyzer is restarted.
+--
 [[rust-analyzer.cargo.target]]rust-analyzer.cargo.target (default: `null`)::
 +
 --
@@ -218,6 +226,11 @@ with `self` prefixed to them when inside a method.
 +
 --
 Whether to add parenthesis and argument snippets when completing function.
+--
+[[rust-analyzer.completion.limit]]rust-analyzer.completion.limit (default: `null`)::
++
+--
+Maximum number of completions to return. If `None`, the limit is infinite.
 --
 [[rust-analyzer.completion.postfix.enable]]rust-analyzer.completion.postfix.enable (default: `true`)::
 +
@@ -485,11 +498,6 @@ Whether to show inlay type hints for elided lifetimes in function signatures.
 +
 --
 Whether to prefer using parameter names as the name for elided lifetime hints if possible.
---
-[[rust-analyzer.inlayHints.locationLinks]]rust-analyzer.inlayHints.locationLinks (default: `true`)::
-+
---
-Whether to use location links for parts of type mentioned in inlay hints.
 --
 [[rust-analyzer.inlayHints.maxLength]]rust-analyzer.inlayHints.maxLength (default: `25`)::
 +

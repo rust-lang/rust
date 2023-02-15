@@ -17,13 +17,14 @@ extern "platform-intrinsic" {
 fn main() {
     let x: [usize; 4] = [10, 11, 12, 13];
     let default = x4(0_usize, 1, 2, 3);
-    let mask = x4(1_i32, 1, 1, 1);
+    let all_set = u8::MAX as i8; // aka -1
+    let mask = x4(all_set, all_set, all_set, all_set);
     let expected = x4(10_usize, 11, 12, 13);
 
     unsafe {
-        let pointer = &x[0] as *const usize;
+        let pointer = x.as_ptr();
         let pointers =  x4(
-            pointer.offset(0) as *const usize,
+            pointer.offset(0),
             pointer.offset(1),
             pointer.offset(2),
             pointer.offset(3)
@@ -38,9 +39,9 @@ fn main() {
     let expected = x4(10_isize, 11, 12, 13);
 
     unsafe {
-        let pointer = &x[0] as *const isize;
+        let pointer = x.as_ptr();
         let pointers =  x4(
-            pointer.offset(0) as *const isize,
+            pointer.offset(0),
             pointer.offset(1),
             pointer.offset(2),
             pointer.offset(3)

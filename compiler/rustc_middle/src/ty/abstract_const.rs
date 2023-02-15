@@ -1,7 +1,6 @@
 //! A subset of a mir body used for const evaluatability checking.
 use crate::ty::{
-    self, Const, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitable,
+    self, ir::TypeFolder, Const, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
 };
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
@@ -53,8 +52,8 @@ impl<'tcx> TyCtxt<'tcx> {
             tcx: TyCtxt<'tcx>,
         }
 
-        impl<'tcx> TypeFolder<'tcx> for Expander<'tcx> {
-            fn tcx(&self) -> TyCtxt<'tcx> {
+        impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Expander<'tcx> {
+            fn interner(&self) -> TyCtxt<'tcx> {
                 self.tcx
             }
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {

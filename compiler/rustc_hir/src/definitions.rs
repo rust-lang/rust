@@ -92,7 +92,7 @@ impl DefPathTable {
 /// The definition table containing node definitions.
 /// It holds the `DefPathTable` for `LocalDefId`s/`DefPath`s.
 /// It also stores mappings to convert `LocalDefId`s to/from `HirId`s.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Definitions {
     table: DefPathTable,
     next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,

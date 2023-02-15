@@ -22,7 +22,7 @@ pub(super) fn derefs_to_slice<'tcx>(
             ty::Slice(_) => true,
             ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
             ty::Adt(..) => is_type_diagnostic_item(cx, ty, sym::Vec),
-            ty::Array(_, size) => size.try_eval_usize(cx.tcx, cx.param_env).is_some(),
+            ty::Array(_, size) => size.try_eval_target_usize(cx.tcx, cx.param_env).is_some(),
             ty::Ref(_, inner, _) => may_slice(cx, *inner),
             _ => false,
         }

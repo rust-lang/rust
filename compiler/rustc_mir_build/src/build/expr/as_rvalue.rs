@@ -55,7 +55,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
             ExprKind::Repeat { value, count } => {
-                if Some(0) == count.try_eval_usize(this.tcx, this.param_env) {
+                if Some(0) == count.try_eval_target_usize(this.tcx, this.param_env) {
                     this.build_zero_repeat(block, value, scope, source_info)
                 } else {
                     let value_operand = unpack!(

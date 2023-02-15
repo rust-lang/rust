@@ -2,10 +2,8 @@ error[E0308]: mismatched types
   --> $DIR/issue-99914.rs:9:27
    |
 LL |     t.and_then(|t| -> _ { bar(t) });
-   |                           ^^^^^^ expected `Result<_, Error>`, found opaque type
+   |                           ^^^^^^ expected `Result<_, Error>`, found future
    |
-   = note:     expected enum `Result<_, Error>`
-           found opaque type `impl Future<Output = ()>`
 help: try wrapping the expression in `Ok`
    |
 LL |     t.and_then(|t| -> _ { Ok(bar(t)) });

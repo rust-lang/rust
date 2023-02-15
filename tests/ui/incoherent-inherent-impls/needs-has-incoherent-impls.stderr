@@ -1,114 +1,80 @@
 error[E0390]: cannot define inherent `impl` for a type outside of the crate where the type is defined
   --> $DIR/needs-has-incoherent-impls.rs:5:1
    |
-LL | / impl extern_crate::StructWithAttr {
-LL | |
-LL | |     fn foo() {}
-LL | | }
-   | |_^
+LL | impl extern_crate::StructWithAttr {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider moving this inherent impl into the crate defining the type if possible
 help: alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
   --> $DIR/needs-has-incoherent-impls.rs:7:5
    |
 LL |     fn foo() {}
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^
 
 error[E0390]: cannot define inherent `impl` for a type outside of the crate where the type is defined
   --> $DIR/needs-has-incoherent-impls.rs:13:1
    |
-LL | / impl extern_crate::StructNoAttr {
-LL | |
-LL | |     fn foo() {}
-LL | | }
-   | |_^
+LL | impl extern_crate::StructNoAttr {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider moving this inherent impl into the crate defining the type if possible
 help: alternatively add `#[rustc_has_incoherent_inherent_impls]` to the type and `#[rustc_allow_incoherent_impl]` to the relevant impl items
   --> $DIR/needs-has-incoherent-impls.rs:13:1
    |
-LL | / impl extern_crate::StructNoAttr {
-LL | |
-LL | |     fn foo() {}
-LL | | }
-   | |_^
+LL | impl extern_crate::StructNoAttr {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0390]: cannot define inherent `impl` for a type outside of the crate where the type is defined
   --> $DIR/needs-has-incoherent-impls.rs:17:1
    |
-LL | / impl extern_crate::StructNoAttr {
-LL | |
-LL | |     #[rustc_allow_incoherent_impl]
-LL | |     fn bar() {}
-LL | | }
-   | |_^
+LL | impl extern_crate::StructNoAttr {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider moving this inherent impl into the crate defining the type if possible
 help: alternatively add `#[rustc_has_incoherent_inherent_impls]` to the type and `#[rustc_allow_incoherent_impl]` to the relevant impl items
   --> $DIR/needs-has-incoherent-impls.rs:17:1
    |
-LL | / impl extern_crate::StructNoAttr {
-LL | |
-LL | |     #[rustc_allow_incoherent_impl]
-LL | |     fn bar() {}
-LL | | }
-   | |_^
+LL | impl extern_crate::StructNoAttr {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0390]: cannot define inherent `impl` for a type outside of the crate where the type is defined
   --> $DIR/needs-has-incoherent-impls.rs:22:1
    |
-LL | / impl extern_crate::EnumWithAttr {
-LL | |
-LL | |     fn foo() {}
-LL | | }
-   | |_^
+LL | impl extern_crate::EnumWithAttr {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider moving this inherent impl into the crate defining the type if possible
 help: alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
   --> $DIR/needs-has-incoherent-impls.rs:24:5
    |
 LL |     fn foo() {}
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^
 
 error[E0390]: cannot define inherent `impl` for a type outside of the crate where the type is defined
   --> $DIR/needs-has-incoherent-impls.rs:30:1
    |
-LL | / impl extern_crate::EnumNoAttr {
-LL | |
-LL | |     fn foo() {}
-LL | | }
-   | |_^
+LL | impl extern_crate::EnumNoAttr {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider moving this inherent impl into the crate defining the type if possible
 help: alternatively add `#[rustc_has_incoherent_inherent_impls]` to the type and `#[rustc_allow_incoherent_impl]` to the relevant impl items
   --> $DIR/needs-has-incoherent-impls.rs:30:1
    |
-LL | / impl extern_crate::EnumNoAttr {
-LL | |
-LL | |     fn foo() {}
-LL | | }
-   | |_^
+LL | impl extern_crate::EnumNoAttr {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0390]: cannot define inherent `impl` for a type outside of the crate where the type is defined
   --> $DIR/needs-has-incoherent-impls.rs:34:1
    |
-LL | / impl extern_crate::EnumNoAttr {
-LL | |
-LL | |     #[rustc_allow_incoherent_impl]
-LL | |     fn bar() {}
-LL | | }
-   | |_^
+LL | impl extern_crate::EnumNoAttr {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider moving this inherent impl into the crate defining the type if possible
 help: alternatively add `#[rustc_has_incoherent_inherent_impls]` to the type and `#[rustc_allow_incoherent_impl]` to the relevant impl items
   --> $DIR/needs-has-incoherent-impls.rs:34:1
    |
-LL | / impl extern_crate::EnumNoAttr {
-LL | |
-LL | |     #[rustc_allow_incoherent_impl]
-LL | |     fn bar() {}
-LL | | }
-   | |_^
+LL | impl extern_crate::EnumNoAttr {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

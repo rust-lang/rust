@@ -3,7 +3,6 @@ use crate::common::{self, CodegenCx};
 use crate::debuginfo;
 use crate::errors::{InvalidMinimumAlignment, SymbolAlreadyDefined};
 use crate::llvm::{self, True};
-use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -56,13 +55,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
         // to avoid the cost of generating large complex const expressions.
         // For example, `[(u32, u8); 1024 * 1024]` contains uninit padding in each element,
         // and would result in `{ [5 x i8] zeroinitializer, [3 x i8] undef, ...repeat 1M times... }`.
-        let max = if llvm_util::get_version() < (14, 0, 0) {
-            // Generating partially-uninit consts inhibits optimizations in LLVM < 14.
-            // See https://github.com/rust-lang/rust/issues/84565.
-            1
-        } else {
-            cx.sess().opts.unstable_opts.uninit_const_chunk_threshold
-        };
+        let max = cx.sess().opts.unstable_opts.uninit_const_chunk_threshold;
         let allow_uninit_chunks = chunks.clone().take(max.saturating_add(1)).count() <= max;
 
         if allow_uninit_chunks {

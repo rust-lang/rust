@@ -17,7 +17,7 @@ use rustc_hir::{GenericArg, GenericParam, GenericParamKind, HirIdMap, LifetimeNa
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::*;
-use rustc_middle::ty::{self, DefIdTree, TyCtxt, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{self, ir::TypeVisitor, DefIdTree, TyCtxt, TypeSuperVisitable};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -1752,7 +1752,7 @@ fn is_late_bound_map(
 
     use std::ops::ControlFlow;
     use ty::Ty;
-    impl<'tcx> TypeVisitor<'tcx> for ConstrainedCollectorPostAstConv {
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ConstrainedCollectorPostAstConv {
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
             match t.kind() {
                 ty::Param(param_ty) => {

@@ -20,7 +20,7 @@ use rustc_hir::PredicateOrigin;
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
-use rustc_middle::ty::fold::TypeFolder;
+use rustc_middle::ty::fold::ir::TypeFolder;
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, AdtKind, DefIdTree, EarlyBinder, Ty, TyCtxt};
@@ -242,6 +242,7 @@ pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Life
         ty::ReLateBound(..)
         | ty::ReFree(..)
         | ty::ReVar(..)
+        | ty::ReError(_)
         | ty::RePlaceholder(..)
         | ty::ReErased => {
             debug!("cannot clean region {:?}", region);
@@ -310,10 +311,12 @@ pub(crate) fn clean_predicate<'tcx>(
         ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
             Some(clean_projection_predicate(bound_predicate.rebind(pred), cx))
         }
+        // FIXME(generic_const_exprs): should this do something?
         ty::PredicateKind::ConstEvaluatable(..) => None,
         ty::PredicateKind::WellFormed(..) => None,
 
         ty::PredicateKind::Subtype(..)
+        | ty::PredicateKind::AliasEq(..)
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::ClosureKind(..)
@@ -2206,10 +2209,12 @@ fn clean_maybe_renamed_item<'tcx>(
         };
 
         let mut extra_attrs = Vec::new();
-        if let Some(hir::Node::Item(use_node)) =
-            import_id.and_then(|def_id| cx.tcx.hir().find_by_def_id(def_id))
+        if let Some(import_id) = import_id &&
+            let Some(hir::Node::Item(use_node)) = cx.tcx.hir().find_by_def_id(import_id)
         {
-            // We get all the various imports' attributes.
+            // First, we add the attributes from the current import.
+            extra_attrs.extend_from_slice(inline::load_attrs(cx, import_id.to_def_id()));
+            // Then we get all the various imports' attributes.
             get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut extra_attrs);
         }
 

@@ -42,12 +42,6 @@ pub struct BackendConfig {
     /// Defaults to the value of `CG_CLIF_JIT_ARGS`.
     pub jit_args: Vec<String>,
 
-    /// Display the time it took to perform codegen for a crate.
-    ///
-    /// Defaults to true when the `CG_CLIF_DISPLAY_CG_TIME` env var is set to 1 or false otherwise.
-    /// Can be set using `-Cllvm-args=display_cg_time=...`.
-    pub display_cg_time: bool,
-
     /// Enable the Cranelift ir verifier for all compilation passes. If not set it will only run
     /// once before passing the clif ir to Cranelift for compilation.
     ///
@@ -73,7 +67,6 @@ impl Default for BackendConfig {
                 let args = std::env::var("CG_CLIF_JIT_ARGS").unwrap_or_else(|_| String::new());
                 args.split(' ').map(|arg| arg.to_string()).collect()
             },
-            display_cg_time: bool_env_var("CG_CLIF_DISPLAY_CG_TIME"),
             enable_verifier: cfg!(debug_assertions) || bool_env_var("CG_CLIF_ENABLE_VERIFIER"),
             disable_incr_cache: bool_env_var("CG_CLIF_DISABLE_INCR_CACHE"),
         }
@@ -92,7 +85,6 @@ impl BackendConfig {
             if let Some((name, value)) = opt.split_once('=') {
                 match name {
                     "mode" => config.codegen_mode = value.parse()?,
-                    "display_cg_time" => config.display_cg_time = parse_bool(name, value)?,
                     "enable_verifier" => config.enable_verifier = parse_bool(name, value)?,
                     "disable_incr_cache" => config.disable_incr_cache = parse_bool(name, value)?,
                     _ => return Err(format!("Unknown option `{}`", name)),

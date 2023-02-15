@@ -30,24 +30,23 @@ use crate::{
 // ```
 pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let let_stmt: ast::LetStmt = ctx.find_node_at_offset()?;
-    let binding = find_binding(let_stmt.pat()?)?;
+    let binding = let_stmt.pat()?;
 
-    let initializer = match let_stmt.initializer() {
-        Some(ast::Expr::MatchExpr(it)) => it,
-        _ => return None,
-    };
+    let Some(ast::Expr::MatchExpr(initializer)) = let_stmt.initializer() else { return None };
     let initializer_expr = initializer.expr()?;
 
-    let (extracting_arm, diverging_arm) = match find_arms(ctx, &initializer) {
-        Some(it) => it,
-        None => return None,
-    };
+    let Some((extracting_arm, diverging_arm)) = find_arms(ctx, &initializer) else { return None };
     if extracting_arm.guard().is_some() {
         cov_mark::hit!(extracting_arm_has_guard);
         return None;
     }
 
-    let diverging_arm_expr = diverging_arm.expr()?;
+    let diverging_arm_expr = match diverging_arm.expr()? {
+        ast::Expr::BlockExpr(block) if block.modifier().is_none() && block.label().is_none() => {
+            block.to_string()
+        }
+        other => format!("{{ {other} }}"),
+    };
     let extracting_arm_pat = extracting_arm.pat()?;
     let extracted_variable = find_extracted_variable(ctx, &extracting_arm)?;
 
@@ -56,22 +55,14 @@ pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'
         "Convert match to let-else",
         let_stmt.syntax().text_range(),
         |builder| {
-            let extracting_arm_pat = rename_variable(&extracting_arm_pat, extracted_variable, binding);
+            let extracting_arm_pat =
+                rename_variable(&extracting_arm_pat, extracted_variable, binding);
             builder.replace(
                 let_stmt.syntax().text_range(),
-                format!("let {extracting_arm_pat} = {initializer_expr} else {{ {diverging_arm_expr} }};")
+                format!("let {extracting_arm_pat} = {initializer_expr} else {diverging_arm_expr};"),
             )
         },
     )
-}
-
-// Given a pattern, find the name introduced to the surrounding scope.
-fn find_binding(pat: ast::Pat) -> Option<ast::IdentPat> {
-    if let ast::Pat::IdentPat(ident) = pat {
-        Some(ident)
-    } else {
-        None
-    }
 }
 
 // Given a match expression, find extracting and diverging arms.
@@ -87,7 +78,7 @@ fn find_arms(
     let mut extracting = None;
     let mut diverging = None;
     for arm in arms {
-        if ctx.sema.type_of_expr(&arm.expr().unwrap()).unwrap().original().is_never() {
+        if ctx.sema.type_of_expr(&arm.expr()?)?.original().is_never() {
             diverging = Some(arm);
         } else {
             extracting = Some(arm);
@@ -124,7 +115,7 @@ fn find_extracted_variable(ctx: &AssistContext<'_>, arm: &ast::MatchArm) -> Opti
 }
 
 // Rename `extracted` with `binding` in `pat`.
-fn rename_variable(pat: &ast::Pat, extracted: ast::Name, binding: ast::IdentPat) -> SyntaxNode {
+fn rename_variable(pat: &ast::Pat, extracted: ast::Name, binding: ast::Pat) -> SyntaxNode {
     let syntax = pat.syntax().clone_for_update();
     let extracted_syntax = syntax.covering_element(extracted.syntax().text_range());
 
@@ -136,7 +127,7 @@ fn rename_variable(pat: &ast::Pat, extracted: ast::Name, binding: ast::IdentPat)
         if let Some(name_ref) = record_pat_field.field_name() {
             ted::replace(
                 record_pat_field.syntax(),
-                ast::make::record_pat_field(ast::make::name_ref(&name_ref.text()), binding.into())
+                ast::make::record_pat_field(ast::make::name_ref(&name_ref.text()), binding)
                     .syntax()
                     .clone_for_update(),
             );
@@ -408,6 +399,54 @@ fn foo(opt: Option<i32>) -> Option<i32> {
     val
 }
     "#,
+        );
+    }
+
+    #[test]
+    fn complex_pattern() {
+        check_assist(
+            convert_match_to_let_else,
+            r#"
+//- minicore: option
+fn f() {
+    let (x, y) = $0match Some((0, 1)) {
+        Some(it) => it,
+        None => return,
+    };
+}
+"#,
+            r#"
+fn f() {
+    let Some((x, y)) = Some((0, 1)) else { return };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn diverging_block() {
+        check_assist(
+            convert_match_to_let_else,
+            r#"
+//- minicore: option
+fn f() {
+    let x = $0match Some(()) {
+        Some(it) => it,
+        None => {//comment
+            println!("nope");
+            return
+        },
+    };
+}
+"#,
+            r#"
+fn f() {
+    let Some(x) = Some(()) else {//comment
+            println!("nope");
+            return
+        };
+}
+"#,
         );
     }
 }

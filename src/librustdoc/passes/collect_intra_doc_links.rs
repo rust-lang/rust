@@ -15,7 +15,8 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::Mutability;
 use rustc_middle::ty::{DefIdTree, Ty, TyCtxt};
 use rustc_middle::{bug, ty};
-use rustc_resolve::ParentScope;
+use rustc_resolve::rustdoc::MalformedGenerics;
+use rustc_resolve::rustdoc::{prepare_to_doc_link_resolution, strip_generics_from_path};
 use rustc_session::lint::Lint;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -33,9 +34,6 @@ use crate::html::markdown::{markdown_links, MarkdownLink};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
 use crate::passes::Pass;
 use crate::visit::DocVisitor;
-
-mod early;
-pub(crate) use early::early_resolve_intra_doc_links;
 
 pub(crate) const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
     name: "collect-intra-doc-links",
@@ -179,47 +177,6 @@ enum ResolutionFailure<'a> {
     NotResolved(UnresolvedPath<'a>),
 }
 
-#[derive(Clone, Copy, Debug)]
-enum MalformedGenerics {
-    /// This link has unbalanced angle brackets.
-    ///
-    /// For example, `Vec<T` should trigger this, as should `Vec<T>>`.
-    UnbalancedAngleBrackets,
-    /// The generics are not attached to a type.
-    ///
-    /// For example, `<T>` should trigger this.
-    ///
-    /// This is detected by checking if the path is empty after the generics are stripped.
-    MissingType,
-    /// The link uses fully-qualified syntax, which is currently unsupported.
-    ///
-    /// For example, `<Vec as IntoIterator>::into_iter` should trigger this.
-    ///
-    /// This is detected by checking if ` as ` (the keyword `as` with spaces around it) is inside
-    /// angle brackets.
-    HasFullyQualifiedSyntax,
-    /// The link has an invalid path separator.
-    ///
-    /// For example, `Vec:<T>:new()` should trigger this. Note that `Vec:new()` will **not**
-    /// trigger this because it has no generics and thus [`strip_generics_from_path`] will not be
-    /// called.
-    ///
-    /// Note that this will also **not** be triggered if the invalid path separator is inside angle
-    /// brackets because rustdoc mostly ignores what's inside angle brackets (except for
-    /// [`HasFullyQualifiedSyntax`](MalformedGenerics::HasFullyQualifiedSyntax)).
-    ///
-    /// This is detected by checking if there is a colon followed by a non-colon in the link.
-    InvalidPathSeparator,
-    /// The link has too many angle brackets.
-    ///
-    /// For example, `Vec<<T>>` should trigger this.
-    TooManyAngleBrackets,
-    /// The link has empty angle brackets.
-    ///
-    /// For example, `Vec<>` should trigger this.
-    EmptyAngleBrackets,
-}
-
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub(crate) enum UrlFragment {
     Item(DefId),
@@ -338,7 +295,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         match ty_res {
             Res::Def(DefKind::Enum, did) => match tcx.type_of(did).kind() {
                 ty::Adt(def, _) if def.is_enum() => {
-                    if let Some(field) = def.all_fields().find(|f| f.name == variant_field_name) {
+                    if let Some(variant) = def.variants().iter().find(|v| v.name == variant_name)
+                        && let Some(field) = variant.fields.iter().find(|f| f.name == variant_field_name) {
                         Ok((ty_res, field.did))
                     } else {
                         Err(UnresolvedPath {
@@ -407,10 +365,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             })
     }
 
-    /// Convenience wrapper around `resolve_rustdoc_path`.
+    /// Convenience wrapper around `doc_link_resolutions`.
     ///
     /// This also handles resolving `true` and `false` as booleans.
-    /// NOTE: `resolve_rustdoc_path` knows only about paths, not about types.
+    /// NOTE: `doc_link_resolutions` knows only about paths, not about types.
     /// Associated items will never be resolved by this function.
     fn resolve_path(
         &self,
@@ -426,17 +384,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         // Resolver doesn't know about true, false, and types that aren't paths (e.g. `()`).
         let result = self
             .cx
-            .resolver_caches
-            .doc_link_resolutions
-            .get(&(Symbol::intern(path_str), ns, module_id))
+            .tcx
+            .doc_link_resolutions(module_id)
+            .get(&(Symbol::intern(path_str), ns))
             .copied()
-            .unwrap_or_else(|| {
-                self.cx.enter_resolver(|resolver| {
-                    let parent_scope =
-                        ParentScope::module(resolver.expect_module(module_id), resolver);
-                    resolver.resolve_rustdoc_path(path_str, ns, parent_scope)
-                })
-            })
+            .unwrap_or_else(|| panic!("no resolution for {:?} {:?} {:?}", path_str, ns, module_id))
             .and_then(|res| res.try_into().ok())
             .or_else(|| resolve_primitive(path_str, ns));
         debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
@@ -562,27 +514,27 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         // FIXME: Only simple types are supported here, see if we can support
         // other types such as Tuple, Array, Slice, etc.
         // See https://github.com/rust-lang/rust/issues/90703#issuecomment-1004263455
-        Some(tcx.mk_ty(match prim {
-            Bool => ty::Bool,
-            Str => ty::Str,
-            Char => ty::Char,
-            Never => ty::Never,
-            I8 => ty::Int(ty::IntTy::I8),
-            I16 => ty::Int(ty::IntTy::I16),
-            I32 => ty::Int(ty::IntTy::I32),
-            I64 => ty::Int(ty::IntTy::I64),
-            I128 => ty::Int(ty::IntTy::I128),
-            Isize => ty::Int(ty::IntTy::Isize),
-            F32 => ty::Float(ty::FloatTy::F32),
-            F64 => ty::Float(ty::FloatTy::F64),
-            U8 => ty::Uint(ty::UintTy::U8),
-            U16 => ty::Uint(ty::UintTy::U16),
-            U32 => ty::Uint(ty::UintTy::U32),
-            U64 => ty::Uint(ty::UintTy::U64),
-            U128 => ty::Uint(ty::UintTy::U128),
-            Usize => ty::Uint(ty::UintTy::Usize),
+        Some(match prim {
+            Bool => tcx.types.bool,
+            Str => tcx.types.str_,
+            Char => tcx.types.char,
+            Never => tcx.types.never,
+            I8 => tcx.types.i8,
+            I16 => tcx.types.i16,
+            I32 => tcx.types.i32,
+            I64 => tcx.types.i64,
+            I128 => tcx.types.i128,
+            Isize => tcx.types.isize,
+            F32 => tcx.types.f32,
+            F64 => tcx.types.f64,
+            U8 => tcx.types.u8,
+            U16 => tcx.types.u16,
+            U32 => tcx.types.u32,
+            U64 => tcx.types.u64,
+            U128 => tcx.types.u128,
+            Usize => tcx.types.usize,
             _ => return None,
-        }))
+        })
     }
 
     /// Resolve an associated item, returning its containing page's `Res`
@@ -779,8 +731,7 @@ fn trait_impls_for<'a>(
     module: DefId,
 ) -> FxHashSet<(DefId, DefId)> {
     let tcx = cx.tcx;
-    let iter = cx.resolver_caches.traits_in_scope[&module].iter().flat_map(|trait_candidate| {
-        let trait_ = trait_candidate.def_id;
+    let iter = tcx.doc_link_traits_in_scope(module).iter().flat_map(|&trait_| {
         trace!("considering explicit impl for trait {:?}", trait_);
 
         // Look at each trait implementation to see if it's an impl for `did`
@@ -846,7 +797,7 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
         // so we know which module it came from.
-        for (parent_module, doc) in item.attrs.prepare_to_doc_link_resolution() {
+        for (parent_module, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings) {
             if !may_have_doc_links(&doc) {
                 continue;
             }
@@ -854,22 +805,12 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
             let parent_node = parent_module.or(parent_node);
-            let mut tmp_links = self
-                .cx
-                .resolver_caches
-                .markdown_links
-                .take()
-                .expect("`markdown_links` are already borrowed");
-            if !tmp_links.contains_key(&doc) {
-                tmp_links.insert(doc.clone(), preprocessed_markdown_links(&doc));
-            }
-            for md_link in &tmp_links[&doc] {
-                let link = self.resolve_link(item, &doc, parent_node, md_link);
+            for md_link in preprocessed_markdown_links(&doc) {
+                let link = self.resolve_link(item, &doc, parent_node, &md_link);
                 if let Some(link) = link {
                     self.cx.cache.intra_doc_links.entry(item.item_id).or_default().push(link);
                 }
             }
-            self.cx.resolver_caches.markdown_links = Some(tmp_links);
         }
 
         if item.is_mod() {
@@ -975,16 +916,12 @@ fn preprocess_link(
     }
 
     // Strip generics from the path.
-    let path_str = if path_str.contains(['<', '>'].as_slice()) {
-        match strip_generics_from_path(path_str) {
-            Ok(path) => path,
-            Err(err) => {
-                debug!("link has malformed generics: {}", path_str);
-                return Some(Err(PreprocessingError::MalformedGenerics(err, path_str.to_owned())));
-            }
+    let path_str = match strip_generics_from_path(path_str) {
+        Ok(path) => path,
+        Err(err) => {
+            debug!("link has malformed generics: {}", path_str);
+            return Some(Err(PreprocessingError::MalformedGenerics(err, path_str.to_owned())));
         }
-    } else {
-        path_str.to_owned()
     };
 
     // Sanity check to make sure we don't have any angle brackets after stripping generics.
@@ -1677,7 +1614,7 @@ fn resolution_failure(
             // ignore duplicates
             let mut variants_seen = SmallVec::<[_; 3]>::new();
             for mut failure in kinds {
-                let variant = std::mem::discriminant(&failure);
+                let variant = mem::discriminant(&failure);
                 if variants_seen.contains(&variant) {
                     continue;
                 }
@@ -1747,7 +1684,7 @@ fn resolution_failure(
 
                         if !path_str.contains("::") {
                             if disambiguator.map_or(true, |d| d.ns() == MacroNS)
-                                && let Some(&res) = collector.cx.resolver_caches.all_macro_rules
+                                && let Some(&res) = collector.cx.tcx.resolutions(()).all_macro_rules
                                                              .get(&Symbol::intern(path_str))
                             {
                                 diag.note(format!(
@@ -1768,15 +1705,35 @@ fn resolution_failure(
 
                     // Otherwise, it must be an associated item or variant
                     let res = partial_res.expect("None case was handled by `last_found_module`");
-                    let kind = match res {
-                        Res::Def(kind, _) => Some(kind),
+                    let kind_did = match res {
+                        Res::Def(kind, did) => Some((kind, did)),
                         Res::Primitive(_) => None,
                     };
-                    let path_description = if let Some(kind) = kind {
+                    let is_struct_variant = |did| {
+                        if let ty::Adt(def, _) = tcx.type_of(did).kind()
+                        && def.is_enum()
+                        && let Some(variant) = def.variants().iter().find(|v| v.name == res.name(tcx)) {
+                            // ctor is `None` if variant is a struct
+                            variant.ctor.is_none()
+                        } else {
+                            false
+                        }
+                    };
+                    let path_description = if let Some((kind, did)) = kind_did {
                         match kind {
                             Mod | ForeignMod => "inner item",
                             Struct => "field or associated item",
                             Enum | Union => "variant or associated item",
+                            Variant if is_struct_variant(did) => {
+                                let variant = res.name(tcx);
+                                let note = format!("variant `{variant}` has no such field");
+                                if let Some(span) = sp {
+                                    diag.span_label(span, &note);
+                                } else {
+                                    diag.note(&note);
+                                }
+                                return;
+                            }
                             Variant
                             | Field
                             | Closure
@@ -2063,95 +2020,4 @@ fn resolve_primitive(path_str: &str, ns: Namespace) -> Option<Res> {
     };
     debug!("resolved primitives {:?}", prim);
     Some(Res::Primitive(prim))
-}
-
-fn strip_generics_from_path(path_str: &str) -> Result<String, MalformedGenerics> {
-    let mut stripped_segments = vec![];
-    let mut path = path_str.chars().peekable();
-    let mut segment = Vec::new();
-
-    while let Some(chr) = path.next() {
-        match chr {
-            ':' => {
-                if path.next_if_eq(&':').is_some() {
-                    let stripped_segment =
-                        strip_generics_from_path_segment(mem::take(&mut segment))?;
-                    if !stripped_segment.is_empty() {
-                        stripped_segments.push(stripped_segment);
-                    }
-                } else {
-                    return Err(MalformedGenerics::InvalidPathSeparator);
-                }
-            }
-            '<' => {
-                segment.push(chr);
-
-                match path.next() {
-                    Some('<') => {
-                        return Err(MalformedGenerics::TooManyAngleBrackets);
-                    }
-                    Some('>') => {
-                        return Err(MalformedGenerics::EmptyAngleBrackets);
-                    }
-                    Some(chr) => {
-                        segment.push(chr);
-
-                        while let Some(chr) = path.next_if(|c| *c != '>') {
-                            segment.push(chr);
-                        }
-                    }
-                    None => break,
-                }
-            }
-            _ => segment.push(chr),
-        }
-        trace!("raw segment: {:?}", segment);
-    }
-
-    if !segment.is_empty() {
-        let stripped_segment = strip_generics_from_path_segment(segment)?;
-        if !stripped_segment.is_empty() {
-            stripped_segments.push(stripped_segment);
-        }
-    }
-
-    debug!("path_str: {:?}\nstripped segments: {:?}", path_str, &stripped_segments);
-
-    let stripped_path = stripped_segments.join("::");
-
-    if !stripped_path.is_empty() { Ok(stripped_path) } else { Err(MalformedGenerics::MissingType) }
-}
-
-fn strip_generics_from_path_segment(segment: Vec<char>) -> Result<String, MalformedGenerics> {
-    let mut stripped_segment = String::new();
-    let mut param_depth = 0;
-
-    let mut latest_generics_chunk = String::new();
-
-    for c in segment {
-        if c == '<' {
-            param_depth += 1;
-            latest_generics_chunk.clear();
-        } else if c == '>' {
-            param_depth -= 1;
-            if latest_generics_chunk.contains(" as ") {
-                // The segment tries to use fully-qualified syntax, which is currently unsupported.
-                // Give a helpful error message instead of completely ignoring the angle brackets.
-                return Err(MalformedGenerics::HasFullyQualifiedSyntax);
-            }
-        } else {
-            if param_depth == 0 {
-                stripped_segment.push(c);
-            } else {
-                latest_generics_chunk.push(c);
-            }
-        }
-    }
-
-    if param_depth == 0 {
-        Ok(stripped_segment)
-    } else {
-        // The segment has unbalanced angle brackets, e.g. `Vec<T` or `Vec<T>>`
-        Err(MalformedGenerics::UnbalancedAngleBrackets)
-    }
 }

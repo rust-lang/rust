@@ -114,7 +114,7 @@ fn reduce_impl_span_to_impl_keyword(sm: &SourceMap, impl_span: Span) -> Span {
     sm.span_until_whitespace(impl_span)
 }
 
-impl<'a> Resolver<'a> {
+impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn report_errors(&mut self, krate: &Crate) {
         self.report_with_use_injections(krate);
 
@@ -1883,7 +1883,7 @@ impl<'a> Resolver<'a> {
     }
 }
 
-impl<'a, 'b> ImportResolver<'a, 'b> {
+impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
     /// Adds suggestions for a path that cannot be resolved.
     pub(crate) fn make_path_suggestion(
         &mut self,

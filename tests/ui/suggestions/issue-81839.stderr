@@ -10,12 +10,9 @@ LL | |             cx.answer_str("hi");
    | |             this is found to be of type `()`
 LL | |         }
 LL | |         _ => cx.answer_str("hi"),
-   | |              ^^^^^^^^^^^^^^^^^^^ expected `()`, found opaque type
+   | |              ^^^^^^^^^^^^^^^^^^^ expected `()`, found future
 LL | |     }
    | |_____- `match` arms have incompatible types
-   |
-   = note: expected unit type `()`
-            found opaque type `impl Future<Output = Test>`
 
 error: aborting due to previous error
 

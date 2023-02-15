@@ -3,7 +3,7 @@
 use base_db::{CrateId, ProcMacroExpansionError, ProcMacroId, ProcMacroKind};
 use stdx::never;
 
-use crate::{db::AstDatabase, ExpandError, ExpandResult};
+use crate::{db::AstDatabase, tt, ExpandError, ExpandResult};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct ProcMacroExpander {
@@ -39,7 +39,10 @@ impl ProcMacroExpander {
                     Ok(proc_macros) => proc_macros,
                     Err(_) => {
                         never!("Non-dummy expander even though there are no proc macros");
-                        return ExpandResult::only_err(ExpandError::Other("Internal error".into()));
+                        return ExpandResult::with_err(
+                            tt::Subtree::empty(),
+                            ExpandError::Other("Internal error".into()),
+                        );
                     }
                 };
                 let proc_macro = match proc_macros.get(id.0 as usize) {
@@ -50,7 +53,10 @@ impl ProcMacroExpander {
                             proc_macros.len(),
                             id.0
                         );
-                        return ExpandResult::only_err(ExpandError::Other("Internal error".into()));
+                        return ExpandResult::with_err(
+                            tt::Subtree::empty(),
+                            ExpandError::Other("Internal error".into()),
+                        );
                     }
                 };
 
@@ -69,13 +75,17 @@ impl ProcMacroExpander {
                             }
                         }
                         ProcMacroExpansionError::System(text)
-                        | ProcMacroExpansionError::Panic(text) => {
-                            ExpandResult::only_err(ExpandError::Other(text.into()))
-                        }
+                        | ProcMacroExpansionError::Panic(text) => ExpandResult::with_err(
+                            tt::Subtree::empty(),
+                            ExpandError::Other(text.into()),
+                        ),
                     },
                 }
             }
-            None => ExpandResult::only_err(ExpandError::UnresolvedProcMacro(self.krate)),
+            None => ExpandResult::with_err(
+                tt::Subtree::empty(),
+                ExpandError::UnresolvedProcMacro(self.krate),
+            ),
         }
     }
 }

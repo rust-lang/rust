@@ -16,10 +16,9 @@ rustc_span = { path = "../rustc_span" }
 rustc_macros = { path = "../rustc_macros" }
 tracing = "0.1"
 unic-langid = { version = "0.9.0", features = ["macros"] }
-icu_list = "1.0.0"
-writeable = "0.5.0"
-icu_locid = "1.0.0"
-icu_provider_adapters = "1.0.0"
+icu_list = "1.1.0"
+icu_locid = "1.1.0"
+icu_provider_adapters = "1.1.0"
 
 [features]
 rustc_use_parallel_compiler = ['rustc_baked_icu_data/rustc_use_parallel_compiler']

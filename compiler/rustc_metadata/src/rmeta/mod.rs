@@ -9,7 +9,7 @@ use rustc_attr as attr;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items::LangItem;
@@ -413,6 +413,8 @@ define_tables! {
     module_reexports: Table<DefIndex, LazyArray<ModChild>>,
     deduced_param_attrs: Table<DefIndex, LazyArray<DeducedParamAttrs>>,
     trait_impl_trait_tys: Table<DefIndex, LazyValue<FxHashMap<DefId, Ty<'static>>>>,
+    doc_link_resolutions: Table<DefIndex, LazyValue<DocLinkResMap>>,
+    doc_link_traits_in_scope: Table<DefIndex, LazyArray<DefId>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]
@@ -426,8 +428,7 @@ struct VariantData {
 bitflags::bitflags! {
     #[derive(Default)]
     pub struct AttrFlags: u8 {
-        const MAY_HAVE_DOC_LINKS = 1 << 0;
-        const IS_DOC_HIDDEN      = 1 << 1;
+        const IS_DOC_HIDDEN = 1 << 0;
     }
 }
 

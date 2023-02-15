@@ -25,7 +25,7 @@ pub(super) fn check_fn<'tcx>(
         intravisit::FnKind::Closure => return,
     };
 
-    check_raw_ptr(cx, unsafety, decl, body, def_id)
+    check_raw_ptr(cx, unsafety, decl, body, def_id);
 }
 
 pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {

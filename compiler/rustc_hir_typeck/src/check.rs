@@ -90,7 +90,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // Check the pattern.
         let ty_span = try { inputs_hir?.get(idx)?.span };
-        fcx.check_pat_top(&param.pat, param_ty, ty_span, false);
+        fcx.check_pat_top(&param.pat, param_ty, ty_span, None);
 
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
@@ -264,9 +264,7 @@ fn check_lang_start_fn<'tcx>(
         // for example `start`'s generic should be a type parameter
         let generics = tcx.generics_of(def_id);
         let fn_generic = generics.param_at(0, tcx);
-        let generic_tykind =
-            ty::Param(ty::ParamTy { index: fn_generic.index, name: fn_generic.name });
-        let generic_ty = tcx.mk_ty(generic_tykind);
+        let generic_ty = tcx.mk_ty_param(fn_generic.index, fn_generic.name);
         let expected_fn_sig =
             tcx.mk_fn_sig([].iter(), &generic_ty, false, hir::Unsafety::Normal, Abi::Rust);
         let expected_ty = tcx.mk_fn_ptr(Binder::dummy(expected_fn_sig));

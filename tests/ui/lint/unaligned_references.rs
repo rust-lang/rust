@@ -13,6 +13,20 @@ pub struct Packed2 {
     z: u8,
 }
 
+trait Foo {
+    fn evil(&self);
+}
+
+// Test for #108122
+#[automatically_derived]
+impl Foo for Packed2 {
+    fn evil(&self) {
+        unsafe {
+            &self.x; //~ ERROR reference to packed field
+        }
+    }
+}
+
 fn main() {
     unsafe {
         let good = Good { data: 0, ptr: &0, data2: [0, 0], aligned: [0; 32] };
@@ -37,6 +51,7 @@ fn main() {
         let _ = &packed2.x; //~ ERROR reference to packed field
         let _ = &packed2.y; // ok, has align 2 in packed(2) struct
         let _ = &packed2.z; // ok, has align 1
+        packed2.evil();
     }
 
     unsafe {
@@ -71,22 +86,10 @@ fn main() {
         #[repr(packed)]
         struct Misalign<T>(u8, T);
 
-        let m1 = Misalign(
-            0,
-            Wrapper {
-                a: U16(10),
-                b: HasDrop,
-            },
-        );
+        let m1 = Misalign(0, Wrapper { a: U16(10), b: HasDrop });
         let _ref = &m1.1.a; //~ ERROR reference to packed field
 
-        let m2 = Misalign(
-            0,
-            Wrapper2 {
-                a: U16(10),
-                b: HasDrop,
-            },
-        );
+        let m2 = Misalign(0, Wrapper2 { a: U16(10), b: HasDrop });
         let _ref = &m2.1.a; //~ ERROR reference to packed field
     }
 }

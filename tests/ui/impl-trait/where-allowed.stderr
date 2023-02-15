@@ -303,10 +303,10 @@ LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
 
 error[E0118]: no nominal type found for inherent implementation
-  --> $DIR/where-allowed.rs:233:23
+  --> $DIR/where-allowed.rs:233:1
    |
 LL | impl <T = impl Debug> T {}
-   |                       ^ impl requires a nominal type
+   | ^^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
    |
    = note: either implement a trait on it or create a newtype to wrap it instead
 

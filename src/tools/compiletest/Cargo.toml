@@ -9,6 +9,7 @@ diff = "0.1.10"
 unified-diff = "0.2.1"
 getopts = "0.2"
 miropt-test-tools = { path = "../miropt-test-tools" }
+build_helper = { path = "../build_helper" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.3", default-features = false, features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"] }
 regex = "1.0"

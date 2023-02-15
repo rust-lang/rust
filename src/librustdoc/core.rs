@@ -1,23 +1,22 @@
-use rustc_ast::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
+use rustc_errors::TerminalUrl;
 use rustc_feature::UnstableFeatures;
-use rustc_hir::def::{Namespace, Res};
+use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{HirId, Path, TraitCandidate};
+use rustc_hir::{HirId, Path};
 use rustc_interface::interface;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
-use rustc_resolve as resolve;
-use rustc_session::config::{self, CrateType, ErrorOutputType};
+use rustc_session::config::{self, CrateType, ErrorOutputType, ResolveDocLinks};
 use rustc_session::lint;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
-use rustc_span::{source_map, Span, Symbol};
+use rustc_span::{source_map, Span};
 
 use std::cell::RefCell;
 use std::mem;
@@ -28,31 +27,12 @@ use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
-use crate::passes::collect_intra_doc_links::PreprocessedMarkdownLink;
 use crate::passes::{self, Condition::*};
 
 pub(crate) use rustc_session::config::{Input, Options, UnstableOptions};
 
-pub(crate) struct ResolverCaches {
-    pub(crate) markdown_links: Option<FxHashMap<String, Vec<PreprocessedMarkdownLink>>>,
-    pub(crate) doc_link_resolutions: FxHashMap<(Symbol, Namespace, DefId), Option<Res<NodeId>>>,
-    /// Traits in scope for a given module.
-    /// See `collect_intra_doc_links::traits_implemented_by` for more details.
-    pub(crate) traits_in_scope: DefIdMap<Vec<TraitCandidate>>,
-    pub(crate) all_trait_impls: Option<Vec<DefId>>,
-    pub(crate) all_macro_rules: FxHashMap<Symbol, Res<NodeId>>,
-    pub(crate) extern_doc_reachable: DefIdSet,
-}
-
 pub(crate) struct DocContext<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
-    /// Name resolver. Used for intra-doc links.
-    ///
-    /// The `Rc<RefCell<...>>` wrapping is needed because that is what's returned by
-    /// [`rustc_interface::Queries::expansion()`].
-    // FIXME: see if we can get rid of this RefCell somehow
-    pub(crate) resolver: Rc<RefCell<interface::BoxedResolver>>,
-    pub(crate) resolver_caches: ResolverCaches,
     /// Used for normalization.
     ///
     /// Most of this logic is copied from rustc_lint::late.
@@ -100,13 +80,6 @@ impl<'tcx> DocContext<'tcx> {
         ret
     }
 
-    pub(crate) fn enter_resolver<F, R>(&self, f: F) -> R
-    where
-        F: FnOnce(&mut resolve::Resolver<'_>) -> R,
-    {
-        self.resolver.borrow_mut().access(f)
-    }
-
     /// Call the closure with the given parameters set as
     /// the substitutions for a type alias' RHS.
     pub(crate) fn enter_alias<F, R>(&mut self, substs: DefIdMap<clean::SubstParam>, f: F) -> R
@@ -129,12 +102,6 @@ impl<'tcx> DocContext<'tcx> {
             // FIXME: Can this be `Some` for `Auto` or `Blanket`?
             _ => None,
         }
-    }
-
-    pub(crate) fn with_all_trait_impls(&mut self, f: impl FnOnce(&mut Self, &[DefId])) {
-        let all_trait_impls = self.resolver_caches.all_trait_impls.take();
-        f(self, all_trait_impls.as_ref().expect("`all_trait_impls` are already borrowed"));
-        self.resolver_caches.all_trait_impls = all_trait_impls;
     }
 }
 
@@ -164,6 +131,7 @@ pub(crate) fn new_handler(
                     diagnostic_width,
                     false,
                     unstable_opts.track_diagnostics,
+                    TerminalUrl::No,
                 )
                 .ui_testing(unstable_opts.ui_testing),
             )
@@ -183,6 +151,7 @@ pub(crate) fn new_handler(
                     diagnostic_width,
                     false,
                     unstable_opts.track_diagnostics,
+                    TerminalUrl::No,
                 )
                 .ui_testing(unstable_opts.ui_testing),
             )
@@ -218,6 +187,7 @@ pub(crate) fn create_config(
         scrape_examples_options,
         ..
     }: RustdocOptions,
+    RenderOptions { document_private, .. }: &RenderOptions,
 ) -> rustc_interface::Config {
     // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
@@ -245,6 +215,13 @@ pub(crate) fn create_config(
 
     let crate_types =
         if proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
+    let resolve_doc_links = if *document_private {
+        ResolveDocLinks::All
+    } else {
+        // Should be `ResolveDocLinks::Exported` in theory, but for some reason rustdoc
+        // still tries to request resolutions for links on private items.
+        ResolveDocLinks::All
+    };
     let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false);
     // plays with error output here!
     let sessopts = config::Options {
@@ -258,6 +235,7 @@ pub(crate) fn create_config(
         target_triple: target,
         unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
         actually_rustdoc: true,
+        resolve_doc_links,
         unstable_opts,
         error_format,
         diagnostic_width,
@@ -313,8 +291,6 @@ pub(crate) fn create_config(
 
 pub(crate) fn run_global_ctxt(
     tcx: TyCtxt<'_>,
-    resolver: Rc<RefCell<interface::BoxedResolver>>,
-    resolver_caches: ResolverCaches,
     show_coverage: bool,
     render_options: RenderOptions,
     output_format: OutputFormat,
@@ -348,8 +324,6 @@ pub(crate) fn run_global_ctxt(
 
     let mut ctxt = DocContext {
         tcx,
-        resolver,
-        resolver_caches,
         param_env: ParamEnv::empty(),
         external_traits: Default::default(),
         active_extern_traits: Default::default(),
@@ -364,9 +338,9 @@ pub(crate) fn run_global_ctxt(
         show_coverage,
     };
 
-    ctxt.cache
-        .effective_visibilities
-        .init(mem::take(&mut ctxt.resolver_caches.extern_doc_reachable));
+    for cnum in tcx.crates(()) {
+        crate::visit_lib::lib_embargo_visit_item(&mut ctxt, cnum.as_def_id());
+    }
 
     // Small hack to force the Sized trait to be present.
     //

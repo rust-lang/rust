@@ -15,7 +15,7 @@ use hir_def::{
     expr::ExprId,
     FunctionId,
 };
-use hir_ty::{TyExt, TypeWalk};
+use hir_ty::{Interner, TyExt, TypeFlags};
 use ide::{Analysis, AnalysisHost, LineCol, RootDatabase};
 use ide_db::base_db::{
     salsa::{self, debug::DebugQueryTable, ParallelDatabase},
@@ -33,7 +33,7 @@ use vfs::{AbsPathBuf, Vfs, VfsPath};
 
 use crate::cli::{
     flags::{self, OutputFormat},
-    load_cargo::{load_workspace, LoadCargoConfig},
+    load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice},
     print_memory_usage,
     progress_report::ProgressReport,
     report_metric, Result, Verbosity,
@@ -59,11 +59,6 @@ impl flags::AnalysisStats {
             true => None,
             false => Some(RustcSource::Discover),
         };
-        let load_cargo_config = LoadCargoConfig {
-            load_out_dirs_from_check: !self.disable_build_scripts,
-            with_proc_macro: !self.disable_proc_macros,
-            prefill_caches: false,
-        };
         let no_progress = &|_| ();
 
         let mut db_load_sw = self.stop_watch();
@@ -73,6 +68,11 @@ impl flags::AnalysisStats {
 
         let mut workspace = ProjectWorkspace::load(manifest, &cargo_config, no_progress)?;
         let metadata_time = db_load_sw.elapsed();
+        let load_cargo_config = LoadCargoConfig {
+            load_out_dirs_from_check: !self.disable_build_scripts,
+            with_proc_macro_server: ProcMacroServerChoice::Sysroot,
+            prefill_caches: false,
+        };
 
         let build_scripts_time = if self.disable_build_scripts {
             None
@@ -280,12 +280,8 @@ impl flags::AnalysisStats {
                     }
                     true
                 } else {
-                    let mut is_partially_unknown = false;
-                    ty.walk(&mut |ty| {
-                        if ty.is_unknown() {
-                            is_partially_unknown = true;
-                        }
-                    });
+                    let is_partially_unknown =
+                        ty.data(Interner).flags.contains(TypeFlags::HAS_ERROR);
                     if is_partially_unknown {
                         num_exprs_partially_unknown += 1;
                     }

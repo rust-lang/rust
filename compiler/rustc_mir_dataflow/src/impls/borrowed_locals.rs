@@ -121,7 +121,9 @@ where
                 // for now. See discussion on [#61069].
                 //
                 // [#61069]: https://github.com/rust-lang/rust/pull/61069
-                self.trans.gen(dropped_place.local);
+                if !dropped_place.is_indirect() {
+                    self.trans.gen(dropped_place.local);
+                }
             }
 
             TerminatorKind::Abort

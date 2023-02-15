@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_lint::LateContext;
 use rustc_middle::mir::{self, visit::Visitor as _, Mutability};
-use rustc_middle::ty::{self, visit::TypeVisitor};
+use rustc_middle::ty::{self, visit::ir::TypeVisitor, TyCtxt};
 use rustc_mir_dataflow::{impls::MaybeStorageLive, Analysis, ResultsCursor};
 use std::borrow::Cow;
 use std::ops::ControlFlow;
@@ -136,7 +136,7 @@ impl<'a, 'b, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'b,
 
 struct ContainsRegion;
 
-impl TypeVisitor<'_> for ContainsRegion {
+impl TypeVisitor<TyCtxt<'_>> for ContainsRegion {
     type BreakTy = ();
 
     fn visit_region(&mut self, _: ty::Region<'_>) -> ControlFlow<Self::BreakTy> {

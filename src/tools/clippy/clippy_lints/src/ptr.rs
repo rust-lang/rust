@@ -624,7 +624,10 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             return;
                         };
 
-                        match *self.cx.tcx.fn_sig(id).subst_identity().skip_binder().inputs()[i].peel_refs().kind() {
+                        match *self.cx.tcx.fn_sig(id).subst_identity().skip_binder().inputs()[i]
+                            .peel_refs()
+                            .kind()
+                        {
                             ty::Dynamic(preds, _, _) if !matches_preds(self.cx, args.deref_ty.ty(self.cx), preds) => {
                                 set_skip_flag();
                             },

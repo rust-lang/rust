@@ -31,6 +31,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::DUMMY_SP;
 
+use crate::solve::search_graph::OverflowHandler;
 use crate::traits::ObligationCause;
 
 mod assembly;
@@ -41,6 +42,8 @@ mod search_graph;
 mod trait_goals;
 
 pub use fulfill::FulfillmentCtxt;
+
+use self::infcx_ext::InferCtxtExt;
 
 /// A goal is a statement, i.e. `predicate`, we want to prove
 /// given some assumptions, i.e. `param_env`.
@@ -79,6 +82,21 @@ pub struct Response<'tcx> {
     /// Additional constraints returned by this query.
     pub external_constraints: ExternalConstraints<'tcx>,
     pub certainty: Certainty,
+}
+
+trait CanonicalResponseExt {
+    fn has_no_inference_or_external_constraints(&self) -> bool;
+}
+
+impl<'tcx> CanonicalResponseExt for Canonical<'tcx, Response<'tcx>> {
+    fn has_no_inference_or_external_constraints(&self) -> bool {
+        // so that we get a compile error when regions are supported
+        // so this code can be checked for being correct
+        let _: () = self.value.external_constraints.regions;
+
+        self.value.var_values.is_identity()
+            && self.value.external_constraints.opaque_types.is_empty()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
@@ -193,27 +211,16 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         search_graph: &'a mut search_graph::SearchGraph<'tcx>,
         canonical_goal: CanonicalGoal<'tcx>,
     ) -> QueryResult<'tcx> {
-        match search_graph.try_push_stack(tcx, canonical_goal) {
-            Ok(()) => {}
-            // Our goal is already on the stack, eager return.
-            Err(response) => return response,
-        }
-
-        // We may have to repeatedly recompute the goal in case of coinductive cycles,
-        // check out the `cache` module for more information.
+        // Deal with overflow, caching, and coinduction.
         //
-        // FIXME: Similar to `evaluate_all`, this has to check for overflow.
-        loop {
+        // The actual solver logic happens in `ecx.compute_goal`.
+        search_graph.with_new_goal(tcx, canonical_goal, |search_graph| {
             let (ref infcx, goal, var_values) =
                 tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &canonical_goal);
             let mut ecx =
                 EvalCtxt { infcx, var_values, search_graph, in_projection_eq_hack: false };
-            let result = ecx.compute_goal(goal);
-
-            if search_graph.try_finalize_goal(tcx, canonical_goal, result) {
-                return result;
-            }
-        }
+            ecx.compute_goal(goal)
+        })
     }
 
     fn make_canonical_response(&self, certainty: Certainty) -> QueryResult<'tcx> {
@@ -248,12 +255,18 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         // call `exists<U> <T as Trait>::Assoc == U` to enable better caching. This goal
         // could constrain `U` to `u32` which would cause this check to result in a
         // solver cycle.
-        if cfg!(debug_assertions) && has_changed && !self.in_projection_eq_hack {
+        if cfg!(debug_assertions)
+            && has_changed
+            && !self.in_projection_eq_hack
+            && !self.search_graph.in_cycle()
+        {
             let mut orig_values = OriginalQueryValues::default();
             let canonical_goal = self.infcx.canonicalize_query(goal, &mut orig_values);
             let canonical_response =
                 EvalCtxt::evaluate_canonical_goal(self.tcx(), self.search_graph, canonical_goal)?;
-            assert!(canonical_response.value.var_values.is_identity());
+            if !canonical_response.value.var_values.is_identity() {
+                bug!("unstable result: {goal:?} {canonical_goal:?} {canonical_response:?}");
+            }
             assert_eq!(certainty, canonical_response.value.certainty);
         }
 
@@ -301,6 +314,9 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 }
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
+                }
+                ty::PredicateKind::AliasEq(lhs, rhs) => {
+                    self.compute_alias_eq_goal(Goal { param_env, predicate: (lhs, rhs) })
                 }
             }
         } else {
@@ -398,6 +414,63 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             None => self.make_canonical_response(Certainty::AMBIGUOUS),
         }
     }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    fn compute_alias_eq_goal(
+        &mut self,
+        goal: Goal<'tcx, (ty::Term<'tcx>, ty::Term<'tcx>)>,
+    ) -> QueryResult<'tcx> {
+        let tcx = self.tcx();
+
+        let evaluate_normalizes_to = |ecx: &mut EvalCtxt<'_, 'tcx>, alias, other| {
+            debug!("evaluate_normalizes_to(alias={:?}, other={:?})", alias, other);
+            let r = ecx.infcx.probe(|_| {
+                let (_, certainty) = ecx.evaluate_goal(goal.with(
+                    tcx,
+                    ty::Binder::dummy(ty::ProjectionPredicate {
+                        projection_ty: alias,
+                        term: other,
+                    }),
+                ))?;
+                ecx.make_canonical_response(certainty)
+            });
+            debug!("evaluate_normalizes_to(..) -> {:?}", r);
+            r
+        };
+
+        if goal.predicate.0.is_infer() || goal.predicate.1.is_infer() {
+            bug!(
+                "`AliasEq` goal with an infer var on lhs or rhs which should have been instantiated"
+            );
+        }
+
+        match (
+            goal.predicate.0.to_alias_term_no_opaque(tcx),
+            goal.predicate.1.to_alias_term_no_opaque(tcx),
+        ) {
+            (None, None) => bug!("`AliasEq` goal without an alias on either lhs or rhs"),
+            (Some(alias), None) => evaluate_normalizes_to(self, alias, goal.predicate.1),
+            (None, Some(alias)) => evaluate_normalizes_to(self, alias, goal.predicate.0),
+            (Some(alias_lhs), Some(alias_rhs)) => {
+                debug!("compute_alias_eq_goal: both sides are aliases");
+
+                let mut candidates = Vec::with_capacity(3);
+
+                // Evaluate all 3 potential candidates for the alias' being equal
+                candidates.push(evaluate_normalizes_to(self, alias_lhs, goal.predicate.1));
+                candidates.push(evaluate_normalizes_to(self, alias_rhs, goal.predicate.0));
+                candidates.push(self.infcx.probe(|_| {
+                    debug!("compute_alias_eq_goal: alias defids are equal, equating substs");
+                    let nested_goals = self.infcx.eq(goal.param_env, alias_lhs, alias_rhs)?;
+                    self.evaluate_all_and_make_canonical_response(nested_goals)
+                }));
+
+                debug!(?candidates);
+
+                self.try_merge_responses(candidates.into_iter())
+            }
+        }
+    }
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -408,35 +481,38 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         mut goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     ) -> Result<Certainty, NoSolution> {
         let mut new_goals = Vec::new();
-        self.repeat_while_none(|this| {
-            let mut has_changed = Err(Certainty::Yes);
-            for goal in goals.drain(..) {
-                let (changed, certainty) = match this.evaluate_goal(goal) {
-                    Ok(result) => result,
-                    Err(NoSolution) => return Some(Err(NoSolution)),
-                };
+        self.repeat_while_none(
+            |_| Ok(Certainty::Maybe(MaybeCause::Overflow)),
+            |this| {
+                let mut has_changed = Err(Certainty::Yes);
+                for goal in goals.drain(..) {
+                    let (changed, certainty) = match this.evaluate_goal(goal) {
+                        Ok(result) => result,
+                        Err(NoSolution) => return Some(Err(NoSolution)),
+                    };
 
-                if changed {
-                    has_changed = Ok(());
-                }
+                    if changed {
+                        has_changed = Ok(());
+                    }
 
-                match certainty {
-                    Certainty::Yes => {}
-                    Certainty::Maybe(_) => {
-                        new_goals.push(goal);
-                        has_changed = has_changed.map_err(|c| c.unify_and(certainty));
+                    match certainty {
+                        Certainty::Yes => {}
+                        Certainty::Maybe(_) => {
+                            new_goals.push(goal);
+                            has_changed = has_changed.map_err(|c| c.unify_and(certainty));
+                        }
                     }
                 }
-            }
 
-            match has_changed {
-                Ok(()) => {
-                    mem::swap(&mut new_goals, &mut goals);
-                    None
+                match has_changed {
+                    Ok(()) => {
+                        mem::swap(&mut new_goals, &mut goals);
+                        None
+                    }
+                    Err(certainty) => Some(Ok(certainty)),
                 }
-                Err(certainty) => Some(Ok(certainty)),
-            }
-        })
+            },
+        )
     }
 
     // Recursively evaluates a list of goals to completion, making a query response.
@@ -448,6 +524,43 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     ) -> QueryResult<'tcx> {
         self.evaluate_all(goals).and_then(|certainty| self.make_canonical_response(certainty))
+    }
+
+    fn try_merge_responses(
+        &mut self,
+        responses: impl Iterator<Item = QueryResult<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        let candidates = responses.into_iter().flatten().collect::<Box<[_]>>();
+
+        if candidates.is_empty() {
+            return Err(NoSolution);
+        }
+
+        // FIXME(-Ztreat-solver=next): We should instead try to find a `Certainty::Yes` response with
+        // a subset of the constraints that all the other responses have.
+        let one = candidates[0];
+        if candidates[1..].iter().all(|resp| resp == &one) {
+            return Ok(one);
+        }
+
+        if let Some(response) = candidates.iter().find(|response| {
+            response.value.certainty == Certainty::Yes
+                && response.has_no_inference_or_external_constraints()
+        }) {
+            return Ok(response.clone());
+        }
+
+        let certainty = candidates.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
+            certainty.unify_and(response.value.certainty)
+        });
+        // FIXME(-Ztrait-solver=next): We should take the intersection of the constraints on all the
+        // responses and use that for the constraints of this ambiguous response.
+        let response = self.make_canonical_response(certainty);
+        if let Ok(response) = &response {
+            assert!(response.has_no_inference_or_external_constraints());
+        }
+
+        response
     }
 }
 

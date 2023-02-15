@@ -42,8 +42,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(not(no_global_oom_handling))]
-use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use core::error::Error;
 use core::fmt;
 use core::hash;
@@ -683,7 +681,7 @@ impl String {
         // This isn't done via collect::<Result<_, _>>() for performance reasons.
         // FIXME: the function can be simplified again when #48994 is closed.
         let mut ret = String::with_capacity(v.len());
-        for c in decode_utf16(v.iter().cloned()) {
+        for c in char::decode_utf16(v.iter().cloned()) {
             if let Ok(c) = c {
                 ret.push(c);
             } else {
@@ -722,7 +720,9 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16_lossy(v: &[u16]) -> String {
-        decode_utf16(v.iter().cloned()).map(|r| r.unwrap_or(REPLACEMENT_CHARACTER)).collect()
+        char::decode_utf16(v.iter().cloned())
+            .map(|r| r.unwrap_or(char::REPLACEMENT_CHARACTER))
+            .collect()
     }
 
     /// Decomposes a `String` into its raw components.
