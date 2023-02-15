@@ -5,7 +5,7 @@ use std::process::{self, Command};
 use super::path::{Dirs, RelPath};
 use super::rustc_info::{get_file_name, get_rustc_version};
 use super::utils::{remove_dir_if_exists, spawn_and_wait, try_hard_link, CargoProject, Compiler};
-use super::SysrootKind;
+use super::{CodegenBackend, SysrootKind};
 
 static DIST_DIR: RelPath = RelPath::DIST;
 static BIN_DIR: RelPath = RelPath::DIST.join("bin");
@@ -15,7 +15,7 @@ pub(crate) fn build_sysroot(
     dirs: &Dirs,
     channel: &str,
     sysroot_kind: SysrootKind,
-    cg_clif_dylib_src: &Path,
+    cg_clif_dylib_src: &CodegenBackend,
     bootstrap_host_compiler: &Compiler,
     rustup_toolchain_name: Option<&str>,
     target_triple: String,
@@ -28,17 +28,23 @@ pub(crate) fn build_sysroot(
 
     let is_native = bootstrap_host_compiler.triple == target_triple;
 
-    // Copy the backend
-    let cg_clif_dylib_path = if cfg!(windows) {
-        // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
-        // binaries.
-        BIN_DIR
-    } else {
-        LIB_DIR
-    }
-    .to_path(dirs)
-    .join(cg_clif_dylib_src.file_name().unwrap());
-    try_hard_link(cg_clif_dylib_src, &cg_clif_dylib_path);
+    let cg_clif_dylib_path = match cg_clif_dylib_src {
+        CodegenBackend::Local(src_path) => {
+            // Copy the backend
+            let cg_clif_dylib_path = if cfg!(windows) {
+                // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
+                // binaries.
+                BIN_DIR
+            } else {
+                LIB_DIR
+            }
+            .to_path(dirs)
+            .join(src_path.file_name().unwrap());
+            try_hard_link(src_path, &cg_clif_dylib_path);
+            CodegenBackend::Local(cg_clif_dylib_path)
+        }
+        CodegenBackend::Builtin(name) => CodegenBackend::Builtin(name.clone()),
+    };
 
     // Build and copy rustc and cargo wrappers
     let wrapper_base_name = get_file_name(&bootstrap_host_compiler.rustc, "____", "bin");
@@ -64,6 +70,9 @@ pub(crate) fn build_sysroot(
                 .env("CARGO", &bootstrap_host_compiler.cargo)
                 .env("RUSTC", &bootstrap_host_compiler.rustc)
                 .env("RUSTDOC", &bootstrap_host_compiler.rustdoc);
+        }
+        if let CodegenBackend::Builtin(name) = cg_clif_dylib_src {
+            build_cargo_wrapper_cmd.env("BUILTIN_BACKEND", name);
         }
         spawn_and_wait(build_cargo_wrapper_cmd);
         try_hard_link(wrapper_path, BIN_DIR.to_path(dirs).join(wrapper_name));
@@ -159,7 +168,7 @@ fn build_sysroot_for_triple(
     dirs: &Dirs,
     channel: &str,
     compiler: Compiler,
-    cg_clif_dylib_path: &Path,
+    cg_clif_dylib_path: &CodegenBackend,
     sysroot_kind: SysrootKind,
 ) -> SysrootTarget {
     match sysroot_kind {
@@ -167,7 +176,7 @@ fn build_sysroot_for_triple(
             .unwrap_or(SysrootTarget { triple: compiler.triple, libs: vec![] }),
         SysrootKind::Llvm => build_llvm_sysroot_for_triple(compiler),
         SysrootKind::Clif => {
-            build_clif_sysroot_for_triple(dirs, channel, compiler, &cg_clif_dylib_path)
+            build_clif_sysroot_for_triple(dirs, channel, compiler, cg_clif_dylib_path)
         }
     }
 }
@@ -211,7 +220,7 @@ fn build_clif_sysroot_for_triple(
     dirs: &Dirs,
     channel: &str,
     mut compiler: Compiler,
-    cg_clif_dylib_path: &Path,
+    cg_clif_dylib_path: &CodegenBackend,
 ) -> SysrootTarget {
     match fs::read_to_string(SYSROOT_RUSTC_VERSION.to_path(dirs)) {
         Err(e) => {
@@ -249,7 +258,14 @@ fn build_clif_sysroot_for_triple(
 
     // Build sysroot
     let mut rustflags = " -Zforce-unstable-if-unmarked -Cpanic=abort".to_string();
-    rustflags.push_str(&format!(" -Zcodegen-backend={}", cg_clif_dylib_path.to_str().unwrap()));
+    match cg_clif_dylib_path {
+        CodegenBackend::Local(path) => {
+            rustflags.push_str(&format!(" -Zcodegen-backend={}", path.to_str().unwrap()));
+        }
+        CodegenBackend::Builtin(name) => {
+            rustflags.push_str(&format!(" -Zcodegen-backend={name}"));
+        }
+    };
     // Necessary for MinGW to find rsbegin.o and rsend.o
     rustflags
         .push_str(&format!(" --sysroot {}", RTSTARTUP_SYSROOT.to_path(dirs).to_str().unwrap()));

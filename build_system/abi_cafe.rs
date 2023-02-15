@@ -1,10 +1,8 @@
-use std::path::Path;
-
 use super::build_sysroot;
 use super::path::Dirs;
 use super::prepare::GitRepo;
 use super::utils::{spawn_and_wait, CargoProject, Compiler};
-use super::SysrootKind;
+use super::{CodegenBackend, SysrootKind};
 
 static ABI_CAFE_REPO: GitRepo =
     GitRepo::github("Gankra", "abi-cafe", "4c6dc8c9c687e2b3a760ff2176ce236872b37212", "abi-cafe");
@@ -15,7 +13,7 @@ pub(crate) fn run(
     channel: &str,
     sysroot_kind: SysrootKind,
     dirs: &Dirs,
-    cg_clif_dylib: &Path,
+    cg_clif_dylib: &CodegenBackend,
     rustup_toolchain_name: Option<&str>,
     bootstrap_host_compiler: &Compiler,
 ) {
@@ -41,7 +39,14 @@ pub(crate) fn run(
     cmd.arg("--pairs");
     cmd.args(pairs);
     cmd.arg("--add-rustc-codegen-backend");
-    cmd.arg(format!("cgclif:{}", cg_clif_dylib.display()));
+    match cg_clif_dylib {
+        CodegenBackend::Local(path) => {
+            cmd.arg(format!("cgclif:{}", path.display()));
+        }
+        CodegenBackend::Builtin(name) => {
+            cmd.arg(format!("cgclif:{name}"));
+        }
+    }
     cmd.current_dir(ABI_CAFE.source_dir(dirs));
 
     spawn_and_wait(cmd);

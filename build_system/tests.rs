@@ -3,11 +3,10 @@ use super::config;
 use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
 use super::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler};
-use super::SysrootKind;
+use super::{CodegenBackend, SysrootKind};
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
-use std::path::Path;
 use std::process::Command;
 
 static BUILD_EXAMPLE_OUT_DIR: RelPath = RelPath::BUILD.join("example");
@@ -215,7 +214,7 @@ pub(crate) fn run_tests(
     dirs: &Dirs,
     channel: &str,
     sysroot_kind: SysrootKind,
-    cg_clif_dylib: &Path,
+    cg_clif_dylib: &CodegenBackend,
     bootstrap_host_compiler: &Compiler,
     rustup_toolchain_name: Option<&str>,
     target_triple: String,

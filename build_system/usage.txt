@@ -29,6 +29,10 @@ OPTIONS:
     --frozen
             Require Cargo.lock and cache are up to date
 
+    --use-backend NAME
+            Use the existing Cranelift (or other) backend of the rustc with which we built.
+            Warning: This is meant for use in rust's CI only!
+
 REQUIREMENTS:
     * Rustup: By default rustup is used to install the right nightly version. If you don't want to
       use rustup, you can manually install the nightly version indicated by rust-toolchain.toml and

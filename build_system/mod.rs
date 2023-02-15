@@ -43,6 +43,12 @@ pub(crate) enum SysrootKind {
     Llvm,
 }
 
+#[derive(Clone, Debug)]
+pub(crate) enum CodegenBackend {
+    Local(PathBuf),
+    Builtin(String),
+}
+
 pub(crate) fn main() {
     if env::var("RUST_BACKTRACE").is_err() {
         env::set_var("RUST_BACKTRACE", "1");
@@ -79,6 +85,7 @@ pub(crate) fn main() {
     let mut sysroot_kind = SysrootKind::Clif;
     let mut use_unstable_features = true;
     let mut frozen = false;
+    let mut use_backend = None;
     while let Some(arg) = args.next().as_deref() {
         match arg {
             "--out-dir" => {
@@ -98,6 +105,12 @@ pub(crate) fn main() {
             }
             "--no-unstable-features" => use_unstable_features = false,
             "--frozen" => frozen = true,
+            "--use-backend" => {
+                use_backend = Some(match args.next() {
+                    Some(name) => name,
+                    None => arg_error!("--use-backend requires argument"),
+                });
+            }
             flag if flag.starts_with("-") => arg_error!("Unknown flag {}", flag),
             arg => arg_error!("Unexpected argument {}", arg),
         }
@@ -164,12 +177,16 @@ pub(crate) fn main() {
     env::set_var("RUSTC", "rustc_should_be_set_explicitly");
     env::set_var("RUSTDOC", "rustdoc_should_be_set_explicitly");
 
-    let cg_clif_dylib = build_backend::build_backend(
-        &dirs,
-        channel,
-        &bootstrap_host_compiler,
-        use_unstable_features,
-    );
+    let cg_clif_dylib = if let Some(name) = use_backend {
+        CodegenBackend::Builtin(name)
+    } else {
+        CodegenBackend::Local(build_backend::build_backend(
+            &dirs,
+            channel,
+            &bootstrap_host_compiler,
+            use_unstable_features,
+        ))
+    };
     match command {
         Command::Prepare => {
             // Handled above

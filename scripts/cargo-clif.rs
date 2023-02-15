@@ -12,17 +12,21 @@ fn main() {
 
     let mut rustflags = String::new();
     rustflags.push_str(" -Cpanic=abort -Zpanic-abort-tests -Zcodegen-backend=");
-    rustflags.push_str(
-        sysroot
-            .join(if cfg!(windows) { "bin" } else { "lib" })
-            .join(
-                env::consts::DLL_PREFIX.to_string()
-                    + "rustc_codegen_cranelift"
-                    + env::consts::DLL_SUFFIX,
-            )
-            .to_str()
-            .unwrap(),
-    );
+    if let Some(name) = option_env!("BUILTIN_BACKEND") {
+        rustflags.push_str(name);
+    } else {
+        rustflags.push_str(
+            sysroot
+                .join(if cfg!(windows) { "bin" } else { "lib" })
+                .join(
+                    env::consts::DLL_PREFIX.to_string()
+                        + "rustc_codegen_cranelift"
+                        + env::consts::DLL_SUFFIX,
+                )
+                .to_str()
+                .unwrap(),
+        );
+    }
     rustflags.push_str(" --sysroot ");
     rustflags.push_str(sysroot.to_str().unwrap());
     env::set_var("RUSTFLAGS", env::var("RUSTFLAGS").unwrap_or(String::new()) + &rustflags);
