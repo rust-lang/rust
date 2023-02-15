@@ -229,16 +229,15 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         }
 
         // Collect all the implementors of traits.
-        if let clean::ImplItem(ref i) = *item.kind {
-            if let Some(trait_) = &i.trait_ {
-                if !i.kind.is_blanket() {
-                    self.cache
-                        .implementors
-                        .entry(trait_.def_id())
-                        .or_default()
-                        .push(Impl { impl_item: item.clone() });
-                }
-            }
+        if let clean::ImplItem(ref i) = *item.kind &&
+            let Some(trait_) = &i.trait_ &&
+            !i.kind.is_blanket()
+        {
+            self.cache
+                .implementors
+                .entry(trait_.def_id())
+                .or_default()
+                .push(Impl { impl_item: item.clone() });
         }
 
         // Index this method for searching later on.

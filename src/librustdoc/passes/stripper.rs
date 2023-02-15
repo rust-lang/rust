@@ -201,27 +201,25 @@ impl<'a> DocFolder for ImplStripper<'a, '_> {
             // Because we don't inline in `maybe_inline_local` if the output format is JSON,
             // we need to make a special check for JSON output: we want to keep it unless it has
             // a `#[doc(hidden)]` attribute if the `for_` type is exported.
-            if let Some(did) = imp.for_.def_id(self.cache) {
-                if !imp.for_.is_assoc_ty() && !self.should_keep_impl(&i, did) {
-                    debug!("ImplStripper: impl item for stripped type; removing");
-                    return None;
-                }
+            if let Some(did) = imp.for_.def_id(self.cache) &&
+                !imp.for_.is_assoc_ty() && !self.should_keep_impl(&i, did)
+            {
+                debug!("ImplStripper: impl item for stripped type; removing");
+                return None;
             }
-            if let Some(did) = imp.trait_.as_ref().map(|t| t.def_id()) {
-                if !self.should_keep_impl(&i, did) {
-                    debug!("ImplStripper: impl item for stripped trait; removing");
-                    return None;
-                }
+            if let Some(did) = imp.trait_.as_ref().map(|t| t.def_id()) &&
+                !self.should_keep_impl(&i, did) {
+                debug!("ImplStripper: impl item for stripped trait; removing");
+                return None;
             }
             if let Some(generics) = imp.trait_.as_ref().and_then(|t| t.generics()) {
                 for typaram in generics {
-                    if let Some(did) = typaram.def_id(self.cache) {
-                        if !self.should_keep_impl(&i, did) {
-                            debug!(
-                                "ImplStripper: stripped item in trait's generics; removing impl"
-                            );
-                            return None;
-                        }
+                    if let Some(did) = typaram.def_id(self.cache) && !self.should_keep_impl(&i, did)
+                    {
+                        debug!(
+                            "ImplStripper: stripped item in trait's generics; removing impl"
+                        );
+                        return None;
                     }
                 }
             }
