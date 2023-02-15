@@ -320,7 +320,7 @@ Here are those same steps in detail:
    merged because CI will be broken. You'll want to write a message on the PR referencing
    your change, and how the PR should be merged once your change makes it into a nightly.
 5. Wait for your PR to merge.
-6. Wait for a nightly
+6. Wait for a nightly.
 7. (optional) Help land your PR on the upstream repository now that your changes are in nightly.
 8. (optional) Send a PR to rust-lang/rust updating the submodule.
 
