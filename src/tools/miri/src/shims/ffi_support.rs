@@ -36,7 +36,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             ty::Int(IntTy::Isize) => {
                 // This will fail if host != target, but then the entire FFI thing probably won't work well
                 // in that situation.
-                return Ok(CArg::ISize(k.to_machine_isize(cx)?.try_into().unwrap()));
+                return Ok(CArg::ISize(k.to_target_isize(cx)?.try_into().unwrap()));
             }
             // the uints
             ty::Uint(UintTy::U8) => {
@@ -54,7 +54,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             ty::Uint(UintTy::Usize) => {
                 // This will fail if host != target, but then the entire FFI thing probably won't work well
                 // in that situation.
-                return Ok(CArg::USize(k.to_machine_usize(cx)?.try_into().unwrap()));
+                return Ok(CArg::USize(k.to_target_usize(cx)?.try_into().unwrap()));
             }
             _ => {}
         }

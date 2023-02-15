@@ -80,7 +80,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(false);
         }
 
-        let req_align = this.read_machine_usize(align_op)?;
+        let req_align = this.read_target_usize(align_op)?;
 
         // Stop if the alignment is not a power of two.
         if !req_align.is_power_of_two() {
@@ -106,7 +106,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         // Return error result (usize::MAX), and jump to caller.
-        this.write_scalar(Scalar::from_machine_usize(this.machine_usize_max(), this), dest)?;
+        this.write_scalar(Scalar::from_target_usize(this.target_usize_max(), this), dest)?;
         this.go_to_block(ret);
         Ok(true)
     }

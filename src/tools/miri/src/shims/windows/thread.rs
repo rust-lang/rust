@@ -21,7 +21,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let security = this.read_pointer(security_op)?;
         // stacksize is ignored, but still needs to be a valid usize
-        this.read_machine_usize(stacksize_op)?;
+        this.read_target_usize(stacksize_op)?;
         let start_routine = this.read_pointer(start_op)?;
         let func_arg = this.read_immediate(arg_op)?;
         let flags = this.read_scalar(flags_op)?.to_u32()?;

@@ -236,7 +236,7 @@ impl MainThreadState {
                     this.machine.main_fn_ret_place.unwrap().ptr,
                     this.machine.layouts.isize,
                 );
-                let exit_code = this.read_machine_isize(&ret_place.into())?;
+                let exit_code = this.read_target_isize(&ret_place.into())?;
                 // Need to call this ourselves since we are not going to return to the scheduler
                 // loop, and we want the main thread TLS to not show up as memory leaks.
                 this.terminate_active_thread()?;
@@ -287,7 +287,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // First argument is constructed later, because it's skipped if the entry function uses #[start].
 
     // Second argument (argc): length of `config.args`.
-    let argc = Scalar::from_machine_usize(u64::try_from(config.args.len()).unwrap(), &ecx);
+    let argc = Scalar::from_target_usize(u64::try_from(config.args.len()).unwrap(), &ecx);
     // Third argument (`argv`): created from `config.args`.
     let argv = {
         // Put each argument in memory, collect pointers.

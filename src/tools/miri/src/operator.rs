@@ -56,7 +56,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriInterpCx<'mir, 'tcx> {
             Offset => {
                 assert!(left.layout.ty.is_unsafe_ptr());
                 let ptr = left.to_scalar().to_pointer(self)?;
-                let offset = right.to_scalar().to_machine_isize(self)?;
+                let offset = right.to_scalar().to_target_isize(self)?;
 
                 let pointee_ty =
                     left.layout.ty.builtin_deref(true).expect("Offset called on non-ptr type").ty;
@@ -73,14 +73,14 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriInterpCx<'mir, 'tcx> {
                 // We do the actual operation with usize-typed scalars.
                 let left = ImmTy::from_uint(ptr.addr().bytes(), self.machine.layouts.usize);
                 let right = ImmTy::from_uint(
-                    right.to_scalar().to_machine_usize(self)?,
+                    right.to_scalar().to_target_usize(self)?,
                     self.machine.layouts.usize,
                 );
                 let (result, overflowing, _ty) =
                     self.overflowing_binary_op(bin_op, &left, &right)?;
                 // Construct a new pointer with the provenance of `ptr` (the LHS).
                 let result_ptr =
-                    Pointer::new(ptr.provenance, Size::from_bytes(result.to_machine_usize(self)?));
+                    Pointer::new(ptr.provenance, Size::from_bytes(result.to_target_usize(self)?));
                 (Scalar::from_maybe_pointer(result_ptr, self), overflowing, left.layout.ty)
             }
 

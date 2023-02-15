@@ -207,7 +207,7 @@ impl<'mir, 'tcx> GlobalStateInner {
                     .checked_add(max(size.bytes(), 1))
                     .ok_or_else(|| err_exhaust!(AddressSpaceFull))?;
                 // Even if `Size` didn't overflow, we might still have filled up the address space.
-                if global_state.next_base_addr > ecx.machine_usize_max() {
+                if global_state.next_base_addr > ecx.target_usize_max() {
                     throw_exhaust!(AddressSpaceFull);
                 }
                 // Given that `next_base_addr` increases in each allocation, pushing the

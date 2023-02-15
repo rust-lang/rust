@@ -348,7 +348,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // FIXME: check if the type/trait match what ty::Dynamic says?
             }
             ty::Slice(..) | ty::Str => {
-                let _len = meta.unwrap_meta().to_machine_usize(self.ecx)?;
+                let _len = meta.unwrap_meta().to_target_usize(self.ecx)?;
                 // We do not check that `len * elem_size <= isize::MAX`:
                 // that is only required for references, and there it falls out of the
                 // "dereferenceable" check performed by Stacked Borrows.
