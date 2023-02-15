@@ -186,7 +186,7 @@ impl SourceFile {
 /// ```
 #[macro_export]
 macro_rules! match_ast {
-    (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
+    (match $node:ident { $($tt:tt)* }) => { $crate::match_ast!(match ($node) { $($tt)* }) };
 
     (match ($node:expr) {
         $( $( $path:ident )::+ ($it:pat) => $res:expr, )*
