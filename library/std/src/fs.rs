@@ -334,6 +334,10 @@ impl File {
     ///
     /// See the [`OpenOptions::open`] method for more details.
     ///
+    /// If you only need to read the entire file contents,
+    /// consider [`std::fs::read()`][self::read] or
+    /// [`std::fs::read_to_string()`][self::read_to_string] instead.
+    ///
     /// # Errors
     ///
     /// This function will return an error if `path` does not already exist.
@@ -364,8 +368,10 @@ impl File {
     ///
     /// Depending on the platform, this function may fail if the
     /// full directory path does not exist.
-    ///
     /// See the [`OpenOptions::open`] function for more details.
+    ///
+    /// See also [`std::fs::write()`][self::write] for a simple function to
+    /// create a file with a given data.
     ///
     /// # Examples
     ///
@@ -974,6 +980,9 @@ impl OpenOptions {
     ///
     /// In order for the file to be created, [`OpenOptions::write`] or
     /// [`OpenOptions::append`] access must be used.
+    ///
+    /// See also [`std::fs::write()`][self::write] for a simple function to
+    /// create a file with a given data.
     ///
     /// # Examples
     ///
