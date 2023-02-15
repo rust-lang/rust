@@ -771,7 +771,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             .iter()
                             .chain([&obligation])
                             .all(|obligation| self.predicate_may_hold(obligation))
-                            .then(|| steps);
+                            .then_some(steps);
 
                         may_hold
                     })

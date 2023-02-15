@@ -870,7 +870,7 @@ impl<'a> Parser<'a> {
             None
         };
 
-        let maybe = self.eat(&token::Question).then(|| self.prev_token.span);
+        let maybe = self.eat(&token::Question).then_some(self.prev_token.span);
 
         Ok(BoundModifiers { maybe, maybe_const })
     }

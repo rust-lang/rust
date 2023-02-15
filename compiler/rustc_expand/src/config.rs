@@ -255,7 +255,7 @@ impl<'a> StripUnconfigured<'a> {
 
     fn configure_krate_attrs(&self, mut attrs: ast::AttrVec) -> Option<ast::AttrVec> {
         attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
-        self.in_cfg(&attrs).then(|| attrs)
+        self.in_cfg(&attrs).then_some(attrs)
     }
 
     /// Performs cfg-expansion on `stream`, producing a new `AttrTokenStream`.

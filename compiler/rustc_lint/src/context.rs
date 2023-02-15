@@ -487,7 +487,7 @@ impl LintStore {
         let mut groups: Vec<_> = self
             .lint_groups
             .iter()
-            .filter_map(|(k, LintGroup { depr, .. })| depr.is_none().then(|| k))
+            .filter_map(|(k, LintGroup { depr, .. })| depr.is_none().then_some(k))
             .collect();
         groups.sort();
         let groups = groups.iter().map(|k| Symbol::intern(k));

@@ -254,7 +254,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     ) {
         // Compute the place that we are storing to, if any
         let destination = match &statement.kind {
-            StatementKind::Assign(assign) => assign.1.is_safe_to_remove().then(|| assign.0),
+            StatementKind::Assign(assign) => assign.1.is_safe_to_remove().then_some(assign.0),
             StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
                 Some(**place)
             }

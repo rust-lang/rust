@@ -1186,7 +1186,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return None;
             };
             debug!("checking call args for uses of inner_param: {:?}", args);
-            args.contains(&Operand::Move(inner_param)).then(|| (loc, term))
+            args.contains(&Operand::Move(inner_param)).then_some((loc, term))
         }) else {
             debug!("no uses of inner_param found as a by-move call arg");
             return;

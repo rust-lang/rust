@@ -2024,7 +2024,7 @@ fn linker_with_args<'a>(
         .native_libraries
         .iter()
         .filter_map(|(cnum, libraries)| {
-            (dependency_linkage[cnum.as_usize() - 1] != Linkage::Static).then(|| libraries)
+            (dependency_linkage[cnum.as_usize() - 1] != Linkage::Static).then_some(libraries)
         })
         .flatten();
     for (raw_dylib_name, raw_dylib_imports) in

@@ -281,7 +281,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         self.recurse_with_stability_attrs(
             depr.map(|(d, _)| DeprecationEntry::local(d, def_id)),
             stab,
-            inherit_const_stability.yes().then(|| const_stab).flatten(),
+            inherit_const_stability.yes().then_some(const_stab).flatten(),
             visit_children,
         );
     }

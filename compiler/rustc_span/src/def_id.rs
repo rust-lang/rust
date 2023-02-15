@@ -320,7 +320,7 @@ impl DefId {
 
     #[inline]
     pub fn as_crate_root(self) -> Option<CrateNum> {
-        self.is_crate_root().then(|| self.krate)
+        self.is_crate_root().then_some(self.krate)
     }
 
     #[inline]
