@@ -1880,8 +1880,6 @@ where
         where
             [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
-            crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
-            {
             /* Offset of the element we want to check if it is duplicate */
             read: usize,
 
