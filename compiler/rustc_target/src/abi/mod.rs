@@ -3,10 +3,8 @@ pub use Primitive::*;
 
 use crate::json::{Json, ToJson};
 
-use std::fmt;
 use std::ops::Deref;
 
-use rustc_data_structures::intern::Interned;
 use rustc_macros::HashStable_Generic;
 
 pub mod call;
@@ -16,48 +14,6 @@ pub use rustc_abi::*;
 impl ToJson for Endian {
     fn to_json(&self) -> Json {
         self.as_str().to_json()
-    }
-}
-
-rustc_index::newtype_index! {
-    #[derive(HashStable_Generic)]
-    pub struct VariantIdx {}
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
-#[rustc_pass_by_value]
-pub struct Layout<'a>(pub Interned<'a, LayoutS<VariantIdx>>);
-
-impl<'a> fmt::Debug for Layout<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // See comment on `<LayoutS as Debug>::fmt` above.
-        self.0.0.fmt(f)
-    }
-}
-
-impl<'a> Layout<'a> {
-    pub fn fields(self) -> &'a FieldsShape {
-        &self.0.0.fields
-    }
-
-    pub fn variants(self) -> &'a Variants<VariantIdx> {
-        &self.0.0.variants
-    }
-
-    pub fn abi(self) -> Abi {
-        self.0.0.abi
-    }
-
-    pub fn largest_niche(self) -> Option<Niche> {
-        self.0.0.largest_niche
-    }
-
-    pub fn align(self) -> AbiAndPrefAlign {
-        self.0.0.align
-    }
-
-    pub fn size(self) -> Size {
-        self.0.0.size
     }
 }
 
@@ -75,8 +31,8 @@ pub struct TyAndLayout<'a, Ty> {
 }
 
 impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
-    type Target = &'a LayoutS<VariantIdx>;
-    fn deref(&self) -> &&'a LayoutS<VariantIdx> {
+    type Target = &'a LayoutS;
+    fn deref(&self) -> &&'a LayoutS {
         &self.layout.0.0
     }
 }

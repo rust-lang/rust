@@ -147,7 +147,7 @@ struct ParentScope<'a> {
 impl<'a> ParentScope<'a> {
     /// Creates a parent scope with the passed argument used as the module scope component,
     /// and other scope components set to default empty values.
-    fn module(module: Module<'a>, resolver: &Resolver<'a>) -> ParentScope<'a> {
+    fn module(module: Module<'a>, resolver: &Resolver<'a, '_>) -> ParentScope<'a> {
         ParentScope {
             module,
             expansion: LocalExpnId::ROOT,
@@ -528,9 +528,9 @@ impl<'a> ModuleData<'a> {
         }
     }
 
-    fn for_each_child<R, F>(&'a self, resolver: &mut R, mut f: F)
+    fn for_each_child<'tcx, R, F>(&'a self, resolver: &mut R, mut f: F)
     where
-        R: AsMut<Resolver<'a>>,
+        R: AsMut<Resolver<'a, 'tcx>>,
         F: FnMut(&mut R, Ident, Namespace, &'a NameBinding<'a>),
     {
         for (key, name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
@@ -541,9 +541,9 @@ impl<'a> ModuleData<'a> {
     }
 
     /// This modifies `self` in place. The traits will be stored in `self.traits`.
-    fn ensure_traits<R>(&'a self, resolver: &mut R)
+    fn ensure_traits<'tcx, R>(&'a self, resolver: &mut R)
     where
-        R: AsMut<Resolver<'a>>,
+        R: AsMut<Resolver<'a, 'tcx>>,
     {
         let mut traits = self.traits.borrow_mut();
         if traits.is_none() {
@@ -864,8 +864,8 @@ struct MacroData {
 /// The main resolver class.
 ///
 /// This is the visitor that walks the whole crate.
-pub struct Resolver<'a> {
-    session: &'a Session,
+pub struct Resolver<'a, 'tcx> {
+    session: &'tcx Session,
 
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
@@ -949,7 +949,7 @@ pub struct Resolver<'a> {
     /// Ambiguity errors are delayed for deduplication.
     ambiguity_errors: Vec<AmbiguityError<'a>>,
     /// `use` injections are delayed for better placement and deduplication.
-    use_injections: Vec<UseError<'a>>,
+    use_injections: Vec<UseError<'tcx>>,
     /// Crate-local macro expanded `macro_export` referred to by a module-relative path.
     macro_expanded_macro_export_errors: BTreeSet<(Span, Span)>,
 
@@ -1111,8 +1111,8 @@ impl<'a> ResolverArenas<'a> {
     }
 }
 
-impl<'a> AsMut<Resolver<'a>> for Resolver<'a> {
-    fn as_mut(&mut self) -> &mut Resolver<'a> {
+impl<'a, 'tcx> AsMut<Resolver<'a, 'tcx>> for Resolver<'a, 'tcx> {
+    fn as_mut(&mut self) -> &mut Resolver<'a, 'tcx> {
         self
     }
 }
@@ -1134,14 +1134,14 @@ impl DefIdTree for ResolverTree<'_> {
     }
 }
 
-impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
+impl<'a, 'b, 'tcx> DefIdTree for &'a Resolver<'b, 'tcx> {
     #[inline]
     fn opt_parent(self, id: DefId) -> Option<DefId> {
         ResolverTree(&self.untracked).opt_parent(id)
     }
 }
 
-impl<'a> Resolver<'a> {
+impl<'tcx> Resolver<'_, 'tcx> {
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
         self.node_id_to_def_id.get(&node).copied()
     }
@@ -1200,14 +1200,14 @@ impl<'a> Resolver<'a> {
     }
 }
 
-impl<'a> Resolver<'a> {
+impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub fn new(
-        session: &'a Session,
+        session: &'tcx Session,
         krate: &Crate,
         crate_name: Symbol,
         metadata_loader: Box<MetadataLoaderDyn>,
         arenas: &'a ResolverArenas<'a>,
-    ) -> Resolver<'a> {
+    ) -> Resolver<'a, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
         let mut module_map = FxHashMap::default();
         let graph_root = arenas.new_module(

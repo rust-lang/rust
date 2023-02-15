@@ -78,10 +78,10 @@ fn invert_mapping(map: &[u32]) -> Vec<u32> {
 fn univariant_uninterned<'tcx>(
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     ty: Ty<'tcx>,
-    fields: &[TyAndLayout<'_>],
+    fields: &[Layout<'_>],
     repr: &ReprOptions,
     kind: StructKind,
-) -> Result<LayoutS<VariantIdx>, LayoutError<'tcx>> {
+) -> Result<LayoutS, LayoutError<'tcx>> {
     let dl = cx.data_layout();
     let pack = repr.pack;
     if pack.is_some() && repr.align.is_some() {
@@ -106,7 +106,7 @@ fn layout_of_uncached<'tcx>(
     };
     let scalar = |value: Primitive| tcx.intern_layout(LayoutS::scalar(cx, scalar_unit(value)));
 
-    let univariant = |fields: &[TyAndLayout<'_>], repr: &ReprOptions, kind| {
+    let univariant = |fields: &[Layout<'_>], repr: &ReprOptions, kind| {
         Ok(tcx.intern_layout(univariant_uninterned(cx, ty, fields, repr, kind)?))
     };
     debug_assert!(!ty.has_non_region_infer());
@@ -273,7 +273,7 @@ fn layout_of_uncached<'tcx>(
         ty::Closure(_, ref substs) => {
             let tys = substs.as_closure().upvar_tys();
             univariant(
-                &tys.map(|ty| cx.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
+                &tys.map(|ty| Ok(cx.layout_of(ty)?.layout)).collect::<Result<Vec<_>, _>>()?,
                 &ReprOptions::default(),
                 StructKind::AlwaysSized,
             )?
@@ -284,7 +284,7 @@ fn layout_of_uncached<'tcx>(
                 if tys.len() == 0 { StructKind::AlwaysSized } else { StructKind::MaybeUnsized };
 
             univariant(
-                &tys.iter().map(|k| cx.layout_of(k)).collect::<Result<Vec<_>, _>>()?,
+                &tys.iter().map(|k| Ok(cx.layout_of(k)?.layout)).collect::<Result<Vec<_>, _>>()?,
                 &ReprOptions::default(),
                 kind,
             )?
@@ -413,7 +413,7 @@ fn layout_of_uncached<'tcx>(
                 .map(|v| {
                     v.fields
                         .iter()
-                        .map(|field| cx.layout_of(field.ty(tcx, substs)))
+                        .map(|field| Ok(cx.layout_of(field.ty(tcx, substs))?.layout))
                         .collect::<Result<Vec<_>, _>>()
                 })
                 .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
@@ -631,23 +631,21 @@ fn generator_layout<'tcx>(
     // `info.variant_fields` already accounts for the reserved variants, so no need to add them.
     let max_discr = (info.variant_fields.len() - 1) as u128;
     let discr_int = Integer::fit_unsigned(max_discr);
-    let discr_int_ty = discr_int.to_ty(tcx, false);
     let tag = Scalar::Initialized {
         value: Primitive::Int(discr_int, false),
         valid_range: WrappingRange { start: 0, end: max_discr },
     };
     let tag_layout = cx.tcx.intern_layout(LayoutS::scalar(cx, tag));
-    let tag_layout = TyAndLayout { ty: discr_int_ty, layout: tag_layout };
 
     let promoted_layouts = ineligible_locals
         .iter()
         .map(|local| subst_field(info.field_tys[local].ty))
         .map(|ty| tcx.mk_maybe_uninit(ty))
-        .map(|ty| cx.layout_of(ty));
+        .map(|ty| Ok(cx.layout_of(ty)?.layout));
     let prefix_layouts = substs
         .as_generator()
         .prefix_tys()
-        .map(|ty| cx.layout_of(ty))
+        .map(|ty| Ok(cx.layout_of(ty)?.layout))
         .chain(iter::once(Ok(tag_layout)))
         .chain(promoted_layouts)
         .collect::<Result<Vec<_>, _>>()?;
@@ -716,7 +714,9 @@ fn generator_layout<'tcx>(
             let mut variant = univariant_uninterned(
                 cx,
                 ty,
-                &variant_only_tys.map(|ty| cx.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
+                &variant_only_tys
+                    .map(|ty| Ok(cx.layout_of(ty)?.layout))
+                    .collect::<Result<Vec<_>, _>>()?,
                 &ReprOptions::default(),
                 StructKind::Prefixed(prefix_size, prefix_align.abi),
             )?;
