@@ -981,7 +981,7 @@ impl Markdown<'_> {
         let mut replacer = |broken_link: BrokenLink<'_>| {
             links
                 .iter()
-                .find(|link| link.original_text.as_str() == &*broken_link.reference)
+                .find(|link| &*link.original_text == &*broken_link.reference)
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
@@ -1064,7 +1064,7 @@ impl MarkdownSummaryLine<'_> {
         let mut replacer = |broken_link: BrokenLink<'_>| {
             links
                 .iter()
-                .find(|link| link.original_text.as_str() == &*broken_link.reference)
+                .find(|link| &*link.original_text == &*broken_link.reference)
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
@@ -1111,7 +1111,7 @@ fn markdown_summary_with_limit(
     let mut replacer = |broken_link: BrokenLink<'_>| {
         link_names
             .iter()
-            .find(|link| link.original_text.as_str() == &*broken_link.reference)
+            .find(|link| &*link.original_text == &*broken_link.reference)
             .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
     };
 
@@ -1192,7 +1192,7 @@ pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> Strin
     let mut replacer = |broken_link: BrokenLink<'_>| {
         link_names
             .iter()
-            .find(|link| link.original_text.as_str() == &*broken_link.reference)
+            .find(|link| &*link.original_text == &*broken_link.reference)
             .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
     };
 

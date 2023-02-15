@@ -1017,12 +1017,12 @@ pub(crate) fn collapse_doc_fragments(doc_strings: &[DocFragment]) -> String {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ItemLink {
     /// The original link written in the markdown
-    pub(crate) link: String,
+    pub(crate) link: Box<str>,
     /// The link text displayed in the HTML.
     ///
     /// This may not be the same as `link` if there was a disambiguator
     /// in an intra-doc link (e.g. \[`fn@f`\])
-    pub(crate) link_text: String,
+    pub(crate) link_text: Box<str>,
     /// The `DefId` of the Item whose **HTML Page** contains the item being
     /// linked to. This will be different to `item_id` on item's that don't
     /// have their own page, such as struct fields and enum variants.
@@ -1035,9 +1035,9 @@ pub struct RenderedLink {
     /// The text the link was original written as.
     ///
     /// This could potentially include disambiguators and backticks.
-    pub(crate) original_text: String,
+    pub(crate) original_text: Box<str>,
     /// The text to display in the HTML
-    pub(crate) new_text: String,
+    pub(crate) new_text: Box<str>,
     /// The URL to put in the `href`
     pub(crate) href: String,
     /// The tooltip.
