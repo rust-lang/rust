@@ -1,11 +1,7 @@
 #![feature(rustc_private)]
 
-// NOTE: For the example to compile, you will need to first run the following:
-//   rustup component add rustc-dev llvm-tools-preview
-
-// version: rustc 1.68.0-nightly (935dc0721 2022-12-19)
-
 extern crate rustc_ast_pretty;
+extern crate rustc_driver;
 extern crate rustc_error_codes;
 extern crate rustc_errors;
 extern crate rustc_hash;
@@ -13,7 +9,6 @@ extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate rustc_driver;
 
 use std::{path, process, str};
 

@@ -1,10 +1,6 @@
 #![feature(rustc_private)]
 
-// NOTE: For the example to compile, you will need to first run the following:
-//   rustup component add rustc-dev llvm-tools-preview
-
-// version: rustc 1.68.0-nightly (935dc0721 2022-12-19)
-
+extern crate rustc_driver;
 extern crate rustc_error_codes;
 extern crate rustc_errors;
 extern crate rustc_hash;
@@ -12,7 +8,6 @@ extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate rustc_driver;
 
 use std::{path, process, str};
 
@@ -47,9 +42,9 @@ fn main() {
 "#
             .into(),
         },
-        output_dir: None,  // Option<PathBuf>
-        output_file: None, // Option<PathBuf>
-        file_loader: None, // Option<Box<dyn FileLoader + Send + Sync>>
+        output_dir: None,                // Option<PathBuf>
+        output_file: None,               // Option<PathBuf>
+        file_loader: None,               // Option<Box<dyn FileLoader + Send + Sync>>
         lint_caps: FxHashMap::default(), // FxHashMap<lint::LintId, lint::Level>
         // This is a callback from the driver that is called when [`ParseSess`] is created.
         parse_sess_created: None, //Option<Box<dyn FnOnce(&mut ParseSess) + Send>>
