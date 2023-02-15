@@ -767,9 +767,17 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
     }
 
     fn get_ambient_variance(&self, context: PlaceContext) -> ty::Variance {
+        use rustc_middle::mir::visit::NonMutatingUseContext::*;
+        use rustc_middle::mir::visit::NonUseContext::*;
+
         match context {
             PlaceContext::MutatingUse(_) => ty::Invariant,
-            PlaceContext::NonMutatingUse(_) | PlaceContext::NonUse(_) => ty::Covariant,
+            PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
+            PlaceContext::NonMutatingUse(
+                Inspect | Copy | Move | SharedBorrow | ShallowBorrow | UniqueBorrow | AddressOf
+                | Projection,
+            ) => ty::Covariant,
+            PlaceContext::NonUse(AscribeUserTy) => ty::Covariant,
         }
     }
 
