@@ -30,7 +30,6 @@ use crate::traits::specialization_graph;
 use crate::traits::{self, ImplSource};
 use crate::ty::context::TyCtxtFeed;
 use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::layout::TyAndLayout;
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::GeneratorDiagnosticData;

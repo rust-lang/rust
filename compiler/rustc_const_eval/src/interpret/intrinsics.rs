@@ -448,7 +448,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
 
                 if intrinsic_name == sym::assert_zero_valid {
-                    let should_panic = !self.tcx.permits_zero_init(self.param_env.and(layout));
+                    let should_panic = !self
+                        .tcx
+                        .permits_zero_init(self.param_env.and(ty))
+                        .map_err(|_| err_inval!(TooGeneric))?;
 
                     if should_panic {
                         M::abort(
@@ -462,7 +465,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
 
                 if intrinsic_name == sym::assert_mem_uninitialized_valid {
-                    let should_panic = !self.tcx.permits_uninit_init(self.param_env.and(layout));
+                    let should_panic = !self
+                        .tcx
+                        .permits_uninit_init(self.param_env.and(ty))
+                        .map_err(|_| err_inval!(TooGeneric))?;
 
                     if should_panic {
                         M::abort(
