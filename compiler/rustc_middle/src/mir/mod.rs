@@ -1642,6 +1642,14 @@ impl<'tcx> PlaceRef<'tcx> {
         }
     }
 
+    /// Returns `true` if this `Place` contains a `Deref` projection.
+    ///
+    /// If `Place::is_indirect` returns false, the caller knows that the `Place` refers to the
+    /// same region of memory as its base.
+    pub fn is_indirect(&self) -> bool {
+        self.projection.iter().any(|elem| elem.is_indirect())
+    }
+
     /// If MirPhase >= Derefered and if projection contains Deref,
     /// It's guaranteed to be in the first place
     pub fn has_deref(&self) -> bool {
