@@ -23,9 +23,9 @@ use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_a
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
 use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
-use rustc_resolve::{Resolver, ResolverArenas};
+use rustc_resolve::Resolver;
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
-use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, MetadataLoaderDyn, Untracked};
+use rustc_session::cstore::{CrateStoreDyn, MetadataLoader, Untracked};
 use rustc_session::output::filename_for_input;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
@@ -37,9 +37,7 @@ use rustc_trait_selection::traits;
 use std::any::Any;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
-use std::marker::PhantomPinned;
 use std::path::{Path, PathBuf};
-use std::pin::Pin;
 use std::sync::{Arc, LazyLock};
 use std::{env, fs, iter};
 
@@ -71,84 +69,6 @@ fn count_nodes(krate: &ast::Crate) -> usize {
     let mut counter = rustc_ast_passes::node_count::NodeCounter::new();
     visit::walk_crate(&mut counter, krate);
     counter.count
-}
-
-pub use boxed_resolver::BoxedResolver;
-mod boxed_resolver {
-    use super::*;
-
-    pub struct BoxedResolver(Pin<Box<BoxedResolverInner>>);
-
-    struct BoxedResolverInner {
-        session: Lrc<Session>,
-        resolver_arenas: Option<ResolverArenas<'static>>,
-        resolver: Option<Resolver<'static>>,
-        _pin: PhantomPinned,
-    }
-
-    // Note: Drop order is important to prevent dangling references. Resolver must be dropped first,
-    // then resolver_arenas and session.
-    impl Drop for BoxedResolverInner {
-        fn drop(&mut self) {
-            self.resolver.take();
-            self.resolver_arenas.take();
-        }
-    }
-
-    impl BoxedResolver {
-        pub(super) fn new(
-            session: Lrc<Session>,
-            make_resolver: impl for<'a> FnOnce(&'a Session, &'a ResolverArenas<'a>) -> Resolver<'a>,
-        ) -> BoxedResolver {
-            let mut boxed_resolver = Box::new(BoxedResolverInner {
-                session,
-                resolver_arenas: Some(Resolver::arenas()),
-                resolver: None,
-                _pin: PhantomPinned,
-            });
-            // SAFETY: `make_resolver` takes a resolver arena with an arbitrary lifetime and
-            // returns a resolver with the same lifetime as the arena. We ensure that the arena
-            // outlives the resolver in the drop impl and elsewhere so these transmutes are sound.
-            unsafe {
-                let resolver = make_resolver(
-                    std::mem::transmute::<&Session, &Session>(&boxed_resolver.session),
-                    std::mem::transmute::<&ResolverArenas<'_>, &ResolverArenas<'_>>(
-                        boxed_resolver.resolver_arenas.as_ref().unwrap(),
-                    ),
-                );
-                boxed_resolver.resolver = Some(resolver);
-                BoxedResolver(Pin::new_unchecked(boxed_resolver))
-            }
-        }
-
-        pub fn access<F: for<'a> FnOnce(&mut Resolver<'a>) -> R, R>(&mut self, f: F) -> R {
-            // SAFETY: The resolver doesn't need to be pinned.
-            let mut resolver = unsafe {
-                self.0.as_mut().map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
-            };
-            f((&mut *resolver).as_mut().unwrap())
-        }
-
-        pub fn into_outputs(mut self) -> ty::ResolverOutputs {
-            // SAFETY: The resolver doesn't need to be pinned.
-            let mut resolver = unsafe {
-                self.0.as_mut().map_unchecked_mut(|boxed_resolver| &mut boxed_resolver.resolver)
-            };
-            resolver.take().unwrap().into_outputs()
-        }
-    }
-}
-
-pub fn create_resolver(
-    sess: Lrc<Session>,
-    metadata_loader: Box<MetadataLoaderDyn>,
-    krate: &ast::Crate,
-    crate_name: Symbol,
-) -> BoxedResolver {
-    trace!("create_resolver");
-    BoxedResolver::new(sess, move |sess, resolver_arenas| {
-        Resolver::new(sess, krate, crate_name, metadata_loader, resolver_arenas)
-    })
 }
 
 pub fn register_plugins<'a>(
@@ -256,7 +176,7 @@ pub fn configure_and_expand(
     lint_store: &LintStore,
     mut krate: ast::Crate,
     crate_name: Symbol,
-    resolver: &mut Resolver<'_>,
+    resolver: &mut Resolver<'_, '_>,
 ) -> Result<ast::Crate> {
     trace!("configure_and_expand");
     pre_expansion_lint(sess, lint_store, resolver.registered_tools(), &krate, crate_name);

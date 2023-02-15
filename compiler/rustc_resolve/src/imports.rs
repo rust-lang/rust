@@ -225,7 +225,7 @@ fn pub_use_of_private_extern_crate_hack(import: &Import<'_>, binding: &NameBindi
     }
 }
 
-impl<'a> Resolver<'a> {
+impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Given a binding and an import that resolves to it,
     /// return the corresponding binding defined by the import.
     pub(crate) fn import(
@@ -333,7 +333,7 @@ impl<'a> Resolver<'a> {
     // If the resolution becomes a success, define it in the module's glob importers.
     fn update_resolution<T, F>(&mut self, module: Module<'a>, key: BindingKey, f: F) -> T
     where
-        F: FnOnce(&mut Resolver<'a>, &mut NameResolution<'a>) -> T,
+        F: FnOnce(&mut Resolver<'a, 'tcx>, &mut NameResolution<'a>) -> T,
     {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
@@ -405,11 +405,11 @@ struct UnresolvedImportError {
     candidates: Option<Vec<ImportSuggestion>>,
 }
 
-pub(crate) struct ImportResolver<'a, 'b> {
-    pub r: &'a mut Resolver<'b>,
+pub(crate) struct ImportResolver<'a, 'b, 'tcx> {
+    pub r: &'a mut Resolver<'b, 'tcx>,
 }
 
-impl<'a, 'b> ImportResolver<'a, 'b> {
+impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
     // Import resolution
     //
     // This is a fixed-point algorithm. We resolve imports until our efforts
