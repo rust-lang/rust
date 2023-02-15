@@ -129,10 +129,11 @@ macro_rules! __rust_force_expr {
 /// This "validates" type of a given `const` expression, and it casts it. That helps to prevent mix ups with macros/integer constant values.
 #[doc(hidden)]
 #[macro_export]
-#[unstable(feature = "global_co_alloc_meta", issue = "none")]macro_rules! check_type_and_cast {
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+macro_rules! check_type_and_cast {
     // Use the following for compile-time/build check only. And use it
     // with a hard-coded `0` version of `meta_num_slots` - otherwise you get an ICE.
-    // 
+    //
     /*($e:expr, $t_check:ty, $t_cast:ty) => {
         ($e + 0 as $t_check) as $t_cast
     }*/
@@ -140,7 +141,7 @@ macro_rules! __rust_force_expr {
     // with a full version of `meta_num_slots`.
     ($e:expr, $t_check:ty, $t_cast:ty) => {
         $e
-    }
+    };
 }
 
 // ----- CoAlloc constant-like macros:
@@ -265,8 +266,11 @@ macro_rules! co_alloc_pref {
     // report the incorrect type of $meta_pref (if $meta_pref were some other integer, casting would
     // compile, and we would not be notified).
     ($meta_pref:expr) => {
-        $crate::check_type_and_cast!($meta_pref,$crate::co_alloc::CoAllocMetaNumSlotsPref,
-            $crate::co_alloc::CoAllocPref)
+        $crate::check_type_and_cast!(
+            $meta_pref,
+            $crate::co_alloc::CoAllocMetaNumSlotsPref,
+            $crate::co_alloc::CoAllocPref
+        )
     };
 }
 
@@ -363,17 +367,3 @@ macro_rules! meta_num_slots_global {
         //<$crate::alloc::Global as ::core::alloc::Allocator>::CO_ALLOC_META_NUM_SLOTS
     };
 }
-/*
-/// Like `meta_num_slots`, but for `Global allocator and default coallocation preference
-/// (`CO_ALLOC_PREF_DEFAULT`).
-///
-// @FIXME once generic_const_exprs is stable, replace this with a `const` function. Then consider
-// moving the function to a submodule, for example alloc::co_alloc. See above.
-#[unstable(feature = "global_co_alloc", issue = "none")]
-#[macro_export]
-macro_rules! meta_num_slots_default_global {
-    () => {
-        $crate::meta_num_slots!($crate::alloc::Global, $crate::CO_ALLOC_PREF_DEFAULT!())
-    };
-}
-*/
