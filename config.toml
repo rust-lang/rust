@@ -10,6 +10,9 @@ configure-args = []
 lld = true
 llvm-tools = true
 
+[llvm]
+download-ci-llvm = false
+
 [target.wasm32-wasmer-wasi]
 wasi-root = "../wasix-libc/sysroot32"
 
