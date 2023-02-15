@@ -13,8 +13,6 @@ fn main() {
     //~^ ERROR this method takes 2 arguments but 1 argument was supplied
     //~| NOTE an argument is missing
     //~| HELP provide the argument
-    //~| NOTE this is of type `i32`, which causes `s` to be inferred as `S<i32, _>`
-    //~| HELP change the type of the numeric literal from `i32` to `u32`
     let t: S<u32, _> = s;
     //~^ ERROR mismatched types
     //~| NOTE expected `S<u32, _>`, found `S<i32, _>`
