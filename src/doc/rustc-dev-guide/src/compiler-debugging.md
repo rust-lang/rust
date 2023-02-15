@@ -185,7 +185,7 @@ stack backtrace:
 
 Cool, now I have a backtrace for the error!
 
-## Getting the the error creation location
+## Getting the error creation location
 
 `-Z track-diagnostics` can help figure out where errors are emitted. It uses `#[track_caller]`
 for this and prints its location alongside the error:
