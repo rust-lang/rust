@@ -202,7 +202,7 @@ Periodically the changes made to subtree based dependencies need to be synchroni
 repository and the upstream tool repositories.
 
 Subtree synchronizations are typically handled by the respective tool maintainers. Other users
-are welcome to submit synchronization PRs, however, in order to do so you you will need to modify
+are welcome to submit synchronization PRs, however, in order to do so you will need to modify
 your local git installation and follow a very precise set of instructions.
 These instructions are documented, along with several useful tips and tricks, in the
 [syncing subtree changes][clippy-sync-docs] section in Clippy's Contributing guide.
