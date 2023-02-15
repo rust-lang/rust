@@ -4,10 +4,12 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
 use rustc_hir::intravisit::{walk_impl_item, walk_item, walk_param_bound, walk_ty, Visitor};
 use rustc_hir::{
-    GenericParamKind, Generics, ImplItem, ImplItemKind, Item, ItemKind, PredicateOrigin, Ty, TyKind, WherePredicate,
+    BodyId, ExprKind, GenericParamKind, Generics, ImplItem, ImplItemKind, Item, ItemKind, PredicateOrigin, Ty, TyKind,
+    WherePredicate,
 };
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{def_id::DefId, Span};
 
@@ -55,10 +57,13 @@ struct TypeWalker<'cx, 'tcx> {
     /// Otherwise, if any type parameters end up being used, or if any lifetime or const-generic
     /// parameters are present, this will be set to `false`.
     all_params_unused: bool,
+    /// Whether or not the function has an empty body, in which case any bounded type parameters
+    /// will not be linted.
+    fn_body_empty: bool,
 }
 
 impl<'cx, 'tcx> TypeWalker<'cx, 'tcx> {
-    fn new(cx: &'cx LateContext<'tcx>, generics: &'tcx Generics<'tcx>) -> Self {
+    fn new(cx: &'cx LateContext<'tcx>, generics: &'tcx Generics<'tcx>, body_id: BodyId) -> Self {
         let mut all_params_unused = true;
         let ty_params = generics
             .params
@@ -74,12 +79,18 @@ impl<'cx, 'tcx> TypeWalker<'cx, 'tcx> {
                 }
             })
             .collect();
+
+        let body = cx.tcx.hir().body(body_id).value;
+        let fn_body_empty =
+            matches!(&body.kind, ExprKind::Block(block, None) if block.stmts.is_empty() && block.expr.is_none());
+
         Self {
             cx,
             ty_params,
             bounds: FxHashMap::default(),
             generics,
             all_params_unused,
+            fn_body_empty,
         }
     }
 
@@ -96,7 +107,7 @@ impl<'cx, 'tcx> TypeWalker<'cx, 'tcx> {
             ),
         };
 
-        let source_map = self.cx.tcx.sess.source_map();
+        let source_map = self.cx.sess().source_map();
         let span = if self.all_params_unused {
             self.generics.span.into() // Remove the entire list of generics
         } else {
@@ -139,12 +150,17 @@ impl<'cx, 'tcx> Visitor<'tcx> for TypeWalker<'cx, 'tcx> {
 
     fn visit_where_predicate(&mut self, predicate: &'tcx WherePredicate<'tcx>) {
         if let WherePredicate::BoundPredicate(predicate) = predicate {
-            // Collect spans for bounds that appear in the list of generics (not in a where-clause)
-            // for use in forming the help message
-            if let Some((def_id, _)) = predicate.bounded_ty.peel_refs().as_generic_param()
-                && let PredicateOrigin::GenericParam = predicate.origin
-            {
-                self.bounds.insert(def_id, predicate.span);
+            // Collect spans for any bounds on type parameters. We only keep bounds that appear in
+            // the list of generics (not in a where-clause).
+            //
+            // Also, if the function body is empty, we don't lint the corresponding type parameters
+            // (See https://github.com/rust-lang/rust-clippy/issues/10319).
+            if let Some((def_id, _)) = predicate.bounded_ty.peel_refs().as_generic_param() {
+                if self.fn_body_empty {
+                    self.ty_params.remove(&def_id);
+                } else if let PredicateOrigin::GenericParam = predicate.origin {
+                    self.bounds.insert(def_id, predicate.span);
+                }
             }
             // Only walk the right-hand side of where-bounds
             for bound in predicate.bounds {
@@ -160,8 +176,10 @@ impl<'cx, 'tcx> Visitor<'tcx> for TypeWalker<'cx, 'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for ExtraUnusedTypeParameters {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if let ItemKind::Fn(_, generics, _) = item.kind {
-            let mut walker = TypeWalker::new(cx, generics);
+        if let ItemKind::Fn(_, generics, body_id) = item.kind
+            && !in_external_macro(cx.sess(), item.span)
+        {
+            let mut walker = TypeWalker::new(cx, generics, body_id);
             walk_item(&mut walker, item);
             walker.emit_lint();
         }
@@ -169,8 +187,11 @@ impl<'tcx> LateLintPass<'tcx> for ExtraUnusedTypeParameters {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'tcx>) {
         // Only lint on inherent methods, not trait methods.
-        if let ImplItemKind::Fn(..) = item.kind && trait_ref_of_method(cx, item.owner_id.def_id).is_none() {
-            let mut walker = TypeWalker::new(cx, item.generics);
+        if let ImplItemKind::Fn(.., body_id) = item.kind
+            && trait_ref_of_method(cx, item.owner_id.def_id).is_none()
+            && !in_external_macro(cx.sess(), item.span)
+        {
+            let mut walker = TypeWalker::new(cx, item.generics, body_id);
             walk_impl_item(&mut walker, item);
             walker.emit_lint();
         }
