@@ -231,6 +231,8 @@ pub struct Config {
     pub initial_rustfmt: RefCell<RustfmtState>,
     pub out: PathBuf,
     pub rust_info: channel::GitInfo,
+
+    pub paths: Vec<PathBuf>,
 }
 
 #[derive(Default, Deserialize)]
@@ -364,6 +366,12 @@ impl std::str::FromStr for RustcLto {
 pub struct TargetSelection {
     pub triple: Interned<String>,
     file: Option<Interned<String>>,
+}
+
+impl<'a> From<&'a str> for TargetSelection {
+    fn from(s: &'a str) -> Self {
+        Self::from_user(s)
+    }
 }
 
 impl TargetSelection {
@@ -854,16 +862,17 @@ impl Config {
     }
 
     fn parse_inner<'a>(args: &[String], get_toml: impl 'a + Fn(&Path) -> TomlConfig) -> Config {
-        let flags = Flags::parse(&args);
+        let mut flags = Flags::parse(&args);
         let mut config = Config::default_opts();
 
         // Set flags.
+        config.paths = std::mem::take(&mut flags.paths);
         config.exclude = flags.exclude.into_iter().map(|path| TaskPath::parse(path)).collect();
         config.include_default_paths = flags.include_default_paths;
-        config.rustc_error_format = flags.rustc_error_format;
+        config.rustc_error_format = flags.error_format;
         config.json_output = flags.json_output;
         config.on_fail = flags.on_fail;
-        config.jobs = flags.jobs.map(threads_from_config);
+        config.jobs = Some(threads_from_config(flags.jobs as u32));
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
         config.dry_run = if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled };
@@ -871,8 +880,8 @@ impl Config {
         config.keep_stage_std = flags.keep_stage_std;
         config.color = flags.color;
         config.free_args = flags.free_args.clone().unwrap_or_default();
-        if let Some(value) = flags.deny_warnings {
-            config.deny_warnings = value;
+        if matches!(flags.deny_warnings, crate::flags::Warnings::Deny) {
+            config.deny_warnings = true;
         }
         config.llvm_profile_use = flags.llvm_profile_use;
         config.llvm_profile_generate = flags.llvm_profile_generate;
@@ -1045,7 +1054,7 @@ impl Config {
         set(&mut config.print_step_rusage, build.print_step_rusage);
         set(&mut config.patch_binaries_for_nix, build.patch_binaries_for_nix);
 
-        config.verbose = cmp::max(config.verbose, flags.verbose);
+        config.verbose = cmp::max(config.verbose, flags.verbose as usize);
 
         if let Some(install) = toml.install {
             config.prefix = install.prefix.map(PathBuf::from);
@@ -1123,7 +1132,6 @@ impl Config {
             config.rustc_default_linker = rust.default_linker;
             config.musl_root = rust.musl_root.map(PathBuf::from);
             config.save_toolstates = rust.save_toolstates.map(PathBuf::from);
-            set(&mut config.deny_warnings, flags.deny_warnings.or(rust.deny_warnings));
             set(&mut config.backtrace_on_ice, rust.backtrace_on_ice);
             set(&mut config.rust_verify_llvm_ir, rust.verify_llvm_ir);
             config.rust_thin_lto_import_instr_limit = rust.thin_lto_import_instr_limit;

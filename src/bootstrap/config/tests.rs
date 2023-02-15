@@ -1,4 +1,6 @@
-use super::{Config, TomlConfig};
+use clap::CommandFactory;
+
+use super::{Config, Flags, TomlConfig};
 use std::path::Path;
 
 fn toml(config: &str) -> impl '_ + Fn(&Path) -> TomlConfig {
@@ -26,6 +28,11 @@ fn download_ci_llvm() {
     assert!(!parse_llvm(
         "llvm.assertions = true \r\n build.build = \"aarch64-apple-darwin\" \r\n llvm.download-ci-llvm = \"if-available\""
     ));
+}
+
+#[test]
+fn clap_verify() {
+    Flags::command().debug_assert();
 }
 
 // FIXME: add test for detecting `src` and `out`
