@@ -55,7 +55,7 @@ pub unsafe fn bitmask_uint(x: u32x2) -> u8 {
 // CHECK-LABEL: @bitmask_int16
 #[no_mangle]
 pub unsafe fn bitmask_int16(x: i8x16) -> u16 {
-    // CHECK: [[A:%[0-9]+]] = lshr <16 x i8> %{{x|1}}, <i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7>
+    // CHECK: [[A:%[0-9]+]] = lshr <16 x i8> %{{x|1|2}}, <i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7>
     // CHECK: [[B:%[0-9]+]] = trunc <16 x i8> [[A]] to <16 x i1>
     // CHECK: %{{[0-9]+}} = bitcast <16 x i1> [[B]] to i16
     // CHECK-NOT: zext
