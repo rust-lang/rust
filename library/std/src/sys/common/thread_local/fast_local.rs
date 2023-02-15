@@ -10,7 +10,7 @@
 macro_rules! __thread_local_inner {
     // used to generate the `LocalKey` value for const-initialized thread locals
     (@key $t:ty, const $init:expr) => {{
-        #[cfg_attr(not(windows), inline)] // see comments below
+        #[cfg_attr(not(bootstrap), inline)]
         #[deny(unsafe_op_in_unsafe_fn)]
         unsafe fn __getit(
             _init: $crate::option::Option<&mut $crate::option::Option<$t>>,
@@ -77,29 +77,7 @@ macro_rules! __thread_local_inner {
             #[inline]
             fn __init() -> $t { $init }
 
-            // When reading this function you might ask "why is this inlined
-            // everywhere other than Windows?", and that's a very reasonable
-            // question to ask. The short story is that it segfaults rustc if
-            // this function is inlined. The longer story is that Windows looks
-            // to not support `extern` references to thread locals across DLL
-            // boundaries. This appears to at least not be supported in the ABI
-            // that LLVM implements.
-            //
-            // Because of this we never inline on Windows, but we do inline on
-            // other platforms (where external references to thread locals
-            // across DLLs are supported). A better fix for this would be to
-            // inline this function on Windows, but only for "statically linked"
-            // components. For example if two separately compiled rlibs end up
-            // getting linked into a DLL then it's fine to inline this function
-            // across that boundary. It's only not fine to inline this function
-            // across a DLL boundary. Unfortunately rustc doesn't currently
-            // have this sort of logic available in an attribute, and it's not
-            // clear that rustc is even equipped to answer this (it's more of a
-            // Cargo question kinda). This means that, unfortunately, Windows
-            // gets the pessimistic path for now where it's never inlined.
-            //
-            // The issue of "should enable on Windows sometimes" is #84933
-            #[cfg_attr(not(windows), inline)]
+            #[cfg_attr(not(bootstrap), inline)]
             unsafe fn __getit(
                 init: $crate::option::Option<&mut $crate::option::Option<$t>>,
             ) -> $crate::option::Option<&'static $t> {
