@@ -1880,6 +1880,8 @@ where
         where
             [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
+            crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+            {
             /* Offset of the element we want to check if it is duplicate */
             read: usize,
 
@@ -3494,7 +3496,7 @@ where
 // @FIXME unsure about test
 #[cfg(not(test))]
 #[allow(ineffective_unstable_trait_impl)] //@FIXME What/why is #[unstable(...)] ignored here?
-#[unstable(feature = "global_co_alloc", issue="none")]
+#[unstable(feature = "global_co_alloc", issue = "none")]
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> From<Box<[T], A>>
     for Vec<T, A, CO_ALLOC_PREF>
@@ -3509,8 +3511,7 @@ where
 #[cfg(not(test))]
 #[stable(feature = "vec_from_box", since = "1.18.0")]
 #[allow(unused_braces)]
-impl<T, A: Allocator> From<Box<[T], A>>
-    for Vec<T, A, {CO_ALLOC_PREF_DEFAULT!()}>
+impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A, { CO_ALLOC_PREF_DEFAULT!() }>
 where
     [(); { crate::meta_num_slots_default!(A) }]:,
 {
@@ -3532,7 +3533,7 @@ where
 // @FIXME Can this apply to test?
 #[cfg(not(test))]
 #[allow(ineffective_unstable_trait_impl)] //@FIXME What/why is #[unstable(...)] ignored here?
-#[unstable(feature = "global_co_alloc", issue="none")]
+#[unstable(feature = "global_co_alloc", issue = "none")]
 #[allow(unused_braces)]
 impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> From<Vec<T, A, CO_ALLOC_PREF>>
     for Box<[T], A>
@@ -3548,8 +3549,7 @@ where
 #[cfg(not(test))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
 #[allow(unused_braces)]
-impl<T, A: Allocator> From<Vec<T, A>>
-    for Box<[T], A>
+impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A>
 where
     [(); { crate::meta_num_slots_default!(A) }]:,
 {
