@@ -14,9 +14,9 @@ use crate::{
     render::{render_path_resolution, RenderContext},
 };
 
-/// `CompletionItem` describes a single completion variant in the editor pop-up.
-/// It is basically a POD with various properties. To construct a
-/// `CompletionItem`, use `new` method and the `Builder` struct.
+/// `CompletionItem` describes a single completion entity which expands to 1 or more entries in the
+/// editor pop-up. It is basically a POD with various properties. To construct a
+/// [`CompletionItem`], use [`Builder::new`] method and the [`Builder`] struct.
 #[derive(Clone)]
 pub struct CompletionItem {
     /// Label in the completion pop up which identifies completion.
@@ -396,14 +396,20 @@ impl CompletionItem {
         self.trigger_call_info
     }
 
-    pub fn ref_match(&self) -> Option<(Mutability, TextSize, CompletionRelevance)> {
+    pub fn ref_match(&self) -> Option<(String, text_edit::Indel, CompletionRelevance)> {
         // Relevance of the ref match should be the same as the original
         // match, but with exact type match set because self.ref_match
         // is only set if there is an exact type match.
         let mut relevance = self.relevance;
         relevance.type_match = Some(CompletionRelevanceTypeMatch::Exact);
 
-        self.ref_match.map(|(mutability, offset)| (mutability, offset, relevance))
+        self.ref_match.map(|(mutability, offset)| {
+            (
+                format!("&{}{}", mutability.as_keyword_for_ref(), self.label()),
+                text_edit::Indel::insert(offset, format!("&{}", mutability.as_keyword_for_ref())),
+                relevance,
+            )
+        })
     }
 
     pub fn imports_to_add(&self) -> &[LocatedImport] {

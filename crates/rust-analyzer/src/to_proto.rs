@@ -242,15 +242,16 @@ fn completion_item(
     let text_edit = {
         let mut text_edit = None;
         let source_range = item.source_range();
-        for indel in item.text_edit().iter() {
+        for indel in item.text_edit() {
             if indel.delete.contains_range(source_range) {
+                // Extract this indel as the main edit
                 text_edit = Some(if indel.delete == source_range {
                     self::completion_text_edit(line_index, insert_replace_support, indel.clone())
                 } else {
                     assert!(source_range.end() == indel.delete.end());
                     let range1 = TextRange::new(indel.delete.start(), source_range.start());
                     let range2 = source_range;
-                    let indel1 = Indel::replace(range1, String::new());
+                    let indel1 = Indel::delete(range1);
                     let indel2 = Indel::replace(range2, indel.insert.clone());
                     additional_text_edits.push(self::text_edit(line_index, indel1));
                     self::completion_text_edit(line_index, insert_replace_support, indel2)
@@ -316,18 +317,13 @@ fn completion_item(
         }
     }
 
-    if let Some((mutability, offset, relevance)) = item.ref_match() {
-        let mut lsp_item_with_ref = lsp_item.clone();
+    if let Some((label, indel, relevance)) = item.ref_match() {
+        let mut lsp_item_with_ref = lsp_types::CompletionItem { label, ..lsp_item.clone() };
+        lsp_item_with_ref
+            .additional_text_edits
+            .get_or_insert_with(Default::default)
+            .push(self::text_edit(line_index, indel));
         set_score(&mut lsp_item_with_ref, max_relevance, relevance);
-        lsp_item_with_ref.label =
-            format!("&{}{}", mutability.as_keyword_for_ref(), lsp_item_with_ref.label);
-        lsp_item_with_ref.additional_text_edits.get_or_insert_with(Default::default).push(
-            self::text_edit(
-                line_index,
-                Indel::insert(offset, format!("&{}", mutability.as_keyword_for_ref())),
-            ),
-        );
-
         acc.push(lsp_item_with_ref);
     };
 

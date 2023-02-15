@@ -529,8 +529,7 @@ mod tests {
                 let relevance = display_relevance(it.relevance());
                 items.push(format!("{tag} {} {relevance}\n", it.label()));
 
-                if let Some((mutability, _offset, relevance)) = it.ref_match() {
-                    let label = format!("&{}{}", mutability.as_keyword_for_ref(), it.label());
+                if let Some((label, _indel, relevance)) = it.ref_match() {
                     let relevance = display_relevance(relevance);
 
                     items.push(format!("{tag} {label} {relevance}\n"));
