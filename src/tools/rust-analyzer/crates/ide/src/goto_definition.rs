@@ -1916,4 +1916,68 @@ fn main() {
 "#,
         )
     }
+
+    #[test]
+    fn query_impls_in_nearest_block() {
+        check(
+            r#"
+struct S1;
+impl S1 {
+    fn e() -> () {}
+}
+fn f1() {
+    struct S1;
+    impl S1 {
+        fn e() -> () {}
+         //^
+    }
+    fn f2() {
+        fn f3() {
+            S1::e$0();
+        }
+    }
+}
+"#,
+        );
+
+        check(
+            r#"
+struct S1;
+impl S1 {
+    fn e() -> () {}
+}
+fn f1() {
+    struct S1;
+    impl S1 {
+        fn e() -> () {}
+         //^
+    }
+    fn f2() {
+        struct S2;
+        S1::e$0();
+    }
+}
+fn f12() {
+    struct S1;
+    impl S1 {
+        fn e() -> () {}
+    }
+}
+"#,
+        );
+
+        check(
+            r#"
+struct S1;
+impl S1 {
+    fn e() -> () {}
+     //^
+}
+fn f2() {
+    struct S2;
+    S1::e$0();
+}
+"#,
+        );
+    }
 }

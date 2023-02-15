@@ -244,6 +244,14 @@ impl<T: AsRawFd> AsRawFd for crate::sync::Arc<T> {
     }
 }
 
+#[stable(feature = "asfd_rc", since = "CURRENT_RUSTC_VERSION")]
+impl<T: AsRawFd> AsRawFd for crate::rc::Rc<T> {
+    #[inline]
+    fn as_raw_fd(&self) -> RawFd {
+        (**self).as_raw_fd()
+    }
+}
+
 #[stable(feature = "asrawfd_ptrs", since = "1.63.0")]
 impl<T: AsRawFd> AsRawFd for Box<T> {
     #[inline]

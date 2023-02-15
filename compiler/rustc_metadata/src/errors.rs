@@ -512,14 +512,6 @@ pub struct SymbolConflictsCurrent {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_symbol_conflicts_others, code = "E0523")]
-pub struct SymbolConflictsOthers {
-    #[primary_span]
-    pub span: Span,
-    pub crate_name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag(metadata_stable_crate_id_collision)]
 pub struct StableCrateIdCollision {
     #[primary_span]

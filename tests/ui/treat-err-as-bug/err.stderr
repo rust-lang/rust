@@ -4,7 +4,7 @@ error[E0080]: could not evaluate static initializer
 LL | pub static C: u32 = 0 - 1;
    |                     ^^^^^ attempt to compute `0_u32 - 1_u32`, which would overflow
 
-error: internal compiler error: unexpected panic
+error: the compiler unexpectedly panicked. this is a bug.
 
 query stack during panic:
 #0 [eval_to_allocation_raw] const-evaluating + checking `C`

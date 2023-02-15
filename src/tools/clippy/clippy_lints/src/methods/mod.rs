@@ -1818,6 +1818,7 @@ declare_clippy_lint! {
     ///  - `or_else` to `or`
     ///  - `get_or_insert_with` to `get_or_insert`
     ///  - `ok_or_else` to `ok_or`
+    ///  - `then` to `then_some` (for msrv >= 1.62.0)
     ///
     /// ### Why is this bad?
     /// Using eager evaluation is shorter and simpler in some cases.

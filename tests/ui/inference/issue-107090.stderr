@@ -30,7 +30,7 @@ LL | struct Foo<'out, 'a, 'b, T>(PhantomData<(&'a (), &'b (), T)>)
    |            +++++
 
 error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/issue-107090.rs:13:47
+  --> $DIR/issue-107090.rs:11:47
    |
 LL | impl<'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
    |      -                                        ^^ undeclared lifetime
@@ -38,13 +38,13 @@ LL | impl<'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> 
    |      help: consider introducing lifetime `'b` here: `'b,`
 
 error[E0261]: use of undeclared lifetime name `'out`
-  --> $DIR/issue-107090.rs:13:67
+  --> $DIR/issue-107090.rs:11:67
    |
 LL | impl<'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
    |      - help: consider introducing lifetime `'out` here: `'out,`   ^^^^ undeclared lifetime
 
 error[E0261]: use of undeclared lifetime name `'out`
-  --> $DIR/issue-107090.rs:17:49
+  --> $DIR/issue-107090.rs:14:49
    |
 LL |     fn cast(&'long self) -> &'short Foo<'short, 'out, T> {
    |                                                 ^^^^ undeclared lifetime
@@ -59,7 +59,7 @@ LL | impl<'out, 'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'ou
    |      +++++
 
 error[E0261]: use of undeclared lifetime name `'short`
-  --> $DIR/issue-107090.rs:24:68
+  --> $DIR/issue-107090.rs:20:68
    |
 LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ Foo<'short, 'out, T>) -> &'out T {
    |           -                                                        ^^^^^^ undeclared lifetime
@@ -67,107 +67,18 @@ LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ Foo<'short, 
    |           help: consider introducing lifetime `'short` here: `'short,`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-107090.rs:4:27
-   |
-LL |     Foo<'short, 'out, T>: Convert<'a, 'b>;
-   |                           ^^^^^^^^^^^^^^^ lifetime mismatch
-   |
-   = note: expected trait `Convert<'static, 'static>`
-              found trait `Convert<'a, 'b>`
-note: the lifetime `'a` as defined here...
-  --> $DIR/issue-107090.rs:2:12
-   |
-LL | struct Foo<'a, 'b, T>(PhantomData<(&'a (), &'b (), T)>)
-   |            ^^
-   = note: ...does not necessarily outlive the static lifetime
-
-error[E0308]: mismatched types
-  --> $DIR/issue-107090.rs:4:27
-   |
-LL |     Foo<'short, 'out, T>: Convert<'a, 'b>;
-   |                           ^^^^^^^^^^^^^^^ lifetime mismatch
-   |
-   = note: expected trait `Convert<'static, 'static>`
-              found trait `Convert<'a, 'b>`
-note: the lifetime `'b` as defined here...
-  --> $DIR/issue-107090.rs:2:16
-   |
-LL | struct Foo<'a, 'b, T>(PhantomData<(&'a (), &'b (), T)>)
-   |                ^^
-   = note: ...does not necessarily outlive the static lifetime
-
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'long` due to conflicting requirements
-  --> $DIR/issue-107090.rs:13:55
-   |
-LL | impl<'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
-   |                                                       ^^^^^^^^^^^^^^^^^^^^
-   |
-note: first, the lifetime cannot outlive the lifetime `'short` as defined here...
-  --> $DIR/issue-107090.rs:13:21
-   |
-LL | impl<'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
-   |                     ^^^^^^
-   = note: ...but the lifetime must also be valid for the static lifetime...
-note: ...so that the types are compatible
-  --> $DIR/issue-107090.rs:13:55
-   |
-LL | impl<'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
-   |                                                       ^^^^^^^^^^^^^^^^^^^^
-   = note: expected `Convert<'short, 'static>`
-              found `Convert<'_, 'static>`
-
-error: incompatible lifetime on type
-  --> $DIR/issue-107090.rs:24:29
+  --> $DIR/issue-107090.rs:22:5
    |
 LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ Foo<'short, 'out, T>) -> &'out T {
-   |                             ^^^^^^^^^^^^^^^^^^
+   |                       - this type parameter                                             ------- expected `&'out T` because of return type
+LL |
+LL |     sadness.cast()
+   |     ^^^^^^^^^^^^^^ expected `&T`, found `&Foo<'_, '_, T>`
    |
-note: because this has an unmet lifetime requirement
-  --> $DIR/issue-107090.rs:4:27
-   |
-LL |     Foo<'short, 'out, T>: Convert<'a, 'b>;
-   |                           ^^^^^^^^^^^^^^^ introduces a `'static` lifetime requirement
-note: the lifetime `'out` as defined here...
-  --> $DIR/issue-107090.rs:24:17
-   |
-LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ Foo<'short, 'out, T>) -> &'out T {
-   |                 ^^^^
-note: ...does not necessarily outlive the static lifetime introduced by the compatible `impl`
-  --> $DIR/issue-107090.rs:13:1
-   |
-LL | impl<'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected reference `&'out T`
+              found reference `&Foo<'_, '_, T>`
 
-error[E0759]: `x` has lifetime `'in_` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/issue-107090.rs:24:29
-   |
-LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ Foo<'short, 'out, T>) -> &'out T {
-   |                             ^^^^^^^^^^^^^^^^^^
-   |                             |
-   |                             this data with lifetime `'in_`...
-   |                             ...is used and required to live as long as `'static` here
+error: aborting due to 7 previous errors
 
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'long` due to conflicting requirements
-  --> $DIR/issue-107090.rs:17:13
-   |
-LL |     fn cast(&'long self) -> &'short Foo<'short, 'out, T> {
-   |             ^^^^^^^^^^^
-   |
-note: first, the lifetime cannot outlive the lifetime `'short` as defined here...
-  --> $DIR/issue-107090.rs:13:21
-   |
-LL | impl<'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
-   |                     ^^^^^^
-   = note: ...but the lifetime must also be valid for the static lifetime...
-note: ...so that the types are compatible
-  --> $DIR/issue-107090.rs:17:13
-   |
-LL |     fn cast(&'long self) -> &'short Foo<'short, 'out, T> {
-   |             ^^^^^^^^^^^
-   = note: expected `Convert<'short, 'static>`
-              found `Convert<'_, 'static>`
-
-error: aborting due to 12 previous errors
-
-Some errors have detailed explanations: E0261, E0308, E0495, E0759.
+Some errors have detailed explanations: E0261, E0308.
 For more information about an error, try `rustc --explain E0261`.

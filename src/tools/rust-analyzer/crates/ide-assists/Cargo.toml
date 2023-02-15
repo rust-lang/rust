@@ -2,9 +2,11 @@
 name = "ide-assists"
 version = "0.0.0"
 description = "TBD"
-license = "MIT OR Apache-2.0"
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
@@ -16,17 +18,20 @@ itertools = "0.10.5"
 either = "1.7.0"
 smallvec = "1.10.0"
 
-stdx = { path = "../stdx", version = "0.0.0" }
-syntax = { path = "../syntax", version = "0.0.0" }
-text-edit = { path = "../text-edit", version = "0.0.0" }
-profile = { path = "../profile", version = "0.0.0" }
-ide-db = { path = "../ide-db", version = "0.0.0" }
-hir = { path = "../hir", version = "0.0.0" }
+# local deps
+stdx.workspace = true
+syntax.workspace = true
+text-edit.workspace = true
+profile.workspace = true
+ide-db.workspace = true
+hir.workspace = true
 
 [dev-dependencies]
-test-utils = { path = "../test-utils" }
-sourcegen = { path = "../sourcegen" }
 expect-test = "1.4.0"
+
+# local deps
+test-utils.workspace = true
+sourcegen.workspace = true
 
 [features]
 in-rust-tree = []

@@ -11,22 +11,18 @@ use super::utils::{copy_dir_recursively, git_command, retry_spawn_and_wait, spaw
 pub(crate) fn prepare(dirs: &Dirs) {
     RelPath::DOWNLOAD.ensure_fresh(dirs);
 
-    spawn_and_wait(super::build_backend::CG_CLIF.fetch("cargo", dirs));
+    spawn_and_wait(super::build_backend::CG_CLIF.fetch("cargo", "rustc", dirs));
 
     prepare_sysroot(dirs);
-    spawn_and_wait(super::build_sysroot::STANDARD_LIBRARY.fetch("cargo", dirs));
-    spawn_and_wait(super::tests::LIBCORE_TESTS.fetch("cargo", dirs));
+    spawn_and_wait(super::build_sysroot::STANDARD_LIBRARY.fetch("cargo", "rustc", dirs));
+    spawn_and_wait(super::tests::LIBCORE_TESTS.fetch("cargo", "rustc", dirs));
 
-    super::abi_cafe::ABI_CAFE_REPO.fetch(dirs);
-    spawn_and_wait(super::abi_cafe::ABI_CAFE.fetch("cargo", dirs));
     super::tests::RAND_REPO.fetch(dirs);
-    spawn_and_wait(super::tests::RAND.fetch("cargo", dirs));
+    spawn_and_wait(super::tests::RAND.fetch("cargo", "rustc", dirs));
     super::tests::REGEX_REPO.fetch(dirs);
-    spawn_and_wait(super::tests::REGEX.fetch("cargo", dirs));
+    spawn_and_wait(super::tests::REGEX.fetch("cargo", "rustc", dirs));
     super::tests::PORTABLE_SIMD_REPO.fetch(dirs);
-    spawn_and_wait(super::tests::PORTABLE_SIMD.fetch("cargo", dirs));
-    super::bench::SIMPLE_RAYTRACER_REPO.fetch(dirs);
-    spawn_and_wait(super::bench::SIMPLE_RAYTRACER.fetch("cargo", dirs));
+    spawn_and_wait(super::tests::PORTABLE_SIMD.fetch("cargo", "rustc", dirs));
 }
 
 fn prepare_sysroot(dirs: &Dirs) {
@@ -80,7 +76,7 @@ impl GitRepo {
         }
     }
 
-    fn fetch(&self, dirs: &Dirs) {
+    pub(crate) fn fetch(&self, dirs: &Dirs) {
         match self.url {
             GitRepoUrl::Github { user, repo } => {
                 clone_repo_shallow_github(

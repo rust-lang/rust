@@ -46,7 +46,7 @@ LL | fn a() -> [u8; foo::()] {
    = note: expected type `usize`
            found fn item `fn() {foo}`
 
-error: `S<'static>` is forbidden as the type of a const generic parameter
+error: `S<'_>` is forbidden as the type of a const generic parameter
   --> $DIR/unusual-rib-combinations.rs:24:15
    |
 LL | fn d<const C: S>() {}

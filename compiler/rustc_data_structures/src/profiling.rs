@@ -88,6 +88,7 @@ use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::error::Error;
 use std::fs;
+use std::intrinsics::unlikely;
 use std::path::Path;
 use std::process;
 use std::sync::Arc;
@@ -395,11 +396,18 @@ impl SelfProfilerRef {
     /// Record a query in-memory cache hit.
     #[inline(always)]
     pub fn query_cache_hit(&self, query_invocation_id: QueryInvocationId) {
-        self.instant_query_event(
-            |profiler| profiler.query_cache_hit_event_kind,
-            query_invocation_id,
-            EventFilter::QUERY_CACHE_HITS,
-        );
+        #[inline(never)]
+        #[cold]
+        fn cold_call(profiler_ref: &SelfProfilerRef, query_invocation_id: QueryInvocationId) {
+            profiler_ref.instant_query_event(
+                |profiler| profiler.query_cache_hit_event_kind,
+                query_invocation_id,
+            );
+        }
+
+        if unlikely(self.event_filter_mask.contains(EventFilter::QUERY_CACHE_HITS)) {
+            cold_call(self, query_invocation_id);
+        }
     }
 
     /// Start profiling a query being blocked on a concurrent execution.
@@ -444,20 +452,15 @@ impl SelfProfilerRef {
         &self,
         event_kind: fn(&SelfProfiler) -> StringId,
         query_invocation_id: QueryInvocationId,
-        event_filter: EventFilter,
     ) {
-        drop(self.exec(event_filter, |profiler| {
-            let event_id = StringId::new_virtual(query_invocation_id.0);
-            let thread_id = get_thread_id();
-
-            profiler.profiler.record_instant_event(
-                event_kind(profiler),
-                EventId::from_virtual(event_id),
-                thread_id,
-            );
-
-            TimingGuard::none()
-        }));
+        let event_id = StringId::new_virtual(query_invocation_id.0);
+        let thread_id = get_thread_id();
+        let profiler = self.profiler.as_ref().unwrap();
+        profiler.profiler.record_instant_event(
+            event_kind(profiler),
+            EventId::from_virtual(event_id),
+            thread_id,
+        );
     }
 
     pub fn with_profiler(&self, f: impl FnOnce(&SelfProfiler)) {

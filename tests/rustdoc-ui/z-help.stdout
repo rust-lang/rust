@@ -70,6 +70,15 @@
         `=except-unused-functions`
         `=off` (default)
     -Z                       instrument-mcount=val -- insert function instrument code for mcount-based tracing (default: no)
+    -Z                         instrument-xray=val -- insert function instrument code for XRay-based tracing (default: no)
+         Optional extra settings:
+         `=always`
+         `=never`
+         `=ignore-loops`
+         `=instruction-threshold=N`
+         `=skip-entry`
+         `=skip-exit`
+         Multiple options can be combined with commas.
     -Z                       keep-hygiene-data=val -- keep hygiene data after analysis (default: no)
     -Z                             layout-seed=val -- seed layout randomization
     -Z                   link-native-libraries=val -- link native libraries in the linker invocation (default: yes)
@@ -77,7 +86,6 @@
     -Z                            llvm-plugins=val -- a list LLVM plugins to enable (space separated)
     -Z                         llvm-time-trace=val -- generate JSON tracing data file from LLVM data (default: no)
     -Z                         location-detail=val -- what location details should be tracked when using caller_location, either `none`, or a comma separated list of location details, for which valid options are `file`, `line`, and `column` (default: `file,line,column`)
-    -Z                           log-backtrace=val -- add a backtrace along with logging
     -Z                                      ls=val -- list the symbols defined by a library crate (default: no)
     -Z                         macro-backtrace=val -- show macro backtraces (default: no)
     -Z             maximal-hir-to-mir-coverage=val -- save as much information as possible about the correspondence between MIR and HIR as source scopes (default: no)
@@ -168,6 +176,7 @@
     -Z                 symbol-mangling-version=val -- which mangling version to use for symbol names ('legacy' (default) or 'v0')
     -Z                                   teach=val -- show extended diagnostic help (default: no)
     -Z                               temps-dir=val -- the directory the intermediate files are written to
+    -Z                           terminal-urls=val -- use the OSC 8 hyperlink terminal specification to print hyperlinks in the compiler output
     -Z                                 thinlto=val -- enable ThinLTO when possible
     -Z                           thir-unsafeck=val -- use the THIR unsafety checker (default: no)
     -Z                                 threads=val -- use a thread pool with N threads

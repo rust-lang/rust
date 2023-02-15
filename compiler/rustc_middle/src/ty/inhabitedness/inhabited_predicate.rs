@@ -57,7 +57,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
         match self {
             Self::False => Ok(false),
             Self::True => Ok(true),
-            Self::ConstIsZero(const_) => match const_.try_eval_usize(tcx, param_env) {
+            Self::ConstIsZero(const_) => match const_.try_eval_target_usize(tcx, param_env) {
                 None | Some(0) => Ok(true),
                 Some(1..) => Ok(false),
             },

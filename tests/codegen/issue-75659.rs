@@ -1,7 +1,7 @@
 // This test checks that the call to memchr/slice_contains is optimized away
 // when searching in small slices.
 
-// compile-flags: -O -Zinline-mir=no
+// compile-flags: -O -Zinline-mir=false
 // only-x86_64
 
 #![crate_type = "lib"]

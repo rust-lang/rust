@@ -605,18 +605,26 @@ impl<'a> TraitDef<'a> {
                     let bounds: Vec<_> = self
                         .additional_bounds
                         .iter()
-                        .map(|p| cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)))
+                        .map(|p| {
+                            cx.trait_bound(
+                                p.to_path(cx, self.span, type_ident, generics),
+                                self.is_const,
+                            )
+                        })
                         .chain(
                             // Add a bound for the current trait.
                             self.skip_path_as_bound
                                 .not()
-                                .then(|| cx.trait_bound(trait_path.clone())),
+                                .then(|| cx.trait_bound(trait_path.clone(), self.is_const)),
                         )
                         .chain({
                             // Add a `Copy` bound if required.
                             if is_packed && self.needs_copy_as_bound_if_packed {
                                 let p = deriving::path_std!(marker::Copy);
-                                Some(cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)))
+                                Some(cx.trait_bound(
+                                    p.to_path(cx, self.span, type_ident, generics),
+                                    self.is_const,
+                                ))
                             } else {
                                 None
                             }
@@ -694,18 +702,24 @@ impl<'a> TraitDef<'a> {
                         let mut bounds: Vec<_> = self
                             .additional_bounds
                             .iter()
-                            .map(|p| cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)))
+                            .map(|p| {
+                                cx.trait_bound(
+                                    p.to_path(cx, self.span, type_ident, generics),
+                                    self.is_const,
+                                )
+                            })
                             .collect();
 
                         // Require the current trait.
-                        bounds.push(cx.trait_bound(trait_path.clone()));
+                        bounds.push(cx.trait_bound(trait_path.clone(), self.is_const));
 
                         // Add a `Copy` bound if required.
                         if is_packed && self.needs_copy_as_bound_if_packed {
                             let p = deriving::path_std!(marker::Copy);
-                            bounds.push(
-                                cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)),
-                            );
+                            bounds.push(cx.trait_bound(
+                                p.to_path(cx, self.span, type_ident, generics),
+                                self.is_const,
+                            ));
                         }
 
                         let predicate = ast::WhereBoundPredicate {
@@ -1543,31 +1557,46 @@ impl<'a> TraitDef<'a> {
                             }),
                         ),
                     );
-                    // In general, fields in packed structs are copied via a
-                    // block, e.g. `&{self.0}`. The one exception is `[u8]`
-                    // fields, which cannot be copied and also never cause
-                    // unaligned references. This exception is allowed to
-                    // handle the `FlexZeroSlice` type in the `zerovec` crate
-                    // within `icu4x-0.9.0`.
-                    //
-                    // Once use of `icu4x-0.9.0` has dropped sufficiently, this
-                    // exception should be removed.
-                    let is_u8_slice = if let TyKind::Slice(ty) = &struct_field.ty.kind &&
-                        let TyKind::Path(None, rustc_ast::Path { segments, .. }) = &ty.kind &&
-                        let [seg] = segments.as_slice() &&
-                        seg.ident.name == sym::u8 && seg.args.is_none()
-                    {
-                        true
-                    } else {
-                        false
-                    };
                     if is_packed {
-                        if is_u8_slice {
+                        // In general, fields in packed structs are copied via a
+                        // block, e.g. `&{self.0}`. The two exceptions are `[u8]`
+                        // and `str` fields, which cannot be copied and also never
+                        // cause unaligned references. These exceptions are allowed
+                        // to handle the `FlexZeroSlice` type in the `zerovec`
+                        // crate within `icu4x-0.9.0`.
+                        //
+                        // Once use of `icu4x-0.9.0` has dropped sufficiently, this
+                        // exception should be removed.
+                        let is_simple_path = |ty: &P<ast::Ty>, sym| {
+                            if let TyKind::Path(None, ast::Path { segments, .. }) = &ty.kind &&
+                                let [seg] = segments.as_slice() &&
+                                seg.ident.name == sym && seg.args.is_none()
+                            {
+                                true
+                            } else {
+                                false
+                            }
+                        };
+
+                        let exception = if let TyKind::Slice(ty) = &struct_field.ty.kind &&
+                            is_simple_path(ty, sym::u8)
+                        {
+                            Some("byte")
+                        } else if is_simple_path(&struct_field.ty, sym::str) {
+                            Some("string")
+                        } else {
+                            None
+                        };
+
+                        if let Some(ty) = exception {
                             cx.sess.parse_sess.buffer_lint_with_diagnostic(
                                 BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
                                 sp,
                                 ast::CRATE_NODE_ID,
-                                "byte slice in a packed struct that derives a built-in trait",
+                                &format!(
+                                    "{} slice in a packed struct that derives a built-in trait",
+                                    ty
+                                ),
                                 rustc_lint_defs::BuiltinLintDiagnostics::ByteSliceInPackedStructWithDerive
                             );
                         } else {

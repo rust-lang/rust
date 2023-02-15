@@ -401,7 +401,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // with bound regions.
         let fn_sig = tcx.fn_sig(def_id).subst(self.tcx, substs);
         let fn_sig =
-            self.replace_bound_vars_with_fresh_vars(obligation.cause.span, infer::FnCall, fn_sig);
+            self.instantiate_binder_with_fresh_vars(obligation.cause.span, infer::FnCall, fn_sig);
 
         let InferOk { value, obligations: o } =
             self.at(&obligation.cause, self.param_env).normalize(fn_sig);

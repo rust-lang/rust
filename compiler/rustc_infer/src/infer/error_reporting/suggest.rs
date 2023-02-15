@@ -238,31 +238,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
             },
             (_, Some(ty)) if self.same_type_modulo_infer(exp_found.expected, ty) => {
-                diag.span_suggestion_verbose(
-                    exp_span.shrink_to_hi(),
-                    "consider `await`ing on the `Future`",
-                    ".await",
-                    Applicability::MaybeIncorrect,
-                );
+                self.suggest_await_on_future(diag, exp_span);
+                diag.span_note(exp_span, "calling an async function returns a future");
             }
             (Some(ty), _) if self.same_type_modulo_infer(ty, exp_found.found) => match cause.code()
             {
                 ObligationCauseCode::Pattern { span: Some(then_span), .. } => {
-                    diag.span_suggestion_verbose(
-                        then_span.shrink_to_hi(),
-                        "consider `await`ing on the `Future`",
-                        ".await",
-                        Applicability::MaybeIncorrect,
-                    );
+                    self.suggest_await_on_future(diag, then_span.shrink_to_hi());
                 }
                 ObligationCauseCode::IfExpression(box IfExpressionCause { then_id, .. }) => {
                     let then_span = self.find_block_span_from_hir_id(*then_id);
-                    diag.span_suggestion_verbose(
-                        then_span.shrink_to_hi(),
-                        "consider `await`ing on the `Future`",
-                        ".await",
-                        Applicability::MaybeIncorrect,
-                    );
+                    self.suggest_await_on_future(diag, then_span.shrink_to_hi());
                 }
                 ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                     ref prior_arms,
@@ -281,6 +267,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             },
             _ => {}
         }
+    }
+
+    pub fn suggest_await_on_future(&self, diag: &mut Diagnostic, sp: Span) {
+        diag.span_suggestion_verbose(
+            sp.shrink_to_hi(),
+            "consider `await`ing on the `Future`",
+            ".await",
+            Applicability::MaybeIncorrect,
+        );
     }
 
     pub(super) fn suggest_accessing_field_where_appropriate(

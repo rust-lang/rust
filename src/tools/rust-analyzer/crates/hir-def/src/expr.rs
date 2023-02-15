@@ -15,11 +15,11 @@
 use std::fmt;
 
 use hir_expand::name::Name;
+use intern::Interned;
 use la_arena::{Idx, RawIdx};
 
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
-    intern::Interned,
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
     BlockId,

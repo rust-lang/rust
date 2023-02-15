@@ -3,7 +3,8 @@
 use super::infcx_ext::InferCtxtExt;
 #[cfg(doc)]
 use super::trait_goals::structural_traits::*;
-use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
+use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
+use itertools::Itertools;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::elaborate_predicates;
@@ -128,9 +129,9 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    // A type is `PointerSized` if we can compute its layout, and that layout
+    // A type is `PointerLike` if we can compute its layout, and that layout
     // matches the layout of `usize`.
-    fn consider_builtin_pointer_sized_candidate(
+    fn consider_builtin_pointer_like_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
@@ -312,8 +313,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             || lang_items.clone_trait() == Some(trait_def_id)
         {
             G::consider_builtin_copy_clone_candidate(self, goal)
-        } else if lang_items.pointer_sized() == Some(trait_def_id) {
-            G::consider_builtin_pointer_sized_candidate(self, goal)
+        } else if lang_items.pointer_like() == Some(trait_def_id) {
+            G::consider_builtin_pointer_like_candidate(self, goal)
         } else if let Some(kind) = self.tcx().fn_trait_kind_from_def_id(trait_def_id) {
             G::consider_builtin_fn_trait_candidates(self, goal, kind)
         } else if lang_items.tuple_trait() == Some(trait_def_id) {
@@ -399,10 +400,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Alias(_, alias_ty) => alias_ty,
         };
 
-        for (assumption, _) in self
-            .tcx()
-            .bound_explicit_item_bounds(alias_ty.def_id)
-            .subst_iter_copied(self.tcx(), alias_ty.substs)
+        for assumption in self.tcx().item_bounds(alias_ty.def_id).subst(self.tcx(), alias_ty.substs)
         {
             match G::consider_assumption(self, goal, assumption) {
                 Ok(result) => {
@@ -461,5 +459,80 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 Err(NoSolution) => (),
             }
         }
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    pub(super) fn merge_candidates_and_discard_reservation_impls(
+        &mut self,
+        mut candidates: Vec<Candidate<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        match candidates.len() {
+            0 => return Err(NoSolution),
+            1 => return Ok(self.discard_reservation_impl(candidates.pop().unwrap()).result),
+            _ => {}
+        }
+
+        if candidates.len() > 1 {
+            let mut i = 0;
+            'outer: while i < candidates.len() {
+                for j in (0..candidates.len()).filter(|&j| i != j) {
+                    if self.trait_candidate_should_be_dropped_in_favor_of(
+                        &candidates[i],
+                        &candidates[j],
+                    ) {
+                        debug!(candidate = ?candidates[i], "Dropping candidate #{}/{}", i, candidates.len());
+                        candidates.swap_remove(i);
+                        continue 'outer;
+                    }
+                }
+
+                debug!(candidate = ?candidates[i], "Retaining candidate #{}/{}", i, candidates.len());
+                i += 1;
+            }
+
+            // If there are *STILL* multiple candidates that have *different* response
+            // results, give up and report ambiguity.
+            if candidates.len() > 1 && !candidates.iter().map(|cand| cand.result).all_equal() {
+                let certainty = if candidates.iter().all(|x| {
+                    matches!(x.result.value.certainty, Certainty::Maybe(MaybeCause::Overflow))
+                }) {
+                    Certainty::Maybe(MaybeCause::Overflow)
+                } else {
+                    Certainty::AMBIGUOUS
+                };
+                return self.make_canonical_response(certainty);
+            }
+        }
+
+        // FIXME: What if there are >1 candidates left with the same response, and one is a reservation impl?
+        Ok(self.discard_reservation_impl(candidates.pop().unwrap()).result)
+    }
+
+    fn trait_candidate_should_be_dropped_in_favor_of(
+        &self,
+        candidate: &Candidate<'tcx>,
+        other: &Candidate<'tcx>,
+    ) -> bool {
+        // FIXME: implement this
+        match (candidate.source, other.source) {
+            (CandidateSource::Impl(_), _)
+            | (CandidateSource::ParamEnv(_), _)
+            | (CandidateSource::AliasBound, _)
+            | (CandidateSource::BuiltinImpl, _) => false,
+        }
+    }
+
+    fn discard_reservation_impl(&self, mut candidate: Candidate<'tcx>) -> Candidate<'tcx> {
+        if let CandidateSource::Impl(def_id) = candidate.source {
+            if let ty::ImplPolarity::Reservation = self.tcx().impl_polarity(def_id) {
+                debug!("Selected reservation impl");
+                // We assemble all candidates inside of a probe so by
+                // making a new canonical response here our result will
+                // have no constraints.
+                candidate.result = self.make_canonical_response(Certainty::AMBIGUOUS).unwrap();
+            }
+        }
+
+        candidate
     }
 }

@@ -1,0 +1,16 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-107775.rs:35:16
+   |
+LL |         map.insert(1, Struct::do_something);
+   |                    -  -------------------- this is of type `fn(u8) -> Pin<Box<dyn Future<Output = ()> + Send>> {<Struct as Trait>::do_something::<'_>}`, which causes `map` to be inferred as `HashMap<{integer}, fn(u8) -> Pin<Box<dyn Future<Output = ()> + Send>> {<Struct as Trait>::do_something::<'_>}>`
+   |                    |
+   |                    this is of type `{integer}`, which causes `map` to be inferred as `HashMap<{integer}, fn(u8) -> Pin<Box<dyn Future<Output = ()> + Send>> {<Struct as Trait>::do_something::<'_>}>`
+LL |         Self { map }
+   |                ^^^ expected `HashMap<u16, fn(u8) -> Pin<...>>`, found `HashMap<{integer}, ...>`
+   |
+   = note: expected struct `HashMap<u16, fn(_) -> Pin<Box<(dyn Future<Output = ()> + Send + 'static)>>>`
+              found struct `HashMap<{integer}, fn(_) -> Pin<Box<dyn Future<Output = ()> + Send>> {<Struct as Trait>::do_something::<'_>}>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

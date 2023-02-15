@@ -295,8 +295,6 @@ pub fn nt_success(status: NTSTATUS) -> bool {
     status >= 0
 }
 
-// "RNG\0"
-pub const BCRYPT_RNG_ALGORITHM: &[u16] = &[b'R' as u16, b'N' as u16, b'G' as u16, 0];
 pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
 
 #[repr(C)]
@@ -834,6 +832,10 @@ if #[cfg(not(target_vendor = "uwp"))] {
 
     #[link(name = "advapi32")]
     extern "system" {
+        // Forbidden when targeting UWP
+        #[link_name = "SystemFunction036"]
+        pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
+
         // Allowed but unused by UWP
         pub fn OpenProcessToken(
             ProcessHandle: HANDLE,
@@ -1258,13 +1260,6 @@ extern "system" {
         cbBuffer: ULONG,
         dwFlags: ULONG,
     ) -> NTSTATUS;
-    pub fn BCryptOpenAlgorithmProvider(
-        phalgorithm: *mut BCRYPT_ALG_HANDLE,
-        pszAlgId: LPCWSTR,
-        pszimplementation: LPCWSTR,
-        dwflags: ULONG,
-    ) -> NTSTATUS;
-    pub fn BCryptCloseAlgorithmProvider(hAlgorithm: BCRYPT_ALG_HANDLE, dwFlags: ULONG) -> NTSTATUS;
 }
 
 // Functions that aren't available on every version of Windows that we support,

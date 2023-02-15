@@ -98,7 +98,7 @@ pub mod outer {
         pub use reexports::foo;
         // @has 'foo/outer/inner/fn.foo_crate.html' '//pre[@class="rust item-decl"]' 'pub(crate) fn foo_crate()'
         pub(crate) use reexports::foo_crate;
-        // @has 'foo/outer/inner/fn.foo_super.html' '//pre[@class="rust item-decl"]' 'pub(in outer) fn foo_super()'
+        // @has 'foo/outer/inner/fn.foo_super.html' '//pre[@class="rust item-decl"]' 'pub(in outer) fn foo_super( )'
         pub(super) use::reexports::foo_super;
         // @!has 'foo/outer/inner/fn.foo_self.html'
         pub(self) use reexports::foo_self;

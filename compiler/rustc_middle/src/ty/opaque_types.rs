@@ -1,7 +1,9 @@
 use crate::error::ConstNotUsedTraitAlias;
-use crate::ty::fold::{TypeFolder, TypeSuperFoldable};
+use crate::ty::fold::{ir::TypeFolder, TypeSuperFoldable};
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
+#[cfg(not(bootstrap))]
+use crate::ty::TypeFoldable;
+use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
@@ -91,8 +93,8 @@ impl<'tcx> ReverseMapper<'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -108,6 +110,8 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
             // If regions have been erased (by writeback), don't try to unerase
             // them.
             ty::ReErased => return r,
+
+            ty::ReError(_) => return r,
 
             // The regions that we expect from borrow checking.
             ty::ReEarlyBound(_) | ty::ReFree(_) => {}
@@ -125,20 +129,21 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
             None if self.do_not_error => self.tcx.lifetimes.re_static,
             None => {
-                self.tcx
+                let e = self
+                    .tcx
                     .sess
                     .struct_span_err(self.span, "non-defining opaque type use in defining scope")
                     .span_label(
                         self.span,
                         format!(
                             "lifetime `{}` is part of concrete type but not used in \
-                                 parameter list of the `impl Trait` type alias",
+                             parameter list of the `impl Trait` type alias",
                             r
                         ),
                     )
                     .emit();
 
-                self.tcx().lifetimes.re_static
+                self.interner().re_error(e)
             }
         }
     }
@@ -183,7 +188,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                                 .emit();
                         }
 
-                        self.tcx().ty_error()
+                        self.interner().ty_error()
                     }
                 }
             }
@@ -211,7 +216,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                             });
                         }
 
-                        self.tcx().const_error(ct.ty())
+                        self.interner().const_error(ct.ty())
                     }
                 }
             }

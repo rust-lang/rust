@@ -469,7 +469,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let ty::Array(_, index_len) = index.layout.ty.kind() else {
                     span_bug!(this.cur_span(), "simd_shuffle index argument has non-array type {}", index.layout.ty)
                 };
-                let index_len = index_len.eval_usize(*this.tcx, this.param_env());
+                let index_len = index_len.eval_target_usize(*this.tcx, this.param_env());
 
                 assert_eq!(left_len, right_len);
                 assert_eq!(index_len, dest_len);

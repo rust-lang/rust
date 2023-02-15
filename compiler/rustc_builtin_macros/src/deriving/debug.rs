@@ -153,7 +153,10 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         let path_debug = cx.path_global(span, cx.std_path(&[sym::fmt, sym::Debug]));
         let ty_dyn_debug = cx.ty(
             span,
-            ast::TyKind::TraitObject(vec![cx.trait_bound(path_debug)], ast::TraitObjectSyntax::Dyn),
+            ast::TyKind::TraitObject(
+                vec![cx.trait_bound(path_debug, false)],
+                ast::TraitObjectSyntax::Dyn,
+            ),
         );
         let ty_slice = cx.ty(
             span,

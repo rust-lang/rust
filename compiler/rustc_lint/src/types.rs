@@ -1144,7 +1144,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
         struct ProhibitOpaqueTypes;
-        impl<'tcx> ty::visit::TypeVisitor<'tcx> for ProhibitOpaqueTypes {
+        impl<'tcx> ty::visit::ir::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueTypes {
             type BreakTy = Ty<'tcx>;
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

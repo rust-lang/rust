@@ -8,7 +8,6 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::PatKind;
 use rustc_lint::LateContext;
-use rustc_middle::ty;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::sym;
 
@@ -108,7 +107,7 @@ pub(super) fn check<'tcx>(
             if is_type_lang_item(cx, self_ty, hir::LangItem::String) {
                 true
             } else {
-                *self_ty.kind() == ty::Str
+                self_ty.is_str()
             }
         };
         if_chain! {

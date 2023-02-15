@@ -1,5 +1,7 @@
 use crate::infer::InferCtxt;
 
+use rustc_infer::infer::ObligationEmittingRelation;
+use rustc_infer::traits::PredicateObligations;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -86,5 +88,18 @@ impl<'a, 'tcx> TypeRelation<'tcx> for CollectAllMismatches<'a, 'tcx> {
         b: ty::Binder<'tcx, T>,
     ) -> RelateResult<'tcx, ty::Binder<'tcx, T>> {
         Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
+    }
+}
+
+impl<'tcx> ObligationEmittingRelation<'tcx> for CollectAllMismatches<'_, 'tcx> {
+    fn register_obligations(&mut self, _obligations: PredicateObligations<'tcx>) {
+        // FIXME(deferred_projection_equality)
+    }
+
+    fn register_predicates(
+        &mut self,
+        _obligations: impl IntoIterator<Item = impl ty::ToPredicate<'tcx>>,
+    ) {
+        // FIXME(deferred_projection_equality)
     }
 }

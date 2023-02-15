@@ -2336,3 +2336,52 @@ fn from_array() {
     let unordered_duplicates = BTreeMap::from([(3, 4), (1, 2), (1, 2)]);
     assert_eq!(map, unordered_duplicates);
 }
+
+#[test]
+fn test_cursor() {
+    let map = BTreeMap::from([(1, 'a'), (2, 'b'), (3, 'c')]);
+
+    let mut cur = map.lower_bound(Bound::Unbounded);
+    assert_eq!(cur.key(), Some(&1));
+    cur.move_next();
+    assert_eq!(cur.key(), Some(&2));
+    assert_eq!(cur.peek_next(), Some((&3, &'c')));
+    cur.move_prev();
+    assert_eq!(cur.key(), Some(&1));
+    assert_eq!(cur.peek_prev(), None);
+
+    let mut cur = map.upper_bound(Bound::Excluded(&1));
+    assert_eq!(cur.key(), None);
+    cur.move_next();
+    assert_eq!(cur.key(), Some(&1));
+    cur.move_prev();
+    assert_eq!(cur.key(), None);
+    assert_eq!(cur.peek_prev(), Some((&3, &'c')));
+}
+
+#[test]
+fn test_cursor_mut() {
+    let mut map = BTreeMap::from([(1, 'a'), (3, 'c'), (5, 'e')]);
+    let mut cur = map.lower_bound_mut(Bound::Excluded(&3));
+    assert_eq!(cur.key(), Some(&5));
+    cur.insert_before(4, 'd');
+    assert_eq!(cur.key(), Some(&5));
+    assert_eq!(cur.peek_prev(), Some((&4, &mut 'd')));
+    cur.move_next();
+    assert_eq!(cur.key(), None);
+    cur.insert_before(6, 'f');
+    assert_eq!(cur.key(), None);
+    assert_eq!(cur.remove_current(), None);
+    assert_eq!(cur.key(), None);
+    cur.insert_after(0, '?');
+    assert_eq!(cur.key(), None);
+    assert_eq!(map, BTreeMap::from([(0, '?'), (1, 'a'), (3, 'c'), (4, 'd'), (5, 'e'), (6, 'f')]));
+
+    let mut cur = map.upper_bound_mut(Bound::Included(&5));
+    assert_eq!(cur.key(), Some(&5));
+    assert_eq!(cur.remove_current(), Some((5, 'e')));
+    assert_eq!(cur.key(), Some(&6));
+    assert_eq!(cur.remove_current_and_move_back(), Some((6, 'f')));
+    assert_eq!(cur.key(), Some(&4));
+    assert_eq!(map, BTreeMap::from([(0, '?'), (1, 'a'), (3, 'c'), (4, 'd')]));
+}

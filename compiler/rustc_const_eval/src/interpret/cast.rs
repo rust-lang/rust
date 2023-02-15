@@ -126,7 +126,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let vtable = self.get_vtable_ptr(src.layout.ty, data.principal())?;
                     let vtable = Scalar::from_maybe_pointer(vtable, self);
                     let data = self.read_immediate(src)?.to_scalar();
-                    let _assert_pointer_sized = data.to_pointer(self)?;
+                    let _assert_pointer_like = data.to_pointer(self)?;
                     let val = Immediate::ScalarPair(data, vtable);
                     self.write_immediate(val, dest)?;
                 } else {
@@ -328,8 +328,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             (&ty::Array(_, length), &ty::Slice(_)) => {
                 let ptr = self.read_scalar(src)?;
                 // u64 cast is from usize to u64, which is always good
-                let val =
-                    Immediate::new_slice(ptr, length.eval_usize(*self.tcx, self.param_env), self);
+                let val = Immediate::new_slice(
+                    ptr,
+                    length.eval_target_usize(*self.tcx, self.param_env),
+                    self,
+                );
                 self.write_immediate(val, dest)
             }
             (ty::Dynamic(data_a, ..), ty::Dynamic(data_b, ..)) => {

@@ -1369,6 +1369,14 @@ pub(crate) struct SelfArgumentPointer {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_unexpected_token_after_dot)]
+pub struct UnexpectedTokenAfterDot<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub actual: Cow<'a, str>,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_visibility_not_followed_by_item)]
 #[help]
 pub(crate) struct VisibilityNotFollowedByItem {
@@ -1656,6 +1664,310 @@ pub(crate) enum TopLevelOrPatternNotAllowed {
         #[subdiagnostic]
         sub: Option<TopLevelOrPatternNotAllowedSugg>,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_cannot_be_raw_ident)]
+pub struct CannotBeRawIdent {
+    #[primary_span]
+    pub span: Span,
+    pub ident: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_cr_doc_comment)]
+pub struct CrDocComment {
+    #[primary_span]
+    pub span: Span,
+    pub block: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_no_digits_literal, code = "E0768")]
+pub struct NoDigitsLiteral {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_invalid_digit_literal)]
+pub struct InvalidDigitLiteral {
+    #[primary_span]
+    pub span: Span,
+    pub base: u32,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_empty_exponent_float)]
+pub struct EmptyExponentFloat {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_float_literal_unsupported_base)]
+pub struct FloatLiteralUnsupportedBase {
+    #[primary_span]
+    pub span: Span,
+    pub base: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_unknown_prefix)]
+#[note]
+pub struct UnknownPrefix<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub prefix: &'a str,
+    #[subdiagnostic]
+    pub sugg: Option<UnknownPrefixSugg>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum UnknownPrefixSugg {
+    #[suggestion(suggestion_br, code = "br", applicability = "maybe-incorrect", style = "verbose")]
+    UseBr(#[primary_span] Span),
+    #[suggestion(
+        suggestion_whitespace,
+        code = " ",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    Whitespace(#[primary_span] Span),
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_too_many_hashes)]
+pub struct TooManyHashes {
+    #[primary_span]
+    pub span: Span,
+    pub num: u32,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_unknown_start_of_token)]
+pub struct UnknownTokenStart {
+    #[primary_span]
+    pub span: Span,
+    pub escaped: String,
+    #[subdiagnostic]
+    pub sugg: Option<TokenSubstitution>,
+    #[subdiagnostic]
+    pub null: Option<UnknownTokenNull>,
+    #[subdiagnostic]
+    pub repeat: Option<UnknownTokenRepeat>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum TokenSubstitution {
+    #[suggestion(sugg_quotes, code = "{suggestion}", applicability = "maybe-incorrect")]
+    DirectedQuotes {
+        #[primary_span]
+        span: Span,
+        suggestion: String,
+        ascii_str: &'static str,
+        ascii_name: &'static str,
+    },
+    #[suggestion(sugg_other, code = "{suggestion}", applicability = "maybe-incorrect")]
+    Other {
+        #[primary_span]
+        span: Span,
+        suggestion: String,
+        ch: String,
+        u_name: &'static str,
+        ascii_str: &'static str,
+        ascii_name: &'static str,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[note(note_repeats)]
+pub struct UnknownTokenRepeat {
+    pub repeats: usize,
+}
+
+#[derive(Subdiagnostic)]
+#[help(help_null)]
+pub struct UnknownTokenNull;
+
+#[derive(Diagnostic)]
+pub enum UnescapeError {
+    #[diag(parse_invalid_unicode_escape)]
+    #[help]
+    InvalidUnicodeEscape {
+        #[primary_span]
+        #[label]
+        span: Span,
+        surrogate: bool,
+    },
+    #[diag(parse_escape_only_char)]
+    EscapeOnlyChar {
+        #[primary_span]
+        span: Span,
+        #[suggestion(escape, applicability = "machine-applicable", code = "{escaped_sugg}")]
+        char_span: Span,
+        escaped_sugg: String,
+        escaped_msg: String,
+        byte: bool,
+    },
+    #[diag(parse_bare_cr)]
+    BareCr {
+        #[primary_span]
+        #[suggestion(escape, applicability = "machine-applicable", code = "\\r")]
+        span: Span,
+        double_quotes: bool,
+    },
+    #[diag(parse_bare_cr_in_raw_string)]
+    BareCrRawString(#[primary_span] Span),
+    #[diag(parse_too_short_hex_escape)]
+    TooShortHexEscape(#[primary_span] Span),
+    #[diag(parse_invalid_char_in_escape)]
+    InvalidCharInEscape {
+        #[primary_span]
+        #[label]
+        span: Span,
+        is_hex: bool,
+        ch: String,
+    },
+    #[diag(parse_out_of_range_hex_escape)]
+    OutOfRangeHexEscape(
+        #[primary_span]
+        #[label]
+        Span,
+    ),
+    #[diag(parse_leading_underscore_unicode_escape)]
+    LeadingUnderscoreUnicodeEscape {
+        #[primary_span]
+        #[label(parse_leading_underscore_unicode_escape_label)]
+        span: Span,
+        ch: String,
+    },
+    #[diag(parse_overlong_unicode_escape)]
+    OverlongUnicodeEscape(
+        #[primary_span]
+        #[label]
+        Span,
+    ),
+    #[diag(parse_unclosed_unicode_escape)]
+    UnclosedUnicodeEscape(
+        #[primary_span]
+        #[label]
+        Span,
+        #[suggestion(terminate, code = "}}", applicability = "maybe-incorrect", style = "verbose")]
+        Span,
+    ),
+    #[diag(parse_no_brace_unicode_escape)]
+    NoBraceInUnicodeEscape {
+        #[primary_span]
+        span: Span,
+        #[label]
+        label: Option<Span>,
+        #[subdiagnostic]
+        sub: NoBraceUnicodeSub,
+    },
+    #[diag(parse_unicode_escape_in_byte)]
+    #[help]
+    UnicodeEscapeInByte(
+        #[primary_span]
+        #[label]
+        Span,
+    ),
+    #[diag(parse_empty_unicode_escape)]
+    EmptyUnicodeEscape(
+        #[primary_span]
+        #[label]
+        Span,
+    ),
+    #[diag(parse_zero_chars)]
+    ZeroChars(
+        #[primary_span]
+        #[label]
+        Span,
+    ),
+    #[diag(parse_lone_slash)]
+    LoneSlash(
+        #[primary_span]
+        #[label]
+        Span,
+    ),
+    #[diag(parse_unskipped_whitespace)]
+    UnskippedWhitespace {
+        #[primary_span]
+        span: Span,
+        #[label]
+        char_span: Span,
+        ch: String,
+    },
+    #[diag(parse_multiple_skipped_lines)]
+    MultipleSkippedLinesWarning(
+        #[primary_span]
+        #[label]
+        Span,
+    ),
+    #[diag(parse_more_than_one_char)]
+    MoreThanOneChar {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        note: Option<MoreThanOneCharNote>,
+        #[subdiagnostic]
+        suggestion: MoreThanOneCharSugg,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub enum MoreThanOneCharSugg {
+    #[suggestion(consider_normalized, code = "{normalized}", applicability = "machine-applicable")]
+    NormalizedForm {
+        #[primary_span]
+        span: Span,
+        ch: String,
+        normalized: String,
+    },
+    #[suggestion(remove_non, code = "{ch}", applicability = "maybe-incorrect")]
+    RemoveNonPrinting {
+        #[primary_span]
+        span: Span,
+        ch: String,
+    },
+    #[suggestion(use_double_quotes, code = "{sugg}", applicability = "machine-applicable")]
+    Quotes {
+        #[primary_span]
+        span: Span,
+        is_byte: bool,
+        sugg: String,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub enum MoreThanOneCharNote {
+    #[note(followed_by)]
+    AllCombining {
+        #[primary_span]
+        span: Span,
+        chr: String,
+        len: usize,
+        escaped_marks: String,
+    },
+    #[note(non_printing)]
+    NonPrinting {
+        #[primary_span]
+        span: Span,
+        escaped: String,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub enum NoBraceUnicodeSub {
+    #[suggestion(use_braces, code = "{suggestion}", applicability = "maybe-incorrect")]
+    Suggestion {
+        #[primary_span]
+        span: Span,
+        suggestion: String,
+    },
+    #[help(format_of_unicode)]
+    Help,
 }
 
 #[derive(Subdiagnostic)]

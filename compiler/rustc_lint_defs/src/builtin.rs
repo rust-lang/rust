@@ -4073,7 +4073,8 @@ declare_lint! {
 
 declare_lint! {
     /// The `byte_slice_in_packed_struct_with_derive` lint detects cases where a byte slice field
-    /// (`[u8]`) is used in a `packed` struct that derives one or more built-in traits.
+    /// (`[u8]`) or string slice field (`str`) is used in a `packed` struct that derives one or
+    /// more built-in traits.
     ///
     /// ### Example
     ///
@@ -4091,11 +4092,11 @@ declare_lint! {
     /// ### Explanation
     ///
     /// This was previously accepted but is being phased out, because fields in packed structs are
-    /// now required to implement `Copy` for `derive` to work. Byte slices are a temporary
-    /// exception because certain crates depended on them.
+    /// now required to implement `Copy` for `derive` to work. Byte slices and string slices are a
+    /// temporary exception because certain crates depended on them.
     pub BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
     Warn,
-    "`[u8]` slice used in a packed struct with `derive`",
+    "`[u8]` or `str` used in a packed struct with `derive`",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #107457 <https://github.com/rust-lang/rust/issues/107457>",
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,

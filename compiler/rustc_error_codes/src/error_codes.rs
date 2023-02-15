@@ -286,6 +286,7 @@ E0519: include_str!("./error_codes/E0519.md"),
 E0520: include_str!("./error_codes/E0520.md"),
 E0521: include_str!("./error_codes/E0521.md"),
 E0522: include_str!("./error_codes/E0522.md"),
+E0523: include_str!("./error_codes/E0523.md"),
 E0524: include_str!("./error_codes/E0524.md"),
 E0525: include_str!("./error_codes/E0525.md"),
 E0527: include_str!("./error_codes/E0527.md"),
@@ -622,7 +623,6 @@ E0793: include_str!("./error_codes/E0793.md"),
 //  E0488, // lifetime of variable does not enclose its declaration
 //  E0489, // type/lifetime parameter not in scope here
 //  E0490, // removed: unreachable
-    E0523, // two dependencies have same (crate-name, disambiguator) but different SVH
 //  E0526, // shuffle indices are not constant
 //  E0540, // multiple rustc_deprecated attributes
 //  E0548, // replaced with a generic attribute input check

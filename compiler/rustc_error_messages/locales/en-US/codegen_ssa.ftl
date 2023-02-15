@@ -22,7 +22,7 @@ codegen_ssa_ignoring_output = ignoring -o because multiple .{$extension} files w
 
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
-codegen_ssa_incompatible_linking_modifiers = the linking modifiers `+bundle` and `+whole-archive` are not compatible with each other when generating rlibs
+codegen_ssa_incompatible_linking_modifiers = link modifiers combination `+bundle,+whole-archive` is unstable when generating rlibs
 
 codegen_ssa_add_native_library = failed to add native library {$library_path}: {$error}
 

@@ -396,6 +396,14 @@ impl<T: AsFd> AsFd for crate::sync::Arc<T> {
     }
 }
 
+#[stable(feature = "asfd_rc", since = "CURRENT_RUSTC_VERSION")]
+impl<T: AsFd> AsFd for crate::rc::Rc<T> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        (**self).as_fd()
+    }
+}
+
 #[stable(feature = "asfd_ptrs", since = "1.64.0")]
 impl<T: AsFd> AsFd for Box<T> {
     #[inline]

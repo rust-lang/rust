@@ -220,6 +220,7 @@ fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
         None,
         false,
         false,
+        rustc_errors::TerminalUrl::No,
     ));
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
 

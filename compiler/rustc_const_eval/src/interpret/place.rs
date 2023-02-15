@@ -178,7 +178,7 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
     pub fn fake_alloc_zst(layout: TyAndLayout<'tcx>) -> Self {
         assert!(layout.is_zst());
         let align = layout.align.abi;
-        let ptr = Pointer::from_addr(align.bytes()); // no provenance, absolute address
+        let ptr = Pointer::from_addr_invalid(align.bytes()); // no provenance, absolute address
         MPlaceTy { mplace: MemPlace { ptr, meta: MemPlaceMeta::None }, layout, align }
     }
 
@@ -754,8 +754,8 @@ where
         str: &str,
         kind: MemoryKind<M::MemoryKind>,
         mutbl: Mutability,
-    ) -> MPlaceTy<'tcx, M::Provenance> {
-        let ptr = self.allocate_bytes_ptr(str.as_bytes(), Align::ONE, kind, mutbl);
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
+        let ptr = self.allocate_bytes_ptr(str.as_bytes(), Align::ONE, kind, mutbl)?;
         let meta = Scalar::from_machine_usize(u64::try_from(str.len()).unwrap(), self);
         let mplace = MemPlace { ptr: ptr.into(), meta: MemPlaceMeta::Meta(meta) };
 
@@ -764,7 +764,7 @@ where
             ty::TypeAndMut { ty: self.tcx.types.str_, mutbl },
         );
         let layout = self.layout_of(ty).unwrap();
-        MPlaceTy { mplace, layout, align: layout.align.abi }
+        Ok(MPlaceTy { mplace, layout, align: layout.align.abi })
     }
 
     /// Writes the aggregate to the destination.

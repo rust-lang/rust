@@ -262,7 +262,7 @@ use crate::sys_common::memchr;
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use self::buffered::WriterPanicked;
-#[unstable(feature = "raw_os_error_ty", issue = "none")]
+#[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use self::error::RawOsError;
 pub(crate) use self::stdio::attempt_print_to_stderr;
 #[unstable(feature = "internal_output_capture", issue = "none")]

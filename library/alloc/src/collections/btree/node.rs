@@ -442,6 +442,24 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         // SAFETY: we have exclusive access to the entire node.
         unsafe { &mut *ptr }
     }
+
+    /// Returns a dormant copy of this node with its lifetime erased which can
+    /// be reawakened later.
+    pub fn dormant(&self) -> NodeRef<marker::DormantMut, K, V, Type> {
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
+    }
+}
+
+impl<K, V, Type> NodeRef<marker::DormantMut, K, V, Type> {
+    /// Revert to the unique borrow initially captured.
+    ///
+    /// # Safety
+    ///
+    /// The reborrow must have ended, i.e., the reference returned by `new` and
+    /// all pointers and references derived from it, must not be used anymore.
+    pub unsafe fn awaken<'a>(self) -> NodeRef<marker::Mut<'a>, K, V, Type> {
+        NodeRef { height: self.height, node: self.node, _marker: PhantomData }
+    }
 }
 
 impl<K, V, Type> NodeRef<marker::Dying, K, V, Type> {
@@ -798,6 +816,25 @@ impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeT
         // We can't use Handle::new_kv or Handle::new_edge because we don't know our type
         Handle { node: unsafe { self.node.reborrow_mut() }, idx: self.idx, _marker: PhantomData }
     }
+
+    /// Returns a dormant copy of this handle which can be reawakened later.
+    ///
+    /// See `DormantMutRef` for more details.
+    pub fn dormant(&self) -> Handle<NodeRef<marker::DormantMut, K, V, NodeType>, HandleType> {
+        Handle { node: self.node.dormant(), idx: self.idx, _marker: PhantomData }
+    }
+}
+
+impl<K, V, NodeType, HandleType> Handle<NodeRef<marker::DormantMut, K, V, NodeType>, HandleType> {
+    /// Revert to the unique borrow initially captured.
+    ///
+    /// # Safety
+    ///
+    /// The reborrow must have ended, i.e., the reference returned by `new` and
+    /// all pointers and references derived from it, must not be used anymore.
+    pub unsafe fn awaken<'a>(self) -> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, HandleType> {
+        Handle { node: unsafe { self.node.awaken() }, idx: self.idx, _marker: PhantomData }
+    }
 }
 
 impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, marker::Edge> {
@@ -851,9 +888,11 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// Inserts a new key-value pair between the key-value pairs to the right and left of
     /// this edge. This method assumes that there is enough space in the node for the new
     /// pair to fit.
-    ///
-    /// The returned pointer points to the inserted value.
-    fn insert_fit(&mut self, key: K, val: V) -> *mut V {
+    unsafe fn insert_fit(
+        mut self,
+        key: K,
+        val: V,
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> {
         debug_assert!(self.node.len() < CAPACITY);
         let new_len = self.node.len() + 1;
 
@@ -862,7 +901,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
             slice_insert(self.node.val_area_mut(..new_len), self.idx, val);
             *self.node.len_mut() = new_len as u16;
 
-            self.node.val_area_mut(self.idx).assume_init_mut()
+            Handle::new_kv(self.node, self.idx)
         }
     }
 }
@@ -871,21 +910,26 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// Inserts a new key-value pair between the key-value pairs to the right and left of
     /// this edge. This method splits the node if there isn't enough room.
     ///
-    /// The returned pointer points to the inserted value.
+    /// Returns a dormant handle to the inserted node which can be reawakened
+    /// once splitting is complete.
     fn insert<A: Allocator + Clone>(
-        mut self,
+        self,
         key: K,
         val: V,
         alloc: A,
-    ) -> (Option<SplitResult<'a, K, V, marker::Leaf>>, *mut V) {
+    ) -> (
+        Option<SplitResult<'a, K, V, marker::Leaf>>,
+        Handle<NodeRef<marker::DormantMut, K, V, marker::Leaf>, marker::KV>,
+    ) {
         if self.node.len() < CAPACITY {
-            let val_ptr = self.insert_fit(key, val);
-            (None, val_ptr)
+            // SAFETY: There is enough space in the node for insertion.
+            let handle = unsafe { self.insert_fit(key, val) };
+            (None, handle.dormant())
         } else {
             let (middle_kv_idx, insertion) = splitpoint(self.idx);
             let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
             let mut result = middle.split(alloc);
-            let mut insertion_edge = match insertion {
+            let insertion_edge = match insertion {
                 LeftOrRight::Left(insert_idx) => unsafe {
                     Handle::new_edge(result.left.reborrow_mut(), insert_idx)
                 },
@@ -893,8 +937,10 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
                     Handle::new_edge(result.right.borrow_mut(), insert_idx)
                 },
             };
-            let val_ptr = insertion_edge.insert_fit(key, val);
-            (Some(result), val_ptr)
+            // SAFETY: We just split the node, so there is enough space for
+            // insertion.
+            let handle = unsafe { insertion_edge.insert_fit(key, val).dormant() };
+            (Some(result), handle)
         }
     }
 }
@@ -976,21 +1022,31 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
         key: K,
         value: V,
         alloc: A,
-    ) -> (Option<SplitResult<'a, K, V, marker::LeafOrInternal>>, *mut V) {
-        let (mut split, val_ptr) = match self.insert(key, value, alloc.clone()) {
-            (None, val_ptr) => return (None, val_ptr),
-            (Some(split), val_ptr) => (split.forget_node_type(), val_ptr),
+        split_root: impl FnOnce(SplitResult<'a, K, V, marker::LeafOrInternal>),
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> {
+        let (mut split, handle) = match self.insert(key, value, alloc.clone()) {
+            // SAFETY: we have finished splitting and can now re-awaken the
+            // handle to the inserted element.
+            (None, handle) => return unsafe { handle.awaken() },
+            (Some(split), handle) => (split.forget_node_type(), handle),
         };
 
         loop {
             split = match split.left.ascend() {
                 Ok(parent) => {
                     match parent.insert(split.kv.0, split.kv.1, split.right, alloc.clone()) {
-                        None => return (None, val_ptr),
+                        // SAFETY: we have finished splitting and can now re-awaken the
+                        // handle to the inserted element.
+                        None => return unsafe { handle.awaken() },
                         Some(split) => split.forget_node_type(),
                     }
                 }
-                Err(root) => return (Some(SplitResult { left: root, ..split }), val_ptr),
+                Err(root) => {
+                    split_root(SplitResult { left: root, ..split });
+                    // SAFETY: we have finished splitting and can now re-awaken the
+                    // handle to the inserted element.
+                    return unsafe { handle.awaken() };
+                }
             };
         }
     }
@@ -1042,6 +1098,14 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
         debug_assert!(self.idx < self.node.len());
         let leaf = self.node.into_leaf_mut();
         unsafe { leaf.vals.get_unchecked_mut(self.idx).assume_init_mut() }
+    }
+
+    pub fn into_kv_valmut(self) -> (&'a K, &'a mut V) {
+        debug_assert!(self.idx < self.node.len());
+        let leaf = self.node.into_leaf_mut();
+        let k = unsafe { leaf.keys.get_unchecked(self.idx).assume_init_ref() };
+        let v = unsafe { leaf.vals.get_unchecked_mut(self.idx).assume_init_mut() };
+        (k, v)
     }
 }
 
@@ -1667,6 +1731,7 @@ pub mod marker {
 
     pub enum Owned {}
     pub enum Dying {}
+    pub enum DormantMut {}
     pub struct Immut<'a>(PhantomData<&'a ()>);
     pub struct Mut<'a>(PhantomData<&'a mut ()>);
     pub struct ValMut<'a>(PhantomData<&'a mut ()>);
@@ -1688,6 +1753,7 @@ pub mod marker {
     impl<'a> BorrowType for Immut<'a> {}
     impl<'a> BorrowType for Mut<'a> {}
     impl<'a> BorrowType for ValMut<'a> {}
+    impl BorrowType for DormantMut {}
 
     pub enum KV {}
     pub enum Edge {}

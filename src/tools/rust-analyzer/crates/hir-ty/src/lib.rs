@@ -20,7 +20,6 @@ mod lower;
 mod mapping;
 mod tls;
 mod utils;
-mod walk;
 pub mod db;
 pub mod diagnostics;
 pub mod display;
@@ -40,11 +39,14 @@ use std::sync::Arc;
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
-    NoSolution,
+    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
+    NoSolution, TyData,
 };
 use hir_def::{expr::ExprId, type_ref::Rawness, TypeOrConstParamId};
 use hir_expand::name;
 use itertools::Either;
+use la_arena::{Arena, Idx};
+use rustc_hash::FxHashSet;
 use traits::FnTrait;
 use utils::Generics;
 
@@ -71,7 +73,6 @@ pub use mapping::{
 };
 pub use traits::TraitEnvironment;
 pub use utils::{all_super_traits, is_fn_unsafe_to_call};
-pub use walk::TypeWalk;
 
 pub use chalk_ir::{
     cast::Cast, AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
@@ -107,6 +108,7 @@ pub type GenericArgData = chalk_ir::GenericArgData<Interner>;
 
 pub type Ty = chalk_ir::Ty<Interner>;
 pub type TyKind = chalk_ir::TyKind<Interner>;
+pub type TypeFlags = chalk_ir::TypeFlags;
 pub type DynTy = chalk_ir::DynTy<Interner>;
 pub type FnPointer = chalk_ir::FnPointer<Interner>;
 // pub type FnSubst = chalk_ir::FnSubst<Interner>;
@@ -289,21 +291,23 @@ impl TypeFoldable<Interner> for CallableSig {
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {
-    ReturnTypeImplTrait(hir_def::FunctionId, u16),
+    ReturnTypeImplTrait(hir_def::FunctionId, RpitId),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ReturnTypeImplTraits {
-    pub(crate) impl_traits: Vec<ReturnTypeImplTrait>,
+    pub(crate) impl_traits: Arena<ReturnTypeImplTrait>,
 }
 
 has_interner!(ReturnTypeImplTraits);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub(crate) struct ReturnTypeImplTrait {
+pub struct ReturnTypeImplTrait {
     pub(crate) bounds: Binders<Vec<QuantifiedWhereClause>>,
 }
+
+pub type RpitId = Idx<ReturnTypeImplTrait>;
 
 pub fn static_lifetime() -> Lifetime {
     LifetimeData::Static.intern(Interner)
@@ -562,4 +566,69 @@ pub fn callable_sig_from_fnonce(
         args_ty.as_tuple()?.iter(Interner).map(|it| it.assert_ty_ref(Interner)).cloned().collect();
 
     Some(CallableSig::from_params_and_return(params, ret_ty, false, Safety::Safe))
+}
+
+struct PlaceholderCollector<'db> {
+    db: &'db dyn HirDatabase,
+    placeholders: FxHashSet<TypeOrConstParamId>,
+}
+
+impl PlaceholderCollector<'_> {
+    fn collect(&mut self, idx: PlaceholderIndex) {
+        let id = from_placeholder_idx(self.db, idx);
+        self.placeholders.insert(id);
+    }
+}
+
+impl TypeVisitor<Interner> for PlaceholderCollector<'_> {
+    type BreakTy = ();
+
+    fn as_dyn(&mut self) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy> {
+        self
+    }
+
+    fn interner(&self) -> Interner {
+        Interner
+    }
+
+    fn visit_ty(
+        &mut self,
+        ty: &Ty,
+        outer_binder: DebruijnIndex,
+    ) -> std::ops::ControlFlow<Self::BreakTy> {
+        let has_placeholder_bits = TypeFlags::HAS_TY_PLACEHOLDER | TypeFlags::HAS_CT_PLACEHOLDER;
+        let TyData { kind, flags } = ty.data(Interner);
+
+        if let TyKind::Placeholder(idx) = kind {
+            self.collect(*idx);
+        } else if flags.intersects(has_placeholder_bits) {
+            return ty.super_visit_with(self, outer_binder);
+        } else {
+            // Fast path: don't visit inner types (e.g. generic arguments) when `flags` indicate
+            // that there are no placeholders.
+        }
+
+        std::ops::ControlFlow::Continue(())
+    }
+
+    fn visit_const(
+        &mut self,
+        constant: &chalk_ir::Const<Interner>,
+        _outer_binder: DebruijnIndex,
+    ) -> std::ops::ControlFlow<Self::BreakTy> {
+        if let chalk_ir::ConstValue::Placeholder(idx) = constant.data(Interner).value {
+            self.collect(idx);
+        }
+        std::ops::ControlFlow::Continue(())
+    }
+}
+
+/// Returns unique placeholders for types and consts contained in `value`.
+pub fn collect_placeholders<T>(value: &T, db: &dyn HirDatabase) -> Vec<TypeOrConstParamId>
+where
+    T: ?Sized + TypeVisitable<Interner>,
+{
+    let mut collector = PlaceholderCollector { db, placeholders: FxHashSet::default() };
+    value.visit_with(&mut collector, DebruijnIndex::INNERMOST);
+    collector.placeholders.into_iter().collect()
 }

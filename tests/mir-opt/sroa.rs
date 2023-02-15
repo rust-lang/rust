@@ -68,8 +68,13 @@ fn f(a: *const u32) {
     println!("{}", unsafe { *a.add(2) });
 }
 
+// `f` uses the `&e.a` to access `e.c`. This is UB according to Miri today; however,
+// T-opsem has not finalized that decision and as such rustc should not rely on
+// it. If SROA were to rely on it, it would be (almost) correct to turn `e` into
+// three distinct locals - one for each field - and pass a reference to only one
+// of them to `f`. However, this would lead to a miscompilation because `b` and `c`
+// might no longer appear right after `a` in memory.
 pub fn escaping() {
-    // Verify this struct is not flattened.
     f(&Escaping { a: 1, b: 2, c: g() }.a);
 }
 
@@ -87,6 +92,13 @@ fn ref_copies(x: &Foo) {
     let u = y.c;
 }
 
+fn constant() {
+    const U: (usize, u8) = (5, 9);
+    let y = U;
+    let t = y.0;
+    let u = y.1;
+}
+
 fn main() {
     dropping();
     enums(5);
@@ -96,6 +108,7 @@ fn main() {
     escaping();
     copies(Foo { a: 5, b: (), c: "a", d: Some(-4) });
     ref_copies(&Foo { a: 5, b: (), c: "a", d: Some(-4) });
+    constant();
 }
 
 // EMIT_MIR sroa.dropping.ScalarReplacementOfAggregates.diff
@@ -106,3 +119,4 @@ fn main() {
 // EMIT_MIR sroa.escaping.ScalarReplacementOfAggregates.diff
 // EMIT_MIR sroa.copies.ScalarReplacementOfAggregates.diff
 // EMIT_MIR sroa.ref_copies.ScalarReplacementOfAggregates.diff
+// EMIT_MIR sroa.constant.ScalarReplacementOfAggregates.diff

@@ -481,7 +481,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
         generics: &'tcx ty::Generics,
         trait_item_def_id: DefId,
     }
-    impl<'tcx> ty::TypeVisitor<'tcx> for ReferencesOnlyParentGenerics<'tcx> {
+    impl<'tcx> ty::ir::TypeVisitor<TyCtxt<'tcx>> for ReferencesOnlyParentGenerics<'tcx> {
         type BreakTy = ();
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             // If this is a parameter from the trait item's own generics, then bail
@@ -554,6 +554,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
         subst_and_check_impossible_predicates,
+        check_tys_might_be_eq: misc::check_tys_might_be_eq,
         is_impossible_method,
         ..*providers
     };

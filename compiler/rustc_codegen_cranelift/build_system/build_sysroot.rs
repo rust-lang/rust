@@ -248,6 +248,9 @@ fn build_clif_sysroot_for_triple(
         build_cmd.arg("--release");
     }
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
+    if compiler.triple.contains("apple") {
+        build_cmd.env("CARGO_PROFILE_RELEASE_SPLIT_DEBUGINFO", "packed");
+    }
     spawn_and_wait(build_cmd);
 
     for entry in fs::read_dir(build_dir.join("deps")).unwrap() {

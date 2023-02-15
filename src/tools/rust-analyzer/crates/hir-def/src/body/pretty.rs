@@ -80,7 +80,7 @@ impl<'a> Write for Printer<'a> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for line in s.split_inclusive('\n') {
             if self.needs_indent {
-                match self.buf.chars().rev().skip_while(|ch| *ch == ' ').next() {
+                match self.buf.chars().rev().find(|ch| *ch != ' ') {
                     Some('\n') | None => {}
                     _ => self.buf.push('\n'),
                 }
@@ -113,7 +113,7 @@ impl<'a> Printer<'a> {
     }
 
     fn newline(&mut self) {
-        match self.buf.chars().rev().skip_while(|ch| *ch == ' ').next() {
+        match self.buf.chars().rev().find(|ch| *ch != ' ') {
             Some('\n') | None => {}
             _ => writeln!(self).unwrap(),
         }

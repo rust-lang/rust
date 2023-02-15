@@ -16,7 +16,7 @@ use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::util::ExplicitSelf;
 use rustc_middle::ty::{
-    self, DefIdTree, InternalSubsts, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
+    self, ir::TypeFolder, DefIdTree, InternalSubsts, Ty, TypeFoldable, TypeSuperFoldable,
 };
 use rustc_middle::ty::{GenericParamDefKind, ToPredicate, TyCtxt};
 use rustc_span::Span;
@@ -246,7 +246,7 @@ fn compare_method_predicate_entailment<'tcx>(
 
     let mut wf_tys = FxIndexSet::default();
 
-    let unnormalized_impl_sig = infcx.replace_bound_vars_with_fresh_vars(
+    let unnormalized_impl_sig = infcx.instantiate_binder_with_fresh_vars(
         impl_m_span,
         infer::HigherRankedType,
         tcx.fn_sig(impl_m.def_id).subst_identity(),
@@ -464,8 +464,8 @@ struct RemapLateBound<'a, 'tcx> {
     mapping: &'a FxHashMap<ty::BoundRegionKind, ty::BoundRegionKind>,
 }
 
-impl<'tcx> TypeFolder<'tcx> for RemapLateBound<'_, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -640,7 +640,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let impl_sig = ocx.normalize(
         &norm_cause,
         param_env,
-        infcx.replace_bound_vars_with_fresh_vars(
+        infcx.instantiate_binder_with_fresh_vars(
             return_span,
             infer::HigherRankedType,
             tcx.fn_sig(impl_m.def_id).subst_identity(),
@@ -786,13 +786,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     }
                     let Some(ty::ReEarlyBound(e)) = map.get(&region.into()).map(|r| r.expect_region().kind())
                     else {
-                        tcx
-                            .sess
-                            .delay_span_bug(
-                                return_span,
-                                "expected ReFree to map to ReEarlyBound"
-                            );
-                        return tcx.lifetimes.re_static;
+                        return tcx.re_error_with_message(return_span, "expected ReFree to map to ReEarlyBound")
                     };
                     tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
                         def_id: e.def_id,
@@ -835,14 +829,14 @@ impl<'a, 'tcx> ImplTraitInTraitCollector<'a, 'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.ocx.infcx.tcx
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Alias(ty::Projection, proj) = ty.kind()
-            && self.tcx().def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder
+            && self.interner().def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder
         {
             if let Some((ty, _)) = self.types.get(&proj.def_id) {
                 return *ty;
@@ -858,7 +852,7 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
             });
             self.types.insert(proj.def_id, (infer_ty, proj.substs));
             // Recurse into bounds
-            for (pred, pred_span) in self.tcx().bound_explicit_item_bounds(proj.def_id).subst_iter_copied(self.tcx(), proj.substs) {
+            for (pred, pred_span) in self.interner().bound_explicit_item_bounds(proj.def_id).subst_iter_copied(self.interner(), proj.substs) {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
                     &ObligationCause::misc(self.span, self.body_id),
@@ -867,7 +861,7 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
                 );
 
                 self.ocx.register_obligation(traits::Obligation::new(
-                    self.tcx(),
+                    self.interner(),
                     ObligationCause::new(
                         self.span,
                         self.body_id,
@@ -1933,10 +1927,10 @@ pub(super) fn check_type_bounds<'tcx>(
             let kind = ty::BoundTyKind::Param(param.def_id, param.name);
             let bound_var = ty::BoundVariableKind::Ty(kind);
             bound_vars.push(bound_var);
-            tcx.mk_ty(ty::Bound(
+            tcx.mk_bound(
                 ty::INNERMOST,
                 ty::BoundTy { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
-            ))
+            )
             .into()
         }
         GenericParamDefKind::Lifetime => {

@@ -28,7 +28,7 @@ use RibKind::*;
 
 type Visibility = ty::Visibility<LocalDefId>;
 
-impl<'a> Resolver<'a> {
+impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// A generic scope visitor.
     /// Visits scopes in order to resolve some identifier in them or perform other actions.
     /// If the callback returns `Some` result, we stop visiting scopes and return it.

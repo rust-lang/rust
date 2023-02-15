@@ -22,7 +22,7 @@ pub fn recompute_applicable_impls<'tcx>(
     let impl_may_apply = |impl_def_id| {
         let ocx = ObligationCtxt::new_in_snapshot(infcx);
         let placeholder_obligation =
-            infcx.replace_bound_vars_with_placeholders(obligation.predicate);
+            infcx.instantiate_binder_with_placeholders(obligation.predicate);
         let obligation_trait_ref =
             ocx.normalize(&ObligationCause::dummy(), param_env, placeholder_obligation.trait_ref);
 
@@ -47,11 +47,11 @@ pub fn recompute_applicable_impls<'tcx>(
     let param_env_candidate_may_apply = |poly_trait_predicate: ty::PolyTraitPredicate<'tcx>| {
         let ocx = ObligationCtxt::new_in_snapshot(infcx);
         let placeholder_obligation =
-            infcx.replace_bound_vars_with_placeholders(obligation.predicate);
+            infcx.instantiate_binder_with_placeholders(obligation.predicate);
         let obligation_trait_ref =
             ocx.normalize(&ObligationCause::dummy(), param_env, placeholder_obligation.trait_ref);
 
-        let param_env_predicate = infcx.replace_bound_vars_with_fresh_vars(
+        let param_env_predicate = infcx.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
             LateBoundRegionConversionTime::HigherRankedType,
             poly_trait_predicate,

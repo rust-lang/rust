@@ -4,6 +4,7 @@ pub use self::LateBoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
+pub use combine::ObligationEmittingRelation;
 
 use self::opaque_types::OpaqueTypeStorage;
 pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
@@ -25,7 +26,7 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BoundVarReplacerDelegate;
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::fold::{ir::TypeFolder, TypeFoldable, TypeSuperFoldable};
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, SubstsRef};
 use rustc_middle::ty::visit::TypeVisitable;
@@ -995,7 +996,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         Ok(self.commit_if_ok(|_snapshot| {
             let ty::SubtypePredicate { a_is_expected, a, b } =
-                self.replace_bound_vars_with_placeholders(predicate);
+                self.instantiate_binder_with_placeholders(predicate);
 
             let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
 
@@ -1008,7 +1009,7 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &traits::ObligationCause<'tcx>,
         predicate: ty::PolyRegionOutlivesPredicate<'tcx>,
     ) {
-        let ty::OutlivesPredicate(r_a, r_b) = self.replace_bound_vars_with_placeholders(predicate);
+        let ty::OutlivesPredicate(r_a, r_b) = self.instantiate_binder_with_placeholders(predicate);
         let origin =
             SubregionOrigin::from_obligation_cause(cause, || RelateRegionParamBound(cause.span));
         self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
@@ -1447,7 +1448,14 @@ impl<'tcx> InferCtxt<'tcx> {
         value
     }
 
-    pub fn replace_bound_vars_with_fresh_vars<T>(
+    // Instantiates the bound variables in a given binder with fresh inference
+    // variables in the current universe.
+    //
+    // Use this method if you'd like to find some substitution of the binder's
+    // variables (e.g. during a method call). If there isn't a [`LateBoundRegionConversionTime`]
+    // that corresponds to your use case, consider whether or not you should
+    // use [`InferCtxt::instantiate_binder_with_placeholders`] instead.
+    pub fn instantiate_binder_with_fresh_vars<T>(
         &self,
         span: Span,
         lbrct: LateBoundRegionConversionTime,
@@ -1844,8 +1852,8 @@ struct InferenceLiteralEraser<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> TypeFolder<'tcx> for InferenceLiteralEraser<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceLiteralEraser<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1862,8 +1870,8 @@ struct ShallowResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ShallowResolver<'a, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -2056,21 +2064,21 @@ fn replace_param_and_infer_substs_with_placeholder<'tcx>(
         idx: u32,
     }
 
-    impl<'tcx> TypeFolder<'tcx> for ReplaceParamAndInferWithPlaceholder<'tcx> {
-        fn tcx(&self) -> TyCtxt<'tcx> {
+    impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceParamAndInferWithPlaceholder<'tcx> {
+        fn interner(&self) -> TyCtxt<'tcx> {
             self.tcx
         }
 
         fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
             if let ty::Infer(_) = t.kind() {
-                self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+                self.tcx.mk_placeholder(ty::PlaceholderType {
                     universe: ty::UniverseIndex::ROOT,
                     name: ty::BoundTyKind::Anon({
                         let idx = self.idx;
                         self.idx += 1;
                         idx
                     }),
-                }))
+                })
             } else {
                 t.super_fold_with(self)
             }

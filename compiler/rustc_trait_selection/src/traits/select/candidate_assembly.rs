@@ -94,7 +94,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_candidates_for_transmutability(obligation, &mut candidates);
             } else if lang_items.tuple_trait() == Some(def_id) {
                 self.assemble_candidate_for_tuple(obligation, &mut candidates);
-            } else if lang_items.pointer_sized() == Some(def_id) {
+            } else if lang_items.pointer_like() == Some(def_id) {
                 self.assemble_candidate_for_ptr_sized(obligation, &mut candidates);
             } else {
                 if lang_items.clone_trait() == Some(def_id) {
@@ -488,7 +488,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
             let placeholder_trait_predicate =
-                self.infcx.replace_bound_vars_with_placeholders(poly_trait_predicate);
+                self.infcx.instantiate_binder_with_placeholders(poly_trait_predicate);
 
             // Count only those upcast versions that match the trait-ref
             // we are looking for. Specifically, do not only check for the

@@ -5,7 +5,10 @@ use std::{
     time::Instant,
 };
 
-use crate::line_index::{LineEndings, LineIndex, PositionEncoding};
+use crate::{
+    cli::load_cargo::ProcMacroServerChoice,
+    line_index::{LineEndings, LineIndex, PositionEncoding},
+};
 use hir::Name;
 use ide::{
     LineCol, MonikerDescriptorKind, StaticIndex, StaticIndexedFile, TextRange, TokenId,
@@ -31,7 +34,7 @@ impl flags::Scip {
         let no_progress = &|s| (eprintln!("rust-analyzer: Loading {s}"));
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: true,
-            with_proc_macro: true,
+            with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: true,
         };
         let path = vfs::AbsPathBuf::assert(env::current_dir()?.join(&self.path));

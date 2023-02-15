@@ -2,10 +2,8 @@ error[E0271]: expected `test` to be a fn item that returns `Pin<Box<dyn Future<O
   --> $DIR/issue-98604.rs:9:5
    |
 LL |     Box::new(test) as AsyncFnPtr;
-   |     ^^^^^^^^^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found opaque type
+   |     ^^^^^^^^^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found future
    |
-   = note:   expected struct `Pin<Box<(dyn Future<Output = ()> + 'static)>>`
-           found opaque type `impl Future<Output = ()>`
    = note: required for the cast from `fn() -> impl Future<Output = ()> {test}` to the object type `dyn Fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>>`
 
 error: aborting due to previous error

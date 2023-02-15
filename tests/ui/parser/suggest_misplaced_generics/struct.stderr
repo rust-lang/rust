@@ -1,0 +1,14 @@
+error: expected identifier, found `<`
+  --> $DIR/struct.rs:5:7
+   |
+LL | struct<T> Foo { x: T }
+   |       ^ expected identifier
+   |
+help: place the generic parameter name after the struct name
+   |
+LL - struct<T> Foo { x: T }
+LL + struct Foo<T> { x: T }
+   |
+
+error: aborting due to previous error
+

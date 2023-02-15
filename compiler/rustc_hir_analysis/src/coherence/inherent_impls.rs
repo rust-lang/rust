@@ -57,7 +57,7 @@ const ADD_ATTR: &str =
     "alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items";
 
 impl<'tcx> InherentCollect<'tcx> {
-    fn check_def_id(&mut self, item: &hir::Item<'_>, self_ty: Ty<'tcx>, def_id: DefId) {
+    fn check_def_id(&mut self, item: &hir::Item<'_>, self_ty: Ty<'tcx>, def_id: DefId, span: Span) {
         let impl_def_id = item.owner_id;
         if let Some(def_id) = def_id.as_local() {
             // Add the implementation to the mapping from implementation to base
@@ -76,12 +76,12 @@ impl<'tcx> InherentCollect<'tcx> {
             if !self.tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls) {
                 struct_span_err!(
                     self.tcx.sess,
-                    item.span,
+                    span,
                     E0390,
                     "cannot define inherent `impl` for a type outside of the crate where the type is defined",
                 )
                 .help(INTO_DEFINING_CRATE)
-                .span_help(item.span, ADD_ATTR_TO_TY)
+                .span_help(span, ADD_ATTR_TO_TY)
                 .emit();
                 return;
             }
@@ -93,12 +93,12 @@ impl<'tcx> InherentCollect<'tcx> {
                 {
                     struct_span_err!(
                         self.tcx.sess,
-                        item.span,
+                        span,
                         E0390,
                         "cannot define inherent `impl` for a type outside of the crate where the type is defined",
                     )
                     .help(INTO_DEFINING_CRATE)
-                    .span_help(impl_item.span, ADD_ATTR)
+                    .span_help(self.tcx.hir().span(impl_item.id.hir_id()), ADD_ATTR)
                     .emit();
                     return;
                 }
@@ -112,12 +112,12 @@ impl<'tcx> InherentCollect<'tcx> {
         } else {
             struct_span_err!(
                 self.tcx.sess,
-                item.span,
+                span,
                 E0116,
                 "cannot define inherent `impl` for a type outside of the crate \
                               where the type is defined"
             )
-            .span_label(item.span, "impl for type defined outside of crate.")
+            .span_label(span, "impl for type defined outside of crate.")
             .note("define and implement a trait or new type instead")
             .emit();
         }
@@ -182,29 +182,30 @@ impl<'tcx> InherentCollect<'tcx> {
         }
 
         let item = self.tcx.hir().item(id);
-        let hir::ItemKind::Impl(hir::Impl { of_trait: None, self_ty: ty, items, .. }) = item.kind else {
+        let impl_span = self.tcx.hir().span(id.hir_id());
+        let hir::ItemKind::Impl(hir::Impl { of_trait: None, items, .. }) = item.kind else {
             return;
         };
 
         let self_ty = self.tcx.type_of(item.owner_id);
         match *self_ty.kind() {
             ty::Adt(def, _) => {
-                self.check_def_id(item, self_ty, def.did());
+                self.check_def_id(item, self_ty, def.did(), impl_span);
             }
             ty::Foreign(did) => {
-                self.check_def_id(item, self_ty, did);
+                self.check_def_id(item, self_ty, did, impl_span);
             }
             ty::Dynamic(data, ..) if data.principal_def_id().is_some() => {
-                self.check_def_id(item, self_ty, data.principal_def_id().unwrap());
+                self.check_def_id(item, self_ty, data.principal_def_id().unwrap(), impl_span);
             }
             ty::Dynamic(..) => {
                 struct_span_err!(
                     self.tcx.sess,
-                    ty.span,
+                    impl_span,
                     E0785,
                     "cannot define inherent `impl` for a dyn auto trait"
                 )
-                .span_label(ty.span, "impl requires at least one non-auto trait")
+                .span_label(impl_span, "impl requires at least one non-auto trait")
                 .note("define and implement a new trait or type instead")
                 .emit();
             }
@@ -221,17 +222,17 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Never
             | ty::FnPtr(_)
             | ty::Tuple(..) => {
-                self.check_primitive_impl(item.owner_id.def_id, self_ty, items, ty.span)
+                self.check_primitive_impl(item.owner_id.def_id, self_ty, items, impl_span)
             }
             ty::Alias(..) | ty::Param(_) => {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
-                    ty.span,
+                    impl_span,
                     E0118,
                     "no nominal type found for inherent implementation"
                 );
 
-                err.span_label(ty.span, "impl requires a nominal type")
+                err.span_label(impl_span, "impl requires a nominal type")
                     .note("either implement a trait on it or create a newtype to wrap it instead");
 
                 err.emit();

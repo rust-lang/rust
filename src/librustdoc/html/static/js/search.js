@@ -142,13 +142,11 @@ function initSearch(rawSearchIndex) {
     }
 
     function itemTypeFromName(typename) {
-        for (let i = 0, len = itemTypes.length; i < len; ++i) {
-            if (itemTypes[i] === typename) {
-                return i;
-            }
+        const index = itemTypes.findIndex(i => i === typename);
+        if (index < 0) {
+            throw new Error("Unknown type filter `" + typename + "`");
         }
-
-        throw new Error("Unknown type filter `" + typename + "`");
+        return index;
     }
 
     /**
@@ -1941,6 +1939,7 @@ function initSearch(rawSearchIndex) {
          * @type {Array<string>}
          */
         const searchWords = [];
+        const charA = "A".charCodeAt(0);
         let i, word;
         let currentIndex = 0;
         let id = 0;
@@ -1955,7 +1954,7 @@ function initSearch(rawSearchIndex) {
             /**
              * The raw search data for a given crate. `n`, `t`, `d`, and `q`, `i`, and `f`
              * are arrays with the same length. n[i] contains the name of an item.
-             * t[i] contains the type of that item (as a small integer that represents an
+             * t[i] contains the type of that item (as a string of characters that represent an
              * offset in `itemTypes`). d[i] contains the description of that item.
              *
              * q[i] contains the full path of the item, or an empty string indicating
@@ -1982,7 +1981,7 @@ function initSearch(rawSearchIndex) {
              *   doc: string,
              *   a: Object,
              *   n: Array<string>,
-             *   t: Array<Number>,
+             *   t: String,
              *   d: Array<string>,
              *   q: Array<string>,
              *   i: Array<Number>,
@@ -2011,7 +2010,7 @@ function initSearch(rawSearchIndex) {
             searchIndex.push(crateRow);
             currentIndex += 1;
 
-            // an array of (Number) item types
+            // a String of one character item type codes
             const itemTypes = crateCorpus.t;
             // an array of (String) item names
             const itemNames = crateCorpus.n;
@@ -2062,7 +2061,7 @@ function initSearch(rawSearchIndex) {
                 }
                 const row = {
                     crate: crate,
-                    ty: itemTypes[i],
+                    ty: itemTypes.charCodeAt(i) - charA,
                     name: itemNames[i],
                     path: itemPaths[i] ? itemPaths[i] : lastPath,
                     desc: itemDescs[i],

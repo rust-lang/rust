@@ -945,7 +945,6 @@ pub(crate) enum CrateError {
     ExternLocationNotFile(Symbol, PathBuf),
     MultipleCandidates(Symbol, CrateFlavor, Vec<PathBuf>),
     SymbolConflictsCurrent(Symbol),
-    SymbolConflictsOthers(Symbol),
     StableCrateIdCollision(Symbol, Symbol),
     DlOpen(String),
     DlSym(String),
@@ -988,9 +987,6 @@ impl CrateError {
             }
             CrateError::SymbolConflictsCurrent(root_name) => {
                 sess.emit_err(errors::SymbolConflictsCurrent { span, crate_name: root_name });
-            }
-            CrateError::SymbolConflictsOthers(root_name) => {
-                sess.emit_err(errors::SymbolConflictsOthers { span, crate_name: root_name });
             }
             CrateError::StableCrateIdCollision(crate_name0, crate_name1) => {
                 sess.emit_err(errors::StableCrateIdCollision { span, crate_name0, crate_name1 });

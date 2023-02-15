@@ -1,5 +1,5 @@
 use crate::elaborate_drops::DropFlagState;
-use rustc_middle::mir::{self, Body, Location};
+use rustc_middle::mir::{self, Body, Location, Terminator, TerminatorKind};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
@@ -192,6 +192,17 @@ pub fn drop_flag_effects_for_location<'tcx, F>(
         debug!("moving out of path {:?}", move_data.move_paths[path]);
 
         on_all_children_bits(tcx, body, move_data, path, |mpi| callback(mpi, DropFlagState::Absent))
+    }
+
+    // Drop does not count as a move but we should still consider the variable uninitialized.
+    if let Some(Terminator { kind: TerminatorKind::Drop { place, .. }, .. }) =
+        body.stmt_at(loc).right()
+    {
+        if let LookupResult::Exact(mpi) = move_data.rev_lookup.find(place.as_ref()) {
+            on_all_children_bits(tcx, body, move_data, mpi, |mpi| {
+                callback(mpi, DropFlagState::Absent)
+            })
+        }
     }
 
     debug!("drop_flag_effects: assignment for location({:?})", loc);

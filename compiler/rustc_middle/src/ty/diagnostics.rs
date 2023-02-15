@@ -3,9 +3,10 @@
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    visit::TypeVisitable, AliasTy, Const, ConstKind, DefIdTree, FallibleTypeFolder, InferConst,
-    InferTy, Opaque, PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitor,
+    ir::{FallibleTypeFolder, TypeVisitor},
+    visit::TypeVisitable,
+    AliasTy, Const, ConstKind, DefIdTree, InferConst, InferTy, Opaque, PolyTraitPredicate,
+    Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -193,6 +194,9 @@ fn suggest_removing_unsized_bound(
 }
 
 /// Suggest restricting a type param with a new bound.
+///
+/// If `span_to_replace` is provided, then that span will be replaced with the
+/// `constraint`. If one wasn't provided, then the full bound will be suggested.
 pub fn suggest_constraining_type_param(
     tcx: TyCtxt<'_>,
     generics: &hir::Generics<'_>,
@@ -200,12 +204,14 @@ pub fn suggest_constraining_type_param(
     param_name: &str,
     constraint: &str,
     def_id: Option<DefId>,
+    span_to_replace: Option<Span>,
 ) -> bool {
     suggest_constraining_type_params(
         tcx,
         generics,
         err,
         [(param_name, constraint, def_id)].into_iter(),
+        span_to_replace,
     )
 }
 
@@ -215,6 +221,7 @@ pub fn suggest_constraining_type_params<'a>(
     generics: &hir::Generics<'_>,
     err: &mut Diagnostic,
     param_names_and_constraints: impl Iterator<Item = (&'a str, &'a str, Option<DefId>)>,
+    span_to_replace: Option<Span>,
 ) -> bool {
     let mut grouped = FxHashMap::default();
     param_names_and_constraints.for_each(|(param_name, constraint, def_id)| {
@@ -253,7 +260,9 @@ pub fn suggest_constraining_type_params<'a>(
         let mut suggest_restrict = |span, bound_list_non_empty| {
             suggestions.push((
                 span,
-                if bound_list_non_empty {
+                if span_to_replace.is_some() {
+                    constraint.clone()
+                } else if bound_list_non_empty {
                     format!(" + {}", constraint)
                 } else {
                     format!(" {}", constraint)
@@ -261,6 +270,11 @@ pub fn suggest_constraining_type_params<'a>(
                 SuggestChangingConstraintsMessage::RestrictBoundFurther,
             ))
         };
+
+        if let Some(span) = span_to_replace {
+            suggest_restrict(span, true);
+            continue;
+        }
 
         // When the type parameter has been provided bounds
         //
@@ -447,7 +461,7 @@ pub struct IsSuggestableVisitor<'tcx> {
     infer_suggestable: bool,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
     type BreakTy = ();
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -522,10 +536,10 @@ pub struct MakeSuggestableFolder<'tcx> {
     infer_suggestable: bool,
 }
 
-impl<'tcx> FallibleTypeFolder<'tcx> for MakeSuggestableFolder<'tcx> {
+impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
     type Error = ();
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

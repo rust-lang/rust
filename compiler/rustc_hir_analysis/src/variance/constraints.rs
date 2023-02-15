@@ -409,6 +409,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // way early-bound regions do, so we skip them here.
             }
 
+            ty::ReError(_) => {}
+
             ty::ReFree(..) | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReErased => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.

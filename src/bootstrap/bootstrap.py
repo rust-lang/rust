@@ -87,14 +87,16 @@ def _download(path, url, probably_big, verbose, exception):
         # If curl is not present on Win32, we should not sys.exit
         #   but raise `CalledProcessError` or `OSError` instead
         require(["curl", "--version"], exception=platform_is_win32)
-        run(["curl", option,
-             "-L", # Follow redirect.
-             "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
-             "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
-             "--retry", "3", "-Sf", "-o", path, url],
-            verbose=verbose,
-            exception=True, # Will raise RuntimeError on failure
-        )
+        with open(path, "wb") as outfile:
+            run(["curl", option,
+                "-L", # Follow redirect.
+                "-y", "30", "-Y", "10",    # timeout if speed is < 10 bytes/sec for > 30 seconds
+                "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
+                "--retry", "3", "-Sf", url],
+                stdout=outfile,    #Implements cli redirect operator '>'
+                verbose=verbose,
+                exception=True, # Will raise RuntimeError on failure
+            )
     except (subprocess.CalledProcessError, OSError, RuntimeError):
         # see http://serverfault.com/questions/301128/how-to-download
         if platform_is_win32:
@@ -782,6 +784,8 @@ class RustBuild(object):
         if self.get_toml("metrics", "build"):
             args.append("--features")
             args.append("build-metrics")
+        if self.json_output:
+            args.append("--message-format=json")
         if color == "always":
             args.append("--color=always")
         elif color == "never":
@@ -839,6 +843,7 @@ def parse_args():
     parser.add_argument('--build')
     parser.add_argument('--color', choices=['always', 'never', 'auto'])
     parser.add_argument('--clean', action='store_true')
+    parser.add_argument('--json-output', action='store_true')
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
     return parser.parse_known_args(sys.argv)[0]
@@ -850,6 +855,7 @@ def bootstrap(args):
     build.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
     build.verbose = args.verbose != 0
     build.clean = args.clean
+    build.json_output = args.json_output
 
     # Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`,
     # then `config.toml` in the root directory.
@@ -935,6 +941,7 @@ def main():
         )
 
     exit_code = 0
+    success_word = "successfully"
     try:
         bootstrap(args)
     except (SystemExit, KeyboardInterrupt) as error:
@@ -943,9 +950,10 @@ def main():
         else:
             exit_code = 1
             print(error)
+        success_word = "unsuccessfully"
 
     if not help_triggered:
-        print("Build completed successfully in", format_build_time(time() - start_time))
+        print("Build completed", success_word, "in", format_build_time(time() - start_time))
     sys.exit(exit_code)
 
 

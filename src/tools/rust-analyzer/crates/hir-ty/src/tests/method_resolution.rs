@@ -813,7 +813,7 @@ fn test() {
 fn method_resolution_trait_from_prelude() {
     check_types(
         r#"
-//- /main.rs crate:main deps:core
+//- /main.rs edition:2018 crate:main deps:core
 struct S;
 impl Clone for S {}
 
@@ -986,14 +986,13 @@ fn main() {
 }
 
 #[test]
-fn method_resolution_encountering_fn_type() {
+fn explicit_fn_once_call_fn_item() {
     check_types(
         r#"
-//- /main.rs
+//- minicore: fn
 fn foo() {}
-trait FnOnce { fn call(self); }
-fn test() { foo.call(); }
-          //^^^^^^^^^^ {unknown}
+fn test() { foo.call_once(); }
+          //^^^^^^^^^^^^^^^ ()
 "#,
     );
 }
@@ -1527,7 +1526,7 @@ fn f(x: U2) {
 fn skip_array_during_method_dispatch() {
     check_types(
         r#"
-//- /main2018.rs crate:main2018 deps:core
+//- /main2018.rs crate:main2018 deps:core edition:2018
 use core::IntoIterator;
 
 fn f() {
@@ -1725,14 +1724,13 @@ fn test() {
 
 #[test]
 fn receiver_adjustment_unsize_array() {
-    // FIXME not quite correct
     check(
         r#"
 //- minicore: slice
 fn test() {
     let a = [1, 2, 3];
     a.len();
-} //^ adjustments: Pointer(Unsize), Borrow(Ref(Not))
+} //^ adjustments: Borrow(Ref(Not)), Pointer(Unsize)
 "#,
     );
 }

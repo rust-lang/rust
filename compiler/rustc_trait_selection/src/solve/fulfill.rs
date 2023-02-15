@@ -73,8 +73,13 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                         MismatchedProjectionTypes { err: TypeError::Mismatch },
                                     )
                                 }
+                                ty::PredicateKind::AliasEq(_, _) => {
+                                    FulfillmentErrorCode::CodeProjectionError(
+                                        MismatchedProjectionTypes { err: TypeError::Mismatch },
+                                    )
+                                }
                                 ty::PredicateKind::Subtype(pred) => {
-                                    let (a, b) = infcx.replace_bound_vars_with_placeholders(
+                                    let (a, b) = infcx.instantiate_binder_with_placeholders(
                                         goal.predicate.kind().rebind((pred.a, pred.b)),
                                     );
                                     let expected_found = ExpectedFound::new(true, a, b);
@@ -84,7 +89,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                     )
                                 }
                                 ty::PredicateKind::Coerce(pred) => {
-                                    let (a, b) = infcx.replace_bound_vars_with_placeholders(
+                                    let (a, b) = infcx.instantiate_binder_with_placeholders(
                                         goal.predicate.kind().rebind((pred.a, pred.b)),
                                     );
                                     let expected_found = ExpectedFound::new(false, a, b);
@@ -94,7 +99,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                     )
                                 }
                                 ty::PredicateKind::ConstEquate(a, b) => {
-                                    let (a, b) = infcx.replace_bound_vars_with_placeholders(
+                                    let (a, b) = infcx.instantiate_binder_with_placeholders(
                                         goal.predicate.kind().rebind((a, b)),
                                     );
                                     let expected_found = ExpectedFound::new(true, a, b);

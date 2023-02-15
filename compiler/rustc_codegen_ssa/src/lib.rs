@@ -159,6 +159,7 @@ pub struct CrateInfo {
     pub dependency_formats: Lrc<Dependencies>,
     pub windows_subsystem: Option<String>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
+    pub feature_packed_bundled_libs: bool, // unstable feature flag.
 }
 
 #[derive(Encodable, Decodable)]

@@ -4,7 +4,7 @@ use crate::early_error;
 use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
-use rustc_errors::LanguageIdentifier;
+use rustc_errors::{LanguageIdentifier, TerminalUrl};
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet};
 use rustc_target::spec::{
     RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
@@ -169,6 +169,8 @@ top_level_options!(
         /// is currently just a hack and will be removed eventually, so please
         /// try to not rely on this too much.
         actually_rustdoc: bool [TRACKED],
+        /// Whether name resolver should resolve documentation links.
+        resolve_doc_links: ResolveDocLinks [TRACKED],
 
         /// Control path trimming.
         trimmed_def_paths: TrimmedDefPaths [TRACKED],
@@ -349,7 +351,7 @@ fn build_options<O: Default>(
 #[allow(non_upper_case_globals)]
 mod desc {
     pub const parse_no_flag: &str = "no value";
-    pub const parse_bool: &str = "one of: `y`, `yes`, `on`, `n`, `no`, or `off`";
+    pub const parse_bool: &str = "one of: `y`, `yes`, `on`, `true`, `n`, `no`, `off` or `false`";
     pub const parse_opt_bool: &str = parse_bool;
     pub const parse_string: &str = "a string";
     pub const parse_opt_string: &str = parse_string;
@@ -380,6 +382,7 @@ mod desc {
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub const parse_instrument_coverage: &str =
         "`all` (default), `except-unused-generics`, `except-unused-functions`, or `off`";
+    pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a number bigger than 0";
     pub const parse_trait_solver: &str =
@@ -399,6 +402,8 @@ mod desc {
     pub const parse_code_model: &str = "one of supported code models (`rustc --print code-models`)";
     pub const parse_tls_model: &str = "one of supported TLS models (`rustc --print tls-models`)";
     pub const parse_target_feature: &str = parse_string;
+    pub const parse_terminal_url: &str =
+        "either a boolean (`yes`, `no`, `on`, `off`, etc), or `auto`";
     pub const parse_wasi_exec_model: &str = "either `command` or `reactor`";
     pub const parse_split_debuginfo: &str =
         "one of supported split-debuginfo modes (`off`, `packed`, or `unpacked`)";
@@ -432,11 +437,11 @@ mod parse {
     /// Use this for any boolean option that has a static default.
     pub(crate) fn parse_bool(slot: &mut bool, v: Option<&str>) -> bool {
         match v {
-            Some("y") | Some("yes") | Some("on") | None => {
+            Some("y") | Some("yes") | Some("on") | Some("true") | None => {
                 *slot = true;
                 true
             }
-            Some("n") | Some("no") | Some("off") => {
+            Some("n") | Some("no") | Some("off") | Some("false") => {
                 *slot = false;
                 true
             }
@@ -449,11 +454,11 @@ mod parse {
     /// other factors, such as other options, or target options.)
     pub(crate) fn parse_opt_bool(slot: &mut Option<bool>, v: Option<&str>) -> bool {
         match v {
-            Some("y") | Some("yes") | Some("on") | None => {
+            Some("y") | Some("yes") | Some("on") | Some("true") | None => {
                 *slot = Some(true);
                 true
             }
-            Some("n") | Some("no") | Some("off") => {
+            Some("n") | Some("no") | Some("off") | Some("false") => {
                 *slot = Some(false);
                 true
             }
@@ -869,6 +874,68 @@ mod parse {
         true
     }
 
+    pub(crate) fn parse_instrument_xray(
+        slot: &mut Option<InstrumentXRay>,
+        v: Option<&str>,
+    ) -> bool {
+        if v.is_some() {
+            let mut bool_arg = None;
+            if parse_opt_bool(&mut bool_arg, v) {
+                *slot = if bool_arg.unwrap() { Some(InstrumentXRay::default()) } else { None };
+                return true;
+            }
+        }
+
+        let mut options = slot.get_or_insert_default();
+        let mut seen_always = false;
+        let mut seen_never = false;
+        let mut seen_ignore_loops = false;
+        let mut seen_instruction_threshold = false;
+        let mut seen_skip_entry = false;
+        let mut seen_skip_exit = false;
+        for option in v.into_iter().map(|v| v.split(',')).flatten() {
+            match option {
+                "always" if !seen_always && !seen_never => {
+                    options.always = true;
+                    options.never = false;
+                    seen_always = true;
+                }
+                "never" if !seen_never && !seen_always => {
+                    options.never = true;
+                    options.always = false;
+                    seen_never = true;
+                }
+                "ignore-loops" if !seen_ignore_loops => {
+                    options.ignore_loops = true;
+                    seen_ignore_loops = true;
+                }
+                option
+                    if option.starts_with("instruction-threshold")
+                        && !seen_instruction_threshold =>
+                {
+                    let Some(("instruction-threshold", n)) = option.split_once('=') else {
+                        return false;
+                    };
+                    match n.parse() {
+                        Ok(n) => options.instruction_threshold = Some(n),
+                        Err(_) => return false,
+                    }
+                    seen_instruction_threshold = true;
+                }
+                "skip-entry" if !seen_skip_entry => {
+                    options.skip_entry = true;
+                    seen_skip_entry = true;
+                }
+                "skip-exit" if !seen_skip_exit => {
+                    options.skip_exit = true;
+                    seen_skip_exit = true;
+                }
+                _ => return false,
+            }
+        }
+        true
+    }
+
     pub(crate) fn parse_treat_err_as_bug(slot: &mut Option<NonZeroUsize>, v: Option<&str>) -> bool {
         match v {
             Some(s) => {
@@ -976,6 +1043,16 @@ mod parse {
             Some(tls_model) => *slot = Some(tls_model),
             _ => return false,
         }
+        true
+    }
+
+    pub(crate) fn parse_terminal_url(slot: &mut TerminalUrl, v: Option<&str>) -> bool {
+        *slot = match v {
+            Some("on" | "" | "yes" | "y") | None => TerminalUrl::Yes,
+            Some("off" | "no" | "n") => TerminalUrl::No,
+            Some("auto") => TerminalUrl::Auto,
+            _ => return false,
+        };
         true
     }
 
@@ -1397,6 +1474,16 @@ options! {
         `=off` (default)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
+    instrument_xray: Option<InstrumentXRay> = (None, parse_instrument_xray, [TRACKED],
+        "insert function instrument code for XRay-based tracing (default: no)
+         Optional extra settings:
+         `=always`
+         `=never`
+         `=ignore-loops`
+         `=instruction-threshold=N`
+         `=skip-entry`
+         `=skip-exit`
+         Multiple options can be combined with commas."),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],
         "keep hygiene data after analysis (default: no)"),
     layout_seed: Option<u64> = (None, parse_opt_number, [TRACKED],
@@ -1413,8 +1500,6 @@ options! {
         "what location details should be tracked when using caller_location, either \
         `none`, or a comma separated list of location details, for which \
         valid options are `file`, `line`, and `column` (default: `file,line,column`)"),
-    log_backtrace: Option<String> = (None, parse_opt_string, [TRACKED],
-        "add a backtrace along with logging"),
     ls: bool = (false, parse_bool, [UNTRACKED],
         "list the symbols defined by a library crate (default: no)"),
     macro_backtrace: bool = (false, parse_bool, [UNTRACKED],
@@ -1602,6 +1687,8 @@ options! {
         "show extended diagnostic help (default: no)"),
     temps_dir: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "the directory the intermediate files are written to"),
+    terminal_urls: TerminalUrl = (TerminalUrl::No, parse_terminal_url, [UNTRACKED],
+        "use the OSC 8 hyperlink terminal specification to print hyperlinks in the compiler output"),
     #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),

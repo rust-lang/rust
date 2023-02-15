@@ -148,7 +148,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx.tcx().struct_lockstep_tails_erasing_lifetimes(source, target, bx.param_env());
     match (source.kind(), target.kind()) {
         (&ty::Array(_, len), &ty::Slice(_)) => {
-            cx.const_usize(len.eval_usize(cx.tcx(), ty::ParamEnv::reveal_all()))
+            cx.const_usize(len.eval_target_usize(cx.tcx(), ty::ParamEnv::reveal_all()))
         }
         (
             &ty::Dynamic(ref data_a, _, src_dyn_kind),
@@ -858,6 +858,7 @@ impl CrateInfo {
             dependency_formats: tcx.dependency_formats(()).clone(),
             windows_subsystem,
             natvis_debugger_visualizers: Default::default(),
+            feature_packed_bundled_libs: tcx.features().packed_bundled_libs,
         };
         let crates = tcx.crates(());
 

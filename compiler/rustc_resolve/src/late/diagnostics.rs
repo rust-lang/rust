@@ -166,7 +166,7 @@ impl TypoCandidate {
     }
 }
 
-impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
+impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     fn def_span(&self, def_id: DefId) -> Option<Span> {
         match def_id.krate {
             LOCAL_CRATE => self.r.opt_span(def_id),
@@ -318,7 +318,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         span: Span,
         source: PathSource<'_>,
         res: Option<Res>,
-    ) -> (DiagnosticBuilder<'a, ErrorGuaranteed>, Vec<ImportSuggestion>) {
+    ) -> (DiagnosticBuilder<'tcx, ErrorGuaranteed>, Vec<ImportSuggestion>) {
         debug!(?res, ?source);
         let base_error = self.make_base_error(path, span, source, res);
         let code = source.error_code(res.is_some());
@@ -2244,19 +2244,23 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 }
                 None => {
                     debug!(?param.ident, ?param.ident.span);
-
                     let deletion_span = deletion_span();
-                    self.r.lint_buffer.buffer_lint_with_diagnostic(
-                        lint::builtin::UNUSED_LIFETIMES,
-                        param.id,
-                        param.ident.span,
-                        &format!("lifetime parameter `{}` never used", param.ident),
-                        lint::BuiltinLintDiagnostics::SingleUseLifetime {
-                            param_span: param.ident.span,
-                            use_span: None,
-                            deletion_span,
-                        },
-                    );
+                    // the give lifetime originates from expanded code so we won't be able to remove it #104432
+                    let lifetime_only_in_expanded_code =
+                        deletion_span.map(|sp| sp.in_derive_expansion()).unwrap_or(true);
+                    if !lifetime_only_in_expanded_code {
+                        self.r.lint_buffer.buffer_lint_with_diagnostic(
+                            lint::builtin::UNUSED_LIFETIMES,
+                            param.id,
+                            param.ident.span,
+                            &format!("lifetime parameter `{}` never used", param.ident),
+                            lint::BuiltinLintDiagnostics::SingleUseLifetime {
+                                param_span: param.ident.span,
+                                use_span: None,
+                                deletion_span,
+                            },
+                        );
+                    }
                 }
             }
         }
@@ -2622,7 +2626,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 }
 
 /// Report lifetime/lifetime shadowing as an error.
-pub fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
+pub(super) fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
     let mut err = struct_span_err!(
         sess,
         shadower.span,
@@ -2637,7 +2641,7 @@ pub fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
 
 /// Shadowing involving a label is only a warning for historical reasons.
 //FIXME: make this a proper lint.
-pub fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident) {
+pub(super) fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident) {
     let name = shadower.name;
     let shadower = shadower.span;
     let mut err = sess.struct_span_warn(

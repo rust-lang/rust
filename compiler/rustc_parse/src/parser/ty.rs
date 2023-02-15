@@ -694,8 +694,9 @@ impl<'a> Parser<'a> {
         // `where`, so stop if it's it.
         // We also continue if we find types (not traits), again for error recovery.
         while self.can_begin_bound()
-            || self.token.can_begin_type()
-            || (self.token.is_reserved_ident() && !self.token.is_keyword(kw::Where))
+            || (self.may_recover()
+                && (self.token.can_begin_type()
+                    || (self.token.is_reserved_ident() && !self.token.is_keyword(kw::Where))))
         {
             if self.token.is_keyword(kw::Dyn) {
                 // Account for `&dyn Trait + dyn Other`.

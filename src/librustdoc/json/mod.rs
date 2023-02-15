@@ -222,7 +222,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     fn after_krate(&mut self) -> Result<(), Error> {
         debug!("Done with crate");
 
-        debug!("Adding Primitve impls");
+        debug!("Adding Primitive impls");
         for primitive in Rc::clone(&self.cache).primitive_locations.values() {
             self.get_impls(*primitive);
         }

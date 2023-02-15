@@ -310,47 +310,51 @@ impl<I: Interner> Clone for TyKind<I> {
 impl<I: Interner> PartialEq for TyKind<I> {
     #[inline]
     fn eq(&self, other: &TyKind<I>) -> bool {
-        tykind_discriminant(self) == tykind_discriminant(other)
-            && match (self, other) {
-                (Int(a_i), Int(b_i)) => a_i == b_i,
-                (Uint(a_u), Uint(b_u)) => a_u == b_u,
-                (Float(a_f), Float(b_f)) => a_f == b_f,
-                (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d == b_d && a_s == b_s,
-                (Foreign(a_d), Foreign(b_d)) => a_d == b_d,
-                (Array(a_t, a_c), Array(b_t, b_c)) => a_t == b_t && a_c == b_c,
-                (Slice(a_t), Slice(b_t)) => a_t == b_t,
-                (RawPtr(a_t), RawPtr(b_t)) => a_t == b_t,
-                (Ref(a_r, a_t, a_m), Ref(b_r, b_t, b_m)) => a_r == b_r && a_t == b_t && a_m == b_m,
-                (FnDef(a_d, a_s), FnDef(b_d, b_s)) => a_d == b_d && a_s == b_s,
-                (FnPtr(a_s), FnPtr(b_s)) => a_s == b_s,
-                (Dynamic(a_p, a_r, a_repr), Dynamic(b_p, b_r, b_repr)) => {
-                    a_p == b_p && a_r == b_r && a_repr == b_repr
-                }
-                (Closure(a_d, a_s), Closure(b_d, b_s)) => a_d == b_d && a_s == b_s,
-                (Generator(a_d, a_s, a_m), Generator(b_d, b_s, b_m)) => {
-                    a_d == b_d && a_s == b_s && a_m == b_m
-                }
-                (GeneratorWitness(a_g), GeneratorWitness(b_g)) => a_g == b_g,
-                (
-                    &GeneratorWitnessMIR(ref a_d, ref a_s),
-                    &GeneratorWitnessMIR(ref b_d, ref b_s),
-                ) => a_d == b_d && a_s == b_s,
-                (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
-                (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i == b_i && a_p == b_p,
-                (Param(a_p), Param(b_p)) => a_p == b_p,
-                (Bound(a_d, a_b), Bound(b_d, b_b)) => a_d == b_d && a_b == b_b,
-                (Placeholder(a_p), Placeholder(b_p)) => a_p == b_p,
-                (Infer(a_t), Infer(b_t)) => a_t == b_t,
-                (Error(a_e), Error(b_e)) => a_e == b_e,
-                (Bool, Bool) | (Char, Char) | (Str, Str) | (Never, Never) => true,
-                _ => {
-                    debug_assert!(
-                        false,
-                        "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}"
-                    );
-                    true
-                }
+        // You might expect this `match` to be preceded with this:
+        //
+        //   tykind_discriminant(self) == tykind_discriminant(other) &&
+        //
+        // but the data patterns in practice are such that a comparison
+        // succeeds 99%+ of the time, and it's faster to omit it.
+        match (self, other) {
+            (Int(a_i), Int(b_i)) => a_i == b_i,
+            (Uint(a_u), Uint(b_u)) => a_u == b_u,
+            (Float(a_f), Float(b_f)) => a_f == b_f,
+            (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d == b_d && a_s == b_s,
+            (Foreign(a_d), Foreign(b_d)) => a_d == b_d,
+            (Array(a_t, a_c), Array(b_t, b_c)) => a_t == b_t && a_c == b_c,
+            (Slice(a_t), Slice(b_t)) => a_t == b_t,
+            (RawPtr(a_t), RawPtr(b_t)) => a_t == b_t,
+            (Ref(a_r, a_t, a_m), Ref(b_r, b_t, b_m)) => a_r == b_r && a_t == b_t && a_m == b_m,
+            (FnDef(a_d, a_s), FnDef(b_d, b_s)) => a_d == b_d && a_s == b_s,
+            (FnPtr(a_s), FnPtr(b_s)) => a_s == b_s,
+            (Dynamic(a_p, a_r, a_repr), Dynamic(b_p, b_r, b_repr)) => {
+                a_p == b_p && a_r == b_r && a_repr == b_repr
             }
+            (Closure(a_d, a_s), Closure(b_d, b_s)) => a_d == b_d && a_s == b_s,
+            (Generator(a_d, a_s, a_m), Generator(b_d, b_s, b_m)) => {
+                a_d == b_d && a_s == b_s && a_m == b_m
+            }
+            (GeneratorWitness(a_g), GeneratorWitness(b_g)) => a_g == b_g,
+            (&GeneratorWitnessMIR(ref a_d, ref a_s), &GeneratorWitnessMIR(ref b_d, ref b_s)) => {
+                a_d == b_d && a_s == b_s
+            }
+            (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
+            (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i == b_i && a_p == b_p,
+            (Param(a_p), Param(b_p)) => a_p == b_p,
+            (Bound(a_d, a_b), Bound(b_d, b_b)) => a_d == b_d && a_b == b_b,
+            (Placeholder(a_p), Placeholder(b_p)) => a_p == b_p,
+            (Infer(a_t), Infer(b_t)) => a_t == b_t,
+            (Error(a_e), Error(b_e)) => a_e == b_e,
+            (Bool, Bool) | (Char, Char) | (Str, Str) | (Never, Never) => true,
+            _ => {
+                debug_assert!(
+                    tykind_discriminant(self) != tykind_discriminant(other),
+                    "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}"
+                );
+                false
+            }
+        }
     }
 }
 
@@ -408,7 +412,7 @@ impl<I: Interner> Ord for TyKind<I> {
                 (Error(a_e), Error(b_e)) => a_e.cmp(b_e),
                 (Bool, Bool) | (Char, Char) | (Str, Str) | (Never, Never) => Ordering::Equal,
                 _ => {
-                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}");
+                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}");
                     Ordering::Equal
                 }
             }
@@ -956,6 +960,9 @@ pub enum RegionKind<I: Interner> {
 
     /// Erased region, used by trait selection, in MIR and during codegen.
     ReErased,
+
+    /// A region that resulted from some other error. Used exclusively for diagnostics.
+    ReError(I::ErrorGuaranteed),
 }
 
 // This is manually implemented for `RegionKind` because `std::mem::discriminant`
@@ -970,6 +977,7 @@ const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
         ReVar(_) => 4,
         RePlaceholder(_) => 5,
         ReErased => 6,
+        ReError(_) => 7,
     }
 }
 
@@ -981,6 +989,7 @@ where
     I::FreeRegion: Copy,
     I::RegionVid: Copy,
     I::PlaceholderRegion: Copy,
+    I::ErrorGuaranteed: Copy,
 {
 }
 
@@ -995,6 +1004,7 @@ impl<I: Interner> Clone for RegionKind<I> {
             ReVar(r) => ReVar(r.clone()),
             RePlaceholder(r) => RePlaceholder(r.clone()),
             ReErased => ReErased,
+            ReError(r) => ReError(r.clone()),
         }
     }
 }
@@ -1012,10 +1022,11 @@ impl<I: Interner> PartialEq for RegionKind<I> {
                 (ReVar(a_r), ReVar(b_r)) => a_r == b_r,
                 (RePlaceholder(a_r), RePlaceholder(b_r)) => a_r == b_r,
                 (ReErased, ReErased) => true,
+                (ReError(_), ReError(_)) => true,
                 _ => {
                     debug_assert!(
                         false,
-                        "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}"
+                        "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}"
                     );
                     true
                 }
@@ -1073,6 +1084,7 @@ impl<I: Interner> hash::Hash for RegionKind<I> {
             ReVar(r) => r.hash(state),
             RePlaceholder(r) => r.hash(state),
             ReErased => (),
+            ReError(_) => (),
         }
     }
 }
@@ -1096,6 +1108,8 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
             RePlaceholder(placeholder) => write!(f, "RePlaceholder({placeholder:?})"),
 
             ReErased => f.write_str("ReErased"),
+
+            ReError(_) => f.write_str("ReError"),
         }
     }
 }
@@ -1130,6 +1144,7 @@ where
                 a.encode(e);
             }),
             ReErased => e.emit_enum_variant(disc, |_| {}),
+            ReError(_) => e.emit_enum_variant(disc, |_| {}),
         }
     }
 }
@@ -1142,6 +1157,7 @@ where
     I::FreeRegion: Decodable<D>,
     I::RegionVid: Decodable<D>,
     I::PlaceholderRegion: Decodable<D>,
+    I::ErrorGuaranteed: Decodable<D>,
 {
     fn decode(d: &mut D) -> Self {
         match Decoder::read_usize(d) {
@@ -1152,6 +1168,7 @@ where
             4 => ReVar(Decodable::decode(d)),
             5 => RePlaceholder(Decodable::decode(d)),
             6 => ReErased,
+            7 => ReError(Decodable::decode(d)),
             _ => panic!(
                 "{}",
                 format!(
@@ -1180,7 +1197,7 @@ where
     ) {
         std::mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
-            ReErased | ReStatic => {
+            ReErased | ReStatic | ReError(_) => {
                 // No variant fields to hash for these ...
             }
             ReLateBound(d, r) => {

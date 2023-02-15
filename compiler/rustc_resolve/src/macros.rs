@@ -39,7 +39,7 @@ type Res = def::Res<NodeId>;
 /// Binding produced by a `macro_rules` item.
 /// Not modularized, can shadow previous `macro_rules` bindings, etc.
 #[derive(Debug)]
-pub struct MacroRulesBinding<'a> {
+pub(crate) struct MacroRulesBinding<'a> {
     pub(crate) binding: &'a NameBinding<'a>,
     /// `macro_rules` scope into which the `macro_rules` item was planted.
     pub(crate) parent_macro_rules_scope: MacroRulesScopeRef<'a>,
@@ -52,7 +52,7 @@ pub struct MacroRulesBinding<'a> {
 /// Some macro invocations need to introduce `macro_rules` scopes too because they
 /// can potentially expand into macro definitions.
 #[derive(Copy, Clone, Debug)]
-pub enum MacroRulesScope<'a> {
+pub(crate) enum MacroRulesScope<'a> {
     /// Empty "root" scope at the crate start containing no names.
     Empty,
     /// The scope introduced by a `macro_rules!` macro definition.
@@ -160,7 +160,7 @@ fn soft_custom_inner_attributes_gate(path: &ast::Path, invoc: &Invocation) -> bo
     false
 }
 
-impl<'a> ResolverExpand for Resolver<'a> {
+impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
     fn next_node_id(&mut self) -> NodeId {
         self.next_node_id()
     }
@@ -467,7 +467,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
     }
 }
 
-impl<'a> Resolver<'a> {
+impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Resolve macro path with error reporting and recovery.
     /// Uses dummy syntax extensions for unresolved macros or macros with unexpected resolutions
     /// for better error recovery.
@@ -568,7 +568,7 @@ impl<'a> Resolver<'a> {
         Ok((ext, res))
     }
 
-    pub fn resolve_macro_path(
+    pub(crate) fn resolve_macro_path(
         &mut self,
         path: &ast::Path,
         kind: Option<MacroKind>,

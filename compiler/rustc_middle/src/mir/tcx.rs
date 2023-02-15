@@ -97,7 +97,7 @@ impl<'tcx> PlaceTy<'tcx> {
                     ty::Slice(..) => self.ty,
                     ty::Array(inner, _) if !from_end => tcx.mk_array(*inner, (to - from) as u64),
                     ty::Array(inner, size) if from_end => {
-                        let size = size.eval_usize(tcx, param_env);
+                        let size = size.eval_target_usize(tcx, param_env);
                         let len = size - (from as u64) - (to as u64);
                         tcx.mk_array(*inner, len)
                     }
@@ -162,7 +162,7 @@ impl<'tcx> Rvalue<'tcx> {
         match *self {
             Rvalue::Use(ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Repeat(ref operand, count) => {
-                tcx.mk_ty(ty::Array(operand.ty(local_decls, tcx), count))
+                tcx.mk_array_with_const_len(operand.ty(local_decls, tcx), count)
             }
             Rvalue::ThreadLocalRef(did) => {
                 let static_ty = tcx.type_of(did);

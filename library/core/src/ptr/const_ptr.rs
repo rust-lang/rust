@@ -23,8 +23,6 @@ impl<T: ?Sized> *const T {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let s: &str = "Follow the rabbit";
     /// let ptr: *const u8 = s.as_ptr();
@@ -323,8 +321,6 @@ impl<T: ?Sized> *const T {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let ptr: *const u8 = &10u8 as *const u8;
     ///
@@ -383,8 +379,6 @@ impl<T: ?Sized> *const T {
     /// [the module documentation]: crate::ptr#safety
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// #![feature(ptr_as_uninit)]
@@ -448,8 +442,6 @@ impl<T: ?Sized> *const T {
     /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let s: &str = "123";
@@ -525,8 +517,6 @@ impl<T: ?Sized> *const T {
     /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// // Iterate using a raw pointer in increments of two elements
@@ -908,8 +898,6 @@ impl<T: ?Sized> *const T {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let s: &str = "123";
     /// let ptr: *const u8 = s.as_ptr();
@@ -993,8 +981,6 @@ impl<T: ?Sized> *const T {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let s: &str = "123";
     ///
@@ -1071,8 +1057,6 @@ impl<T: ?Sized> *const T {
     /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// // Iterate using a raw pointer in increments of two elements
@@ -1151,8 +1135,6 @@ impl<T: ?Sized> *const T {
     /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// // Iterate using a raw pointer in increments of two elements (backwards)
@@ -1359,7 +1341,6 @@ impl<T: ?Sized> *const T {
     ///
     /// # Examples
     ///
-    /// Basic usage:
     /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(pointer_byte_offsets)]
@@ -1482,7 +1463,6 @@ impl<T: ?Sized> *const T {
     ///
     /// # Examples
     ///
-    /// Basic usage:
     /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(pointer_byte_offsets)]

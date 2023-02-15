@@ -1139,7 +1139,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         if let ty::Adt(def, substs) = ty.kind()
                             && Some(def.did()) == tcx.lang_items().pin_type()
                             && let ty::Ref(_, _, hir::Mutability::Mut) = substs.type_at(0).kind()
-                            && let self_ty = infcx.replace_bound_vars_with_fresh_vars(
+                            && let self_ty = infcx.instantiate_binder_with_fresh_vars(
                                 fn_call_span,
                                 LateBoundRegionConversionTime::FnCall,
                                 tcx.fn_sig(method_did).subst(tcx, method_substs).input(0),

@@ -149,7 +149,7 @@ pub(super) fn check<'tcx>(
                         |diag| {
                             multispan_sugg(
                                 diag,
-                                "consider using an iterator",
+                                "consider using an iterator and enumerate()",
                                 vec![
                                     (pat.span, format!("({}, <item>)", ident.name)),
                                     (
@@ -211,7 +211,7 @@ fn is_end_eq_array_len<'tcx>(
         if let ExprKind::Lit(ref lit) = end.kind;
         if let ast::LitKind::Int(end_int, _) = lit.node;
         if let ty::Array(_, arr_len_const) = indexed_ty.kind();
-        if let Some(arr_len) = arr_len_const.try_eval_usize(cx.tcx, cx.param_env);
+        if let Some(arr_len) = arr_len_const.try_eval_target_usize(cx.tcx, cx.param_env);
         then {
             return match limits {
                 ast::RangeLimits::Closed => end_int + 1 >= arr_len.into(),

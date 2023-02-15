@@ -2,15 +2,17 @@
 name = "proc-macro-srv"
 version = "0.0.0"
 description = "TBD"
-license = "MIT OR Apache-2.0"
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
 
 [dependencies]
-object = { version = "0.29.0", default-features = false, features = [
+object = { version = "0.30.2", default-features = false, features = [
     "std",
     "read_core",
     "elf",
@@ -20,16 +22,16 @@ object = { version = "0.29.0", default-features = false, features = [
 libloading = "0.7.3"
 memmap2 = "0.5.4"
 
-tt = { path = "../tt", version = "0.0.0" }
-mbe = { path = "../mbe", version = "0.0.0" }
-paths = { path = "../paths", version = "0.0.0" }
-proc-macro-api = { path = "../proc-macro-api", version = "0.0.0" }
+tt.workspace = true
+mbe.workspace = true
+paths.workspace = true
+proc-macro-api.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.0"
 
 # used as proc macro test targets
-proc-macro-test = { path = "../proc-macro-test" }
+proc-macro-test.workspace = true
 
 [features]
 sysroot-abi = []

@@ -2,6 +2,7 @@
 
 use crate::char::TryFromCharError;
 use crate::convert::TryFrom;
+use crate::error::Error;
 use crate::fmt;
 use crate::mem::transmute;
 use crate::str::FromStr;
@@ -150,21 +151,6 @@ pub struct ParseCharError {
     kind: CharErrorKind,
 }
 
-impl ParseCharError {
-    #[unstable(
-        feature = "char_error_internals",
-        reason = "this method should not be available publicly",
-        issue = "none"
-    )]
-    #[doc(hidden)]
-    pub fn __description(&self) -> &str {
-        match self.kind {
-            CharErrorKind::EmptyString => "cannot parse char from empty string",
-            CharErrorKind::TooManyChars => "too many characters in string",
-        }
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum CharErrorKind {
     EmptyString,
@@ -172,9 +158,21 @@ enum CharErrorKind {
 }
 
 #[stable(feature = "char_from_str", since = "1.20.0")]
+impl Error for ParseCharError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        match self.kind {
+            CharErrorKind::EmptyString => "cannot parse char from empty string",
+            CharErrorKind::TooManyChars => "too many characters in string",
+        }
+    }
+}
+
+#[stable(feature = "char_from_str", since = "1.20.0")]
 impl fmt::Display for ParseCharError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.__description().fmt(f)
+        #[allow(deprecated)]
+        self.description().fmt(f)
     }
 }
 

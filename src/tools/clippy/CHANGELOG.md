@@ -4383,6 +4383,7 @@ Released 2018-09-13
 [`extend_from_slice`]: https://rust-lang.github.io/rust-clippy/master/index.html#extend_from_slice
 [`extend_with_drain`]: https://rust-lang.github.io/rust-clippy/master/index.html#extend_with_drain
 [`extra_unused_lifetimes`]: https://rust-lang.github.io/rust-clippy/master/index.html#extra_unused_lifetimes
+[`extra_unused_type_parameters`]: https://rust-lang.github.io/rust-clippy/master/index.html#extra_unused_type_parameters
 [`fallible_impl_from`]: https://rust-lang.github.io/rust-clippy/master/index.html#fallible_impl_from
 [`field_reassign_with_default`]: https://rust-lang.github.io/rust-clippy/master/index.html#field_reassign_with_default
 [`filetype_is_file`]: https://rust-lang.github.io/rust-clippy/master/index.html#filetype_is_file

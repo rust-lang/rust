@@ -321,12 +321,15 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..) => {
                     let pred =
-                        ty::Binder::dummy(infcx.replace_bound_vars_with_placeholders(binder));
+                        ty::Binder::dummy(infcx.instantiate_binder_with_placeholders(binder));
                     ProcessResult::Changed(mk_pending(vec![obligation.with(infcx.tcx, pred)]))
                 }
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
+                }
+                ty::PredicateKind::AliasEq(..) => {
+                    bug!("AliasEq is only used for new solver")
                 }
             },
             Some(pred) => match pred {
@@ -593,6 +596,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::Ambiguous => ProcessResult::Unchanged,
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
+                }
+                ty::PredicateKind::AliasEq(..) => {
+                    bug!("AliasEq is only used for new solver")
                 }
             },
         }

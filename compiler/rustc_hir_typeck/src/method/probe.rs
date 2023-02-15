@@ -20,7 +20,7 @@ use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::AssocItem;
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::ToPredicate;
-use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_session::lint;
 use rustc_span::def_id::DefId;
@@ -837,6 +837,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
+                | ty::PredicateKind::AliasEq(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
             }
         });
@@ -924,7 +925,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             ty::AssocKind::Fn => self.probe(|_| {
                 let substs = self.fresh_substs_for_item(self.span, method.def_id);
                 let fty = self.tcx.fn_sig(method.def_id).subst(self.tcx, substs);
-                let fty = self.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, fty);
+                let fty = self.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, fty);
 
                 if let Some(self_ty) = self_ty {
                     if self
@@ -951,24 +952,38 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let trait_ref = self.tcx.mk_trait_ref(trait_def_id, trait_substs);
 
         if self.tcx.is_trait_alias(trait_def_id) {
-            // For trait aliases, assume all supertraits are relevant.
-            let bounds = iter::once(ty::Binder::dummy(trait_ref));
-            self.elaborate_bounds(bounds, |this, new_trait_ref, item| {
-                let new_trait_ref = this.erase_late_bound_regions(new_trait_ref);
+            // For trait aliases, recursively assume all explicitly named traits are relevant
+            for expansion in traits::expand_trait_aliases(
+                self.tcx,
+                iter::once((ty::Binder::dummy(trait_ref), self.span)),
+            ) {
+                let bound_trait_ref = expansion.trait_ref();
+                for item in self.impl_or_trait_item(bound_trait_ref.def_id()) {
+                    if !self.has_applicable_self(&item) {
+                        self.record_static_candidate(CandidateSource::Trait(
+                            bound_trait_ref.def_id(),
+                        ));
+                    } else {
+                        let new_trait_ref = self.erase_late_bound_regions(bound_trait_ref);
 
-                let (xform_self_ty, xform_ret_ty) =
-                    this.xform_self_ty(&item, new_trait_ref.self_ty(), new_trait_ref.substs);
-                this.push_candidate(
-                    Candidate {
-                        xform_self_ty,
-                        xform_ret_ty,
-                        item,
-                        import_ids: import_ids.clone(),
-                        kind: TraitCandidate(new_trait_ref),
-                    },
-                    false,
-                );
-            });
+                        let (xform_self_ty, xform_ret_ty) = self.xform_self_ty(
+                            &item,
+                            new_trait_ref.self_ty(),
+                            new_trait_ref.substs,
+                        );
+                        self.push_candidate(
+                            Candidate {
+                                xform_self_ty,
+                                xform_ret_ty,
+                                item,
+                                import_ids: import_ids.clone(),
+                                kind: TraitCandidate(new_trait_ref),
+                            },
+                            false,
+                        );
+                    }
+                }
+            }
         } else {
             debug_assert!(self.tcx.is_trait(trait_def_id));
             if self.tcx.trait_is_auto(trait_def_id) {

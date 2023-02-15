@@ -16,8 +16,8 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, AdtKind, DefIdTree, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitor,
+    self, ir::TypeVisitor, AdtKind, DefIdTree, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
+    TypeSuperVisitable,
 };
 use rustc_middle::ty::{GenericArgKind, InternalSubsts};
 use rustc_session::parse::feature_err;
@@ -603,8 +603,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
                 // our example, the type was `Self`, which will also be
                 // `Self` in the GAT.
                 let ty_param = gat_generics.param_at(*ty_idx, tcx);
-                let ty_param = tcx
-                    .mk_ty(ty::Param(ty::ParamTy { index: ty_param.index, name: ty_param.name }));
+                let ty_param = tcx.mk_ty_param(ty_param.index, ty_param.name);
                 // Same for the region. In our example, 'a corresponds
                 // to the 'me parameter.
                 let region_param = gat_generics.param_at(*region_a_idx, tcx);
@@ -773,7 +772,7 @@ impl<'tcx> GATSubstCollector<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for GATSubstCollector<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATSubstCollector<'tcx> {
     type BreakTy = !;
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -1436,7 +1435,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             struct CountParams {
                 params: FxHashSet<u32>,
             }
-            impl<'tcx> ty::visit::TypeVisitor<'tcx> for CountParams {
+            impl<'tcx> ty::visit::ir::TypeVisitor<TyCtxt<'tcx>> for CountParams {
                 type BreakTy = ();
 
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

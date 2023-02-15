@@ -1,6 +1,6 @@
 // run-pass
 // revisions: default mir-opt
-//[default] compile-flags: -Zinline-mir=no
+//[default] compile-flags: -Zinline-mir=false
 //[mir-opt] compile-flags: -Zmir-opt-level=4
 
 use std::panic::Location;

@@ -486,26 +486,10 @@ impl Error for crate::char::CharTryFromError {
     }
 }
 
-#[stable(feature = "char_from_str", since = "1.20.0")]
-impl Error for crate::char::ParseCharError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        self.__description()
-    }
-}
-
 #[stable(feature = "duration_checked_float", since = "1.66.0")]
 impl Error for crate::time::TryFromFloatSecsError {}
 
-#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
-impl Error for crate::ffi::FromBytesWithNulError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        self.__description()
-    }
-}
-
-#[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+#[stable(feature = "cstr_from_bytes_until_nul", since = "CURRENT_RUSTC_VERSION")]
 impl Error for crate::ffi::FromBytesUntilNulError {}
 
 #[unstable(feature = "get_many_mut", issue = "104642")]

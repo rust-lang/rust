@@ -5,7 +5,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
-#[cfg(not(parallel_compiler))]
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::sync::WorkerLocal;
 use rustc_index::vec::{Idx, IndexVec};
@@ -23,10 +22,6 @@ pub trait CacheSelector<'tcx, V> {
 pub trait QueryStorage {
     type Value: Debug;
     type Stored: Copy;
-
-    /// Store a value without putting it in the cache.
-    /// This is meant to be used with cycle errors.
-    fn store_nocache(&self, value: Self::Value) -> Self::Stored;
 }
 
 pub trait QueryCache: QueryStorage + Sized {
@@ -68,12 +63,6 @@ impl<K, V> Default for DefaultCache<K, V> {
 impl<K: Eq + Hash, V: Copy + Debug> QueryStorage for DefaultCache<K, V> {
     type Value = V;
     type Stored = V;
-
-    #[inline]
-    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
-        // We have no dedicated storage
-        value
-    }
 }
 
 impl<K, V> QueryCache for DefaultCache<K, V>
@@ -127,6 +116,52 @@ where
     }
 }
 
+pub struct SingleCacheSelector;
+
+impl<'tcx, V: 'tcx> CacheSelector<'tcx, V> for SingleCacheSelector {
+    type Cache = SingleCache<V>
+    where
+        V: Copy;
+    type ArenaCache = ArenaCache<'tcx, (), V>;
+}
+
+pub struct SingleCache<V> {
+    cache: Lock<Option<(V, DepNodeIndex)>>,
+}
+
+impl<V> Default for SingleCache<V> {
+    fn default() -> Self {
+        SingleCache { cache: Lock::new(None) }
+    }
+}
+
+impl<V: Copy + Debug> QueryStorage for SingleCache<V> {
+    type Value = V;
+    type Stored = V;
+}
+
+impl<V> QueryCache for SingleCache<V>
+where
+    V: Copy + Debug,
+{
+    type Key = ();
+
+    #[inline(always)]
+    fn lookup(&self, _key: &()) -> Option<(V, DepNodeIndex)> {
+        *self.cache.lock()
+    }
+
+    #[inline]
+    fn complete(&self, _key: (), value: V, index: DepNodeIndex) -> Self::Stored {
+        *self.cache.lock() = Some((value.clone(), index));
+        value
+    }
+
+    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+        self.cache.lock().as_ref().map(|value| f(&(), &value.0, value.1));
+    }
+}
+
 pub struct ArenaCache<'tcx, K, V> {
     arena: WorkerLocal<TypedArena<(V, DepNodeIndex)>>,
     #[cfg(parallel_compiler)]
@@ -144,13 +179,6 @@ impl<'tcx, K, V> Default for ArenaCache<'tcx, K, V> {
 impl<'tcx, K: Eq + Hash, V: Debug + 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
     type Value = V;
     type Stored = &'tcx V;
-
-    #[inline]
-    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
-        let value = self.arena.alloc((value, DepNodeIndex::INVALID));
-        let value = unsafe { &*(&value.0 as *const _) };
-        &value
-    }
 }
 
 impl<'tcx, K, V: 'tcx> QueryCache for ArenaCache<'tcx, K, V>
@@ -231,12 +259,6 @@ impl<K: Idx, V> Default for VecCache<K, V> {
 impl<K: Eq + Idx, V: Copy + Debug> QueryStorage for VecCache<K, V> {
     type Value = V;
     type Stored = V;
-
-    #[inline]
-    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
-        // We have no dedicated storage
-        value
-    }
 }
 
 impl<K, V> QueryCache for VecCache<K, V>
@@ -309,13 +331,6 @@ impl<'tcx, K: Idx, V> Default for VecArenaCache<'tcx, K, V> {
 impl<'tcx, K: Eq + Idx, V: Debug + 'tcx> QueryStorage for VecArenaCache<'tcx, K, V> {
     type Value = V;
     type Stored = &'tcx V;
-
-    #[inline]
-    fn store_nocache(&self, value: Self::Value) -> Self::Stored {
-        let value = self.arena.alloc((value, DepNodeIndex::INVALID));
-        let value = unsafe { &*(&value.0 as *const _) };
-        &value
-    }
 }
 
 impl<'tcx, K, V: 'tcx> QueryCache for VecArenaCache<'tcx, K, V>

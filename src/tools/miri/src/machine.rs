@@ -971,7 +971,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     fn adjust_alloc_base_pointer(
         ecx: &MiriInterpCx<'mir, 'tcx>,
         ptr: Pointer<AllocId>,
-    ) -> Pointer<Provenance> {
+    ) -> InterpResult<'tcx, Pointer<Provenance>> {
         if cfg!(debug_assertions) {
             // The machine promises to never call us on thread-local or extern statics.
             let alloc_id = ptr.provenance;
@@ -985,17 +985,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 _ => {}
             }
         }
-        let absolute_addr = intptrcast::GlobalStateInner::rel_ptr_to_addr(ecx, ptr);
+        let absolute_addr = intptrcast::GlobalStateInner::rel_ptr_to_addr(ecx, ptr)?;
         let tag = if let Some(borrow_tracker) = &ecx.machine.borrow_tracker {
             borrow_tracker.borrow_mut().base_ptr_tag(ptr.provenance, &ecx.machine)
         } else {
             // Value does not matter, SB is disabled
             BorTag::default()
         };
-        Pointer::new(
+        Ok(Pointer::new(
             Provenance::Concrete { alloc_id: ptr.provenance, tag },
             Size::from_bytes(absolute_addr),
-        )
+        ))
     }
 
     #[inline(always)]

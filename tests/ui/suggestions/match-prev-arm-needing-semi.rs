@@ -24,8 +24,8 @@ async fn async_extra_semicolon_same() {
             //~^ HELP consider removing this semicolon
         }
         false => async_dummy(), //~ ERROR `match` arms have incompatible types
-        //~^ NOTE expected `()`, found opaque type
-        //~| NOTE expected unit type `()`
+        //~^ NOTE expected `()`, found future
+        //~| NOTE calling an async function returns a future
         //~| HELP consider `await`ing on the `Future`
     };
 }
@@ -37,8 +37,8 @@ async fn async_extra_semicolon_different() {
             //~^ HELP consider removing this semicolon
         }
         false => async_dummy2(), //~ ERROR `match` arms have incompatible types
-        //~^ NOTE expected `()`, found opaque type
-        //~| NOTE expected unit type `()`
+        //~^ NOTE expected `()`, found future
+        //~| NOTE calling an async function returns a future
         //~| HELP consider `await`ing on the `Future`
     };
 }
@@ -48,8 +48,7 @@ async fn async_different_futures() {
         true => async_dummy(), //~ NOTE this is found to be
         //~| HELP consider `await`ing on both `Future`s
         false => async_dummy2(), //~ ERROR `match` arms have incompatible types
-        //~^ NOTE expected opaque type, found a different opaque type
-        //~| NOTE expected opaque type `impl Future<Output = ()>`
+        //~^ NOTE expected future, found a different future
         //~| NOTE distinct uses of `impl Trait` result in different opaque types
     };
 }

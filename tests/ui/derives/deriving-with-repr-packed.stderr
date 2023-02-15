@@ -13,6 +13,20 @@ LL |     data: [u8],
    = note: `#[warn(byte_slice_in_packed_struct_with_derive)]` on by default
    = note: this warning originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+warning: string slice in a packed struct that derives a built-in trait
+  --> $DIR/deriving-with-repr-packed.rs:41:5
+   |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+...
+LL |     data: str,
+   |     ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #107457 <https://github.com/rust-lang/rust/issues/107457>
+   = help: consider implementing the trait by hand, or remove the `packed` attribute
+   = note: this warning originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0507]: cannot move out of `self` which is behind a shared reference
   --> $DIR/deriving-with-repr-packed.rs:22:10
    |
@@ -24,7 +38,7 @@ LL | struct X(Y);
    |
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0507`.
 Future incompatibility report: Future breakage diagnostic:
@@ -36,6 +50,22 @@ LL | #[derive(Debug)]
 ...
 LL |     data: [u8],
    |     ^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #107457 <https://github.com/rust-lang/rust/issues/107457>
+   = help: consider implementing the trait by hand, or remove the `packed` attribute
+   = note: `#[warn(byte_slice_in_packed_struct_with_derive)]` on by default
+   = note: this warning originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+Future breakage diagnostic:
+warning: string slice in a packed struct that derives a built-in trait
+  --> $DIR/deriving-with-repr-packed.rs:41:5
+   |
+LL | #[derive(Debug)]
+   |          ----- in this derive macro expansion
+...
+LL |     data: str,
+   |     ^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #107457 <https://github.com/rust-lang/rust/issues/107457>

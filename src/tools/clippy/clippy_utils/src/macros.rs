@@ -770,10 +770,7 @@ impl<'tcx> FormatSpec<'tcx> {
     /// Has no other formatting specifiers than setting the format trait. returns true for `{}`,
     /// `{foo}`, `{:?}`, but false for `{foo:5}`, `{3:.5?}`
     pub fn is_default_for_trait(&self) -> bool {
-        self.width.is_implied()
-            && self.precision.is_implied()
-            && self.align == Alignment::AlignUnknown
-            && self.no_flags
+        self.width.is_implied() && self.precision.is_implied() && self.align == Alignment::AlignUnknown && self.no_flags
     }
 }
 

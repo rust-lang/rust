@@ -41,6 +41,28 @@ impl<'a, T> DormantMutRef<'a, T> {
         // SAFETY: our own safety conditions imply this reference is again unique.
         unsafe { &mut *self.ptr.as_ptr() }
     }
+
+    /// Borrows a new mutable reference from the unique borrow initially captured.
+    ///
+    /// # Safety
+    ///
+    /// The reborrow must have ended, i.e., the reference returned by `new` and
+    /// all pointers and references derived from it, must not be used anymore.
+    pub unsafe fn reborrow(&mut self) -> &'a mut T {
+        // SAFETY: our own safety conditions imply this reference is again unique.
+        unsafe { &mut *self.ptr.as_ptr() }
+    }
+
+    /// Borrows a new shared reference from the unique borrow initially captured.
+    ///
+    /// # Safety
+    ///
+    /// The reborrow must have ended, i.e., the reference returned by `new` and
+    /// all pointers and references derived from it, must not be used anymore.
+    pub unsafe fn reborrow_shared(&self) -> &'a T {
+        // SAFETY: our own safety conditions imply this reference is again unique.
+        unsafe { &*self.ptr.as_ptr() }
+    }
 }
 
 #[cfg(test)]

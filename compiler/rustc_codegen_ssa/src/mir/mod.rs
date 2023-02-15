@@ -3,7 +3,7 @@ use crate::traits::*;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
-use rustc_middle::ty::{self, Instance, Ty, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_target::abi::call::{FnAbi, PassMode};
 
 use std::iter;

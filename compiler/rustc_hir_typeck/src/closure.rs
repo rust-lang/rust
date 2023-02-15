@@ -12,7 +12,7 @@ use rustc_infer::infer::{InferOk, InferResult};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, Ty, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{self, ir::TypeVisitor, Ty, TyCtxt, TypeSuperVisitable};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::sym;
@@ -232,7 +232,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 struct MentionsTy<'tcx> {
                     expected_ty: Ty<'tcx>,
                 }
-                impl<'tcx> TypeVisitor<'tcx> for MentionsTy<'tcx> {
+                impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MentionsTy<'tcx> {
                     type BreakTy = ();
 
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -544,7 +544,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
             .map(|(hir_ty, &supplied_ty)| {
                 // Instantiate (this part of..) S to S', i.e., with fresh variables.
-                self.replace_bound_vars_with_fresh_vars(
+                self.instantiate_binder_with_fresh_vars(
                     hir_ty.span,
                     LateBoundRegionConversionTime::FnCall,
                     // (*) binder moved to here
@@ -566,7 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 all_obligations.extend(obligations);
             }
 
-            let supplied_output_ty = self.replace_bound_vars_with_fresh_vars(
+            let supplied_output_ty = self.instantiate_binder_with_fresh_vars(
                 decl.output.span(),
                 LateBoundRegionConversionTime::FnCall,
                 supplied_sig.output(),

@@ -9,7 +9,6 @@ use crate::ty::{self, Expr, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldabl
 use crate::ty::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
-use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi;
 use std::iter;
 
@@ -502,7 +501,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) => {
             let t = relation.relate(a_t, b_t)?;
             match relation.relate(sz_a, sz_b) {
-                Ok(sz) => Ok(tcx.mk_ty(ty::Array(t, sz))),
+                Ok(sz) => Ok(tcx.mk_array_with_const_len(t, sz)),
                 Err(err) => {
                     // Check whether the lengths are both concrete/known values,
                     // but are unequal, for better diagnostics.
@@ -511,8 +510,8 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
                     // we however cannot end up with errors in `Relate` during both
                     // `type_of` and `predicates_of`. This means that evaluating the
                     // constants should not cause cycle errors here.
-                    let sz_a = sz_a.try_eval_usize(tcx, relation.param_env());
-                    let sz_b = sz_b.try_eval_usize(tcx, relation.param_env());
+                    let sz_a = sz_a.try_eval_target_usize(tcx, relation.param_env());
+                    let sz_b = sz_b.try_eval_target_usize(tcx, relation.param_env());
                     match (sz_a, sz_b) {
                         (Some(sz_a_val), Some(sz_b_val)) if sz_a_val != sz_b_val => Err(
                             TypeError::FixedArraySize(expected_found(relation, sz_a_val, sz_b_val)),
@@ -593,25 +592,6 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
 ) -> RelateResult<'tcx, ty::Const<'tcx>> {
     debug!("{}.super_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
-
-    let a_ty;
-    let b_ty;
-    if relation.tcx().features().adt_const_params {
-        a_ty = tcx.normalize_erasing_regions(relation.param_env(), a.ty());
-        b_ty = tcx.normalize_erasing_regions(relation.param_env(), b.ty());
-    } else {
-        a_ty = tcx.erase_regions(a.ty());
-        b_ty = tcx.erase_regions(b.ty());
-    }
-    if a_ty != b_ty {
-        relation.tcx().sess.delay_span_bug(
-            DUMMY_SP,
-            &format!(
-                "cannot relate constants ({:?}, {:?}) of different types: {} != {}",
-                a, b, a_ty, b_ty
-            ),
-        );
-    }
 
     // HACK(const_generics): We still need to eagerly evaluate consts when
     // relating them because during `normalize_param_env_or_error`,

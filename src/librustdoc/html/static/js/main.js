@@ -378,7 +378,7 @@ function loadCss(cssUrl) {
         }
         ev.preventDefault();
         searchState.defocus();
-        window.hideAllModals(true); // true = reset focus for notable traits
+        window.hideAllModals(true); // true = reset focus for tooltips
     }
 
     function handleShortcut(ev) {
@@ -455,10 +455,7 @@ function loadCss(cssUrl) {
             const ul = document.createElement("ul");
             ul.className = "block " + shortty;
 
-            for (const item of filtered) {
-                const name = item[0];
-                const desc = item[1]; // can be null
-
+            for (const name of filtered) {
                 let path;
                 if (shortty === "mod") {
                     path = name + "/index.html";
@@ -468,7 +465,6 @@ function loadCss(cssUrl) {
                 const current_page = document.location.href.split("/").pop();
                 const link = document.createElement("a");
                 link.href = path;
-                link.title = desc;
                 if (path === current_page) {
                     link.className = "current";
                 }
@@ -788,17 +784,17 @@ function loadCss(cssUrl) {
             // we need to switch away from mobile mode and make the main content area scrollable.
             hideSidebar();
         }
-        if (window.CURRENT_NOTABLE_ELEMENT) {
-            // As a workaround to the behavior of `contains: layout` used in doc togglers, the
-            // notable traits popup is positioned using javascript.
+        if (window.CURRENT_TOOLTIP_ELEMENT) {
+            // As a workaround to the behavior of `contains: layout` used in doc togglers,
+            // tooltip popovers are positioned using javascript.
             //
             // This means when the window is resized, we need to redo the layout.
-            const base = window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE;
-            const force_visible = base.NOTABLE_FORCE_VISIBLE;
-            hideNotable(false);
+            const base = window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE;
+            const force_visible = base.TOOLTIP_FORCE_VISIBLE;
+            hideTooltip(false);
             if (force_visible) {
-                showNotable(base);
-                base.NOTABLE_FORCE_VISIBLE = true;
+                showTooltip(base);
+                base.TOOLTIP_FORCE_VISIBLE = true;
             }
         }
     });
@@ -826,27 +822,35 @@ function loadCss(cssUrl) {
         });
     });
 
-    function showNotable(e) {
-        if (!window.NOTABLE_TRAITS) {
+    function showTooltip(e) {
+        const notable_ty = e.getAttribute("data-notable-ty");
+        if (!window.NOTABLE_TRAITS && notable_ty) {
             const data = document.getElementById("notable-traits-data");
             if (data) {
                 window.NOTABLE_TRAITS = JSON.parse(data.innerText);
             } else {
-                throw new Error("showNotable() called on page without any notable traits!");
+                throw new Error("showTooltip() called with notable without any notable traits!");
             }
         }
-        if (window.CURRENT_NOTABLE_ELEMENT && window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE === e) {
+        if (window.CURRENT_TOOLTIP_ELEMENT && window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE === e) {
             // Make this function idempotent.
             return;
         }
         window.hideAllModals(false);
-        const ty = e.getAttribute("data-ty");
         const wrapper = document.createElement("div");
-        wrapper.innerHTML = "<div class=\"content\">" + window.NOTABLE_TRAITS[ty] + "</div>";
-        wrapper.className = "notable popover";
+        if (notable_ty) {
+            wrapper.innerHTML = "<div class=\"content\">" +
+                window.NOTABLE_TRAITS[notable_ty] + "</div>";
+        } else if (e.getAttribute("title") !== undefined) {
+            const titleContent = document.createElement("div");
+            titleContent.className = "content";
+            titleContent.appendChild(document.createTextNode(e.getAttribute("title")));
+            wrapper.appendChild(titleContent);
+        }
+        wrapper.className = "tooltip popover";
         const focusCatcher = document.createElement("div");
         focusCatcher.setAttribute("tabindex", "0");
-        focusCatcher.onfocus = hideNotable;
+        focusCatcher.onfocus = hideTooltip;
         wrapper.appendChild(focusCatcher);
         const pos = e.getBoundingClientRect();
         // 5px overlap so that the mouse can easily travel from place to place
@@ -868,62 +872,62 @@ function loadCss(cssUrl) {
             );
         }
         wrapper.style.visibility = "";
-        window.CURRENT_NOTABLE_ELEMENT = wrapper;
-        window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE = e;
+        window.CURRENT_TOOLTIP_ELEMENT = wrapper;
+        window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE = e;
         wrapper.onpointerleave = function(ev) {
             // If this is a synthetic touch event, ignore it. A click event will be along shortly.
             if (ev.pointerType !== "mouse") {
                 return;
             }
-            if (!e.NOTABLE_FORCE_VISIBLE && !elemIsInParent(event.relatedTarget, e)) {
-                hideNotable(true);
+            if (!e.TOOLTIP_FORCE_VISIBLE && !elemIsInParent(event.relatedTarget, e)) {
+                hideTooltip(true);
             }
         };
     }
 
-    function notableBlurHandler(event) {
-        if (window.CURRENT_NOTABLE_ELEMENT &&
-            !elemIsInParent(document.activeElement, window.CURRENT_NOTABLE_ELEMENT) &&
-            !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT) &&
-            !elemIsInParent(document.activeElement, window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE) &&
-            !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE)
+    function tooltipBlurHandler(event) {
+        if (window.CURRENT_TOOLTIP_ELEMENT &&
+            !elemIsInParent(document.activeElement, window.CURRENT_TOOLTIP_ELEMENT) &&
+            !elemIsInParent(event.relatedTarget, window.CURRENT_TOOLTIP_ELEMENT) &&
+            !elemIsInParent(document.activeElement, window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE) &&
+            !elemIsInParent(event.relatedTarget, window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE)
         ) {
             // Work around a difference in the focus behaviour between Firefox, Chrome, and Safari.
-            // When I click the button on an already-opened notable trait popover, Safari
+            // When I click the button on an already-opened tooltip popover, Safari
             // hides the popover and then immediately shows it again, while everyone else hides it
             // and it stays hidden.
             //
             // To work around this, make sure the click finishes being dispatched before
-            // hiding the popover. Since `hideNotable()` is idempotent, this makes Safari behave
+            // hiding the popover. Since `hideTooltip()` is idempotent, this makes Safari behave
             // consistently with the other two.
-            setTimeout(() => hideNotable(false), 0);
+            setTimeout(() => hideTooltip(false), 0);
         }
     }
 
-    function hideNotable(focus) {
-        if (window.CURRENT_NOTABLE_ELEMENT) {
-            if (window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.NOTABLE_FORCE_VISIBLE) {
+    function hideTooltip(focus) {
+        if (window.CURRENT_TOOLTIP_ELEMENT) {
+            if (window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.TOOLTIP_FORCE_VISIBLE) {
                 if (focus) {
-                    window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.focus();
+                    window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.focus();
                 }
-                window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.NOTABLE_FORCE_VISIBLE = false;
+                window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.TOOLTIP_FORCE_VISIBLE = false;
             }
             const body = document.getElementsByTagName("body")[0];
-            body.removeChild(window.CURRENT_NOTABLE_ELEMENT);
-            window.CURRENT_NOTABLE_ELEMENT = null;
+            body.removeChild(window.CURRENT_TOOLTIP_ELEMENT);
+            window.CURRENT_TOOLTIP_ELEMENT = null;
         }
     }
 
-    onEachLazy(document.getElementsByClassName("notable-traits"), e => {
+    onEachLazy(document.getElementsByClassName("tooltip"), e => {
         e.onclick = function() {
-            this.NOTABLE_FORCE_VISIBLE = this.NOTABLE_FORCE_VISIBLE ? false : true;
-            if (window.CURRENT_NOTABLE_ELEMENT && !this.NOTABLE_FORCE_VISIBLE) {
-                hideNotable(true);
+            this.TOOLTIP_FORCE_VISIBLE = this.TOOLTIP_FORCE_VISIBLE ? false : true;
+            if (window.CURRENT_TOOLTIP_ELEMENT && !this.TOOLTIP_FORCE_VISIBLE) {
+                hideTooltip(true);
             } else {
-                showNotable(this);
-                window.CURRENT_NOTABLE_ELEMENT.setAttribute("tabindex", "0");
-                window.CURRENT_NOTABLE_ELEMENT.focus();
-                window.CURRENT_NOTABLE_ELEMENT.onblur = notableBlurHandler;
+                showTooltip(this);
+                window.CURRENT_TOOLTIP_ELEMENT.setAttribute("tabindex", "0");
+                window.CURRENT_TOOLTIP_ELEMENT.focus();
+                window.CURRENT_TOOLTIP_ELEMENT.onblur = tooltipBlurHandler;
             }
             return false;
         };
@@ -932,16 +936,16 @@ function loadCss(cssUrl) {
             if (ev.pointerType !== "mouse") {
                 return;
             }
-            showNotable(this);
+            showTooltip(this);
         };
         e.onpointerleave = function(ev) {
             // If this is a synthetic touch event, ignore it. A click event will be along shortly.
             if (ev.pointerType !== "mouse") {
                 return;
             }
-            if (!this.NOTABLE_FORCE_VISIBLE &&
-                !elemIsInParent(ev.relatedTarget, window.CURRENT_NOTABLE_ELEMENT)) {
-                hideNotable(true);
+            if (!this.TOOLTIP_FORCE_VISIBLE &&
+                !elemIsInParent(ev.relatedTarget, window.CURRENT_TOOLTIP_ELEMENT)) {
+                hideTooltip(true);
             }
         };
     });
@@ -1043,14 +1047,14 @@ function loadCss(cssUrl) {
     }
 
     /**
-     * Hide popover menus, notable trait tooltips, and the sidebar (if applicable).
+     * Hide popover menus, clickable tooltips, and the sidebar (if applicable).
      *
-     * Pass "true" to reset focus for notable traits.
+     * Pass "true" to reset focus for tooltip popovers.
      */
     window.hideAllModals = function(switchFocus) {
         hideSidebar();
         window.hidePopoverMenus();
-        hideNotable(switchFocus);
+        hideTooltip(switchFocus);
     };
 
     /**

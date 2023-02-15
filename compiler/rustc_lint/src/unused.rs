@@ -309,7 +309,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         None
                     }
                 }
-                ty::Array(ty, len) => match len.try_eval_usize(cx.tcx, cx.param_env) {
+                ty::Array(ty, len) => match len.try_eval_target_usize(cx.tcx, cx.param_env) {
                     // If the array is empty we don't lint, to avoid false positives
                     Some(0) | None => None,
                     // If the array is definitely non-empty, we can do `#[must_use]` checking.

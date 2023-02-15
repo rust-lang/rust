@@ -34,11 +34,10 @@ use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::fold::{ir::TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, FmtPrinter, Print};
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
-    TypeVisitable,
 };
 use rustc_session::config::TraitSolver;
 use rustc_session::Limit;
@@ -1278,6 +1277,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         span,
                         "TypeWellFormedFromEnv predicate should only exist in the environment"
                     ),
+
+                    ty::PredicateKind::AliasEq(..) => span_bug!(
+                        span,
+                        "AliasEq predicate should never be the predicate cause of a SelectionError"
+                    ),
                 }
             }
 
@@ -1716,7 +1720,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let (values, err) = if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
                 bound_predicate.skip_binder()
             {
-                let data = self.replace_bound_vars_with_fresh_vars(
+                let data = self.instantiate_binder_with_fresh_vars(
                     obligation.cause.span,
                     infer::LateBoundRegionConversionTime::HigherRankedType,
                     bound_predicate.rebind(data),
@@ -2670,8 +2674,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             var_map: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
         }
 
-        impl<'a, 'tcx> TypeFolder<'tcx> for ParamToVarFolder<'a, 'tcx> {
-            fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+        impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ParamToVarFolder<'a, 'tcx> {
+            fn interner(&self) -> TyCtxt<'tcx> {
                 self.infcx.tcx
             }
 
@@ -2959,7 +2963,7 @@ impl ArgKind {
 
 struct HasNumericInferVisitor;
 
-impl<'tcx> ty::TypeVisitor<'tcx> for HasNumericInferVisitor {
+impl<'tcx> ty::ir::TypeVisitor<TyCtxt<'tcx>> for HasNumericInferVisitor {
     type BreakTy = ();
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

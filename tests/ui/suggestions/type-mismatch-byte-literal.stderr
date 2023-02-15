@@ -30,13 +30,54 @@ LL |     foo(b'#');
    |         ~~~~
 
 error[E0308]: mismatched types
-  --> $DIR/type-mismatch-byte-literal.rs:16:18
+  --> $DIR/type-mismatch-byte-literal.rs:15:18
+   |
+LL |     let _a: u8 = '\x20';
+   |             --   ^^^^^^ expected `u8`, found `char`
+   |             |
+   |             expected due to this
+   |
+help: if you meant to write a byte literal, prefix with `b`
+   |
+LL |     let _a: u8 = b'\x20';
+   |                  ~~~~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch-byte-literal.rs:20:9
+   |
+LL |     foo('\u{0080}');
+   |     --- ^^^^^^^^^^ expected `u8`, found `char`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/type-mismatch-byte-literal.rs:4:4
+   |
+LL | fn foo(_t: u8) {}
+   |    ^^^ ------
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch-byte-literal.rs:24:18
    |
 LL |     let _t: u8 = '€';
    |             --   ^^^ expected `u8`, found `char`
    |             |
    |             expected due to this
 
-error: aborting due to 3 previous errors
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch-byte-literal.rs:28:9
+   |
+LL |     foo('\u{1f980}');
+   |     --- ^^^^^^^^^^^ expected `u8`, found `char`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/type-mismatch-byte-literal.rs:4:4
+   |
+LL | fn foo(_t: u8) {}
+   |    ^^^ ------
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

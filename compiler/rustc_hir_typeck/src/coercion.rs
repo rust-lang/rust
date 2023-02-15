@@ -765,7 +765,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             self.cause.clone(),
             self.param_env,
             ty::Binder::dummy(
-                self.tcx.at(self.cause.span).mk_trait_ref(hir::LangItem::PointerSized, [a]),
+                self.tcx.at(self.cause.span).mk_trait_ref(hir::LangItem::PointerLike, [a]),
             ),
         ));
 

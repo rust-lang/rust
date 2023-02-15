@@ -3460,7 +3460,7 @@ pub struct Upvar {
 // The TraitCandidate's import_ids is empty if the trait is defined in the same module, and
 // has length > 0 if the trait is found through an chain of imports, starting with the
 // import/use statement in the scope where the trait is used.
-#[derive(Encodable, Decodable, Clone, Debug, HashStable_Generic)]
+#[derive(Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct TraitCandidate {
     pub def_id: DefId,
     pub import_ids: SmallVec<[LocalDefId; 1]>,

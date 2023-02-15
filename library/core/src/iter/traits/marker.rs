@@ -31,6 +31,17 @@ impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
 /// The iterator must produce exactly the number of elements it reported
 /// or diverge before reaching the end.
 ///
+/// # When *shouldn't* an adapter be `TrustedLen`?
+///
+/// If an adapter makes an iterator *shorter* by a given amount, then it's
+/// usually incorrect for that adapter to implement `TrustedLen`.  The inner
+/// iterator might return more than `usize::MAX` items, but there's no way to
+/// know what `k` elements less than that will be, since the `size_hint` from
+/// the inner iterator has already saturated and lost that information.
+///
+/// This is why [`Skip<I>`](crate::iter::Skip) isn't `TrustedLen`, even when
+/// `I` implements `TrustedLen`.
+///
 /// # Safety
 ///
 /// This trait must only be implemented when the contract is upheld. Consumers

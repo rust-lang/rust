@@ -249,7 +249,7 @@ fn test_short_markdown_summary() {
 #[test]
 fn test_plain_text_summary() {
     fn t(input: &str, expect: &str) {
-        let output = plain_text_summary(input);
+        let output = plain_text_summary(input, &[]);
         assert_eq!(output, expect, "original: {}", input);
     }
 

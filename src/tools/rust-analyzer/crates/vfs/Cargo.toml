@@ -2,9 +2,11 @@
 name = "vfs"
 version = "0.0.0"
 description = "TBD"
-license = "MIT OR Apache-2.0"
-edition = "2021"
-rust-version = "1.65"
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
 
 [lib]
 doctest = false
@@ -14,5 +16,5 @@ rustc-hash = "1.1.0"
 fst = "0.4.7"
 indexmap = "1.9.1"
 
-paths = { path = "../paths", version = "0.0.0" }
-stdx = { path = "../stdx", version = "0.0.0" }
+paths.workspace = true
+stdx.workspace = true
