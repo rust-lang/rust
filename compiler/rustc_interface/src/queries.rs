@@ -7,16 +7,20 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_data_structures::sync::{Lrc, OnceCell, RwLock, WorkerLocal};
+use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::definitions::Definitions;
 use rustc_incremental::DepGraphFuture;
+use rustc_index::vec::IndexVec;
 use rustc_lint::LintStore;
+use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::{self, GlobalCtxt, TyCtxt};
 use rustc_query_impl::Queries as TcxQueries;
 use rustc_resolve::Resolver;
 use rustc_session::config::{self, OutputFilenames, OutputType};
+use rustc_session::cstore::Untracked;
 use rustc_session::{output::find_crate_name, Session};
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
@@ -187,40 +191,20 @@ impl<'tcx> Queries<'tcx> {
         self.gcx.compute(|| {
             let crate_name = *self.crate_name()?.borrow();
             let (krate, lint_store) = self.register_plugins()?.steal();
-            let (krate, resolver_outputs) = {
-                let _timer = self.session().timer("configure_and_expand");
-                let sess = self.session();
 
-                let arenas = Resolver::arenas();
-                let mut resolver = Resolver::new(
-                    sess,
-                    &krate,
-                    crate_name,
-                    self.codegen_backend().metadata_loader(),
-                    &arenas,
-                );
-                let krate = passes::configure_and_expand(
-                    sess,
-                    &lint_store,
-                    krate,
-                    crate_name,
-                    &mut resolver,
-                )?;
-                (Lrc::new(krate), resolver.into_outputs())
-            };
+            let sess = self.session();
 
-            let ty::ResolverOutputs {
-                untracked,
-                global_ctxt: untracked_resolutions,
-                ast_lowering: untracked_resolver_for_lowering,
-            } = resolver_outputs;
+            let cstore = RwLock::new(Box::new(CStore::new(sess)) as _);
+            let definitions = RwLock::new(Definitions::new(sess.local_stable_crate_id()));
+            let mut source_span = IndexVec::default();
+            let _id = source_span.push(krate.spans.inner_span);
+            debug_assert_eq!(_id, CRATE_DEF_ID);
+            let source_span = RwLock::new(source_span);
+            let untracked = Untracked { cstore, source_span, definitions };
 
-            // Make sure we don't mutate the cstore from here on.
-            std::mem::forget(untracked.cstore.read());
-
-            let gcx = passes::create_global_ctxt(
+            let qcx = passes::create_global_ctxt(
                 self.compiler,
-                lint_store,
+                lint_store.clone(),
                 self.dep_graph()?.steal(),
                 untracked,
                 &self.queries,
@@ -229,17 +213,48 @@ impl<'tcx> Queries<'tcx> {
                 &self.hir_arena,
             );
 
-            gcx.enter(|tcx| {
+            qcx.enter(|tcx| {
+                let feed = tcx.feed_local_crate();
+                feed.crate_name(crate_name);
+                let (krate, resolver_outputs) = {
+                    let _timer = sess.timer("configure_and_expand");
+
+                    let arenas = Resolver::arenas();
+                    let mut resolver = Resolver::new(
+                        sess,
+                        &krate,
+                        crate_name,
+                        self.codegen_backend().metadata_loader(),
+                        &arenas,
+                        tcx.untracked(),
+                    );
+                    let krate = passes::configure_and_expand(
+                        sess,
+                        &lint_store,
+                        krate,
+                        crate_name,
+                        &mut resolver,
+                    )?;
+
+                    // Make sure we don't mutate the cstore from here on.
+                    tcx.untracked().cstore.leak();
+                    (Lrc::new(krate), resolver.into_outputs())
+                };
+
+                let ty::ResolverOutputs {
+                    global_ctxt: untracked_resolutions,
+                    ast_lowering: untracked_resolver_for_lowering,
+                } = resolver_outputs;
+
                 let feed = tcx.feed_unit_query();
                 feed.resolver_for_lowering(
                     tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, krate))),
                 );
                 feed.resolutions(tcx.arena.alloc(untracked_resolutions));
                 feed.features_query(tcx.sess.features_untracked());
-                let feed = tcx.feed_local_crate();
-                feed.crate_name(crate_name);
-            });
-            Ok(gcx)
+                Ok(())
+            })?;
+            Ok(qcx)
         })
     }
 

@@ -1015,6 +1015,10 @@ impl<'tcx> TyCtxt<'tcx> {
         ReadGuard::map(self.untracked.cstore.read(), |c| &**c)
     }
 
+    /// Give out access to the untracked data without any sanity checks.
+    pub fn untracked(self) -> &'tcx Untracked {
+        &self.untracked
+    }
     /// Note that this is *untracked* and should only be used within the query
     /// system if the result is otherwise tracked through queries
     #[inline]

@@ -27,14 +27,14 @@ use rustc_ast::{self as ast, NodeId, CRATE_NODE_ID};
 use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::sync::{Lrc, MappedReadGuard, ReadGuard, RwLock};
+use rustc_data_structures::sync::{Lrc, MappedReadGuard, ReadGuard};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::definitions::{DefPathData, Definitions};
+use rustc_hir::definitions::DefPathData;
 use rustc_hir::TraitCandidate;
 use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
@@ -962,7 +962,7 @@ pub struct Resolver<'a, 'tcx> {
 
     local_crate_name: Symbol,
     metadata_loader: Box<MetadataLoaderDyn>,
-    untracked: Untracked,
+    untracked: &'tcx Untracked,
     used_extern_options: FxHashSet<Symbol>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Symbol, BuiltinMacroState>,
@@ -1211,6 +1211,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         crate_name: Symbol,
         metadata_loader: Box<MetadataLoaderDyn>,
         arenas: &'a ResolverArenas<'a>,
+        untracked: &'tcx Untracked,
     ) -> Resolver<'a, 'tcx> {
         let tcx = TyCtxt { sess: session };
 
@@ -1233,8 +1234,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             &mut FxHashMap::default(),
         );
 
-        let definitions = Definitions::new(session.local_stable_crate_id());
-
         let mut visibilities = FxHashMap::default();
         visibilities.insert(CRATE_DEF_ID, ty::Visibility::Public);
 
@@ -1245,10 +1244,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let mut invocation_parents = FxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, (CRATE_DEF_ID, ImplTraitContext::Existential));
-
-        let mut source_span = IndexVec::default();
-        let _id = source_span.push(krate.spans.inner_span);
-        debug_assert_eq!(_id, CRATE_DEF_ID);
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = session
             .opts
@@ -1327,11 +1322,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             metadata_loader,
             local_crate_name: crate_name,
             used_extern_options: Default::default(),
-            untracked: Untracked {
-                cstore: RwLock::new(Box::new(CStore::new(session))),
-                source_span: RwLock::new(source_span),
-                definitions: RwLock::new(definitions),
-            },
+            untracked,
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
             builtin_macro_kinds: Default::default(),
@@ -1436,7 +1427,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let main_def = self.main_def;
         let confused_type_with_std_module = self.confused_type_with_std_module;
         let effective_visibilities = self.effective_visibilities;
-        let untracked = self.untracked;
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,
             visibilities,
@@ -1475,11 +1465,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             builtin_macro_kinds: self.builtin_macro_kinds,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
         };
-        ResolverOutputs { global_ctxt, ast_lowering, untracked }
+        ResolverOutputs { global_ctxt, ast_lowering }
     }
 
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
-        StableHashingContext::new(self.tcx.sess, &self.untracked)
+        StableHashingContext::new(self.tcx.sess, self.untracked)
     }
 
     fn crate_loader<T>(&mut self, f: impl FnOnce(&mut CrateLoader<'_>) -> T) -> T {
@@ -1543,6 +1533,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 .sess
                 .time("resolve_postprocess", || self.crate_loader(|c| c.postprocess(krate)));
         });
+
+        // Make sure we don't mutate the cstore from here on.
+        self.untracked.cstore.leak();
     }
 
     fn traits_in_scope(
