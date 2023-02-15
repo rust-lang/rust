@@ -343,9 +343,12 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io::Read;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut f = File::open("foo.txt")?;
+    ///     let mut data = vec![];
+    ///     f.read_to_end(&mut data)?;
     ///     Ok(())
     /// }
     /// ```
@@ -368,9 +371,11 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io::Write;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut f = File::create("foo.txt")?;
+    ///     f.write_all(&1234_u32.to_be_bytes())?;
     ///     Ok(())
     /// }
     /// ```
@@ -397,9 +402,11 @@ impl File {
     /// #![feature(file_create_new)]
     ///
     /// use std::fs::File;
+    /// use std::io::Write;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut f = File::create_new("foo.txt")?;
+    ///     f.write_all("Hello, world!".as_bytes())?;
     ///     Ok(())
     /// }
     /// ```
@@ -426,9 +433,11 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io::Write;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut f = File::options().append(true).open("example.log")?;
+    ///     writeln!(&mut f, "new line")?;
     ///     Ok(())
     /// }
     /// ```
