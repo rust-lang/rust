@@ -1,0 +1,11 @@
+error[E0308]: mismatched types
+  --> $DIR/array-literal-len-mismatch.rs:1:26
+   |
+LL | const NUMBERS: [u8; 3] = [10, 20];
+   |                     -    ^^^^^^^^ expected an array with a fixed size of 3 elements, found one with 2 elements
+   |                     |
+   |                     help: consider specifying the actual array length: `2`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
