@@ -1062,7 +1062,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span_if_local(self, id: DefId) -> Option<Span> {
-        if id.is_local() { Some(self.tcx.def_span(id)) } else { None }
+        id.is_local().then(|| self.tcx.def_span(id))
     }
 
     pub fn res_span(self, res: Res) -> Option<Span> {

@@ -91,11 +91,8 @@ impl<'tcx> DumpVisitor<'tcx> {
     where
         F: FnOnce(&mut Self),
     {
-        let typeck_results = if self.tcx.has_typeck_results(item_def_id) {
-            Some(self.tcx.typeck(item_def_id))
-        } else {
-            None
-        };
+        let typeck_results =
+            self.tcx.has_typeck_results(item_def_id).then(|| self.tcx.typeck(item_def_id));
 
         let old_maybe_typeck_results = self.save_ctxt.maybe_typeck_results;
         self.save_ctxt.maybe_typeck_results = typeck_results;

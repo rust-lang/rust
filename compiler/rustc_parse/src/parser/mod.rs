@@ -1283,22 +1283,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_delim_args_inner(&mut self) -> Option<DelimArgs> {
-        if self.check(&token::OpenDelim(Delimiter::Parenthesis))
+        let delimited = self.check(&token::OpenDelim(Delimiter::Parenthesis))
             || self.check(&token::OpenDelim(Delimiter::Bracket))
-            || self.check(&token::OpenDelim(Delimiter::Brace))
-        {
-            match self.parse_token_tree() {
-                // We've confirmed above that there is a delimiter so unwrapping is OK.
-                TokenTree::Delimited(dspan, delim, tokens) => Some(DelimArgs {
-                    dspan,
-                    delim: MacDelimiter::from_token(delim).unwrap(),
-                    tokens,
-                }),
-                _ => unreachable!(),
-            }
-        } else {
-            None
-        }
+            || self.check(&token::OpenDelim(Delimiter::Brace));
+
+        delimited.then(|| {
+            // We've confirmed above that there is a delimiter so unwrapping is OK.
+            let TokenTree::Delimited(dspan, delim, tokens) = self.parse_token_tree() else { unreachable!() };
+
+            DelimArgs { dspan, delim: MacDelimiter::from_token(delim).unwrap(), tokens }
+        })
     }
 
     fn parse_or_use_outer_attributes(

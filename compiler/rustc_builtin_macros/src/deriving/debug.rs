@@ -135,19 +135,17 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         }
 
         // `let names: &'static _ = &["field1", "field2"];`
-        let names_let = if is_struct {
+        let names_let = is_struct.then(|| {
             let lt_static = Some(cx.lifetime_static(span));
             let ty_static_ref = cx.ty_ref(span, cx.ty_infer(span), lt_static, ast::Mutability::Not);
-            Some(cx.stmt_let_ty(
+            cx.stmt_let_ty(
                 span,
                 false,
                 Ident::new(sym::names, span),
                 Some(ty_static_ref),
                 cx.expr_array_ref(span, name_exprs),
-            ))
-        } else {
-            None
-        };
+            )
+        });
 
         // `let values: &[&dyn Debug] = &[&&self.field1, &&self.field2];`
         let path_debug = cx.path_global(span, cx.std_path(&[sym::fmt, sym::Debug]));

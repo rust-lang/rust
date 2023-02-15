@@ -242,8 +242,7 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
         record_graph: bool,
         record_stats: bool,
     ) -> Self {
-        let record_graph =
-            if record_graph { Some(Lock::new(DepGraphQuery::new(prev_node_count))) } else { None };
+        let record_graph = record_graph.then(|| Lock::new(DepGraphQuery::new(prev_node_count)));
         let status = Lock::new(EncoderState::new(encoder, record_stats));
         GraphEncoder { status, record_graph }
     }

@@ -21,11 +21,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for DropckOutlives<'tcx> {
         tcx: TyCtxt<'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
-        if trivial_dropck_outlives(tcx, key.value.dropped_ty) {
-            Some(DropckOutlivesResult::default())
-        } else {
-            None
-        }
+        trivial_dropck_outlives(tcx, key.value.dropped_ty).then(DropckOutlivesResult::default)
     }
 
     fn perform_query(

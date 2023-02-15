@@ -267,13 +267,11 @@ pub type SubstsRef<'tcx> = &'tcx InternalSubsts<'tcx>;
 impl<'tcx> InternalSubsts<'tcx> {
     /// Checks whether all elements of this list are types, if so, transmute.
     pub fn try_as_type_list(&'tcx self) -> Option<&'tcx List<Ty<'tcx>>> {
-        if self.iter().all(|arg| matches!(arg.unpack(), GenericArgKind::Type(_))) {
+        self.iter().all(|arg| matches!(arg.unpack(), GenericArgKind::Type(_))).then(|| {
             assert_eq!(TYPE_TAG, 0);
             // SAFETY: All elements are types, see `List<Ty<'tcx>>::as_substs`.
-            Some(unsafe { &*(self as *const List<GenericArg<'tcx>> as *const List<Ty<'tcx>>) })
-        } else {
-            None
-        }
+            unsafe { &*(self as *const List<GenericArg<'tcx>> as *const List<Ty<'tcx>>) }
+        })
     }
 
     /// Interpret these substitutions as the substitutions of a closure type.
