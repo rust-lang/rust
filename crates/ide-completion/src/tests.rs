@@ -23,7 +23,7 @@ mod type_pos;
 mod use_tree;
 mod visibility;
 
-use hir::{db::DefDatabase, PrefixKind, Semantics};
+use hir::{db::DefDatabase, PrefixKind};
 use ide_db::{
     base_db::{fixture::ChangeFixture, FileLoader, FilePosition},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
@@ -31,7 +31,6 @@ use ide_db::{
 };
 use itertools::Itertools;
 use stdx::{format_to, trim_indent};
-use syntax::{AstNode, NodeOrToken, SyntaxElement};
 use test_utils::assert_eq_text;
 
 use crate::{
@@ -216,15 +215,6 @@ pub(crate) fn check_edit_with_config(
     assert_eq_text!(&ra_fixture_after, &actual)
 }
 
-pub(crate) fn check_pattern_is_applicable(code: &str, check: impl FnOnce(SyntaxElement) -> bool) {
-    let (db, pos) = position(code);
-
-    let sema = Semantics::new(&db);
-    let original_file = sema.parse(pos.file_id);
-    let token = original_file.syntax().token_at_offset(pos.offset).left_biased().unwrap();
-    assert!(check(NodeOrToken::Token(token)));
-}
-
 pub(crate) fn get_all_items(
     config: CompletionConfig,
     code: &str,
@@ -246,8 +236,9 @@ pub(crate) fn get_all_items(
 }
 
 #[test]
-fn test_no_completions_required() {
+fn test_no_completions_in_for_loop_in_kw_pos() {
     assert_eq!(completion_list(r#"fn foo() { for i i$0 }"#), String::new());
+    assert_eq!(completion_list(r#"fn foo() { for i in$0 }"#), String::new());
 }
 
 #[test]
