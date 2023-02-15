@@ -378,11 +378,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             let self_ty = trait_ref.self_ty();
                             let (trait_desc, self_desc) = with_no_trimmed_paths!({
                                 let trait_desc = trait_ref.print_only_trait_path().to_string();
-                                let self_desc = if self_ty.has_concrete_skeleton() {
-                                    Some(self_ty.to_string())
-                                } else {
-                                    None
-                                };
+                                let self_desc =
+                                    self_ty.has_concrete_skeleton().then(|| self_ty.to_string());
                                 (trait_desc, self_desc)
                             });
                             let cause = if let Conflict::Upstream = conflict {

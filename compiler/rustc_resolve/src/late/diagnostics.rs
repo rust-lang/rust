@@ -1700,11 +1700,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                         let crate_mod =
                                             Res::Def(DefKind::Mod, crate_id.as_def_id());
 
-                                        if filter_fn(crate_mod) {
-                                            Some(TypoSuggestion::typo_from_ident(*ident, crate_mod))
-                                        } else {
-                                            None
-                                        }
+                                        filter_fn(crate_mod).then(|| {
+                                            TypoSuggestion::typo_from_ident(*ident, crate_mod)
+                                        })
                                     })
                             }));
 

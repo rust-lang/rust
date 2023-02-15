@@ -1113,13 +1113,11 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::FnDef(_, _) => {
                 let sig = ret_ty.fn_sig(self);
                 let output = self.erase_late_bound_regions(sig.output());
-                if output.is_impl_trait() {
+                output.is_impl_trait().then(|| {
                     let hir_id = self.hir().local_def_id_to_hir_id(scope_def_id);
                     let fn_decl = self.hir().fn_decl_by_hir_id(hir_id).unwrap();
-                    Some((output, fn_decl.output.span()))
-                } else {
-                    None
-                }
+                    (output, fn_decl.output.span())
+                })
             }
             _ => None,
         }
@@ -1225,13 +1223,12 @@ macro_rules! nop_lift {
         impl<'a, 'tcx> Lift<'tcx> for $ty {
             type Lifted = $lifted;
             fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-                if tcx.interners.$set.contains_pointer_to(&InternedInSet(&*self.0.0)) {
+                tcx.interners
+                    .$set
+                    .contains_pointer_to(&InternedInSet(&*self.0.0))
                     // SAFETY: `self` is interned and therefore valid
                     // for the entire lifetime of the `TyCtxt`.
-                    Some(unsafe { mem::transmute(self) })
-                } else {
-                    None
-                }
+                    .then(|| unsafe { mem::transmute(self) })
             }
         }
     };
@@ -1246,13 +1243,13 @@ impl<'a, 'tcx> Lift<'tcx> for &'a List<Ty<'a>> {
         if self.is_empty() {
             return Some(List::empty());
         }
-        if tcx.interners.substs.contains_pointer_to(&InternedInSet(self.as_substs())) {
+
+        tcx.interners
+            .substs
+            .contains_pointer_to(&InternedInSet(self.as_substs()))
             // SAFETY: `self` is interned and therefore valid
             // for the entire lifetime of the `TyCtxt`.
-            Some(unsafe { mem::transmute::<&'a List<Ty<'a>>, &'tcx List<Ty<'tcx>>>(self) })
-        } else {
-            None
-        }
+            .then(|| unsafe { mem::transmute::<&'a List<Ty<'a>>, &'tcx List<Ty<'tcx>>>(self) })
     }
 }
 
@@ -1264,11 +1261,10 @@ macro_rules! nop_list_lift {
                 if self.is_empty() {
                     return Some(List::empty());
                 }
-                if tcx.interners.$set.contains_pointer_to(&InternedInSet(self)) {
-                    Some(unsafe { mem::transmute(self) })
-                } else {
-                    None
-                }
+                tcx.interners
+                    .$set
+                    .contains_pointer_to(&InternedInSet(self))
+                    .then(|| unsafe { mem::transmute(self) })
             }
         }
     };

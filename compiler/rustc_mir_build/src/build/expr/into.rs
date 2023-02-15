@@ -319,7 +319,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // See the notes for `ExprKind::Array` in `as_rvalue` and for
                 // `ExprKind::Borrow` above.
                 let is_union = adt_def.is_union();
-                let active_field_index = if is_union { Some(fields[0].name.index()) } else { None };
+                let active_field_index = is_union.then(|| fields[0].name.index());
 
                 let scope = this.local_scope();
 
