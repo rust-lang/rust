@@ -1075,7 +1075,7 @@ impl<A> RawTableInner<A> {
     /// Creates a new empty hash table without allocating any memory.
     ///
     /// In effect this returns a table with exactly 1 bucket. However we can
-    /// leave the data pointer dangling since that bucket is never written to
+    /// leave the data pointer dangling since that bucket is never accessed
     /// due to our load factor forcing us to always have at least 1 free bucket.
     #[inline]
     const fn new_in(alloc: A) -> Self {
@@ -1092,7 +1092,7 @@ impl<A> RawTableInner<A> {
 
 impl<A: Allocator + Clone> RawTableInner<A> {
     /// Allocates a new [`RawTableInner`] with the given number of buckets.
-    /// The control bytes are left uninitialized.
+    /// The control bytes and buckets are left uninitialized.
     ///
     /// # Safety
     ///
