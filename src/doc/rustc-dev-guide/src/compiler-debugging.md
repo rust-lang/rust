@@ -341,3 +341,37 @@ error: aborting due to previous error
 ```
 
 [`Layout`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_target/abi/struct.Layout.html
+
+
+## Configuring CodeLLDB for debugging `rustc`
+
+If you are using VSCode, and have edited your `config.toml` to request debugging
+level 1 or 2 for the parts of the code you're interested in, then you should be
+able to use the [CodeLLDB] extension in VSCode to debug it.
+
+Here is a sample `launch.json` file, being used to run a stage 1 compiler direct
+from the directory where it is built (does not have to be "installed"):
+
+```javascript
+// .vscode/launch.json
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "type": "lldb",
+        "request": "launch",
+        "name": "Launch",
+        "args": [],  // array of string command-line arguments to pass to compiler
+        "program": "${workspaceFolder}/build/TARGET/stage1/bin/rustc",
+        "windows": {  // applicable if using windows
+            "program": "${workspaceFolder}/build/x86_64-pc-windows-msvc/stage1/bin/rustc.exe"
+        },
+        "cwd": "${workspaceFolder}",  // current working directory at program start
+        "stopOnEntry": false,
+        "sourceLanguages": ["rust"]
+      }
+    ]
+  }
+```
+
+[CodeLLDB]: https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb
