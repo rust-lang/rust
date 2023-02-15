@@ -746,20 +746,33 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
         debug!(?choice_regions, "after ub");
 
-        // If we ruled everything out, we're done.
-        if choice_regions.is_empty() {
-            return false;
-        }
-
-        // Otherwise, we need to find the minimum remaining choice, if
-        // any, and take that.
-        debug!("choice_regions remaining are {:#?}", choice_regions);
-        let Some(&min_choice) = choice_regions.iter().find(|&r1| {
+        // At this point we can pick any member of `choice_regions`, but to avoid potential
+        // non-determinism we will pick the *unique minimum* choice.
+        //
+        // Because universal regions are only partially ordered (i.e, not every two regions are
+        // comparable), we will ignore any region that doesn't compare to all others when picking
+        // the minimum choice.
+        // For example, consider `choice_regions = ['static, 'a, 'b, 'c, 'd, 'e]`, where
+        // `'static: 'a, 'static: 'b, 'a: 'c, 'b: 'c, 'c: 'd, 'c: 'e`.
+        // `['d, 'e]` are ignored because they do not compare - the same goes for `['a, 'b]`.
+        let totally_ordered_subset = choice_regions.iter().copied().filter(|&r1| {
             choice_regions.iter().all(|&r2| {
-                self.universal_region_relations.outlives(r2, *r1)
+                self.universal_region_relations.outlives(r1, r2)
+                    || self.universal_region_relations.outlives(r2, r1)
             })
+        });
+        // Now we're left with `['static, 'c]`. Pick `'c` as the minimum!
+        let Some(min_choice) = totally_ordered_subset.reduce(|r1, r2| {
+            let r1_outlives_r2 = self.universal_region_relations.outlives(r1, r2);
+            let r2_outlives_r1 = self.universal_region_relations.outlives(r2, r1);
+            match (r1_outlives_r2, r2_outlives_r1) {
+                (true, true) => r1.min(r2),
+                (true, false) => r2,
+                (false, true) => r1,
+                (false, false) => bug!("incomparable regions in total order"),
+            }
         }) else {
-            debug!("no choice region outlived by all others");
+            debug!("no unique minimum choice");
             return false;
         };
 
