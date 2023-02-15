@@ -34,8 +34,8 @@ build_helper = { path = "../tools/build_helper" }
 cmake = "0.1.38"
 fd-lock = "3.0.8"
 filetime = "0.2"
-getopts = "0.2.19"
 cc = "1.0.69"
+clap = { version = "4.1.4", features = ["std", "usage", "help", "derive", "error-context"], default-features = false}
 libc = "0.2"
 hex = "0.4"
 object = { version = "0.29.0", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }

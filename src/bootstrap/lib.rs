@@ -28,6 +28,7 @@ use std::str;
 
 use build_helper::ci::CiEnv;
 use channel::GitInfo;
+use clap::ValueEnum;
 use config::{DryRun, Target};
 use filetime::FileTime;
 use once_cell::sync::OnceCell;
@@ -157,7 +158,7 @@ pub struct Compiler {
     host: TargetSelection,
 }
 
-#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug, ValueEnum)]
 pub enum DocTests {
     /// Run normal tests and doc tests (default).
     Yes,
@@ -651,8 +652,8 @@ impl Build {
             job::setup(self);
         }
 
-        if let Subcommand::Format { check, paths } = &self.config.cmd {
-            return format::format(&builder::Builder::new(&self), *check, &paths);
+        if let Subcommand::Format { check } = &self.config.cmd {
+            return format::format(&builder::Builder::new(&self), *check, &self.config.paths);
         }
 
         // Download rustfmt early so that it can be used in rust-analyzer configs.
