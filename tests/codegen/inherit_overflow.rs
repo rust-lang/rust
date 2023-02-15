@@ -4,7 +4,7 @@
 //[NOASSERT] compile-flags: -Coverflow-checks=off
 
 // CHECK-LABEL: define{{.*}} @assertion
-// ASSERT: tail call void @_ZN4core9panicking5panic17h
+// ASSERT: call void @_ZN4core9panicking5panic17h
 // NOASSERT: ret i8 0
 #[no_mangle]
 pub fn assertion() -> u8 {
