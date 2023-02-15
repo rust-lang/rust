@@ -597,7 +597,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                     CastKind::FnPtrToPtr | CastKind::PtrToPtr => {
                         if !(op_ty.is_any_ptr() && target_type.is_unsafe_ptr()) {
-                            self.fail(location, "Can't cast {op_ty} into 'Ptr'");
+                            self.fail(location, format!("Can't cast {op_ty} into 'Ptr'"));
                         }
                     }
                     CastKind::FloatToFloat | CastKind::FloatToInt => {
