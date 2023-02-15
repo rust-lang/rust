@@ -9,6 +9,9 @@ pub use self::atomic::*;
 mod simd128;
 pub use self::simd128::*;
 
+mod relaxed_simd;
+pub use self::relaxed_simd::*;
+
 mod memory;
 pub use self::memory::*;
 
