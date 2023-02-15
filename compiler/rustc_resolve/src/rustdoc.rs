@@ -344,7 +344,7 @@ fn preprocess_link(link: &str) -> String {
     let link = link.strip_suffix("()").unwrap_or(link);
     let link = link.strip_suffix("{}").unwrap_or(link);
     let link = link.strip_suffix("[]").unwrap_or(link);
-    let link = if link != "!" { link.strip_suffix("!").unwrap_or(link) } else { link };
+    let link = if link != "!" { link.strip_suffix('!').unwrap_or(link) } else { link };
     strip_generics_from_path(link).unwrap_or_else(|_| link.to_string())
 }
 
