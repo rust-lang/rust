@@ -1356,12 +1356,12 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// So to satisfy both requirements you should always follow the rule that
     /// `index < self.bucket_mask + 1 + Group::WIDTH`
     ///
-    /// Calling this function on [`RawTableInner`] that are not already allocated if safe
+    /// Calling this function on [`RawTableInner`] that are not already allocated is safe
     /// for read-only purpose.
     ///
     /// See also [`Bucket::as_ptr()`] method, for more information about of properly removing
     /// or saving `data element` from / into the [`RawTable`] / [`RawTableInner`].
-    /// 
+    ///
     /// [`Bucket::as_ptr()`]: Bucket::as_ptr()
     /// [`Undefined Behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
