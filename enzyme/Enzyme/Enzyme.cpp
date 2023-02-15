@@ -709,7 +709,7 @@ public:
 
     fn = GetFunctionFromValue(fn);
 
-    if (!isa<Function>(fn)) {
+    if (!fn || !isa<Function>(fn)) {
       EmitFailure("NoFunctionToDifferentiate", CI->getDebugLoc(), CI,
                   "failed to find fn to differentiate", *CI, " - found - ",
                   *fn);
