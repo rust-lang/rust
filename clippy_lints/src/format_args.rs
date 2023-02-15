@@ -340,6 +340,7 @@ fn check_one_arg(
     if matches!(param.kind, Implicit | Starred | Named(_) | Numbered)
         && let ExprKind::Path(QPath::Resolved(None, path)) = param.value.kind
         && let [segment] = path.segments
+        && segment.args.is_none()
         && let Some(arg_span) = args.value_with_prev_comma_span(param.value.hir_id)
     {
         let replacement = match param.usage {
