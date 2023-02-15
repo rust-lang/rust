@@ -340,6 +340,7 @@ macro_rules! make_mir_visitor {
 
                         ty::InstanceDef::FnPtrShim(_def_id, ty) |
                         ty::InstanceDef::DropGlue(_def_id, Some(ty)) |
+                        ty::InstanceDef::FnPtrEqShim(_def_id, ty) |
                         ty::InstanceDef::CloneShim(_def_id, ty) => {
                             // FIXME(eddyb) use a better `TyContext` here.
                             self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));

@@ -378,6 +378,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceDef::ReifyShim(..)
                             | InstanceDef::Intrinsic(..)
                             | InstanceDef::FnPtrShim(..)
+                            | InstanceDef::FnPtrEqShim(..)
                             | InstanceDef::Virtual(..)
                             | InstanceDef::ClosureOnceShim { .. }
                             | InstanceDef::DropGlue(..)

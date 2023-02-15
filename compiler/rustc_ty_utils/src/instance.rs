@@ -269,6 +269,22 @@ fn resolve_associated_item<'tcx>(
                     let substs = tcx.erase_regions(rcvr_substs);
                     Some(ty::Instance::new(trait_item_id, substs))
                 }
+            } else if Some(trait_ref.def_id) == tcx.lang_items().eq_trait() {
+                // FIXME(eddyb) use lang items for methods instead of names.
+                let name = tcx.item_name(trait_item_id);
+                if name == sym::eq {
+                    let self_ty = trait_ref.self_ty();
+                    Some(Instance {
+                        def: ty::InstanceDef::FnPtrEqShim(trait_item_id, self_ty),
+                        substs: rcvr_substs,
+                    })
+                } else {
+                    assert_eq!(name, sym::ne);
+
+                    // Use the default `fn ne` from `trait PartialEq`.
+                    let substs = tcx.erase_regions(rcvr_substs);
+                    Some(ty::Instance::new(trait_item_id, substs))
+                }
             } else {
                 None
             }

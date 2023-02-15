@@ -268,6 +268,7 @@ impl<'tcx> Inliner<'tcx> {
             InstanceDef::VTableShim(_)
             | InstanceDef::ReifyShim(_)
             | InstanceDef::FnPtrShim(..)
+            | InstanceDef::FnPtrEqShim(..)
             | InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::DropGlue(..)
             | InstanceDef::CloneShim(..) => return Ok(()),

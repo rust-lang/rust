@@ -96,6 +96,11 @@ pub enum InstanceDef<'tcx> {
     ///
     /// The `DefId` is for `Clone::clone`, the `Ty` is the type `T` with the builtin `Clone` impl.
     CloneShim(DefId, Ty<'tcx>),
+
+    /// `<fn() as PartialEq>::eq` (generated `PartialEq` implementation for `fn()` pointers).
+    ///
+    /// `DefId` is `PartialEq::eq`.
+    FnPtrEqShim(DefId, Ty<'tcx>),
 }
 
 impl<'tcx> Instance<'tcx> {
@@ -147,6 +152,7 @@ impl<'tcx> InstanceDef<'tcx> {
             InstanceDef::VTableShim(def_id)
             | InstanceDef::ReifyShim(def_id)
             | InstanceDef::FnPtrShim(def_id, _)
+            | InstanceDef::FnPtrEqShim(def_id, _)
             | InstanceDef::Virtual(def_id, _)
             | InstanceDef::Intrinsic(def_id)
             | InstanceDef::ClosureOnceShim { call_once: def_id, track_caller: _ }
@@ -163,6 +169,7 @@ impl<'tcx> InstanceDef<'tcx> {
             InstanceDef::VTableShim(..)
             | InstanceDef::ReifyShim(..)
             | InstanceDef::FnPtrShim(..)
+            | InstanceDef::FnPtrEqShim(..)
             | InstanceDef::Virtual(..)
             | InstanceDef::Intrinsic(..)
             | InstanceDef::ClosureOnceShim { .. }
@@ -178,6 +185,7 @@ impl<'tcx> InstanceDef<'tcx> {
             InstanceDef::VTableShim(def_id)
             | InstanceDef::ReifyShim(def_id)
             | InstanceDef::FnPtrShim(def_id, _)
+            | InstanceDef::FnPtrEqShim(def_id, _)
             | InstanceDef::Virtual(def_id, _)
             | InstanceDef::Intrinsic(def_id)
             | InstanceDef::ClosureOnceShim { call_once: def_id, track_caller: _ }
@@ -265,6 +273,7 @@ impl<'tcx> InstanceDef<'tcx> {
         match *self {
             InstanceDef::CloneShim(..)
             | InstanceDef::FnPtrShim(..)
+            | InstanceDef::FnPtrEqShim(..)
             | InstanceDef::DropGlue(_, Some(_)) => false,
             InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::DropGlue(..)
@@ -298,6 +307,7 @@ fn fmt_instance(
         InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
         InstanceDef::Virtual(_, num) => write!(f, " - virtual#{}", num),
         InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({})", ty),
+        InstanceDef::FnPtrEqShim(_, ty) => write!(f, " - shim({ty})"),
         InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
         InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
         InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({}))", ty),

@@ -103,12 +103,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // types have builtin support for `Clone`.
                     let clone_conditions = self.copy_clone_conditions(obligation);
                     self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates);
-                }
-
-                if lang_items.gen_trait() == Some(def_id) {
+                } else if lang_items.gen_trait() == Some(def_id) {
                     self.assemble_generator_candidates(obligation, &mut candidates);
                 } else if lang_items.future_trait() == Some(def_id) {
                     self.assemble_future_candidates(obligation, &mut candidates);
+                } else if lang_items.eq_trait() == Some(def_id) {
+                    self.assemble_eq_candidates(obligation, &mut candidates);
                 }
 
                 self.assemble_closure_candidates(obligation, &mut candidates);
@@ -232,6 +232,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 debug!(?self_ty, ?obligation, "assemble_future_candidates",);
 
                 candidates.vec.push(FutureCandidate);
+            }
+        }
+    }
+
+    fn assemble_eq_candidates(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let [self_ty, other_ty] = &obligation.predicate.skip_binder().trait_ref.substs[..] else {
+            span_bug!(obligation.cause.span, "PartialEq has two generic params: `Self` and `Other`, but got {obligation:#?}")
+        };
+        if let ty::FnPtr(..) = self_ty.expect_ty().kind() {
+            if let ty::FnPtr(..) = other_ty.expect_ty().kind() {
+                candidates.vec.push(BuiltinCandidate { has_nested: false });
             }
         }
     }

@@ -2088,6 +2088,7 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    #[track_caller]
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         match self.kind() {
             FnDef(def_id, substs) => tcx.fn_sig(*def_id).subst(tcx, substs),

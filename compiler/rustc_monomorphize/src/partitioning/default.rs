@@ -274,6 +274,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                 ty::InstanceDef::VTableShim(..)
                 | ty::InstanceDef::ReifyShim(..)
                 | ty::InstanceDef::FnPtrShim(..)
+                | ty::InstanceDef::FnPtrEqShim(..)
                 | ty::InstanceDef::ClosureOnceShim { .. }
                 | ty::InstanceDef::Intrinsic(..)
                 | ty::InstanceDef::DropGlue(..)
@@ -428,6 +429,7 @@ fn mono_item_visibility<'tcx>(
         InstanceDef::VTableShim(..)
         | InstanceDef::ReifyShim(..)
         | InstanceDef::FnPtrShim(..)
+        | InstanceDef::FnPtrEqShim(..)
         | InstanceDef::Virtual(..)
         | InstanceDef::Intrinsic(..)
         | InstanceDef::ClosureOnceShim { .. }

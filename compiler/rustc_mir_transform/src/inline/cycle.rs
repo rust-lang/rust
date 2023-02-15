@@ -82,6 +82,7 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
                 InstanceDef::VTableShim(_)
                 | InstanceDef::ReifyShim(_)
                 | InstanceDef::FnPtrShim(..)
+                | InstanceDef::FnPtrEqShim(..)
                 | InstanceDef::ClosureOnceShim { .. }
                 | InstanceDef::CloneShim(..) => {}
                 InstanceDef::DropGlue(..) => {

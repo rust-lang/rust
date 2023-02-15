@@ -44,6 +44,9 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
 
             build_call_shim(tcx, instance, Some(adjustment), CallKind::Indirect(ty))
         }
+        ty::InstanceDef::FnPtrEqShim(def_id, ty) => {
+            build_partial_eq_shim(tcx, instance, def_id, ty)
+        }
         // We are generating a call back to our def-id, which the
         // codegen backend knows to turn to an actual call, be it
         // a virtual call, or a direct call to a function for which
@@ -789,6 +792,97 @@ fn build_call_shim<'tcx>(
     }
 
     body
+}
+
+/// Builds a "call" shim for `PartialEq::eq`.
+#[instrument(level = "debug", skip(tcx), ret)]
+fn build_partial_eq_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: ty::InstanceDef<'tcx>,
+    partial_eq_eq: DefId,
+    ty: Ty<'tcx>,
+) -> Body<'tcx> {
+    let span = tcx.def_span(partial_eq_eq);
+
+    let source_info = SourceInfo::outermost(span);
+
+    let mut statements = vec![];
+
+    let sig = tcx.fn_sig(partial_eq_eq);
+    let sig = sig.map_bound(|sig| tcx.erase_late_bound_regions(sig));
+    let sig = sig.subst(tcx, &[ty.into(), ty.into()]);
+    let mut local_decls = local_decls_for_sig(&sig, span);
+    let raw_unit = tcx.mk_imm_ptr(tcx.types.unit);
+
+    let mut cast = |place| {
+        let tmp = local_decls.push(LocalDecl::new(raw_unit, span).immutable());
+        // let tmp = *place as *const ();
+        statements.push(Statement {
+            source_info,
+            kind: StatementKind::Assign(Box::new((
+                tmp.into(),
+                Rvalue::Cast(
+                    CastKind::FnPtrToPtr,
+                    Operand::Move(tcx.mk_place_deref(place)),
+                    raw_unit,
+                ),
+            ))),
+        });
+        // let tmp2 = &tmp;
+        let tmp2 = local_decls.push(
+            LocalDecl::new(tcx.mk_imm_ref(tcx.lifetimes.re_erased, raw_unit), span).immutable(),
+        );
+        statements.push(Statement {
+            source_info,
+            kind: StatementKind::Assign(Box::new((
+                tmp2.into(),
+                Rvalue::Ref(tcx.lifetimes.re_erased, BorrowKind::Shared, tmp.into()),
+            ))),
+        });
+        Operand::Move(tmp2.into())
+    };
+
+    // Cast both fn ptr arguments to `*const ()`
+    let a = cast(Local::new(1).into());
+    let b = cast(Local::new(2).into());
+
+    let callee = Operand::Constant(Box::new(Constant {
+        span,
+        user_ty: None,
+        literal: ConstantKind::zero_sized(
+            tcx.bound_type_of(partial_eq_eq).subst(tcx, &[raw_unit.into(), raw_unit.into()]),
+        ),
+    }));
+
+    let mut blocks = IndexVec::with_capacity(2);
+    let block = |blocks: &mut IndexVec<_, _>, statements, kind, is_cleanup| {
+        blocks.push(BasicBlockData {
+            statements,
+            terminator: Some(Terminator { source_info, kind }),
+            is_cleanup,
+        })
+    };
+
+    // BB #0
+    block(
+        &mut blocks,
+        statements,
+        TerminatorKind::Call {
+            func: callee,
+            args: vec![a, b],
+            destination: Place::return_place(),
+            target: Some(BasicBlock::new(1)),
+            cleanup: None,
+            from_hir_call: true,
+            fn_span: span,
+        },
+        false,
+    );
+
+    // BB #1 - return
+    block(&mut blocks, vec![], TerminatorKind::Return, false);
+
+    new_body(MirSource::from_instance(instance), blocks, local_decls, sig.inputs().len(), span)
 }
 
 pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {

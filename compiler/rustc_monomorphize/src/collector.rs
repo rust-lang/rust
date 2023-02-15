@@ -975,6 +975,7 @@ fn visit_instance_use<'tcx>(
         | ty::InstanceDef::ClosureOnceShim { .. }
         | ty::InstanceDef::Item(..)
         | ty::InstanceDef::FnPtrShim(..)
+        | ty::InstanceDef::FnPtrEqShim(..)
         | ty::InstanceDef::CloneShim(..) => {
             output.push(create_fn_mono_item(tcx, instance, source));
         }
