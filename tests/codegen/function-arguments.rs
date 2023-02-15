@@ -281,7 +281,9 @@ pub fn enum_id_2(x: Option<u8>) -> Option<u8> {
   x
 }
 
-// CHECK: { {{i8\*|ptr}}, {{i.*\*|ptr}} } @dyn_star({{i8\*|ptr}} noundef %x.0, {{i.*\*|ptr}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}) %x.1)
+// CHECK: { {{\{\}\*|ptr}}, {{.+}} } @dyn_star({{\{\}\*|ptr}} noundef %x.0, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}) %x.1)
+// Expect an ABI something like `{ {}*, [3 x i64]* }`, but that's hard to match on generically,
+// so do like the `trait_box` test and just match on `{{.+}}` for the vtable.
 #[no_mangle]
 pub fn dyn_star(x: dyn* Drop) -> dyn* Drop {
   x
