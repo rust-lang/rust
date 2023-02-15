@@ -2,11 +2,11 @@ mod cache;
 mod overflow;
 
 use self::cache::ProvisionalEntry;
-use super::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
 pub(super) use crate::solve::search_graph::overflow::OverflowHandler;
 use cache::ProvisionalCache;
 use overflow::OverflowData;
 use rustc_index::vec::IndexVec;
+use rustc_middle::traits::solve::{CanonicalGoal, Certainty, MaybeCause, QueryResult};
 use rustc_middle::ty::TyCtxt;
 use std::{collections::hash_map::Entry, mem};
 

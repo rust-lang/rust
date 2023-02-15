@@ -2,11 +2,12 @@
 
 #[cfg(doc)]
 use super::trait_goals::structural_traits::*;
-use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
+use super::EvalCtxt;
 use itertools::Itertools;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::elaborate_predicates;
+use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult};
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::fmt::Debug;

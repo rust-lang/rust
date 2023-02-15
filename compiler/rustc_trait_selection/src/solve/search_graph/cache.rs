@@ -10,9 +10,9 @@
 //! before then or if I still haven't done that before January 2023.
 use super::overflow::OverflowData;
 use super::StackDepth;
-use crate::solve::{CanonicalGoal, QueryResult};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
+use rustc_middle::traits::solve::{CanonicalGoal, QueryResult};
 use rustc_middle::ty::TyCtxt;
 
 rustc_index::newtype_index! {

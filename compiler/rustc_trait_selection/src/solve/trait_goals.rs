@@ -2,12 +2,12 @@
 
 use std::iter;
 
-use super::assembly;
-use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
+use super::{assembly, EvalCtxt};
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::supertraits;
+use rustc_middle::traits::solve::{CanonicalResponse, Certainty, Goal, QueryResult};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_middle::ty::{TraitPredicate, TypeVisitableExt};
