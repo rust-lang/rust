@@ -225,7 +225,7 @@ fn build_clif_sysroot_for_triple(
     match fs::read_to_string(SYSROOT_RUSTC_VERSION.to_path(dirs)) {
         Err(e) => {
             eprintln!("Failed to get rustc version for patched sysroot source: {}", e);
-            eprintln!("Hint: Try `./y.rs prepare` to patch the sysroot source");
+            eprintln!("Hint: Try `./y.sh prepare` to patch the sysroot source");
             process::exit(1);
         }
         Ok(source_version) => {
@@ -234,7 +234,7 @@ fn build_clif_sysroot_for_triple(
                 eprintln!("The patched sysroot source is outdated");
                 eprintln!("Source version: {}", source_version.trim());
                 eprintln!("Rustc version:  {}", rustc_version.trim());
-                eprintln!("Hint: Try `./y.rs prepare` to update the patched sysroot source");
+                eprintln!("Hint: Try `./y.sh prepare` to update the patched sysroot source");
                 process::exit(1);
             }
         }

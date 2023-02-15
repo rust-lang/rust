@@ -32,7 +32,7 @@ case $1 in
 
         ./clean_all.sh
 
-        ./y.rs prepare
+        ./y.sh prepare
 
         (cd download/sysroot && cargo update && cargo fetch && cp Cargo.lock ../../build_sysroot/)
         ;;

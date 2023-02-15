@@ -1,3 +1,7 @@
+#![warn(rust_2018_idioms)]
+#![warn(unused_lifetimes)]
+#![warn(unreachable_pub)]
+
 use std::env;
 use std::path::PathBuf;
 use std::process;
@@ -37,19 +41,19 @@ enum Command {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub(crate) enum SysrootKind {
+enum SysrootKind {
     None,
     Clif,
     Llvm,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum CodegenBackend {
+enum CodegenBackend {
     Local(PathBuf),
     Builtin(String),
 }
 
-pub(crate) fn main() {
+fn main() {
     if env::var("RUST_BACKTRACE").is_err() {
         env::set_var("RUST_BACKTRACE", "1");
     }

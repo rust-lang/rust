@@ -10,7 +10,7 @@ task:
     folder: target
   prepare_script:
     - . $HOME/.cargo/env
-    - ./y.rs prepare
+    - ./y.sh prepare
   test_script:
     - . $HOME/.cargo/env
-    - ./y.rs test
+    - ./y.sh test
