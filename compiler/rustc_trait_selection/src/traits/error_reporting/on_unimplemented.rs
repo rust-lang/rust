@@ -72,7 +72,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             let impl_self_ty = impl_trait_ref.self_ty();
 
-            if let Ok(..) = self.can_eq(param_env, trait_self_ty, impl_self_ty) {
+            if self.can_eq(param_env, trait_self_ty, impl_self_ty) {
                 self_match_impls.push((def_id, impl_substs));
 
                 if iter::zip(

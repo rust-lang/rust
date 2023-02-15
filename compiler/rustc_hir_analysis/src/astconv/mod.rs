@@ -2232,7 +2232,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                         tcx.erase_regions(impl_.self_ty()),
                                         tcx.erase_regions(qself_ty),
                                     )
-                                    .is_ok()
                             })
                             && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
                         })

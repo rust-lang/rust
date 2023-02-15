@@ -1106,7 +1106,7 @@ fn compare_self_type<'tcx>(
 
         let infcx = tcx.infer_ctxt().build();
         let self_arg_ty = tcx.liberate_late_bound_regions(method.def_id, self_arg_ty);
-        let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty).is_ok();
+        let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty);
         match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
             ExplicitSelf::ByValue => "self".to_owned(),
             ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
