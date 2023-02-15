@@ -60,6 +60,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
     pub(super) fn try_report_placeholder_conflict(
         &self,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+        debug!(?self.error, "try_report_placeholder_conflict");
         match &self.error {
             ///////////////////////////////////////////////////////////////////////////
             // NB. The ordering of cases in this match is very

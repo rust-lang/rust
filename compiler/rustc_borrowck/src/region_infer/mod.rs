@@ -2173,7 +2173,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // is in the same SCC or something. In that case, find what
         // appears to be the most interesting point to report to the
         // user via an even more ad-hoc guess.
-        categorized_path.sort_by(|p0, p1| p0.category.cmp(&p1.category));
+        categorized_path.sort_by_key(|p| p.category.cmp_discr());
         debug!("sorted_path={:#?}", categorized_path);
 
         (categorized_path.remove(0), extra_info)

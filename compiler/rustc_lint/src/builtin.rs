@@ -1200,7 +1200,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
         if let Some((&ty::Ref(_, _, from_mutbl), &ty::Ref(_, _, to_mutbl))) =
             get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
         {
-            if from_mutbl < to_mutbl {
+            if let (hir::Mutability::Not, hir::Mutability::Mut) = (from_mutbl, to_mutbl) {
                 cx.emit_spanned_lint(MUTABLE_TRANSMUTES, expr.span, BuiltinMutablesTransmutes);
             }
         }

@@ -43,7 +43,7 @@ pub(crate) mod rustc {
     use rustc_middle::ty::Ty;
 
     /// A reference in the layout.
-    #[derive(Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Clone, Copy)]
+    #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
     pub struct Ref<'tcx> {
         lifetime: Region<'tcx>,
         ty: Ty<'tcx>,

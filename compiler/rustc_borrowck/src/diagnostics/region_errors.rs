@@ -435,6 +435,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
+            debug!("report_region_error: nice report");
             let infer_err = self.infcx.err_ctxt();
             let nice = NiceRegionError::new_from_span(&infer_err, cause.span, o, f);
             if let Some(diag) = nice.try_report_from_nll() {

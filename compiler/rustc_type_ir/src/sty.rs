@@ -1,6 +1,5 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
-use std::cmp::Ordering;
 use std::{fmt, hash};
 
 use crate::DebruijnIndex;
@@ -360,65 +359,6 @@ impl<I: Interner> PartialEq for TyKind<I> {
 
 // This is manually implemented because a derive would require `I: Eq`
 impl<I: Interner> Eq for TyKind<I> {}
-
-// This is manually implemented because a derive would require `I: PartialOrd`
-impl<I: Interner> PartialOrd for TyKind<I> {
-    #[inline]
-    fn partial_cmp(&self, other: &TyKind<I>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-// This is manually implemented because a derive would require `I: Ord`
-impl<I: Interner> Ord for TyKind<I> {
-    #[inline]
-    fn cmp(&self, other: &TyKind<I>) -> Ordering {
-        tykind_discriminant(self).cmp(&tykind_discriminant(other)).then_with(|| {
-            match (self, other) {
-                (Int(a_i), Int(b_i)) => a_i.cmp(b_i),
-                (Uint(a_u), Uint(b_u)) => a_u.cmp(b_u),
-                (Float(a_f), Float(b_f)) => a_f.cmp(b_f),
-                (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d.cmp(b_d).then_with(|| a_s.cmp(b_s)),
-                (Foreign(a_d), Foreign(b_d)) => a_d.cmp(b_d),
-                (Array(a_t, a_c), Array(b_t, b_c)) => a_t.cmp(b_t).then_with(|| a_c.cmp(b_c)),
-                (Slice(a_t), Slice(b_t)) => a_t.cmp(b_t),
-                (RawPtr(a_t), RawPtr(b_t)) => a_t.cmp(b_t),
-                (Ref(a_r, a_t, a_m), Ref(b_r, b_t, b_m)) => {
-                    a_r.cmp(b_r).then_with(|| a_t.cmp(b_t).then_with(|| a_m.cmp(b_m)))
-                }
-                (FnDef(a_d, a_s), FnDef(b_d, b_s)) => a_d.cmp(b_d).then_with(|| a_s.cmp(b_s)),
-                (FnPtr(a_s), FnPtr(b_s)) => a_s.cmp(b_s),
-                (Dynamic(a_p, a_r, a_repr), Dynamic(b_p, b_r, b_repr)) => {
-                    a_p.cmp(b_p).then_with(|| a_r.cmp(b_r).then_with(|| a_repr.cmp(b_repr)))
-                }
-                (Closure(a_p, a_s), Closure(b_p, b_s)) => a_p.cmp(b_p).then_with(|| a_s.cmp(b_s)),
-                (Generator(a_d, a_s, a_m), Generator(b_d, b_s, b_m)) => {
-                    a_d.cmp(b_d).then_with(|| a_s.cmp(b_s).then_with(|| a_m.cmp(b_m)))
-                }
-                (GeneratorWitness(a_g), GeneratorWitness(b_g)) => a_g.cmp(b_g),
-                (
-                    &GeneratorWitnessMIR(ref a_d, ref a_s),
-                    &GeneratorWitnessMIR(ref b_d, ref b_s),
-                ) => match Ord::cmp(a_d, b_d) {
-                    Ordering::Equal => Ord::cmp(a_s, b_s),
-                    cmp => cmp,
-                },
-                (Tuple(a_t), Tuple(b_t)) => a_t.cmp(b_t),
-                (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i.cmp(b_i).then_with(|| a_p.cmp(b_p)),
-                (Param(a_p), Param(b_p)) => a_p.cmp(b_p),
-                (Bound(a_d, a_b), Bound(b_d, b_b)) => a_d.cmp(b_d).then_with(|| a_b.cmp(b_b)),
-                (Placeholder(a_p), Placeholder(b_p)) => a_p.cmp(b_p),
-                (Infer(a_t), Infer(b_t)) => a_t.cmp(b_t),
-                (Error(a_e), Error(b_e)) => a_e.cmp(b_e),
-                (Bool, Bool) | (Char, Char) | (Str, Str) | (Never, Never) => Ordering::Equal,
-                _ => {
-                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}");
-                    Ordering::Equal
-                }
-            }
-        })
-    }
-}
 
 // This is manually implemented because a derive would require `I: Hash`
 impl<I: Interner> hash::Hash for TyKind<I> {
@@ -1036,38 +976,6 @@ impl<I: Interner> PartialEq for RegionKind<I> {
 
 // This is manually implemented because a derive would require `I: Eq`
 impl<I: Interner> Eq for RegionKind<I> {}
-
-// This is manually implemented because a derive would require `I: PartialOrd`
-impl<I: Interner> PartialOrd for RegionKind<I> {
-    #[inline]
-    fn partial_cmp(&self, other: &RegionKind<I>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-// This is manually implemented because a derive would require `I: Ord`
-impl<I: Interner> Ord for RegionKind<I> {
-    #[inline]
-    fn cmp(&self, other: &RegionKind<I>) -> Ordering {
-        regionkind_discriminant(self).cmp(&regionkind_discriminant(other)).then_with(|| {
-            match (self, other) {
-                (ReEarlyBound(a_r), ReEarlyBound(b_r)) => a_r.cmp(b_r),
-                (ReLateBound(a_d, a_r), ReLateBound(b_d, b_r)) => {
-                    a_d.cmp(b_d).then_with(|| a_r.cmp(b_r))
-                }
-                (ReFree(a_r), ReFree(b_r)) => a_r.cmp(b_r),
-                (ReStatic, ReStatic) => Ordering::Equal,
-                (ReVar(a_r), ReVar(b_r)) => a_r.cmp(b_r),
-                (RePlaceholder(a_r), RePlaceholder(b_r)) => a_r.cmp(b_r),
-                (ReErased, ReErased) => Ordering::Equal,
-                _ => {
-                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}");
-                    Ordering::Equal
-                }
-            }
-        })
-    }
-}
 
 // This is manually implemented because a derive would require `I: Hash`
 impl<I: Interner> hash::Hash for RegionKind<I> {

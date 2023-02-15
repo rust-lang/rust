@@ -17,7 +17,7 @@ use crate::traits::specialize::to_pretty_impl_header;
 use crate::traits::NormalizeExt;
 use on_unimplemented::OnUnimplementedNote;
 use on_unimplemented::TypeErrCtxtExt as _;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     MultiSpan, Style,
@@ -55,7 +55,7 @@ pub use rustc_infer::traits::error_reporting::*;
 //
 // We also compare candidates after skipping lifetimes, which has a lower
 // priority than exact matches.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum CandidateSimilarity {
     Exact { ignoring_lifetimes: bool },
     Fuzzy { ignoring_lifetimes: bool },
@@ -2026,13 +2026,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         other: bool,
     ) -> bool {
         let other = if other { "other " } else { "" };
-        let report = |mut candidates: Vec<TraitRef<'tcx>>, err: &mut Diagnostic| {
-            candidates.sort();
-            candidates.dedup();
-            let len = candidates.len();
+        let report = |candidates: Vec<TraitRef<'tcx>>, err: &mut Diagnostic| {
             if candidates.is_empty() {
                 return false;
             }
+            let candidates = FxIndexSet::from_iter(candidates);
+            let len = candidates.len();
+            let candidates = Vec::from_iter(candidates);
             if let &[cand] = &candidates[..] {
                 let (desc, mention_castable) =
                     match (cand.self_ty().kind(), trait_ref.self_ty().skip_binder().kind()) {
@@ -2129,7 +2129,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         //
         // Prefer more similar candidates first, then sort lexicographically
         // by their normalized string representation.
-        let mut normalized_impl_candidates_and_similarities = impl_candidates
+        let normalized_impl_candidates_and_similarities = impl_candidates
             .into_iter()
             .map(|ImplCandidate { trait_ref, similarity }| {
                 // FIXME(compiler-errors): This should be using `NormalizeExt::normalize`
@@ -2139,9 +2139,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     .map_or(trait_ref, |normalized| normalized.value);
                 (similarity, normalized)
             })
-            .collect::<Vec<_>>();
-        normalized_impl_candidates_and_similarities.sort();
-        normalized_impl_candidates_and_similarities.dedup();
+            .collect::<FxIndexSet<_>>();
 
         let normalized_impl_candidates = normalized_impl_candidates_and_similarities
             .into_iter()

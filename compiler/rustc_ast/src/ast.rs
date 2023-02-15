@@ -776,10 +776,9 @@ pub enum PatKind {
     MacCall(P<MacCall>),
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum Mutability {
-    // N.B. Order is deliberate, so that Not < Mut
     Not,
     Mut,
 }

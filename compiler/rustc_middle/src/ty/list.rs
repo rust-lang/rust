@@ -1,7 +1,6 @@
 use crate::arena::Arena;
 use rustc_serialize::{Encodable, Encoder};
 use std::alloc::Layout;
-use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter;
@@ -136,32 +135,6 @@ impl<T: PartialEq> PartialEq for List<T> {
 }
 
 impl<T: Eq> Eq for List<T> {}
-
-impl<T> Ord for List<T>
-where
-    T: Ord,
-{
-    fn cmp(&self, other: &List<T>) -> Ordering {
-        // Pointer equality implies list equality (due to the unique contents
-        // assumption), but the contents must be compared otherwise.
-        if self == other { Ordering::Equal } else { <[T] as Ord>::cmp(&**self, &**other) }
-    }
-}
-
-impl<T> PartialOrd for List<T>
-where
-    T: PartialOrd,
-{
-    fn partial_cmp(&self, other: &List<T>) -> Option<Ordering> {
-        // Pointer equality implies list equality (due to the unique contents
-        // assumption), but the contents must be compared otherwise.
-        if self == other {
-            Some(Ordering::Equal)
-        } else {
-            <[T] as PartialOrd>::partial_cmp(&**self, &**other)
-        }
-    }
-}
 
 impl<T> Hash for List<T> {
     #[inline]

@@ -575,5 +575,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 fn arms_contain_ref_bindings<'tcx>(arms: &'tcx [hir::Arm<'tcx>]) -> Option<hir::Mutability> {
-    arms.iter().filter_map(|a| a.pat.contains_explicit_ref_binding()).max()
+    arms.iter().filter_map(|a| a.pat.contains_explicit_ref_binding()).max_by_key(|m| match m {
+        hir::Mutability::Not => 0u8,
+        hir::Mutability::Mut => 1,
+    })
 }

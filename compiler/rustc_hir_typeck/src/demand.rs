@@ -1420,7 +1420,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (
                             sp,
                             format!("{}{derefs}", if mutbl_a != mutbl_b { mutbl_b.prefix_str() } else { "" }),
-                            if mutbl_b <= mutbl_a { Applicability::MachineApplicable } else { Applicability::MaybeIncorrect }
+                            if mutbl_b == mutbl_a || mutbl_b == hir::Mutability::Not { Applicability::MachineApplicable } else { Applicability::MaybeIncorrect }
                         )
                     });
 

@@ -110,7 +110,11 @@ fn coerce_mutbls<'tcx>(
     from_mutbl: hir::Mutability,
     to_mutbl: hir::Mutability,
 ) -> RelateResult<'tcx, ()> {
-    if from_mutbl >= to_mutbl { Ok(()) } else { Err(TypeError::Mutability) }
+    if from_mutbl == to_mutbl || from_mutbl == hir::Mutability::Mut {
+        Ok(())
+    } else {
+        Err(TypeError::Mutability)
+    }
 }
 
 /// Do not require any adjustments, i.e. coerce `x -> x`.

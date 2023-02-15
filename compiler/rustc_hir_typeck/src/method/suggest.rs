@@ -1936,7 +1936,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => None,
             })
             .collect();
-        preds.sort_by_key(|pred| (pred.def_id(), pred.self_ty()));
+        preds.sort_by_key(|pred| pred.def_id());
         let def_ids = preds
             .iter()
             .filter_map(|pred| match pred.self_ty().kind() {

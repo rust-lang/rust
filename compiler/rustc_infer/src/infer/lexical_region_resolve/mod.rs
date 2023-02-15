@@ -238,8 +238,14 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // later use this to expand across vids.
         let mut constraints = IndexVec::from_elem_n(Vec::new(), var_values.values.len());
         // Tracks the changed region vids.
-        let mut changes = Vec::new();
-        for constraint in self.data.constraints.keys() {
+        let mut changes = vec![];
+        let mut input_constraints: Vec<_> = self.data.constraints.keys().collect();
+        input_constraints.sort_by_key(|c| match c {
+            Constraint::VarSubVar(..) => 0u8,
+            Constraint::RegSubVar(..) => 1,
+            Constraint::VarSubReg(..) | Constraint::RegSubReg(..) => 2,
+        });
+        for constraint in input_constraints {
             match *constraint {
                 Constraint::RegSubVar(a_region, b_vid) => {
                     let b_data = var_values.value_mut(b_vid);

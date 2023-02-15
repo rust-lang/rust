@@ -15,7 +15,6 @@ use rustc_type_ir::WithCachedTypeInfo;
 use smallvec::SmallVec;
 
 use core::intrinsics;
-use std::cmp::Ordering;
 use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
@@ -48,7 +47,7 @@ const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 const CONST_TAG: usize = 0b10;
 
-#[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq)]
 pub enum GenericArgKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
@@ -112,18 +111,6 @@ impl<'tcx> fmt::Debug for GenericArg<'tcx> {
             GenericArgKind::Type(ty) => ty.fmt(f),
             GenericArgKind::Const(ct) => ct.fmt(f),
         }
-    }
-}
-
-impl<'tcx> Ord for GenericArg<'tcx> {
-    fn cmp(&self, other: &GenericArg<'tcx>) -> Ordering {
-        self.unpack().cmp(&other.unpack())
-    }
-}
-
-impl<'tcx> PartialOrd for GenericArg<'tcx> {
-    fn partial_cmp(&self, other: &GenericArg<'tcx>) -> Option<Ordering> {
-        Some(self.cmp(&other))
     }
 }
 
@@ -552,7 +539,7 @@ impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for &'tcx ty:
 ///
 /// If you don't have anything to `subst`, you may be looking for
 /// [`subst_identity`](EarlyBinder::subst_identity) or [`skip_binder`](EarlyBinder::skip_binder).
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable)]
 pub struct EarlyBinder<T>(pub T);
 

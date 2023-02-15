@@ -403,19 +403,22 @@ fn try_extract_error_from_region_constraints<'tcx>(
     mut region_var_origin: impl FnMut(RegionVid) -> RegionVariableOrigin,
     mut universe_of_region: impl FnMut(RegionVid) -> UniverseIndex,
 ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-    let (sub_region, cause) =
-        region_constraints.constraints.iter().find_map(|(constraint, cause)| {
+    let (_, _, sub_region, cause) = region_constraints
+        .constraints
+        .iter()
+        .filter_map(|(constraint, cause)| {
             match *constraint {
                 Constraint::RegSubReg(sub, sup) if sup == placeholder_region && sup != sub => {
-                    Some((sub, cause.clone()))
+                    Some((1u8, None, sub, cause.clone()))
                 }
                 // FIXME: Should this check the universe of the var?
                 Constraint::VarSubReg(vid, sup) if sup == placeholder_region => {
-                    Some((infcx.tcx.mk_region(ty::ReVar(vid)), cause.clone()))
+                    Some((0u8, Some(vid), infcx.tcx.mk_region(ty::ReVar(vid)), cause.clone()))
                 }
                 _ => None,
             }
-        })?;
+        })
+        .min_by_key(|(discr, vid, ..)| (*discr, *vid))?;
 
     debug!(?sub_region, "cause = {:#?}", cause);
     let error = match (error_region, *sub_region) {

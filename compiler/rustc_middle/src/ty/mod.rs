@@ -454,7 +454,7 @@ pub struct CReaderCacheKey {
 }
 
 /// Use this rather than `TyKind`, whenever possible.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_diagnostic_item = "Ty"]
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
@@ -852,7 +852,7 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
 }
 
 /// `A: B`
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct OutlivesPredicate<A, B>(pub A, pub B);
 pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>;
@@ -881,7 +881,7 @@ pub struct CoercePredicate<'tcx> {
 }
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Term<'tcx> {
     ptr: NonZeroUsize,
     marker: PhantomData<(Ty<'tcx>, Const<'tcx>)>,
@@ -1010,7 +1010,7 @@ const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const CONST_TAG: usize = 0b01;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub enum TermKind<'tcx> {
     Ty(Ty<'tcx>),
@@ -1404,7 +1404,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
 /// identified by both a universe, as well as a name residing within that universe. Distinct bound
 /// regions/types/consts within the same universe simply have an unknown relationship to one
 /// another.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable, TyEncodable, TyDecodable)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
@@ -1416,7 +1416,7 @@ pub type PlaceholderRegion = Placeholder<BoundRegionKind>;
 pub type PlaceholderType = Placeholder<BoundTyKind>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
-#[derive(TyEncodable, TyDecodable, PartialOrd, Ord)]
+#[derive(TyEncodable, TyDecodable)]
 pub struct BoundConst<'tcx> {
     pub var: BoundVar,
     pub ty: Ty<'tcx>,
@@ -1476,7 +1476,7 @@ pub type PlaceholderConst<'tcx> = Placeholder<BoundVar>;
 /// Meaning that we need to use `type_of(const_param_did)` if `const_param_did` is `Some`
 /// to get the type of `did`.
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, Lift, TyEncodable, TyDecodable)]
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq)]
 #[derive(Hash, HashStable)]
 pub struct WithOptConstParam<T> {
     pub did: T,

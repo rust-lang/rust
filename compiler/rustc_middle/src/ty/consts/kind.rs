@@ -14,7 +14,7 @@ use rustc_target::abi::Size;
 use super::ScalarInt;
 
 /// An unevaluated (potentially generic) constant used in the type-system.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UnevaluatedConst<'tcx> {
     pub def: ty::WithOptConstParam<DefId>,
@@ -45,7 +45,7 @@ impl<'tcx> UnevaluatedConst<'tcx> {
 }
 
 /// Represents a constant in Rust.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable)]
 #[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
 #[derive(derive_more::From)]
 pub enum ConstKind<'tcx> {
@@ -83,7 +83,7 @@ impl<'tcx> From<ty::ConstVid<'tcx>> for ConstKind<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
 pub enum Expr<'tcx> {
     Binop(mir::BinOp, Const<'tcx>, Const<'tcx>),
@@ -131,7 +131,7 @@ impl<'tcx> ConstKind<'tcx> {
 }
 
 /// An inference variable for a const, for use in const generics.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
 pub enum InferConst<'tcx> {
     /// Infer the value of the const.
     Var(ty::ConstVid<'tcx>),
