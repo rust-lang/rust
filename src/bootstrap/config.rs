@@ -233,9 +233,6 @@ pub struct Config {
     pub rust_info: channel::GitInfo,
 
     pub paths: Vec<PathBuf>,
-    /// Arguments appearing after `--` to be forwarded to tools,
-    /// e.g. `--fix-broken` or test arguments.
-    pub free_args: Vec<String>,
 }
 
 #[derive(Default, Deserialize)]

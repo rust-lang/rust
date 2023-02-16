@@ -30,7 +30,7 @@ pub enum Warnings {
 /// Parsed version of command line flags using [`clap::Parser`]
 #[clap(
     override_usage = "x.py <subcommand> [options] [<paths>...]",
-    disable_help_subcommand(true),
+    // disable_help_subcommand(true),
     about = "",
     next_line_help(false)
 )]
@@ -371,17 +371,28 @@ pub enum Subcommand {
         #[arg(long, allow_hyphen_values(true))]
         args: Vec<String>,
     },
-    /// Create a config.toml (making it easier to use `x.py` itself)
+    /// Set up the environment for development
     #[clap(long_about = format!(
         "\n
-x.py setup creates a `config.toml` which changes the defaults for x.py itself.
+x.py setup creates a `config.toml` which changes the defaults for x.py itself,
+as well as setting up a git pre-push hook, VS Code config and toolchain link.
 Arguments:
     This subcommand accepts a 'profile' to use for builds. For example:
-    ./x.py setup library
+        ./x.py setup library
     The profile is optional and you will be prompted interactively if it is not given.
     The following profiles are available:
-{}", Profile::all_for_help("        ").trim_end()))]
-    Setup { profile: Option<PathBuf> },
+{}
+
+    To only set up the git hook, VS Code config or toolchain link, you may use
+        ./x.py setup hook
+        ./x.py setup vscode
+        ./x.py setup link", Profile::all_for_help("        ").trim_end()))]
+    Setup {
+        /// Either the profile for `config.toml` or another setup action/
+        /// May be omitted to set up interactively
+        #[arg(value_name = "<PROFILE>|hook|vscode|link")]
+        profile: Option<PathBuf>,
+    },
 }
 
 impl Subcommand {
