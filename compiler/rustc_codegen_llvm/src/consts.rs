@@ -521,7 +521,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
 
                 // The semantics of #[used] in Rust only require the symbol to make it into the
                 // object file. It is explicitly allowed for the linker to strip the symbol if it
-                // is dead, which means we are allowed use `llvm.compiler.used` instead of
+                // is dead, which means we are allowed to use `llvm.compiler.used` instead of
                 // `llvm.used` here.
                 //
                 // Additionally, https://reviews.llvm.org/D97448 in LLVM 13 started emitting unique
@@ -532,7 +532,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 // That said, we only ever emit these when compiling for ELF targets, unless
                 // `#[used(compiler)]` is explicitly requested. This is to avoid similar breakage
                 // on other targets, in particular MachO targets have *their* static constructor
-                // lists broken if `llvm.compiler.used` is emitted rather than llvm.used. However,
+                // lists broken if `llvm.compiler.used` is emitted rather than `llvm.used`. However,
                 // that check happens when assigning the `CodegenFnAttrFlags` in `rustc_hir_analysis`,
                 // so we don't need to take care of it here.
                 self.add_compiler_used_global(g);
