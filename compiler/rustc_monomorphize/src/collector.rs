@@ -1230,7 +1230,7 @@ impl<'v> RootCollector<'_, 'v> {
             DefKind::GlobalAsm => {
                 debug!(
                     "RootCollector: ItemKind::GlobalAsm({})",
-                    self.tcx.def_path_str(id.owner_id.to_def_id())
+                    self.tcx.def_path_str(id.owner_id)
                 );
                 self.output.push(dummy_spanned(MonoItem::GlobalAsm(id)));
             }

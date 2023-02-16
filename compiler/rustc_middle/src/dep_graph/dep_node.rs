@@ -364,7 +364,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for HirId {
     #[inline(always)]
     fn to_debug_str(&self, tcx: TyCtxt<'tcx>) -> String {
         let HirId { owner, local_id } = *self;
-        format!("{}.{}", tcx.def_path_str(owner.to_def_id()), local_id.as_u32())
+        format!("{}.{}", tcx.def_path_str(owner), local_id.as_u32())
     }
 
     #[inline(always)]

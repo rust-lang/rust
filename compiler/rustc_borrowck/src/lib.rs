@@ -124,7 +124,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
     let (input_body, promoted) = tcx.mir_promoted(def);
-    debug!("run query mir_borrowck: {}", tcx.def_path_str(def.to_def_id()));
+    debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
 
     if input_body.borrow().should_skip() {
         debug!("Skipping borrowck because of injected body");

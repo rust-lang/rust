@@ -587,7 +587,7 @@ mod sealed {
     }
 }
 
-use sealed::IntoQueryParam;
+pub use sealed::IntoQueryParam;
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn def_kind(self, def_id: impl IntoQueryParam<DefId>) -> DefKind {

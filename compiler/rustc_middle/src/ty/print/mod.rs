@@ -327,6 +327,6 @@ pub fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
     if def_id.is_top_level_module() {
         "top-level module".to_string()
     } else {
-        format!("module `{}`", tcx.def_path_str(def_id.to_def_id()))
+        format!("module `{}`", tcx.def_path_str(def_id))
     }
 }

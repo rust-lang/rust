@@ -22,7 +22,7 @@ fn check_impl(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, trait_ref: ty::TraitRef<
     debug!(
         "(checking implementation) adding impl for trait '{:?}', item '{}'",
         trait_ref,
-        tcx.def_path_str(impl_def_id.to_def_id())
+        tcx.def_path_str(impl_def_id)
     );
 
     // Skip impls where one of the self type is an error type.
