@@ -11,7 +11,6 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::metadata::ModChild;
-use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -501,17 +500,6 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         postorder_cnums: |tcx, ()| {
             tcx.arena
                 .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))
-        },
-        is_in_upstream_dylib: |tcx, cnum| {
-            if cnum == LOCAL_CRATE {
-                return false;
-            }
-            tcx.dependency_formats(()).iter().any(|(_, linkage)| {
-                match linkage[cnum.as_usize() - 1] {
-                    Linkage::NotLinked | Linkage::Static => false,
-                    Linkage::IncludedFromDylib | Linkage::Dynamic => true,
-                }
-            })
         },
         crates: |tcx, ()| tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).crates_untracked()),
         ..*providers

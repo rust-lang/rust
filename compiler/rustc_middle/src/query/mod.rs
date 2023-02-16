@@ -1808,10 +1808,6 @@ rustc_queries! {
         eval_always
         desc { "generating a postorder list of CrateNums" }
     }
-    query is_in_upstream_dylib(_: CrateNum) -> bool {
-        eval_always
-        desc { "checking if a crate is placed in an upstream dylib" }
-    }
     /// Returns whether or not the crate with CrateNum 'cnum'
     /// is marked as a private dependency
     query is_private_dep(c: CrateNum) -> bool {

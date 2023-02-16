@@ -175,7 +175,7 @@ impl<'tcx> MutVisitor<'tcx> for ReplaceThreadLocal<'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &mut mir::Rvalue<'tcx>, location: mir::Location) {
         if let mir::Rvalue::ThreadLocalRef(def_id) = *rvalue {
-            if self.tcx.is_in_upstream_dylib(def_id.krate) {
+            if !def_id.is_local() {
                 *rvalue = mir::Rvalue::Use(mir::Operand::Copy(mir::Place {
                     local: mir::Local::new(self.local_start + self.list.len()),
                     projection: self.tcx.intern_place_elems(&[]),
