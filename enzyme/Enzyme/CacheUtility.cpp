@@ -887,7 +887,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
         Instruction *ZeroInst = nullptr;
         Value *firstallocation = CreateAllocation(
             allocationBuilder, myType, size, name + "_malloccache", &malloccall,
-            /*ZeroMem*/ (EnzymeZeroCache && i == 0) ? &ZeroInst : nullptr);
+            /*ZeroMem*/ EnzymeZeroCache ? &ZeroInst : nullptr);
 
         scopeInstructions[alloc].push_back(malloccall);
         if (firstallocation != malloccall)
