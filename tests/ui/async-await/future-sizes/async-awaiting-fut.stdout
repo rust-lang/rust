@@ -1,39 +1,38 @@
-print-type-size type: `[async fn body@$DIR/async-awaiting-fut.rs:21:21: 24:2]`: 2053 bytes, alignment: 1 bytes
+print-type-size type: `[async fn body@$DIR/async-awaiting-fut.rs:21:21: 24:2]`: 1029 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 0 bytes
-print-type-size     variant `Suspend0`: 2052 bytes
-print-type-size         local `.__awaitee`: 2052 bytes
+print-type-size     variant `Suspend0`: 1028 bytes
+print-type-size         local `.__awaitee`: 1028 bytes
 print-type-size     variant `Returned`: 0 bytes
 print-type-size     variant `Panicked`: 0 bytes
-print-type-size type: `[async fn body@$DIR/async-awaiting-fut.rs:10:64: 19:2]`: 2052 bytes, alignment: 1 bytes
+print-type-size type: `[async fn body@$DIR/async-awaiting-fut.rs:10:64: 19:2]`: 1028 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 1025 bytes
 print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size     variant `Suspend0`: 1027 bytes
 print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size         padding: 1 bytes
-print-type-size         local `..generator_field3`: 1 bytes, alignment: 1 bytes
+print-type-size         local `..generator_field2`: 1 bytes, alignment: 1 bytes
 print-type-size         local `.__awaitee`: 1 bytes
-print-type-size     variant `Suspend1`: 2051 bytes
+print-type-size     variant `Suspend1`: 1026 bytes
 print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size         padding: 1 bytes
-print-type-size         local `..generator_field3`: 1 bytes, alignment: 1 bytes
-print-type-size         local `.__awaitee`: 1025 bytes
+print-type-size         local `..generator_field2`: 1 bytes, alignment: 1 bytes
 print-type-size     variant `Suspend2`: 1027 bytes
 print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size         padding: 1 bytes
-print-type-size         local `..generator_field3`: 1 bytes, alignment: 1 bytes
+print-type-size         local `..generator_field2`: 1 bytes, alignment: 1 bytes
 print-type-size         local `.__awaitee`: 1 bytes
 print-type-size     variant `Returned`: 1025 bytes
 print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size     variant `Panicked`: 1025 bytes
 print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
-print-type-size type: `std::mem::ManuallyDrop<[async fn body@$DIR/async-awaiting-fut.rs:10:64: 19:2]>`: 2052 bytes, alignment: 1 bytes
-print-type-size     field `.value`: 2052 bytes
-print-type-size type: `std::mem::MaybeUninit<[async fn body@$DIR/async-awaiting-fut.rs:10:64: 19:2]>`: 2052 bytes, alignment: 1 bytes
-print-type-size     variant `MaybeUninit`: 2052 bytes
+print-type-size type: `std::mem::ManuallyDrop<[async fn body@$DIR/async-awaiting-fut.rs:10:64: 19:2]>`: 1028 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 1028 bytes
+print-type-size type: `std::mem::MaybeUninit<[async fn body@$DIR/async-awaiting-fut.rs:10:64: 19:2]>`: 1028 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 1028 bytes
 print-type-size         field `.uninit`: 0 bytes
-print-type-size         field `.value`: 2052 bytes
+print-type-size         field `.value`: 1028 bytes
 print-type-size type: `[async fn body@$DIR/async-awaiting-fut.rs:8:35: 8:37]`: 1025 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 1024 bytes

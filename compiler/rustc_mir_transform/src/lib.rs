@@ -76,6 +76,7 @@ mod ffi_unwind_calls;
 mod function_item_references;
 mod generator;
 pub mod inline;
+mod inline_future_into_future;
 mod instsimplify;
 mod large_enums;
 mod lower_intrinsics;
@@ -492,6 +493,9 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // `AddRetag` needs to run after `ElaborateDrops`. Otherwise it should run fairly late,
         // but before optimizations begin.
         &elaborate_box_derefs::ElaborateBoxDerefs,
+        // `InlineFutureIntoFuture` needs to run before `UpvarToLocalProp`, because its
+        // purpose is to enhance the effectiveness of the latter transformation.
+        &inline_future_into_future::InlineFutureIntoFuture,
         // `UpvarToLocalProp` needs to run before `generator::StateTransform`, because its
         // purpose is to coalesce locals into their original upvars before fresh space is
         // allocated for them in the generator.
