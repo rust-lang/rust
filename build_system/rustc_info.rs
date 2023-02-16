@@ -82,6 +82,7 @@ pub(crate) fn get_default_sysroot(rustc: &Path) -> PathBuf {
     Path::new(String::from_utf8(default_sysroot).unwrap().trim()).to_owned()
 }
 
+// FIXME call once for each target and pass result around in struct
 pub(crate) fn get_file_name(rustc: &Path, crate_name: &str, crate_type: &str) -> String {
     let file_name = Command::new(rustc)
         .stderr(Stdio::inherit())
