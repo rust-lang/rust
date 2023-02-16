@@ -290,6 +290,9 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 ty::PredicateKind::Clause(ty::Clause::RegionOutlives(predicate)) => {
                     self.compute_region_outlives_goal(Goal { param_env, predicate })
                 }
+                ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => {
+                    unimplemented!()
+                }
                 ty::PredicateKind::Subtype(predicate) => {
                     self.compute_subtype_goal(Goal { param_env, predicate })
                 }

@@ -327,6 +327,10 @@ fn predicate_references_self<'tcx>(
             // possible alternatives.
             data.projection_ty.substs[1..].iter().any(has_self_ty).then_some(sp)
         }
+        ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(_ct, ty)) => {
+            has_self_ty(&ty.into()).then_some(sp)
+        }
+
         ty::PredicateKind::AliasEq(..) => bug!("`AliasEq` not allowed as assumption"),
 
         ty::PredicateKind::WellFormed(..)
@@ -362,6 +366,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
                 trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
             }
             ty::PredicateKind::Clause(ty::Clause::Projection(..))
+            | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))

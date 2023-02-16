@@ -313,6 +313,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
                 ty::PredicateKind::Clause(ty::Clause::RegionOutlives(_))
                 | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(_))
+                | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                 | ty::PredicateKind::WellFormed(_)
                 | ty::PredicateKind::ObjectSafe(_)
                 | ty::PredicateKind::ClosureKind(..)
@@ -599,6 +600,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
                 ty::PredicateKind::AliasEq(..) => {
                     bug!("AliasEq is only used for new solver")
+                }
+                ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => {
+                    unimplemented!()
                 }
             },
         }

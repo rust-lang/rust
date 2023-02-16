@@ -1282,6 +1282,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         span,
                         "AliasEq predicate should never be the predicate cause of a SelectionError"
                     ),
+
+                    ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => {
+                        // FIXME: don't know how selection error works so unsure when this is reachable (if it is)
+                        unimplemented!()
+                    }
                 }
             }
 
