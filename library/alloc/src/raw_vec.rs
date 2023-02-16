@@ -49,8 +49,10 @@ enum AllocInit {
 /// `usize::MAX`. This means that you need to be careful when round-tripping this type with a
 /// `Box<[T]>`, since `capacity()` won't yield the length.
 #[allow(missing_debug_implementations)]
+#[repr(C)]
 pub(crate) struct RawVec<T, A: Allocator = Global> {
     ptr: Unique<T>,
+    pub(crate) len: usize,
     cap: usize,
     alloc: A,
 }
@@ -120,7 +122,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// the returned `RawVec`.
     pub const fn new_in(alloc: A) -> Self {
         // `cap: 0` means "unallocated". zero-sized types are ignored.
-        Self { ptr: Unique::dangling(), cap: 0, alloc }
+        Self { ptr: Unique::dangling(), cap: 0, len: 0, alloc }
     }
 
     /// Like `with_capacity`, but parameterized over the choice of
@@ -195,6 +197,7 @@ impl<T, A: Allocator> RawVec<T, A> {
             // here should change to `ptr.len() / mem::size_of::<T>()`.
             Self {
                 ptr: unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) },
+                len: 0,
                 cap: capacity,
                 alloc,
             }
@@ -213,7 +216,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// guaranteed.
     #[inline]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
-        Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap: capacity, alloc }
+        Self { ptr: unsafe { Unique::new_unchecked(ptr) }, len: 0, cap: capacity, alloc }
     }
 
     /// Gets a raw pointer to the start of the allocation. Note that this is
