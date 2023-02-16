@@ -1,9 +1,18 @@
-error[E0308]: mismatched types
+error: failed to find an overloaded call trait for closure call
+  --> $DIR/fn-fn_mut-call-ill-formed.rs:42:5
+   |
+LL |     a();
+   |     ^^^
+   |
+   = help: make sure the `fn`/`fn_mut`/`fn_once` lang items are defined and have correctly defined `call`/`call_mut`/`call_once` methods
+
+error: failed to find an overloaded call trait for closure call
   --> $DIR/fn-fn_mut-call-ill-formed.rs:47:5
    |
 LL |     b();
-   |     ^^^ expected `i32`, found `()`
+   |     ^^^
+   |
+   = help: make sure the `fn`/`fn_mut`/`fn_once` lang items are defined and have correctly defined `call`/`call_mut`/`call_once` methods
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
