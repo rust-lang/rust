@@ -227,7 +227,7 @@ impl<'tcx> Queries<'tcx> {
                         self.codegen_backend().metadata_loader(),
                         &arenas,
                     );
-                    let krate = passes::configure_and_expand(tcx, krate, &mut resolver)?;
+                    let krate = passes::configure_and_expand(tcx, krate, &mut resolver);
 
                     // Make sure we don't mutate the cstore from here on.
                     tcx.untracked().cstore.leak();
@@ -245,8 +245,7 @@ impl<'tcx> Queries<'tcx> {
                 );
                 feed.resolutions(tcx.arena.alloc(untracked_resolutions));
                 feed.features_query(tcx.sess.features_untracked());
-                Ok(())
-            })?;
+            });
             Ok(qcx)
         })
     }

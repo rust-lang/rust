@@ -9,7 +9,7 @@ use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
-use rustc_errors::{ErrorGuaranteed, PResult};
+use rustc_errors::PResult;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintStore};
@@ -176,7 +176,7 @@ pub fn configure_and_expand(
     tcx: TyCtxt<'_>,
     mut krate: ast::Crate,
     resolver: &mut Resolver<'_, '_>,
-) -> Result<ast::Crate> {
+) -> ast::Crate {
     let sess = tcx.sess;
     let lint_store = unerased_lint_store(tcx);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
@@ -250,20 +250,19 @@ pub fn configure_and_expand(
             ecx.check_unused_macros();
         });
 
-        let recursion_limit_hit = ecx.reduced_recursion_limit.is_some();
+        // If we hit a recursion limit, exit early to avoid later passes getting overwhelmed
+        // with a large AST
+        if ecx.reduced_recursion_limit.is_some() {
+            sess.abort_if_errors();
+            unreachable!();
+        }
 
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }
 
-        if recursion_limit_hit {
-            // If we hit a recursion limit, exit early to avoid later passes getting overwhelmed
-            // with a large AST
-            Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
-        } else {
-            Ok(krate)
-        }
-    })?;
+        krate
+    });
 
     sess.time("maybe_building_test_harness", || {
         rustc_builtin_macros::test_harness::inject(sess, resolver, &mut krate)
@@ -366,7 +365,7 @@ pub fn configure_and_expand(
         )
     });
 
-    Ok(krate)
+    krate
 }
 
 // Returns all the paths that correspond to generated files.

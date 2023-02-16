@@ -1,5 +1,5 @@
 error: unknown lint: `rustdoc::missing_doc_code_examples`
-  --> $DIR/feature-gate-rustdoc_missing_doc_code_examples.rs:4:1
+  --> $DIR/feature-gate-rustdoc_missing_doc_code_examples.rs:3:1
    |
 LL | #![allow(rustdoc::missing_doc_code_examples)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -14,7 +14,7 @@ LL | #![deny(unknown_lints)]
    |         ^^^^^^^^^^^^^
 
 error: unknown lint: `rustdoc::missing_doc_code_examples`
-  --> $DIR/feature-gate-rustdoc_missing_doc_code_examples.rs:4:1
+  --> $DIR/feature-gate-rustdoc_missing_doc_code_examples.rs:3:1
    |
 LL | #![allow(rustdoc::missing_doc_code_examples)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,15 @@ LL | #![allow(rustdoc::missing_doc_code_examples)]
    = note: see issue #101730 <https://github.com/rust-lang/rust/issues/101730> for more information
    = help: add `#![feature(rustdoc_missing_doc_code_examples)]` to the crate attributes to enable
 
-error: Compilation failed, aborting rustdoc
+error: unknown lint: `rustdoc::missing_doc_code_examples`
+  --> $DIR/feature-gate-rustdoc_missing_doc_code_examples.rs:3:1
+   |
+LL | #![allow(rustdoc::missing_doc_code_examples)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `rustdoc::missing_doc_code_examples` lint is unstable
+   = note: see issue #101730 <https://github.com/rust-lang/rust/issues/101730> for more information
+   = help: add `#![feature(rustdoc_missing_doc_code_examples)]` to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 

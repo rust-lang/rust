@@ -6,8 +6,6 @@ LL | pub(in crate::r#mod) fn main() {}
    |
    = help: consider adding `extern crate r#mod` to use the `r#mod` crate
 
-error: Compilation failed, aborting rustdoc
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0433`.
