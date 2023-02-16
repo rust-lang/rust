@@ -119,29 +119,58 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
 }
 
 fn associated_items_for_impl_trait_in_trait(tcx: TyCtxt<'_>, fn_def_id: DefId) -> &'_ [DefId] {
-    struct RPITVisitor {
-        rpits: Vec<LocalDefId>,
-    }
+    let parent_def_id = tcx.parent(fn_def_id);
 
-    impl<'v> Visitor<'v> for RPITVisitor {
-        fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
-            if let hir::TyKind::OpaqueDef(item_id, _, _) = ty.kind {
-                self.rpits.push(item_id.owner_id.def_id)
+    match tcx.def_kind(parent_def_id) {
+        DefKind::Trait => {
+            struct RPITVisitor {
+                rpits: Vec<LocalDefId>,
             }
-            intravisit::walk_ty(self, ty)
+
+            impl<'v> Visitor<'v> for RPITVisitor {
+                fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+                    if let hir::TyKind::OpaqueDef(item_id, _, _) = ty.kind {
+                        self.rpits.push(item_id.owner_id.def_id)
+                    }
+                    intravisit::walk_ty(self, ty)
+                }
+            }
+
+            let mut visitor = RPITVisitor { rpits: Vec::new() };
+
+            if let Some(output) = tcx.hir().get_fn_output(fn_def_id.expect_local()) {
+                visitor.visit_fn_ret_ty(output);
+
+                tcx.arena.alloc_from_iter(visitor.rpits.iter().map(|opaque_ty_def_id| {
+                    tcx.associated_item_for_impl_trait_in_trait(opaque_ty_def_id).to_def_id()
+                }))
+            } else {
+                &[]
+            }
         }
-    }
 
-    let mut visitor = RPITVisitor { rpits: Vec::new() };
+        DefKind::Impl { .. } => {
+            let Some(trait_fn_def_id) = tcx.associated_item(fn_def_id).trait_item_def_id else { return &[] };
 
-    if let Some(output) = tcx.hir().get_fn_output(fn_def_id.expect_local()) {
-        visitor.visit_fn_ret_ty(output);
+            tcx.arena.alloc_from_iter(
+                tcx.associated_items_for_impl_trait_in_trait(trait_fn_def_id).iter().map(
+                    move |trait_assoc_def_id| {
+                        impl_associated_item_for_impl_trait_in_trait(
+                            tcx,
+                            trait_assoc_def_id.expect_local(),
+                            fn_def_id.expect_local(),
+                        )
+                        .to_def_id()
+                    },
+                ),
+            )
+        }
 
-        tcx.arena.alloc_from_iter(visitor.rpits.iter().map(|opaque_ty_def_id| {
-            tcx.associated_item_for_impl_trait_in_trait(opaque_ty_def_id).to_def_id()
-        }))
-    } else {
-        &[]
+        def_kind => bug!(
+            "associated_items_for_impl_trait_in_trait: {:?} should be Trait or Impl but is {:?}",
+            parent_def_id,
+            def_kind
+        ),
     }
 }
 
@@ -157,4 +186,17 @@ fn associated_item_for_impl_trait_in_trait(
     let trait_assoc_ty =
         tcx.at(span).create_def(trait_def_id.expect_local(), DefPathData::ImplTraitAssocTy);
     trait_assoc_ty.def_id()
+}
+
+fn impl_associated_item_for_impl_trait_in_trait(
+    tcx: TyCtxt<'_>,
+    trait_assoc_def_id: LocalDefId,
+    impl_fn_def_id: LocalDefId,
+) -> LocalDefId {
+    let impl_def_id = tcx.local_parent(impl_fn_def_id);
+
+    let span = tcx.def_span(trait_assoc_def_id);
+    let impl_assoc_ty = tcx.at(span).create_def(impl_def_id, DefPathData::ImplTraitAssocTy);
+
+    impl_assoc_ty.def_id()
 }
