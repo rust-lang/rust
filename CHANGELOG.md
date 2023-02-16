@@ -4307,6 +4307,7 @@ Released 2018-09-13
 [`collapsible_if`]: https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
 [`collapsible_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_match
 [`collapsible_str_replace`]: https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_str_replace
+[`collection_is_never_read`]: https://rust-lang.github.io/rust-clippy/master/index.html#collection_is_never_read
 [`comparison_chain`]: https://rust-lang.github.io/rust-clippy/master/index.html#comparison_chain
 [`comparison_to_empty`]: https://rust-lang.github.io/rust-clippy/master/index.html#comparison_to_empty
 [`const_static_lifetime`]: https://rust-lang.github.io/rust-clippy/master/index.html#const_static_lifetime

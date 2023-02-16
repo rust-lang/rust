@@ -92,6 +92,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::cognitive_complexity::COGNITIVE_COMPLEXITY_INFO,
     crate::collapsible_if::COLLAPSIBLE_ELSE_IF_INFO,
     crate::collapsible_if::COLLAPSIBLE_IF_INFO,
+    crate::collection_is_never_read::COLLECTION_IS_NEVER_READ_INFO,
     crate::comparison_chain::COMPARISON_CHAIN_INFO,
     crate::copies::BRANCHES_SHARING_CODE_INFO,
     crate::copies::IFS_SAME_COND_INFO,
