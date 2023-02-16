@@ -3400,6 +3400,7 @@ impl_lint_pass!(Methods => [
     SUSPICIOUS_COMMAND_ARG_SPACE,
     CLEAR_WITH_DRAIN,
     MANUAL_NEXT_BACK,
+    UNNECESSARY_LITERAL_UNWRAP,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
