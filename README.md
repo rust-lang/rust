@@ -1,9 +1,6 @@
 # The Rust Programming Language
 
-[![Rust Community](https://img.shields.io/badge/Rust_Community%20-discuss-brightgreen?style=plastic&logo=rust)](https://www.rust-lang.org/community)
-[![Twitter Follow](https://img.shields.io/twitter/follow/rustlang?logo=Twitter&style=plastic)](https://twitter.com/rustlang)
-[![Discord Chat](https://img.shields.io/badge/Discord_Server%20-chat-brightgreen?style=plastic&logo=discord)](https://discord.gg/rust-lang)
-[![YouTube Channel](https://img.shields.io/badge/Youtube%20-subcribe-brightgreen?style=plastic&logo=youtube)](https://www.youtube.com/channel/UCaYhcUwRBNscFNUKTjgPFiA)
+[![Rust Community](https://img.shields.io/badge/Rust_Community%20-Join_us-brightgreen?style=plastic&logo=rust)](https://www.rust-lang.org/community)
 
 This is the main source code repository for [Rust]. It contains the compiler,
 standard library, and documentation.
