@@ -616,7 +616,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ObligationCauseCode::ImplDerivedObligation(data)
                         if matches!(p.kind().skip_binder(), ty::PredicateKind::Clause(_)) =>
                     {
-                        Some((p, parent, data.impl_def_id, data))
+                        Some((p, parent, data.impl_or_alias_def_id, data))
                     }
                     _ => None,
                 })
