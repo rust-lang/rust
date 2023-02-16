@@ -49,7 +49,6 @@ enum AllocInit {
 /// `usize::MAX`. This means that you need to be careful when round-tripping this type with a
 /// `Box<[T]>`, since `capacity()` won't yield the length.
 #[allow(missing_debug_implementations)]
-#[repr(C)]
 pub(crate) struct RawVec<T, A: Allocator = Global> {
     ptr: Unique<T>,
     pub(crate) len: usize,
