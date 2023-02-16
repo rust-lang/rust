@@ -1,5 +1,6 @@
 use crate::autoderef::Autoderef;
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
+use crate::errors;
 
 use hir::def::DefKind;
 use rustc_ast as ast;
@@ -15,6 +16,7 @@ use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, ir::TypeVisitor, AdtKind, DefIdTree, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
     TypeSuperVisitable,
@@ -277,6 +279,62 @@ fn check_trait_item(tcx: TyCtxt<'_>, trait_item: &hir::TraitItem<'_>) {
     };
     check_object_unsafe_self_trait_by_name(tcx, trait_item);
     check_associated_item(tcx, def_id, span, method_sig);
+
+    struct FindImplTraitInTrait<'tcx>(TyCtxt<'tcx>);
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindImplTraitInTrait<'tcx> {
+        type BreakTy = DefId;
+        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
+                && self.0.def_kind(alias_ty.def_id) == DefKind::ImplTraitPlaceholder
+            {
+                return ControlFlow::Break(alias_ty.def_id);
+            } else if ty.has_projections() {
+                ty.super_visit_with(self)
+            } else {
+                ControlFlow::Continue(())
+            }
+        }
+    }
+    if let hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)) = trait_item.kind
+        && let ControlFlow::Break(def_id) = tcx
+            .fn_sig(def_id)
+            .skip_binder()
+            .output()
+            .visit_with(&mut FindImplTraitInTrait(tcx))
+    {
+        let hir::ItemKind::OpaqueTy(opaque) = &tcx.hir().expect_item(def_id.expect_local()).kind else {
+            bug!();
+        };
+        match opaque.origin {
+            hir::OpaqueTyOrigin::FnReturn(_) => {
+                let mut diag = tcx.sess.create_err(
+                    errors::DefaultRpititMethodNotAllowed::ReturnPositionImplTrait {
+                        body_span: tcx.hir().span(body_id.hir_id).shrink_to_lo(),
+                        rpitit_span: tcx.def_span(def_id),
+                    },
+                );
+                if tcx.features().return_position_impl_trait_in_trait {
+                    diag.emit();
+                } else {
+                    diag.delay_as_bug();
+                }
+            }
+            hir::OpaqueTyOrigin::AsyncFn(_) => {
+                let mut diag =
+                    tcx.sess.create_err(errors::DefaultRpititMethodNotAllowed::AsyncFn {
+                        body_span: tcx.hir().span(body_id.hir_id).shrink_to_lo(),
+                    });
+                if tcx.features().async_fn_in_trait {
+                    diag.emit();
+                } else {
+                    diag.delay_as_bug();
+                }
+            }
+            hir::OpaqueTyOrigin::TyAlias => {
+                // TAIT comes from alias expansion, so it's fine.
+            }
+        }
+    }
 
     let encl_trait_def_id = tcx.local_parent(def_id);
     let encl_trait = tcx.hir().expect_item(encl_trait_def_id);

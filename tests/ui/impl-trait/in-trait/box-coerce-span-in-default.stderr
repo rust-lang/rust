@@ -7,5 +7,13 @@ LL | #![feature(return_position_impl_trait_in_trait)]
    = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-warning: 1 warning emitted
+error: default body not allowed on trait method with `impl Trait`
+  --> $DIR/box-coerce-span-in-default.rs:37:68
+   |
+LL |     fn test_func(&self, func: &str) -> impl TestTrait<Output = ()> {
+   |                                        --------------------------- ^ remove this body, or move it to an impl instead
+   |                                        |
+   |                                        this `impl Trait`
+
+error: aborting due to previous error; 1 warning emitted
 

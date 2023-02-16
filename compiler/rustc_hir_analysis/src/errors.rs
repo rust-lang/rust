@@ -312,3 +312,21 @@ pub struct AutoDerefReachedRecursionLimit<'a> {
     pub suggested_limit: rustc_session::Limit,
     pub crate_name: Symbol,
 }
+
+#[derive(Diagnostic)]
+pub enum DefaultRpititMethodNotAllowed {
+    #[diag(hir_analysis_default_async_fn_not_allowed)]
+    AsyncFn {
+        #[primary_span]
+        #[label(remove_label)]
+        body_span: Span,
+    },
+    #[diag(hir_analysis_default_rpitit_fn_not_allowed)]
+    ReturnPositionImplTrait {
+        #[primary_span]
+        #[label(remove_label)]
+        body_span: Span,
+        #[label]
+        rpitit_span: Span,
+    },
+}

@@ -124,3 +124,10 @@ hir_analysis_linkage_type =
 hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit while auto-dereferencing `{$ty}`
     .label = deref recursion limit reached
     .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)
+
+hir_analysis_default_async_fn_not_allowed = default body not allowed on async trait method
+    .remove_label = remove this body, or move it to an impl instead
+
+hir_analysis_default_rpitit_fn_not_allowed = default body not allowed on trait method with `impl Trait`
+    .label = this `impl Trait`
+    .remove_label = remove this body, or move it to an impl instead

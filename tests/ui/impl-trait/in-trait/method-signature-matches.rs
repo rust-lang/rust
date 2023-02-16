@@ -13,7 +13,7 @@ impl Uwu for () {
 }
 
 trait AsyncUwu {
-    async fn owo(x: ()) {}
+    async fn owo(x: ());
 }
 
 impl AsyncUwu for () {

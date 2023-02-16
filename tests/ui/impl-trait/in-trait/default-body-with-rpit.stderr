@@ -1,0 +1,8 @@
+error: default body not allowed on async trait method
+  --> $DIR/default-body-with-rpit.rs:10:39
+   |
+LL |     async fn baz(&self) -> impl Debug {
+   |                                       ^ remove this body, or move it to an impl instead
+
+error: aborting due to previous error
+

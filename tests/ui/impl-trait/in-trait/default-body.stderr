@@ -1,0 +1,8 @@
+error: default body not allowed on async trait method
+  --> $DIR/default-body.rs:10:33
+   |
+LL |     async fn baz(&self) -> &str {
+   |                                 ^ remove this body, or move it to an impl instead
+
+error: aborting due to previous error
+

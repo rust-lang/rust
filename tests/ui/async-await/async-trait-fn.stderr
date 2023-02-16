@@ -12,7 +12,7 @@ LL |     async fn foo() {}
    = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
 
 error[E0706]: functions in traits cannot be declared `async`
-  --> $DIR/async-trait-fn.rs:4:5
+  --> $DIR/async-trait-fn.rs:5:5
    |
 LL |     async fn bar(&self) {}
    |     -----^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |     async fn bar(&self) {}
    = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
 
 error[E0706]: functions in traits cannot be declared `async`
-  --> $DIR/async-trait-fn.rs:5:5
+  --> $DIR/async-trait-fn.rs:7:5
    |
 LL |     async fn baz() {
    |     -----^^^^^^^^^
@@ -37,6 +37,54 @@ LL |     async fn baz() {
    = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
    = help: add `#![feature(async_fn_in_trait)]` to the crate attributes to enable
 
-error: aborting due to 3 previous errors
+error[E0308]: mismatched types
+  --> $DIR/async-trait-fn.rs:3:20
+   |
+LL |     async fn foo() {}
+   |                    ^^
+   |                    |
+   |                    expected associated type, found `async fn` body
+   |                    arguments to this function are incorrect
+   |
+   = note: expected associated type `impl Future<Output = ()>`
+              found `async fn` body `[async fn body@$DIR/async-trait-fn.rs:3:20: 3:22]`
+note: function defined here
+  --> $SRC_DIR/core/src/future/mod.rs:LL:COL
 
-For more information about this error, try `rustc --explain E0706`.
+error[E0308]: mismatched types
+  --> $DIR/async-trait-fn.rs:5:25
+   |
+LL |     async fn bar(&self) {}
+   |                         ^^
+   |                         |
+   |                         expected associated type, found `async fn` body
+   |                         arguments to this function are incorrect
+   |
+   = note: expected associated type `impl Future<Output = ()>`
+              found `async fn` body `[async fn body@$DIR/async-trait-fn.rs:5:25: 5:27]`
+note: function defined here
+  --> $SRC_DIR/core/src/future/mod.rs:LL:COL
+
+error[E0308]: mismatched types
+  --> $DIR/async-trait-fn.rs:7:20
+   |
+LL |       async fn baz() {
+   |  ____________________-
+LL | |
+LL | |         // Nested item must not ICE.
+LL | |         fn a() {}
+LL | |     }
+   | |     ^
+   | |     |
+   | |_____expected associated type, found `async fn` body
+   |       arguments to this function are incorrect
+   |
+   = note: expected associated type `impl Future<Output = ()>`
+              found `async fn` body `[async fn body@$DIR/async-trait-fn.rs:7:20: 11:6]`
+note: function defined here
+  --> $SRC_DIR/core/src/future/mod.rs:LL:COL
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0308, E0706.
+For more information about an error, try `rustc --explain E0308`.

@@ -27,7 +27,7 @@ LL |     async fn owo(_: u8) {}
 note: type in trait
   --> $DIR/method-signature-matches.rs:16:21
    |
-LL |     async fn owo(x: ()) {}
+LL |     async fn owo(x: ());
    |                     ^^
    = note: expected signature `fn(()) -> _`
               found signature `fn(u8) -> _`
