@@ -149,6 +149,9 @@ pub struct Flags {
     #[arg(global(true))]
     /// paths for the subcommand
     pub paths: Vec<PathBuf>,
+    /// arguments passed to subcommands
+    #[arg(global(true), last(true), value_name = "ARGS")]
+    pub free_args: Vec<String>,
 }
 
 impl Flags {

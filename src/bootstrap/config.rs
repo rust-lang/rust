@@ -867,6 +867,7 @@ impl Config {
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);
+        config.free_args = std::mem::take(&mut flags.free_args);
         config.exclude = flags.exclude.into_iter().map(|path| TaskPath::parse(path)).collect();
         config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.error_format;
@@ -879,7 +880,6 @@ impl Config {
         config.keep_stage = flags.keep_stage;
         config.keep_stage_std = flags.keep_stage_std;
         config.color = flags.color;
-        config.free_args = flags.free_args.clone().unwrap_or_default();
         if matches!(flags.deny_warnings, crate::flags::Warnings::Deny) {
             config.deny_warnings = true;
         }
