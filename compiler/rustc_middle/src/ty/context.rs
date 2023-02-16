@@ -2387,7 +2387,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 .unwrap_or_else(|| {
                     bug!("No bound vars found for {}", self.hir().node_to_string(id))
                 })
-                .iter(),
+                .into_iter(),
         )
     }
 
