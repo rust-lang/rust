@@ -1,4 +1,4 @@
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in const type
   --> $DIR/issue-58956.rs:7:11
    |
 LL | const _A: impl Lam = {

@@ -229,7 +229,7 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
         if self.layout.is_unsized() {
             // We need to consult `meta` metadata
             match self.layout.ty.kind() {
-                ty::Slice(..) | ty::Str => self.mplace.meta.unwrap_meta().to_machine_usize(cx),
+                ty::Slice(..) | ty::Str => self.mplace.meta.unwrap_meta().to_target_usize(cx),
                 _ => bug!("len not supported on unsized type {:?}", self.layout.ty),
             }
         } else {
@@ -756,7 +756,7 @@ where
         mutbl: Mutability,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let ptr = self.allocate_bytes_ptr(str.as_bytes(), Align::ONE, kind, mutbl)?;
-        let meta = Scalar::from_machine_usize(u64::try_from(str.len()).unwrap(), self);
+        let meta = Scalar::from_target_usize(u64::try_from(str.len()).unwrap(), self);
         let mplace = MemPlace { ptr: ptr.into(), meta: MemPlaceMeta::Meta(meta) };
 
         let ty = self.tcx.mk_ref(

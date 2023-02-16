@@ -161,13 +161,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Querying system information
             "pthread_get_stackaddr_np" => {
                 let [thread] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.read_machine_usize(thread)?;
+                this.read_target_usize(thread)?;
                 let stack_addr = Scalar::from_uint(this.machine.stack_addr, this.pointer_size());
                 this.write_scalar(stack_addr, dest)?;
             }
             "pthread_get_stacksize_np" => {
                 let [thread] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.read_machine_usize(thread)?;
+                this.read_target_usize(thread)?;
                 let stack_size = Scalar::from_uint(this.machine.stack_size, this.pointer_size());
                 this.write_scalar(stack_size, dest)?;
             }
@@ -176,7 +176,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "pthread_setname_np" => {
                 let [name] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let thread = this.pthread_self()?;
-                let max_len = this.eval_libc("MAXTHREADNAMESIZE").to_machine_usize(this)?;
+                let max_len = this.eval_libc("MAXTHREADNAMESIZE").to_target_usize(this)?;
                 let res = this.pthread_setname_np(
                     thread,
                     this.read_scalar(name)?,

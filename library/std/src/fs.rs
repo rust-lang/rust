@@ -334,6 +334,10 @@ impl File {
     ///
     /// See the [`OpenOptions::open`] method for more details.
     ///
+    /// If you only need to read the entire file contents,
+    /// consider [`std::fs::read()`][self::read] or
+    /// [`std::fs::read_to_string()`][self::read_to_string] instead.
+    ///
     /// # Errors
     ///
     /// This function will return an error if `path` does not already exist.
@@ -343,9 +347,12 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io::Read;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut f = File::open("foo.txt")?;
+    ///     let mut data = vec![];
+    ///     f.read_to_end(&mut data)?;
     ///     Ok(())
     /// }
     /// ```
@@ -361,16 +368,20 @@ impl File {
     ///
     /// Depending on the platform, this function may fail if the
     /// full directory path does not exist.
-    ///
     /// See the [`OpenOptions::open`] function for more details.
+    ///
+    /// See also [`std::fs::write()`][self::write] for a simple function to
+    /// create a file with a given data.
     ///
     /// # Examples
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io::Write;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut f = File::create("foo.txt")?;
+    ///     f.write_all(&1234_u32.to_be_bytes())?;
     ///     Ok(())
     /// }
     /// ```
@@ -397,9 +408,11 @@ impl File {
     /// #![feature(file_create_new)]
     ///
     /// use std::fs::File;
+    /// use std::io::Write;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut f = File::create_new("foo.txt")?;
+    ///     f.write_all("Hello, world!".as_bytes())?;
     ///     Ok(())
     /// }
     /// ```
@@ -426,9 +439,11 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io::Write;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let mut f = File::options().append(true).open("example.log")?;
+    ///     writeln!(&mut f, "new line")?;
     ///     Ok(())
     /// }
     /// ```
@@ -965,6 +980,9 @@ impl OpenOptions {
     ///
     /// In order for the file to be created, [`OpenOptions::write`] or
     /// [`OpenOptions::append`] access must be used.
+    ///
+    /// See also [`std::fs::write()`][self::write] for a simple function to
+    /// create a file with a given data.
     ///
     /// # Examples
     ///

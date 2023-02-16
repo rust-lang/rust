@@ -253,7 +253,6 @@ enum ImplTraitContext {
 enum ImplTraitPosition {
     Path,
     Variable,
-    Type,
     Trait,
     AsyncBlock,
     Bound,
@@ -270,6 +269,13 @@ enum ImplTraitPosition {
     FnTraitReturn,
     TraitReturn,
     ImplReturn,
+    GenericDefault,
+    ConstTy,
+    StaticTy,
+    AssocTy,
+    FieldTy,
+    Cast,
+    ImplSelf,
 }
 
 impl std::fmt::Display for ImplTraitPosition {
@@ -277,7 +283,6 @@ impl std::fmt::Display for ImplTraitPosition {
         let name = match self {
             ImplTraitPosition::Path => "path",
             ImplTraitPosition::Variable => "variable binding",
-            ImplTraitPosition::Type => "type",
             ImplTraitPosition::Trait => "trait",
             ImplTraitPosition::AsyncBlock => "async block",
             ImplTraitPosition::Bound => "bound",
@@ -294,6 +299,13 @@ impl std::fmt::Display for ImplTraitPosition {
             ImplTraitPosition::FnTraitReturn => "`Fn` trait return",
             ImplTraitPosition::TraitReturn => "trait method return",
             ImplTraitPosition::ImplReturn => "`impl` method return",
+            ImplTraitPosition::GenericDefault => "generic parameter default",
+            ImplTraitPosition::ConstTy => "const type",
+            ImplTraitPosition::StaticTy => "static type",
+            ImplTraitPosition::AssocTy => "associated type",
+            ImplTraitPosition::FieldTy => "field type",
+            ImplTraitPosition::Cast => "cast type",
+            ImplTraitPosition::ImplSelf => "impl header",
         };
 
         write!(f, "{name}")
@@ -2166,7 +2178,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             GenericParamKind::Type { default, .. } => {
                 let kind = hir::GenericParamKind::Type {
                     default: default.as_ref().map(|x| {
-                        self.lower_ty(x, &ImplTraitContext::Disallowed(ImplTraitPosition::Type))
+                        self.lower_ty(
+                            x,
+                            &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault),
+                        )
                     }),
                     synthetic: false,
                 };
@@ -2174,7 +2189,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 (hir::ParamName::Plain(self.lower_ident(param.ident)), kind)
             }
             GenericParamKind::Const { ty, kw_span: _, default } => {
-                let ty = self.lower_ty(&ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Type));
+                let ty = self.lower_ty(
+                    &ty,
+                    &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault),
+                );
                 let default = default.as_ref().map(|def| self.lower_anon_const(def));
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),

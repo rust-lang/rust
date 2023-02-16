@@ -321,7 +321,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut param_args = FxHashMap::default();
                 let mut param_expected = FxHashMap::default();
                 let mut param_found = FxHashMap::default();
-                if self.can_eq(self.param_env, ty, found).is_ok() {
+                if self.can_eq(self.param_env, ty, found) {
                     // We only point at the first place where the found type was inferred.
                     for (i, param_ty) in sig.inputs().skip_binder().iter().skip(1).enumerate() {
                         if def_self_ty.contains(*param_ty) && let ty::Param(_) = param_ty.kind() {
@@ -369,7 +369,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for (param, (arg, arg_ty)) in param_args.iter() {
                     let Some(expected) = param_expected.get(param) else { continue; };
                     let Some(found) = param_found.get(param) else { continue; };
-                    if self.can_eq(self.param_env, *arg_ty, *found).is_err() { continue; }
+                    if !self.can_eq(self.param_env, *arg_ty, *found) { continue; }
                     self.emit_coerce_suggestions(err, arg, *found, *expected, None, None);
                 }
 
@@ -379,7 +379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 if ty != prev
                     && param_args.is_empty()
-                    && self.can_eq(self.param_env, ty, found).is_ok()
+                    && self.can_eq(self.param_env, ty, found)
                 {
                     // We only point at the first place where the found type was inferred.
                     if !segment.ident.span.overlaps(mismatch_span) {
@@ -401,7 +401,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 if ty != prev
                     && let Some(span) = prev_span
-                    && self.can_eq(self.param_env, ty, found).is_ok()
+                    && self.can_eq(self.param_env, ty, found)
                 {
                     // We only point at the first place where the found type was inferred.
                     // We use the *previous* span because if the type is known *here* it means
@@ -764,7 +764,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let ty::Adt(expected_adt, substs) = expected.kind() {
             if let hir::ExprKind::Field(base, ident) = expr.kind {
                 let base_ty = self.typeck_results.borrow().expr_ty(base);
-                if self.can_eq(self.param_env, base_ty, expected).is_ok()
+                if self.can_eq(self.param_env, base_ty, expected)
                     && let Some(base_span) = base.span.find_ancestor_inside(expr.span)
                 {
                     err.span_suggestion_verbose(
@@ -1357,7 +1357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, ref expr),
                 _,
                 &ty::Ref(_, checked, _),
-            ) if self.can_sub(self.param_env, checked, expected).is_ok() => {
+            ) if self.can_sub(self.param_env, checked, expected) => {
                 // We have `&T`, check if what was expected was `T`. If so,
                 // we may want to suggest removing a `&`.
                 if sm.is_imported(expr.span) {
@@ -2003,7 +2003,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let hir::StmtKind::Semi(tail_expr) = stmt.kind else { return; };
         let Some(ty) = self.node_ty_opt(tail_expr.hir_id) else { return; };
-        if self.can_eq(self.param_env, expected_ty, ty).is_ok() {
+        if self.can_eq(self.param_env, expected_ty, ty) {
             err.span_suggestion_short(
                 stmt.span.with_lo(tail_expr.span.hi()),
                 "remove this semicolon",

@@ -242,7 +242,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let src = self.eval_place(place)?;
                 let op = self.place_to_op(&src)?;
                 let len = op.len(self)?;
-                self.write_scalar(Scalar::from_machine_usize(len, self), &dest)?;
+                self.write_scalar(Scalar::from_target_usize(len, self), &dest)?;
             }
 
             Ref(_, borrow_kind, place) => {
@@ -297,7 +297,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     mir::NullOp::SizeOf => layout.size.bytes(),
                     mir::NullOp::AlignOf => layout.align.abi.bytes(),
                 };
-                self.write_scalar(Scalar::from_machine_usize(val, self), &dest)?;
+                self.write_scalar(Scalar::from_target_usize(val, self), &dest)?;
             }
 
             ShallowInitBox(ref operand, _) => {

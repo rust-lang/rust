@@ -125,8 +125,8 @@ impl<'tcx> ConstKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_to_machine_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        self.try_to_value()?.try_to_machine_usize(tcx)
+    pub fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+        self.try_to_value()?.try_to_target_usize(tcx)
     }
 }
 

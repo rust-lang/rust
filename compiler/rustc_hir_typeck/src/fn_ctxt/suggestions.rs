@@ -1015,7 +1015,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let expr_inner_ty = substs.type_at(0);
             let expected_inner_ty = expected_substs.type_at(0);
             if let ty::Ref(_, ty, hir::Mutability::Not) = expr_inner_ty.kind()
-                && self.can_eq(self.param_env, *ty, expected_inner_ty).is_ok()
+                && self.can_eq(self.param_env, *ty, expected_inner_ty)
             {
                 let def_path = self.tcx.def_path_str(adt_def.did());
                 if self.type_is_copy_modulo_regions(self.param_env, *ty, expr.span) {
@@ -1054,7 +1054,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(result_did) = self.tcx.get_diagnostic_item(sym::Result)
             && adt_def.did() == result_did
             // Check that the error types are equal
-            && self.can_eq(self.param_env, substs.type_at(1), expected_substs.type_at(1)).is_ok()
+            && self.can_eq(self.param_env, substs.type_at(1), expected_substs.type_at(1))
         {
             return suggest_copied_or_cloned();
         } else if let Some(option_did) = self.tcx.get_diagnostic_item(sym::Option)

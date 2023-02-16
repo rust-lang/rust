@@ -39,7 +39,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             Dlsym::getentropy => {
                 let [ptr, len] = check_arg_count(args)?;
                 let ptr = this.read_pointer(ptr)?;
-                let len = this.read_machine_usize(len)?;
+                let len = this.read_target_usize(len)?;
                 this.gen_random(ptr, len)?;
                 this.write_null(dest)?;
             }

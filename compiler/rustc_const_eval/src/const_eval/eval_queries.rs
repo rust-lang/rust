@@ -186,7 +186,7 @@ pub(super) fn op_to_const<'tcx>(
                         0,
                     ),
                 };
-                let len = b.to_machine_usize(ecx).unwrap();
+                let len = b.to_target_usize(ecx).unwrap();
                 let start = start.try_into().unwrap();
                 let len: usize = len.try_into().unwrap();
                 ConstValue::Slice { data, start, end: start + len }

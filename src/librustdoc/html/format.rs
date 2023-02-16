@@ -710,11 +710,9 @@ pub(crate) fn href_with_root_path(
             }
         }
     };
-    if !is_remote {
-        if let Some(root_path) = root_path {
-            let root = root_path.trim_end_matches('/');
-            url_parts.push_front(root);
-        }
+    if !is_remote && let Some(root_path) = root_path {
+        let root = root_path.trim_end_matches('/');
+        url_parts.push_front(root);
     }
     debug!(?url_parts);
     match shortty {

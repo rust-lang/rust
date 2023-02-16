@@ -718,7 +718,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             throw_ub!(PointerOutOfBounds {
                 alloc_id,
                 alloc_size,
-                ptr_offset: this.machine_usize_to_isize(base_offset.bytes()),
+                ptr_offset: this.target_usize_to_isize(base_offset.bytes()),
                 ptr_size: size,
                 msg: CheckInAllocMsg::InboundsTest
             });
