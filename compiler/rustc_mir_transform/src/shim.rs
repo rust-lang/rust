@@ -597,7 +597,7 @@ fn build_call_shim<'tcx>(
         let untuple_args = sig.inputs();
 
         // Create substitutions for the `Self` and `Args` generic parameters of the shim body.
-        let arg_tup = tcx.mk_tup(untuple_args.iter());
+        let arg_tup = tcx.intern_tup(untuple_args);
 
         (Some([ty.into(), arg_tup.into()]), Some(untuple_args))
     } else {

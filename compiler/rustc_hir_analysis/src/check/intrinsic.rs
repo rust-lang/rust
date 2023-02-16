@@ -378,7 +378,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 (
                     1,
                     vec![tcx.mk_imm_ref(tcx.mk_re_late_bound(ty::INNERMOST, br), param(0))],
-                    tcx.mk_projection(discriminant_def_id, tcx.mk_substs([param(0).into()].iter())),
+                    tcx.mk_projection(discriminant_def_id, tcx.intern_substs(&[param(0).into()])),
                 )
             }
 

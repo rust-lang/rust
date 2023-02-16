@@ -1923,7 +1923,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
     let self_ty = obligation.predicate.self_ty();
-    let substs = tcx.mk_substs([self_ty.into()].iter());
+    let substs = tcx.intern_substs(&[self_ty.into()]);
     let lang_items = tcx.lang_items();
     let item_def_id = obligation.predicate.def_id;
     let trait_def_id = tcx.trait_of_item(item_def_id).unwrap();

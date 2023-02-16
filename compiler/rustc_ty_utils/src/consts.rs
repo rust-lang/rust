@@ -144,7 +144,7 @@ fn recurse_build<'tcx>(
             for &id in args.iter() {
                 new_args.push(recurse_build(tcx, body, id, root_span)?);
             }
-            let new_args = tcx.mk_const_list(new_args.iter());
+            let new_args = tcx.intern_const_list(&new_args);
             tcx.mk_const(Expr::FunctionCall(fun, new_args), node.ty)
         }
         &ExprKind::Binary { op, lhs, rhs } if check_binop(op) => {

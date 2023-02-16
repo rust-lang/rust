@@ -1190,7 +1190,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_imm_ref(
             self.lifetimes.re_static,
             self.type_of(self.require_lang_item(LangItem::PanicLocation, None))
-                .subst(self, self.mk_substs([self.lifetimes.re_static.into()].iter())),
+                .subst(self, self.intern_substs(&[self.lifetimes.re_static.into()])),
         )
     }
 
