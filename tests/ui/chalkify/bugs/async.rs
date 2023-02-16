@@ -15,6 +15,9 @@
 // normalize-stderr-test "\s\d{1,}: .*\n" -> ""
 // normalize-stderr-test "\s at .*\n" -> ""
 // normalize-stderr-test ".*note: Some details.*\n" -> ""
+// normalize-stderr-test "\d\d\d \|.*\n" -> ""
+// normalize-stderr-test "\d\d\d >.*\n" -> ""
+// normalize-stderr-test "   -->.*" -> ""
 // normalize-stderr-test "\n\n[ ]*\n" -> ""
 // normalize-stderr-test "compiler/.*: projection" -> "projection"
 

@@ -6,7 +6,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
 };
-use rustc_span::SourceFile;
+use rustc_span::{Pos, SourceFile};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
@@ -434,12 +434,14 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         let span_to_caller_location = |fx: &mut FunctionCx<'_, '_, 'tcx>, span: Span| {
             let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
             let caller = fx.tcx.sess.source_map().lookup_char_pos(topmost.lo());
+            let col = caller.col_display as u32 + 1;
+            let len: u16 = (topmost.hi() - topmost.lo()).to_usize().try_into().unwrap_or(0);
             let const_loc = fx.tcx.const_caller_location((
                 rustc_span::symbol::Symbol::intern(
                     &caller.file.name.prefer_remapped().to_string_lossy(),
                 ),
                 caller.line as u32,
-                caller.col_display as u32 + 1,
+                ((len as u32) << 16) + col as u32,
             ));
             crate::constant::codegen_const_value(fx, const_loc, fx.tcx.caller_location_ty())
         };

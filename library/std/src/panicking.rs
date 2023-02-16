@@ -9,6 +9,8 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
+use crate::fs::File;
+use crate::io::{BufRead, BufReader};
 use crate::panic::BacktraceStyle;
 use core::panic::{BoxMeUp, Location, PanicInfo};
 
@@ -255,18 +257,88 @@ fn default_hook(info: &PanicInfo<'_>) {
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
-        let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
-
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
+        let mut print_snippet = || -> Result<(), crate::io::Error> {
+            let filename = location.file();
+            if let Ok(file) = File::open(filename) {
+                let reader = BufReader::new(file);
+                let mut lineno = location.line();
+                let mut len = location.length().map(|l| l.get()).unwrap_or(0) as usize;
+                let start_line = lineno - 2.min(lineno - 1);
+                let max_line = format!("{}", start_line + 4);
+                let padding_length = max_line.len();
+                let padding = " ".repeat(padding_length);
+                writeln!(err, "thread '{name}' panicked at '{msg}'")?;
+                writeln!(err, "{padding}--> {location}")?;
+                let surrounding_src = reader.lines().skip(start_line as usize - 1);
+                let mut column = location.column() as usize;
+                let mut cur_line_no = start_line;
+                let mut multiline = false;
+                for line in surrounding_src {
+                    let line = line?;
+                    if cur_line_no == lineno {
+                        if column == 0 || len == 0 {
+                            writeln!(err, "{cur_line_no:>padding_length$} > {line}")?;
+                        } else {
+                            let leading_whitespace = line.len() - line.trim_start().len();
+                            let sep = if multiline { "_" } else { " " };
+                            let vert = if multiline { "|" } else { " " };
+                            let pre = if multiline { "_" } else { "^" };
+
+                            if column + len - 1 > line.len() {
+                                writeln!(err, "{cur_line_no:>padding_length$} |{vert}{line}")?;
+                                if !multiline {
+                                    write!(err, "{padding} | {}", "_".repeat(column - 1))?;
+                                    if column == 1 {
+                                        writeln!(err, "{}^", " ".repeat(leading_whitespace))?;
+                                    } else {
+                                        writeln!(err, "^")?;
+                                    }
+                                }
+                                len -= line.len() - column + 2;
+                                lineno += 1;
+                                column = 1;
+                                multiline = true;
+                            } else {
+                                writeln!(err, "{cur_line_no:>padding_length$} |{vert}{line}")?;
+                                write!(err, "{padding} |{vert}{}", sep.repeat(column - 1),)?;
+                                if column == 1 {
+                                    writeln!(
+                                        err,
+                                        "{}{}^",
+                                        sep.repeat(leading_whitespace),
+                                        pre.repeat(len - leading_whitespace - 1),
+                                    )?;
+                                } else {
+                                    writeln!(err, "{}^", pre.repeat(len - 1),)?;
+                                }
+                            }
+                        }
+                    } else {
+                        writeln!(err, "{cur_line_no:>padding_length$} | {line}")?;
+                    }
+                    cur_line_no += 1;
+                    if cur_line_no > lineno + 2 {
+                        break;
+                    }
+                }
+                Ok(())
+            } else {
+                writeln!(err, "thread '{name}' panicked at '{msg}', {location}")
+            }
+        };
         match backtrace {
             Some(BacktraceStyle::Short) => {
+                let _ = print_snippet();
                 drop(backtrace::print(err, crate::backtrace_rs::PrintFmt::Short))
             }
             Some(BacktraceStyle::Full) => {
+                let _ = print_snippet();
                 drop(backtrace::print(err, crate::backtrace_rs::PrintFmt::Full))
             }
             Some(BacktraceStyle::Off) => {
+                let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
                 if FIRST_PANIC.swap(false, Ordering::SeqCst) {
                     let _ = writeln!(
                         err,

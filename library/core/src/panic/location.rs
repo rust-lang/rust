@@ -1,4 +1,4 @@
-use crate::fmt;
+use crate::{fmt, num::NonZeroU16};
 
 /// A struct containing information about the location of a panic.
 ///
@@ -33,7 +33,7 @@ use crate::fmt;
 pub struct Location<'a> {
     file: &'a str,
     line: u32,
-    col: u32,
+    pos: u32,
 }
 
 impl<'a> Location<'a> {
@@ -176,7 +176,16 @@ impl<'a> Location<'a> {
     #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
     #[inline]
     pub const fn column(&self) -> u32 {
-        self.col
+        self.pos & u16::MAX as u32
+    }
+
+    /// The distance in bytes from the start column to the end of the panicking expression.
+    #[must_use]
+    #[unstable(feature = "panic_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
+    #[inline]
+    pub const fn length(&self) -> Option<NonZeroU16> {
+        NonZeroU16::new((self.pos >> 16) as u16)
     }
 }
 
@@ -187,14 +196,14 @@ impl<'a> Location<'a> {
 )]
 impl<'a> Location<'a> {
     #[doc(hidden)]
-    pub const fn internal_constructor(file: &'a str, line: u32, col: u32) -> Self {
-        Location { file, line, col }
+    pub const fn internal_constructor(file: &'a str, line: u32, pos: u32) -> Self {
+        Location { file, line, pos }
     }
 }
 
 #[stable(feature = "panic_hook_display", since = "1.26.0")]
 impl fmt::Display for Location<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{}:{}:{}", self.file, self.line, self.col)
+        write!(formatter, "{}:{}:{}", self.file, self.line, self.column())
     }
 }
