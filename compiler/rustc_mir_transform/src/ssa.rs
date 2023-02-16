@@ -19,6 +19,33 @@ pub struct SsaLocals {
     copy_classes: IndexVec<Local, Local>,
 }
 
+/// We often encounter MIR bodies with 1 or 2 basic blocks. In those cases, it's unnecessary to
+/// actually compute dominators, we can just compare block indices because bb0 is always the first
+/// block, and in any body all other blocks are always always dominated by bb0.
+struct SmallDominators {
+    inner: Option<Dominators<BasicBlock>>,
+}
+
+trait DomExt {
+    fn dominates(self, _other: Self, dominators: &SmallDominators) -> bool;
+}
+
+impl DomExt for Location {
+    fn dominates(self, other: Location, dominators: &SmallDominators) -> bool {
+        if self.block == other.block {
+            self.statement_index <= other.statement_index
+        } else {
+            dominators.dominates(self.block, other.block)
+        }
+    }
+}
+
+impl SmallDominators {
+    fn dominates(&self, dom: BasicBlock, node: BasicBlock) -> bool {
+        if let Some(inner) = &self.inner { inner.dominates(dom, node) } else { dom < node }
+    }
+}
+
 impl SsaLocals {
     pub fn new<'tcx>(
         tcx: TyCtxt<'tcx>,
@@ -29,7 +56,9 @@ impl SsaLocals {
         let assignment_order = Vec::new();
 
         let assignments = IndexVec::from_elem(Set1::Empty, &body.local_decls);
-        let dominators = body.basic_blocks.dominators();
+        let dominators =
+            if body.basic_blocks.len() > 2 { Some(body.basic_blocks.dominators()) } else { None };
+        let dominators = SmallDominators { inner: dominators };
         let mut visitor = SsaVisitor { assignments, assignment_order, dominators };
 
         for (local, decl) in body.local_decls.iter_enumerated() {
@@ -41,8 +70,14 @@ impl SsaLocals {
             }
         }
 
-        for (bb, data) in traversal::reverse_postorder(body) {
-            visitor.visit_basic_block_data(bb, data);
+        if body.basic_blocks.len() > 2 {
+            for (bb, data) in traversal::reverse_postorder(body) {
+                visitor.visit_basic_block_data(bb, data);
+            }
+        } else {
+            for (bb, data) in body.basic_blocks.iter_enumerated() {
+                visitor.visit_basic_block_data(bb, data);
+            }
         }
 
         for var_debug_info in &body.var_debug_info {
@@ -139,7 +174,7 @@ enum LocationExtended {
 }
 
 struct SsaVisitor {
-    dominators: Dominators<BasicBlock>,
+    dominators: SmallDominators,
     assignments: IndexVec<Local, Set1<LocationExtended>>,
     assignment_order: Vec<Local>,
 }

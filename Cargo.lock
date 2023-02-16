@@ -3496,25 +3496,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rls-data"
-version = "0.19.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a58135eb039f3a3279a33779192f0ee78b56f57ae636e25cec83530e41debb99"
-dependencies = [
- "rls-span",
- "serde",
-]
-
-[[package]]
-name = "rls-span"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0eea58478fc06e15f71b03236612173a1b81e9770314edecfa664375e3e4c86"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "rust-demangler"
 version = "0.0.1"
 dependencies = [
@@ -3965,7 +3946,6 @@ dependencies = [
  "rustc_middle",
  "rustc_parse",
  "rustc_plugin_impl",
- "rustc_save_analysis",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -4622,27 +4602,6 @@ dependencies = [
  "rustc_span",
  "smallvec",
  "thin-vec",
- "tracing",
-]
-
-[[package]]
-name = "rustc_save_analysis"
-version = "0.0.0"
-dependencies = [
- "rls-data",
- "rls-span",
- "rustc_ast",
- "rustc_ast_pretty",
- "rustc_data_structures",
- "rustc_errors",
- "rustc_hir",
- "rustc_hir_pretty",
- "rustc_lexer",
- "rustc_macros",
- "rustc_middle",
- "rustc_session",
- "rustc_span",
- "serde_json",
  "tracing",
 ]
 

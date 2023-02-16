@@ -2,7 +2,6 @@
 // revisions: full min
 
 // regression test for #78180
-// compile-flags: -Zsave-analysis
 
 #![cfg_attr(full, feature(generic_const_exprs))]
 #![cfg_attr(full, allow(incomplete_features))]

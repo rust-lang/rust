@@ -80,12 +80,11 @@ impl<'tcx> JsonRenderer<'tcx> {
                         // document primitive items in an arbitrary crate by using
                         // `doc(primitive)`.
                         let mut is_primitive_impl = false;
-                        if let clean::types::ItemKind::ImplItem(ref impl_) = *item.kind {
-                            if impl_.trait_.is_none() {
-                                if let clean::types::Type::Primitive(_) = impl_.for_ {
-                                    is_primitive_impl = true;
-                                }
-                            }
+                        if let clean::types::ItemKind::ImplItem(ref impl_) = *item.kind &&
+                            impl_.trait_.is_none() &&
+                            let clean::types::Type::Primitive(_) = impl_.for_
+                        {
+                            is_primitive_impl = true;
                         }
 
                         if item.item_id.is_local() || is_primitive_impl {

@@ -223,7 +223,6 @@ flag][option-emit] documentation.
        - "link": The generated crate as specified by the crate-type.
        - "dep-info": The `.d` file with dependency information in a Makefile-like syntax.
        - "metadata": The Rust `.rmeta` file containing metadata about the crate.
-       - "save-analysis": A JSON file emitted by the `-Zsave-analysis` feature.
     */
     "emit": "link"
 }

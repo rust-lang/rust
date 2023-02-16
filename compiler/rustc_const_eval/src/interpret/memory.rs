@@ -425,7 +425,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     throw_ub!(PointerOutOfBounds {
                         alloc_id,
                         alloc_size,
-                        ptr_offset: self.machine_usize_to_isize(offset.bytes()),
+                        ptr_offset: self.target_usize_to_isize(offset.bytes()),
                         ptr_size: size,
                         msg,
                     })

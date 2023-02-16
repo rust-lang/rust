@@ -182,10 +182,8 @@ impl ExternalCrate {
             return Local;
         }
 
-        if extern_url_takes_precedence {
-            if let Some(url) = extern_url {
-                return to_remote(url);
-            }
+        if extern_url_takes_precedence && let Some(url) = extern_url {
+            return to_remote(url);
         }
 
         // Failing that, see if there's an attribute specifying where to find this
@@ -1176,10 +1174,10 @@ impl GenericBound {
 
     pub(crate) fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
         use rustc_hir::TraitBoundModifier as TBM;
-        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
-            if Some(trait_.def_id()) == cx.tcx.lang_items().sized_trait() {
-                return true;
-            }
+        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self &&
+            Some(trait_.def_id()) == cx.tcx.lang_items().sized_trait()
+        {
+            return true;
         }
         false
     }

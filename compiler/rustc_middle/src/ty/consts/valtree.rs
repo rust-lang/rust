@@ -78,8 +78,8 @@ impl<'tcx> ValTree<'tcx> {
         }
     }
 
-    pub fn try_to_machine_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        self.try_to_scalar_int().map(|s| s.try_to_machine_usize(tcx).ok()).flatten()
+    pub fn try_to_target_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+        self.try_to_scalar_int().map(|s| s.try_to_target_usize(tcx).ok()).flatten()
     }
 
     /// Get the values inside the ValTree as a slice of bytes. This only works for

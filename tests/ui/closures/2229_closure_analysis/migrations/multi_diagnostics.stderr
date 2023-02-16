@@ -111,7 +111,7 @@ LL ~     thread::spawn(move || { let _ = (&fptr1, &fptr2); unsafe {
 LL |
  ...
 LL |
-LL ~     } });
+LL ~     } }).join().unwrap();
    |
 
 error: aborting due to 5 previous errors

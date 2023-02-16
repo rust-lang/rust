@@ -1563,7 +1563,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             // See issue #83753. If someone writes an associated type on a non-trait, just treat it as
             // there being no supertrait HRTBs.
             match tcx.def_kind(def_id) {
-                DefKind::Trait | DefKind::TraitAlias | DefKind::Impl => {}
+                DefKind::Trait | DefKind::TraitAlias | DefKind::Impl { .. } => {}
                 _ => break None,
             }
 

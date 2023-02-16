@@ -12,6 +12,7 @@ use std::collections::HashSet;
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -753,7 +754,7 @@ impl Step for Analysis {
         });
     }
 
-    /// Creates a tarball of save-analysis metadata, if available.
+    /// Creates a tarball of (degenerate) save-analysis metadata, if available.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
@@ -761,13 +762,19 @@ impl Step for Analysis {
             return None;
         }
 
-        builder.ensure(compile::Std::new(compiler, target));
         let src = builder
             .stage_out(compiler, Mode::Std)
             .join(target.triple)
             .join(builder.cargo_dir())
             .join("deps")
             .join("save-analysis");
+
+        // Write a file indicating that this component has been removed.
+        t!(std::fs::create_dir_all(&src));
+        let mut removed = src.clone();
+        removed.push("removed.json");
+        let mut f = t!(std::fs::File::create(removed));
+        t!(write!(f, r#"{{ "warning": "The `rust-analysis` component has been removed." }}"#));
 
         let mut tarball = Tarball::new(builder, "rust-analysis", &target.triple);
         tarball.include_target_in_component_name(true);

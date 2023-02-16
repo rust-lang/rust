@@ -1,5 +1,5 @@
 error[E0277]: expected a `FnOnce<()>` closure, found `()`
-  --> $DIR/issue-63279.rs:7:11
+  --> $DIR/issue-63279.rs:5:11
    |
 LL | fn c() -> Closure {
    |           ^^^^^^^ expected an `FnOnce<()>` closure, found `()`
@@ -8,7 +8,7 @@ LL | fn c() -> Closure {
    = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
 
 error[E0277]: expected a `FnOnce<()>` closure, found `()`
-  --> $DIR/issue-63279.rs:9:11
+  --> $DIR/issue-63279.rs:7:11
    |
 LL |     || -> Closure { || () }
    |           ^^^^^^^ expected an `FnOnce<()>` closure, found `()`
@@ -17,26 +17,26 @@ LL |     || -> Closure { || () }
    = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-63279.rs:9:21
+  --> $DIR/issue-63279.rs:7:21
    |
 LL |     || -> Closure { || () }
    |                     ^^^^^ expected `()`, found closure
    |
    = note: expected unit type `()`
-                found closure `[closure@$DIR/issue-63279.rs:9:21: 9:23]`
+                found closure `[closure@$DIR/issue-63279.rs:7:21: 7:23]`
 help: use parentheses to call this closure
    |
 LL |     || -> Closure { (|| ())() }
    |                     +     +++
 
 error[E0308]: mismatched types
-  --> $DIR/issue-63279.rs:9:5
+  --> $DIR/issue-63279.rs:7:5
    |
 LL |     || -> Closure { || () }
    |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found closure
    |
    = note: expected unit type `()`
-                found closure `[closure@$DIR/issue-63279.rs:9:5: 9:18]`
+                found closure `[closure@$DIR/issue-63279.rs:7:5: 7:18]`
 help: use parentheses to call this closure
    |
 LL |     (|| -> Closure { || () })()

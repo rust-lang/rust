@@ -146,7 +146,6 @@
     -Z          sanitizer-memory-track-origins=val -- enable origins tracking in MemorySanitizer
     -Z                       sanitizer-recover=val -- enable recovery for selected sanitizers
     -Z                  saturating-float-casts=val -- make float->int casts UB-free: numbers outside the integer type's range are clipped to the max/min integer respectively, and NaN is mapped to 0 (default: yes)
-    -Z                           save-analysis=val -- write syntax and type analysis (in JSON format) information, in addition to normal output (default: no)
     -Z                            self-profile=val -- run the self profiler and output the raw event data
     -Z                    self-profile-counter=val -- counter used by the self profiler (default: `wall-time`), one of:
         `wall-time` (monotonic clock, i.e. `std::time::Instant`)

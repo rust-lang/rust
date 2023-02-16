@@ -9,10 +9,46 @@
 //! We also don't use `pwsh` on Windows, because it is not installed by default;
 
 use std::{
-    env, io,
+    env::{self, consts::EXE_EXTENSION},
+    io,
     path::Path,
     process::{self, Command, ExitStatus},
 };
+
+const PYTHON: &str = "python";
+const PYTHON2: &str = "python2";
+const PYTHON3: &str = "python3";
+
+fn python() -> &'static str {
+    let val = match env::var_os("PATH") {
+        Some(val) => val,
+        None => return PYTHON,
+    };
+
+    let mut python2 = false;
+    let mut python3 = false;
+
+    for dir in env::split_paths(&val) {
+        // `python` should always take precedence over python2 / python3 if it exists
+        if dir.join(PYTHON).with_extension(EXE_EXTENSION).exists() {
+            return PYTHON;
+        }
+
+        python2 |= dir.join(PYTHON2).with_extension(EXE_EXTENSION).exists();
+        python3 |= dir.join(PYTHON3).with_extension(EXE_EXTENSION).exists();
+    }
+
+    // try 3 before 2
+    if python3 {
+        PYTHON3
+    } else if python2 {
+        PYTHON2
+    } else {
+        // Python was not found on path, so exit
+        eprintln!("Unable to find python in your PATH. Please check it is installed.");
+        process::exit(1);
+    }
+}
 
 #[cfg(windows)]
 fn x_command(dir: &Path) -> Command {
@@ -51,6 +87,17 @@ fn exec_or_status(command: &mut Command) -> io::Result<ExitStatus> {
     command.status()
 }
 
+fn handle_result(result: io::Result<ExitStatus>, cmd: Command) {
+    match result {
+        Err(error) => {
+            eprintln!("Failed to invoke `{:?}`: {}", cmd, error);
+        }
+        Ok(status) => {
+            process::exit(status.code().unwrap_or(1));
+        }
+    }
+}
+
 fn main() {
     match env::args().skip(1).next().as_deref() {
         Some("--wrapper-version") => {
@@ -70,22 +117,19 @@ fn main() {
 
     for dir in current.ancestors() {
         let candidate = dir.join("x.py");
-
         if candidate.exists() {
-            let mut cmd = x_command(dir);
-
-            cmd.args(env::args().skip(1)).current_dir(dir);
-
-            let result = exec_or_status(&mut cmd);
-
-            match result {
-                Err(error) => {
-                    eprintln!("Failed to invoke `{:?}`: {}", cmd, error);
-                }
-                Ok(status) => {
-                    process::exit(status.code().unwrap_or(1));
-                }
+            let shell_script_candidate = dir.join("x");
+            let mut cmd: Command;
+            if shell_script_candidate.exists() {
+                cmd = x_command(dir);
+                cmd.args(env::args().skip(1)).current_dir(dir);
+            } else {
+                // For older checkouts that do not have the x shell script, default to python
+                cmd = Command::new(python());
+                cmd.arg(&candidate).args(env::args().skip(1)).current_dir(dir);
             }
+            let result = exec_or_status(&mut cmd);
+            handle_result(result, cmd);
         }
     }
 

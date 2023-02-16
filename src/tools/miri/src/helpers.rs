@@ -758,10 +758,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         let seconds_place = this.mplace_field(tp, 0)?;
         let seconds_scalar = this.read_scalar(&seconds_place.into())?;
-        let seconds = seconds_scalar.to_machine_isize(this)?;
+        let seconds = seconds_scalar.to_target_isize(this)?;
         let nanoseconds_place = this.mplace_field(tp, 1)?;
         let nanoseconds_scalar = this.read_scalar(&nanoseconds_place.into())?;
-        let nanoseconds = nanoseconds_scalar.to_machine_isize(this)?;
+        let nanoseconds = nanoseconds_scalar.to_target_isize(this)?;
 
         Ok(try {
             // tv_sec must be non-negative.

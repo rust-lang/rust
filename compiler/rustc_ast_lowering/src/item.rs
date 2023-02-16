@@ -378,8 +378,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             )
                         });
 
-                        let lowered_ty = this
-                            .lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Type));
+                        let lowered_ty = this.lower_ty(
+                            ty,
+                            &ImplTraitContext::Disallowed(ImplTraitPosition::ImplSelf),
+                        );
 
                         (trait_ref, lowered_ty)
                     });
@@ -458,7 +460,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
         body: Option<&Expr>,
     ) -> (&'hir hir::Ty<'hir>, hir::BodyId) {
-        let ty = self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Type));
+        let ty = self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
         (ty, self.lower_const_body(span, body))
     }
 
@@ -608,8 +610,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ForeignItemKind::Fn(fn_dec, fn_args, generics)
                 }
                 ForeignItemKind::Static(t, m, _) => {
-                    let ty =
-                        self.lower_ty(t, &ImplTraitContext::Disallowed(ImplTraitPosition::Type));
+                    let ty = self
+                        .lower_ty(t, &ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
                     hir::ForeignItemKind::Static(ty, *m)
                 }
                 ForeignItemKind::TyAlias(..) => hir::ForeignItemKind::Type,
@@ -679,11 +681,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 qself,
                 path,
                 ParamMode::ExplicitNamed, // no `'_` in declarations (Issue #61124)
-                &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                &ImplTraitContext::Disallowed(ImplTraitPosition::FieldTy),
             );
             self.arena.alloc(t)
         } else {
-            self.lower_ty(&f.ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Type))
+            self.lower_ty(&f.ty, &ImplTraitContext::Disallowed(ImplTraitPosition::FieldTy))
         };
         let hir_id = self.lower_node_id(f.id);
         self.lower_attrs(hir_id, &f.attrs);
@@ -708,7 +710,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (generics, kind, has_default) = match &i.kind {
             AssocItemKind::Const(_, ty, default) => {
-                let ty = self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Type));
+                let ty =
+                    self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
                 let body = default.as_ref().map(|x| self.lower_const_body(i.span, Some(x)));
                 (hir::Generics::empty(), hir::TraitItemKind::Const(ty, body), body.is_some())
             }
@@ -746,7 +749,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
                         let ty = ty.as_ref().map(|x| {
-                            this.lower_ty(x, &ImplTraitContext::Disallowed(ImplTraitPosition::Type))
+                            this.lower_ty(
+                                x,
+                                &ImplTraitContext::Disallowed(ImplTraitPosition::AssocTy),
+                            )
                         });
                         hir::TraitItemKind::Type(
                             this.lower_param_bounds(
@@ -805,7 +811,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let (generics, kind) = match &i.kind {
             AssocItemKind::Const(_, ty, expr) => {
-                let ty = self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Type));
+                let ty =
+                    self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
                 (
                     hir::Generics::empty(),
                     hir::ImplItemKind::Const(ty, self.lower_const_body(i.span, expr.as_deref())),
@@ -1441,7 +1448,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir_id: self.next_id(),
                 bound_generic_params: self.lower_generic_params(bound_generic_params),
                 bounded_ty: self
-                    .lower_ty(bounded_ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Type)),
+                    .lower_ty(bounded_ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Bound)),
                 bounds: self.arena.alloc_from_iter(bounds.iter().map(|bound| {
                     self.lower_param_bound(
                         bound,
@@ -1465,9 +1472,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             WherePredicate::EqPredicate(WhereEqPredicate { lhs_ty, rhs_ty, span }) => {
                 hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
                     lhs_ty: self
-                        .lower_ty(lhs_ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Type)),
+                        .lower_ty(lhs_ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Bound)),
                     rhs_ty: self
-                        .lower_ty(rhs_ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Type)),
+                        .lower_ty(rhs_ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Bound)),
                     span: self.lower_span(*span),
                 })
             }

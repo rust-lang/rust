@@ -1,9 +1,11 @@
-use crate::errors::RegionOriginNote;
+use crate::errors::{
+    note_and_explain, FullfillReqLifetime, LfBoundNotSatisfied, OutlivesBound, OutlivesContent,
+    RefLongerThanData, RegionOriginNote, WhereClauseSuggestions,
+};
 use crate::infer::error_reporting::{note_and_explain_region, TypeErrCtxt};
 use crate::infer::{self, SubregionOrigin};
 use rustc_errors::{
-    fluent, struct_span_err, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed,
+    fluent, AddToDiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
 };
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::traits::ObligationCauseCode;
@@ -119,130 +121,105 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 err
             }
             infer::Reborrow(span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0312,
-                    "lifetime of reference outlives lifetime of borrowed content..."
-                );
-                note_and_explain_region(
+                let reference_valid = note_and_explain::RegionExplanation::new(
                     self.tcx,
-                    &mut err,
-                    "...the reference is valid for ",
                     sub,
-                    "...",
                     None,
+                    note_and_explain::PrefixKind::RefValidFor,
+                    note_and_explain::SuffixKind::Continues,
                 );
-                note_and_explain_region(
+                let content_valid = note_and_explain::RegionExplanation::new(
                     self.tcx,
-                    &mut err,
-                    "...but the borrowed content is only valid for ",
                     sup,
-                    "",
                     None,
+                    note_and_explain::PrefixKind::ContentValidFor,
+                    note_and_explain::SuffixKind::Empty,
                 );
-                err
+                OutlivesContent {
+                    span,
+                    notes: reference_valid.into_iter().chain(content_valid).collect(),
+                }
+                .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
             }
             infer::RelateObjectBound(span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0476,
-                    "lifetime of the source pointer does not outlive lifetime bound of the \
-                     object type"
-                );
-                note_and_explain_region(
+                let object_valid = note_and_explain::RegionExplanation::new(
                     self.tcx,
-                    &mut err,
-                    "object type is valid for ",
                     sub,
-                    "",
                     None,
+                    note_and_explain::PrefixKind::TypeObjValidFor,
+                    note_and_explain::SuffixKind::Empty,
                 );
-                note_and_explain_region(
+                let pointer_valid = note_and_explain::RegionExplanation::new(
                     self.tcx,
-                    &mut err,
-                    "source pointer is only valid for ",
                     sup,
-                    "",
                     None,
+                    note_and_explain::PrefixKind::SourcePointerValidFor,
+                    note_and_explain::SuffixKind::Empty,
                 );
-                err
+                OutlivesBound {
+                    span,
+                    notes: object_valid.into_iter().chain(pointer_valid).collect(),
+                }
+                .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
             }
             infer::RelateParamBound(span, ty, opt_span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0477,
-                    "the type `{}` does not fulfill the required lifetime",
-                    self.ty_to_string(ty)
+                let prefix = match *sub {
+                    ty::ReStatic => note_and_explain::PrefixKind::TypeSatisfy,
+                    _ => note_and_explain::PrefixKind::TypeOutlive,
+                };
+                let suffix = if opt_span.is_some() {
+                    note_and_explain::SuffixKind::ReqByBinding
+                } else {
+                    note_and_explain::SuffixKind::Empty
+                };
+                let note = note_and_explain::RegionExplanation::new(
+                    self.tcx, sub, opt_span, prefix, suffix,
                 );
-                match *sub {
-                    ty::ReStatic => note_and_explain_region(
-                        self.tcx,
-                        &mut err,
-                        "type must satisfy ",
-                        sub,
-                        if opt_span.is_some() { " as required by this binding" } else { "" },
-                        opt_span,
-                    ),
-                    _ => note_and_explain_region(
-                        self.tcx,
-                        &mut err,
-                        "type must outlive ",
-                        sub,
-                        if opt_span.is_some() { " as required by this binding" } else { "" },
-                        opt_span,
-                    ),
-                }
-                err
+                FullfillReqLifetime { span, ty: self.resolve_vars_if_possible(ty), note }
+                    .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
             }
             infer::RelateRegionParamBound(span) => {
-                let mut err =
-                    struct_span_err!(self.tcx.sess, span, E0478, "lifetime bound not satisfied");
-                note_and_explain_region(
+                let param_instantiated = note_and_explain::RegionExplanation::new(
                     self.tcx,
-                    &mut err,
-                    "lifetime parameter instantiated with ",
                     sup,
-                    "",
                     None,
+                    note_and_explain::PrefixKind::LfParamInstantiatedWith,
+                    note_and_explain::SuffixKind::Empty,
                 );
-                note_and_explain_region(
+                let param_must_outlive = note_and_explain::RegionExplanation::new(
                     self.tcx,
-                    &mut err,
-                    "but lifetime parameter must outlive ",
                     sub,
-                    "",
                     None,
+                    note_and_explain::PrefixKind::LfParamMustOutlive,
+                    note_and_explain::SuffixKind::Empty,
                 );
-                err
+                LfBoundNotSatisfied {
+                    span,
+                    notes: param_instantiated.into_iter().chain(param_must_outlive).collect(),
+                }
+                .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0491,
-                    "in type `{}`, reference has a longer lifetime than the data it references",
-                    self.ty_to_string(ty)
-                );
-                note_and_explain_region(
+                let pointer_valid = note_and_explain::RegionExplanation::new(
                     self.tcx,
-                    &mut err,
-                    "the pointer is valid for ",
                     sub,
-                    "",
                     None,
+                    note_and_explain::PrefixKind::PointerValidFor,
+                    note_and_explain::SuffixKind::Empty,
                 );
-                note_and_explain_region(
+                let data_valid = note_and_explain::RegionExplanation::new(
                     self.tcx,
-                    &mut err,
-                    "but the referenced data is only valid for ",
                     sup,
-                    "",
                     None,
+                    note_and_explain::PrefixKind::DataValidFor,
+                    note_and_explain::SuffixKind::Empty,
                 );
-                err
+                RefLongerThanData {
+                    span,
+                    ty: self.resolve_vars_if_possible(ty),
+                    notes: pointer_valid.into_iter().chain(data_valid).collect(),
+                }
+                .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
             }
             infer::CompareImplItemObligation { span, impl_item_def_id, trait_item_def_id } => {
                 let mut err = self.report_extra_impl_obligation(
@@ -279,25 +256,25 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 err
             }
             infer::AscribeUserTypeProvePredicate(span) => {
-                let mut err =
-                    struct_span_err!(self.tcx.sess, span, E0478, "lifetime bound not satisfied");
-                note_and_explain_region(
+                let instantiated = note_and_explain::RegionExplanation::new(
                     self.tcx,
-                    &mut err,
-                    "lifetime instantiated with ",
                     sup,
-                    "",
                     None,
+                    note_and_explain::PrefixKind::LfInstantiatedWith,
+                    note_and_explain::SuffixKind::Empty,
                 );
-                note_and_explain_region(
+                let must_outlive = note_and_explain::RegionExplanation::new(
                     self.tcx,
-                    &mut err,
-                    "but lifetime must outlive ",
                     sub,
-                    "",
                     None,
+                    note_and_explain::PrefixKind::LfMustOutlive,
+                    note_and_explain::SuffixKind::Empty,
                 );
-                err
+                LfBoundNotSatisfied {
+                    span,
+                    notes: instantiated.into_iter().chain(must_outlive).collect(),
+                }
+                .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic)
             }
         };
         if sub.is_error() || sup.is_error() {
@@ -347,22 +324,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let Some(generics) = self.tcx.hir().get_generics(impl_item_def_id) else { return; };
 
-        if trait_predicates.is_empty() {
-            err.span_suggestion_verbose(
-                generics.where_clause_span,
-                "remove the `where` clause",
-                String::new(),
-                Applicability::MachineApplicable,
-            );
+        let suggestion = if trait_predicates.is_empty() {
+            WhereClauseSuggestions::Remove { span: generics.where_clause_span }
         } else {
             let space = if generics.where_clause_span.is_empty() { " " } else { "" };
-            err.span_suggestion_verbose(
-                generics.where_clause_span,
-                "copy the `where` clause predicates from the trait",
-                format!("{space}where {}", trait_predicates.join(", ")),
-                Applicability::MachineApplicable,
-            );
-        }
+            WhereClauseSuggestions::CopyPredicates {
+                span: generics.where_clause_span,
+                space,
+                trait_predicates: trait_predicates.join(", "),
+            }
+        };
+        err.subdiagnostic(suggestion);
     }
 
     pub(super) fn report_placeholder_failure(

@@ -192,8 +192,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "regex-automata",
     "regex-syntax",
     "remove_dir_all",
-    "rls-data",
-    "rls-span",
     "rustc-demangle",
     "rustc-hash",
     "rustc-rayon",

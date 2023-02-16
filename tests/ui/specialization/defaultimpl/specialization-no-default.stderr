@@ -15,7 +15,7 @@ LL | impl<T> Foo for T {
    | ----------------- parent `impl` is here
 ...
 LL |     fn foo(&self) {}
-   |     ^^^^^^^^^^^^^^^^ cannot specialize default item `foo`
+   |     ^^^^^^^^^^^^^ cannot specialize default item `foo`
    |
    = note: to specialize, `foo` in the parent `impl` must be marked `default`
 
@@ -26,7 +26,7 @@ LL | impl<T> Foo for T {
    | ----------------- parent `impl` is here
 ...
 LL |     fn bar(&self) {}
-   |     ^^^^^^^^^^^^^^^^ cannot specialize default item `bar`
+   |     ^^^^^^^^^^^^^ cannot specialize default item `bar`
    |
    = note: to specialize, `bar` in the parent `impl` must be marked `default`
 
@@ -37,7 +37,7 @@ LL | impl<T> Bar for T {
    | ----------------- parent `impl` is here
 ...
 LL |     type T = ();
-   |     ^^^^^^^^^^^^ cannot specialize default item `T`
+   |     ^^^^^^ cannot specialize default item `T`
    |
    = note: to specialize, `T` in the parent `impl` must be marked `default`
 
@@ -48,7 +48,7 @@ LL | impl<T: Clone> Baz for T {
    | ------------------------ parent `impl` is here
 ...
 LL |     fn baz(&self) {}
-   |     ^^^^^^^^^^^^^^^^ cannot specialize default item `baz`
+   |     ^^^^^^^^^^^^^ cannot specialize default item `baz`
    |
    = note: to specialize, `baz` in the parent `impl` must be marked `default`
 
@@ -59,7 +59,7 @@ LL | impl<T: Clone> Redundant for T {
    | ------------------------------ parent `impl` is here
 ...
 LL |     fn redundant(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `redundant`
+   |     ^^^^^^^^^^^^^^^^^^^ cannot specialize default item `redundant`
    |
    = note: to specialize, `redundant` in the parent `impl` must be marked `default`
 

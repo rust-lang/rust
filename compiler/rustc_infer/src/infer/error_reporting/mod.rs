@@ -751,15 +751,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     };
                     let msg = "`match` arms have incompatible types";
                     err.span_label(outer, msg);
-                    self.suggest_remove_semi_or_return_binding(
-                        err,
+                    if let Some(subdiag) = self.suggest_remove_semi_or_return_binding(
                         prior_arm_block_id,
                         prior_arm_ty,
                         prior_arm_span,
                         arm_block_id,
                         arm_ty,
                         arm_span,
-                    );
+                    ) {
+                        err.subdiagnostic(subdiag);
+                    }
                     if let Some(ret_sp) = opt_suggest_box_span {
                         // Get return type span and point to it.
                         self.suggest_boxing_for_return_impl_trait(
@@ -784,15 +785,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if let Some(sp) = outer_span {
                     err.span_label(sp, "`if` and `else` have incompatible types");
                 }
-                self.suggest_remove_semi_or_return_binding(
-                    err,
+                if let Some(subdiag) = self.suggest_remove_semi_or_return_binding(
                     Some(then_id),
                     then_ty,
                     then_span,
                     Some(else_id),
                     else_ty,
                     else_span,
-                );
+                ) {
+                    err.subdiagnostic(subdiag);
+                }
                 if let Some(ret_sp) = opt_suggest_box_span {
                     self.suggest_boxing_for_return_impl_trait(
                         err,
