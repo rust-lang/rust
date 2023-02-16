@@ -2012,7 +2012,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let sig = match inputs.kind() {
                 ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id()) => {
                     infcx.tcx.mk_fn_sig(
-                        inputs.iter(),
+                        *inputs,
                         infcx.next_ty_var(TypeVariableOrigin {
                             span: DUMMY_SP,
                             kind: TypeVariableOriginKind::MiscVariable,
@@ -2023,7 +2023,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     )
                 }
                 _ => infcx.tcx.mk_fn_sig(
-                    std::iter::once(inputs),
+                    [inputs],
                     infcx.next_ty_var(TypeVariableOrigin {
                         span: DUMMY_SP,
                         kind: TypeVariableOriginKind::MiscVariable,

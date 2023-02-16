@@ -3109,7 +3109,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         debug!(?output_ty);
 
-        let fn_ty = tcx.mk_fn_sig(input_tys.into_iter(), output_ty, decl.c_variadic, unsafety, abi);
+        let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi);
         let bare_fn_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
 
         if !self.allow_ty_infer() && !(visitor.0.is_empty() && infer_replacements.is_empty()) {

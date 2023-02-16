@@ -15,8 +15,6 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::spec::abi::Abi;
 
-use std::iter;
-
 fn equate_intrinsic_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     it: &hir::ForeignItem<'_>,
@@ -385,14 +383,14 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             kw::Try => {
                 let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);
                 let try_fn_ty = ty::Binder::dummy(tcx.mk_fn_sig(
-                    iter::once(mut_u8),
+                    [mut_u8],
                     tcx.mk_unit(),
                     false,
                     hir::Unsafety::Normal,
                     Abi::Rust,
                 ));
                 let catch_fn_ty = ty::Binder::dummy(tcx.mk_fn_sig(
-                    [mut_u8, mut_u8].iter().cloned(),
+                    [mut_u8, mut_u8],
                     tcx.mk_unit(),
                     false,
                     hir::Unsafety::Normal,
@@ -447,7 +445,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
         };
         (n_tps, 0, inputs, output, unsafety)
     };
-    let sig = tcx.mk_fn_sig(inputs.into_iter(), output, false, unsafety, Abi::RustIntrinsic);
+    let sig = tcx.mk_fn_sig(inputs, output, false, unsafety, Abi::RustIntrinsic);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
     equate_intrinsic_type(tcx, it, n_tps, n_lts, sig)
 }
@@ -545,13 +543,7 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         }
     };
 
-    let sig = tcx.mk_fn_sig(
-        inputs.into_iter(),
-        output,
-        false,
-        hir::Unsafety::Unsafe,
-        Abi::PlatformIntrinsic,
-    );
+    let sig = tcx.mk_fn_sig(inputs, output, false, hir::Unsafety::Unsafe, Abi::PlatformIntrinsic);
     let sig = ty::Binder::dummy(sig);
     equate_intrinsic_type(tcx, it, n_tps, 0, sig)
 }

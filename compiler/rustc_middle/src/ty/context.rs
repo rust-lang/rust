@@ -1660,11 +1660,11 @@ impl<'tcx> TyCtxt<'tcx> {
         unsafety: hir::Unsafety,
     ) -> PolyFnSig<'tcx> {
         sig.map_bound(|s| {
-            let params_iter = match s.inputs()[0].kind() {
-                ty::Tuple(params) => params.into_iter(),
+            let params = match s.inputs()[0].kind() {
+                ty::Tuple(params) => *params,
                 _ => bug!(),
             };
-            self.mk_fn_sig(params_iter, s.output(), s.c_variadic, unsafety, abi::Abi::Rust)
+            self.mk_fn_sig(params, s.output(), s.c_variadic, unsafety, abi::Abi::Rust)
         })
     }
 
@@ -2215,6 +2215,11 @@ impl<'tcx> TyCtxt<'tcx> {
         if ts.is_empty() { List::empty() } else { self._intern_bound_variable_kinds(ts) }
     }
 
+    // Unlike various other `mk_*` functions, this one uses `I: IntoIterator`
+    // instead of `I: Iterator`. Unlike those other functions, this one doesn't
+    // have a `intern_fn_sig` variant that can be used for cases where `I` is
+    // something like a `Vec`. That's because of the need to combine `inputs`
+    // and `output`.
     pub fn mk_fn_sig<I, T>(
         self,
         inputs: I,
@@ -2224,10 +2229,10 @@ impl<'tcx> TyCtxt<'tcx> {
         abi: abi::Abi,
     ) -> T::Output
     where
-        I: Iterator<Item = T>,
+        I: IntoIterator<Item = T>,
         T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
     {
-        T::collect_and_apply(inputs.chain(iter::once(output)), |xs| ty::FnSig {
+        T::collect_and_apply(inputs.into_iter().chain(iter::once(output)), |xs| ty::FnSig {
             inputs_and_output: self.intern_type_list(xs),
             c_variadic,
             unsafety,

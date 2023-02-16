@@ -781,7 +781,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 let output = transform_ty(tcx, fn_sig.skip_binder().output(), options);
                 ty = tcx.mk_fn_ptr(ty::Binder::bind_with_vars(
                     tcx.mk_fn_sig(
-                        parameters.into_iter(),
+                        parameters,
                         output,
                         fn_sig.c_variadic(),
                         fn_sig.unsafety(),
