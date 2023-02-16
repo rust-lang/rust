@@ -3666,7 +3666,10 @@ impl Methods {
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name);
                 },
-                ("expect_err", [_]) => expect_used::check(cx, expr, recv, true, self.allow_expect_in_tests),
+                ("expect_err", [_]) => {
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name);
+                    expect_used::check(cx, expr, recv, true, self.allow_expect_in_tests);
+                },
                 ("extend", [arg]) => {
                     string_extend_chars::check(cx, expr, recv, arg);
                     extend_with_drain::check(cx, expr, recv, arg);
@@ -3874,7 +3877,10 @@ impl Methods {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name);
                     unwrap_used::check(cx, expr, recv, false, self.allow_unwrap_in_tests);
                 },
-                ("unwrap_err", []) => unwrap_used::check(cx, expr, recv, true, self.allow_unwrap_in_tests),
+                ("unwrap_err", []) => {
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name);
+                    unwrap_used::check(cx, expr, recv, true, self.allow_unwrap_in_tests)
+                },
                 ("unwrap_or", [u_arg]) => {
                     match method_call(recv) {
                         Some((arith @ ("checked_add" | "checked_sub" | "checked_mul"), lhs, [rhs], _, _)) => {

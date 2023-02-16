@@ -9,17 +9,15 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
     let init = clippy_utils::expr_or_init(cx, recv);
 
     if let hir::ExprKind::Call(call, [arg]) = init.kind {
-        let mess = if is_res_lang_ctor(cx, path_res(cx, call), hir::LangItem::OptionSome) {
-            Some("Some")
+        let constructor = if is_res_lang_ctor(cx, path_res(cx, call), hir::LangItem::OptionSome) {
+            "Some"
         } else if is_res_lang_ctor(cx, path_res(cx, call), hir::LangItem::ResultOk) {
-            Some("Ok")
+            "Ok"
+        } else if is_res_lang_ctor(cx, path_res(cx, call), hir::LangItem::ResultErr) {
+            "Err"
         } else {
-            None
+            return;
         };
-
-        let Some(constructor) = mess else {
-	    return;
-	};
 
         if init.span == recv.span {
             span_lint_and_then(
