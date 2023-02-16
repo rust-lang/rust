@@ -14,6 +14,10 @@ use crate::sys::net::{cvt, cvt_gai, cvt_r, init, wrlen_t, Socket};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 
+use libc;
+
+type IovLen = usize;
+
 use crate::ffi::{c_int, c_void};
 
 cfg_if::cfg_if! {
@@ -550,6 +554,22 @@ impl UdpSocket {
                 dstlen,
             )
         })?;
+        Ok(ret as usize)
+    }
+
+    pub fn send_to_vectored(&self, bufs: &mut [IoSliceMut<'_>], dst: &SocketAddr) -> io::Result<usize> {
+        let (dst, dstlen) = dst.into_inner();
+        let mut msg: libc::msghdr = unsafe { mem::zeroed() };
+        // Safety: we're creating a `*mut` pointer from a reference, which is UB
+        // once actually used. However the OS should not write to it in the
+        // `sendmsg` system call.
+        msg.msg_name = dst.as_ptr() as *mut _;
+        msg.msg_namelen = dstlen;
+        // Safety: Same as above about `*const` -> `*mut`.
+        msg.msg_iov = bufs.as_ptr() as *mut _;
+        msg.msg_iovlen = cmp::min(bufs.len(), IovLen::MAX as usize) as IovLen;
+        // TODO(fr) set flags
+        let ret = self.inner.send_msg(&mut msg)?;
         Ok(ret as usize)
     }
 

@@ -399,6 +399,10 @@ pub mod net {
             unimpl!();
         }
 
+        // pub fn send_to_vectored(&self, _:  &mut [IoSliceMut<'_>], _: &SocketAddr) -> io::Result<usize> {
+        //     unimpl!();
+        // }
+
         pub fn duplicate(&self) -> io::Result<UdpSocket> {
             unimpl!();
         }

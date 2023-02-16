@@ -2,11 +2,12 @@
 mod tests;
 
 use crate::fmt;
-use crate::io::{self, ErrorKind};
+use crate::io::{self, ErrorKind, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use crate::sys_common::net as net_imp;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
+
 
 /// A UDP socket.
 ///
@@ -175,6 +176,20 @@ impl UdpSocket {
     pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A) -> io::Result<usize> {
         match addr.to_socket_addrs()?.next() {
             Some(addr) => self.0.send_to(buf, &addr),
+            None => {
+                Err(io::const_io_error!(ErrorKind::InvalidInput, "no addresses to send data to"))
+            }
+        }
+    }
+
+    /// Sends data on the socket to the given address. On success, returns the
+    /// number of bytes written.
+    ///
+    ///
+    #[stable(feature = "udp_sendmsg", since = "1.70.0")]
+    pub fn send_to_vectored<A: ToSocketAddrs>(&self, bufs: &mut [IoSliceMut<'_>], addr: A) -> io::Result<usize> {
+        match addr.to_socket_addrs()?.next() {
+            Some(addr) => self.0.send_to_vectored(bufs, &addr),
             None => {
                 Err(io::const_io_error!(ErrorKind::InvalidInput, "no addresses to send data to"))
             }
@@ -666,6 +681,9 @@ impl UdpSocket {
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.send(buf)
     }
+
+    ///
+    ///
 
     /// Receives a single datagram message on the socket from the remote address to
     /// which it is connected. On success, returns the number of bytes read.

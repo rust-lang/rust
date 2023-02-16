@@ -56,6 +56,7 @@ backtrace = [
   'miniz_oxide/rustc-dep-of-std',
 ]
 gimli-symbolize = []
+udp_sendmsg = []
 
 panic-unwind = ["panic_unwind"]
 profiler = ["profiler_builtins"]
