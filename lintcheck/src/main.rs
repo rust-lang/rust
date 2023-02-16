@@ -383,7 +383,7 @@ impl Crate {
                 .status()
                 .expect("failed to run cargo");
 
-            assert_eq!(status.code(), Some(0));
+            assert_eq!(status.code(), Some(0), "`cargo check` exited with non-zero code");
 
             return Vec::new();
         }
@@ -741,6 +741,7 @@ fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, us
     let mut new_stats_deduped = new_stats;
 
     // remove duplicates from both hashmaps
+    #[allow(clippy::missing_assert_message)]
     for (k, v) in &same_in_both_hashmaps {
         assert!(old_stats_deduped.remove(k) == Some(*v));
         assert!(new_stats_deduped.remove(k) == Some(*v));

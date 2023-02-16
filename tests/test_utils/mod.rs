@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 
 pub static CARGO_CLIPPY_PATH: LazyLock<PathBuf> = LazyLock::new(|| {
     let mut path = std::env::current_exe().unwrap();
-    assert!(path.pop()); // deps
+    assert!(path.pop(), "current running executable path shouldn't be empty"); // deps
     path.set_file_name("cargo-clippy");
     path
 });

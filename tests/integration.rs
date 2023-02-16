@@ -21,6 +21,7 @@ const CARGO_CLIPPY: &str = "cargo-clippy";
 const CARGO_CLIPPY: &str = "cargo-clippy.exe";
 
 #[cfg_attr(feature = "integration", test)]
+#[allow(clippy::missing_assert_message)]
 fn integration_test() {
     let repo_name = env::var("INTEGRATION").expect("`INTEGRATION` var not set");
     let repo_url = format!("https://github.com/{repo_name}");

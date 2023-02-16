@@ -242,7 +242,7 @@ fn to_camel_case(item_name: &str) -> String {
 impl LateLintPass<'_> for EnumVariantNames {
     fn check_item_post(&mut self, _cx: &LateContext<'_>, _item: &Item<'_>) {
         let last = self.modules.pop();
-        assert!(last.is_some());
+        assert!(last.is_some(), "`modules` should not be empty");
     }
 
     #[expect(clippy::similar_names)]

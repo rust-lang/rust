@@ -927,7 +927,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
     store.register_late_pass(|_| Box::new(no_mangle_with_rust_abi::NoMangleWithRustAbi));
     store.register_late_pass(|_| Box::new(collection_is_never_read::CollectionIsNeverRead));
-    store.register_pre_expansion_pass(|| Box::new(missing_assert_message::MissingAssertMessage));
+    store.register_pre_expansion_pass(|| Box::<missing_assert_message::MissingAssertMessage>::default());
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

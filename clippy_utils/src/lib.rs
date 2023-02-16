@@ -1011,10 +1011,13 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
         capture
     }
 
-    debug_assert!(matches!(
-        e.kind,
-        ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(_), .. }))
-    ));
+    debug_assert!(
+        matches!(
+            e.kind,
+            ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(_), .. }))
+        ),
+        "`e.kind` should be a resolved local path"
+    );
 
     let mut child_id = e.hir_id;
     let mut capture = CaptureKind::Value;
