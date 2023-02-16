@@ -488,7 +488,7 @@ impl DecimalLiteralRepresentation {
             then {
                 let hex = format!("{val:#X}");
                 let num_lit = NumericLiteral::new(&hex, num_lit.suffix, false);
-                let _ = Self::do_lint(num_lit.integer).map_err(|warning_type| {
+                let _: Result<(), ()> = Self::do_lint(num_lit.integer).map_err(|warning_type| {
                     warning_type.display(num_lit.format(), cx, span);
                 });
             }

@@ -1,0 +1,51 @@
+error: non-binding `let` without a type annotation
+  --> $DIR/let_underscore_untyped.rs:32:5
+   |
+LL |     let _ = a();
+   |     ^^^^^^^^^^^^
+   |
+   = help: consider adding a type annotation or removing the `let` keyword
+   = note: `-D clippy::let-underscore-untyped` implied by `-D warnings`
+
+error: non-binding `let` without a type annotation
+  --> $DIR/let_underscore_untyped.rs:33:5
+   |
+LL |     let _ = b(1);
+   |     ^^^^^^^^^^^^^
+   |
+   = help: consider adding a type annotation or removing the `let` keyword
+
+error: non-binding `let` without a type annotation
+  --> $DIR/let_underscore_untyped.rs:34:5
+   |
+LL |     let _ = c();
+   |     ^^^^^^^^^^^^
+   |
+   = help: consider adding a type annotation or removing the `let` keyword
+
+error: non-binding `let` without a type annotation
+  --> $DIR/let_underscore_untyped.rs:35:5
+   |
+LL |     let _ = d(&1);
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: consider adding a type annotation or removing the `let` keyword
+
+error: non-binding `let` without a type annotation
+  --> $DIR/let_underscore_untyped.rs:36:5
+   |
+LL |     let _ = e();
+   |     ^^^^^^^^^^^^
+   |
+   = help: consider adding a type annotation or removing the `let` keyword
+
+error: non-binding `let` without a type annotation
+  --> $DIR/let_underscore_untyped.rs:37:5
+   |
+LL |     let _ = f();
+   |     ^^^^^^^^^^^^
+   |
+   = help: consider adding a type annotation or removing the `let` keyword
+
+error: aborting due to 6 previous errors
+
