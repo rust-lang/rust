@@ -7,7 +7,10 @@ LL |   fn oom() -> ! {
    |  _-^^^^^^^^^^^^
 LL | |     loop {}
 LL | | }
-   | |_- argument of type `core::alloc::Layout` unexpected
+   | | -
+   | | |
+   | |_unexpected argument of type `core::alloc::Layout`
+   |   help: remove the extra argument
    |
 note: function defined here
   --> $DIR/alloc-error-handler-bad-signature-3.rs:10:4
@@ -15,10 +18,6 @@ note: function defined here
 LL | fn oom() -> ! {
    |    ^^^
    = note: this error originates in the attribute macro `alloc_error_handler` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: remove the extra argument
-   |
-LL | fn oom() -> !() {
-   |              ++
 
 error: aborting due to previous error
 
