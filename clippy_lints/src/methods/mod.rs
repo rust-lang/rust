@@ -3658,10 +3658,15 @@ impl Methods {
                         case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg);
                     }
                 },
-                ("expect", [_]) => match method_call(recv) {
-                    Some(("ok", recv, [], _, _)) => ok_expect::check(cx, expr, recv),
-                    Some(("err", recv, [], err_span, _)) => err_expect::check(cx, expr, recv, span, err_span, &self.msrv),
-                    _ => expect_used::check(cx, expr, recv, false, self.allow_expect_in_tests),
+                ("expect", [_]) => {
+                    match method_call(recv) {
+                        Some(("ok", recv, [], _, _)) => ok_expect::check(cx, expr, recv),
+                        Some(("err", recv, [], err_span, _)) => err_expect::check(cx, expr, recv, span, err_span, &self.msrv),
+                        _ => expect_used::check(cx, expr, recv, false, self.allow_expect_in_tests),
+                    }
+                    if let ExprKind::Call(recv, _) = recv.kind {
+                        unnecessary_literal_unwrap::check(cx, expr, recv, name);
+                    }
                 },
                 ("expect_err", [_]) => expect_used::check(cx, expr, recv, true, self.allow_expect_in_tests),
                 ("extend", [arg]) => {

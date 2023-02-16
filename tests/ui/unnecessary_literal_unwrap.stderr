@@ -7,5 +7,13 @@ LL |     let val = Some(1).unwrap();
    = help: 
    = note: `-D clippy::unnecessary-literal-unwrap` implied by `-D warnings`
 
-error: aborting due to previous error
+error: used `expect()` on `Some` value
+  --> $DIR/unnecessary_literal_unwrap.rs:5:15
+   |
+LL |     let val = Some(1).expect("this never happens");
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: 
+
+error: aborting due to 2 previous errors
 
