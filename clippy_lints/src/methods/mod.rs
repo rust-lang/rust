@@ -3664,9 +3664,7 @@ impl Methods {
                         Some(("err", recv, [], err_span, _)) => err_expect::check(cx, expr, recv, span, err_span, &self.msrv),
                         _ => expect_used::check(cx, expr, recv, false, self.allow_expect_in_tests),
                     }
-                    if let ExprKind::Call(recv, [arg]) = recv.kind {
-                        unnecessary_literal_unwrap::check(cx, expr, recv, arg, name);
-                    }
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name);
                 },
                 ("expect_err", [_]) => expect_used::check(cx, expr, recv, true, self.allow_expect_in_tests),
                 ("extend", [arg]) => {
@@ -3873,24 +3871,28 @@ impl Methods {
                         },
                         _ => {},
                     }
-                    if let ExprKind::Call(recv, [arg]) = recv.kind {
-                        unnecessary_literal_unwrap::check(cx, expr, recv, arg, name);
-                    }
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name);
                     unwrap_used::check(cx, expr, recv, false, self.allow_unwrap_in_tests);
                 },
                 ("unwrap_err", []) => unwrap_used::check(cx, expr, recv, true, self.allow_unwrap_in_tests),
-                ("unwrap_or", [u_arg]) => match method_call(recv) {
-                    Some((arith @ ("checked_add" | "checked_sub" | "checked_mul"), lhs, [rhs], _, _)) => {
-                        manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);
-                    },
-                    Some(("map", m_recv, [m_arg], span, _)) => {
-                        option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span);
-                    },
-                    Some(("then_some", t_recv, [t_arg], _, _)) => {
-                        obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg);
-                    },
-                    _ => {},
+                ("unwrap_or", [u_arg]) => {
+                    match method_call(recv) {
+                        Some((arith @ ("checked_add" | "checked_sub" | "checked_mul"), lhs, [rhs], _, _)) => {
+                            manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);
+                        },
+                        Some(("map", m_recv, [m_arg], span, _)) => {
+                            option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span);
+                        },
+                        Some(("then_some", t_recv, [t_arg], _, _)) => {
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg);
+                        },
+                        _ => {},
+                    }
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name);
                 },
+                ("unwrap_or_default", []) => {
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name);
+                }
                 ("unwrap_or_else", [u_arg]) => match method_call(recv) {
                     Some(("map", recv, [map_arg], _, _))
                         if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, &self.msrv) => {},
