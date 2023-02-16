@@ -775,7 +775,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                         // "not all control paths return a value" is reported here.
                         //
                         // maybe move the check to a MIR pass?
-                        tcx.ensure().check_liveness(def_id.to_def_id());
+                        tcx.ensure().check_liveness(def_id);
                     });
                 });
             }

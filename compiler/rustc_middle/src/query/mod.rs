@@ -832,7 +832,7 @@ rustc_queries! {
         desc { |tcx| "checking privacy in {}", describe_as_module(key, tcx) }
     }
 
-    query check_liveness(key: DefId) {
+    query check_liveness(key: LocalDefId) {
         desc { |tcx| "checking liveness of variables in `{}`", tcx.def_path_str(key) }
     }
 
@@ -1021,7 +1021,7 @@ rustc_queries! {
     }
 
     query check_match(key: LocalDefId) {
-        desc { |tcx| "match-checking `{}`", tcx.def_path_str(key.to_def_id()) }
+        desc { |tcx| "match-checking `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { true }
     }
 
