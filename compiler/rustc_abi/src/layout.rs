@@ -49,7 +49,42 @@ pub trait LayoutCalculator {
         repr: &ReprOptions,
         kind: StructKind,
     ) -> Option<LayoutS> {
-        univariant(self, dl, fields, repr, kind)
+        let layout = univariant(self, dl, fields, repr, kind, true);
+        // Enums prefer niches close to the beginning or the end of the variants so that other (smaller)
+        // data-carrying variants can be packed into the space after/before the niche.
+        // If the default field ordering does not give us a niche at the front then we do a second
+        // run and bias niches to the right and then check which one is closer to one of the struct's
+        // edges.
+        if let Some(layout) = &layout {
+            if let Some(niche) = layout.largest_niche {
+                let head_space = niche.offset.bytes();
+                let niche_length = niche.value.size(dl).bytes();
+                let tail_space = layout.size.bytes() - head_space - niche_length;
+
+                // This may end up doing redundant work if the niche is already in the last field
+                // (e.g. a trailing bool) and there is tail padding. But it's non-trivial to get
+                // the unpadded size so we try anyway.
+                if fields.len() > 1 && head_space != 0 && tail_space > 0 {
+                    let alt_layout = univariant(self, dl, fields, repr, kind, false)
+                        .expect("alt layout should always work");
+                    let niche = alt_layout
+                        .largest_niche
+                        .expect("alt layout should have a niche like the regular one");
+                    let alt_head_space = niche.offset.bytes();
+                    let alt_niche_len = niche.value.size(dl).bytes();
+
+                    debug_assert_eq!(layout.size.bytes(), alt_layout.size.bytes());
+
+                    let prefer_alt_layout =
+                        alt_head_space > head_space && alt_head_space > tail_space;
+
+                    if prefer_alt_layout {
+                        return Some(alt_layout);
+                    }
+                }
+            }
+        }
+        layout
     }
 
     fn layout_of_never_type(&self) -> LayoutS {
@@ -728,6 +763,7 @@ fn univariant(
     fields: &IndexSlice<FieldIdx, Layout<'_>>,
     repr: &ReprOptions,
     kind: StructKind,
+    niche_bias_start: bool,
 ) -> Option<LayoutS> {
     let pack = repr.pack;
     let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
@@ -768,12 +804,35 @@ fn univariant(
             match kind {
                 StructKind::AlwaysSized | StructKind::MaybeUnsized => {
                     optimizing.sort_by_key(|&x| {
-                        // Place ZSTs first to avoid "interesting offsets",
-                        // especially with only one or two non-ZST fields.
-                        // Then place largest alignments first, largest niches within an alignment group last
                         let f = fields[x];
+                        let field_size = f.size().bytes();
                         let niche_size = f.largest_niche().map_or(0, |n| n.available(dl));
-                        (!f.0.is_zst(), cmp::Reverse(effective_field_align(f)), niche_size)
+                        let niche_size = if niche_bias_start {
+                            u128::MAX - niche_size // large niche first
+                        } else {
+                            niche_size // large niche last
+                        };
+                        let inner_niche_placement = if niche_bias_start {
+                            f.largest_niche().map_or(0, |n| n.offset.bytes())
+                        } else {
+                            f.largest_niche().map_or(0, |n| {
+                                field_size - n.value.size(dl).bytes() - n.offset.bytes()
+                            })
+                        };
+
+                        (
+                            // Place ZSTs first to avoid "interesting offsets", especially with only one
+                            // or two non-ZST fields. This helps Scalar/ScalarPair layouts.
+                            !f.0.is_zst(),
+                            // Then place largest alignments first.
+                            cmp::Reverse(effective_field_align(f)),
+                            // Then prioritize niche placement within alignment group according to
+                            // `niche_bias_start`.
+                            niche_size,
+                            // Then among fields with equally-sized niches prefer the ones
+                            // closer to the start/end of the field.
+                            inner_niche_placement,
+                        )
                     });
                 }
 
@@ -838,7 +897,12 @@ fn univariant(
 
         if let Some(mut niche) = field.largest_niche() {
             let available = niche.available(dl);
-            if available > largest_niche_available {
+            let prefer_new_niche = if niche_bias_start {
+                available > largest_niche_available
+            } else {
+                available >= largest_niche_available
+            };
+            if prefer_new_niche {
                 largest_niche_available = available;
                 niche.offset += offset;
                 largest_niche = Some(niche);

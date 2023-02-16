@@ -4,9 +4,14 @@
 #![allow(dead_code)]
 #![feature(never_type)]
 #![feature(pointer_is_aligned)]
+#![feature(ptr_from_ref)]
+#![feature(strict_provenance)]
 
 use std::mem::size_of;
-use std::num::NonZeroU8;
+use std::num::{NonZeroU8, NonZeroU16};
+use std::ptr;
+use std::ptr::NonNull;
+use std::borrow::Cow;
 
 struct t {a: u8, b: i8}
 struct u {a: u8, b: i8, c: u8}
@@ -181,6 +186,17 @@ struct Reorder2 {
     ary: [u8; 6],
 }
 
+// standins for std types which we want to be laid out in a reasonable way
+struct RawVecDummy {
+    ptr: NonNull<u8>,
+    cap: usize,
+}
+
+struct VecDummy {
+    r: RawVecDummy,
+    len: usize,
+}
+
 pub fn main() {
     assert_eq!(size_of::<u8>(), 1 as usize);
     assert_eq!(size_of::<u32>(), 4 as usize);
@@ -270,4 +286,16 @@ pub fn main() {
     let v = Reorder2 {a: 0, b: 0, ary: [0; 6]};
     assert_eq!(size_of::<Reorder2>(), 10);
     assert!((&v.ary).as_ptr().is_aligned_to(2), "[u8; 6] should group with align-2 fields");
+
+    let v = VecDummy { r: RawVecDummy { ptr: NonNull::dangling(), cap: 0 }, len: 1 };
+    assert_eq!(ptr::from_ref(&v), ptr::from_ref(&v.r.ptr).cast(),
+               "sort niches to the front where possible");
+
+    // Ideal layouts: (bool, u8, NonZeroU16) or (NonZeroU16, u8, bool)
+    // Currently the layout algorithm will choose the latter because it doesn't attempt
+    // to aggregate multiple smaller fields to move a niche before a higher-alignment one.
+    let b = BoolInTheMiddle( NonZeroU16::new(1).unwrap(), true, 0);
+    assert!(ptr::from_ref(&b.1).addr() > ptr::from_ref(&b.2).addr());
+
+    assert_eq!(size_of::<Cow<'static, str>>(), size_of::<String>());
 }
