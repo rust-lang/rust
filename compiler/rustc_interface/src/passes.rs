@@ -8,6 +8,7 @@ use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::PResult;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
@@ -172,7 +173,7 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
 #[instrument(level = "trace", skip(tcx, krate, resolver))]
-pub fn configure_and_expand(
+fn configure_and_expand(
     tcx: TyCtxt<'_>,
     mut krate: ast::Crate,
     resolver: &mut Resolver<'_, '_>,
@@ -564,6 +565,34 @@ fn write_out_deps(
     }
 }
 
+fn resolver_for_lowering<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (): (),
+) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
+    let arenas = Resolver::arenas();
+    let krate = tcx.crate_for_resolver(()).steal();
+    let mut resolver = Resolver::new(
+        tcx,
+        &krate,
+        tcx.crate_name(LOCAL_CRATE),
+        tcx.metadata_loader(()).steal(),
+        &arenas,
+    );
+    let krate = configure_and_expand(tcx, krate, &mut resolver);
+
+    // Make sure we don't mutate the cstore from here on.
+    tcx.untracked().cstore.leak();
+
+    let ty::ResolverOutputs {
+        global_ctxt: untracked_resolutions,
+        ast_lowering: untracked_resolver_for_lowering,
+    } = resolver.into_outputs();
+
+    let feed = tcx.feed_unit_query();
+    feed.resolutions(tcx.arena.alloc(untracked_resolutions));
+    tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Lrc::new(krate))))
+}
+
 fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
     let sess = tcx.sess;
     let _timer = sess.timer("prepare_outputs");
@@ -618,6 +647,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.analysis = analysis;
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
     providers.output_filenames = output_filenames;
+    providers.resolver_for_lowering = resolver_for_lowering;
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);

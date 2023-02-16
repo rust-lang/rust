@@ -16,9 +16,8 @@ use rustc_lint::LintStore;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::ty::{self, GlobalCtxt, TyCtxt};
+use rustc_middle::ty::{GlobalCtxt, TyCtxt};
 use rustc_query_impl::Queries as TcxQueries;
-use rustc_resolve::Resolver;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
 use rustc_session::{output::find_crate_name, Session};
@@ -216,34 +215,12 @@ impl<'tcx> Queries<'tcx> {
             qcx.enter(|tcx| {
                 let feed = tcx.feed_local_crate();
                 feed.crate_name(crate_name);
-                let (krate, resolver_outputs) = {
-                    let _timer = sess.timer("configure_and_expand");
-
-                    let arenas = Resolver::arenas();
-                    let mut resolver = Resolver::new(
-                        tcx,
-                        &krate,
-                        crate_name,
-                        self.codegen_backend().metadata_loader(),
-                        &arenas,
-                    );
-                    let krate = passes::configure_and_expand(tcx, krate, &mut resolver);
-
-                    // Make sure we don't mutate the cstore from here on.
-                    tcx.untracked().cstore.leak();
-                    (Lrc::new(krate), resolver.into_outputs())
-                };
-
-                let ty::ResolverOutputs {
-                    global_ctxt: untracked_resolutions,
-                    ast_lowering: untracked_resolver_for_lowering,
-                } = resolver_outputs;
 
                 let feed = tcx.feed_unit_query();
-                feed.resolver_for_lowering(
-                    tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, krate))),
+                feed.crate_for_resolver(tcx.arena.alloc(Steal::new(krate)));
+                feed.metadata_loader(
+                    tcx.arena.alloc(Steal::new(self.codegen_backend().metadata_loader())),
                 );
-                feed.resolutions(tcx.arena.alloc(untracked_resolutions));
                 feed.features_query(tcx.sess.features_untracked());
             });
             Ok(qcx)

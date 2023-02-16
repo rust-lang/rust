@@ -200,7 +200,7 @@ pub enum ExternCrateSource {
 /// At the time of this writing, there is only one backend and one way to store
 /// metadata in library -- this trait just serves to decouple rustc_metadata from
 /// the archive reader, which depends on LLVM.
-pub trait MetadataLoader {
+pub trait MetadataLoader: std::fmt::Debug {
     fn get_rlib_metadata(&self, target: &Target, filename: &Path) -> Result<MetadataRef, String>;
     fn get_dylib_metadata(&self, target: &Target, filename: &Path) -> Result<MetadataRef, String>;
 }
