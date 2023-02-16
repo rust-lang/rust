@@ -1,0 +1,100 @@
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:14:5
+   |
+LL |     assert!(foo());
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::missing-assert-message` implied by `-D warnings`
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:15:5
+   |
+LL |     assert_eq!(foo(), foo());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:16:5
+   |
+LL |     assert_ne!(foo(), foo());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:17:5
+   |
+LL |     debug_assert!(foo());
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:18:5
+   |
+LL |     debug_assert_eq!(foo(), foo());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:19:5
+   |
+LL |     debug_assert_ne!(foo(), foo());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:24:5
+   |
+LL |     assert!(bar!(true));
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:25:5
+   |
+LL |     assert!(bar!(true, false));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:26:5
+   |
+LL |     assert_eq!(bar!(true), foo());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:27:5
+   |
+LL |     assert_ne!(bar!(true, true), bar!(true));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:32:5
+   |
+LL |     assert!(foo(),);
+   |     ^^^^^^^^^^^^^^^
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:33:5
+   |
+LL |     assert_eq!(foo(), foo(),);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:34:5
+   |
+LL |     assert_ne!(foo(), foo(),);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:35:5
+   |
+LL |     debug_assert!(foo(),);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:36:5
+   |
+LL |     debug_assert_eq!(foo(), foo(),);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assert without any message
+  --> $DIR/missing_assert_message.rs:37:5
+   |
+LL |     debug_assert_ne!(foo(), foo(),);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 16 previous errors
+
