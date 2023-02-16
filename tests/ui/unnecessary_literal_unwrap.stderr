@@ -1,0 +1,11 @@
+error: used `unwrap()` on `Some` value
+  --> $DIR/unnecessary_literal_unwrap.rs:4:15
+   |
+LL |     let val = Some(1).unwrap();
+   |               ^^^^^^^^^^^^^^^^
+   |
+   = help: 
+   = note: `-D clippy::unnecessary-literal-unwrap` implied by `-D warnings`
+
+error: aborting due to previous error
+
