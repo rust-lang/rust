@@ -6,8 +6,9 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{
-    def_id::DefId, AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, ImplItem, ImplItemKind, ImplicitSelfKind, Item,
-    ItemKind, Mutability, Node, TraitItemRef, TyKind,
+    def::Res, def_id::DefId, lang_items::LangItem, AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg,
+    GenericBound, ImplItem, ImplItemKind, ImplicitSelfKind, Item, ItemKind, Mutability, Node, PathSegment, PrimTy,
+    QPath, TraitItemRef, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
@@ -250,33 +251,98 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
 }
 
 #[derive(Debug, Clone, Copy)]
-enum LenOutput<'tcx> {
+enum LenOutput {
     Integral,
     Option(DefId),
-    Result(DefId, Ty<'tcx>),
+    Result(DefId),
 }
-fn parse_len_output<'tcx>(cx: &LateContext<'_>, sig: FnSig<'tcx>) -> Option<LenOutput<'tcx>> {
+
+fn extract_future_output<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
+    if let ty::Alias(_, alias_ty) = ty.kind() &&
+        let Some(Node::Item(item)) = cx.tcx.hir().get_if_local(alias_ty.def_id) &&
+        let Item { kind: ItemKind::OpaqueTy(opaque), .. } = item &&
+        opaque.bounds.len() == 1 &&
+        let GenericBound::LangItemTrait(LangItem::Future, _, _, generic_args) = &opaque.bounds[0] &&
+        generic_args.bindings.len() == 1 &&
+        let TypeBindingKind::Equality {
+            term: rustc_hir::Term::Ty(rustc_hir::Ty {kind: TyKind::Path(QPath::Resolved(_, path)), .. }),
+        } = &generic_args.bindings[0].kind &&
+        path.segments.len() == 1 {
+            return Some(&path.segments[0]);
+        }
+
+    None
+}
+
+fn is_first_generic_integral<'tcx>(segment: &'tcx PathSegment<'tcx>) -> bool {
+    if let Some(generic_args) = segment.args {
+        if generic_args.args.is_empty() {
+            return false;
+        }
+        let arg = &generic_args.args[0];
+        if let GenericArg::Type(rustc_hir::Ty {
+            kind: TyKind::Path(QPath::Resolved(_, path)),
+            ..
+        }) = arg
+        {
+            let segments = &path.segments;
+            let segment = &segments[0];
+            let res = &segment.res;
+            if matches!(res, Res::PrimTy(PrimTy::Uint(_))) || matches!(res, Res::PrimTy(PrimTy::Int(_))) {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+fn parse_len_output<'tcx>(cx: &LateContext<'tcx>, sig: FnSig<'tcx>) -> Option<LenOutput> {
+    if let Some(segment) = extract_future_output(cx, sig.output()) {
+        let res = segment.res;
+
+        if matches!(res, Res::PrimTy(PrimTy::Uint(_))) || matches!(res, Res::PrimTy(PrimTy::Int(_))) {
+            return Some(LenOutput::Integral);
+        }
+
+        if let Res::Def(_, def_id) = res {
+            if cx.tcx.is_diagnostic_item(sym::Option, def_id) && is_first_generic_integral(segment) {
+                return Some(LenOutput::Option(def_id));
+            } else if cx.tcx.is_diagnostic_item(sym::Result, def_id) && is_first_generic_integral(segment) {
+                return Some(LenOutput::Result(def_id));
+            }
+        }
+
+        return None;
+    }
+
     match *sig.output().kind() {
         ty::Int(_) | ty::Uint(_) => Some(LenOutput::Integral),
         ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) => {
             subs.type_at(0).is_integral().then(|| LenOutput::Option(adt.did()))
         },
-        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Result, adt.did()) => subs
-            .type_at(0)
-            .is_integral()
-            .then(|| LenOutput::Result(adt.did(), subs.type_at(1))),
+        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Result, adt.did()) => {
+            subs.type_at(0).is_integral().then(|| LenOutput::Result(adt.did()))
+        },
         _ => None,
     }
 }
 
-impl<'tcx> LenOutput<'tcx> {
-    fn matches_is_empty_output(self, ty: Ty<'tcx>) -> bool {
+impl LenOutput {
+    fn matches_is_empty_output<'tcx>(self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+        if let Some(segment) = extract_future_output(cx, ty) {
+            return match (self, segment.res) {
+                (_, Res::PrimTy(PrimTy::Bool)) => true,
+                (Self::Option(_), Res::Def(_, def_id)) if cx.tcx.is_diagnostic_item(sym::Option, def_id) => true,
+                (Self::Result(_), Res::Def(_, def_id)) if cx.tcx.is_diagnostic_item(sym::Result, def_id) => true,
+                _ => false,
+            };
+        }
+
         match (self, ty.kind()) {
             (_, &ty::Bool) => true,
             (Self::Option(id), &ty::Adt(adt, subs)) if id == adt.did() => subs.type_at(0).is_bool(),
-            (Self::Result(id, err_ty), &ty::Adt(adt, subs)) if id == adt.did() => {
-                subs.type_at(0).is_bool() && subs.type_at(1) == err_ty
-            },
+            (Self::Result(id), &ty::Adt(adt, subs)) if id == adt.did() => subs.type_at(0).is_bool(),
             _ => false,
         }
     }
@@ -300,9 +366,14 @@ impl<'tcx> LenOutput<'tcx> {
 }
 
 /// Checks if the given signature matches the expectations for `is_empty`
-fn check_is_empty_sig<'tcx>(sig: FnSig<'tcx>, self_kind: ImplicitSelfKind, len_output: LenOutput<'tcx>) -> bool {
+fn check_is_empty_sig<'tcx>(
+    cx: &LateContext<'tcx>,
+    sig: FnSig<'tcx>,
+    self_kind: ImplicitSelfKind,
+    len_output: LenOutput,
+) -> bool {
     match &**sig.inputs_and_output {
-        [arg, res] if len_output.matches_is_empty_output(*res) => {
+        [arg, res] if len_output.matches_is_empty_output(cx, *res) => {
             matches!(
                 (arg.kind(), self_kind),
                 (ty::Ref(_, _, Mutability::Not), ImplicitSelfKind::ImmRef)
@@ -314,11 +385,11 @@ fn check_is_empty_sig<'tcx>(sig: FnSig<'tcx>, self_kind: ImplicitSelfKind, len_o
 }
 
 /// Checks if the given type has an `is_empty` method with the appropriate signature.
-fn check_for_is_empty<'tcx>(
-    cx: &LateContext<'tcx>,
+fn check_for_is_empty(
+    cx: &LateContext<'_>,
     span: Span,
     self_kind: ImplicitSelfKind,
-    output: LenOutput<'tcx>,
+    output: LenOutput,
     impl_ty: DefId,
     item_name: Symbol,
     item_kind: &str,
@@ -351,6 +422,7 @@ fn check_for_is_empty<'tcx>(
         Some(is_empty)
             if !(is_empty.fn_has_self_parameter
                 && check_is_empty_sig(
+                    cx,
                     cx.tcx.fn_sig(is_empty.def_id).subst_identity().skip_binder(),
                     self_kind,
                     output,
