@@ -12,7 +12,7 @@ use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
-use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore};
+use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
@@ -171,14 +171,15 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
+#[instrument(level = "trace", skip(tcx, krate, resolver))]
 pub fn configure_and_expand(
-    sess: &Session,
-    lint_store: &LintStore,
+    tcx: TyCtxt<'_>,
     mut krate: ast::Crate,
-    crate_name: Symbol,
     resolver: &mut Resolver<'_, '_>,
 ) -> Result<ast::Crate> {
-    trace!("configure_and_expand");
+    let sess = tcx.sess;
+    let lint_store = unerased_lint_store(tcx);
+    let crate_name = tcx.crate_name(LOCAL_CRATE);
     pre_expansion_lint(sess, lint_store, resolver.registered_tools(), &krate, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 

@@ -204,7 +204,7 @@ impl<'tcx> Queries<'tcx> {
 
             let qcx = passes::create_global_ctxt(
                 self.compiler,
-                lint_store.clone(),
+                lint_store,
                 self.dep_graph()?.steal(),
                 untracked,
                 &self.queries,
@@ -227,13 +227,7 @@ impl<'tcx> Queries<'tcx> {
                         self.codegen_backend().metadata_loader(),
                         &arenas,
                     );
-                    let krate = passes::configure_and_expand(
-                        sess,
-                        &lint_store,
-                        krate,
-                        crate_name,
-                        &mut resolver,
-                    )?;
+                    let krate = passes::configure_and_expand(tcx, krate, &mut resolver)?;
 
                     // Make sure we don't mutate the cstore from here on.
                     tcx.untracked().cstore.leak();
