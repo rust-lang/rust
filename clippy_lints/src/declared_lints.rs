@@ -224,6 +224,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::let_underscore::LET_UNDERSCORE_FUTURE_INFO,
     crate::let_underscore::LET_UNDERSCORE_LOCK_INFO,
     crate::let_underscore::LET_UNDERSCORE_MUST_USE_INFO,
+    crate::let_underscore::LET_UNDERSCORE_UNTYPED_INFO,
     crate::lifetimes::EXTRA_UNUSED_LIFETIMES_INFO,
     crate::lifetimes::NEEDLESS_LIFETIMES_INFO,
     crate::literal_representation::DECIMAL_LITERAL_REPRESENTATION_INFO,
