@@ -168,6 +168,37 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         self.trait_def_id(tcx)
     }
 
+    fn consider_implied_clause(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        assumption: ty::Predicate<'tcx>,
+        requirements: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) -> QueryResult<'tcx> {
+        if let Some(poly_projection_pred) = assumption.to_opt_poly_projection_pred()
+            && poly_projection_pred.projection_def_id() == goal.predicate.def_id()
+        {
+            ecx.infcx.probe(|_| {
+                let assumption_projection_pred =
+                    ecx.infcx.instantiate_binder_with_infer(poly_projection_pred);
+                let mut nested_goals = ecx.infcx.eq(
+                    goal.param_env,
+                    goal.predicate.projection_ty,
+                    assumption_projection_pred.projection_ty,
+                )?;
+                nested_goals.extend(requirements);
+                let subst_certainty = ecx.evaluate_all(nested_goals)?;
+
+                ecx.eq_term_and_make_canonical_response(
+                    goal,
+                    subst_certainty,
+                    assumption_projection_pred.term,
+                )
+            })
+        } else {
+            Err(NoSolution)
+        }
+    }
+
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
@@ -260,36 +291,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         })
     }
 
-    fn consider_assumption_with_certainty(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-        assumption: ty::Predicate<'tcx>,
-        assumption_certainty: Certainty,
-    ) -> QueryResult<'tcx> {
-        if let Some(poly_projection_pred) = assumption.to_opt_poly_projection_pred()
-            && poly_projection_pred.projection_def_id() == goal.predicate.def_id()
-        {
-            ecx.infcx.probe(|_| {
-                let assumption_projection_pred =
-                    ecx.infcx.instantiate_binder_with_infer(poly_projection_pred);
-                let nested_goals = ecx.infcx.eq(
-                    goal.param_env,
-                    goal.predicate.projection_ty,
-                    assumption_projection_pred.projection_ty,
-                )?;
-                let subst_certainty = ecx.evaluate_all(nested_goals)?;
-
-                ecx.eq_term_and_make_canonical_response(
-                    goal,
-                    subst_certainty.unify_and(assumption_certainty),
-                    assumption_projection_pred.term,
-                )
-            })
-        } else {
-            Err(NoSolution)
-        }
-    }
-
     fn consider_auto_trait_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -331,31 +332,27 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         goal_kind: ty::ClosureKind,
     ) -> QueryResult<'tcx> {
         let tcx = ecx.tcx();
-        if let Some(tupled_inputs_and_output) =
-            structural_traits::extract_tupled_inputs_and_output_from_callable(
-                tcx,
-                goal.predicate.self_ty(),
-                goal_kind,
-            )?
-        {
-            // A built-in `Fn` trait needs to check that its output is `Sized`
-            // (FIXME: technically we only need to check this if the type is a fn ptr...)
-            let output_is_sized_pred = tupled_inputs_and_output
-                .map_bound(|(_, output)| tcx.at(DUMMY_SP).mk_trait_ref(LangItem::Sized, [output]));
-            let (_, output_is_sized_certainty) =
-                ecx.evaluate_goal(goal.with(tcx, output_is_sized_pred))?;
+        let Some(tupled_inputs_and_output) =
+        structural_traits::extract_tupled_inputs_and_output_from_callable(
+            tcx,
+            goal.predicate.self_ty(),
+            goal_kind,
+        )? else {
+        return ecx.make_canonical_response(Certainty::AMBIGUOUS);
+    };
+        let output_is_sized_pred = tupled_inputs_and_output
+            .map_bound(|(_, output)| tcx.at(DUMMY_SP).mk_trait_ref(LangItem::Sized, [output]));
 
-            let pred = tupled_inputs_and_output
-                .map_bound(|(inputs, output)| ty::ProjectionPredicate {
-                    projection_ty: tcx
-                        .mk_alias_ty(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs]),
-                    term: output.into(),
-                })
-                .to_predicate(tcx);
-            Self::consider_assumption_with_certainty(ecx, goal, pred, output_is_sized_certainty)
-        } else {
-            ecx.make_canonical_response(Certainty::AMBIGUOUS)
-        }
+        let pred = tupled_inputs_and_output
+            .map_bound(|(inputs, output)| ty::ProjectionPredicate {
+                projection_ty: tcx
+                    .mk_alias_ty(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs]),
+                term: output.into(),
+            })
+            .to_predicate(tcx);
+        // A built-in `Fn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
+        Self::consider_implied_clause(ecx, goal, pred, [goal.with(tcx, output_is_sized_pred)])
     }
 
     fn consider_builtin_tuple_candidate(
@@ -474,7 +471,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
         let term = substs.as_generator().return_ty().into();
 
-        Self::consider_assumption(
+        Self::consider_implied_clause(
             ecx,
             goal,
             ty::Binder::dummy(ty::ProjectionPredicate {
@@ -482,6 +479,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 term,
             })
             .to_predicate(tcx),
+            // Technically, we need to check that the future type is Sized,
+            // but that's already proven by the generator being WF.
+            [],
         )
     }
 
@@ -511,7 +511,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             bug!("unexpected associated item `<{self_ty} as Generator>::{name}`")
         };
 
-        Self::consider_assumption(
+        Self::consider_implied_clause(
             ecx,
             goal,
             ty::Binder::dummy(ty::ProjectionPredicate {
@@ -521,6 +521,9 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 term,
             })
             .to_predicate(tcx),
+            // Technically, we need to check that the future type is Sized,
+            // but that's already proven by the generator being WF.
+            [],
         )
     }
 
