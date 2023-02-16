@@ -98,6 +98,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::DUMMY_SP;
 use rustc_span::{BytePos, Span};
 
 use std::collections::VecDeque;
@@ -586,8 +587,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn assigned_on_exit(&self, ln: LiveNode, var: Variable) -> bool {
-        let successor = self.successors[ln].unwrap();
-        self.assigned_on_entry(successor, var)
+        match self.successors[ln] {
+            Some(successor) => self.assigned_on_entry(successor, var),
+            None => {
+                self.ir.tcx.sess.delay_span_bug(DUMMY_SP, "no successor");
+                true
+            }
+        }
     }
 
     fn write_vars<F>(&self, wr: &mut dyn Write, mut test: F) -> io::Result<()>
