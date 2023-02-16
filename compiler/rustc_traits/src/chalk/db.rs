@@ -732,7 +732,7 @@ fn bound_vars_for_item(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
                 var: ty::BoundVar::from_usize(substs.len()),
                 kind: ty::BrAnon(substs.len() as u32, None),
             };
-            tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
+            tcx.mk_re_late_bound(ty::INNERMOST, br).into()
         }
 
         ty::GenericParamDefKind::Const { .. } => tcx

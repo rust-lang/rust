@@ -1297,7 +1297,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let vid = self.to_region_vid(r);
             let scc = self.constraint_sccs.scc(vid);
             let repr = self.scc_representatives[scc];
-            tcx.mk_region(ty::ReVar(repr))
+            tcx.mk_re_var(repr)
         })
     }
 
@@ -1719,7 +1719,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             // If not, report an error.
-            let member_region = infcx.tcx.mk_region(ty::ReVar(member_region_vid));
+            let member_region = infcx.tcx.mk_re_var(member_region_vid);
             errors_buffer.push(RegionErrorKind::UnexpectedHiddenRegion {
                 span: m_c.definition_span,
                 hidden_ty: m_c.hidden_ty,

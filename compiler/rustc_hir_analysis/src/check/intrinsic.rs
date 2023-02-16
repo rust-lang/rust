@@ -149,14 +149,14 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     );
     let mk_va_list_ty = |mutbl| {
         tcx.lang_items().va_list().map(|did| {
-            let region = tcx.mk_region(ty::ReLateBound(
+            let region = tcx.mk_re_late_bound(
                 ty::INNERMOST,
                 ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(0, None) },
-            ));
-            let env_region = tcx.mk_region(ty::ReLateBound(
+            );
+            let env_region = tcx.mk_re_late_bound(
                 ty::INNERMOST,
                 ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrEnv },
-            ));
+            );
             let va_list_ty = tcx.bound_type_of(did).subst(tcx, &[region.into()]);
             (tcx.mk_ref(env_region, ty::TypeAndMut { ty: va_list_ty, mutbl }), va_list_ty)
         })
@@ -377,9 +377,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                     ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(0, None) };
                 (
                     1,
-                    vec![
-                        tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)), param(0)),
-                    ],
+                    vec![tcx.mk_imm_ref(tcx.mk_re_late_bound(ty::INNERMOST, br), param(0))],
                     tcx.mk_projection(discriminant_def_id, tcx.mk_substs([param(0).into()].iter())),
                 )
             }
@@ -430,8 +428,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::raw_eq => {
                 let br =
                     ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon(0, None) };
-                let param_ty =
-                    tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)), param(0));
+                let param_ty = tcx.mk_imm_ref(tcx.mk_re_late_bound(ty::INNERMOST, br), param(0));
                 (1, vec![param_ty; 2], tcx.types.bool)
             }
 

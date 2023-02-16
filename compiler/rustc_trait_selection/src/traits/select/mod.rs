@@ -3023,7 +3023,7 @@ fn bind_generator_hidden_types_above<'tcx>(
                             kind: ty::BrAnon(counter, None),
                         };
                         counter += 1;
-                        r = tcx.mk_region(ty::ReLateBound(current_depth, br));
+                        r = tcx.mk_re_late_bound(current_depth, br);
                     }
                     r
                 })

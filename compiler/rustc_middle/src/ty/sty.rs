@@ -1187,7 +1187,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for SkipBindersAt<'tcx> {
             if index == self.index {
                 Err(())
             } else {
-                Ok(self.interner().mk_region(ty::ReLateBound(index.shifted_out(1), bv)))
+                Ok(self.interner().mk_re_late_bound(index.shifted_out(1), bv))
             }
         } else {
             r.try_super_fold_with(self)
