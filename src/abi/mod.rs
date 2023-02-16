@@ -125,41 +125,11 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         }
         let call_inst = self.bcx.ins().call(func_ref, args);
         if self.clif_comments.enabled() {
-            self.add_comment(call_inst, format!("easy_call {}", name));
+            self.add_comment(call_inst, format!("lib_call {}", name));
         }
         let results = self.bcx.inst_results(call_inst);
         assert!(results.len() <= 2, "{}", results.len());
         results
-    }
-
-    pub(crate) fn easy_call(
-        &mut self,
-        name: &str,
-        args: &[CValue<'tcx>],
-        return_ty: Ty<'tcx>,
-    ) -> CValue<'tcx> {
-        let (input_tys, args): (Vec<_>, Vec<_>) = args
-            .iter()
-            .map(|arg| {
-                (AbiParam::new(self.clif_type(arg.layout().ty).unwrap()), arg.load_scalar(self))
-            })
-            .unzip();
-        let return_layout = self.layout_of(return_ty);
-        let return_tys = if let ty::Tuple(tup) = return_ty.kind() {
-            tup.iter().map(|ty| AbiParam::new(self.clif_type(ty).unwrap())).collect()
-        } else {
-            vec![AbiParam::new(self.clif_type(return_ty).unwrap())]
-        };
-        let ret_vals = self.lib_call(name, input_tys, return_tys, &args);
-        match *ret_vals {
-            [] => CValue::by_ref(
-                Pointer::const_addr(self, i64::from(self.pointer_type.bytes())),
-                return_layout,
-            ),
-            [val] => CValue::by_val(val, return_layout),
-            [val, extra] => CValue::by_val_pair(val, extra, return_layout),
-            _ => unreachable!(),
-        }
     }
 }
 

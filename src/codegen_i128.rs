@@ -53,7 +53,14 @@ pub(crate) fn maybe_codegen<'tcx>(
                     );
                     Some(ret_place.to_cvalue(fx))
                 } else {
-                    Some(fx.easy_call("__multi3", &[lhs, rhs], val_ty))
+                    let args: Vec<_> = vec![lhs.load_scalar(fx), rhs.load_scalar(fx)];
+                    let ret_val = fx.lib_call(
+                        "__multi3",
+                        vec![AbiParam::new(types::I128), AbiParam::new(types::I128)],
+                        vec![AbiParam::new(types::I128)],
+                        &args,
+                    )[0];
+                    Some(CValue::by_val(ret_val, fx.layout_of(val_ty)))
                 }
             } else {
                 let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
@@ -141,7 +148,14 @@ pub(crate) fn maybe_codegen<'tcx>(
                 ret_place.to_ptr().store(fx, ret, MemFlags::trusted());
                 Some(ret_place.to_cvalue(fx))
             } else {
-                Some(fx.easy_call(name, &[lhs, rhs], lhs.layout().ty))
+                let args: Vec<_> = vec![lhs.load_scalar(fx), rhs.load_scalar(fx)];
+                let ret_val = fx.lib_call(
+                    name,
+                    vec![AbiParam::new(types::I128), AbiParam::new(types::I128)],
+                    vec![AbiParam::new(types::I128)],
+                    &args,
+                )[0];
+                Some(CValue::by_val(ret_val, lhs.layout()))
             }
         }
         BinOp::Lt | BinOp::Le | BinOp::Eq | BinOp::Ge | BinOp::Gt | BinOp::Ne => {
