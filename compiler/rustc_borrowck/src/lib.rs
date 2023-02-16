@@ -40,7 +40,7 @@ use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::UNUSED_MUT;
-use rustc_span::{DesugaringKind, Span, Symbol};
+use rustc_span::{Span, Symbol};
 
 use either::Either;
 use smallvec::SmallVec;
@@ -1184,22 +1184,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 this.report_conflicting_borrow(location, place_span, bk, borrow);
                             this.buffer_error(err);
                         }
-                        WriteKind::StorageDeadOrDrop => {
-                            if let Some(DesugaringKind::Replace) = place_span.1.desugaring_kind() {
-                                // If this is a drop triggered by a reassignment, it's more user friendly
-                                // to report a problem with the explicit assignment than the implicit drop.
-                                this.report_illegal_mutation_of_borrowed(
-                                    location, place_span, borrow,
-                                )
-                            } else {
-                                this.report_borrowed_value_does_not_live_long_enough(
-                                    location,
-                                    borrow,
-                                    place_span,
-                                    Some(kind),
-                                )
-                            }
-                        }
+                        WriteKind::StorageDeadOrDrop => this
+                            .report_storage_dead_or_drop_of_borrowed(location, place_span, borrow),
                         WriteKind::Mutate => {
                             this.report_illegal_mutation_of_borrowed(location, place_span, borrow)
                         }
