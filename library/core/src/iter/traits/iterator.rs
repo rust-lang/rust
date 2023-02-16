@@ -777,6 +777,7 @@ pub trait Iterator {
     ///     println!("{x}");
     /// }
     /// ```
+    #[rustc_diagnostic_item = "IteratorMap"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn map<B, F>(self, f: F) -> Map<Self, F>
