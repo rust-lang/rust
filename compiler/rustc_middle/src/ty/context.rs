@@ -2210,16 +2210,17 @@ impl<'tcx> TyCtxt<'tcx> {
         if ts.is_empty() { List::empty() } else { self._intern_bound_variable_kinds(ts) }
     }
 
-    pub fn mk_fn_sig<I>(
+    pub fn mk_fn_sig<I, T>(
         self,
         inputs: I,
         output: I::Item,
         c_variadic: bool,
         unsafety: hir::Unsafety,
         abi: abi::Abi,
-    ) -> <I::Item as InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>>::Output
+    ) -> T::Output
     where
-        I: Iterator<Item: InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>>,
+        I: Iterator<Item = T>,
+        T: InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>,
     {
         inputs.chain(iter::once(output)).intern_with(|xs| ty::FnSig {
             inputs_and_output: self.intern_type_list(xs),
