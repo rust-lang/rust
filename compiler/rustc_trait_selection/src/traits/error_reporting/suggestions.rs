@@ -82,11 +82,8 @@ impl<'tcx, 'a> GeneratorData<'tcx, 'a> {
                     upvars.iter().find_map(|(upvar_id, upvar)| {
                         let upvar_ty = typeck_results.node_type(*upvar_id);
                         let upvar_ty = infer_context.resolve_vars_if_possible(upvar_ty);
-                        if ty_matches(ty::Binder::dummy(upvar_ty)) {
-                            Some(GeneratorInteriorOrUpvar::Upvar(upvar.span))
-                        } else {
-                            None
-                        }
+                        ty_matches(ty::Binder::dummy(upvar_ty))
+                            .then(|| GeneratorInteriorOrUpvar::Upvar(upvar.span))
                     })
                 })
             }
@@ -770,15 +767,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             obligation.param_env,
                             real_trait_pred_and_ty,
                         );
-                        if obligations
+                        let may_hold = obligations
                             .iter()
                             .chain([&obligation])
                             .all(|obligation| self.predicate_may_hold(obligation))
-                        {
-                            Some(steps)
-                        } else {
-                            None
-                        }
+                            .then_some(steps);
+
+                        may_hold
                     })
                 {
                     if steps > 0 {

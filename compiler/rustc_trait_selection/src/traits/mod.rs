@@ -523,16 +523,14 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
 
     let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };
     let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {
-        if pred.visit_with(&mut visitor).is_continue() {
-            Some(Obligation::new(
+        pred.visit_with(&mut visitor).is_continue().then(|| {
+            Obligation::new(
                 tcx,
                 ObligationCause::dummy_with_span(*span),
                 param_env,
                 ty::EarlyBinder(*pred).subst(tcx, impl_trait_ref.substs),
-            ))
-        } else {
-            None
-        }
+            )
+        })
     });
 
     let infcx = tcx.infer_ctxt().ignoring_regions().build();

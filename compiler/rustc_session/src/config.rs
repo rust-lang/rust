@@ -2544,7 +2544,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         }
 
         // Only use this directory if it has a file we can expect to always find.
-        if candidate.join("library/std/src/lib.rs").is_file() { Some(candidate) } else { None }
+        candidate.join("library/std/src/lib.rs").is_file().then_some(candidate)
     };
 
     let working_dir = std::env::current_dir().unwrap_or_else(|e| {

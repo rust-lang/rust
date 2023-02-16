@@ -271,7 +271,7 @@ impl<'a> AstValidator<'a> {
 
         self.session.emit_err(InvalidVisibility {
             span: vis.span,
-            implied: if vis.kind.is_pub() { Some(vis.span) } else { None },
+            implied: vis.kind.is_pub().then_some(vis.span),
             note,
         });
     }

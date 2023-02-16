@@ -574,14 +574,11 @@ impl<'hir> Generics<'hir> {
 
     /// If there are generic parameters, return where to introduce a new one.
     pub fn span_for_param_suggestion(&self) -> Option<Span> {
-        if self.params.iter().any(|p| self.span.contains(p.span)) {
+        self.params.iter().any(|p| self.span.contains(p.span)).then(|| {
             // `fn foo<A>(t: impl Trait)`
             //          ^ suggest `, T: Trait` here
-            let span = self.span.with_lo(self.span.hi() - BytePos(1)).shrink_to_lo();
-            Some(span)
-        } else {
-            None
-        }
+            self.span.with_lo(self.span.hi() - BytePos(1)).shrink_to_lo()
+        })
     }
 
     /// `Span` where further predicates would be suggested, accounting for trailing commas, like
@@ -639,7 +636,7 @@ impl<'hir> Generics<'hir> {
                 // We include bounds that come from a `#[derive(_)]` but point at the user's code,
                 // as we use this method to get a span appropriate for suggestions.
                 let bs = bound.span();
-                if bs.can_be_used_for_suggestions() { Some(bs.shrink_to_hi()) } else { None }
+                bs.can_be_used_for_suggestions().then(|| bs.shrink_to_hi())
             },
         )
     }

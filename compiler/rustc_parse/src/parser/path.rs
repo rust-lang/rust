@@ -404,7 +404,7 @@ impl<'a> Parser<'a> {
 
         let is_first_invocation = style == PathStyle::Expr;
         // Take a snapshot before attempting to parse - we can restore this later.
-        let snapshot = if is_first_invocation { Some(self.clone()) } else { None };
+        let snapshot = is_first_invocation.then(|| self.clone());
 
         debug!("parse_generic_args_with_leading_angle_bracket_recovery: (snapshotting)");
         match self.parse_angle_args(ty_generics) {

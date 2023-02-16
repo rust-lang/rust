@@ -322,11 +322,7 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
                 .take_while(|c| *c != 'i' && *c != 'u')
                 .all(|c| c.to_digit(base).is_some());
 
-        if valid {
-            Some(format!("0{}{}", base_char.to_ascii_lowercase(), &suffix[1..]))
-        } else {
-            None
-        }
+        valid.then(|| format!("0{}{}", base_char.to_ascii_lowercase(), &suffix[1..]))
     }
 
     let token::Lit { kind, symbol, suffix, .. } = lit;

@@ -90,20 +90,18 @@ pub fn find_param_with_region<'tcx>(
                     r
                 }
             });
-            if found_anon_region {
+            found_anon_region.then(|| {
                 let ty_hir_id = fn_decl.inputs[index].hir_id;
                 let param_ty_span = hir.span(ty_hir_id);
                 let is_first = index == 0;
-                Some(AnonymousParamInfo {
+                AnonymousParamInfo {
                     param,
                     param_ty: new_param_ty,
                     param_ty_span,
                     bound_region,
                     is_first,
-                })
-            } else {
-                None
-            }
+                }
+            })
         })
 }
 
