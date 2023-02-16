@@ -1195,6 +1195,10 @@ impl<'tcx> Resolver<'_, 'tcx> {
             self.cstore().item_generics_num_lifetimes(def_id, self.tcx.sess)
         }
     }
+
+    pub fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
 }
 
 impl<'a, 'tcx> Resolver<'a, 'tcx> {

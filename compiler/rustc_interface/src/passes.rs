@@ -172,12 +172,9 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
-#[instrument(level = "trace", skip(tcx, krate, resolver))]
-fn configure_and_expand(
-    tcx: TyCtxt<'_>,
-    mut krate: ast::Crate,
-    resolver: &mut Resolver<'_, '_>,
-) -> ast::Crate {
+#[instrument(level = "trace", skip(krate, resolver))]
+fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) -> ast::Crate {
+    let tcx = resolver.tcx();
     let sess = tcx.sess;
     let lint_store = unerased_lint_store(tcx);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
@@ -572,7 +569,7 @@ fn resolver_for_lowering<'tcx>(
     let arenas = Resolver::arenas();
     let krate = tcx.crate_for_resolver(()).steal();
     let mut resolver = Resolver::new(tcx, &krate, &arenas);
-    let krate = configure_and_expand(tcx, krate, &mut resolver);
+    let krate = configure_and_expand(krate, &mut resolver);
 
     // Make sure we don't mutate the cstore from here on.
     tcx.untracked().cstore.leak();
