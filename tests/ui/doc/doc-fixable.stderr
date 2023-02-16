@@ -143,28 +143,6 @@ LL | /// `be_sure_we_got_to_the_end_of_it`
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
-  --> $DIR/doc-fixable.rs:78:22
-   |
-LL | /// This test has [a link_with_underscores][chunked-example] inside it. See #823.
-   |                      ^^^^^^^^^^^^^^^^^^^^^
-   |
-help: try
-   |
-LL | /// This test has [a `link_with_underscores`][chunked-example] inside it. See #823.
-   |                      ~~~~~~~~~~~~~~~~~~~~~~~
-
-error: item in documentation is missing backticks
-  --> $DIR/doc-fixable.rs:81:21
-   |
-LL | /// It can also be [inline_link2].
-   |                     ^^^^^^^^^^^^
-   |
-help: try
-   |
-LL | /// It can also be [`inline_link2`].
-   |                     ~~~~~~~~~~~~~~
-
-error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:91:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
@@ -329,5 +307,5 @@ help: try
 LL | /// An iterator over `mycrate::Collection`'s values.
    |                      ~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to 30 previous errors
+error: aborting due to 28 previous errors
 
