@@ -1183,6 +1183,11 @@ impl<'a> Builder<'a> {
         let mut cargo = self.bare_cargo(compiler, mode, target, cmd);
         let out_dir = self.stage_out(compiler, mode);
 
+        cargo.env(
+            "RUSTC_EMIT_DIR",
+            self.out.join(target.triple).join("emit").join(out_dir.file_name().unwrap()),
+        );
+
         // Codegen backends are not yet tracked by -Zbinary-dep-depinfo,
         // so we need to explicitly clear out if they've been updated.
         for backend in self.codegen_backends(compiler) {

@@ -18,6 +18,7 @@
 include!("../dylib_util.rs");
 
 use std::env;
+use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::str::FromStr;
@@ -68,6 +69,46 @@ fn main() {
                 || target.into_string().unwrap().split(',').any(|c| c.trim() == crate_name)
             {
                 cmd.arg("-Ztime-passes");
+            }
+        }
+
+        if let Some(crate_targets) = env::var_os("RUSTC_EMIT") {
+            let formats: Vec<&str> = crate_targets
+                .to_str()
+                .unwrap()
+                .split(';')
+                .filter_map(|target| {
+                    let mut iter = target.split('=');
+                    let krate = iter.next().unwrap();
+                    let formats = iter.next().unwrap();
+                    assert!(iter.next().is_none(), "Invalid format for RUSTC_EMIT");
+                    (krate.trim() == crate_name || krate.trim() == "*").then_some(formats)
+                })
+                .flat_map(|formats| formats.split(',').map(|format| format.trim()))
+                .collect();
+
+            if !formats.is_empty() {
+                let dir = PathBuf::from(
+                    env::var_os("RUSTC_EMIT_DIR").expect("RUSTC_EMIT_DIR was not set"),
+                );
+                std::fs::create_dir_all(&dir).expect("unable to create dump directory");
+
+                for format in formats {
+                    let ext = match format {
+                        "llvm-ir" => "ll",
+                        "llvm-bc" => "bc",
+                        "asm" => {
+                            if target.map_or(false, |target| target.starts_with("x86")) {
+                                cmd.arg("-Cllvm-args=-x86-asm-syntax=intel");
+                            }
+                            "s"
+                        }
+                        _ => format,
+                    };
+                    let mut arg = OsStr::new(&format!("--emit={format}=")).to_owned();
+                    arg.push(dir.join(format!("{crate_name}.{ext}")).as_os_str());
+                    cmd.arg(arg);
+                }
             }
         }
     }
