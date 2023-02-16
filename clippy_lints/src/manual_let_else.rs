@@ -116,6 +116,13 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
                     .enumerate()
                     .find(|(_, arm)| expr_diverges(cx, arm.body) && pat_allowed_for_else(cx, arm.pat, check_types));
                 let Some((idx, diverging_arm)) = diverging_arm_opt else { return; };
+                // If the non-diverging arm is the first one, its pattern can be reused in a let/else statement.
+                // However, if it arrives in second position, its pattern may cover some cases already covered
+                // by the diverging one.
+                // TODO: accept the non-diverging arm as a second position if patterns are disjointed.
+                if idx == 0 {
+                    return;
+                }
                 let pat_arm = &arms[1 - idx];
                 if !expr_is_simple_identity(pat_arm.pat, pat_arm.body) {
                     return;
