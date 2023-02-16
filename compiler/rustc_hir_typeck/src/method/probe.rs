@@ -1576,7 +1576,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                 traits::ImplDerivedObligation(Box::new(
                                     traits::ImplDerivedObligationCause {
                                         derived,
-                                        impl_def_id,
+                                        impl_or_alias_def_id: impl_def_id,
                                         impl_def_predicate_index: None,
                                         span,
                                     },

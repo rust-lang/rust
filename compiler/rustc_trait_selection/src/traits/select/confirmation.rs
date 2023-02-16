@@ -1189,7 +1189,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let cause = obligation.derived_cause(|derived| {
                 ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
                     derived,
-                    impl_def_id,
+                    impl_or_alias_def_id: impl_def_id,
                     impl_def_predicate_index: None,
                     span: obligation.cause.span,
                 }))
