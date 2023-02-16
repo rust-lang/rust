@@ -714,7 +714,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                     }
                     Some(Node::Item(hir::Item {
-                        ident, kind: hir::ItemKind::Trait(..), ..
+                        ident,
+                        kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
+                        ..
                     })) => {
                         skip_list.insert(p);
                         let entry = spanned_predicates.entry(ident.span);
