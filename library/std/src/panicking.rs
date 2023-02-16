@@ -12,6 +12,7 @@
 use crate::fs::File;
 use crate::io::{BufRead, BufReader};
 use crate::panic::BacktraceStyle;
+use crate::path::PathBuf;
 use core::panic::{BoxMeUp, Location, PanicInfo};
 
 use crate::any::Any;
@@ -261,7 +262,11 @@ fn default_hook(info: &PanicInfo<'_>) {
 
         let mut print_snippet = || -> Result<(), crate::io::Error> {
             let filename = location.file();
-            if let Ok(file) = File::open(filename) {
+            let path = PathBuf::from(filename);
+            // We check if `path` is a symlink to avoid people creating a symlink for a file they
+            // don't have permissions, but that the running binary does, to use it as an
+            // exfiltration vector.
+            if !path.is_symlink() && let Ok(file) = File::open(path) {
                 let reader = BufReader::new(file);
                 let mut lineno = location.line();
                 let mut len = location.length().map(|l| l.get()).unwrap_or(0) as usize;
