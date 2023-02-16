@@ -450,8 +450,7 @@ impl<'a> Parser<'a> {
 
     fn parse_borrowed_pointee(&mut self) -> PResult<'a, TyKind> {
         let and_span = self.prev_token.span;
-        let mut opt_lifetime =
-            if self.check_lifetime() { Some(self.expect_lifetime()) } else { None };
+        let mut opt_lifetime = self.check_lifetime().then(|| self.expect_lifetime());
         let mut mutbl = self.parse_mutability();
         if self.token.is_lifetime() && mutbl == Mutability::Mut && opt_lifetime.is_none() {
             // A lifetime is invalid here: it would be part of a bare trait bound, which requires
@@ -871,7 +870,7 @@ impl<'a> Parser<'a> {
             None
         };
 
-        let maybe = if self.eat(&token::Question) { Some(self.prev_token.span) } else { None };
+        let maybe = self.eat(&token::Question).then_some(self.prev_token.span);
 
         Ok(BoundModifiers { maybe, maybe_const })
     }

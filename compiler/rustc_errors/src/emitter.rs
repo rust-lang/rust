@@ -1768,7 +1768,7 @@ impl EmitterWriter {
 
         // Render the replacements for each suggestion
         let suggestions = suggestion.splice_lines(sm);
-        debug!("emit_suggestion_default: suggestions={:?}", suggestions);
+        debug!(?suggestions);
 
         if suggestions.is_empty() {
             // Suggestions coming from macros can have malformed spans. This is a heavy handed
@@ -1797,6 +1797,7 @@ impl EmitterWriter {
         for (complete, parts, highlights, only_capitalization) in
             suggestions.iter().take(MAX_SUGGESTIONS)
         {
+            debug!(?complete, ?parts, ?highlights);
             notice_capitalization |= only_capitalization;
 
             let has_deletion = parts.iter().any(|p| p.is_deletion(sm));

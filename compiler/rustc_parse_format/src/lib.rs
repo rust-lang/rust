@@ -835,7 +835,7 @@ impl<'a> Parser<'a> {
             );
         }
 
-        if found { Some(cur) } else { None }
+        found.then_some(cur)
     }
 
     fn suggest_format(&mut self) {

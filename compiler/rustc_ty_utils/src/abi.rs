@@ -70,7 +70,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                 kind: ty::BoundRegionKind::BrEnv,
             };
-            let env_region = ty::ReLateBound(ty::INNERMOST, br);
+            let env_region = tcx.mk_re_late_bound(ty::INNERMOST, br);
             let env_ty = tcx.closure_env_ty(def_id, substs, env_region).unwrap();
 
             let sig = sig.skip_binder();
@@ -95,8 +95,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                 kind: ty::BoundRegionKind::BrEnv,
             };
-            let env_region = ty::ReLateBound(ty::INNERMOST, br);
-            let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
+            let env_ty = tcx.mk_mut_ref(tcx.mk_re_late_bound(ty::INNERMOST, br), ty);
 
             let pin_did = tcx.require_lang_item(LangItem::Pin, None);
             let pin_adt_ref = tcx.adt_def(pin_did);
@@ -207,11 +206,8 @@ fn fn_abi_of_instance<'tcx>(
 
     let sig = fn_sig_for_fn_abi(tcx, instance, param_env);
 
-    let caller_location = if instance.def.requires_caller_location(tcx) {
-        Some(tcx.caller_location_ty())
-    } else {
-        None
-    };
+    let caller_location =
+        instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty());
 
     fn_abi_new_uncached(
         &LayoutCx { tcx, param_env },

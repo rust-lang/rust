@@ -1046,7 +1046,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.param_env,
                 )
                 .may_apply()
-                .then(|| deref_ty)
+                .then_some(deref_ty)
         })
     }
 

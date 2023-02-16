@@ -809,7 +809,7 @@ mod parse {
         if v.is_some() {
             let mut bool_arg = None;
             if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() { Some(MirSpanview::Statement) } else { None };
+                *slot = bool_arg.unwrap().then_some(MirSpanview::Statement);
                 return true;
             }
         }
@@ -850,7 +850,7 @@ mod parse {
         if v.is_some() {
             let mut bool_arg = None;
             if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() { Some(InstrumentCoverage::All) } else { None };
+                *slot = bool_arg.unwrap().then_some(InstrumentCoverage::All);
                 return true;
             }
         }

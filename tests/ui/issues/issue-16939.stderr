@@ -2,17 +2,16 @@ error[E0057]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/issue-16939.rs:5:9
    |
 LL |     |t| f(t);
-   |         ^ - argument unexpected
+   |         ^ -
+   |           |
+   |           unexpected argument
+   |           help: remove the extra argument
    |
 note: callable defined here
   --> $DIR/issue-16939.rs:4:12
    |
 LL | fn _foo<F: Fn()> (f: F) {
    |            ^^^^
-help: remove the extra argument
-   |
-LL |     |t| f();
-   |          ~~
 
 error: aborting due to previous error
 

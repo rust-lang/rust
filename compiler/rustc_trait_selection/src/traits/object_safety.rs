@@ -307,7 +307,7 @@ fn predicate_references_self<'tcx>(
     match predicate.kind().skip_binder() {
         ty::PredicateKind::Clause(ty::Clause::Trait(ref data)) => {
             // In the case of a trait predicate, we can skip the "self" type.
-            if data.trait_ref.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
+            data.trait_ref.substs[1..].iter().any(has_self_ty).then_some(sp)
         }
         ty::PredicateKind::Clause(ty::Clause::Projection(ref data)) => {
             // And similarly for projections. This should be redundant with
@@ -325,7 +325,7 @@ fn predicate_references_self<'tcx>(
             //
             // This is ALT2 in issue #56288, see that for discussion of the
             // possible alternatives.
-            if data.projection_ty.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
+            data.projection_ty.substs[1..].iter().any(has_self_ty).then_some(sp)
         }
         ty::PredicateKind::AliasEq(..) => bug!("`AliasEq` not allowed as assumption"),
 
@@ -527,8 +527,7 @@ fn virtual_call_violation_for_method<'tcx>(
                 }
             }
 
-            let trait_object_ty =
-                object_ty_for_trait(tcx, trait_def_id, tcx.mk_region(ty::ReStatic));
+            let trait_object_ty = object_ty_for_trait(tcx, trait_def_id, tcx.lifetimes.re_static);
 
             // e.g., `Rc<dyn Trait>`
             let trait_object_receiver =

@@ -164,8 +164,6 @@ declare_features! (
     (active, multiple_supertrait_upcastable, "CURRENT_RUSTC_VERSION", None, None),
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
     (active, omit_gdb_pretty_printer_section, "1.5.0", None, None),
-    /// Allows using `+bundled,+whole-archive` native libs.
-    (active, packed_bundled_libs, "1.67.0", None, None),
     /// Allows using `#[prelude_import]` on glob `use` items.
     (active, prelude_import, "1.2.0", None, None),
     /// Used to identify crates that contain the profiler runtime.
@@ -217,6 +215,8 @@ declare_features! (
     (active, linkage, "1.0.0", Some(29603), None),
     /// Allows declaring with `#![needs_panic_runtime]` that a panic runtime is needed.
     (active, needs_panic_runtime, "1.10.0", Some(32837), None),
+    /// Allows using `+bundled,+whole-archive` native libs.
+    (active, packed_bundled_libs, "CURRENT_RUSTC_VERSION", Some(108081), None),
     /// Allows using the `#![panic_runtime]` attribute.
     (active, panic_runtime, "1.10.0", Some(32837), None),
     /// Allows using `#[rustc_allow_const_fn_unstable]`.

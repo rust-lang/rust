@@ -259,13 +259,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
             TraitItemKind::Const(ty, body_id) => body_id
                 .and_then(|body_id| {
-                    if is_suggestable_infer_ty(ty) {
-                        Some(infer_placeholder_type(
-                            tcx, def_id, body_id, ty.span, item.ident, "constant",
-                        ))
-                    } else {
-                        None
-                    }
+                    is_suggestable_infer_ty(ty)
+                        .then(|| infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident, "constant",))
                 })
                 .unwrap_or_else(|| icx.to_ty(ty)),
             TraitItemKind::Type(_, Some(ty)) => icx.to_ty(ty),

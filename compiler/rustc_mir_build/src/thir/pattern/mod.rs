@@ -203,11 +203,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 if !lower_overflow && !higher_overflow {
                     self.tcx.sess.emit_err(LowerRangeBoundMustBeLessThanOrEqualToUpper {
                         span,
-                        teach: if self.tcx.sess.teach(&error_code!(E0030)) {
-                            Some(())
-                        } else {
-                            None
-                        },
+                        teach: self.tcx.sess.teach(&error_code!(E0030)).then_some(()),
                     });
                 }
                 PatKind::Wild
