@@ -49,220 +49,7 @@ pub trait LayoutCalculator {
         repr: &ReprOptions,
         kind: StructKind,
     ) -> Option<LayoutS> {
-        let pack = repr.pack;
-        let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
-        let mut inverse_memory_index: IndexVec<u32, FieldIdx> = fields.indices().collect();
-        let optimize = !repr.inhibit_struct_field_reordering_opt();
-        if optimize {
-            let end =
-                if let StructKind::MaybeUnsized = kind { fields.len() - 1 } else { fields.len() };
-            let optimizing = &mut inverse_memory_index.raw[..end];
-            let effective_field_align = |layout: Layout<'_>| {
-                if let Some(pack) = pack {
-                    // return the packed alignment in bytes
-                    layout.align().abi.min(pack).bytes()
-                } else {
-                    // returns log2(effective-align).
-                    // This is ok since `pack` applies to all fields equally.
-                    // The calculation assumes that size is an integer multiple of align, except for ZSTs.
-                    //
-                    // group [u8; 4] with align-4 or [u8; 6] with align-2 fields
-                    layout.align().abi.bytes().max(layout.size().bytes()).trailing_zeros() as u64
-                }
-            };
-
-            // If `-Z randomize-layout` was enabled for the type definition we can shuffle
-            // the field ordering to try and catch some code making assumptions about layouts
-            // we don't guarantee
-            if repr.can_randomize_type_layout() && cfg!(feature = "randomize") {
-                #[cfg(feature = "randomize")]
-                {
-                    // `ReprOptions.layout_seed` is a deterministic seed that we can use to
-                    // randomize field ordering with
-                    let mut rng =
-                        Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed.as_u64());
-
-                    // Shuffle the ordering of the fields
-                    optimizing.shuffle(&mut rng);
-                }
-                // Otherwise we just leave things alone and actually optimize the type's fields
-            } else {
-                match kind {
-                    StructKind::AlwaysSized | StructKind::MaybeUnsized => {
-                        optimizing.sort_by_key(|&x| {
-                            // Place ZSTs first to avoid "interesting offsets",
-                            // especially with only one or two non-ZST fields.
-                            // Then place largest alignments first, largest niches within an alignment group last
-                            let f = fields[x];
-                            let niche_size = f.largest_niche().map_or(0, |n| n.available(dl));
-                            (!f.0.is_zst(), cmp::Reverse(effective_field_align(f)), niche_size)
-                        });
-                    }
-
-                    StructKind::Prefixed(..) => {
-                        // Sort in ascending alignment so that the layout stays optimal
-                        // regardless of the prefix.
-                        // And put the largest niche in an alignment group at the end
-                        // so it can be used as discriminant in jagged enums
-                        optimizing.sort_by_key(|&x| {
-                            let f = fields[x];
-                            let niche_size = f.largest_niche().map_or(0, |n| n.available(dl));
-                            (effective_field_align(f), niche_size)
-                        });
-                    }
-                }
-
-                // FIXME(Kixiron): We can always shuffle fields within a given alignment class
-                //                 regardless of the status of `-Z randomize-layout`
-            }
-        }
-        // inverse_memory_index holds field indices by increasing memory offset.
-        // That is, if field 5 has offset 0, the first element of inverse_memory_index is 5.
-        // We now write field offsets to the corresponding offset slot;
-        // field 5 with offset 0 puts 0 in offsets[5].
-        // At the bottom of this function, we invert `inverse_memory_index` to
-        // produce `memory_index` (see `invert_mapping`).
-        let mut sized = true;
-        let mut offsets = IndexVec::from_elem(Size::ZERO, &fields);
-        let mut offset = Size::ZERO;
-        let mut largest_niche = None;
-        let mut largest_niche_available = 0;
-        if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
-            let prefix_align =
-                if let Some(pack) = pack { prefix_align.min(pack) } else { prefix_align };
-            align = align.max(AbiAndPrefAlign::new(prefix_align));
-            offset = prefix_size.align_to(prefix_align);
-        }
-        for &i in &inverse_memory_index {
-            let field = &fields[i];
-            if !sized {
-                self.delay_bug(&format!(
-                    "univariant: field #{} comes after unsized field",
-                    offsets.len(),
-                ));
-            }
-
-            if field.0.is_unsized() {
-                sized = false;
-            }
-
-            // Invariant: offset < dl.obj_size_bound() <= 1<<61
-            let field_align = if let Some(pack) = pack {
-                field.align().min(AbiAndPrefAlign::new(pack))
-            } else {
-                field.align()
-            };
-            offset = offset.align_to(field_align.abi);
-            align = align.max(field_align);
-
-            debug!("univariant offset: {:?} field: {:#?}", offset, field);
-            offsets[i] = offset;
-
-            if let Some(mut niche) = field.largest_niche() {
-                let available = niche.available(dl);
-                if available > largest_niche_available {
-                    largest_niche_available = available;
-                    niche.offset += offset;
-                    largest_niche = Some(niche);
-                }
-            }
-
-            offset = offset.checked_add(field.size(), dl)?;
-        }
-        if let Some(repr_align) = repr.align {
-            align = align.max(AbiAndPrefAlign::new(repr_align));
-        }
-        debug!("univariant min_size: {:?}", offset);
-        let min_size = offset;
-        // As stated above, inverse_memory_index holds field indices by increasing offset.
-        // This makes it an already-sorted view of the offsets vec.
-        // To invert it, consider:
-        // If field 5 has offset 0, offsets[0] is 5, and memory_index[5] should be 0.
-        // Field 5 would be the first element, so memory_index is i:
-        // Note: if we didn't optimize, it's already right.
-        let memory_index = if optimize {
-            inverse_memory_index.invert_bijective_mapping()
-        } else {
-            debug_assert!(inverse_memory_index.iter().copied().eq(fields.indices()));
-            inverse_memory_index.into_iter().map(FieldIdx::as_u32).collect()
-        };
-        let size = min_size.align_to(align.abi);
-        let mut abi = Abi::Aggregate { sized };
-        // Unpack newtype ABIs and find scalar pairs.
-        if sized && size.bytes() > 0 {
-            // All other fields must be ZSTs.
-            let mut non_zst_fields = fields.iter_enumerated().filter(|&(_, f)| !f.0.is_zst());
-
-            match (non_zst_fields.next(), non_zst_fields.next(), non_zst_fields.next()) {
-                // We have exactly one non-ZST field.
-                (Some((i, field)), None, None) => {
-                    // Field fills the struct and it has a scalar or scalar pair ABI.
-                    if offsets[i].bytes() == 0
-                        && align.abi == field.align().abi
-                        && size == field.size()
-                    {
-                        match field.abi() {
-                            // For plain scalars, or vectors of them, we can't unpack
-                            // newtypes for `#[repr(C)]`, as that affects C ABIs.
-                            Abi::Scalar(_) | Abi::Vector { .. } if optimize => {
-                                abi = field.abi();
-                            }
-                            // But scalar pairs are Rust-specific and get
-                            // treated as aggregates by C ABIs anyway.
-                            Abi::ScalarPair(..) => {
-                                abi = field.abi();
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-
-                // Two non-ZST fields, and they're both scalars.
-                (Some((i, a)), Some((j, b)), None) => {
-                    match (a.abi(), b.abi()) {
-                        (Abi::Scalar(a), Abi::Scalar(b)) => {
-                            // Order by the memory placement, not source order.
-                            let ((i, a), (j, b)) = if offsets[i] < offsets[j] {
-                                ((i, a), (j, b))
-                            } else {
-                                ((j, b), (i, a))
-                            };
-                            let pair = self.scalar_pair(a, b);
-                            let pair_offsets = match pair.fields {
-                                FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
-                                    assert_eq!(memory_index.raw, [0, 1]);
-                                    offsets
-                                }
-                                _ => panic!(),
-                            };
-                            if offsets[i] == pair_offsets[FieldIdx::from_usize(0)]
-                                && offsets[j] == pair_offsets[FieldIdx::from_usize(1)]
-                                && align == pair.align
-                                && size == pair.size
-                            {
-                                // We can use `ScalarPair` only when it matches our
-                                // already computed layout (including `#[repr(C)]`).
-                                abi = pair.abi;
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-
-                _ => {}
-            }
-        }
-        if fields.iter().any(|f| f.abi().is_uninhabited()) {
-            abi = Abi::Uninhabited;
-        }
-        Some(LayoutS {
-            variants: Variants::Single { index: FIRST_VARIANT },
-            fields: FieldsShape::Arbitrary { offsets, memory_index },
-            abi,
-            largest_niche,
-            align,
-            size,
-        })
+        univariant(self, dl, fields, repr, kind)
     }
 
     fn layout_of_never_type(&self) -> LayoutS {
@@ -933,4 +720,223 @@ pub trait LayoutCalculator {
             size: size.align_to(align.abi),
         })
     }
+}
+
+fn univariant(
+    this: &(impl LayoutCalculator + ?Sized),
+    dl: &TargetDataLayout,
+    fields: &IndexSlice<FieldIdx, Layout<'_>>,
+    repr: &ReprOptions,
+    kind: StructKind,
+) -> Option<LayoutS> {
+    let pack = repr.pack;
+    let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
+    let mut inverse_memory_index: IndexVec<u32, FieldIdx> = fields.indices().collect();
+    let optimize = !repr.inhibit_struct_field_reordering_opt();
+    if optimize {
+        let end = if let StructKind::MaybeUnsized = kind { fields.len() - 1 } else { fields.len() };
+        let optimizing = &mut inverse_memory_index.raw[..end];
+        let effective_field_align = |layout: Layout<'_>| {
+            if let Some(pack) = pack {
+                // return the packed alignment in bytes
+                layout.align().abi.min(pack).bytes()
+            } else {
+                // returns log2(effective-align).
+                // This is ok since `pack` applies to all fields equally.
+                // The calculation assumes that size is an integer multiple of align, except for ZSTs.
+                //
+                // group [u8; 4] with align-4 or [u8; 6] with align-2 fields
+                layout.align().abi.bytes().max(layout.size().bytes()).trailing_zeros() as u64
+            }
+        };
+
+        // If `-Z randomize-layout` was enabled for the type definition we can shuffle
+        // the field ordering to try and catch some code making assumptions about layouts
+        // we don't guarantee
+        if repr.can_randomize_type_layout() && cfg!(feature = "randomize") {
+            #[cfg(feature = "randomize")]
+            {
+                // `ReprOptions.layout_seed` is a deterministic seed that we can use to
+                // randomize field ordering with
+                let mut rng = Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed.as_u64());
+
+                // Shuffle the ordering of the fields
+                optimizing.shuffle(&mut rng);
+            }
+            // Otherwise we just leave things alone and actually optimize the type's fields
+        } else {
+            match kind {
+                StructKind::AlwaysSized | StructKind::MaybeUnsized => {
+                    optimizing.sort_by_key(|&x| {
+                        // Place ZSTs first to avoid "interesting offsets",
+                        // especially with only one or two non-ZST fields.
+                        // Then place largest alignments first, largest niches within an alignment group last
+                        let f = fields[x];
+                        let niche_size = f.largest_niche().map_or(0, |n| n.available(dl));
+                        (!f.0.is_zst(), cmp::Reverse(effective_field_align(f)), niche_size)
+                    });
+                }
+
+                StructKind::Prefixed(..) => {
+                    // Sort in ascending alignment so that the layout stays optimal
+                    // regardless of the prefix.
+                    // And put the largest niche in an alignment group at the end
+                    // so it can be used as discriminant in jagged enums
+                    optimizing.sort_by_key(|&x| {
+                        let f = fields[x];
+                        let niche_size = f.largest_niche().map_or(0, |n| n.available(dl));
+                        (effective_field_align(f), niche_size)
+                    });
+                }
+            }
+
+            // FIXME(Kixiron): We can always shuffle fields within a given alignment class
+            //                 regardless of the status of `-Z randomize-layout`
+        }
+    }
+    // inverse_memory_index holds field indices by increasing memory offset.
+    // That is, if field 5 has offset 0, the first element of inverse_memory_index is 5.
+    // We now write field offsets to the corresponding offset slot;
+    // field 5 with offset 0 puts 0 in offsets[5].
+    // At the bottom of this function, we invert `inverse_memory_index` to
+    // produce `memory_index` (see `invert_mapping`).
+    let mut sized = true;
+    let mut offsets = IndexVec::from_elem(Size::ZERO, &fields);
+    let mut offset = Size::ZERO;
+    let mut largest_niche = None;
+    let mut largest_niche_available = 0;
+    if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
+        let prefix_align =
+            if let Some(pack) = pack { prefix_align.min(pack) } else { prefix_align };
+        align = align.max(AbiAndPrefAlign::new(prefix_align));
+        offset = prefix_size.align_to(prefix_align);
+    }
+    for &i in &inverse_memory_index {
+        let field = &fields[i];
+        if !sized {
+            this.delay_bug(&format!(
+                "univariant: field #{} comes after unsized field",
+                offsets.len(),
+            ));
+        }
+
+        if field.0.is_unsized() {
+            sized = false;
+        }
+
+        // Invariant: offset < dl.obj_size_bound() <= 1<<61
+        let field_align = if let Some(pack) = pack {
+            field.align().min(AbiAndPrefAlign::new(pack))
+        } else {
+            field.align()
+        };
+        offset = offset.align_to(field_align.abi);
+        align = align.max(field_align);
+
+        debug!("univariant offset: {:?} field: {:#?}", offset, field);
+        offsets[i] = offset;
+
+        if let Some(mut niche) = field.largest_niche() {
+            let available = niche.available(dl);
+            if available > largest_niche_available {
+                largest_niche_available = available;
+                niche.offset += offset;
+                largest_niche = Some(niche);
+            }
+        }
+
+        offset = offset.checked_add(field.size(), dl)?;
+    }
+    if let Some(repr_align) = repr.align {
+        align = align.max(AbiAndPrefAlign::new(repr_align));
+    }
+    debug!("univariant min_size: {:?}", offset);
+    let min_size = offset;
+    // As stated above, inverse_memory_index holds field indices by increasing offset.
+    // This makes it an already-sorted view of the offsets vec.
+    // To invert it, consider:
+    // If field 5 has offset 0, offsets[0] is 5, and memory_index[5] should be 0.
+    // Field 5 would be the first element, so memory_index is i:
+    // Note: if we didn't optimize, it's already right.
+    let memory_index = if optimize {
+        inverse_memory_index.invert_bijective_mapping()
+    } else {
+        debug_assert!(inverse_memory_index.iter().copied().eq(fields.indices()));
+        inverse_memory_index.into_iter().map(FieldIdx::as_u32).collect()
+    };
+    let size = min_size.align_to(align.abi);
+    let mut abi = Abi::Aggregate { sized };
+    // Unpack newtype ABIs and find scalar pairs.
+    if sized && size.bytes() > 0 {
+        // All other fields must be ZSTs.
+        let mut non_zst_fields = fields.iter_enumerated().filter(|&(_, f)| !f.0.is_zst());
+
+        match (non_zst_fields.next(), non_zst_fields.next(), non_zst_fields.next()) {
+            // We have exactly one non-ZST field.
+            (Some((i, field)), None, None) => {
+                // Field fills the struct and it has a scalar or scalar pair ABI.
+                if offsets[i].bytes() == 0 && align.abi == field.align().abi && size == field.size()
+                {
+                    match field.abi() {
+                        // For plain scalars, or vectors of them, we can't unpack
+                        // newtypes for `#[repr(C)]`, as that affects C ABIs.
+                        Abi::Scalar(_) | Abi::Vector { .. } if optimize => {
+                            abi = field.abi();
+                        }
+                        // But scalar pairs are Rust-specific and get
+                        // treated as aggregates by C ABIs anyway.
+                        Abi::ScalarPair(..) => {
+                            abi = field.abi();
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            // Two non-ZST fields, and they're both scalars.
+            (Some((i, a)), Some((j, b)), None) => {
+                match (a.abi(), b.abi()) {
+                    (Abi::Scalar(a), Abi::Scalar(b)) => {
+                        // Order by the memory placement, not source order.
+                        let ((i, a), (j, b)) = if offsets[i] < offsets[j] {
+                            ((i, a), (j, b))
+                        } else {
+                            ((j, b), (i, a))
+                        };
+                        let pair = this.scalar_pair(a, b);
+                        let pair_offsets = match pair.fields {
+                            FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
+                                assert_eq!(memory_index.raw, [0, 1]);
+                                offsets
+                            }
+                            _ => panic!(),
+                        };
+                        if offsets[i] == pair_offsets[FieldIdx::from_usize(0)]
+                            && offsets[j] == pair_offsets[FieldIdx::from_usize(1)]
+                            && align == pair.align
+                            && size == pair.size
+                        {
+                            // We can use `ScalarPair` only when it matches our
+                            // already computed layout (including `#[repr(C)]`).
+                            abi = pair.abi;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            _ => {}
+        }
+    }
+    if fields.iter().any(|f| f.abi().is_uninhabited()) {
+        abi = Abi::Uninhabited;
+    }
+    Some(LayoutS {
+        variants: Variants::Single { index: FIRST_VARIANT },
+        fields: FieldsShape::Arbitrary { offsets, memory_index },
+        abi,
+        largest_niche,
+        align,
+        size,
+    })
 }
