@@ -1936,7 +1936,7 @@ pub(super) fn check_type_bounds<'tcx>(
             .into()
         }
     });
-    let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
+    let bound_vars = tcx.intern_bound_variable_kinds(&bound_vars);
     let impl_ty_substs = tcx.intern_substs(&substs);
     let container_id = impl_ty.container_id(tcx);
 
