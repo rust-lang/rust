@@ -1,5 +1,14 @@
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:20:17
+  --> $DIR/unaligned_references.rs:25:13
+   |
+LL |             &self.x;
+   |             ^^^^^^^
+   |
+   = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
+
+error[E0793]: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:34:17
    |
 LL |         let _ = &good.ptr;
    |                 ^^^^^^^^^
@@ -8,7 +17,7 @@ LL |         let _ = &good.ptr;
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:21:17
+  --> $DIR/unaligned_references.rs:35:17
    |
 LL |         let _ = &good.data;
    |                 ^^^^^^^^^^
@@ -17,7 +26,7 @@ LL |         let _ = &good.data;
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:23:17
+  --> $DIR/unaligned_references.rs:37:17
    |
 LL |         let _ = &good.data as *const _;
    |                 ^^^^^^^^^^
@@ -26,7 +35,7 @@ LL |         let _ = &good.data as *const _;
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:24:27
+  --> $DIR/unaligned_references.rs:38:27
    |
 LL |         let _: *const _ = &good.data;
    |                           ^^^^^^^^^^
@@ -35,7 +44,7 @@ LL |         let _: *const _ = &good.data;
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:26:17
+  --> $DIR/unaligned_references.rs:40:17
    |
 LL |         let _ = good.data.clone();
    |                 ^^^^^^^^^^^^^^^^^
@@ -44,7 +53,7 @@ LL |         let _ = good.data.clone();
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:28:17
+  --> $DIR/unaligned_references.rs:42:17
    |
 LL |         let _ = &good.data2[0];
    |                 ^^^^^^^^^^^^^^
@@ -53,7 +62,7 @@ LL |         let _ = &good.data2[0];
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:37:17
+  --> $DIR/unaligned_references.rs:51:17
    |
 LL |         let _ = &packed2.x;
    |                 ^^^^^^^^^^
@@ -62,7 +71,7 @@ LL |         let _ = &packed2.x;
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:81:20
+  --> $DIR/unaligned_references.rs:90:20
    |
 LL |         let _ref = &m1.1.a;
    |                    ^^^^^^^
@@ -71,7 +80,7 @@ LL |         let _ref = &m1.1.a;
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
 error[E0793]: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:90:20
+  --> $DIR/unaligned_references.rs:93:20
    |
 LL |         let _ref = &m2.1.a;
    |                    ^^^^^^^
@@ -79,6 +88,6 @@ LL |         let _ref = &m2.1.a;
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 
 For more information about this error, try `rustc --explain E0793`.
