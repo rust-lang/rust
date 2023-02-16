@@ -336,7 +336,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
                 a_d == b_d && a_s == b_s && a_m == b_m
             }
             (GeneratorWitness(a_g), GeneratorWitness(b_g)) => a_g == b_g,
-            (&GeneratorWitnessMIR(ref a_d, ref a_s), &GeneratorWitnessMIR(ref b_d, ref b_s)) => {
+            (GeneratorWitnessMIR(a_d, a_s), GeneratorWitnessMIR(b_d, b_s)) => {
                 a_d == b_d && a_s == b_s
             }
             (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
@@ -397,8 +397,8 @@ impl<I: Interner> Ord for TyKind<I> {
                 }
                 (GeneratorWitness(a_g), GeneratorWitness(b_g)) => a_g.cmp(b_g),
                 (
-                    &GeneratorWitnessMIR(ref a_d, ref a_s),
-                    &GeneratorWitnessMIR(ref b_d, ref b_s),
+                    GeneratorWitnessMIR(a_d, a_s),
+                    GeneratorWitnessMIR(b_d, b_s),
                 ) => match Ord::cmp(a_d, b_d) {
                     Ordering::Equal => Ord::cmp(a_s, b_s),
                     cmp => cmp,

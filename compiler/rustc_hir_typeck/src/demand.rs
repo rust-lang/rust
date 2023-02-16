@@ -298,6 +298,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // call's arguments and we can provide a more explicit span.
                 let sig = self.tcx.fn_sig(def_id).subst_identity();
                 let def_self_ty = sig.input(0).skip_binder();
+                let param_tys = sig.inputs().skip_binder().iter().skip(1);
+                // If there's an arity mismatch, pointing out the call as the source of an inference
+                // can be misleading, so we skip it.
+                if param_tys.len() != args.len() {
+                    continue;
+                }
                 let rcvr_ty = self.node_ty(rcvr.hir_id);
                 // Get the evaluated type *after* calling the method call, so that the influence
                 // of the arguments can be reflected in the receiver type. The receiver
@@ -323,13 +329,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut param_found = FxHashMap::default();
                 if self.can_eq(self.param_env, ty, found) {
                     // We only point at the first place where the found type was inferred.
-                    for (i, param_ty) in sig.inputs().skip_binder().iter().skip(1).enumerate() {
+                    for (param_ty, arg) in param_tys.zip(args) {
                         if def_self_ty.contains(*param_ty) && let ty::Param(_) = param_ty.kind() {
                             // We found an argument that references a type parameter in `Self`,
                             // so we assume that this is the argument that caused the found
                             // type, which we know already because of `can_eq` above was first
                             // inferred in this method call.
-                            let arg = &args[i];
                             let arg_ty = self.node_ty(arg.hir_id);
                             if !arg.span.overlaps(mismatch_span) {
                                 err.span_label(
