@@ -65,6 +65,7 @@ pub(crate) fn clif_int_or_float_cast(
             );
 
             if fx.tcx.sess.target.is_like_windows {
+                // FIXME move this logic into lib_call
                 let arg_place = CPlace::new_stack_slot(
                     fx,
                     fx.layout_of(if from_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 }),
