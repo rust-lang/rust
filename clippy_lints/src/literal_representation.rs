@@ -210,7 +210,7 @@ impl WarningType {
                 cx,
                 UNUSUAL_BYTE_GROUPINGS,
                 span,
-                "digits of hex or binary literal not grouped by four",
+                "digits of hex, binary or octal literal not in groups of equal size",
                 "consider",
                 suggested_format,
                 Applicability::MachineApplicable,
@@ -427,8 +427,12 @@ impl LiteralDigitGrouping {
 
         let first = groups.next().expect("At least one group");
 
-        if (radix == Radix::Binary || radix == Radix::Hexadecimal) && groups.any(|i| i != 4 && i != 2) {
-            return Err(WarningType::UnusualByteGroupings);
+        if radix == Radix::Binary || radix == Radix::Octal || radix == Radix::Hexadecimal {
+            if let Some(second_size) = groups.next() {
+                if !groups.all(|i| i == second_size) || first > second_size {
+                    return Err(WarningType::UnusualByteGroupings);
+                }
+            }
         }
 
         if let Some(second) = groups.next() {
