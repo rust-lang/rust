@@ -503,18 +503,18 @@ mod tests {
     #[track_caller]
     fn check_relevance_for_kinds(ra_fixture: &str, kinds: &[CompletionItemKind], expect: Expect) {
         let mut actual = get_all_items(TEST_CONFIG, ra_fixture, None);
-        actual.retain(|it| kinds.contains(&it.kind()));
-        actual.sort_by_key(|it| cmp::Reverse(it.relevance().score()));
+        actual.retain(|it| kinds.contains(&it.kind));
+        actual.sort_by_key(|it| cmp::Reverse(it.relevance.score()));
         check_relevance_(actual, expect);
     }
 
     #[track_caller]
     fn check_relevance(ra_fixture: &str, expect: Expect) {
         let mut actual = get_all_items(TEST_CONFIG, ra_fixture, None);
-        actual.retain(|it| it.kind() != CompletionItemKind::Snippet);
-        actual.retain(|it| it.kind() != CompletionItemKind::Keyword);
-        actual.retain(|it| it.kind() != CompletionItemKind::BuiltinType);
-        actual.sort_by_key(|it| cmp::Reverse(it.relevance().score()));
+        actual.retain(|it| it.kind != CompletionItemKind::Snippet);
+        actual.retain(|it| it.kind != CompletionItemKind::Keyword);
+        actual.retain(|it| it.kind != CompletionItemKind::BuiltinType);
+        actual.sort_by_key(|it| cmp::Reverse(it.relevance.score()));
         check_relevance_(actual, expect);
     }
 
@@ -525,9 +525,9 @@ mod tests {
             .flat_map(|it| {
                 let mut items = vec![];
 
-                let tag = it.kind().tag();
-                let relevance = display_relevance(it.relevance());
-                items.push(format!("{tag} {} {relevance}\n", it.label()));
+                let tag = it.kind.tag();
+                let relevance = display_relevance(it.relevance);
+                items.push(format!("{tag} {} {relevance}\n", it.label));
 
                 if let Some((label, _indel, relevance)) = it.ref_match() {
                     let relevance = display_relevance(relevance);
