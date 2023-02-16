@@ -868,6 +868,7 @@ impl Config {
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);
+        config.free_args = std::mem::take(&mut flags.free_args);
         config.exclude = flags.exclude.into_iter().map(|path| TaskPath::parse(path)).collect();
         config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.error_format;

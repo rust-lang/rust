@@ -459,8 +459,7 @@ impl Subcommand {
         }
     }
 
-    pub fn only_modified(
-        &self) -> bool {
+    pub fn only_modified(&self) -> bool {
         match *self {
             Subcommand::Test { only_modified, .. } => only_modified,
             _ => false,
