@@ -145,7 +145,7 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: DefId) {
 
     // Don't run unused pass for #[derive()]
     let parent = tcx.local_parent(local_def_id);
-    if let DefKind::Impl = tcx.def_kind(parent)
+    if let DefKind::Impl { .. } = tcx.def_kind(parent)
         && tcx.has_attr(parent.to_def_id(), sym::automatically_derived)
     {
         return;

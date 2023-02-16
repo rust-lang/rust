@@ -754,7 +754,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // We cap the number of read bytes to the largest value that we are able to fit in both the
         // host's and target's `isize`. This saves us from having to handle overflows later.
         let count = count
-            .min(u64::try_from(this.machine_isize_max()).unwrap())
+            .min(u64::try_from(this.target_isize_max()).unwrap())
             .min(u64::try_from(isize::MAX).unwrap());
         let communicate = this.machine.communicate();
 
@@ -807,7 +807,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // We cap the number of written bytes to the largest value that we are able to fit in both the
         // host's and target's `isize`. This saves us from having to handle overflows later.
         let count = count
-            .min(u64::try_from(this.machine_isize_max()).unwrap())
+            .min(u64::try_from(this.target_isize_max()).unwrap())
             .min(u64::try_from(isize::MAX).unwrap());
         let communicate = this.machine.communicate();
 
@@ -1290,7 +1290,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // The libc API for opendir says that this method returns a pointer to an opaque
                 // structure, but we are returning an ID number. Thus, pass it as a scalar of
                 // pointer width.
-                Ok(Scalar::from_machine_usize(id, this))
+                Ok(Scalar::from_target_usize(id, this))
             }
             Err(e) => {
                 this.set_last_error_from_io_error(e.kind())?;
@@ -1307,7 +1307,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         this.assert_target_os("linux", "readdir64");
 
-        let dirp = this.read_machine_usize(dirp_op)?;
+        let dirp = this.read_target_usize(dirp_op)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -1399,7 +1399,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         this.assert_target_os("macos", "readdir_r");
 
-        let dirp = this.read_machine_usize(dirp_op)?;
+        let dirp = this.read_target_usize(dirp_op)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -1492,7 +1492,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn closedir(&mut self, dirp_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let dirp = this.read_machine_usize(dirp_op)?;
+        let dirp = this.read_target_usize(dirp_op)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -1656,7 +1656,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let pathname = this.read_path_from_c_str(this.read_pointer(pathname_op)?)?;
         let buf = this.read_pointer(buf_op)?;
-        let bufsize = this.read_machine_usize(bufsize_op)?;
+        let bufsize = this.read_target_usize(bufsize_op)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -1727,7 +1727,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             this.reject_in_isolation("`realpath`", reject_with)?;
             let eacc = this.eval_libc("EACCES");
             this.set_last_error(eacc)?;
-            return Ok(Scalar::from_machine_usize(0, this));
+            return Ok(Scalar::from_target_usize(0, this));
         }
 
         let result = std::fs::canonicalize(pathname);
@@ -1758,7 +1758,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         // seems like a bit of a mess anyway: <https://eklitzke.org/path-max-is-tricky>.
                         let enametoolong = this.eval_libc("ENAMETOOLONG");
                         this.set_last_error(enametoolong)?;
-                        return Ok(Scalar::from_machine_usize(0, this));
+                        return Ok(Scalar::from_target_usize(0, this));
                     }
                     processed_ptr
                 };
@@ -1767,7 +1767,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             Err(e) => {
                 this.set_last_error_from_io_error(e.kind())?;
-                Ok(Scalar::from_machine_usize(0, this))
+                Ok(Scalar::from_target_usize(0, this))
             }
         }
     }

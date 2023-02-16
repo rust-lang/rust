@@ -115,31 +115,31 @@ error[E0562]: `impl Trait` only allowed in function and inherent method return t
 LL | fn in_Fn_return_in_generics<F: Fn() -> impl Debug> (_: F) { panic!() }
    |                                        ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in field type
   --> $DIR/where-allowed.rs:81:32
    |
 LL | struct InBraceStructField { x: impl Debug }
    |                                ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in path
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in field type
   --> $DIR/where-allowed.rs:85:41
    |
 LL | struct InAdtInBraceStructField { x: Vec<impl Debug> }
    |                                         ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in field type
   --> $DIR/where-allowed.rs:89:27
    |
 LL | struct InTupleStructField(impl Debug);
    |                           ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in field type
   --> $DIR/where-allowed.rs:94:25
    |
 LL |     InBraceVariant { x: impl Debug },
    |                         ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in field type
   --> $DIR/where-allowed.rs:96:20
    |
 LL |     InTupleVariant(impl Debug),
@@ -187,31 +187,31 @@ error[E0562]: `impl Trait` only allowed in function and inherent method return t
 LL | impl PartialEq<impl Debug> for () {
    |                ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in impl header
   --> $DIR/where-allowed.rs:166:24
    |
 LL | impl PartialEq<()> for impl Debug {
    |                        ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in impl header
   --> $DIR/where-allowed.rs:171:6
    |
 LL | impl impl Debug {
    |      ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in impl header
   --> $DIR/where-allowed.rs:177:24
    |
 LL | impl InInherentImplAdt<impl Debug> {
    |                        ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in bound
   --> $DIR/where-allowed.rs:183:11
    |
 LL |     where impl Debug: Debug
    |           ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in bound
   --> $DIR/where-allowed.rs:190:15
    |
 LL |     where Vec<impl Debug>: Debug
@@ -235,37 +235,37 @@ error[E0562]: `impl Trait` only allowed in function and inherent method return t
 LL |     where T: Fn() -> impl Debug
    |                      ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in generic parameter default
   --> $DIR/where-allowed.rs:217:40
    |
 LL | struct InStructGenericParamDefault<T = impl Debug>(T);
    |                                        ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in generic parameter default
   --> $DIR/where-allowed.rs:221:36
    |
 LL | enum InEnumGenericParamDefault<T = impl Debug> { Variant(T) }
    |                                    ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in generic parameter default
   --> $DIR/where-allowed.rs:225:38
    |
 LL | trait InTraitGenericParamDefault<T = impl Debug> {}
    |                                      ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in generic parameter default
   --> $DIR/where-allowed.rs:229:41
    |
 LL | type InTypeAliasGenericParamDefault<T = impl Debug> = T;
    |                                         ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in generic parameter default
   --> $DIR/where-allowed.rs:233:11
    |
 LL | impl <T = impl Debug> T {}
    |           ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in generic parameter default
   --> $DIR/where-allowed.rs:240:40
    |
 LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}

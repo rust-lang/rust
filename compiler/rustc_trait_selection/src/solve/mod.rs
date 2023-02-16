@@ -547,7 +547,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             response.value.certainty == Certainty::Yes
                 && response.has_no_inference_or_external_constraints()
         }) {
-            return Ok(response.clone());
+            return Ok(*response);
         }
 
         let certainty = candidates.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {

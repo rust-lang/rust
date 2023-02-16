@@ -1628,7 +1628,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Eventually I'll need to implement param-env-aware
                 // `Γ₁ ⊦ φ₁ => Γ₂ ⊦ φ₂` logic.
                 let param_env = ty::ParamEnv::empty();
-                if self.can_sub(param_env, error, implication).is_ok() {
+                if self.can_sub(param_env, error, implication) {
                     debug!("error_implies: {:?} -> {:?} -> {:?}", cond, error, implication);
                     return true;
                 }

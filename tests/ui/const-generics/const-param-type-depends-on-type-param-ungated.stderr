@@ -1,5 +1,5 @@
 error[E0770]: the type of const parameters must not depend on other generic parameters
-  --> $DIR/const-param-type-depends-on-type-param-ungated.rs:6:22
+  --> $DIR/const-param-type-depends-on-type-param-ungated.rs:3:22
    |
 LL | struct B<T, const N: T>(PhantomData<[T; N]>);
    |                      ^ the type must not depend on the parameter `T`

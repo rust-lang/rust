@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes -Zmir-enable-passes=+DestinationPropagation
+// compile-flags: -C no-prepopulate-passes -Zmir-enable-passes=+DestinationPropagation,-CopyProp
 
 #![crate_type = "lib"]
 

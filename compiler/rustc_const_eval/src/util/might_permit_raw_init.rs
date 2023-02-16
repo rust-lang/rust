@@ -1,5 +1,5 @@
-use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{ParamEnv, TyCtxt};
+use rustc_middle::ty::layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout};
+use rustc_middle::ty::{ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_target::abi::{Abi, FieldsShape, InitKind, Scalar, Variants};
 
@@ -20,15 +20,14 @@ use crate::interpret::{InterpCx, MemoryKind, OpTy};
 /// to the full uninit check).
 pub fn might_permit_raw_init<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
-    ty: TyAndLayout<'tcx>,
+    param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
     kind: InitKind,
-) -> bool {
+) -> Result<bool, LayoutError<'tcx>> {
     if tcx.sess.opts.unstable_opts.strict_init_checks {
-        might_permit_raw_init_strict(ty, tcx, kind)
+        might_permit_raw_init_strict(tcx.layout_of(param_env_and_ty)?, tcx, kind)
     } else {
-        let layout_cx = LayoutCx { tcx, param_env };
-        might_permit_raw_init_lax(ty, &layout_cx, kind)
+        let layout_cx = LayoutCx { tcx, param_env: param_env_and_ty.param_env };
+        might_permit_raw_init_lax(tcx.layout_of(param_env_and_ty)?, &layout_cx, kind)
     }
 }
 
@@ -38,7 +37,7 @@ fn might_permit_raw_init_strict<'tcx>(
     ty: TyAndLayout<'tcx>,
     tcx: TyCtxt<'tcx>,
     kind: InitKind,
-) -> bool {
+) -> Result<bool, LayoutError<'tcx>> {
     let machine = CompileTimeInterpreter::new(
         Limit::new(0),
         /*can_access_statics:*/ false,
@@ -65,7 +64,7 @@ fn might_permit_raw_init_strict<'tcx>(
     // This does *not* actually check that references are dereferenceable, but since all types that
     // require dereferenceability also require non-null, we don't actually get any false negatives
     // due to this.
-    cx.validate_operand(&ot).is_ok()
+    Ok(cx.validate_operand(&ot).is_ok())
 }
 
 /// Implements the 'lax' (default) version of the `might_permit_raw_init` checks; see that function for
@@ -74,7 +73,7 @@ fn might_permit_raw_init_lax<'tcx>(
     this: TyAndLayout<'tcx>,
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     init_kind: InitKind,
-) -> bool {
+) -> Result<bool, LayoutError<'tcx>> {
     let scalar_allows_raw_init = move |s: Scalar| -> bool {
         match init_kind {
             InitKind::Zero => {
@@ -103,20 +102,20 @@ fn might_permit_raw_init_lax<'tcx>(
     };
     if !valid {
         // This is definitely not okay.
-        return false;
+        return Ok(false);
     }
 
     // Special magic check for references and boxes (i.e., special pointer types).
     if let Some(pointee) = this.ty.builtin_deref(false) {
-        let pointee = cx.layout_of(pointee.ty).expect("need to be able to compute layouts");
+        let pointee = cx.layout_of(pointee.ty)?;
         // We need to ensure that the LLVM attributes `aligned` and `dereferenceable(size)` are satisfied.
         if pointee.align.abi.bytes() > 1 {
             // 0x01-filling is not aligned.
-            return false;
+            return Ok(false);
         }
         if pointee.size.bytes() > 0 {
             // A 'fake' integer pointer is not sufficiently dereferenceable.
-            return false;
+            return Ok(false);
         }
     }
 
@@ -129,9 +128,9 @@ fn might_permit_raw_init_lax<'tcx>(
         }
         FieldsShape::Arbitrary { offsets, .. } => {
             for idx in 0..offsets.len() {
-                if !might_permit_raw_init_lax(this.field(cx, idx), cx, init_kind) {
+                if !might_permit_raw_init_lax(this.field(cx, idx), cx, init_kind)? {
                     // We found a field that is unhappy with this kind of initialization.
-                    return false;
+                    return Ok(false);
                 }
             }
         }
@@ -148,5 +147,5 @@ fn might_permit_raw_init_lax<'tcx>(
         }
     }
 
-    true
+    Ok(true)
 }

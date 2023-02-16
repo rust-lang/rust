@@ -124,14 +124,14 @@ impl Handle {
         // see https://docs.microsoft.com/en-us/windows/win32/winprog64/interprocess-communication
         #[allow(clippy::cast_possible_wrap)] // we want it to wrap
         let signed_handle = self.to_packed() as i32;
-        Scalar::from_machine_isize(signed_handle.into(), cx)
+        Scalar::from_target_isize(signed_handle.into(), cx)
     }
 
     pub fn from_scalar<'tcx>(
         handle: Scalar<Provenance>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Option<Self>> {
-        let sign_extended_handle = handle.to_machine_isize(cx)?;
+        let sign_extended_handle = handle.to_target_isize(cx)?;
 
         #[allow(clippy::cast_sign_loss)] // we want to lose the sign
         let handle = if let Ok(signed_handle) = i32::try_from(sign_extended_handle) {

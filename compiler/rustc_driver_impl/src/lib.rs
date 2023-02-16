@@ -25,13 +25,10 @@ use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{ErrorGuaranteed, PResult, TerminalUrl};
 use rustc_feature::find_gated_cfg;
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
 use rustc_metadata::locator;
-use rustc_save_analysis as save;
-use rustc_save_analysis::DumpHandler;
 use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, TrimmedDefPaths};
 use rustc_session::cstore::MetadataLoader;
@@ -343,22 +340,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            queries.global_ctxt()?.enter(|tcx| {
-                let result = tcx.analysis(());
-                if sess.opts.unstable_opts.save_analysis {
-                    let crate_name = tcx.crate_name(LOCAL_CRATE);
-                    sess.time("save_analysis", || {
-                        save::process_crate(
-                            tcx,
-                            crate_name,
-                            &sess.io.input,
-                            None,
-                            DumpHandler::new(sess.io.output_dir.as_deref(), crate_name),
-                        )
-                    });
-                }
-                result
-            })?;
+            queries.global_ctxt()?.enter(|tcx| tcx.analysis(()))?;
 
             if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
                 return early_exit();

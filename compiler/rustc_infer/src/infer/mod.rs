@@ -880,30 +880,20 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().add_given(sub, sup);
     }
 
-    pub fn can_sub<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> UnitResult<'tcx>
+    pub fn can_sub<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool
     where
         T: at::ToTrace<'tcx>,
     {
         let origin = &ObligationCause::dummy();
-        self.probe(|_| {
-            self.at(origin, param_env).sub(a, b).map(|InferOk { obligations: _, .. }| {
-                // Ignore obligations, since we are unrolling
-                // everything anyway.
-            })
-        })
+        self.probe(|_| self.at(origin, param_env).sub(a, b).is_ok())
     }
 
-    pub fn can_eq<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> UnitResult<'tcx>
+    pub fn can_eq<T>(&self, param_env: ty::ParamEnv<'tcx>, a: T, b: T) -> bool
     where
         T: at::ToTrace<'tcx>,
     {
         let origin = &ObligationCause::dummy();
-        self.probe(|_| {
-            self.at(origin, param_env).eq(a, b).map(|InferOk { obligations: _, .. }| {
-                // Ignore obligations, since we are unrolling
-                // everything anyway.
-            })
-        })
+        self.probe(|_| self.at(origin, param_env).eq(a, b).is_ok())
     }
 
     #[instrument(skip(self), level = "debug")]

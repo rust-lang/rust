@@ -210,11 +210,9 @@ fn extract_path_backwards(text: &str, end_pos: usize) -> Option<usize> {
             .take_while(|(_, c)| is_id_start(*c) || is_id_continue(*c))
             .reduce(|_accum, item| item)
             .and_then(|(new_pos, c)| is_id_start(c).then_some(new_pos));
-        if let Some(new_pos) = new_pos {
-            if current_pos != new_pos {
-                current_pos = new_pos;
-                continue;
-            }
+        if let Some(new_pos) = new_pos && current_pos != new_pos {
+            current_pos = new_pos;
+            continue;
         }
         break;
     }

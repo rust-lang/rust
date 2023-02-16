@@ -359,7 +359,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 _ => def_id,
             })
             .and_then(|self_id| match tcx.def_kind(self_id) {
-                DefKind::Impl => self.def_id_to_res(self_id),
+                DefKind::Impl { .. } => self.def_id_to_res(self_id),
                 DefKind::Use => None,
                 def_kind => Some(Res::Def(def_kind, self_id)),
             })
@@ -1761,7 +1761,7 @@ fn resolution_failure(
                             }
                             Trait | TyAlias | ForeignTy | OpaqueTy | ImplTraitPlaceholder
                             | TraitAlias | TyParam | Static(_) => "associated item",
-                            Impl | GlobalAsm => unreachable!("not a path"),
+                            Impl { .. } | GlobalAsm => unreachable!("not a path"),
                         }
                     } else {
                         "associated item"

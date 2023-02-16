@@ -17,7 +17,8 @@ pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
 
 pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let parent_id = tcx.local_parent(def_id);
-    tcx.def_kind(parent_id) == DefKind::Impl && tcx.constness(parent_id) == hir::Constness::Const
+    matches!(tcx.def_kind(parent_id), DefKind::Impl { .. })
+        && tcx.constness(parent_id) == hir::Constness::Const
 }
 
 /// Checks whether an item is considered to be `const`. If it is a constructor, it is const. If

@@ -639,7 +639,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             ty::Slice(_) | ty::Str => {
-                let len = metadata.unwrap_meta().to_machine_usize(self)?;
+                let len = metadata.unwrap_meta().to_target_usize(self)?;
                 let elem = layout.field(self, 0);
 
                 // Make sure the slice is not too big.

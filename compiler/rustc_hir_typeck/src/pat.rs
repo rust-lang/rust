@@ -90,7 +90,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)?;
         if let Some(expr) = ti.origin_expr {
             self.suggest_fn_call(&mut diag, expr, expected, |output| {
-                self.can_eq(self.param_env, output, actual).is_ok()
+                self.can_eq(self.param_env, output, actual)
             });
         }
         Some(diag)
@@ -675,7 +675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         match (expected.kind(), actual.kind(), ba) {
             (ty::Ref(_, inner_ty, _), _, hir::BindingAnnotation::NONE)
-                if self.can_eq(self.param_env, *inner_ty, actual).is_ok() =>
+                if self.can_eq(self.param_env, *inner_ty, actual) =>
             {
                 err.span_suggestion_verbose(
                     span.shrink_to_lo(),
@@ -685,7 +685,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
             (_, ty::Ref(_, inner_ty, _), hir::BindingAnnotation::REF)
-                if self.can_eq(self.param_env, expected, *inner_ty).is_ok() =>
+                if self.can_eq(self.param_env, expected, *inner_ty) =>
             {
                 err.span_suggestion_verbose(
                     span.with_hi(span.lo() + BytePos(4)),
