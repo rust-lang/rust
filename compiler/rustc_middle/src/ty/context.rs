@@ -67,7 +67,7 @@ use rustc_target::abi::{Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 use rustc_type_ir::sty::TyKind::*;
 use rustc_type_ir::WithCachedTypeInfo;
-use rustc_type_ir::{DynKind, InternAs, InternIteratorElement, Interner, TypeFlags};
+use rustc_type_ir::{CollectAndApply, DynKind, Interner, TypeFlags};
 
 use std::any::Any;
 use std::borrow::Borrow;
@@ -1835,8 +1835,12 @@ impl<'tcx> TyCtxt<'tcx> {
         if ts.is_empty() { self.types.unit } else { self.mk_ty(Tuple(self.intern_type_list(&ts))) }
     }
 
-    pub fn mk_tup<I: InternAs<Ty<'tcx>, Ty<'tcx>>>(self, iter: I) -> I::Output {
-        iter.intern_with(|ts| self.intern_tup(ts))
+    pub fn mk_tup<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<Ty<'tcx>, Ty<'tcx>>,
+    {
+        T::collect_and_apply(iter, |ts| self.intern_tup(ts))
     }
 
     #[inline]
@@ -2157,11 +2161,12 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn mk_const_list<I: InternAs<ty::Const<'tcx>, &'tcx List<ty::Const<'tcx>>>>(
-        self,
-        iter: I,
-    ) -> I::Output {
-        iter.intern_with(|xs| self.intern_const_list(xs))
+    pub fn mk_const_list<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<ty::Const<'tcx>, &'tcx List<ty::Const<'tcx>>>,
+    {
+        T::collect_and_apply(iter, |xs| self.intern_const_list(xs))
     }
 
     pub fn intern_const_list(self, cs: &[ty::Const<'tcx>]) -> &'tcx List<ty::Const<'tcx>> {
@@ -2220,9 +2225,9 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>,
+        T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
     {
-        inputs.chain(iter::once(output)).intern_with(|xs| ty::FnSig {
+        T::collect_and_apply(inputs.chain(iter::once(output)), |xs| ty::FnSig {
             inputs_and_output: self.intern_type_list(xs),
             c_variadic,
             unsafety,
@@ -2230,38 +2235,47 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn mk_poly_existential_predicates<
-        I: InternAs<PolyExistentialPredicate<'tcx>, &'tcx List<PolyExistentialPredicate<'tcx>>>,
-    >(
-        self,
-        iter: I,
-    ) -> I::Output {
-        iter.intern_with(|xs| self.intern_poly_existential_predicates(xs))
+    pub fn mk_poly_existential_predicates<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<
+                PolyExistentialPredicate<'tcx>,
+                &'tcx List<PolyExistentialPredicate<'tcx>>,
+            >,
+    {
+        T::collect_and_apply(iter, |xs| self.intern_poly_existential_predicates(xs))
     }
 
-    pub fn mk_predicates<I: InternAs<Predicate<'tcx>, &'tcx List<Predicate<'tcx>>>>(
-        self,
-        iter: I,
-    ) -> I::Output {
-        iter.intern_with(|xs| self.intern_predicates(xs))
+    pub fn mk_predicates<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<Predicate<'tcx>, &'tcx List<Predicate<'tcx>>>,
+    {
+        T::collect_and_apply(iter, |xs| self.intern_predicates(xs))
     }
 
-    pub fn mk_type_list<I: InternAs<Ty<'tcx>, &'tcx List<Ty<'tcx>>>>(self, iter: I) -> I::Output {
-        iter.intern_with(|xs| self.intern_type_list(xs))
+    pub fn mk_type_list<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<Ty<'tcx>, &'tcx List<Ty<'tcx>>>,
+    {
+        T::collect_and_apply(iter, |xs| self.intern_type_list(xs))
     }
 
-    pub fn mk_substs<I: InternAs<GenericArg<'tcx>, &'tcx List<GenericArg<'tcx>>>>(
-        self,
-        iter: I,
-    ) -> I::Output {
-        iter.intern_with(|xs| self.intern_substs(xs))
+    pub fn mk_substs<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<GenericArg<'tcx>, &'tcx List<GenericArg<'tcx>>>,
+    {
+        T::collect_and_apply(iter, |xs| self.intern_substs(xs))
     }
 
-    pub fn mk_place_elems<I: InternAs<PlaceElem<'tcx>, &'tcx List<PlaceElem<'tcx>>>>(
-        self,
-        iter: I,
-    ) -> I::Output {
-        iter.intern_with(|xs| self.intern_place_elems(xs))
+    pub fn mk_place_elems<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<PlaceElem<'tcx>, &'tcx List<PlaceElem<'tcx>>>,
+    {
+        T::collect_and_apply(iter, |xs| self.intern_place_elems(xs))
     }
 
     pub fn mk_substs_trait(
@@ -2290,13 +2304,12 @@ impl<'tcx> TyCtxt<'tcx> {
         ty::AliasTy { def_id, substs, _use_mk_alias_ty_instead: () }
     }
 
-    pub fn mk_bound_variable_kinds<
-        I: InternAs<ty::BoundVariableKind, &'tcx List<ty::BoundVariableKind>>,
-    >(
-        self,
-        iter: I,
-    ) -> I::Output {
-        iter.intern_with(|xs| self.intern_bound_variable_kinds(xs))
+    pub fn mk_bound_variable_kinds<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<ty::BoundVariableKind, &'tcx List<ty::BoundVariableKind>>,
+    {
+        T::collect_and_apply(iter, |xs| self.intern_bound_variable_kinds(xs))
     }
 
     /// Emit a lint at `span` from a lint struct (some type that implements `DecorateLint`,
