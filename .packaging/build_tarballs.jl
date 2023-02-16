@@ -95,6 +95,11 @@ for llvm_version in llvm_versions, llvm_assertions in (false, true)
         LibraryProduct(["libEnzymeBCLoad-$(llvm_version.major)", "libEnzymeBCLoad"], :libEnzymeBCLoad, dont_dlopen=true),
     ]
 
+    if llvm_version >= v"15"
+        # We don't build LLVM 15 for i686-linux-musl.
+        filter!(p -> !(arch(p) == "i686" && libc(p) == "musl"), platforms)
+    end
+
     for platform in platforms
         augmented_platform = deepcopy(platform)
         augmented_platform[LLVM.platform_name] = LLVM.platform(llvm_version, llvm_assertions)
