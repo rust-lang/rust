@@ -2,6 +2,7 @@
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(box_patterns)]
 #![feature(drain_filter)]
+#![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
@@ -263,6 +264,7 @@ mod semicolon_block;
 mod semicolon_if_nothing_returned;
 mod serde_api;
 mod shadow;
+mod significant_drop_tightening;
 mod single_char_lifetime_names;
 mod single_component_path_imports;
 mod size_of_in_element_count;
@@ -558,6 +560,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(eta_reduction::EtaReduction));
     store.register_late_pass(|_| Box::new(mut_mut::MutMut));
     store.register_late_pass(|_| Box::new(mut_reference::UnnecessaryMutPassed));
+    store.register_late_pass(|_| Box::<significant_drop_tightening::SignificantDropTightening<'_>>::default());
     store.register_late_pass(|_| Box::new(len_zero::LenZero));
     store.register_late_pass(|_| Box::new(attrs::Attributes));
     store.register_late_pass(|_| Box::new(blocks_in_if_conditions::BlocksInIfConditions));

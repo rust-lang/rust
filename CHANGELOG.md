@@ -4734,6 +4734,7 @@ Released 2018-09-13
 [`should_assert_eq`]: https://rust-lang.github.io/rust-clippy/master/index.html#should_assert_eq
 [`should_implement_trait`]: https://rust-lang.github.io/rust-clippy/master/index.html#should_implement_trait
 [`significant_drop_in_scrutinee`]: https://rust-lang.github.io/rust-clippy/master/index.html#significant_drop_in_scrutinee
+[`significant_drop_tightening`]: https://rust-lang.github.io/rust-clippy/master/index.html#significant_drop_tightening
 [`similar_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#similar_names
 [`single_char_add_str`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_char_add_str
 [`single_char_lifetime_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#single_char_lifetime_names
