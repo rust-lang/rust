@@ -43,4 +43,14 @@ fn ifs_same_cond() {
     }
 }
 
+fn issue10272() {
+    let a = String::from("ha");
+    if a.contains("ah") {
+    } else if a.contains("ah") {
+        // Trigger this lint
+    } else if a.contains("ha") {
+    } else if a == "wow" {
+    }
+}
+
 fn main() {}

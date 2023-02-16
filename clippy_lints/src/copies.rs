@@ -3,8 +3,8 @@ use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, sn
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
-    capture_local_usage, eq_expr_value, get_enclosing_block, hash_expr, hash_stmt, if_sequence, is_else_clause,
-    is_lint_allowed, path_to_local, search_same, ContainsName, HirEqInterExpr, SpanlessEq,
+    capture_local_usage, eq_expr_value, find_binding_init, get_enclosing_block, hash_expr, hash_stmt, if_sequence,
+    is_else_clause, is_lint_allowed, path_to_local, search_same, ContainsName, HirEqInterExpr, SpanlessEq,
 };
 use core::iter;
 use core::ops::ControlFlow;
@@ -549,7 +549,27 @@ fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbo
 
 /// Implementation of `IFS_SAME_COND`.
 fn lint_same_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
-    for (i, j) in search_same(conds, |e| hash_expr(cx, e), |lhs, rhs| eq_expr_value(cx, lhs, rhs)) {
+    for (i, j) in search_same(
+        conds,
+        |e| hash_expr(cx, e),
+        |lhs, rhs| {
+            // If any side (ex. lhs) is a method call, and the caller is not mutable,
+            // then we can ignore side effects?
+            if let ExprKind::MethodCall(_, caller, _, _) = lhs.kind {
+                if path_to_local(caller)
+                    .and_then(|hir_id| find_binding_init(cx, hir_id))
+                    .is_some()
+                {
+                    // caller is not declared as mutable
+                    SpanlessEq::new(cx).eq_expr(lhs, rhs)
+                } else {
+                    false
+                }
+            } else {
+                eq_expr_value(cx, lhs, rhs)
+            }
+        },
+    ) {
         span_lint_and_note(
             cx,
             IFS_SAME_COND,
