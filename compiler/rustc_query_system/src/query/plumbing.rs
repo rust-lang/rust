@@ -15,6 +15,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::TimingGuard;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_session::Session;
@@ -348,8 +349,6 @@ where
 
 fn try_execute_query<Q, Qcx>(
     qcx: Qcx,
-    state: &QueryState<Q::Key, Qcx::DepKind>,
-    cache: &Q::Cache,
     span: Span,
     key: Q::Key,
     dep_node: Option<DepNode<Qcx::DepKind>>,
@@ -358,9 +357,11 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
+    let state = Q::query_state(qcx);
     match JobOwner::<'_, Q::Key, Qcx::DepKind>::try_start(&qcx, state, span, key) {
         TryGetJob::NotYetStarted(job) => {
             let (result, dep_node_index) = execute_job::<Q, Qcx>(qcx, key, dep_node, job.id);
+            let cache = Q::query_cache(qcx);
             if Q::FEEDABLE {
                 // We should not compute queries that also got a value via feeding.
                 // This can't happen, as query feeding adds the very dependencies to the fed query
@@ -381,7 +382,7 @@ where
         }
         #[cfg(parallel_compiler)]
         TryGetJob::JobCompleted(query_blocked_prof_timer) => {
-            let Some((v, index)) = cache.lookup(&key) else {
+            let Some((v, index)) = Q::query_cache(qcx).lookup(&key) else {
                 panic!("value must be in cache after waiting")
             };
 
@@ -739,14 +740,8 @@ where
         None
     };
 
-    let (result, dep_node_index) = try_execute_query::<Q, Qcx>(
-        qcx,
-        Q::query_state(qcx),
-        Q::query_cache(qcx),
-        span,
-        key,
-        dep_node,
-    );
+    let (result, dep_node_index) =
+        ensure_sufficient_stack(|| try_execute_query::<Q, Qcx>(qcx, span, key, dep_node));
     if let Some(dep_node_index) = dep_node_index {
         qcx.dep_context().dep_graph().read_index(dep_node_index)
     }
@@ -762,14 +757,12 @@ where
 {
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
-    let cache = Q::query_cache(qcx);
-    if let Some((_, index)) = cache.lookup(&key) {
+    if let Some((_, index)) = Q::query_cache(qcx).lookup(&key) {
         qcx.dep_context().profiler().query_cache_hit(index.into());
         return;
     }
 
-    let state = Q::query_state(qcx);
     debug_assert!(!Q::ANON);
 
-    try_execute_query::<Q, _>(qcx, state, cache, DUMMY_SP, key, Some(dep_node));
+    ensure_sufficient_stack(|| try_execute_query::<Q, _>(qcx, DUMMY_SP, key, Some(dep_node)));
 }
