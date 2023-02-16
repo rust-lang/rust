@@ -599,7 +599,7 @@ fn virtual_call_violation_for_method<'tcx>(
             return false;
         }
 
-        contains_illegal_self_type_reference(tcx, trait_def_id, pred.clone())
+        contains_illegal_self_type_reference(tcx, trait_def_id, pred)
     }) {
         return Some(MethodViolationCode::WhereClauseReferencesSelf);
     }
