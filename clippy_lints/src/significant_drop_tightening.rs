@@ -61,6 +61,18 @@ pub struct SignificantDropTightening<'tcx> {
 }
 
 impl<'tcx> SignificantDropTightening<'tcx> {
+    /// Searches for at least one statement that could slow down the release of a significant drop.
+    fn at_least_one_stmt_is_expensive(stmts: &[hir::Stmt<'_>]) -> bool {
+        for stmt in stmts {
+            match stmt.kind {
+                hir::StmtKind::Local(local) if let Some(expr) = local.init
+                    && let hir::ExprKind::Path(_) = expr.kind => {},
+                _ => return true
+            };
+        }
+        false
+    }
+
     /// Verifies if the expression is of type `drop(some_lock_path)` to assert that the temporary
     /// is already being dropped before the end of its scope.
     fn has_drop(expr: &'tcx hir::Expr<'_>, init_bind_ident: Ident) -> bool {
@@ -198,13 +210,15 @@ impl<'tcx> LateLintPass<'tcx> for SignificantDropTightening<'tcx> {
                     }
                     self.modify_sdap_if_sig_drop_exists(cx, expr, idx, &mut sdap, stmt, |_| {});
                 },
-                _ => continue
+                _ => {}
             };
         }
-        if sdap.number_of_stmts > 1 && {
-            let last_stmts_idx = block.stmts.len().wrapping_sub(1);
-            sdap.last_use_stmt_idx != last_stmts_idx
-        } {
+        let stmts_after_last_use = sdap
+            .last_use_stmt_idx
+            .checked_add(1)
+            .and_then(|idx| block.stmts.get(idx..))
+            .unwrap_or_default();
+        if sdap.number_of_stmts > 1 && Self::at_least_one_stmt_is_expensive(stmts_after_last_use) {
             span_lint_and_then(
                 cx,
                 SIGNIFICANT_DROP_TIGHTENING,
