@@ -159,12 +159,12 @@ LL +     let _val = 1;
 error: used `unwrap_or_else()` on `Some` value
   --> $DIR/unnecessary_literal_unwrap.rs:33:16
    |
-LL |     let _val = Some(1).unwrap_or_else(|| _val);
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _val = Some(1).unwrap_or_else(|| 2);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: remove the `Some` and `unwrap_or_else()`
    |
-LL -     let _val = Some(1).unwrap_or_else(|| _val);
+LL -     let _val = Some(1).unwrap_or_else(|| 2);
 LL +     let _val = 1;
    |
 
@@ -195,12 +195,12 @@ LL +     let _val = 1;
 error: used `unwrap_or_else()` on `Ok` value
   --> $DIR/unnecessary_literal_unwrap.rs:39:16
    |
-LL |     let _val = Ok::<usize, ()>(1).unwrap_or_else(|()| _val);
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _val = Ok::<usize, ()>(1).unwrap_or_else(|_| 2);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: remove the `Ok` and `unwrap_or_else()`
    |
-LL -     let _val = Ok::<usize, ()>(1).unwrap_or_else(|()| _val);
+LL -     let _val = Ok::<usize, ()>(1).unwrap_or_else(|_| 2);
 LL +     let _val = 1;
    |
 

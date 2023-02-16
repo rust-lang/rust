@@ -1,15 +1,219 @@
 error: used `unwrap()` on `Some` value
-  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:5:17
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:7:17
    |
 LL |     let _val2 = val.unwrap();
    |                 ^^^^^^^^^^^^
    |
 help: remove the `Some` and `unwrap()`
-  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:4:15
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:6:15
    |
 LL |     let val = Some(1);
    |               ^^^^^^^
    = note: `-D clippy::unnecessary-literal-unwrap` implied by `-D warnings`
 
-error: aborting due to previous error
+error: used `expect()` on `Some` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:8:17
+   |
+LL |     let _val2 = val.expect("this never happens");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `expect()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:6:15
+   |
+LL |     let val = Some(1);
+   |               ^^^^^^^
+
+error: used `unwrap()` on `None` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:13:5
+   |
+LL |     val.unwrap();
+   |     ^^^^^^^^^^^^
+   |
+help: remove the `None` and `unwrap()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:12:15
+   |
+LL |     let val = None::<usize>;
+   |               ^^^^^^^^^^^^^
+
+error: used `expect()` on `None` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:14:5
+   |
+LL |     val.expect("this always happens");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `expect()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:12:15
+   |
+LL |     let val = None::<usize>;
+   |               ^^^^^^^^^^^^^
+
+error: used `unwrap()` on `Ok` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:19:17
+   |
+LL |     let _val2 = val.unwrap();
+   |                 ^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:18:15
+   |
+LL |     let val = Ok::<usize, ()>(1);
+   |               ^^^^^^^^^^^^^^^^^^
+
+error: used `expect()` on `Ok` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:20:17
+   |
+LL |     let _val2 = val.expect("this never happens");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `expect()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:18:15
+   |
+LL |     let val = Ok::<usize, ()>(1);
+   |               ^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_err()` on `Ok` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:21:5
+   |
+LL |     val.unwrap_err();
+   |     ^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_err()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:18:15
+   |
+LL |     let val = Ok::<usize, ()>(1);
+   |               ^^^^^^^^^^^^^^^^^^
+
+error: used `expect_err()` on `Ok` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:22:5
+   |
+LL |     val.expect_err("this always happens");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `expect_err()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:18:15
+   |
+LL |     let val = Ok::<usize, ()>(1);
+   |               ^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_err()` on `Err` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:27:17
+   |
+LL |     let _val2 = val.unwrap_err();
+   |                 ^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap_err()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:26:15
+   |
+LL |     let val = Err::<(), usize>(1);
+   |               ^^^^^^^^^^^^^^^^^^^
+
+error: used `expect_err()` on `Err` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:28:17
+   |
+LL |     let _val2 = val.expect_err("this never happens");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `expect_err()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:26:15
+   |
+LL |     let val = Err::<(), usize>(1);
+   |               ^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap()` on `Err` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:29:5
+   |
+LL |     val.unwrap();
+   |     ^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:26:15
+   |
+LL |     let val = Err::<(), usize>(1);
+   |               ^^^^^^^^^^^^^^^^^^^
+
+error: used `expect()` on `Err` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:30:5
+   |
+LL |     val.expect("this always happens");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `expect()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:26:15
+   |
+LL |     let val = Err::<(), usize>(1);
+   |               ^^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or()` on `Some` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:35:17
+   |
+LL |     let _val2 = val.unwrap_or(2);
+   |                 ^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:34:15
+   |
+LL |     let val = Some(1);
+   |               ^^^^^^^
+
+error: used `unwrap_or_default()` on `Some` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:36:17
+   |
+LL |     let _val2 = val.unwrap_or_default();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or_default()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:34:15
+   |
+LL |     let val = Some(1);
+   |               ^^^^^^^
+
+error: used `unwrap_or_else()` on `Some` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:37:17
+   |
+LL |     let _val2 = val.unwrap_or_else(|| 2);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Some` and `unwrap_or_else()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:34:15
+   |
+LL |     let val = Some(1);
+   |               ^^^^^^^
+
+error: used `unwrap_or()` on `Ok` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:42:17
+   |
+LL |     let _val2 = val.unwrap_or(2);
+   |                 ^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:41:15
+   |
+LL |     let val = Ok::<usize, ()>(1);
+   |               ^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or_default()` on `Ok` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:43:17
+   |
+LL |     let _val2 = val.unwrap_or_default();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or_default()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:41:15
+   |
+LL |     let val = Ok::<usize, ()>(1);
+   |               ^^^^^^^^^^^^^^^^^^
+
+error: used `unwrap_or_else()` on `Ok` value
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:44:17
+   |
+LL |     let _val2 = val.unwrap_or_else(|_| 2);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_or_else()`
+  --> $DIR/unnecessary_literal_unwrap_unfixable.rs:41:15
+   |
+LL |     let val = Ok::<usize, ()>(1);
+   |               ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 18 previous errors
 

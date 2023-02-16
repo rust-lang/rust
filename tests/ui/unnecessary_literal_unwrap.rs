@@ -1,7 +1,7 @@
-//run-rustfix
+//@run-rustfix
 #![warn(clippy::unnecessary_literal_unwrap)]
-#![allow(clippy::unnecessary_lazy_evaluations)]
 #![allow(unreachable_code)]
+#![allow(clippy::unnecessary_lazy_evaluations)]
 
 fn unwrap_option_some() {
     let _val = Some(1).unwrap();
@@ -30,13 +30,13 @@ fn unwrap_result_err() {
 fn unwrap_methods_option() {
     let _val = Some(1).unwrap_or(2);
     let _val = Some(1).unwrap_or_default();
-    let _val = Some(1).unwrap_or_else(|| _val);
+    let _val = Some(1).unwrap_or_else(|| 2);
 }
 
 fn unwrap_methods_result() {
     let _val = Ok::<usize, ()>(1).unwrap_or(2);
     let _val = Ok::<usize, ()>(1).unwrap_or_default();
-    let _val = Ok::<usize, ()>(1).unwrap_or_else(|()| _val);
+    let _val = Ok::<usize, ()>(1).unwrap_or_else(|_| 2);
 }
 
 fn main() {
