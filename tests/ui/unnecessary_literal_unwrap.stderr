@@ -1,27 +1,51 @@
 error: used `unwrap()` on `Some` value
-  --> $DIR/unnecessary_literal_unwrap.rs:5:15
+  --> $DIR/unnecessary_literal_unwrap.rs:5:16
    |
-LL |     let val = Some(1).unwrap();
-   |               ^^^^^^^^^^^^^^^^
+LL |     let _val = Some(1).unwrap();
+   |                ^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unnecessary-literal-unwrap` implied by `-D warnings`
 help: remove the `Some` and `unwrap()`
    |
-LL -     let val = Some(1).unwrap();
-LL +     let val = 1;
+LL -     let _val = Some(1).unwrap();
+LL +     let _val = 1;
    |
 
 error: used `expect()` on `Some` value
-  --> $DIR/unnecessary_literal_unwrap.rs:6:15
+  --> $DIR/unnecessary_literal_unwrap.rs:6:16
    |
-LL |     let val = Some(1).expect("this never happens");
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _val = Some(1).expect("this never happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: remove the `Some` and `expect()`
    |
-LL -     let val = Some(1).expect("this never happens");
-LL +     let val = 1;
+LL -     let _val = Some(1).expect("this never happens");
+LL +     let _val = 1;
    |
 
-error: aborting due to 2 previous errors
+error: used `unwrap()` on `Ok` value
+  --> $DIR/unnecessary_literal_unwrap.rs:10:16
+   |
+LL |     let _val = Ok::<usize, ()>(1).unwrap();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap()`
+   |
+LL -     let _val = Ok::<usize, ()>(1).unwrap();
+LL +     let _val = 1;
+   |
+
+error: used `expect()` on `Ok` value
+  --> $DIR/unnecessary_literal_unwrap.rs:11:16
+   |
+LL |     let _val = Ok::<usize, ()>(1).expect("this never happens");
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `expect()`
+   |
+LL -     let _val = Ok::<usize, ()>(1).expect("this never happens");
+LL +     let _val = 1;
+   |
+
+error: aborting due to 4 previous errors
 

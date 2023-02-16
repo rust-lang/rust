@@ -7,15 +7,17 @@ use super::UNNECESSARY_LITERAL_UNWRAP;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>, name: &str) {
     let mess = if is_res_lang_ctor(cx, path_res(cx, recv), hir::LangItem::OptionSome) {
-        Some((UNNECESSARY_LITERAL_UNWRAP, "Some"))
+        Some("Some")
+    } else if is_res_lang_ctor(cx, path_res(cx, recv), hir::LangItem::ResultOk) {
+        Some("Ok")
     } else {
         None
     };
 
-    if let Some((lint, constructor)) = mess {
+    if let Some(constructor) = mess {
         span_lint_and_then(
             cx,
-            lint,
+            UNNECESSARY_LITERAL_UNWRAP,
             expr.span,
             &format!("used `{name}()` on `{constructor}` value"),
             |diag| {
