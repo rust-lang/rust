@@ -1,20 +1,30 @@
 //run-rustfix
 #![warn(clippy::unnecessary_literal_unwrap)]
 #![allow(clippy::unnecessary_lazy_evaluations)]
+#![allow(unreachable_code)]
 
-fn unwrap_option() {
+fn unwrap_option_some() {
     let _val = 1;
     let _val = 1;
+}
+
+fn unwrap_option_none() {
+    panic!();
+    panic!("this always happens");
 }
 
 fn unwrap_result_ok() {
     let _val = 1;
     let _val = 1;
+    panic!("{:?}", 1);
+    panic!("{1}: {:?}", 1, "this always happens");
 }
 
 fn unwrap_result_err() {
     let _val = 1;
     let _val = 1;
+    panic!("{:?}", 1);
+    panic!("{1}: {:?}", 1, "this always happens");
 }
 
 fn unwrap_methods_option() {
@@ -30,7 +40,8 @@ fn unwrap_methods_result() {
 }
 
 fn main() {
-    unwrap_option();
+    unwrap_option_some();
+    unwrap_option_none();
     unwrap_result_ok();
     unwrap_result_err();
     unwrap_methods_option();

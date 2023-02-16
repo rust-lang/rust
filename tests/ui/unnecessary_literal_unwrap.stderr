@@ -1,5 +1,5 @@
 error: used `unwrap()` on `Some` value
-  --> $DIR/unnecessary_literal_unwrap.rs:6:16
+  --> $DIR/unnecessary_literal_unwrap.rs:7:16
    |
 LL |     let _val = Some(1).unwrap();
    |                ^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL +     let _val = 1;
    |
 
 error: used `expect()` on `Some` value
-  --> $DIR/unnecessary_literal_unwrap.rs:7:16
+  --> $DIR/unnecessary_literal_unwrap.rs:8:16
    |
 LL |     let _val = Some(1).expect("this never happens");
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,8 +23,25 @@ LL -     let _val = Some(1).expect("this never happens");
 LL +     let _val = 1;
    |
 
+error: used `unwrap()` on `None` value
+  --> $DIR/unnecessary_literal_unwrap.rs:12:5
+   |
+LL |     None::<usize>.unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: remove the `None` and `unwrap()`: `panic!()`
+
+error: used `expect()` on `None` value
+  --> $DIR/unnecessary_literal_unwrap.rs:13:5
+   |
+LL |     None::<usize>.expect("this always happens");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `None` and `expect()`
+   |
+LL |     panic!("this always happens");
+   |     ~~~~~~~                     ~
+
 error: used `unwrap()` on `Ok` value
-  --> $DIR/unnecessary_literal_unwrap.rs:11:16
+  --> $DIR/unnecessary_literal_unwrap.rs:17:16
    |
 LL |     let _val = Ok::<usize, ()>(1).unwrap();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -36,7 +53,7 @@ LL +     let _val = 1;
    |
 
 error: used `expect()` on `Ok` value
-  --> $DIR/unnecessary_literal_unwrap.rs:12:16
+  --> $DIR/unnecessary_literal_unwrap.rs:18:16
    |
 LL |     let _val = Ok::<usize, ()>(1).expect("this never happens");
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,8 +64,30 @@ LL -     let _val = Ok::<usize, ()>(1).expect("this never happens");
 LL +     let _val = 1;
    |
 
+error: used `unwrap_err()` on `Ok` value
+  --> $DIR/unnecessary_literal_unwrap.rs:19:5
+   |
+LL |     Ok::<usize, ()>(1).unwrap_err();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `unwrap_err()`
+   |
+LL |     panic!("{:?}", 1);
+   |     ~~~~~~~~~~~~~~  ~
+
+error: used `expect_err()` on `Ok` value
+  --> $DIR/unnecessary_literal_unwrap.rs:20:5
+   |
+LL |     Ok::<usize, ()>(1).expect_err("this always happens");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Ok` and `expect_err()`
+   |
+LL |     panic!("{1}: {:?}", 1, "this always happens");
+   |     ~~~~~~~~~~~~~~~~~~~  ~
+
 error: used `unwrap_err()` on `Err` value
-  --> $DIR/unnecessary_literal_unwrap.rs:16:16
+  --> $DIR/unnecessary_literal_unwrap.rs:24:16
    |
 LL |     let _val = Err::<(), usize>(1).unwrap_err();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,7 +99,7 @@ LL +     let _val = 1;
    |
 
 error: used `expect_err()` on `Err` value
-  --> $DIR/unnecessary_literal_unwrap.rs:17:16
+  --> $DIR/unnecessary_literal_unwrap.rs:25:16
    |
 LL |     let _val = Err::<(), usize>(1).expect_err("this never happens");
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -71,8 +110,30 @@ LL -     let _val = Err::<(), usize>(1).expect_err("this never happens");
 LL +     let _val = 1;
    |
 
+error: used `unwrap()` on `Err` value
+  --> $DIR/unnecessary_literal_unwrap.rs:26:5
+   |
+LL |     Err::<(), usize>(1).unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `unwrap()`
+   |
+LL |     panic!("{:?}", 1);
+   |     ~~~~~~~~~~~~~~  ~
+
+error: used `expect()` on `Err` value
+  --> $DIR/unnecessary_literal_unwrap.rs:27:5
+   |
+LL |     Err::<(), usize>(1).expect("this always happens");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `Err` and `expect()`
+   |
+LL |     panic!("{1}: {:?}", 1, "this always happens");
+   |     ~~~~~~~~~~~~~~~~~~~  ~
+
 error: used `unwrap_or()` on `Some` value
-  --> $DIR/unnecessary_literal_unwrap.rs:21:16
+  --> $DIR/unnecessary_literal_unwrap.rs:31:16
    |
 LL |     let _val = Some(1).unwrap_or(2);
    |                ^^^^^^^^^^^^^^^^^^^^
@@ -84,7 +145,7 @@ LL +     let _val = 1;
    |
 
 error: used `unwrap_or_default()` on `Some` value
-  --> $DIR/unnecessary_literal_unwrap.rs:22:16
+  --> $DIR/unnecessary_literal_unwrap.rs:32:16
    |
 LL |     let _val = Some(1).unwrap_or_default();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -96,7 +157,7 @@ LL +     let _val = 1;
    |
 
 error: used `unwrap_or_else()` on `Some` value
-  --> $DIR/unnecessary_literal_unwrap.rs:23:16
+  --> $DIR/unnecessary_literal_unwrap.rs:33:16
    |
 LL |     let _val = Some(1).unwrap_or_else(|| _val);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -108,7 +169,7 @@ LL +     let _val = 1;
    |
 
 error: used `unwrap_or()` on `Ok` value
-  --> $DIR/unnecessary_literal_unwrap.rs:27:16
+  --> $DIR/unnecessary_literal_unwrap.rs:37:16
    |
 LL |     let _val = Ok::<usize, ()>(1).unwrap_or(2);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,7 +181,7 @@ LL +     let _val = 1;
    |
 
 error: used `unwrap_or_default()` on `Ok` value
-  --> $DIR/unnecessary_literal_unwrap.rs:28:16
+  --> $DIR/unnecessary_literal_unwrap.rs:38:16
    |
 LL |     let _val = Ok::<usize, ()>(1).unwrap_or_default();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -132,7 +193,7 @@ LL +     let _val = 1;
    |
 
 error: used `unwrap_or_else()` on `Ok` value
-  --> $DIR/unnecessary_literal_unwrap.rs:29:16
+  --> $DIR/unnecessary_literal_unwrap.rs:39:16
    |
 LL |     let _val = Ok::<usize, ()>(1).unwrap_or_else(|()| _val);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -143,5 +204,5 @@ LL -     let _val = Ok::<usize, ()>(1).unwrap_or_else(|()| _val);
 LL +     let _val = 1;
    |
 
-error: aborting due to 12 previous errors
+error: aborting due to 18 previous errors
 

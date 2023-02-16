@@ -3664,10 +3664,10 @@ impl Methods {
                         Some(("err", recv, [], err_span, _)) => err_expect::check(cx, expr, recv, span, err_span, &self.msrv),
                         _ => expect_used::check(cx, expr, recv, false, self.allow_expect_in_tests),
                     }
-                    unnecessary_literal_unwrap::check(cx, expr, recv, name);
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
                 ("expect_err", [_]) => {
-                    unnecessary_literal_unwrap::check(cx, expr, recv, name);
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                     expect_used::check(cx, expr, recv, true, self.allow_expect_in_tests);
                 },
                 ("extend", [arg]) => {
@@ -3874,12 +3874,12 @@ impl Methods {
                         },
                         _ => {},
                     }
-                    unnecessary_literal_unwrap::check(cx, expr, recv, name);
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                     unwrap_used::check(cx, expr, recv, false, self.allow_unwrap_in_tests);
                 },
                 ("unwrap_err", []) => {
-                    unnecessary_literal_unwrap::check(cx, expr, recv, name);
-                    unwrap_used::check(cx, expr, recv, true, self.allow_unwrap_in_tests)
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
+                    unwrap_used::check(cx, expr, recv, true, self.allow_unwrap_in_tests);
                 },
                 ("unwrap_or", [u_arg]) => {
                     match method_call(recv) {
@@ -3894,10 +3894,10 @@ impl Methods {
                         },
                         _ => {},
                     }
-                    unnecessary_literal_unwrap::check(cx, expr, recv, name);
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
                 ("unwrap_or_default", []) => {
-                    unnecessary_literal_unwrap::check(cx, expr, recv, name);
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 }
                 ("unwrap_or_else", [u_arg]) => {
                     match method_call(recv) {
@@ -3908,7 +3908,7 @@ impl Methods {
                             unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
                         },
                     }
-                    unnecessary_literal_unwrap::check(cx, expr, recv, name);
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
                 ("zip", [arg]) => {
                     if let ExprKind::MethodCall(name, iter_recv, [], _) = recv.kind
