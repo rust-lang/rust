@@ -113,7 +113,7 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
                     // Only report the `Self` type if it has at least
                     // some outer concrete shell; otherwise, it's
                     // not adding much information.
-                    self_ty: if self_ty.has_concrete_skeleton() { Some(self_ty) } else { None },
+                    self_ty: self_ty.has_concrete_skeleton().then_some(self_ty),
                     intercrate_ambiguity_causes: overlap.intercrate_ambiguity_causes,
                     involves_placeholder: overlap.involves_placeholder,
                 }

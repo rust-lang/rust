@@ -217,7 +217,7 @@ pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
                 // Look for the target rustlib directory in the suspected sysroot.
                 let mut rustlib_path = rustc_target::target_rustlib_path(&p, "dummy");
                 rustlib_path.pop(); // pop off the dummy target.
-                if rustlib_path.exists() { Some(p) } else { None }
+                rustlib_path.exists().then_some(p)
             }
             None => None,
         }

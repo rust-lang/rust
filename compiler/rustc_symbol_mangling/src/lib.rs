@@ -244,8 +244,7 @@ fn compute_symbol_name<'tcx>(
     // project.
     let avoid_cross_crate_conflicts = is_generic(substs) || is_globally_shared_function;
 
-    let instantiating_crate =
-        if avoid_cross_crate_conflicts { Some(compute_instantiating_crate()) } else { None };
+    let instantiating_crate = avoid_cross_crate_conflicts.then(compute_instantiating_crate);
 
     // Pick the crate responsible for the symbol mangling version, which has to:
     // 1. be stable for each instance, whether it's being defined or imported

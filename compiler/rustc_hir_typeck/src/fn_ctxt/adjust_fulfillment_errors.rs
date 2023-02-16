@@ -477,12 +477,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // This is the "trait" (meaning, the predicate "proved" by this `impl`) which provides the `Self` type we care about.
         // For the purposes of this function, we hope that it is a `struct` type, and that our current `expr` is a literal of
         // that struct type.
-        let impl_trait_self_ref: Option<ty::TraitRef<'tcx>> =
-            self.tcx.impl_trait_ref(obligation.impl_def_id).map(|impl_def| impl_def.skip_binder());
-
-        let Some(impl_trait_self_ref) = impl_trait_self_ref else {
-            // It is possible that this is absent. In this case, we make no progress.
-            return Err(expr);
+        let impl_trait_self_ref = if self.tcx.is_trait_alias(obligation.impl_def_id) {
+            self.tcx.mk_trait_ref(
+                obligation.impl_def_id,
+                ty::InternalSubsts::identity_for_item(self.tcx, obligation.impl_def_id),
+            )
+        } else {
+            self.tcx
+                .impl_trait_ref(obligation.impl_def_id)
+                .map(|impl_def| impl_def.skip_binder())
+                // It is possible that this is absent. In this case, we make no progress.
+                .ok_or(expr)?
         };
 
         // We only really care about the `Self` type itself, which we extract from the ref.

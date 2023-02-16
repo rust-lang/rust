@@ -942,13 +942,11 @@ impl<'a> MethodDef<'a> {
         let mut nonself_arg_tys = Vec::new();
         let span = trait_.span;
 
-        let explicit_self = if self.explicit_self {
+        let explicit_self = self.explicit_self.then(|| {
             let (self_expr, explicit_self) = ty::get_explicit_self(cx, span);
             selflike_args.push(self_expr);
-            Some(explicit_self)
-        } else {
-            None
-        };
+            explicit_self
+        });
 
         for (ty, name) in self.nonself_args.iter() {
             let ast_ty = ty.to_ty(cx, span, type_ident, generics);

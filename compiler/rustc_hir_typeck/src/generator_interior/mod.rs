@@ -274,12 +274,10 @@ pub fn resolve_interior<'a, 'tcx>(
                 let r = fcx.tcx.mk_re_late_bound(current_depth, br);
                 r
             });
-            if captured_tys.insert(ty) {
+            captured_tys.insert(ty).then(|| {
                 cause.ty = ty;
-                Some(cause)
-            } else {
-                None
-            }
+                cause
+            })
         })
         .collect();
 

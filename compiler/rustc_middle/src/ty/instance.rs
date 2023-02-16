@@ -584,7 +584,7 @@ impl<'tcx> Instance<'tcx> {
     /// this function returns `None`, then the MIR body does not require substitution during
     /// codegen.
     fn substs_for_mir_body(&self) -> Option<SubstsRef<'tcx>> {
-        if self.def.has_polymorphic_mir_body() { Some(self.substs) } else { None }
+        self.def.has_polymorphic_mir_body().then_some(self.substs)
     }
 
     pub fn subst_mir<T>(&self, tcx: TyCtxt<'tcx>, v: &T) -> T

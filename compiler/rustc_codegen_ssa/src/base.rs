@@ -579,7 +579,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    let metadata_module = if need_metadata_module {
+    let metadata_module = need_metadata_module.then(|| {
         // Emit compressed metadata object.
         let metadata_cgu_name =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata")).to_string();
@@ -594,17 +594,15 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             if let Err(error) = std::fs::write(&file_name, data) {
                 tcx.sess.emit_fatal(errors::MetadataObjectFileWrite { error });
             }
-            Some(CompiledModule {
+            CompiledModule {
                 name: metadata_cgu_name,
                 kind: ModuleKind::Metadata,
                 object: Some(file_name),
                 dwarf_object: None,
                 bytecode: None,
-            })
+            }
         })
-    } else {
-        None
-    };
+    });
 
     let ongoing_codegen = start_async_codegen(
         backend.clone(),

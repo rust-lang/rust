@@ -206,11 +206,8 @@ fn fn_abi_of_instance<'tcx>(
 
     let sig = fn_sig_for_fn_abi(tcx, instance, param_env);
 
-    let caller_location = if instance.def.requires_caller_location(tcx) {
-        Some(tcx.caller_location_ty())
-    } else {
-        None
-    };
+    let caller_location =
+        instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty());
 
     fn_abi_new_uncached(
         &LayoutCx { tcx, param_env },

@@ -361,7 +361,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             for _ in 0..padding_amout {
                 br_with_padding.push_str(" ");
             }
-            let where_preds = where_preds.to_string().replace("\n", &br_with_padding);
+            let where_preds = where_preds.to_string().replace('\n', &br_with_padding);
 
             if ending == Ending::Newline {
                 let mut clause = " ".repeat(indent.saturating_sub(1));
@@ -1419,12 +1419,12 @@ impl clean::FnDecl {
             format!(
                 "({pad}{args}{close}){arrow}",
                 pad = if self.inputs.values.is_empty() { "" } else { &full_pad },
-                args = args.replace("\n", &full_pad),
+                args = args.replace('\n', &full_pad),
                 close = close_pad,
                 arrow = arrow
             )
         } else {
-            format!("({args}){arrow}", args = args.replace("\n", " "), arrow = arrow)
+            format!("({args}){arrow}", args = args.replace('\n', " "), arrow = arrow)
         };
 
         write!(f, "{}", output)

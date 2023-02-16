@@ -402,12 +402,8 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
-        let coverage_cx = if tcx.sess.instrument_coverage() {
-            let covctx = coverageinfo::CrateCoverageContext::new();
-            Some(covctx)
-        } else {
-            None
-        };
+        let coverage_cx =
+            tcx.sess.instrument_coverage().then(coverageinfo::CrateCoverageContext::new);
 
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
             let dctx = debuginfo::CodegenUnitDebugContext::new(llmod);
