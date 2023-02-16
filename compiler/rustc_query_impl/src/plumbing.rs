@@ -293,14 +293,14 @@ macro_rules! get_provider {
 }
 
 macro_rules! should_ever_cache_on_disk {
-    ([]) => {{
-        None
+    ([]$yes:tt $no:tt) => {{
+        $no
     }};
-    ([(cache) $($rest:tt)*]) => {{
-        Some($crate::plumbing::try_load_from_disk::<Self::Value>)
+    ([(cache) $($rest:tt)*]$yes:tt $no:tt) => {{
+        $yes
     }};
-    ([$other:tt $($modifiers:tt)*]) => {
-        should_ever_cache_on_disk!([$($modifiers)*])
+    ([$other:tt $($modifiers:tt)*]$yes:tt $no:tt) => {
+        should_ever_cache_on_disk!([$($modifiers)*]$yes $no)
     };
 }
 
@@ -472,7 +472,6 @@ macro_rules! define_queries {
         $(impl<'tcx> QueryConfig<QueryCtxt<'tcx>> for queries::$name<'tcx> {
             type Key = query_keys::$name<'tcx>;
             type Value = query_values::$name<'tcx>;
-            type Stored = query_stored::$name<'tcx>;
             const NAME: &'static str = stringify!($name);
 
             #[inline]
@@ -493,24 +492,39 @@ macro_rules! define_queries {
             fn query_cache<'a>(tcx: QueryCtxt<'tcx>) -> &'a Self::Cache
                 where 'tcx:'a
             {
-                &tcx.query_caches.$name
+                &tcx.query_system.caches.$name
             }
 
-            fn execute_query(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Stored {
+            fn execute_query(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Value {
                 tcx.$name(key)
             }
 
             #[inline]
-            // key is only sometimes used
             #[allow(unused_variables)]
-            fn compute(qcx: QueryCtxt<'tcx>, key: &Self::Key) -> fn(TyCtxt<'tcx>, Self::Key) -> Self::Value {
-                get_provider!([$($modifiers)*][qcx, $name, key])
+            fn compute(qcx: QueryCtxt<'tcx>, key: Self::Key) -> Self::Value {
+                query_provided_to_value::$name(
+                    qcx.tcx,
+                    get_provider!([$($modifiers)*][qcx, $name, key])(qcx.tcx, key)
+                )
             }
 
             #[inline]
-            fn try_load_from_disk(qcx: QueryCtxt<'tcx>, key: &Self::Key) -> rustc_query_system::query::TryLoadFromDisk<QueryCtxt<'tcx>, Self> {
-                let cache_on_disk = Self::cache_on_disk(qcx.tcx, key);
-                if cache_on_disk { should_ever_cache_on_disk!([$($modifiers)*]) } else { None }
+            fn try_load_from_disk(_qcx: QueryCtxt<'tcx>, _key: &Self::Key) -> rustc_query_system::query::TryLoadFromDisk<QueryCtxt<'tcx>, Self> {
+                should_ever_cache_on_disk!([$($modifiers)*] {
+                    if Self::cache_on_disk(_qcx.tcx, _key) {
+                        Some(|qcx: QueryCtxt<'tcx>, dep_node| {
+                            let value = $crate::plumbing::try_load_from_disk::<query_provided::$name<'tcx>>(
+                                qcx,
+                                dep_node
+                            );
+                            value.map(|value| query_provided_to_value::$name(qcx.tcx, value))
+                        })
+                    } else {
+                        None
+                    }
+                } {
+                    None
+                })
             }
 
             const ANON: bool = is_anon!([$($modifiers)*]);
@@ -633,7 +647,7 @@ macro_rules! define_queries {
                     $crate::profiling_support::alloc_self_profile_query_strings_for_query_cache(
                         tcx,
                         stringify!($name),
-                        &tcx.query_caches.$name,
+                        &tcx.query_system.caches.$name,
                         string_cache,
                     )
                 },
@@ -725,7 +739,7 @@ macro_rules! define_queries_struct {
                 span: Span,
                 key: <queries::$name<'tcx> as QueryConfig<QueryCtxt<'tcx>>>::Key,
                 mode: QueryMode,
-            ) -> Option<query_stored::$name<'tcx>> {
+            ) -> Option<query_values::$name<'tcx>> {
                 let qcx = QueryCtxt { tcx, queries: self };
                 get_query::<queries::$name<'tcx>, _, rustc_middle::dep_graph::DepKind>(qcx, span, key, mode)
             })*

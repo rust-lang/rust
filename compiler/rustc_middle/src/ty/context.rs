@@ -520,7 +520,7 @@ pub struct GlobalCtxt<'tcx> {
     pub on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
 
     pub queries: &'tcx dyn query::QueryEngine<'tcx>,
-    pub query_caches: query::QueryCaches<'tcx>,
+    pub query_system: query::QuerySystem<'tcx>,
     pub(crate) query_kinds: &'tcx [DepKindStruct<'tcx>],
 
     // Internal caches for metadata decoding. No need to track deps on this.
@@ -705,7 +705,7 @@ impl<'tcx> TyCtxt<'tcx> {
             untracked,
             on_disk_cache,
             queries,
-            query_caches: query::QueryCaches::default(),
+            query_system: Default::default(),
             query_kinds,
             ty_rcache: Default::default(),
             pred_rcache: Default::default(),
