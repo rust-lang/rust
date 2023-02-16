@@ -1,19 +1,27 @@
 error: used `unwrap()` on `Some` value
-  --> $DIR/unnecessary_literal_unwrap.rs:4:15
+  --> $DIR/unnecessary_literal_unwrap.rs:5:15
    |
 LL |     let val = Some(1).unwrap();
    |               ^^^^^^^^^^^^^^^^
    |
-   = help: 
    = note: `-D clippy::unnecessary-literal-unwrap` implied by `-D warnings`
+help: remove the `Some` and `unwrap()`
+   |
+LL -     let val = Some(1).unwrap();
+LL +     let val = 1;
+   |
 
 error: used `expect()` on `Some` value
-  --> $DIR/unnecessary_literal_unwrap.rs:5:15
+  --> $DIR/unnecessary_literal_unwrap.rs:6:15
    |
 LL |     let val = Some(1).expect("this never happens");
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: 
+help: remove the `Some` and `expect()`
+   |
+LL -     let val = Some(1).expect("this never happens");
+LL +     let val = 1;
+   |
 
 error: aborting due to 2 previous errors
 

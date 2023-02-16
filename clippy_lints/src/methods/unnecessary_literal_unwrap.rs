@@ -1,10 +1,11 @@
-use clippy_utils::{diagnostics::span_lint_and_help, is_res_lang_ctor, path_res};
+use clippy_utils::{diagnostics::span_lint_and_then, is_res_lang_ctor, path_res};
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 
 use super::UNNECESSARY_LITERAL_UNWRAP;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, name: &str) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>, name: &str) {
     let mess = if is_res_lang_ctor(cx, path_res(cx, recv), hir::LangItem::OptionSome) {
         Some((UNNECESSARY_LITERAL_UNWRAP, "Some"))
     } else {
@@ -12,14 +13,23 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
     };
 
     if let Some((lint, constructor)) = mess {
-        let help = String::new();
-        span_lint_and_help(
+        span_lint_and_then(
             cx,
             lint,
             expr.span,
             &format!("used `{name}()` on `{constructor}` value"),
-            None,
-            &help,
+            |diag| {
+                let suggestions = vec![
+                    (recv.span.with_hi(arg.span.lo()), String::new()),
+                    (expr.span.with_lo(arg.span.hi()), String::new()),
+                ];
+
+                diag.multipart_suggestion(
+                    format!("remove the `{constructor}` and `{name}()`"),
+                    suggestions,
+                    Applicability::MachineApplicable,
+                );
+            },
         );
     }
 }
