@@ -188,12 +188,12 @@ where
         #[cfg(not(parallel_compiler))]
         let mut state_lock = state.active.lock();
         let lock = &mut *state_lock;
+        let current_job_id = qcx.current_query_job();
 
         match lock.entry(key) {
             Entry::Vacant(entry) => {
                 let id = qcx.next_job_id();
-                let job = qcx.current_query_job();
-                let job = QueryJob::new(id, span, job);
+                let job = QueryJob::new(id, span, current_job_id);
 
                 let key = *entry.key();
                 entry.insert(QueryResult::Started(job));
@@ -212,7 +212,7 @@ where
                         // so we just return the error.
                         return TryGetJob::Cycle(id.find_cycle_in_stack(
                             qcx.try_collect_active_jobs().unwrap(),
-                            &qcx.current_query_job(),
+                            &current_job_id,
                             span,
                         ));
                     }
@@ -230,7 +230,7 @@ where
 
                         // With parallel queries we might just have to wait on some other
                         // thread.
-                        let result = latch.wait_on(qcx.current_query_job(), span);
+                        let result = latch.wait_on(current_job_id, span);
 
                         match result {
                             Ok(()) => TryGetJob::JobCompleted(query_blocked_prof_timer),
