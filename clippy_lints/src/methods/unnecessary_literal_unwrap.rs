@@ -6,7 +6,7 @@ use rustc_span::sym;
 
 use super::UNNECESSARY_LITERAL_UNWRAP;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, constructor: &str) {
     let obj_ty = cx.typeck_results().expr_ty(recv).peel_refs();
 
     let mess = if is_type_diagnostic_item(cx, obj_ty, sym::Option) {

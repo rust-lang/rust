@@ -3865,7 +3865,9 @@ impl Methods {
                         Some(("or", recv, [or_arg], or_span, _)) => {
                             or_then_unwrap::check(cx, expr, recv, or_arg, or_span);
                         },
-                        // unnecessary_literal_unwrap::check(cx, expr, recv);
+			Some((constructor @ "Some", _, _, _, _)) => {
+                            unnecessary_literal_unwrap::check(cx, expr, recv, constructor);
+			}
                         _ => {},
                     }
                     unwrap_used::check(cx, expr, recv, false, self.allow_unwrap_in_tests);
