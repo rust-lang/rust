@@ -3893,13 +3893,16 @@ impl Methods {
                 ("unwrap_or_default", []) => {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name);
                 }
-                ("unwrap_or_else", [u_arg]) => match method_call(recv) {
-                    Some(("map", recv, [map_arg], _, _))
-                        if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, &self.msrv) => {},
-                    _ => {
-                        unwrap_or_else_default::check(cx, expr, recv, u_arg);
-                        unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
-                    },
+                ("unwrap_or_else", [u_arg]) => {
+                    match method_call(recv) {
+                        Some(("map", recv, [map_arg], _, _))
+                            if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, &self.msrv) => {},
+                        _ => {
+                            unwrap_or_else_default::check(cx, expr, recv, u_arg);
+                            unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
+                        },
+                    }
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name);
                 },
                 ("zip", [arg]) => {
                     if let ExprKind::MethodCall(name, iter_recv, [], _) = recv.kind

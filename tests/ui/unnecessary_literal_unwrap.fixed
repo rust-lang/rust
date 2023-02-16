@@ -1,5 +1,6 @@
 //run-rustfix
 #![warn(clippy::unnecessary_literal_unwrap)]
+#![allow(clippy::unnecessary_lazy_evaluations)]
 
 fn unwrap_option() {
     let _val = 1;
@@ -15,9 +16,11 @@ fn unwrap_result() {
 fn unwrap_methods_option() {
     let _val = 1;
     let _val = 1;
+    let _val = 1;
 }
 
 fn unwrap_methods_result() {
+    let _val = 1;
     let _val = 1;
     let _val = 1;
 }
