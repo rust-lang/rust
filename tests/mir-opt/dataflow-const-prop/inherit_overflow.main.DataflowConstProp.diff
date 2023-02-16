@@ -10,19 +10,21 @@
       scope 2 (inlined <u8 as Add>::add) { // at $DIR/inherit_overflow.rs:7:13: 7:47
           debug self => _1;                // in scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
           debug other => _2;               // in scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
-          let mut _3: u8;                  // in scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
-          let mut _4: u8;                  // in scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
-          let mut _5: (u8, bool);          // in scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
+          let mut _3: (u8, bool);          // in scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
       }
   
       bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
           _1 = const u8::MAX;              // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
+          StorageLive(_2);                 // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
           _2 = const 1_u8;                 // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
-          _5 = CheckedAdd(const u8::MAX, const 1_u8); // scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
-          assert(!move (_5.1: bool), "attempt to compute `{} + {}`, which would overflow", const u8::MAX, const 1_u8) -> bb1; // scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
+          _3 = CheckedAdd(const u8::MAX, const 1_u8); // scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
+          assert(!move (_3.1: bool), "attempt to compute `{} + {}`, which would overflow", const u8::MAX, const 1_u8) -> bb1; // scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
       }
   
       bb1: {
+          StorageDead(_2);                 // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
+          StorageDead(_1);                 // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
           return;                          // scope 0 at $DIR/inherit_overflow.rs:+4:2: +4:2
       }
   }

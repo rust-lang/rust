@@ -21,27 +21,27 @@ extern "platform-intrinsic" {
 // CHECK-LABEL: @extract_m
 #[no_mangle]
 pub unsafe fn extract_m(v: M, i: u32) -> f32  {
-    // CHECK: extractelement <4 x float> %{{v|_3}}, i32 %i
+    // CHECK: extractelement <4 x float> %{{v|1|2}}, i32 %i
     simd_extract(v, i)
 }
 
 // CHECK-LABEL: @extract_s
 #[no_mangle]
 pub unsafe fn extract_s(v: S<4>, i: u32) -> f32  {
-    // CHECK: extractelement <4 x float> %{{v|_3}}, i32 %i
+    // CHECK: extractelement <4 x float> %{{v|1|2}}, i32 %i
     simd_extract(v, i)
 }
 
 // CHECK-LABEL: @insert_m
 #[no_mangle]
 pub unsafe fn insert_m(v: M, i: u32, j: f32) -> M  {
-    // CHECK: insertelement <4 x float> %{{v|_4}}, float %j, i32 %i
+    // CHECK: insertelement <4 x float> %{{v|1|2}}, float %j, i32 %i
     simd_insert(v, i, j)
 }
 
 // CHECK-LABEL: @insert_s
 #[no_mangle]
 pub unsafe fn insert_s(v: S<4>, i: u32, j: f32) -> S<4>  {
-    // CHECK: insertelement <4 x float> %{{v|_4}}, float %j, i32 %i
+    // CHECK: insertelement <4 x float> %{{v|1|2}}, float %j, i32 %i
     simd_insert(v, i, j)
 }

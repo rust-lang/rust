@@ -29,6 +29,14 @@
       let mut _26: &(usize, usize, usize, usize); // in scope 0 at $DIR/slice_filter.rs:+0:26: +0:38
       let mut _27: &(usize, usize, usize, usize); // in scope 0 at $DIR/slice_filter.rs:+0:26: +0:38
       let mut _28: &(usize, usize, usize, usize); // in scope 0 at $DIR/slice_filter.rs:+0:26: +0:38
+      let mut _31: &usize;                 // in scope 0 at $SRC_DIR/core/src/cmp.rs:LL:COL
+      let mut _32: &usize;                 // in scope 0 at $SRC_DIR/core/src/cmp.rs:LL:COL
+      let mut _37: &usize;                 // in scope 0 at $SRC_DIR/core/src/cmp.rs:LL:COL
+      let mut _38: &usize;                 // in scope 0 at $SRC_DIR/core/src/cmp.rs:LL:COL
+      let mut _43: &usize;                 // in scope 0 at $SRC_DIR/core/src/cmp.rs:LL:COL
+      let mut _44: &usize;                 // in scope 0 at $SRC_DIR/core/src/cmp.rs:LL:COL
+      let mut _49: &usize;                 // in scope 0 at $SRC_DIR/core/src/cmp.rs:LL:COL
+      let mut _50: &usize;                 // in scope 0 at $SRC_DIR/core/src/cmp.rs:LL:COL
       scope 1 {
           debug a => _3;                   // in scope 1 at $DIR/slice_filter.rs:+0:27: +0:28
           debug b => _4;                   // in scope 1 at $DIR/slice_filter.rs:+0:30: +0:31
@@ -39,13 +47,11 @@
               debug other => _10;          // in scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
               let mut _29: &usize;         // in scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
               let mut _30: &usize;         // in scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
-              let mut _31: &usize;         // in scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
-              let mut _32: &usize;         // in scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
               scope 3 (inlined cmp::impls::<impl PartialOrd for usize>::le) { // at $SRC_DIR/core/src/cmp.rs:LL:COL
--                 debug self => _29;       // in scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
--                 debug other => _30;      // in scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+                 debug self => _31;       // in scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+                 debug other => _32;      // in scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-                 debug self => _31;       // in scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-                 debug other => _32;      // in scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
++                 debug self => _29;       // in scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
++                 debug other => _30;      // in scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
                   let mut _33: usize;      // in scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
                   let mut _34: usize;      // in scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
               }
@@ -55,13 +61,11 @@
               debug other => _19;          // in scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
               let mut _35: &usize;         // in scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
               let mut _36: &usize;         // in scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
-              let mut _37: &usize;         // in scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
-              let mut _38: &usize;         // in scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
               scope 5 (inlined cmp::impls::<impl PartialOrd for usize>::le) { // at $SRC_DIR/core/src/cmp.rs:LL:COL
--                 debug self => _35;       // in scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
--                 debug other => _36;      // in scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+                 debug self => _37;       // in scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+                 debug other => _38;      // in scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-                 debug self => _37;       // in scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-                 debug other => _38;      // in scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
++                 debug self => _35;       // in scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
++                 debug other => _36;      // in scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
                   let mut _39: usize;      // in scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
                   let mut _40: usize;      // in scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
               }
@@ -71,13 +75,11 @@
               debug other => _14;          // in scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
               let mut _41: &usize;         // in scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
               let mut _42: &usize;         // in scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
-              let mut _43: &usize;         // in scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
-              let mut _44: &usize;         // in scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
               scope 7 (inlined cmp::impls::<impl PartialOrd for usize>::le) { // at $SRC_DIR/core/src/cmp.rs:LL:COL
--                 debug self => _41;       // in scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
--                 debug other => _42;      // in scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+                 debug self => _43;       // in scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+                 debug other => _44;      // in scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-                 debug self => _43;       // in scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-                 debug other => _44;      // in scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
++                 debug self => _41;       // in scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
++                 debug other => _42;      // in scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
                   let mut _45: usize;      // in scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
                   let mut _46: usize;      // in scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
               }
@@ -87,13 +89,11 @@
               debug other => _23;          // in scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
               let mut _47: &usize;         // in scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
               let mut _48: &usize;         // in scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
-              let mut _49: &usize;         // in scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
-              let mut _50: &usize;         // in scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
               scope 9 (inlined cmp::impls::<impl PartialOrd for usize>::le) { // at $SRC_DIR/core/src/cmp.rs:LL:COL
--                 debug self => _47;       // in scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
--                 debug other => _48;      // in scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+                 debug self => _49;       // in scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+                 debug other => _50;      // in scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-                 debug self => _49;       // in scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-                 debug other => _50;      // in scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
++                 debug self => _47;       // in scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
++                 debug other => _48;      // in scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
                   let mut _51: usize;      // in scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
                   let mut _52: usize;      // in scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
               }
@@ -121,23 +121,23 @@
           StorageLive(_11);                // scope 1 at $DIR/slice_filter.rs:+0:45: +0:46
           _11 = _5;                        // scope 1 at $DIR/slice_filter.rs:+0:45: +0:46
           _10 = &_11;                      // scope 1 at $DIR/slice_filter.rs:+0:45: +0:46
--         StorageLive(_29);                // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          _31 = deref_copy (*_9);          // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _29 = _31;                       // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         StorageLive(_30);                // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          _32 = deref_copy (*_10);         // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _30 = _32;                       // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          _29 = deref_copy (*_9);          // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          _30 = deref_copy (*_10);         // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageLive(_31);                // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _31 = _29;                       // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageLive(_32);                // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _32 = _30;                       // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageLive(_33);                // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _33 = (*_29);                    // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+         _33 = (*_31);                    // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _33 = (*_31);                    // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
++         _33 = (*_29);                    // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageLive(_34);                // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _34 = (*_30);                    // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+         _34 = (*_32);                    // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _34 = (*_32);                    // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
++         _34 = (*_30);                    // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _8 = Le(move _33, move _34);     // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageDead(_34);                // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageDead(_33);                // scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         StorageDead(_30);                // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         StorageDead(_29);                // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageDead(_32);                // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageDead(_31);                // scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageDead(_11);                // scope 1 at $DIR/slice_filter.rs:+0:45: +0:46
           StorageDead(_10);                // scope 1 at $DIR/slice_filter.rs:+0:45: +0:46
           StorageDead(_9);                 // scope 1 at $DIR/slice_filter.rs:+0:45: +0:46
@@ -158,23 +158,23 @@
           StorageLive(_20);                // scope 1 at $DIR/slice_filter.rs:+0:65: +0:66
           _20 = _3;                        // scope 1 at $DIR/slice_filter.rs:+0:65: +0:66
           _19 = &_20;                      // scope 1 at $DIR/slice_filter.rs:+0:65: +0:66
--         StorageLive(_35);                // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          _37 = deref_copy (*_18);         // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _35 = _37;                       // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         StorageLive(_36);                // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          _38 = deref_copy (*_19);         // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _36 = _38;                       // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          _35 = deref_copy (*_18);         // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          _36 = deref_copy (*_19);         // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageLive(_37);                // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _37 = _35;                       // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageLive(_38);                // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _38 = _36;                       // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageLive(_39);                // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _39 = (*_35);                    // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+         _39 = (*_37);                    // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _39 = (*_37);                    // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
++         _39 = (*_35);                    // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageLive(_40);                // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _40 = (*_36);                    // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+         _40 = (*_38);                    // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _40 = (*_38);                    // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
++         _40 = (*_36);                    // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _17 = Le(move _39, move _40);    // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageDead(_40);                // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageDead(_39);                // scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         StorageDead(_36);                // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         StorageDead(_35);                // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageDead(_38);                // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageDead(_37);                // scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageDead(_20);                // scope 1 at $DIR/slice_filter.rs:+0:65: +0:66
           StorageDead(_19);                // scope 1 at $DIR/slice_filter.rs:+0:65: +0:66
           StorageDead(_18);                // scope 1 at $DIR/slice_filter.rs:+0:65: +0:66
@@ -206,23 +206,23 @@
           StorageLive(_15);                // scope 1 at $DIR/slice_filter.rs:+0:55: +0:56
           _15 = _4;                        // scope 1 at $DIR/slice_filter.rs:+0:55: +0:56
           _14 = &_15;                      // scope 1 at $DIR/slice_filter.rs:+0:55: +0:56
--         StorageLive(_41);                // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          _43 = deref_copy (*_13);         // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _41 = _43;                       // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         StorageLive(_42);                // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          _44 = deref_copy (*_14);         // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _42 = _44;                       // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          _41 = deref_copy (*_13);         // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          _42 = deref_copy (*_14);         // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageLive(_43);                // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _43 = _41;                       // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageLive(_44);                // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _44 = _42;                       // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageLive(_45);                // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _45 = (*_41);                    // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+         _45 = (*_43);                    // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _45 = (*_43);                    // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
++         _45 = (*_41);                    // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageLive(_46);                // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _46 = (*_42);                    // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+         _46 = (*_44);                    // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _46 = (*_44);                    // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
++         _46 = (*_42);                    // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _12 = Le(move _45, move _46);    // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageDead(_46);                // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageDead(_45);                // scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         StorageDead(_42);                // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         StorageDead(_41);                // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageDead(_44);                // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageDead(_43);                // scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageDead(_15);                // scope 1 at $DIR/slice_filter.rs:+0:55: +0:56
           StorageDead(_14);                // scope 1 at $DIR/slice_filter.rs:+0:55: +0:56
           StorageDead(_13);                // scope 1 at $DIR/slice_filter.rs:+0:55: +0:56
@@ -245,23 +245,23 @@
           StorageLive(_24);                // scope 1 at $DIR/slice_filter.rs:+0:75: +0:76
           _24 = _6;                        // scope 1 at $DIR/slice_filter.rs:+0:75: +0:76
           _23 = &_24;                      // scope 1 at $DIR/slice_filter.rs:+0:75: +0:76
--         StorageLive(_47);                // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          _49 = deref_copy (*_22);         // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _47 = _49;                       // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         StorageLive(_48);                // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
-          _50 = deref_copy (*_23);         // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _48 = _50;                       // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          _47 = deref_copy (*_22);         // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
+          _48 = deref_copy (*_23);         // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageLive(_49);                // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _49 = _47;                       // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageLive(_50);                // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _50 = _48;                       // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageLive(_51);                // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _51 = (*_47);                    // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+         _51 = (*_49);                    // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _51 = (*_49);                    // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
++         _51 = (*_47);                    // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageLive(_52);                // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         _52 = (*_48);                    // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
-+         _52 = (*_50);                    // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         _52 = (*_50);                    // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
++         _52 = (*_48);                    // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
           _21 = Le(move _51, move _52);    // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageDead(_52);                // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageDead(_51);                // scope 9 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         StorageDead(_48);                // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
--         StorageDead(_47);                // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageDead(_50);                // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
+-         StorageDead(_49);                // scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
           StorageDead(_24);                // scope 1 at $DIR/slice_filter.rs:+0:75: +0:76
           StorageDead(_23);                // scope 1 at $DIR/slice_filter.rs:+0:75: +0:76
           StorageDead(_22);                // scope 1 at $DIR/slice_filter.rs:+0:75: +0:76
