@@ -121,16 +121,42 @@ impl<'a> DescriptionCtx<'a> {
 
 pub enum PrefixKind {
     Empty,
+    RefValidFor,
+    ContentValidFor,
+    TypeObjValidFor,
+    SourcePointerValidFor,
+    TypeSatisfy,
+    TypeOutlive,
+    LfParamInstantiatedWith,
+    LfParamMustOutlive,
+    LfInstantiatedWith,
+    LfMustOutlive,
+    PointerValidFor,
+    DataValidFor,
 }
 
 pub enum SuffixKind {
+    Empty,
     Continues,
+    ReqByBinding,
 }
 
 impl IntoDiagnosticArg for PrefixKind {
     fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
         let kind = match self {
             Self::Empty => "empty",
+            Self::RefValidFor => "ref_valid_for",
+            Self::ContentValidFor => "content_valid_for",
+            Self::TypeObjValidFor => "type_obj_valid_for",
+            Self::SourcePointerValidFor => "source_pointer_valid_for",
+            Self::TypeSatisfy => "type_satisfy",
+            Self::TypeOutlive => "type_outlive",
+            Self::LfParamInstantiatedWith => "lf_param_instantiated_with",
+            Self::LfParamMustOutlive => "lf_param_must_outlive",
+            Self::LfInstantiatedWith => "lf_instantiated_with",
+            Self::LfMustOutlive => "lf_must_outlive",
+            Self::PointerValidFor => "pointer_valid_for",
+            Self::DataValidFor => "data_valid_for",
         }
         .into();
         rustc_errors::DiagnosticArgValue::Str(kind)
@@ -140,7 +166,9 @@ impl IntoDiagnosticArg for PrefixKind {
 impl IntoDiagnosticArg for SuffixKind {
     fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
         let kind = match self {
+            Self::Empty => "empty",
             Self::Continues => "continues",
+            Self::ReqByBinding => "req_by_binding",
         }
         .into();
         rustc_errors::DiagnosticArgValue::Str(kind)
@@ -166,17 +194,19 @@ impl RegionExplanation<'_> {
 }
 
 impl AddToDiagnostic for RegionExplanation<'_> {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, f: F)
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
-        if let Some(span) = self.desc.span {
-            diag.span_note(span, fluent::infer_region_explanation);
-        } else {
-            diag.note(fluent::infer_region_explanation);
-        }
-        self.desc.add_to(diag);
         diag.set_arg("pref_kind", self.prefix);
         diag.set_arg("suff_kind", self.suffix);
+        let desc_span = self.desc.span;
+        self.desc.add_to(diag);
+        let msg = f(diag, fluent::infer_region_explanation.into());
+        if let Some(span) = desc_span {
+            diag.span_note(span, msg);
+        } else {
+            diag.note(msg);
+        }
     }
 }

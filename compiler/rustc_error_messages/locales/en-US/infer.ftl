@@ -140,6 +140,18 @@ infer_lifetime_param_suggestion_elided = each elided lifetime in input position 
 
 infer_region_explanation = {$pref_kind ->
     *[should_not_happen] [{$pref_kind}]
+    [ref_valid_for] ...the reference is valid for
+    [content_valid_for] ...but the borrowed content is only valid for
+    [type_obj_valid_for] object type is valid for
+    [source_pointer_valid_for] source pointer is only valid for
+    [type_satisfy] type must satisfy
+    [type_outlive] type must outlive
+    [lf_param_instantiated_with] lifetime parameter instantiated with
+    [lf_param_must_outlive] but lifetime parameter must outlive
+    [lf_instantiated_with] lifetime instantiated with
+    [lf_must_outlive] but lifetime must outlive
+    [pointer_valid_for] the pointer is valid for
+    [data_valid_for] but the referenced data is only valid for
     [empty] {""}
 }{$pref_kind ->
     [empty] {""}
@@ -148,7 +160,6 @@ infer_region_explanation = {$pref_kind ->
     *[should_not_happen] [{$desc_kind}]
     [restatic] the static lifetime
     [revar] lifetime {$desc_arg}
-
     [as_defined] the lifetime `{$desc_arg}` as defined here
     [as_defined_anon] the anonymous lifetime as defined here
     [defined_here] the anonymous lifetime defined here
@@ -158,7 +169,15 @@ infer_region_explanation = {$pref_kind ->
     *[should_not_happen] [{$suff_kind}]
     [empty]{""}
     [continues] ...
+    [req_by_binding] {" "}as required by this binding
 }
+
+infer_outlives_content = lifetime of reference outlives lifetime of borrowed content...
+infer_outlives_bound = lifetime of the source pointer does not outlive lifetime bound of the object type
+infer_fullfill_req_lifetime = the type `{$ty}` does not fulfill the required lifetime
+infer_lf_bound_not_satisfied = lifetime bound not satisfied
+infer_borrowed_too_long = a value of type `{$ty}` is borrowed for too long
+infer_ref_longer_than_data = in type `{$ty}`, reference has a longer lifetime than the data it references
 
 infer_mismatched_static_lifetime = incompatible lifetime on type
 infer_does_not_outlive_static_from_impl = ...does not necessarily outlive the static lifetime introduced by the compatible `impl`
@@ -308,3 +327,21 @@ infer_ril_introduced_here = `'static` requirement introduced here
 infer_ril_introduced_by = requirement introduced by this return type
 infer_ril_because_of = because of this returned expression
 infer_ril_static_introduced_by = "`'static` lifetime requirement introduced by the return type
+
+infer_where_remove = remove the `where` clause
+infer_where_copy_predicates = copy the `where` clause predicates from the trait
+
+infer_srs_remove_and_box = consider removing this semicolon and boxing the expressions
+infer_srs_remove = consider removing this semicolon
+infer_srs_add = consider returning the local binding `{$ident}`
+infer_srs_add_one = consider returning one of these bindings
+
+infer_await_both_futures = consider `await`ing on both `Future`s
+infer_await_future = consider `await`ing on the `Future`
+infer_await_note = calling an async function returns a future
+
+infer_prlf_defined_with_sub = the lifetime `{$sub_symbol}` defined here...
+infer_prlf_defined_without_sub = the lifetime defined here...
+infer_prlf_must_oultive_with_sup = ...must outlive the lifetime `{$sup_symbol}` defined here
+infer_prlf_must_oultive_without_sup = ...must outlive the lifetime defined here
+infer_prlf_known_limitation = this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)

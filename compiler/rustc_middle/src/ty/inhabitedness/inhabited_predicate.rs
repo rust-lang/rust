@@ -159,7 +159,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
         match self {
             Self::ConstIsZero(c) => {
                 let c = ty::EarlyBinder(c).subst(tcx, substs);
-                let pred = match c.kind().try_to_machine_usize(tcx) {
+                let pred = match c.kind().try_to_target_usize(tcx) {
                     Some(0) => Self::True,
                     Some(1..) => Self::False,
                     None => Self::ConstIsZero(c),

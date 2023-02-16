@@ -22,7 +22,6 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_plugin_impl = { path = "../rustc_plugin_impl" }
-rustc_save_analysis = { path = "../rustc_save_analysis" }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 rustc_session = { path = "../rustc_session" }
 rustc_error_codes = { path = "../rustc_error_codes" }

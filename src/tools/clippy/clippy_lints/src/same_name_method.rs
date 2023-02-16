@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
         let mut map = FxHashMap::<Res, ExistingName>::default();
 
         for id in cx.tcx.hir().items() {
-            if matches!(cx.tcx.def_kind(id.owner_id), DefKind::Impl)
+            if matches!(cx.tcx.def_kind(id.owner_id), DefKind::Impl { .. })
                 && let item = cx.tcx.hir().item(id)
                 && let ItemKind::Impl(Impl {
                   items,

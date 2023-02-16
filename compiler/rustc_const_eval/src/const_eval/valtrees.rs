@@ -239,7 +239,7 @@ fn create_pointee_place<'tcx>(
         MPlaceTy::from_aligned_ptr_with_meta(
             ptr.into(),
             layout,
-            MemPlaceMeta::Meta(Scalar::from_machine_usize(num_elems as u64, &tcx)),
+            MemPlaceMeta::Meta(Scalar::from_target_usize(num_elems as u64, &tcx)),
         )
     } else {
         create_mplace_from_layout(ecx, ty)
@@ -355,7 +355,7 @@ fn valtree_into_mplace<'tcx>(
             let imm = match inner_ty.kind() {
                 ty::Slice(_) | ty::Str => {
                     let len = valtree.unwrap_branch().len();
-                    let len_scalar = Scalar::from_machine_usize(len as u64, &tcx);
+                    let len_scalar = Scalar::from_target_usize(len as u64, &tcx);
 
                     Immediate::ScalarPair(
                         Scalar::from_maybe_pointer((*pointee_place).ptr, &tcx),
@@ -426,7 +426,7 @@ fn valtree_into_mplace<'tcx>(
                         place
                             .offset_with_meta(
                                 offset,
-                                MemPlaceMeta::Meta(Scalar::from_machine_usize(
+                                MemPlaceMeta::Meta(Scalar::from_target_usize(
                                     num_elems as u64,
                                     &tcx,
                                 )),

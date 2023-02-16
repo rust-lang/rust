@@ -231,7 +231,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // First cast to usize.
         let scalar = src.to_scalar();
         let addr = self.cast_from_int_like(scalar, src.layout, self.tcx.types.usize)?;
-        let addr = addr.to_machine_usize(self)?;
+        let addr = addr.to_target_usize(self)?;
 
         // Then turn address into pointer.
         let ptr = M::ptr_from_addr_cast(&self, addr)?;

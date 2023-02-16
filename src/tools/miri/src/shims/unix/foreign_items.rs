@@ -78,19 +78,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [fd, buf, count] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let buf = this.read_pointer(buf)?;
-                let count = this.read_machine_usize(count)?;
+                let count = this.read_target_usize(count)?;
                 let result = this.read(fd, buf, count)?;
-                this.write_scalar(Scalar::from_machine_isize(result, this), dest)?;
+                this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
             }
             "write" => {
                 let [fd, buf, n] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let buf = this.read_pointer(buf)?;
-                let count = this.read_machine_usize(n)?;
+                let count = this.read_target_usize(n)?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, count);
                 let result = this.write(fd, buf, count)?;
                 // Now, `result` is the value we return back to the program.
-                this.write_scalar(Scalar::from_machine_isize(result, this), dest)?;
+                this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
             }
             "unlink" => {
                 let [path] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -151,14 +151,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "readlink" => {
                 let [pathname, buf, bufsize] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.readlink(pathname, buf, bufsize)?;
-                this.write_scalar(Scalar::from_machine_isize(result, this), dest)?;
+                this.write_scalar(Scalar::from_target_isize(result, this), dest)?;
             }
             "posix_fadvise" => {
                 let [fd, offset, len, advice] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.read_scalar(fd)?.to_i32()?;
-                this.read_machine_isize(offset)?;
-                this.read_machine_isize(len)?;
+                this.read_target_isize(offset)?;
+                this.read_target_isize(len)?;
                 this.read_scalar(advice)?.to_i32()?;
                 // fadvise is only informational, we can ignore it.
                 this.write_null(dest)?;
@@ -191,8 +191,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "posix_memalign" => {
                 let [ret, align, size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let ret = this.deref_operand(ret)?;
-                let align = this.read_machine_usize(align)?;
-                let size = this.read_machine_usize(size)?;
+                let align = this.read_target_usize(align)?;
+                let size = this.read_target_usize(size)?;
                 // Align must be power of 2, and also at least ptr-sized (POSIX rules).
                 // But failure to adhere to this is not UB, it's an error condition.
                 if !align.is_power_of_two() || align < this.pointer_size().bytes() {
@@ -216,7 +216,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Dynamic symbol loading
             "dlsym" => {
                 let [handle, symbol] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                this.read_machine_usize(handle)?;
+                this.read_target_usize(handle)?;
                 let symbol = this.read_pointer(symbol)?;
                 let symbol_name = this.read_c_str(symbol)?;
                 if let Some(dlsym) = Dlsym::from_str(symbol_name, &this.tcx.sess.target.os)? {
@@ -472,7 +472,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [errnum, buf, buflen] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let errnum = this.read_scalar(errnum)?;
                 let buf = this.read_pointer(buf)?;
-                let buflen = this.read_machine_usize(buflen)?;
+                let buflen = this.read_target_usize(buflen)?;
 
                 let error = this.try_errnum_to_io_error(errnum)?;
                 let formatted = match error {
@@ -565,7 +565,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let uid = this.read_scalar(uid)?.to_u32()?;
                 let pwd = this.deref_operand(pwd)?;
                 let buf = this.read_pointer(buf)?;
-                let buflen = this.read_machine_usize(buflen)?;
+                let buflen = this.read_target_usize(buflen)?;
                 let result = this.deref_operand(result)?;
 
                 // Must be for "us".

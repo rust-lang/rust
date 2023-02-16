@@ -526,10 +526,8 @@ fn check_item<'tcx>(
                 }
             }
         }
-        DefKind::Impl => {
-            let of_trait = tcx.impl_trait_ref(id.owner_id);
-
-            if of_trait.is_some() {
+        DefKind::Impl { of_trait } => {
+            if of_trait {
                 worklist.push(id.owner_id.def_id);
             }
 
@@ -541,7 +539,7 @@ fn check_item<'tcx>(
 
             // And we access the Map here to get HirId from LocalDefId
             for id in local_def_ids {
-                if of_trait.is_some() || has_allow_dead_code_or_lang_attr(tcx, id) {
+                if of_trait || has_allow_dead_code_or_lang_attr(tcx, id) {
                     worklist.push(id);
                 }
             }

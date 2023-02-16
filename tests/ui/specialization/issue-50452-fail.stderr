@@ -12,7 +12,7 @@ error[E0520]: `foo` specializes an item from a parent `impl`, but that item is n
   --> $DIR/issue-50452-fail.rs:10:5
    |
 LL |     fn foo() {}
-   |     ^^^^^^^^^^^ cannot specialize default item `foo`
+   |     ^^^^^^^^ cannot specialize default item `foo`
 ...
 LL | impl<T> Foo for T {
    | ----------------- parent `impl` is here

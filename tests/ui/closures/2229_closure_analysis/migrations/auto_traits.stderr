@@ -19,7 +19,7 @@ LL ~     thread::spawn(move || { let _ = &fptr; unsafe {
 LL |
  ...
 LL |
-LL ~     } });
+LL ~     } }).join().unwrap();
    |
 
 error: changes to closure capture in Rust 2021 will affect which traits the closure implements
@@ -41,7 +41,7 @@ LL ~     thread::spawn(move || { let _ = &fptr; unsafe {
 LL |
  ...
 LL |
-LL ~     } });
+LL ~     } }).join().unwrap();
    |
 
 error: changes to closure capture in Rust 2021 will affect drop order and which traits the closure implements

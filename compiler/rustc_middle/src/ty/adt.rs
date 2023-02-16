@@ -406,6 +406,7 @@ impl<'tcx> AdtDef<'tcx> {
     }
 
     /// Return the index of `VariantDef` given a variant id.
+    #[inline]
     pub fn variant_index_with_id(self, vid: DefId) -> VariantIdx {
         self.variants()
             .iter_enumerated()

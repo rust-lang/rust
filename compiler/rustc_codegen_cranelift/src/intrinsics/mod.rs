@@ -640,7 +640,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
         sym::assert_inhabited | sym::assert_zero_valid | sym::assert_mem_uninitialized_valid => {
             intrinsic_args!(fx, args => (); intrinsic);
 
-            let layout = fx.layout_of(substs.type_at(0));
+            let ty = substs.type_at(0);
+            let layout = fx.layout_of(ty);
             if layout.abi.is_uninhabited() {
                 with_no_trimmed_paths!({
                     crate::base::codegen_panic_nounwind(
@@ -653,7 +654,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
             }
 
             if intrinsic == sym::assert_zero_valid
-                && !fx.tcx.permits_zero_init(fx.param_env().and(layout))
+                && !fx
+                    .tcx
+                    .permits_zero_init(fx.param_env().and(ty))
+                    .expect("expected to have layout during codegen")
             {
                 with_no_trimmed_paths!({
                     crate::base::codegen_panic_nounwind(
@@ -669,7 +673,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
             }
 
             if intrinsic == sym::assert_mem_uninitialized_valid
-                && !fx.tcx.permits_uninit_init(fx.param_env().and(layout))
+                && !fx
+                    .tcx
+                    .permits_uninit_init(fx.param_env().and(ty))
+                    .expect("expected to have layout during codegen")
             {
                 with_no_trimmed_paths!({
                     crate::base::codegen_panic_nounwind(

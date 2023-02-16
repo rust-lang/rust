@@ -2429,7 +2429,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
         if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
             let parent = self.parent(def_id);
-            if let DefKind::Impl = self.def_kind(parent) {
+            if let DefKind::Impl { .. } = self.def_kind(parent) {
                 return Some(parent);
             }
         }

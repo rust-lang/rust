@@ -552,7 +552,7 @@ fn non_local_item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol)
             .filter(|item| item.ident.name == name)
             .map(|child| child.res.expect_non_local())
             .collect(),
-        DefKind::Impl => tcx
+        DefKind::Impl { .. } => tcx
             .associated_item_def_ids(def_id)
             .iter()
             .copied()

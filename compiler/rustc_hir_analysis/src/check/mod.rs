@@ -75,7 +75,6 @@ pub use check::check_abi;
 use check::check_mod_item_types;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder};
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::BitSet;
@@ -169,27 +168,24 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     }
 }
 
-fn report_forbidden_specialization(
-    tcx: TyCtxt<'_>,
-    impl_item: &hir::ImplItemRef,
-    parent_impl: DefId,
-) {
+fn report_forbidden_specialization(tcx: TyCtxt<'_>, impl_item: DefId, parent_impl: DefId) {
+    let span = tcx.def_span(impl_item);
+    let ident = tcx.item_name(impl_item);
     let mut err = struct_span_err!(
         tcx.sess,
-        impl_item.span,
+        span,
         E0520,
-        "`{}` specializes an item from a parent `impl`, but \
-         that item is not marked `default`",
-        impl_item.ident
+        "`{}` specializes an item from a parent `impl`, but that item is not marked `default`",
+        ident,
     );
-    err.span_label(impl_item.span, format!("cannot specialize default item `{}`", impl_item.ident));
+    err.span_label(span, format!("cannot specialize default item `{}`", ident));
 
     match tcx.span_of_impl(parent_impl) {
         Ok(span) => {
             err.span_label(span, "parent `impl` is here");
             err.note(&format!(
                 "to specialize, `{}` in the parent `impl` must be marked `default`",
-                impl_item.ident
+                ident
             ));
         }
         Err(cname) => {

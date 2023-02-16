@@ -1061,7 +1061,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 };
 
                 let parent_def_id = generics.parent.unwrap();
-                if tcx.def_kind(parent_def_id) == DefKind::Impl {
+                if let DefKind::Impl { .. } = tcx.def_kind(parent_def_id) {
                     let parent_ty = tcx.bound_type_of(parent_def_id).subst(tcx, substs);
                     match (parent_ty.kind(), &ty.kind) {
                         (

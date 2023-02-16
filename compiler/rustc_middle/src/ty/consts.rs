@@ -206,7 +206,7 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
     ) -> Option<u64> {
-        self.kind().eval(tcx, param_env).try_to_machine_usize(tcx)
+        self.kind().eval(tcx, param_env).try_to_target_usize(tcx)
     }
 
     #[inline]

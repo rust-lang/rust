@@ -517,8 +517,7 @@ fn method_autoderef_steps<'tcx>(
         .by_ref()
         .map(|(ty, d)| {
             let step = CandidateStep {
-                self_ty: infcx
-                    .make_query_response_ignoring_pending_obligations(inference_vars.clone(), ty),
+                self_ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, ty),
                 autoderefs: d,
                 from_unsafe_deref: reached_raw_pointer,
                 unsize: false,
@@ -936,7 +935,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         return false;
                     }
                 }
-                self.can_sub(self.param_env, fty.output(), expected).is_ok()
+                self.can_sub(self.param_env, fty.output(), expected)
             }),
             _ => false,
         }

@@ -787,43 +787,43 @@ fn clean_ty_generics<'tcx>(
                 None
             })();
 
-            if let Some(param_idx) = param_idx {
-                if let Some(b) = impl_trait.get_mut(&param_idx.into()) {
-                    let p: WherePredicate = clean_predicate(*p, cx)?;
+            if let Some(param_idx) = param_idx
+                && let Some(b) = impl_trait.get_mut(&param_idx.into())
+            {
+                let p: WherePredicate = clean_predicate(*p, cx)?;
 
-                    b.extend(
-                        p.get_bounds()
+                b.extend(
+                    p.get_bounds()
+                        .into_iter()
+                        .flatten()
+                        .cloned()
+                        .filter(|b| !b.is_sized_bound(cx)),
+                );
+
+                let proj = projection.map(|p| {
+                    (
+                        clean_projection(p.map_bound(|p| p.projection_ty), cx, None),
+                        p.map_bound(|p| p.term),
+                    )
+                });
+                if let Some(((_, trait_did, name), rhs)) = proj
+                    .as_ref()
+                    .and_then(|(lhs, rhs): &(Type, _)| Some((lhs.projection()?, rhs)))
+                {
+                    // FIXME(...): Remove this unwrap()
+                    impl_trait_proj.entry(param_idx).or_default().push((
+                        trait_did,
+                        name,
+                        rhs.map_bound(|rhs| rhs.ty().unwrap()),
+                        p.get_bound_params()
                             .into_iter()
                             .flatten()
-                            .cloned()
-                            .filter(|b| !b.is_sized_bound(cx)),
-                    );
-
-                    let proj = projection.map(|p| {
-                        (
-                            clean_projection(p.map_bound(|p| p.projection_ty), cx, None),
-                            p.map_bound(|p| p.term),
-                        )
-                    });
-                    if let Some(((_, trait_did, name), rhs)) = proj
-                        .as_ref()
-                        .and_then(|(lhs, rhs): &(Type, _)| Some((lhs.projection()?, rhs)))
-                    {
-                        // FIXME(...): Remove this unwrap()
-                        impl_trait_proj.entry(param_idx).or_default().push((
-                            trait_did,
-                            name,
-                            rhs.map_bound(|rhs| rhs.ty().unwrap()),
-                            p.get_bound_params()
-                                .into_iter()
-                                .flatten()
-                                .map(|param| GenericParamDef::lifetime(param.0))
-                                .collect(),
-                        ));
-                    }
-
-                    return None;
+                            .map(|param| GenericParamDef::lifetime(param.0))
+                            .collect(),
+                    ));
                 }
+
+                return None;
             }
 
             Some(p)
@@ -886,7 +886,7 @@ fn clean_ty_generics<'tcx>(
     // `?Sized` bound for each one we didn't find to be `Sized`.
     for tp in &stripped_params {
         if let types::GenericParamDefKind::Type { .. } = tp.kind
-        && !sized_params.contains(&tp.name)
+            && !sized_params.contains(&tp.name)
         {
             where_predicates.push(WherePredicate::BoundPredicate {
                 ty: Type::Generic(tp.name),
@@ -1461,10 +1461,10 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             // Try to normalize `<X as Y>::T` to a type
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
             // `hir_to_ty` can return projection types with escaping vars for GATs, e.g. `<() as Trait>::Gat<'_>`
-            if !ty.has_escaping_bound_vars() {
-                if let Some(normalized_value) = normalize(cx, ty::Binder::dummy(ty)) {
-                    return clean_middle_ty(normalized_value, cx, None);
-                }
+            if !ty.has_escaping_bound_vars()
+                && let Some(normalized_value) = normalize(cx, ty::Binder::dummy(ty))
+            {
+                return clean_middle_ty(normalized_value, cx, None);
             }
 
             let trait_segments = &p.segments[..p.segments.len() - 1];
@@ -1878,11 +1878,9 @@ fn clean_middle_opaque_bounds<'tcx>(
                 _ => return None,
             };
 
-            if let Some(sized) = cx.tcx.lang_items().sized_trait() {
-                if trait_ref.def_id() == sized {
-                    has_sized = true;
-                    return None;
-                }
+            if let Some(sized) = cx.tcx.lang_items().sized_trait() && trait_ref.def_id() == sized {
+                has_sized = true;
+                return None;
             }
 
             let bindings: ThinVec<_> = bounds
@@ -2392,17 +2390,15 @@ fn clean_use_statement_inner<'tcx>(
     let is_visible_from_parent_mod =
         visibility.is_accessible_from(parent_mod, cx.tcx) && !current_mod.is_top_level_module();
 
-    if pub_underscore {
-        if let Some(ref inline) = inline_attr {
-            rustc_errors::struct_span_err!(
-                cx.tcx.sess,
-                inline.span(),
-                E0780,
-                "anonymous imports cannot be inlined"
-            )
-            .span_label(import.span, "anonymous import")
-            .emit();
-        }
+    if pub_underscore && let Some(ref inline) = inline_attr {
+        rustc_errors::struct_span_err!(
+            cx.tcx.sess,
+            inline.span(),
+            E0780,
+            "anonymous imports cannot be inlined"
+        )
+        .span_label(import.span, "anonymous import")
+        .emit();
     }
 
     // We consider inlining the documentation of `pub use` statements, but we
@@ -2438,14 +2434,13 @@ fn clean_use_statement_inner<'tcx>(
         }
         Import::new_glob(resolve_use_source(cx, path), true)
     } else {
-        if inline_attr.is_none() {
-            if let Res::Def(DefKind::Mod, did) = path.res {
-                if !did.is_local() && did.is_crate_root() {
-                    // if we're `pub use`ing an extern crate root, don't inline it unless we
-                    // were specifically asked for it
-                    denied = true;
-                }
-            }
+        if inline_attr.is_none()
+            && let Res::Def(DefKind::Mod, did) = path.res
+            && !did.is_local() && did.is_crate_root()
+        {
+            // if we're `pub use`ing an extern crate root, don't inline it unless we
+            // were specifically asked for it
+            denied = true;
         }
         if !denied {
             let mut visited = DefIdSet::default();

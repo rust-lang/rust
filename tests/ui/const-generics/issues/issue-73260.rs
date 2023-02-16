@@ -1,4 +1,3 @@
-// compile-flags: -Zsave-analysis
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 struct Arr<const N: usize>

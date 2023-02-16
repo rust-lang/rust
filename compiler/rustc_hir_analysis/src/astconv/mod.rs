@@ -1970,7 +1970,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             ) = &qself.kind {
                                 // If the path segment already has type params, we want to overwrite
                                 // them.
-                                match &path.segments[..] {
+                                match &path.segments {
                                     // `segment` is the previous to last element on the path,
                                     // which would normally be the `enum` itself, while the last
                                     // `_` `PathSegment` corresponds to the variant.
@@ -2232,7 +2232,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                         tcx.erase_regions(impl_.self_ty()),
                                         tcx.erase_regions(qself_ty),
                                     )
-                                    .is_ok()
                             })
                             && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
                         })
@@ -2671,7 +2670,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // `Self` in trait or type alias.
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments.iter(), |err| {
-                    if let [hir::PathSegment { args: Some(args), ident, .. }] = &path.segments[..] {
+                    if let [hir::PathSegment { args: Some(args), ident, .. }] = &path.segments {
                         err.span_suggestion_verbose(
                             ident.span.shrink_to_hi().to(args.span_ext),
                             "the `Self` type doesn't accept type parameters",

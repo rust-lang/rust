@@ -780,7 +780,6 @@ impl<'a> Builder<'a> {
                 install::Clippy,
                 install::Miri,
                 install::LlvmTools,
-                install::Analysis,
                 install::Src,
                 install::Rustc
             ),
@@ -1800,16 +1799,6 @@ impl<'a> Builder<'a> {
                     .env(format!("CXX_{}", triple_underscored), &cxx)
                     .env(format!("CXXFLAGS_{}", triple_underscored), cxxflags);
             }
-        }
-
-        if mode == Mode::Std && self.config.extended && compiler.is_final_stage(self) {
-            rustflags.arg("-Zsave-analysis");
-            cargo.env(
-                "RUST_SAVE_ANALYSIS_CONFIG",
-                "{\"output_file\": null,\"full_docs\": false,\
-                       \"pub_only\": true,\"reachable_only\": false,\
-                       \"distro_crate\": true,\"signatures\": false,\"borrow_data\": false}",
-            );
         }
 
         // If Control Flow Guard is enabled, pass the `control-flow-guard` flag to rustc
