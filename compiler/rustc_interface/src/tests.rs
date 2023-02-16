@@ -691,7 +691,6 @@ fn test_unstable_options_tracking_hash() {
     untracked!(proc_macro_execution_strategy, ProcMacroExecutionStrategy::CrossThread);
     untracked!(profile_closures, true);
     untracked!(query_dep_graph, true);
-    untracked!(save_analysis, true);
     untracked!(self_profile, SwitchWithOptPath::Enabled(None));
     untracked!(self_profile_events, Some(vec![String::new()]));
     untracked!(span_debug, true);

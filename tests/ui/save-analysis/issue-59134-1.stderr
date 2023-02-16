@@ -1,9 +1,0 @@
-error[E0425]: cannot find value `bogus` in this scope
-  --> $DIR/issue-59134-1.rs:8:37
-   |
-LL |         const CONST: Self::MyType = bogus.field;
-   |                                     ^^^^^ not found in this scope
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0425`.
