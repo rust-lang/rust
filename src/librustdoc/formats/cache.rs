@@ -287,6 +287,10 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     } else {
                         let last = self.cache.parent_stack.last().expect("parent_stack is empty 2");
                         let did = match &*last {
+                            ParentStackItem::Impl {
+                                for_: clean::Type::BorrowedRef { type_, .. },
+                                ..
+                            } => type_.def_id(&self.cache),
                             ParentStackItem::Impl { for_, .. } => for_.def_id(&self.cache),
                             ParentStackItem::Type(item_id) => item_id.as_def_id(),
                         };
