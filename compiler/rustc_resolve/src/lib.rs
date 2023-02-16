@@ -44,7 +44,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools, TyCtxt};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::cstore::{CrateStore, MetadataLoaderDyn, Untracked};
+use rustc_session::cstore::{CrateStore, Untracked};
 use rustc_session::lint::LintBuffer;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::source_map::Spanned;
@@ -955,8 +955,6 @@ pub struct Resolver<'a, 'tcx> {
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
 
-    local_crate_name: Symbol,
-    metadata_loader: Box<MetadataLoaderDyn>,
     used_extern_options: FxHashSet<Symbol>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Symbol, BuiltinMacroState>,
@@ -1203,8 +1201,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         krate: &Crate,
-        crate_name: Symbol,
-        metadata_loader: Box<MetadataLoaderDyn>,
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
@@ -1312,8 +1308,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 vis: ty::Visibility::Public,
             }),
 
-            metadata_loader,
-            local_crate_name: crate_name,
             used_extern_options: Default::default(),
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
@@ -1464,14 +1458,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         StableHashingContext::new(self.tcx.sess, self.tcx.untracked())
     }
 
-    fn crate_loader<T>(&mut self, f: impl FnOnce(&mut CrateLoader<'_>) -> T) -> T {
-        f(&mut CrateLoader::new(
-            &self.tcx.sess,
-            &*self.metadata_loader,
-            self.local_crate_name,
-            &mut *self.tcx.untracked().cstore.write().untracked_as_any().downcast_mut().unwrap(),
-            &mut self.used_extern_options,
-        ))
+    fn crate_loader<T>(&mut self, f: impl FnOnce(&mut CrateLoader<'_, '_>) -> T) -> T {
+        let mut cstore = self.tcx.untracked().cstore.write();
+        let cstore = cstore.untracked_as_any().downcast_mut().unwrap();
+        f(&mut CrateLoader::new(self.tcx, &mut *cstore, &mut self.used_extern_options))
     }
 
     fn cstore(&self) -> MappedReadGuard<'_, CStore> {

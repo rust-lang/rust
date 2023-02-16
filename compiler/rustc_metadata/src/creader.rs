@@ -15,8 +15,8 @@ use rustc_hir::definitions::Definitions;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, ExternLocation};
+use rustc_session::cstore::ExternCrateSource;
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate};
-use rustc_session::cstore::{ExternCrateSource, MetadataLoaderDyn};
 use rustc_session::lint;
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
@@ -60,14 +60,20 @@ impl std::fmt::Debug for CStore {
     }
 }
 
-pub struct CrateLoader<'a> {
+pub struct CrateLoader<'a, 'tcx: 'a> {
     // Immutable configuration.
-    sess: &'a Session,
-    metadata_loader: &'a MetadataLoaderDyn,
-    local_crate_name: Symbol,
+    tcx: TyCtxt<'tcx>,
     // Mutable output.
     cstore: &'a mut CStore,
     used_extern_options: &'a mut FxHashSet<Symbol>,
+}
+
+impl<'a, 'tcx> std::ops::Deref for CrateLoader<'a, 'tcx> {
+    type Target = TyCtxt<'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.tcx
+    }
 }
 
 pub enum LoadedMacro {
@@ -254,15 +260,13 @@ impl CStore {
     }
 }
 
-impl<'a> CrateLoader<'a> {
+impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     pub fn new(
-        sess: &'a Session,
-        metadata_loader: &'a MetadataLoaderDyn,
-        local_crate_name: Symbol,
+        tcx: TyCtxt<'tcx>,
         cstore: &'a mut CStore,
         used_extern_options: &'a mut FxHashSet<Symbol>,
     ) -> Self {
-        CrateLoader { sess, metadata_loader, local_crate_name, cstore, used_extern_options }
+        CrateLoader { tcx, cstore, used_extern_options }
     }
     pub fn cstore(&self) -> &CStore {
         &self.cstore
@@ -553,9 +557,10 @@ impl<'a> CrateLoader<'a> {
             (LoadResult::Previous(cnum), None)
         } else {
             info!("falling back to a load");
+            let metadata_loader = self.tcx.metadata_loader(()).borrow();
             let mut locator = CrateLocator::new(
                 self.sess,
-                &*self.metadata_loader,
+                &**metadata_loader,
                 name,
                 hash,
                 extra_filename,
@@ -960,7 +965,7 @@ impl<'a> CrateLoader<'a> {
                     &format!(
                         "external crate `{}` unused in `{}`: remove the dependency or add `use {} as _;`",
                         name,
-                        self.local_crate_name,
+                        self.tcx.crate_name(LOCAL_CRATE),
                         name),
                 );
         }

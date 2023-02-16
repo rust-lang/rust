@@ -571,13 +571,7 @@ fn resolver_for_lowering<'tcx>(
 ) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
     let arenas = Resolver::arenas();
     let krate = tcx.crate_for_resolver(()).steal();
-    let mut resolver = Resolver::new(
-        tcx,
-        &krate,
-        tcx.crate_name(LOCAL_CRATE),
-        tcx.metadata_loader(()).steal(),
-        &arenas,
-    );
+    let mut resolver = Resolver::new(tcx, &krate, &arenas);
     let krate = configure_and_expand(tcx, krate, &mut resolver);
 
     // Make sure we don't mutate the cstore from here on.
