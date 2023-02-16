@@ -4676,6 +4676,7 @@ Released 2018-09-13
 [`pub_enum_variant_names`]: https://rust-lang.github.io/rust-clippy/master/index.html#pub_enum_variant_names
 [`pub_use`]: https://rust-lang.github.io/rust-clippy/master/index.html#pub_use
 [`question_mark`]: https://rust-lang.github.io/rust-clippy/master/index.html#question_mark
+[`question_mark_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#question_mark_used
 [`range_minus_one`]: https://rust-lang.github.io/rust-clippy/master/index.html#range_minus_one
 [`range_plus_one`]: https://rust-lang.github.io/rust-clippy/master/index.html#range_plus_one
 [`range_step_by_zero`]: https://rust-lang.github.io/rust-clippy/master/index.html#range_step_by_zero
