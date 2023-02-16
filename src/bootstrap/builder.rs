@@ -284,15 +284,15 @@ impl StepDescription {
         }
     }
 
-    fn maybe_run(&self, builder: &Builder<'_>, pathsets: Vec<PathSet>) -> Option<()> {
+    fn maybe_run(&self, builder: &Builder<'_>, pathsets: Vec<PathSet>) -> bool {
         if pathsets.iter().any(|set| self.is_excluded(builder, set)) {
-            return Some(());
+            return true;
         }
 
         // Determine the targets participating in this rule.
         let targets = if self.only_hosts { &builder.hosts } else { &builder.targets };
         if targets.is_empty() && self.only_hosts {
-            return None;
+            return false;
         }
 
         for target in targets {
@@ -300,7 +300,7 @@ impl StepDescription {
             (self.make_run)(run);
         }
 
-        Some(())
+        true
     }
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
@@ -333,12 +333,12 @@ impl StepDescription {
             );
         }
 
-        let mut hosts_check = Vec::new();
+        let mut ran = false;
         if paths.is_empty() || builder.config.include_default_paths {
             for (desc, should_run) in v.iter().zip(&should_runs) {
                 if desc.default && should_run.is_really_default() {
-                    hosts_check
-                        .push(desc.maybe_run(builder, should_run.paths.iter().cloned().collect()));
+                    ran =
+                        desc.maybe_run(builder, should_run.paths.iter().cloned().collect()) || ran;
                 }
             }
         }
@@ -352,7 +352,7 @@ impl StepDescription {
         paths.retain(|path| {
             for (desc, should_run) in v.iter().zip(&should_runs) {
                 if let Some(suite) = should_run.is_suite_path(&path) {
-                    hosts_check.push(desc.maybe_run(builder, vec![suite.clone()]));
+                    ran = desc.maybe_run(builder, vec![suite.clone()]) || ran;
                     return false;
                 }
             }
@@ -367,12 +367,12 @@ impl StepDescription {
         for (desc, should_run) in v.iter().zip(&should_runs) {
             let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
             if !pathsets.is_empty() {
-                hosts_check.push(desc.maybe_run(builder, pathsets));
+                ran = desc.maybe_run(builder, pathsets) || ran;
             }
         }
 
         // sanity checks on hosts
-        if !hosts_check.contains(&Some(())) {
+        if !ran {
             eprintln!(
                 "`x.py {}` run with empty `host` parameter. Either set it or leave it out for default value.",
                 builder.kind.as_str()
