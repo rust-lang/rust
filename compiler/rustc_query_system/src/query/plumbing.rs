@@ -538,10 +538,9 @@ where
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-    let diagnostics = diagnostics.into_inner();
-    let side_effects = QuerySideEffects { diagnostics };
+    let side_effects = QuerySideEffects { diagnostics: diagnostics.into_inner() };
 
-    if std::intrinsics::unlikely(!side_effects.is_empty()) {
+    if std::intrinsics::unlikely(side_effects.maybe_any()) {
         if query.anon() {
             qcx.store_side_effects_for_anon_node(dep_node_index, side_effects);
         } else {
