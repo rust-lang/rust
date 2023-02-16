@@ -40,7 +40,7 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
         drain_start: usize,
         drain_len: usize,
     ) -> Self {
-        let orig_len = mem::replace(&mut deque.len, drain_start);
+        let orig_len = mem::replace(&mut deque.buf.len, drain_start);
         let tail_len = orig_len - drain_start - drain_len;
         Drain {
             deque: NonNull::from(deque),
@@ -130,7 +130,7 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
 
                 if T::IS_ZST {
                     // no need to copy around any memory if T is a ZST
-                    source_deque.len = orig_len - drain_len;
+                    source_deque.buf.len = orig_len - drain_len;
                     return;
                 }
 
@@ -140,14 +140,14 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
                 match (head_len, tail_len) {
                     (0, 0) => {
                         source_deque.head = 0;
-                        source_deque.len = 0;
+                        source_deque.buf.len = 0;
                     }
                     (0, _) => {
                         source_deque.head = source_deque.to_physical_idx(drain_len);
-                        source_deque.len = orig_len - drain_len;
+                        source_deque.buf.len = orig_len - drain_len;
                     }
                     (_, 0) => {
-                        source_deque.len = orig_len - drain_len;
+                        source_deque.buf.len = orig_len - drain_len;
                     }
                     _ => unsafe {
                         if head_len <= tail_len {
@@ -157,14 +157,14 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
                                 head_len,
                             );
                             source_deque.head = source_deque.to_physical_idx(drain_len);
-                            source_deque.len = orig_len - drain_len;
+                            source_deque.buf.len = orig_len - drain_len;
                         } else {
                             source_deque.wrap_copy(
                                 source_deque.to_physical_idx(head_len + drain_len),
                                 source_deque.to_physical_idx(head_len),
                                 tail_len,
                             );
-                            source_deque.len = orig_len - drain_len;
+                            source_deque.buf.len = orig_len - drain_len;
                         }
                     },
                 }

@@ -25,9 +25,9 @@ where
         unsafe fn push_unchecked<T, A: Allocator>(deque: &mut VecDeque<T, A>, element: T) {
             // SAFETY: Because of the precondition, it's guaranteed that there is space
             // in the logical array after the last element.
-            unsafe { deque.buffer_write(deque.to_physical_idx(deque.len), element) };
+            unsafe { deque.buffer_write(deque.to_physical_idx(deque.buf.len), element) };
             // This can't overflow because `deque.len() < deque.capacity() <= usize::MAX`.
-            deque.len += 1;
+            deque.buf.len += 1;
         }
 
         while let Some(element) = iter.next() {
@@ -38,7 +38,7 @@ where
             unsafe { push_unchecked(self, element) };
 
             // Inner loop to avoid repeatedly calling `reserve`.
-            while self.len < self.capacity() {
+            while self.buf.len < self.capacity() {
                 let Some(element) = iter.next() else {
                     return;
                 };
@@ -66,7 +66,7 @@ where
             self.reserve(additional);
 
             let written = unsafe {
-                self.write_iter_wrapping(self.to_physical_idx(self.len), iter, additional)
+                self.write_iter_wrapping(self.to_physical_idx(self.buf.len), iter, additional)
             };
 
             debug_assert_eq!(
@@ -90,8 +90,8 @@ impl<T, A: Allocator> SpecExtend<T, vec::IntoIter<T>> for VecDeque<T, A> {
         self.reserve(slice.len());
 
         unsafe {
-            self.copy_slice(self.to_physical_idx(self.len), slice);
-            self.len += slice.len();
+            self.copy_slice(self.to_physical_idx(self.buf.len), slice);
+            self.buf.len += slice.len();
         }
         iterator.forget_remaining_elements();
     }
@@ -116,8 +116,8 @@ where
         self.reserve(slice.len());
 
         unsafe {
-            self.copy_slice(self.to_physical_idx(self.len), slice);
-            self.len += slice.len();
+            self.copy_slice(self.to_physical_idx(self.buf.len), slice);
+            self.buf.len += slice.len();
         }
     }
 }

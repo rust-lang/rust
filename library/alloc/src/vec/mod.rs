@@ -783,10 +783,10 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {
-        unsafe { 
+        unsafe {
             let mut buf = RawVec::from_raw_parts_in(ptr, capacity, alloc);
             buf.len = length;
-            Vec { buf  }
+            Vec { buf }
         }
     }
 
