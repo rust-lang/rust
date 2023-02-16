@@ -1056,7 +1056,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
-        let ty = self.tcx.erase_late_bound_regions(self_ty);
+        let ty = self.instantiate_binder_with_placeholders(self_ty);
         let Some(generics) = self.tcx.hir().get_generics(obligation.cause.body_id) else { return false };
         let ty::Ref(_, inner_ty, hir::Mutability::Not) = ty.kind() else { return false };
         let ty::Param(param) = inner_ty.kind() else { return false };

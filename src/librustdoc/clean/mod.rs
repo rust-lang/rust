@@ -21,7 +21,7 @@ use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::PredicateOrigin;
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
-use rustc_middle::middle::resolve_lifetime as rl;
+use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::ty::fold::ir::TypeFolder;
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::TypeVisitable;
@@ -200,11 +200,11 @@ fn clean_poly_trait_ref_with_bindings<'tcx>(
 }
 
 fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> Lifetime {
-    let def = cx.tcx.named_region(lifetime.hir_id);
+    let def = cx.tcx.named_bound_var(lifetime.hir_id);
     if let Some(
-        rl::Region::EarlyBound(node_id)
-        | rl::Region::LateBound(_, _, node_id)
-        | rl::Region::Free(_, node_id),
+        rbv::ResolvedArg::EarlyBound(node_id)
+        | rbv::ResolvedArg::LateBound(_, _, node_id)
+        | rbv::ResolvedArg::Free(_, node_id),
     ) = def
     {
         if let Some(lt) = cx.substs.get(&node_id).and_then(|p| p.as_lt()).cloned() {

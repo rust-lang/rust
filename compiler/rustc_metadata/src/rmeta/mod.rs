@@ -18,7 +18,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
-use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
+use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::mir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::Providers;

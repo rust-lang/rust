@@ -2007,7 +2007,7 @@ impl ExplicitOutlivesRequirements {
         inferred_outlives: &[ty::Region<'tcx>],
         predicate_span: Span,
     ) -> Vec<(usize, Span)> {
-        use rustc_middle::middle::resolve_lifetime::Region;
+        use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 
         bounds
             .iter()
@@ -2017,8 +2017,8 @@ impl ExplicitOutlivesRequirements {
                     return None;
                 };
 
-                let is_inferred = match tcx.named_region(lifetime.hir_id) {
-                    Some(Region::EarlyBound(def_id)) => inferred_outlives
+                let is_inferred = match tcx.named_bound_var(lifetime.hir_id) {
+                    Some(ResolvedArg::EarlyBound(def_id)) => inferred_outlives
                         .iter()
                         .any(|r| matches!(**r, ty::ReEarlyBound(ebr) if { ebr.def_id == def_id })),
                     _ => false,
@@ -2097,7 +2097,7 @@ impl ExplicitOutlivesRequirements {
 
 impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        use rustc_middle::middle::resolve_lifetime::Region;
+        use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 
         let def_id = item.owner_id.def_id;
         if let hir::ItemKind::Struct(_, hir_generics)
@@ -2120,8 +2120,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                 let (relevant_lifetimes, bounds, predicate_span, in_where_clause) =
                     match where_predicate {
                         hir::WherePredicate::RegionPredicate(predicate) => {
-                            if let Some(Region::EarlyBound(region_def_id)) =
-                                cx.tcx.named_region(predicate.lifetime.hir_id)
+                            if let Some(ResolvedArg::EarlyBound(region_def_id)) =
+                                cx.tcx.named_bound_var(predicate.lifetime.hir_id)
                             {
                                 (
                                     Self::lifetimes_outliving_lifetime(

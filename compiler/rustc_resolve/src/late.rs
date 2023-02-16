@@ -21,7 +21,7 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{BindingAnnotation, PrimTy, TraitCandidate};
-use rustc_middle::middle::resolve_lifetime::Set1;
+use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::ty::DefIdTree;
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
@@ -2505,7 +2505,13 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             let res = match kind {
                 ItemRibKind(..) | AssocItemRibKind => Res::Def(def_kind, def_id.to_def_id()),
-                NormalRibKind => Res::Err,
+                NormalRibKind => {
+                    if self.r.session.features_untracked().non_lifetime_binders {
+                        Res::Def(def_kind, def_id.to_def_id())
+                    } else {
+                        Res::Err
+                    }
+                }
                 _ => span_bug!(param.ident.span, "Unexpected rib kind {:?}", kind),
             };
             self.r.record_partial_res(param.id, PartialRes::new(res));

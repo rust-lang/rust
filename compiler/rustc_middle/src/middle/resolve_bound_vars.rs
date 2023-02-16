@@ -1,4 +1,4 @@
-//! Name resolution for lifetimes: type declarations.
+//! Name resolution for lifetimes and late-bound type and const variables: type declarations.
 
 use crate::ty;
 
@@ -8,10 +8,10 @@ use rustc_hir::{ItemLocalId, OwnerId};
 use rustc_macros::HashStable;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
-pub enum Region {
-    Static,
-    EarlyBound(/* lifetime decl */ DefId),
-    LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* lifetime decl */ DefId),
+pub enum ResolvedArg {
+    StaticLifetime,
+    EarlyBound(/* decl */ DefId),
+    LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* decl */ DefId),
     Free(DefId, /* lifetime decl */ DefId),
 }
 
@@ -46,10 +46,10 @@ pub enum ObjectLifetimeDefault {
 /// Maps the id of each lifetime reference to the lifetime decl
 /// that it corresponds to.
 #[derive(Default, HashStable, Debug)]
-pub struct ResolveLifetimes {
+pub struct ResolveBoundVars {
     /// Maps from every use of a named (not anonymous) lifetime to a
     /// `Region` describing how that region is bound
-    pub defs: FxHashMap<OwnerId, FxHashMap<ItemLocalId, Region>>,
+    pub defs: FxHashMap<OwnerId, FxHashMap<ItemLocalId, ResolvedArg>>,
 
     pub late_bound_vars: FxHashMap<OwnerId, FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>>,
 }

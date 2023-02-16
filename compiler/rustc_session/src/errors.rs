@@ -4,7 +4,7 @@ use crate::cgu_reuse_tracker::CguReuse;
 use crate::parse::ParseSess;
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
-use rustc_errors::MultiSpan;
+use rustc_errors::{error_code, DiagnosticMessage, EmissionGuarantee, IntoDiagnostic, MultiSpan};
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
@@ -27,12 +27,22 @@ pub struct CguNotRecorded<'a> {
     pub cgu_name: &'a str,
 }
 
-#[derive(Diagnostic)]
-#[diag(session_feature_gate_error, code = "E0658")]
-pub struct FeatureGateError<'a> {
-    #[primary_span]
+pub struct FeatureGateError {
     pub span: MultiSpan,
-    pub explain: &'a str,
+    pub explain: DiagnosticMessage,
+}
+
+impl<'a, T: EmissionGuarantee> IntoDiagnostic<'a, T> for FeatureGateError {
+    #[track_caller]
+    fn into_diagnostic(
+        self,
+        handler: &'a rustc_errors::Handler,
+    ) -> rustc_errors::DiagnosticBuilder<'a, T> {
+        let mut diag = handler.struct_diagnostic(self.explain);
+        diag.set_span(self.span);
+        diag.code(error_code!(E0658));
+        diag
+    }
 }
 
 #[derive(Subdiagnostic)]
