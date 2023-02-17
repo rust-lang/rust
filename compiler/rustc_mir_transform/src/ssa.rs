@@ -53,7 +53,7 @@ impl SsaLocals {
         body: &Body<'tcx>,
         borrowed_locals: &BitSet<Local>,
     ) -> SsaLocals {
-        let assignment_order = Vec::new();
+        let assignment_order = Vec::with_capacity(body.local_decls.len());
 
         let assignments = IndexVec::from_elem(Set1::Empty, &body.local_decls);
         let dominators =
@@ -203,7 +203,10 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor {
         match ctxt {
             PlaceContext::MutatingUse(MutatingUseContext::Store) => {
                 self.assignments[local].insert(LocationExtended::Plain(loc));
-                self.assignment_order.push(local);
+                if let Set1::One(_) = self.assignments[local] {
+                    // Only record if SSA-like, to avoid growing the vector needlessly.
+                    self.assignment_order.push(local);
+                }
             }
             // Anything can happen with raw pointers, so remove them.
             PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
