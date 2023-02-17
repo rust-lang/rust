@@ -53,7 +53,7 @@ pub fn opts() -> TargetOptions {
         frame_pointer: FramePointer::Always,
         // ARM supports multiple ABIs for enums, the linux one matches the default of 32 here
         // but any arm-none or thumb-none target will be defaulted to 8 on GCC and clang
-        c_enum_min_bits: 8,
+        c_enum_min_bits: Some(8),
         ..Default::default()
     }
 }

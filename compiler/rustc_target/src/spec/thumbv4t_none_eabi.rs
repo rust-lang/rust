@@ -55,7 +55,7 @@ pub fn target() -> Target {
             // suggested from thumb_base, rust-lang/rust#44993.
             emit_debug_gdb_scripts: false,
             // suggested from thumb_base, with no-os gcc/clang use 8-bit enums
-            c_enum_min_bits: 8,
+            c_enum_min_bits: Some(8),
             frame_pointer: FramePointer::MayOmit,
 
             main_needs_argc_argv: false,
