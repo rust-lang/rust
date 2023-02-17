@@ -435,13 +435,15 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
             let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
             let caller = fx.tcx.sess.source_map().lookup_char_pos(topmost.lo());
             let col = caller.col_display as u32 + 1;
-            let len: u16 = (topmost.hi() - topmost.lo()).to_usize().try_into().unwrap_or(0);
+            let len: u32 = (topmost.hi() - topmost.lo()).to_usize().try_into().unwrap_or(0);
             let const_loc = fx.tcx.const_caller_location((
                 rustc_span::symbol::Symbol::intern(
                     &caller.file.name.prefer_remapped().to_string_lossy(),
                 ),
                 caller.line as u32,
-                ((len as u32) << 16) + col as u32,
+                col,
+                len,
+                caller.file.crc32_hash,
             ));
             crate::constant::codegen_const_value(fx, const_loc, fx.tcx.caller_location_ty())
         };
