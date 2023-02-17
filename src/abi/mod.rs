@@ -142,7 +142,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
             let indirect_ret_val = returns.len() == 1 && returns[0].value_type == types::I128;
 
             if indirect_ret_val {
-                params.insert(0, AbiParam::new(types::I128));
+                params.insert(0, AbiParam::new(self.pointer_type));
                 let ret_ptr =
                     Pointer::stack_slot(self.bcx.create_sized_stack_slot(StackSlotData {
                         kind: StackSlotKind::ExplicitSlot,
