@@ -193,7 +193,7 @@ impl<'tcx> Cx<'tcx> {
                 let va_list_did = self.tcx.require_lang_item(LangItem::VaList, Some(param.span));
 
                 self.tcx
-                    .bound_type_of(va_list_did)
+                    .type_of(va_list_did)
                     .subst(self.tcx, &[self.tcx.lifetimes.re_erased.into()])
             } else {
                 fn_sig.inputs()[index]

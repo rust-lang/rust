@@ -1847,7 +1847,7 @@ fn is_late_bound_map(
                     let mut walker = ConstrainedCollectorPostAstConv {
                         arg_is_constrained: vec![false; generics.params.len()].into_boxed_slice(),
                     };
-                    walker.visit_ty(self.tcx.type_of(alias_def));
+                    walker.visit_ty(self.tcx.type_of(alias_def).subst_identity());
 
                     match segments.last() {
                         Some(hir::PathSegment { args: Some(args), .. }) => {

@@ -165,7 +165,7 @@ impl<'tcx> Rvalue<'tcx> {
                 tcx.mk_array_with_const_len(operand.ty(local_decls, tcx), count)
             }
             Rvalue::ThreadLocalRef(did) => {
-                let static_ty = tcx.type_of(did);
+                let static_ty = tcx.type_of(did).subst_identity();
                 if tcx.is_mutable_static(did) {
                     tcx.mk_mut_ptr(static_ty)
                 } else if tcx.is_foreign_item(did) {
@@ -202,9 +202,7 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
                 AggregateKind::Array(ty) => tcx.mk_array(ty, ops.len() as u64),
                 AggregateKind::Tuple => tcx.mk_tup(ops.iter().map(|op| op.ty(local_decls, tcx))),
-                AggregateKind::Adt(did, _, substs, _, _) => {
-                    tcx.bound_type_of(did).subst(tcx, substs)
-                }
+                AggregateKind::Adt(did, _, substs, _, _) => tcx.type_of(did).subst(tcx, substs),
                 AggregateKind::Closure(did, substs) => tcx.mk_closure(did, substs),
                 AggregateKind::Generator(did, substs, movability) => {
                     tcx.mk_generator(did, substs, movability)

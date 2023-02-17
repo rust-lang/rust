@@ -152,7 +152,7 @@ rustc_queries! {
     /// to an alias, it will "skip" this alias to return the aliased type.
     ///
     /// [`DefId`]: rustc_hir::def_id::DefId
-    query type_of(key: DefId) -> Ty<'tcx> {
+    query type_of(key: DefId) -> ty::EarlyBinder<Ty<'tcx>> {
         desc { |tcx|
             "{action} `{path}`",
             action = {

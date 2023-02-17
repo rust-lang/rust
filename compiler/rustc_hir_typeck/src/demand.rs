@@ -2037,7 +2037,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                    args: &[hir::Expr<'_>],
                                    kind: CallableKind| {
             let arg_idx = args.iter().position(|a| a.hir_id == expr.hir_id).unwrap();
-            let fn_ty = self.tcx.bound_type_of(def_id).0;
+            let fn_ty = self.tcx.type_of(def_id).skip_binder();
             if !fn_ty.is_fn() {
                 return;
             }

@@ -1940,7 +1940,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         impl_def_id: DefId,
     ) -> (ty::EarlyBinder<Ty<'tcx>>, SubstsRef<'tcx>) {
-        (self.tcx.bound_type_of(impl_def_id), self.fresh_item_substs(impl_def_id))
+        (self.tcx.type_of(impl_def_id), self.fresh_item_substs(impl_def_id))
     }
 
     fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx> {
@@ -1958,7 +1958,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     kind: ConstVariableOriginKind::SubstitutionPlaceholder,
                     span,
                 };
-                self.next_const_var(self.tcx.type_of(param.def_id), origin).into()
+                self.next_const_var(
+                    self.tcx
+                        .type_of(param.def_id)
+                        .no_bound_vars()
+                        .expect("const parameter types cannot be generic"),
+                    origin,
+                )
+                .into()
             }
         })
     }

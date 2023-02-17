@@ -874,7 +874,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
 
         // Const parameters are well formed if their type is structural match.
         hir::GenericParamKind::Const { ty: hir_ty, default: _ } => {
-            let ty = tcx.type_of(param.def_id);
+            let ty = tcx.type_of(param.def_id).subst_identity();
 
             if tcx.features().adt_const_params {
                 if let Some(non_structural_match_ty) =
@@ -1011,12 +1011,12 @@ fn check_associated_item(
 
         let self_ty = match item.container {
             ty::TraitContainer => tcx.types.self_param,
-            ty::ImplContainer => tcx.type_of(item.container_id(tcx)),
+            ty::ImplContainer => tcx.type_of(item.container_id(tcx)).subst_identity(),
         };
 
         match item.kind {
             ty::AssocKind::Const => {
-                let ty = tcx.type_of(item.def_id);
+                let ty = tcx.type_of(item.def_id).subst_identity();
                 let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
                 wfcx.register_wf_obligation(span, loc, ty.into());
             }
@@ -1037,7 +1037,7 @@ fn check_associated_item(
                     check_associated_type_bounds(wfcx, item, span)
                 }
                 if item.defaultness(tcx).has_value() {
-                    let ty = tcx.type_of(item.def_id);
+                    let ty = tcx.type_of(item.def_id).subst_identity();
                     let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
                     wfcx.register_wf_obligation(span, loc, ty.into());
                 }
@@ -1070,7 +1070,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
                 let field_id = field.did.expect_local();
                 let hir::FieldDef { ty: hir_ty, .. } =
                     tcx.hir().get_by_def_id(field_id).expect_field();
-                let ty = wfcx.normalize(hir_ty.span, None, tcx.type_of(field.did));
+                let ty = wfcx.normalize(hir_ty.span, None, tcx.type_of(field.did).subst_identity());
                 wfcx.register_wf_obligation(
                     hir_ty.span,
                     Some(WellFormedLoc::Ty(field_id)),
@@ -1082,7 +1082,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
             // intermediate types must be sized.
             let needs_drop_copy = || {
                 packed && {
-                    let ty = tcx.type_of(variant.fields.last().unwrap().did);
+                    let ty = tcx.type_of(variant.fields.last().unwrap().did).subst_identity();
                     let ty = tcx.erase_regions(ty);
                     if ty.needs_infer() {
                         tcx.sess
@@ -1104,7 +1104,7 @@ fn check_type_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, all_sized: b
                 let field_id = field.did.expect_local();
                 let hir::FieldDef { ty: hir_ty, .. } =
                     tcx.hir().get_by_def_id(field_id).expect_field();
-                let ty = wfcx.normalize(hir_ty.span, None, tcx.type_of(field.did));
+                let ty = wfcx.normalize(hir_ty.span, None, tcx.type_of(field.did).subst_identity());
                 wfcx.register_bound(
                     traits::ObligationCause::new(
                         hir_ty.span,
@@ -1215,7 +1215,7 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: LocalDefId, ty_span: Span, allow_fo
     debug!("check_item_type: {:?}", item_id);
 
     enter_wf_checking_ctxt(tcx, ty_span, item_id, |wfcx| {
-        let ty = tcx.type_of(item_id);
+        let ty = tcx.type_of(item_id).subst_identity();
         let item_ty = wfcx.normalize(ty_span, Some(WellFormedLoc::Ty(item_id)), ty);
 
         let mut forbid_unsized = true;
@@ -1300,7 +1300,7 @@ fn check_impl<'tcx>(
                 wfcx.register_obligations(obligations);
             }
             None => {
-                let self_ty = tcx.type_of(item.owner_id);
+                let self_ty = tcx.type_of(item.owner_id).subst_identity();
                 let self_ty = wfcx.normalize(
                     item.span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
@@ -1345,7 +1345,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
         match param.kind {
             GenericParamDefKind::Type { .. } => {
                 if is_our_default(param) {
-                    let ty = tcx.type_of(param.def_id);
+                    let ty = tcx.type_of(param.def_id).subst_identity();
                     // Ignore dependent defaults -- that is, where the default of one type
                     // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
                     // be sure if it will error or not as user might always specify the other.
@@ -1397,7 +1397,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             GenericParamDefKind::Type { .. } => {
                 // If the param has a default, ...
                 if is_our_default(param) {
-                    let default_ty = tcx.type_of(param.def_id);
+                    let default_ty = tcx.type_of(param.def_id).subst_identity();
                     // ... and it's not a dependent default, ...
                     if !default_ty.needs_subst() {
                         // ... then substitute it with the default.
@@ -1813,7 +1813,7 @@ fn check_variances_for_type_defn<'tcx>(
     item: &hir::Item<'tcx>,
     hir_generics: &hir::Generics<'_>,
 ) {
-    let ty = tcx.type_of(item.owner_id);
+    let ty = tcx.type_of(item.owner_id).subst_identity();
     if tcx.has_error_field(ty) {
         return;
     }

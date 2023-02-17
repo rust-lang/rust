@@ -908,8 +908,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         // different from the received one
                                         // So we avoid suggestion method with Box<Self>
                                         // for instance
-                                        self.tcx.at(span).type_of(*def_id) != rcvr_ty
-                                            && self.tcx.at(span).type_of(*def_id) != rcvr_ty
+                                        self.tcx.at(span).type_of(*def_id).subst_identity()
+                                            != rcvr_ty
+                                            && self.tcx.at(span).type_of(*def_id).subst_identity()
+                                                != rcvr_ty
                                     }
                                     (Mode::Path, false, _) => true,
                                     _ => false,
@@ -929,7 +931,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .iter()
                             .take(limit)
                             .map(|impl_item| {
-                                format!("- `{}`", self.tcx.at(span).type_of(*impl_item))
+                                format!(
+                                    "- `{}`",
+                                    self.tcx.at(span).type_of(*impl_item).subst_identity()
+                                )
                             })
                             .collect::<Vec<_>>()
                             .join("\n");
@@ -1106,7 +1111,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None
                     };
 
-                    let impl_ty = self.tcx.at(span).type_of(impl_did);
+                    let impl_ty = self.tcx.at(span).type_of(impl_did).subst_identity();
 
                     let insertion = match self.tcx.impl_trait_ref(impl_did) {
                         None => String::new(),
@@ -1235,7 +1240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // When the "method" is resolved through dereferencing, we really want the
             // original type that has the associated function for accurate suggestions.
             // (#61411)
-            let impl_ty = self.tcx.type_of(*impl_did);
+            let impl_ty = self.tcx.type_of(*impl_did).subst_identity();
             let target_ty = self
                 .autoderef(sugg_span, rcvr_ty)
                 .find(|(rcvr_ty, _)| {
@@ -1455,8 +1460,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let range_def_id = self.tcx.require_lang_item(lang_item.unwrap(), None);
-                    let range_ty =
-                        self.tcx.bound_type_of(range_def_id).subst(self.tcx, &[actual.into()]);
+                    let range_ty = self.tcx.type_of(range_def_id).subst(self.tcx, &[actual.into()]);
 
                     let pick = self.lookup_probe_for_diagnostic(
                         item_name,

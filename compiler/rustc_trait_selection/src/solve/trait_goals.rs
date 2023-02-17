@@ -326,7 +326,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                         .fields
                         .last()
                         .expect("expected unsized ADT to have a tail field");
-                    let tail_field_ty = tcx.bound_type_of(tail_field.did);
+                    let tail_field_ty = tcx.type_of(tail_field.did);
 
                     let a_tail_ty = tail_field_ty.subst(tcx, a_substs);
                     let b_tail_ty = tail_field_ty.subst(tcx, b_substs);

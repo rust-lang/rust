@@ -696,13 +696,13 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 let variant = adt_def.non_enum_variant();
                 let param_env = tcx.param_env(variant.def_id);
                 let field = variant.fields.iter().find(|field| {
-                    let ty = tcx.type_of(field.did);
+                    let ty = tcx.type_of(field.did).subst_identity();
                     let is_zst =
                         tcx.layout_of(param_env.and(ty)).map_or(false, |layout| layout.is_zst());
                     !is_zst
                 });
                 if let Some(field) = field {
-                    let ty0 = tcx.bound_type_of(field.did).subst(tcx, substs);
+                    let ty0 = tcx.type_of(field.did).subst(tcx, substs);
                     // Generalize any repr(transparent) user-defined type that is either a pointer
                     // or reference, and either references itself or any other type that contains or
                     // references itself, to avoid a reference cycle.

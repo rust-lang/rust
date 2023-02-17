@@ -109,7 +109,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
                     // `Generics`. To avoid relying on the `impl` block, these
                     // things would need to be created from wholecloth, in a
                     // form that is valid for use in type inference.
-                    let ty = tcx.type_of(def_id);
+                    let ty = tcx.type_of(def_id).subst_identity();
                     match ty.kind() {
                         ty::Slice(ty)
                         | ty::Ref(_, ty, _)

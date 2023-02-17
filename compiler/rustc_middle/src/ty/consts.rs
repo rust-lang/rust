@@ -73,7 +73,10 @@ impl<'tcx> Const<'tcx> {
         let expr = &tcx.hir().body(body_id).value;
         debug!(?expr);
 
-        let ty = tcx.type_of(def.def_id_for_type_of());
+        let ty = tcx
+            .type_of(def.def_id_for_type_of())
+            .no_bound_vars()
+            .expect("const parameter types cannot be generic");
 
         match Self::try_eval_lit_or_param(tcx, ty, expr) {
             Some(v) => v,

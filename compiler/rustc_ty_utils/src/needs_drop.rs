@@ -242,7 +242,7 @@ fn drop_tys_helper<'tcx>(
             Ok(Vec::new())
         } else {
             let field_tys = adt_def.all_fields().map(|field| {
-                let r = tcx.bound_type_of(field.did).subst(tcx, substs);
+                let r = tcx.type_of(field.did).subst(tcx, substs);
                 debug!("drop_tys_helper: Subst into {:?} with {:?} gettng {:?}", field, substs, r);
                 r
             });
@@ -295,9 +295,15 @@ fn adt_drop_tys<'tcx>(
     let adt_has_dtor =
         |adt_def: ty::AdtDef<'tcx>| adt_def.destructor(tcx).map(|_| DtorType::Significant);
     // `tcx.type_of(def_id)` identical to `tcx.make_adt(def, identity_substs)`
-    drop_tys_helper(tcx, tcx.type_of(def_id), tcx.param_env(def_id), adt_has_dtor, false)
-        .collect::<Result<Vec<_>, _>>()
-        .map(|components| tcx.intern_type_list(&components))
+    drop_tys_helper(
+        tcx,
+        tcx.type_of(def_id).subst_identity(),
+        tcx.param_env(def_id),
+        adt_has_dtor,
+        false,
+    )
+    .collect::<Result<Vec<_>, _>>()
+    .map(|components| tcx.intern_type_list(&components))
 }
 // If `def_id` refers to a generic ADT, the queries above and below act as if they had been handed
 // a `tcx.make_ty(def, identity_substs)` and as such it is legal to substitute the generic parameters
@@ -308,7 +314,7 @@ fn adt_significant_drop_tys(
 ) -> Result<&ty::List<Ty<'_>>, AlwaysRequiresDrop> {
     drop_tys_helper(
         tcx,
-        tcx.type_of(def_id), // identical to `tcx.make_adt(def, identity_substs)`
+        tcx.type_of(def_id).subst_identity(), // identical to `tcx.make_adt(def, identity_substs)`
         tcx.param_env(def_id),
         adt_consider_insignificant_dtor(tcx),
         true,
