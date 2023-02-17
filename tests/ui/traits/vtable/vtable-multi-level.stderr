@@ -29,7 +29,7 @@ error: vtable entries for `<S as O>`: [
            TraitVPtr(<S as N>),
            Method(<S as O>::foo_o),
        ]
-  --> $DIR/vtable-multi-level.rs:97:1
+  --> $DIR/vtable-multi-level.rs:96:1
    |
 LL | trait O: G + N {
    | ^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ error: vtable entries for `<S as A>`: [
            MetadataAlign,
            Method(<S as A>::foo_a),
        ]
-  --> $DIR/vtable-multi-level.rs:14:1
+  --> $DIR/vtable-multi-level.rs:13:1
    |
 LL | trait A {
    | ^^^^^^^
@@ -51,7 +51,7 @@ error: vtable entries for `<S as B>`: [
            MetadataAlign,
            Method(<S as B>::foo_b),
        ]
-  --> $DIR/vtable-multi-level.rs:20:1
+  --> $DIR/vtable-multi-level.rs:19:1
    |
 LL | trait B {
    | ^^^^^^^
@@ -65,7 +65,7 @@ error: vtable entries for `<S as C>`: [
            TraitVPtr(<S as B>),
            Method(<S as C>::foo_c),
        ]
-  --> $DIR/vtable-multi-level.rs:26:1
+  --> $DIR/vtable-multi-level.rs:25:1
    |
 LL | trait C: A + B {
    | ^^^^^^^^^^^^^^
@@ -76,7 +76,7 @@ error: vtable entries for `<S as D>`: [
            MetadataAlign,
            Method(<S as D>::foo_d),
        ]
-  --> $DIR/vtable-multi-level.rs:32:1
+  --> $DIR/vtable-multi-level.rs:31:1
    |
 LL | trait D {
    | ^^^^^^^
@@ -87,7 +87,7 @@ error: vtable entries for `<S as E>`: [
            MetadataAlign,
            Method(<S as E>::foo_e),
        ]
-  --> $DIR/vtable-multi-level.rs:38:1
+  --> $DIR/vtable-multi-level.rs:37:1
    |
 LL | trait E {
    | ^^^^^^^
@@ -101,7 +101,7 @@ error: vtable entries for `<S as F>`: [
            TraitVPtr(<S as E>),
            Method(<S as F>::foo_f),
        ]
-  --> $DIR/vtable-multi-level.rs:44:1
+  --> $DIR/vtable-multi-level.rs:43:1
    |
 LL | trait F: D + E {
    | ^^^^^^^^^^^^^^
@@ -112,7 +112,7 @@ error: vtable entries for `<S as H>`: [
            MetadataAlign,
            Method(<S as H>::foo_h),
        ]
-  --> $DIR/vtable-multi-level.rs:55:1
+  --> $DIR/vtable-multi-level.rs:54:1
    |
 LL | trait H {
    | ^^^^^^^
@@ -123,7 +123,7 @@ error: vtable entries for `<S as I>`: [
            MetadataAlign,
            Method(<S as I>::foo_i),
        ]
-  --> $DIR/vtable-multi-level.rs:61:1
+  --> $DIR/vtable-multi-level.rs:60:1
    |
 LL | trait I {
    | ^^^^^^^
@@ -137,7 +137,7 @@ error: vtable entries for `<S as J>`: [
            TraitVPtr(<S as I>),
            Method(<S as J>::foo_j),
        ]
-  --> $DIR/vtable-multi-level.rs:67:1
+  --> $DIR/vtable-multi-level.rs:66:1
    |
 LL | trait J: H + I {
    | ^^^^^^^^^^^^^^
@@ -148,7 +148,7 @@ error: vtable entries for `<S as K>`: [
            MetadataAlign,
            Method(<S as K>::foo_k),
        ]
-  --> $DIR/vtable-multi-level.rs:73:1
+  --> $DIR/vtable-multi-level.rs:72:1
    |
 LL | trait K {
    | ^^^^^^^
@@ -159,7 +159,7 @@ error: vtable entries for `<S as L>`: [
            MetadataAlign,
            Method(<S as L>::foo_l),
        ]
-  --> $DIR/vtable-multi-level.rs:79:1
+  --> $DIR/vtable-multi-level.rs:78:1
    |
 LL | trait L {
    | ^^^^^^^
@@ -173,7 +173,7 @@ error: vtable entries for `<S as M>`: [
            TraitVPtr(<S as L>),
            Method(<S as M>::foo_m),
        ]
-  --> $DIR/vtable-multi-level.rs:85:1
+  --> $DIR/vtable-multi-level.rs:84:1
    |
 LL | trait M: K + L {
    | ^^^^^^^^^^^^^^
@@ -194,7 +194,7 @@ error: vtable entries for `<S as N>`: [
            TraitVPtr(<S as M>),
            Method(<S as N>::foo_n),
        ]
-  --> $DIR/vtable-multi-level.rs:91:1
+  --> $DIR/vtable-multi-level.rs:90:1
    |
 LL | trait N: J + M {
    | ^^^^^^^^^^^^^^

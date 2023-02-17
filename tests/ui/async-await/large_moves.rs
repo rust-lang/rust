@@ -1,7 +1,6 @@
 #![deny(large_assignments)]
 #![feature(large_assignments)]
 #![cfg_attr(attribute, move_size_limit = "1000")]
-// build-fail
 // only-x86_64
 // revisions: attribute option
 // [option]compile-flags: -Zmove-size-limit=1000

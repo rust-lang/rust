@@ -1,4 +1,3 @@
-// build-fail
 // compile-flags:-Zpolymorphize=on
 #![feature(rustc_attrs)]
 

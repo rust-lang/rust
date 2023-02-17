@@ -1,4 +1,3 @@
-// build-fail
 #![feature(rustc_attrs)]
 
 //   O --> G --> C --> A
@@ -119,9 +118,9 @@ impl O for S {}
 
 macro_rules! monomorphize_vtable {
     ($trait:ident) => {{
-        fn foo(_ : &dyn $trait) {}
+        fn foo(_: &dyn $trait) {}
         foo(&S);
-    }}
+    }};
 }
 
 fn main() {

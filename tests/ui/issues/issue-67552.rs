@@ -1,4 +1,3 @@
-// build-fail
 // compile-flags: -Copt-level=0
 // normalize-stderr-test: ".nll/" -> "/"
 

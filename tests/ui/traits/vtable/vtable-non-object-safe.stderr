@@ -7,7 +7,7 @@ error: vtable entries for `<std::vec::IntoIter<u8> as A>`: [
            Method(<std::vec::IntoIter<u8> as Iterator>::advance_by),
            Method(<std::vec::IntoIter<u8> as Iterator>::nth),
        ]
-  --> $DIR/vtable-non-object-safe.rs:8:1
+  --> $DIR/vtable-non-object-safe.rs:7:1
    |
 LL | trait A: Iterator {}
    | ^^^^^^^^^^^^^^^^^

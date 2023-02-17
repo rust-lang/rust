@@ -8,7 +8,7 @@ error: vtable entries for `<S as D>`: [
            TraitVPtr(<S as C>),
            Method(<S as D>::foo_d),
        ]
-  --> $DIR/vtable-diamond.rs:21:1
+  --> $DIR/vtable-diamond.rs:20:1
    |
 LL | trait D: B + C {
    | ^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ error: vtable entries for `<S as C>`: [
            Method(<S as A>::foo_a),
            Method(<S as C>::foo_c),
        ]
-  --> $DIR/vtable-diamond.rs:15:1
+  --> $DIR/vtable-diamond.rs:14:1
    |
 LL | trait C: A {
    | ^^^^^^^^^^

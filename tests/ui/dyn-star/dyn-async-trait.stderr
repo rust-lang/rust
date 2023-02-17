@@ -1,0 +1,25 @@
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/dyn-async-trait.rs:12:39
+   |
+LL |     fn increment<'a>(&'a mut self) -> Future<Output = usize> + 'a;
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL |     fn increment<'a>(&'a mut self) -> dyn Future<Output = usize> + 'a;
+   |                                       +++
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/dyn-async-trait.rs:21:39
+   |
+LL |     fn increment<'a>(&'a mut self) -> Future<Output = usize> + 'a {
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL |     fn increment<'a>(&'a mut self) -> dyn Future<Output = usize> + 'a {
+   |                                       +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0782`.

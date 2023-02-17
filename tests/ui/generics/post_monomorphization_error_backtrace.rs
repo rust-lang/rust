@@ -1,5 +1,3 @@
-// build-fail
-
 fn assert_zst<T>() {
     struct F<T>(T);
     impl<T> F<T> {
@@ -19,7 +17,6 @@ fn foo<U>() {
     //~^ NOTE: the above error was encountered while instantiating `fn assert_zst::<u32>`
     //~| NOTE: the above error was encountered while instantiating `fn assert_zst::<i32>`
 }
-
 
 fn bar<V>() {
     foo::<V>()

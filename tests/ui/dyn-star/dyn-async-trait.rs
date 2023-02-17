@@ -1,4 +1,3 @@
-// check-pass
 // edition: 2021
 
 // This test case is meant to demonstrate how close we can get to async
@@ -10,7 +9,8 @@
 use std::future::Future;
 
 trait DynAsyncCounter {
-    fn increment<'a>(&'a mut self) -> dyn* Future<Output = usize> + 'a;
+    fn increment<'a>(&'a mut self) -> Future<Output = usize> + 'a;
+    //~^ ERROR: trait objects must include the `dyn` keyword
 }
 
 struct MyCounter {
@@ -18,7 +18,8 @@ struct MyCounter {
 }
 
 impl DynAsyncCounter for MyCounter {
-    fn increment<'a>(&'a mut self) -> dyn* Future<Output = usize> + 'a {
+    fn increment<'a>(&'a mut self) -> Future<Output = usize> + 'a {
+        //~^ ERROR: trait objects must include the `dyn` keyword
         Box::pin(async {
             self.count += 1;
             self.count

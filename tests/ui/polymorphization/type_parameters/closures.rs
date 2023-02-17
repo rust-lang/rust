@@ -1,4 +1,3 @@
-// build-fail
 // compile-flags:-Zpolymorphize=on
 #![feature(stmt_expr_attributes, rustc_attrs)]
 

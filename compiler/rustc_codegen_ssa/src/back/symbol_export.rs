@@ -42,10 +42,6 @@ pub fn crates_export_threshold(crate_types: &[CrateType]) -> SymbolExportLevel {
 fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<SymbolExportInfo> {
     assert_eq!(cnum, LOCAL_CRATE);
 
-    if !tcx.sess.opts.output_types.should_codegen() {
-        return Default::default();
-    }
-
     // Check to see if this crate is a "special runtime crate". These
     // crates, implementation details of the standard library, typically
     // have a bunch of `pub extern` and `#[no_mangle]` functions as the
@@ -172,10 +168,6 @@ fn exported_symbols_provider_local(
 ) -> &[(ExportedSymbol<'_>, SymbolExportInfo)] {
     assert_eq!(cnum, LOCAL_CRATE);
 
-    if !tcx.sess.opts.output_types.should_codegen() {
-        return &[];
-    }
-
     // FIXME: Sorting this is unnecessary since we are sorting later anyway.
     //        Can we skip the later sorting?
     let mut symbols: Vec<_> = tcx.with_stable_hashing_context(|hcx| {
@@ -289,7 +281,10 @@ fn exported_symbols_provider_local(
         ));
     }
 
-    if tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics() {
+    if tcx.sess.opts.share_generics()
+        && tcx.local_crate_exports_generics()
+        && tcx.sess.opts.output_types.should_codegen()
+    {
         use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
         use rustc_middle::ty::InstanceDef;
 

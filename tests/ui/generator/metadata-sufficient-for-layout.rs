@@ -4,8 +4,9 @@
 // Regression test for #80998.
 //
 // aux-build:metadata-sufficient-for-layout.rs
+// check-pass
 
-#![feature(type_alias_impl_trait, rustc_attrs)]
+#![feature(type_alias_impl_trait)]
 #![feature(generator_trait)]
 
 extern crate metadata_sufficient_for_layout;
@@ -21,5 +22,4 @@ fn f() -> F {
     metadata_sufficient_for_layout::g()
 }
 
-#[rustc_error]
-fn main() {} //~ ERROR
+fn main() {}

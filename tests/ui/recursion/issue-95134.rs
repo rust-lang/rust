@@ -1,4 +1,3 @@
-// build-fail
 // known-bug: #95134
 // compile-flags: -Copt-level=0
 // failure-status: 101

@@ -1,8 +1,9 @@
 warning: function cannot return without recursing
-  --> $DIR/issue-8727.rs:7:1
+  --> $DIR/issue-8727.rs:6:1
    |
 LL | fn generic<T>() {
    | ^^^^^^^^^^^^^^^ cannot return without recursing
+LL |
 LL |     generic::<Option<T>>();
    |     ---------------------- recursive call site
    |
@@ -16,7 +17,7 @@ LL |     generic::<Option<T>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `generic` defined here
-  --> $DIR/issue-8727.rs:7:1
+  --> $DIR/issue-8727.rs:6:1
    |
 LL | fn generic<T>() {
    | ^^^^^^^^^^^^^^^

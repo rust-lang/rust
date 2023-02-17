@@ -1,8 +1,9 @@
 warning: function cannot return without recursing
-  --> $DIR/issue-83150.rs:11:1
+  --> $DIR/issue-83150.rs:10:1
    |
 LL | fn func<T: Iterator<Item = u8>>(iter: &mut T) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |
 LL |     func(&mut iter.map(|x| x + 1))
    |     ------------------------------ recursive call site
    |

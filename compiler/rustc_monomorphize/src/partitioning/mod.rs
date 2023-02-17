@@ -347,13 +347,20 @@ where
     }
 }
 
+fn collect_crate_mono_items_for_check(tcx: TyCtxt<'_>, (): ()) {
+    collector::collect_crate_mono_items(
+        tcx,
+        MonoItemCollectionMode::Eager { optimized_mir: false },
+    );
+}
+
 fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[CodegenUnit<'_>]) {
     let collection_mode = match tcx.sess.opts.unstable_opts.print_mono_items {
         Some(ref s) => {
             let mode = s.to_lowercase();
             let mode = mode.trim();
             if mode == "eager" {
-                MonoItemCollectionMode::Eager
+                MonoItemCollectionMode::Eager { optimized_mir: true }
             } else {
                 if mode != "lazy" {
                     tcx.sess.emit_warning(UnknownCguCollectionMode { mode });
@@ -364,7 +371,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
         }
         None => {
             if tcx.sess.link_dead_code() {
-                MonoItemCollectionMode::Eager
+                MonoItemCollectionMode::Eager { optimized_mir: true }
             } else {
                 MonoItemCollectionMode::Lazy
             }
@@ -582,6 +589,7 @@ fn codegened_and_inlined_items(tcx: TyCtxt<'_>, (): ()) -> &DefIdSet {
 
 pub fn provide(providers: &mut Providers) {
     providers.collect_and_partition_mono_items = collect_and_partition_mono_items;
+    providers.collect_crate_mono_items_for_check = collect_crate_mono_items_for_check;
     providers.codegened_and_inlined_items = codegened_and_inlined_items;
 
     providers.is_codegened_item = |tcx, def_id| {

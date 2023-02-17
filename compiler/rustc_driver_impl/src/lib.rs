@@ -342,6 +342,10 @@ fn run_compiler(
 
             queries.global_ctxt()?.enter(|tcx| tcx.analysis(()))?;
 
+            if !sess.opts.output_types.should_codegen() && sess.compile_status().is_ok() {
+                queries.global_ctxt()?.enter(|tcx| tcx.collect_crate_mono_items_for_check(()));
+            }
+
             if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
                 return early_exit();
             }

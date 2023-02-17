@@ -5,7 +5,6 @@
 #![feature(lang_items)]
 #![feature(no_core)]
 #![feature(rustc_attrs)]
-
 #![no_core]
 
 #[rustc_builtin_macro]
@@ -25,6 +24,15 @@ mod default {
         }
     }
 }
+
+#[lang = "drop_in_place"]
+#[allow(unconditional_recursion)]
+pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+    drop_in_place(to_drop);
+}
+
+#[lang = "copy"]
+trait Copy {}
 
 #[lang = "sized"]
 trait Sized {}

@@ -203,9 +203,14 @@ use crate::errors::{
     EncounteredErrorWhileInstantiating, LargeAssignmentsLint, RecursionLimit, TypeLengthLimit,
 };
 
-#[derive(PartialEq)]
+#[derive(Debug, Copy, Clone)]
 pub enum MonoItemCollectionMode {
-    Eager,
+    Eager {
+        /// Whether to use optimized mir for collection or just analyis MIR.
+        /// By default uses optimized mir, but for `cargo check` we use unoptimized mir,
+        /// as that is faster.
+        optimized_mir: bool,
+    },
     Lazy,
 }
 
@@ -351,6 +356,7 @@ pub fn collect_crate_mono_items(
                     &mut recursion_depths,
                     recursion_limit,
                     inlining_map,
+                    mode,
                 );
             });
         });
@@ -408,6 +414,7 @@ fn collect_items_rec<'tcx>(
     recursion_depths: &mut DefIdMap<usize>,
     recursion_limit: Limit,
     inlining_map: MTRef<'_, MTLock<InliningMap<'tcx>>>,
+    mode: MonoItemCollectionMode,
 ) {
     if !visited.lock_mut().insert(starting_point.node) {
         // We've been here already, no need to search again.
@@ -476,7 +483,7 @@ fn collect_items_rec<'tcx>(
             check_type_length_limit(tcx, instance);
 
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                collect_neighbours(tcx, instance, &mut neighbors);
+                collect_neighbours(tcx, instance, &mut neighbors, mode);
             });
         }
         MonoItem::GlobalAsm(item_id) => {
@@ -532,7 +539,15 @@ fn collect_items_rec<'tcx>(
     inlining_map.lock_mut().record_accesses(starting_point.node, &neighbors.items);
 
     for (neighbour, _) in neighbors.items {
-        collect_items_rec(tcx, neighbour, visited, recursion_depths, recursion_limit, inlining_map);
+        collect_items_rec(
+            tcx,
+            neighbour,
+            visited,
+            recursion_depths,
+            recursion_limit,
+            inlining_map,
+            mode,
+        );
     }
 
     if let Some((def_id, depth)) = recursion_depth_reset {
@@ -1191,7 +1206,7 @@ impl<'v> RootCollector<'_, 'v> {
     fn process_item(&mut self, id: hir::ItemId) {
         match self.tcx.def_kind(id.owner_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union => {
-                if self.mode == MonoItemCollectionMode::Eager
+                if let MonoItemCollectionMode::Eager { .. } = self.mode
                     && self.tcx.generics_of(id.owner_id).count() == 0
                 {
                     debug!("RootCollector: ADT drop-glue for `{id:?}`",);
@@ -1224,7 +1239,7 @@ impl<'v> RootCollector<'_, 'v> {
                 }
             }
             DefKind::Impl { .. } => {
-                if self.mode == MonoItemCollectionMode::Eager {
+                if let MonoItemCollectionMode::Eager { .. } = self.mode {
                     create_mono_items_for_default_impls(self.tcx, id, self.output);
                 }
             }
@@ -1244,7 +1259,7 @@ impl<'v> RootCollector<'_, 'v> {
     fn is_root(&self, def_id: LocalDefId) -> bool {
         !item_requires_monomorphization(self.tcx, def_id)
             && match self.mode {
-                MonoItemCollectionMode::Eager => true,
+                MonoItemCollectionMode::Eager { .. } => true,
                 MonoItemCollectionMode::Lazy => {
                     self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
                         || self.tcx.is_reachable_non_generic(def_id)
@@ -1396,9 +1411,27 @@ fn collect_neighbours<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     output: &mut MonoItems<'tcx>,
+    mode: MonoItemCollectionMode,
 ) {
-    let body = tcx.instance_mir(instance.def);
-    MirNeighborCollector { tcx, body: &body, output, instance }.visit_body(&body);
+    let mut collect = |body: &mir::Body<'tcx>| {
+        MirNeighborCollector { tcx, body: &body, output, instance }.visit_body(body)
+    };
+    if let MonoItemCollectionMode::Eager { optimized_mir: false } = mode {
+        if let ty::InstanceDef::Item(def) = instance.def {
+            let def_kind = tcx.def_kind(def.did);
+            match def_kind {
+                // Generators get their optimized_mir taken (and thus drop elab mir stolen) in order
+                // to compute their Send/Sync bounds.
+                DefKind::Generator |
+                DefKind::Ctor(..) => {},
+                _ => if let Some(def) = def.as_local() && !tcx.sess.opts.unstable_opts.polymorphize {
+                    collect(&*tcx.mir_drops_elaborated_and_const_checked(def).borrow());
+                    return;
+                },
+            }
+        }
+    }
+    collect(tcx.instance_mir(instance.def));
 }
 
 #[instrument(skip(tcx, output), level = "debug")]

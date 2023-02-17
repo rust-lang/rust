@@ -1,5 +1,3 @@
-// build-fail
-
 trait C {
     const BOO: usize;
 }

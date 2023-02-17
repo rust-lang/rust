@@ -1,4 +1,3 @@
-// build-fail
 // compile-flags:-Zpolymorphize=on
 #![feature(fn_traits, rustc_attrs, unboxed_closures)]
 

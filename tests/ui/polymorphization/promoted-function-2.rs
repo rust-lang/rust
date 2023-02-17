@@ -1,4 +1,3 @@
-// build-fail
 // compile-flags:-Zpolymorphize=on
 #![crate_type = "lib"]
 #![feature(generic_const_exprs, rustc_attrs)]

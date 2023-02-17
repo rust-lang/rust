@@ -1857,6 +1857,11 @@ rustc_queries! {
         desc { "collect_and_partition_mono_items" }
     }
 
+    query collect_crate_mono_items_for_check(_: ()) {
+        eval_always
+        desc { "monomorphize the crate graph" }
+    }
+
     query is_codegened_item(def_id: DefId) -> bool {
         desc { |tcx| "determining whether `{}` needs codegen", tcx.def_path_str(def_id) }
     }
