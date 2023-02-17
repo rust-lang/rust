@@ -4,6 +4,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_infer::traits::FulfillmentError;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::parse::feature_err;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -226,8 +227,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         name: Ident,
         self_ty: Ty<'tcx>,
-        candidates: &[DefId],
-        unsatisfied_predicates: Vec<ty::Predicate<'tcx>>,
+        candidates: Vec<(DefId, (DefId, DefId))>,
+        fulfillment_errors: Vec<FulfillmentError<'tcx>>,
         span: Span,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx();
@@ -245,16 +246,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         };
 
-        if unsatisfied_predicates.is_empty() {
+        if fulfillment_errors.is_empty() {
             // FIXME(fmease): Copied from `rustc_hir_typeck::method::probe`. Deduplicate.
 
             let limit = if candidates.len() == 5 { 5 } else { 4 };
             let type_candidates = candidates
                 .iter()
                 .take(limit)
-                .map(|candidate| {
-                    format!("- `{}`", tcx.at(span).type_of(candidate).subst_identity())
-                })
+                .map(|&(impl_, _)| format!("- `{}`", tcx.at(span).type_of(impl_).subst_identity()))
                 .collect::<Vec<_>>()
                 .join("\n");
             let additional_types = if candidates.len() > limit {
@@ -348,8 +347,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // FIXME(fmease): `rustc_hir_typeck::method::suggest` uses a `skip_list` to filter out some bounds.
         // I would do the same here if it didn't mean more code duplication.
-        let mut bounds: Vec<_> = unsatisfied_predicates
+        let mut bounds: Vec<_> = fulfillment_errors
             .into_iter()
+            .map(|error| error.root_obligation.predicate)
             .filter_map(format_pred)
             .map(|(p, _)| format!("`{}`", p))
             .collect();

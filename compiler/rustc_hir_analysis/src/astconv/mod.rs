@@ -28,7 +28,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::middle::stability::AllowUnstable;
@@ -42,13 +42,11 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_target::spec::abi;
-use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::{
     report_object_safety_error, suggestions::NextTypeParamName,
 };
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::wf::object_region_bounds;
-use rustc_trait_selection::traits::{astconv_object_safety_violations, NormalizeExt};
+use rustc_trait_selection::traits::{self, astconv_object_safety_violations, ObligationCtxt};
 
 use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeSet;
@@ -1948,7 +1946,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             Res::Err
         };
 
-        // Check if we have an enum variant.
+        // Check if we have an enum variant or an inherent associated type.
         let mut variant_resolution = None;
         if let Some(adt_def) = self.probe_adt(span, qself_ty) {
             if adt_def.is_enum() {
@@ -2221,62 +2219,37 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let param_env = tcx.param_env(block.owner.to_def_id());
         let cause = ObligationCause::misc(span, block.owner.def_id);
-        let mut unsatisfied_predicates = Vec::new();
+        let mut fulfillment_errors = Vec::new();
 
         for &(impl_, (assoc_item, def_scope)) in &candidates {
             let infcx = tcx.infer_ctxt().ignoring_regions().build();
+            let ocx = ObligationCtxt::new(&infcx);
 
             let impl_ty = tcx.type_of(impl_);
             let impl_substs = self.fresh_item_substs(impl_, &infcx);
             let impl_ty = impl_ty.subst(tcx, impl_substs);
-
-            let InferOk { value: impl_ty, obligations } =
-                infcx.at(&cause, param_env).normalize(impl_ty);
+            let impl_ty = ocx.normalize(&cause, param_env, impl_ty);
 
             // Check that the Self-types can be related.
-            let Ok(InferOk { obligations: sub_obligations, value: () }) = infcx
-                .at(&ObligationCause::dummy(), param_env)
-                .define_opaque_types(false)
-                .sup(impl_ty, self_ty)
-            else {
+            // FIXME(fmease): Should we use `eq` here?
+            if ocx.sup(&ObligationCause::dummy(), param_env, impl_ty, self_ty).is_err() {
                 continue;
-            };
+            }
 
             // Check whether the impl imposes obligations we have to worry about.
             let impl_bounds = tcx.predicates_of(impl_);
             let impl_bounds = impl_bounds.instantiate(tcx, impl_substs);
 
-            let InferOk { value: impl_bounds, obligations: norm_obligations } =
-                infcx.at(&cause, param_env).normalize(impl_bounds);
+            let impl_bounds = ocx.normalize(&cause, param_env, impl_bounds);
 
             let impl_obligations =
                 traits::predicates_for_generics(|_, _| cause.clone(), param_env, impl_bounds);
 
-            let candidate_obligations = impl_obligations
-                .chain(norm_obligations.into_iter())
-                .chain(obligations.iter().cloned());
+            ocx.register_obligations(impl_obligations);
 
-            let mut matches = true;
-
-            // Evaluate those obligations to see if they might possibly hold.
-            for o in candidate_obligations {
-                let o = infcx.resolve_vars_if_possible(o);
-                if !infcx.predicate_may_hold(&o) {
-                    matches = false;
-                    unsatisfied_predicates.push(o.predicate);
-                }
-            }
-
-            // Evaluate those obligations to see if they might possibly hold.
-            for o in sub_obligations {
-                let o = infcx.resolve_vars_if_possible(o);
-                if !infcx.predicate_may_hold(&o) {
-                    matches = false;
-                    unsatisfied_predicates.push(o.predicate);
-                }
-            }
-
-            if !matches {
+            let errors = ocx.select_where_possible();
+            if !errors.is_empty() {
+                fulfillment_errors = errors;
                 continue;
             }
 
@@ -2286,19 +2259,25 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 bug!("unreachable: `lookup_inherent_assoc_ty` is only called on ADTs");
             };
 
-            let item_substs =
-                self.create_substs_for_associated_item(span, assoc_item, segment, adt_substs);
-            // FIXME(inherent_associated_types): Check if the obligations arising from the
-            // where-clause & the bounds on the associated type and its parameters hold.
+            let item_substs = self.create_substs_for_associated_item(
+                span, assoc_item, segment,
+                // FIXME(fmease, #107468, #105305): Don't use `adt_substs` here but `impl_substs`.
+                adt_substs,
+            );
+
+            // FIXME(fmease, #106722): Check if the bounds on the parameters of the
+            // associated type hold, if any.
             let ty = tcx.type_of(assoc_item).subst(tcx, item_substs);
+
+            // FIXME(fmease): Don't return early here! There might be multiple applicable candidates.
             return Ok(Some((ty, assoc_item)));
         }
 
         Err(self.complain_about_inherent_assoc_type_not_found(
             name,
             self_ty,
-            &candidates.into_iter().map(|(impl_, _)| impl_).collect::<Vec<_>>(),
-            unsatisfied_predicates,
+            candidates,
+            fulfillment_errors,
             span,
         ))
     }
