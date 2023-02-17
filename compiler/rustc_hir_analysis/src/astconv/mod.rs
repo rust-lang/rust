@@ -2267,7 +2267,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         return None;
                     }
 
-                    Some((assoc_item, def_scope))
+                    // FIXME(fmease): Unsolved vars can escape this InferCtxt snapshot.
+                    Some((assoc_item, def_scope, infcx.resolve_vars_if_possible(impl_substs)))
                 })
             })
             .collect();
@@ -2275,23 +2276,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if applicable_candidates.len() > 1 {
             return Err(self.complain_about_ambiguous_inherent_assoc_type(
                 name,
-                applicable_candidates,
+                applicable_candidates.into_iter().map(|(candidate, ..)| candidate).collect(),
                 span,
             ));
         }
 
-        if let Some((assoc_item, def_scope)) = applicable_candidates.pop() {
+        if let Some((assoc_item, def_scope, impl_substs)) = applicable_candidates.pop() {
             self.check_assoc_ty(assoc_item, name, def_scope, block, span);
 
-            let ty::Adt(_, adt_substs) = self_ty.kind() else {
-                bug!("unreachable: `lookup_inherent_assoc_ty` is only called on ADTs");
-            };
+            // FIXME(inherent_associated_types): To fully *confirm* the *probed* candidate,
+            // we still need to register region obligations for regionck to prove/disprove.
 
-            let item_substs = self.create_substs_for_associated_item(
-                span, assoc_item, segment,
-                // FIXME(fmease, #107468, #105305): Don't use `adt_substs` here but `impl_substs`.
-                adt_substs,
-            );
+            let item_substs =
+                self.create_substs_for_associated_item(span, assoc_item, segment, impl_substs);
 
             // FIXME(fmease, #106722): Check if the bounds on the parameters of the
             // associated type hold, if any.

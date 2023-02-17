@@ -10,7 +10,7 @@ error[E0308]: mismatched types
   --> $DIR/dispatch-on-self-type-2.rs:16:47
    |
 LL |     let _: Parameterized<bool, u32>::Result = ();
-   |            --------------------------------   ^^ expected `bool`, found `()`
+   |            --------------------------------   ^^ expected `u32`, found `()`
    |            |
    |            expected due to this
 

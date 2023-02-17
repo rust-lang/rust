@@ -225,7 +225,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub(crate) fn complain_about_ambiguous_inherent_assoc_type(
         &self,
         name: Ident,
-        candidates: Vec<(DefId, DefId)>,
+        candidates: Vec<DefId>,
         span: Span,
     ) -> ErrorGuaranteed {
         let mut err = struct_span_err!(
@@ -243,7 +243,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn note_ambiguous_inherent_assoc_type(
         &self,
         err: &mut Diagnostic,
-        candidates: Vec<(DefId, DefId)>,
+        candidates: Vec<DefId>,
         span: Span,
     ) {
         let tcx = self.tcx();
@@ -251,11 +251,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Dynamic limit to avoid hiding just one candidate, which is silly.
         let limit = if candidates.len() == 5 { 5 } else { 4 };
 
-        for (index, &(assoc_item, _)) in candidates.iter().take(limit).enumerate() {
-            let impl_ = tcx.impl_of_method(assoc_item).unwrap();
+        for (index, &item) in candidates.iter().take(limit).enumerate() {
+            let impl_ = tcx.impl_of_method(item).unwrap();
 
-            let note_span = if assoc_item.is_local() {
-                Some(tcx.def_span(assoc_item))
+            let note_span = if item.is_local() {
+                Some(tcx.def_span(item))
             } else if impl_.is_local() {
                 Some(tcx.def_span(impl_))
             } else {

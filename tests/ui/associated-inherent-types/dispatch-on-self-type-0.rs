@@ -31,7 +31,7 @@ fn main() {
     let _: Select<u8>::Projection = ();
 
     let _: Choose<NonCopy>::Result = ();
-    let _: Choose<&str>::Result = vec!["..."];
+    let _: Choose<bool>::Result = vec![true];
 }
 
 // Test if we use the correct `ParamEnv` when proving obligations.
