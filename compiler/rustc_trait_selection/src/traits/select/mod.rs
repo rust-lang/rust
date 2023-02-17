@@ -993,6 +993,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     bug!("AliasEq is only used for new solver")
                 }
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
+                ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                    match self.infcx.at(&obligation.cause, obligation.param_env).eq(ct.ty(), ty) {
+                        Ok(inf_ok) => self.evaluate_predicates_recursively(
+                            previous_stack,
+                            inf_ok.into_obligations(),
+                        ),
+                        Err(_) => Ok(EvaluatedToErr),
+                    }
+                }
             }
         })
     }

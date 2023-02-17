@@ -163,6 +163,10 @@ pub fn predicate_obligations<'tcx>(
                 ty::TermKind::Const(c) => c.into(),
             })
         }
+        ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+            wf.compute(ct.into());
+            wf.compute(ty.into());
+        }
         ty::PredicateKind::WellFormed(arg) => {
             wf.compute(arg);
         }
@@ -922,6 +926,7 @@ pub(crate) fn required_region_bounds<'tcx>(
             match obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::Clause::Projection(..))
                 | ty::PredicateKind::Clause(ty::Clause::Trait(..))
+                | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::WellFormed(..)

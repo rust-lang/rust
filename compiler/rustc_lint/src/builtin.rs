@@ -1595,6 +1595,8 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     Clause(Clause::TypeOutlives(..)) |
                     Clause(Clause::RegionOutlives(..)) => "lifetime",
 
+                    // `ConstArgHasType` is never global as `ct` is always a param
+                    Clause(Clause::ConstArgHasType(..)) |
                     // Ignore projections, as they can only be global
                     // if the trait bound is global
                     Clause(Clause::Projection(..)) |

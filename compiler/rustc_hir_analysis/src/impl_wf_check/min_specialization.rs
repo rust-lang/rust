@@ -496,6 +496,16 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
                 )
                 .emit();
         }
+        ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => {
+            // FIXME(min_specialization), FIXME(const_generics):
+            // It probably isn't right to allow _every_ `ConstArgHasType` but I am somewhat unsure
+            // about the actual rules that would be sound. Can't just always error here because otherwise
+            // std/core doesn't even compile as they have `const N: usize` in some specializing impls.
+            //
+            // While we do not support constructs like `<T, const N: T>` there is probably no risk of
+            // soundness bugs, but when we support generic const parameter types this will need to be
+            // revisited.
+        }
         _ => {
             tcx.sess
                 .struct_span_err(span, &format!("cannot specialize on predicate `{}`", predicate))
@@ -517,6 +527,7 @@ fn trait_predicate_kind<'tcx>(
         ty::PredicateKind::Clause(ty::Clause::RegionOutlives(_))
         | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(_))
         | ty::PredicateKind::Clause(ty::Clause::Projection(_))
+        | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
         | ty::PredicateKind::AliasEq(..)
         | ty::PredicateKind::WellFormed(_)
         | ty::PredicateKind::Subtype(_)

@@ -297,6 +297,9 @@ impl<'tcx> Elaborator<'tcx> {
             ty::PredicateKind::AliasEq(..) => {
                 // No
             }
+            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => {
+                // Nothing to elaborate
+            }
         }
     }
 }

@@ -117,6 +117,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                     )),
                 },
                 ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                 | ty::PredicateKind::AliasEq(..)
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Subtype(..)
@@ -212,6 +213,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             // We can defer this, but ultimately we'll want to express
             // some of these in terms of chalk operations.
             ty::PredicateKind::ClosureKind(..)
+            | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
             | ty::PredicateKind::AliasEq(..)
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::ConstEvaluatable(..)
@@ -646,6 +648,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
                 Some(chalk_ir::WhereClause::AliasEq(predicate.lower_into(interner)))
             }
             ty::PredicateKind::WellFormed(_ty) => None,
+            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => None,
 
             ty::PredicateKind::ObjectSafe(..)
             | ty::PredicateKind::AliasEq(..)
@@ -780,6 +783,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
             }
             ty::PredicateKind::Clause(ty::Clause::TypeOutlives(_predicate)) => None,
             ty::PredicateKind::WellFormed(_ty) => None,
+            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => None,
 
             ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
             | ty::PredicateKind::AliasEq(..)

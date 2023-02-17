@@ -663,6 +663,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 ty::PredicateKind::Clause(ty::Clause::Trait(..))
                 | ty::PredicateKind::Clause(ty::Clause::Projection(..))
+                | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))

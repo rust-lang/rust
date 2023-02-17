@@ -1,3 +1,11 @@
+error[E0015]: cannot call non-const fn `Foo::{constant#0}::Foo::<17>::value` in constants
+  --> $DIR/nested-type.rs:15:5
+   |
+LL |     Foo::<17>::value()
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
 error: `[u8; {
            struct Foo<const N: usize>;
        
@@ -24,5 +32,6 @@ LL | | }]>;
    = note: the only supported types are integers, `bool` and `char`
    = help: more complex types are supported with `#![feature(adt_const_params)]`
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0015`.

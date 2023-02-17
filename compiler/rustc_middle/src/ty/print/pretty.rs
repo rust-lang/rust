@@ -2822,15 +2822,18 @@ define_print_and_forward_display! {
             ty::PredicateKind::Clause(ty::Clause::RegionOutlives(predicate)) => p!(print(predicate)),
             ty::PredicateKind::Clause(ty::Clause::TypeOutlives(predicate)) => p!(print(predicate)),
             ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) => p!(print(predicate)),
+            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                p!("the constant `", print(ct), "` has type `", print(ty), "`")
+            },
             ty::PredicateKind::WellFormed(arg) => p!(print(arg), " well-formed"),
             ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 p!("the trait `", print_def_path(trait_def_id, &[]), "` is object-safe")
             }
-            ty::PredicateKind::ClosureKind(closure_def_id, _closure_substs, kind) => {
-                p!("the closure `",
+            ty::PredicateKind::ClosureKind(closure_def_id, _closure_substs, kind) => p!(
+                "the closure `",
                 print_value_path(closure_def_id, &[]),
-                write("` implements the trait `{}`", kind))
-            }
+                write("` implements the trait `{}`", kind)
+            ),
             ty::PredicateKind::ConstEvaluatable(ct) => {
                 p!("the constant `", print(ct), "` can be evaluated")
             }

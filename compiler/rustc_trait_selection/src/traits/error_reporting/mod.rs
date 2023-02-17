@@ -1282,6 +1282,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         span,
                         "AliasEq predicate should never be the predicate cause of a SelectionError"
                     ),
+
+                    ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                        self.tcx.sess.struct_span_err(
+                            span,
+                            &format!("the constant `{}` is not of type `{}`", ct, ty),
+                        )
+                    }
                 }
             }
 
