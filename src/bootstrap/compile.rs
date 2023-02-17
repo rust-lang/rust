@@ -445,6 +445,72 @@ impl Step for StdLink {
         let libdir = builder.sysroot_libdir(target_compiler, target);
         let hostdir = builder.sysroot_libdir(target_compiler, compiler.host);
         add_to_sysroot(builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
+
+        if compiler.stage == 0 {
+            // special handling for stage0, to make `rustup toolchain link` and `x dist --stage 0`
+            // work for stage0-sysroot
+            let sysroot = builder.out.join(&compiler.host.triple).join("stage0-sysroot");
+
+            let host_lib_dir = builder.initial_rustc.ancestors().nth(2).unwrap().join("lib");
+            let host_bin_dir = builder.out.join(&builder.initial_rustc.parent().unwrap());
+            let host_codegen_backends =
+                host_lib_dir.join("rustlib").join(&compiler.host.triple).join("codegen-backends");
+            let sysroot_bin_dir = sysroot.join("bin");
+            let sysroot_lib_dir = sysroot.join("lib");
+            let sysroot_codegen_backends = builder.sysroot_codegen_backends(compiler);
+
+            // Create the `bin` directory in stage0-sysroot
+            t!(fs::create_dir_all(&sysroot_bin_dir));
+
+            // copy bin files from `builder.initial_rustc/./` to `stage0-sysroot/bin`
+            if let Ok(files) = fs::read_dir(&host_bin_dir) {
+                for file in files {
+                    let file = t!(file);
+                    if file.file_name() == "rustfmt" {
+                        // This is when `rustc` and `cargo` are set in `config.toml`
+                        if !file.path().starts_with(&builder.out) {
+                            builder.copy(
+                                &file.path().into_boxed_path(),
+                                &sysroot_bin_dir.join(file.file_name()),
+                            );
+                        } else {
+                            builder.copy(
+                                &builder
+                                    .out
+                                    .join(&compiler.host.triple)
+                                    .join("rustfmt/bin/rustfmt"),
+                                &sysroot_bin_dir.join(file.file_name()),
+                            );
+                        }
+                    } else {
+                        builder.copy(
+                            &file.path().into_boxed_path(),
+                            &sysroot_bin_dir.join(file.file_name()),
+                        );
+                    }
+                }
+            }
+
+            // copy dylib files from `builder.initial_rustc/../lib/*` while excluding the `rustlib` directory to `stage0-sysroot/lib`
+            if let Ok(files) = fs::read_dir(&host_lib_dir) {
+                for file in files {
+                    let file = t!(file);
+                    let path = file.path();
+                    if path.is_file()
+                        && is_dylib(&file.file_name().into_string().unwrap())
+                        && !path.starts_with(sysroot_lib_dir.join("rustlib").into_boxed_path())
+                    {
+                        builder.copy(&path, &sysroot_lib_dir.join(path.file_name().unwrap()));
+                    }
+                }
+            }
+
+            t!(fs::create_dir_all(&sysroot_codegen_backends));
+            // copy `codegen-backends` from `host_lib_dir/rustlib/codegen_backends` to `stage0-sysroot/lib/rustlib/host-triple/codegen-backends` if it exists.
+            if host_codegen_backends.exists() {
+                builder.cp_r(&host_codegen_backends, &sysroot_codegen_backends);
+            }
+        }
     }
 }
 

@@ -49,7 +49,7 @@ pub fn target() -> Target {
             // from thumb_base, rust-lang/rust#44993.
             emit_debug_gdb_scripts: false,
             // from thumb_base, apparently gcc/clang give enums a minimum of 8 bits on no-os targets
-            c_enum_min_bits: 8,
+            c_enum_min_bits: Some(8),
             ..Default::default()
         },
     }

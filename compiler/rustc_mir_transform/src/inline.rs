@@ -96,7 +96,7 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
         history: Vec::new(),
         changed: false,
     };
-    let blocks = BasicBlock::new(0)..body.basic_blocks.next_index();
+    let blocks = START_BLOCK..body.basic_blocks.next_index();
     this.process_blocks(body, blocks);
     this.changed
 }

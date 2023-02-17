@@ -1344,10 +1344,18 @@ impl Target {
             });
         }
 
-        dl.c_enum_min_size = match Integer::from_size(Size::from_bits(self.c_enum_min_bits)) {
-            Ok(bits) => bits,
-            Err(err) => return Err(TargetDataLayoutErrors::InvalidBitsSize { err }),
-        };
+        dl.c_enum_min_size = self
+            .c_enum_min_bits
+            .map_or_else(
+                || {
+                    self.c_int_width
+                        .parse()
+                        .map_err(|_| String::from("failed to parse c_int_width"))
+                },
+                Ok,
+            )
+            .and_then(|i| Integer::from_size(Size::from_bits(i)))
+            .map_err(|err| TargetDataLayoutErrors::InvalidBitsSize { err })?;
 
         Ok(dl)
     }
@@ -1701,8 +1709,8 @@ pub struct TargetOptions {
     /// If present it's a default value to use for adjusting the C ABI.
     pub default_adjusted_cabi: Option<Abi>,
 
-    /// Minimum number of bits in #[repr(C)] enum. Defaults to 32.
-    pub c_enum_min_bits: u64,
+    /// Minimum number of bits in #[repr(C)] enum. Defaults to the size of c_int
+    pub c_enum_min_bits: Option<u64>,
 
     /// Whether or not the DWARF `.debug_aranges` section should be generated.
     pub generate_arange_section: bool,
@@ -1935,7 +1943,7 @@ impl Default for TargetOptions {
             supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
             supported_sanitizers: SanitizerSet::empty(),
             default_adjusted_cabi: None,
-            c_enum_min_bits: 32,
+            c_enum_min_bits: None,
             generate_arange_section: true,
             supports_stack_protector: true,
             entry_name: "main".into(),
@@ -2119,12 +2127,6 @@ impl Target {
             ($key_name:ident = $json_name:expr, bool) => ( {
                 let name = $json_name;
                 if let Some(s) = obj.remove(name).and_then(|b| b.as_bool()) {
-                    base.$key_name = s;
-                }
-            } );
-            ($key_name:ident, u64) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(s) = obj.remove(&name).and_then(|j| Json::as_u64(&j)) {
                     base.$key_name = s;
                 }
             } );
@@ -2496,6 +2498,7 @@ impl Target {
 
         key!(is_builtin, bool);
         key!(c_int_width = "target-c-int-width");
+        key!(c_enum_min_bits, Option<u64>); // if None, matches c_int_width
         key!(os);
         key!(env);
         key!(abi);
@@ -2591,7 +2594,6 @@ impl Target {
         key!(supported_split_debuginfo, falliable_list)?;
         key!(supported_sanitizers, SanitizerSet)?;
         key!(default_adjusted_cabi, Option<Abi>)?;
-        key!(c_enum_min_bits, u64);
         key!(generate_arange_section, bool);
         key!(supports_stack_protector, bool);
         key!(entry_name);
