@@ -912,6 +912,40 @@ pub trait Tuple {}
 )]
 pub trait PointerLike {}
 
+/// A marker for types which can be used as types of `const` generic parameters.
+#[cfg_attr(not(bootstrap), lang = "const_param_ty")]
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+#[rustc_on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
+pub trait ConstParamTy: StructuralEq {}
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+impl ConstParamTy for usize {}
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+impl ConstParamTy for u8 {}
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+impl ConstParamTy for u16 {}
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+impl ConstParamTy for u32 {}
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+impl ConstParamTy for u64 {}
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+impl ConstParamTy for u128 {}
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+impl ConstParamTy for isize {}
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+impl ConstParamTy for i8 {}
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+impl ConstParamTy for i16 {}
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+impl ConstParamTy for i32 {}
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+impl ConstParamTy for i64 {}
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+impl ConstParamTy for i128 {}
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+impl ConstParamTy for bool {}
+#[unstable(feature = "const_param_ty_trait", issue = "none")]
+impl ConstParamTy for char {}
+
 /// Implementations of `Copy` for primitive types.
 ///
 /// Implementations that cannot be described in Rust

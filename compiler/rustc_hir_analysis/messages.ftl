@@ -35,6 +35,10 @@ hir_analysis_field_already_declared =
 
 hir_analysis_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
 
+hir_analysis_const_param_ty_impl_on_non_adt =
+    the trait `ConstParamTy` may not be implemented for this type
+    .label = type is not a structure or enumeration
+
 hir_analysis_ambiguous_lifetime_bound =
     ambiguous lifetime bound, explicit lifetime bound required
 
