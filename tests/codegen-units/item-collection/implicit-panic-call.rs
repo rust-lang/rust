@@ -14,6 +14,8 @@ struct Location<'a> {
     _file: &'a str,
     _line: u32,
     _col: u32,
+    _len: u32,
+    _hash: u32,
 }
 
 #[lang = "panic"]

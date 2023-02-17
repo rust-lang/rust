@@ -42,6 +42,8 @@ struct PanicLocation {
     file: &'static str,
     line: u32,
     column: u32,
+    _len: u32,
+    _hash: u32,
 }
 
 mod libc {
