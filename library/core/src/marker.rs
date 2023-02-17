@@ -214,6 +214,35 @@ pub trait StructuralEq {
     // Empty.
 }
 
+#[unstable(feature = "structural_match", issue = "31434")]
+impl StructuralEq for usize {}
+#[unstable(feature = "structural_match", issue = "31434")]
+impl StructuralEq for u8 {}
+#[unstable(feature = "structural_match", issue = "31434")]
+impl StructuralEq for u16 {}
+#[unstable(feature = "structural_match", issue = "31434")]
+impl StructuralEq for u32 {}
+#[unstable(feature = "structural_match", issue = "31434")]
+impl StructuralEq for u64 {}
+#[unstable(feature = "structural_match", issue = "31434")]
+impl StructuralEq for u128 {}
+#[unstable(feature = "structural_match", issue = "31434")]
+impl StructuralEq for isize {}
+#[unstable(feature = "structural_match", issue = "31434")]
+impl StructuralEq for i8 {}
+#[unstable(feature = "structural_match", issue = "31434")]
+impl StructuralEq for i16 {}
+#[unstable(feature = "structural_match", issue = "31434")]
+impl StructuralEq for i32 {}
+#[unstable(feature = "structural_match", issue = "31434")]
+impl StructuralEq for i64 {}
+#[unstable(feature = "structural_match", issue = "31434")]
+impl StructuralEq for i128 {}
+#[unstable(feature = "structural_match", issue = "31434")]
+impl StructuralEq for bool {}
+#[unstable(feature = "structural_match", issue = "31434")]
+impl StructuralEq for char {}
+
 /// Types whose values can be duplicated simply by copying bits.
 ///
 /// By default, variable bindings have 'move semantics.' In other
