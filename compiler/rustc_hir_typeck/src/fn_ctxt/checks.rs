@@ -102,7 +102,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let err_inputs = match tuple_arguments {
                 DontTupleArguments => err_inputs,
-                TupleArguments => vec![self.tcx.intern_tup(&err_inputs)],
+                TupleArguments => vec![self.tcx.mk_tup(&err_inputs)],
             };
 
             self.check_argument_types(
@@ -642,7 +642,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && provided_arg_tys.len() == formal_and_expected_inputs.len() - 1 + tys.len()
             {
                 // Wrap up the N provided arguments starting at this position in a tuple.
-                let provided_as_tuple = tcx.mk_tup(
+                let provided_as_tuple = tcx.mk_tup_from_iter(
                     provided_arg_tys.iter().map(|(ty, _)| *ty).skip(mismatch_idx).take(tys.len()),
                 );
 

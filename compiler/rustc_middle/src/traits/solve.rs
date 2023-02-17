@@ -30,20 +30,18 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Ok(FallibleTypeFolder::interner(folder).intern_external_constraints(
-            ExternalConstraintsData {
-                regions: (),
-                opaque_types: self
-                    .opaque_types
-                    .iter()
-                    .map(|opaque| opaque.try_fold_with(folder))
-                    .collect::<Result<_, F::Error>>()?,
-            },
-        ))
+        Ok(FallibleTypeFolder::interner(folder).mk_external_constraints(ExternalConstraintsData {
+            regions: (),
+            opaque_types: self
+                .opaque_types
+                .iter()
+                .map(|opaque| opaque.try_fold_with(folder))
+                .collect::<Result<_, F::Error>>()?,
+        }))
     }
 
     fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        TypeFolder::interner(folder).intern_external_constraints(ExternalConstraintsData {
+        TypeFolder::interner(folder).mk_external_constraints(ExternalConstraintsData {
             regions: (),
             opaque_types: self.opaque_types.iter().map(|opaque| opaque.fold_with(folder)).collect(),
         })

@@ -303,7 +303,7 @@ fn adt_drop_tys<'tcx>(
         false,
     )
     .collect::<Result<Vec<_>, _>>()
-    .map(|components| tcx.intern_type_list(&components))
+    .map(|components| tcx.mk_type_list(&components))
 }
 // If `def_id` refers to a generic ADT, the queries above and below act as if they had been handed
 // a `tcx.make_ty(def, identity_substs)` and as such it is legal to substitute the generic parameters
@@ -320,7 +320,7 @@ fn adt_significant_drop_tys(
         true,
     )
     .collect::<Result<Vec<_>, _>>()
-    .map(|components| tcx.intern_type_list(&components))
+    .map(|components| tcx.mk_type_list(&components))
 }
 
 pub(crate) fn provide(providers: &mut ty::query::Providers) {

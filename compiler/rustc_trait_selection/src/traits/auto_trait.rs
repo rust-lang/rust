@@ -350,14 +350,14 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             )
             .map(|o| o.predicate);
             new_env = ty::ParamEnv::new(
-                tcx.mk_predicates(normalized_preds),
+                tcx.mk_predicates_from_iter(normalized_preds),
                 param_env.reveal(),
                 param_env.constness(),
             );
         }
 
         let final_user_env = ty::ParamEnv::new(
-            tcx.mk_predicates(user_computed_preds.into_iter()),
+            tcx.mk_predicates_from_iter(user_computed_preds.into_iter()),
             user_env.reveal(),
             user_env.constness(),
         );

@@ -170,7 +170,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Return the operand *tmp0 to be used as the call argument
                     let place = Place {
                         local: operand,
-                        projection: tcx.intern_place_elems(&[PlaceElem::Deref]),
+                        projection: tcx.mk_place_elems(&[PlaceElem::Deref]),
                     };
 
                     return block.and(Operand::Move(place));

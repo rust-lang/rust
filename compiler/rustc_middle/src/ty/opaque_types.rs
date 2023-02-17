@@ -79,7 +79,7 @@ impl<'tcx> ReverseMapper<'tcx> {
         // during codegen.
 
         let generics = self.tcx.generics_of(def_id);
-        self.tcx.mk_substs(substs.iter().enumerate().map(|(index, kind)| {
+        self.tcx.mk_substs_from_iter(substs.iter().enumerate().map(|(index, kind)| {
             if index < generics.parent_count {
                 // Accommodate missing regions in the parent kinds...
                 self.fold_kind_no_missing_regions_error(kind)

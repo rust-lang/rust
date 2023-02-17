@@ -232,7 +232,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let Some(trait_def_id) = opt_trait_def_id else { continue };
 
             let opt_input_type = opt_arg_exprs.map(|arg_exprs| {
-                self.tcx.mk_tup(arg_exprs.iter().map(|e| {
+                self.tcx.mk_tup_from_iter(arg_exprs.iter().map(|e| {
                     self.next_ty_var(TypeVariableOrigin {
                         kind: TypeVariableOriginKind::TypeInference,
                         span: e.span,

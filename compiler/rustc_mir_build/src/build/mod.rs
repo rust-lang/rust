@@ -859,7 +859,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let use_place = Place {
                         local: ty::CAPTURE_STRUCT_LOCAL,
-                        projection: tcx.intern_place_elems(&projs),
+                        projection: tcx.mk_place_elems(&projs),
                     };
                     self.var_debug_info.push(VarDebugInfo {
                         name: *sym,

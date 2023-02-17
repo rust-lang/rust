@@ -343,9 +343,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     // Substitute just the unsizing params from B into A. The type after
                     // this substitution must be equal to B. This is so we don't unsize
                     // unrelated type parameters.
-                    let new_a_substs = tcx.mk_substs(a_substs.iter().enumerate().map(|(i, a)| {
-                        if unsizing_params.contains(i as u32) { b_substs[i] } else { a }
-                    }));
+                    let new_a_substs =
+                        tcx.mk_substs_from_iter(a_substs.iter().enumerate().map(|(i, a)| {
+                            if unsizing_params.contains(i as u32) { b_substs[i] } else { a }
+                        }));
                     let unsized_a_ty = tcx.mk_adt(a_def, new_a_substs);
 
                     // Finally, we require that `TailA: Unsize<TailB>` for the tail field
@@ -368,7 +369,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     let b_last_ty = b_tys.last().unwrap();
 
                     // Substitute just the tail field of B., and require that they're equal.
-                    let unsized_a_ty = tcx.mk_tup(a_rest_tys.iter().chain([b_last_ty]).copied());
+                    let unsized_a_ty =
+                        tcx.mk_tup_from_iter(a_rest_tys.iter().chain([b_last_ty]).copied());
                     let mut nested_goals = ecx.eq(goal.param_env, unsized_a_ty, b_ty)?;
 
                     // Similar to ADTs, require that the rest of the fields are equal.
@@ -425,7 +427,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                             .map(ty::ExistentialPredicate::AutoTrait)
                             .map(ty::Binder::dummy),
                     );
-                let new_a_data = tcx.mk_poly_existential_predicates(new_a_data);
+                let new_a_data = tcx.mk_poly_existential_predicates_from_iter(new_a_data);
                 let new_a_ty = tcx.mk_dynamic(new_a_data, b_region, ty::Dyn);
 
                 // We also require that A's lifetime outlives B's lifetime.

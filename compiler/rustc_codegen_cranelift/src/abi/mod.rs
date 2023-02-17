@@ -405,9 +405,9 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     };
 
     let extra_args = &args[fn_sig.inputs().skip_binder().len()..];
-    let extra_args = fx
-        .tcx
-        .mk_type_list(extra_args.iter().map(|op_arg| fx.monomorphize(op_arg.ty(fx.mir, fx.tcx))));
+    let extra_args = fx.tcx.mk_type_list_from_iter(
+        extra_args.iter().map(|op_arg| fx.monomorphize(op_arg.ty(fx.mir, fx.tcx))),
+    );
     let fn_abi = if let Some(instance) = instance {
         RevealAllLayoutCx(fx.tcx).fn_abi_of_instance(instance, extra_args)
     } else {

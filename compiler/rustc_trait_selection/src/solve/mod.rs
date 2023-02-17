@@ -567,7 +567,7 @@ fn compute_external_query_constraints<'tcx>(
 ) -> Result<ExternalConstraints<'tcx>, NoSolution> {
     let region_obligations = infcx.take_registered_region_obligations();
     let opaque_types = infcx.take_opaque_types_for_query_response();
-    Ok(infcx.tcx.intern_external_constraints(ExternalConstraintsData {
+    Ok(infcx.tcx.mk_external_constraints(ExternalConstraintsData {
         // FIXME: Now that's definitely wrong :)
         //
         // Should also do the leak check here I think
@@ -616,8 +616,7 @@ pub(super) fn response_no_constraints<'tcx>(
             var_values: CanonicalVarValues::make_identity(tcx, goal.variables),
             // FIXME: maybe we should store the "no response" version in tcx, like
             // we do for tcx.types and stuff.
-            external_constraints: tcx
-                .intern_external_constraints(ExternalConstraintsData::default()),
+            external_constraints: tcx.mk_external_constraints(ExternalConstraintsData::default()),
             certainty,
         },
     })

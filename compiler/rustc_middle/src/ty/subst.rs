@@ -71,7 +71,7 @@ impl<'tcx> List<Ty<'tcx>> {
     /// Allows to freely switch between `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>`.
     ///
     /// As lists are interned, `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>` have
-    /// be interned together, see `intern_type_list` for more details.
+    /// be interned together, see `mk_type_list` for more details.
     #[inline]
     pub fn as_substs(&'tcx self) -> SubstsRef<'tcx> {
         assert_eq!(TYPE_TAG, 0);
@@ -319,7 +319,7 @@ impl<'tcx> InternalSubsts<'tcx> {
         let count = defs.count();
         let mut substs = SmallVec::with_capacity(count);
         Self::fill_item(&mut substs, tcx, defs, &mut mk_kind);
-        tcx.intern_substs(&substs)
+        tcx.mk_substs(&substs)
     }
 
     pub fn extend_to<F>(&self, tcx: TyCtxt<'tcx>, def_id: DefId, mut mk_kind: F) -> SubstsRef<'tcx>
@@ -468,11 +468,11 @@ impl<'tcx> InternalSubsts<'tcx> {
         target_substs: SubstsRef<'tcx>,
     ) -> SubstsRef<'tcx> {
         let defs = tcx.generics_of(source_ancestor);
-        tcx.mk_substs(target_substs.iter().chain(self.iter().skip(defs.params.len())))
+        tcx.mk_substs_from_iter(target_substs.iter().chain(self.iter().skip(defs.params.len())))
     }
 
     pub fn truncate_to(&self, tcx: TyCtxt<'tcx>, generics: &ty::Generics) -> SubstsRef<'tcx> {
-        tcx.mk_substs(self.iter().take(generics.count()))
+        tcx.mk_substs_from_iter(self.iter().take(generics.count()))
     }
 }
 
@@ -486,14 +486,14 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for SubstsRef<'tcx> {
         // The match arms are in order of frequency. The 1, 2, and 0 cases are
         // typically hit in 90--99.99% of cases. When folding doesn't change
         // the substs, it's faster to reuse the existing substs rather than
-        // calling `intern_substs`.
+        // calling `mk_substs`.
         match self.len() {
             1 => {
                 let param0 = self[0].try_fold_with(folder)?;
                 if param0 == self[0] {
                     Ok(self)
                 } else {
-                    Ok(folder.interner().intern_substs(&[param0]))
+                    Ok(folder.interner().mk_substs(&[param0]))
                 }
             }
             2 => {
@@ -502,11 +502,11 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for SubstsRef<'tcx> {
                 if param0 == self[0] && param1 == self[1] {
                     Ok(self)
                 } else {
-                    Ok(folder.interner().intern_substs(&[param0, param1]))
+                    Ok(folder.interner().mk_substs(&[param0, param1]))
                 }
             }
             0 => Ok(self),
-            _ => ty::util::fold_list(self, folder, |tcx, v| tcx.intern_substs(v)),
+            _ => ty::util::fold_list(self, folder, |tcx, v| tcx.mk_substs(v)),
         }
     }
 }
@@ -538,10 +538,10 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
                 if param0 == self[0] && param1 == self[1] {
                     Ok(self)
                 } else {
-                    Ok(folder.interner().intern_type_list(&[param0, param1]))
+                    Ok(folder.interner().mk_type_list(&[param0, param1]))
                 }
             }
-            _ => ty::util::fold_list(self, folder, |tcx, v| tcx.intern_type_list(v)),
+            _ => ty::util::fold_list(self, folder, |tcx, v| tcx.mk_type_list(v)),
         }
     }
 }

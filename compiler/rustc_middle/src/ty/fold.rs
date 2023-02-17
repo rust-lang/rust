@@ -422,7 +422,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut map = Default::default();
         let delegate = Anonymize { tcx: self, map: &mut map };
         let inner = self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate);
-        let bound_vars = self.mk_bound_variable_kinds(map.into_values());
+        let bound_vars = self.mk_bound_variable_kinds_from_iter(map.into_values());
         Binder::bind_with_vars(inner, bound_vars)
     }
 }

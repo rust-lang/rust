@@ -137,7 +137,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     let intrinsic_name = tcx.item_name(intrinsic_id);
     let name_str = intrinsic_name.as_str();
 
-    let bound_vars = tcx.intern_bound_variable_kinds(&[
+    let bound_vars = tcx.mk_bound_variable_kinds(&[
         ty::BoundVariableKind::Region(ty::BrAnon(0, None)),
         ty::BoundVariableKind::Region(ty::BrEnv),
     ]);
@@ -165,7 +165,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             "cxchg" | "cxchgweak" => (
                 1,
                 vec![tcx.mk_mut_ptr(param(0)), param(0), param(0)],
-                tcx.intern_tup(&[param(0), tcx.types.bool]),
+                tcx.mk_tup(&[param(0), tcx.types.bool]),
             ),
             "load" => (1, vec![tcx.mk_imm_ptr(param(0))], param(0)),
             "store" => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)], tcx.mk_unit()),
@@ -317,7 +317,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             | sym::bitreverse => (1, vec![param(0)], param(0)),
 
             sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
-                (1, vec![param(0), param(0)], tcx.intern_tup(&[param(0), tcx.types.bool]))
+                (1, vec![param(0), param(0)], tcx.mk_tup(&[param(0), tcx.types.bool]))
             }
 
             sym::ptr_guaranteed_cmp => {
@@ -372,7 +372,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 (
                     1,
                     vec![tcx.mk_imm_ref(tcx.mk_re_late_bound(ty::INNERMOST, br), param(0))],
-                    tcx.mk_projection(discriminant_def_id, tcx.intern_substs(&[param(0).into()])),
+                    tcx.mk_projection(discriminant_def_id, tcx.mk_substs(&[param(0).into()])),
                 )
             }
 

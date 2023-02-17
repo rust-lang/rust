@@ -373,7 +373,7 @@ fn upstream_monomorphizations_provider(
                 ExportedSymbol::Generic(def_id, substs) => (def_id, substs),
                 ExportedSymbol::DropGlue(ty) => {
                     if let Some(drop_in_place_fn_def_id) = drop_in_place_fn_def_id {
-                        (drop_in_place_fn_def_id, tcx.intern_substs(&[ty.into()]))
+                        (drop_in_place_fn_def_id, tcx.mk_substs(&[ty.into()]))
                     } else {
                         // `drop_in_place` in place does not exist, don't try
                         // to use it.

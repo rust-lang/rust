@@ -53,6 +53,6 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<PlaceElem<'tcx>> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_place_elems(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_place_elems(v))
     }
 }

@@ -134,7 +134,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                 } else if let Some(target_id) = cx.tcx.lang_items().deref_target() {
                     if let Ok(deref_ty) = cx.tcx.try_normalize_erasing_regions(
                         cx.param_env,
-                        cx.tcx.mk_projection(target_id, cx.tcx.intern_substs(&[GenericArg::from(indexed_ty)])),
+                        cx.tcx.mk_projection(target_id, cx.tcx.mk_substs(&[GenericArg::from(indexed_ty)])),
                     ) {
                         if deref_ty == expr_ty {
                             let snip = snippet_with_context(cx, indexed.span, ctxt, "..", &mut app).0;
