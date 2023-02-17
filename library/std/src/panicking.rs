@@ -282,10 +282,10 @@ fn default_hook(info: &PanicInfo<'_>) {
                 && let mut reader = BufReader::new(file)
                 && let Ok(buf) = reader.fill_buf()
                 && let hash = crc32(buf)
-                && location.file_hash() == hash
+                && location.file_crc32_hash() == hash
             {
                 let mut lineno = location.line();
-                let mut len = location.length().map(|l| l.get()).unwrap_or(0) as usize;
+                let mut len = location.original_snippet_byte_length() as usize;
                 let start_line = lineno - 2.min(lineno - 1);
                 let max_line = format!("{}", start_line + 4);
                 let padding_length = max_line.len();

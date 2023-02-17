@@ -1,4 +1,4 @@
-use crate::{fmt, num::NonZeroU16};
+use crate::fmt;
 
 /// A struct containing information about the location of a panic.
 ///
@@ -34,8 +34,10 @@ pub struct Location<'a> {
     file: &'a str,
     line: u32,
     pos: u32,
-    len: u32,
-    hash: u32,
+    #[cfg(not(bootstrap))]
+    snippet_byte_length: u32,
+    #[cfg(not(bootstrap))]
+    file_crc32_hash: u32,
 }
 
 impl<'a> Location<'a> {
@@ -187,18 +189,40 @@ impl<'a> Location<'a> {
     #[must_use]
     #[unstable(feature = "panic_internals", issue = "none")]
     #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
+    #[cfg(not(bootstrap))]
     #[inline]
-    pub const fn length(&self) -> Option<NonZeroU16> {
-        NonZeroU16::new(self.len as u16)
+    pub const fn original_snippet_byte_length(&self) -> u32 {
+        self.snippet_byte_length
     }
 
     /// A 32bit hash that can be used to determine if the file where the panic was emitted has been
     /// modified since the binary was compiled.
     #[must_use]
     #[unstable(feature = "panic_internals", issue = "none")]
+    #[cfg(not(bootstrap))]
     #[inline]
-    pub fn file_hash(&self) -> u32 {
-        self.hash
+    pub fn file_crc32_hash(&self) -> u32 {
+        self.file_crc32_hash
+    }
+
+    /// The distance in bytes from the start column to the end of the panicking expression.
+    #[must_use]
+    #[unstable(feature = "panic_internals", issue = "none")]
+    #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
+    #[cfg(bootstrap)]
+    #[inline]
+    pub const fn original_snippet_byte_length(&self) -> u32 {
+        0
+    }
+
+    /// A 32bit hash that can be used to determine if the file where the panic was emitted has been
+    /// modified since the binary was compiled.
+    #[must_use]
+    #[unstable(feature = "panic_internals", issue = "none")]
+    #[cfg(bootstrap)]
+    #[inline]
+    pub fn file_crc32_hash(&self) -> u32 {
+        0
     }
 }
 
@@ -209,6 +233,7 @@ impl<'a> Location<'a> {
 )]
 impl<'a> Location<'a> {
     #[doc(hidden)]
+    #[cfg(not(bootstrap))]
     pub const fn internal_constructor(
         file: &'a str,
         line: u32,
@@ -216,7 +241,19 @@ impl<'a> Location<'a> {
         len: u32,
         hash: u32,
     ) -> Self {
-        Location { file, line, pos, len, hash }
+        Location { file, line, pos, snippet_byte_length: len, file_crc32_hash: hash }
+    }
+
+    #[doc(hidden)]
+    #[cfg(bootstrap)]
+    pub const fn internal_constructor(
+        file: &'a str,
+        line: u32,
+        pos: u32,
+        _len: u32,
+        _hash: u32,
+    ) -> Self {
+        Location { file, line, pos }
     }
 }
 
