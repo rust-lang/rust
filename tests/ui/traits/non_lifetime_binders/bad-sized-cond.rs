@@ -7,7 +7,15 @@ where
 {
 }
 
+pub fn bar()
+where
+    for<V> V: IntoIterator,
+{
+}
+
 fn main() {
     foo();
     //~^ ERROR the size for values of type `V` cannot be known at compilation time
+
+    bar();
 }
