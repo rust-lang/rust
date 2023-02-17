@@ -230,6 +230,7 @@ fn t10() {
     let SourceFile {
         name,
         src_hash,
+        crc32_hash,
         start_pos,
         end_pos,
         lines,
@@ -243,6 +244,7 @@ fn t10() {
     let imported_src_file = sm.new_imported_source_file(
         name,
         src_hash,
+        crc32_hash,
         name_hash,
         (end_pos - start_pos).to_usize(),
         CrateNum::new(0),

@@ -1470,6 +1470,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 let rustc_span::SourceFile {
                     mut name,
                     src_hash,
+                    crc32_hash,
                     start_pos,
                     end_pos,
                     lines,
@@ -1516,6 +1517,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 let local_version = sess.source_map().new_imported_source_file(
                     name,
                     src_hash,
+                    crc32_hash,
                     name_hash,
                     source_length,
                     self.cnum,

@@ -1312,6 +1312,8 @@ pub struct SourceFile {
     pub src: Option<Lrc<String>>,
     /// The source code's hash.
     pub src_hash: SourceFileHash,
+    /// The source code's crc32 hash, used for checking whether a file with a panic has changed.
+    pub crc32_hash: u32,
     /// The external source code (used for external crates, which will have a `None`
     /// value as `self.src`.
     pub external_src: Lock<ExternalSource>,
@@ -1337,6 +1339,7 @@ impl<S: Encoder> Encodable<S> for SourceFile {
     fn encode(&self, s: &mut S) {
         self.name.encode(s);
         self.src_hash.encode(s);
+        self.crc32_hash.encode(s);
         self.start_pos.encode(s);
         self.end_pos.encode(s);
 
@@ -1412,6 +1415,7 @@ impl<D: Decoder> Decodable<D> for SourceFile {
     fn decode(d: &mut D) -> SourceFile {
         let name: FileName = Decodable::decode(d);
         let src_hash: SourceFileHash = Decodable::decode(d);
+        let crc32_hash: u32 = Decodable::decode(d);
         let start_pos: BytePos = Decodable::decode(d);
         let end_pos: BytePos = Decodable::decode(d);
         let lines = {
@@ -1447,6 +1451,7 @@ impl<D: Decoder> Decodable<D> for SourceFile {
             end_pos,
             src: None,
             src_hash,
+            crc32_hash,
             // Unused - the metadata decoder will construct
             // a new SourceFile, filling in `external_src` properly
             external_src: Lock::new(ExternalSource::Unneeded),
@@ -1475,6 +1480,7 @@ impl SourceFile {
     ) -> Self {
         // Compute the file hash before any normalization.
         let src_hash = SourceFileHash::new(hash_kind, &src);
+        let crc32_hash = crc32(&src);
         let normalized_pos = normalize_src(&mut src, start_pos);
 
         let name_hash = {
@@ -1492,6 +1498,7 @@ impl SourceFile {
             name,
             src: Some(Lrc::new(src)),
             src_hash,
+            crc32_hash,
             external_src: Lock::new(ExternalSource::Unneeded),
             start_pos,
             end_pos: Pos::from_usize(end_pos),
@@ -2147,4 +2154,21 @@ where
         Hash::hash(&col_line, hasher);
         Hash::hash(&len, hasher);
     }
+}
+
+/// CRC-32b
+pub fn crc32(input: &str) -> u32 {
+    let mut crc: u32 = 0xFFFFFFFF;
+    for ch in input.as_bytes() {
+        let mut ch = *ch;
+        for _ in 0..8 {
+            let b = (ch as u32 ^ crc) & 1;
+            crc >>= 1;
+            if b != 0 {
+                crc = crc ^ 0xEDB88320;
+            }
+            ch >>= 1;
+        }
+    }
+    crc
 }

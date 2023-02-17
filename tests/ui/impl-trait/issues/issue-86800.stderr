@@ -7,7 +7,6 @@ LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResu
    = 
 
 
-
 stack backtrace:
 
 error: the compiler unexpectedly panicked. this is a bug.

@@ -1502,13 +1502,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let caller = tcx.sess.source_map().lookup_char_pos(topmost.lo());
             let col: u32 = (caller.col_display + 1).try_into().unwrap_or(0);
             let len: u32 = (topmost.hi() - topmost.lo()).to_usize().try_into().unwrap_or(0);
-            let hash: u32 = 0;
             let const_loc = tcx.const_caller_location((
                 Symbol::intern(&caller.file.name.prefer_remapped().to_string_lossy()),
                 caller.line as u32,
                 col,
                 len,
-                hash,
+                caller.file.crc32_hash,
             ));
             OperandRef::from_const(bx, const_loc, bx.tcx().caller_location_ty())
         };

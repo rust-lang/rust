@@ -326,6 +326,7 @@ impl SourceMap {
         &self,
         filename: FileName,
         src_hash: SourceFileHash,
+        crc32_hash: u32,
         name_hash: u128,
         source_len: usize,
         cnum: CrateNum,
@@ -377,6 +378,7 @@ impl SourceMap {
             name: filename,
             src: None,
             src_hash,
+            crc32_hash,
             external_src: Lock::new(ExternalSource::Foreign {
                 kind: ExternalSourceKind::AbsentOk,
                 metadata_index,

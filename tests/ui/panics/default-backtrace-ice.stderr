@@ -5,7 +5,6 @@ LL | fn main() { missing_ident; }
    |             ^^^^^^^^^^^^^ not found in this scope
 
 
-
 stack backtrace:
 
 error: the compiler unexpectedly panicked. this is a bug.

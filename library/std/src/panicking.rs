@@ -274,8 +274,9 @@ fn default_hook(info: &PanicInfo<'_>) {
                 options.custom_flags(libc::O_NOFOLLOW);
             }
             if let Ok(file) = options.open(path)
-                && let reader = BufReader::new(file)
-                && let hash = 0
+                && let mut reader = BufReader::new(file)
+                && let Ok(buf) = reader.fill_buf()
+                && let hash = crc32(buf)
                 && location.file_hash() == hash
             {
                 let mut lineno = location.line();
@@ -827,4 +828,21 @@ fn rust_panic(mut msg: &mut dyn BoxMeUp) -> ! {
         __rust_start_panic(obj)
     };
     rtabort!("failed to initiate panic, error {code}")
+}
+
+/// CRC-32b
+fn crc32(input: &[u8]) -> u32 {
+    let mut crc: u32 = 0xFFFFFFFF;
+    for ch in input {
+        let mut ch = *ch;
+        for _ in 0..8 {
+            let b = (ch as u32 ^ crc) & 1;
+            crc >>= 1;
+            if b != 0 {
+                crc = crc ^ 0xEDB88320;
+            }
+            ch >>= 1;
+        }
+    }
+    crc
 }

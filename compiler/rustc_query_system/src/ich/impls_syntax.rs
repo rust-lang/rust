@@ -62,6 +62,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
         let SourceFile {
             name: _, // We hash the smaller name_hash instead of this
             name_hash,
+            crc32_hash: _,
             cnum,
             // Do not hash the source as it is not encoded
             src: _,
