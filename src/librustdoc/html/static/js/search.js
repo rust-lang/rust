@@ -351,7 +351,7 @@ function initSearch(rawSearchIndex) {
             if (parserState.typeFilter === null) {
                 parserState.typeFilter = "macro";
             } else if (parserState.typeFilter !== "macro") {
-                throw new Error(`Invalid search type: macro \`!\` and ` +
+                throw new Error("Invalid search type: macro `!` and " +
                     `\`${parserState.typeFilter}\` both specified`);
             }
             end = foundExclamation;
