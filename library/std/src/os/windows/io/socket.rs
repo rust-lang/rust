@@ -247,6 +247,42 @@ impl<T: AsSocket> AsSocket for &mut T {
     }
 }
 
+#[stable(feature = "as_windows_ptrs", since = "CURRENT_RUSTC_VERSION")]
+/// This impl allows implementing traits that require `AsSocket` on Arc.
+/// ```
+/// # #[cfg(windows)] mod group_cfg {
+/// # use std::os::windows::io::AsSocket;
+/// use std::net::UdpSocket;
+/// use std::sync::Arc;
+///
+/// trait MyTrait: AsSocket {}
+/// impl MyTrait for Arc<UdpSocket> {}
+/// impl MyTrait for Box<UdpSocket> {}
+/// # }
+/// ```
+impl<T: AsSocket> AsSocket for crate::sync::Arc<T> {
+    #[inline]
+    fn as_socket(&self) -> BorrowedSocket<'_> {
+        (**self).as_socket()
+    }
+}
+
+#[stable(feature = "as_windows_ptrs", since = "CURRENT_RUSTC_VERSION")]
+impl<T: AsSocket> AsSocket for crate::rc::Rc<T> {
+    #[inline]
+    fn as_socket(&self) -> BorrowedSocket<'_> {
+        (**self).as_socket()
+    }
+}
+
+#[stable(feature = "as_windows_ptrs", since = "CURRENT_RUSTC_VERSION")]
+impl<T: AsSocket> AsSocket for Box<T> {
+    #[inline]
+    fn as_socket(&self) -> BorrowedSocket<'_> {
+        (**self).as_socket()
+    }
+}
+
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsSocket for BorrowedSocket<'_> {
     #[inline]
