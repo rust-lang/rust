@@ -288,6 +288,12 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                         let last = self.cache.parent_stack.last().expect("parent_stack is empty 2");
                         let did = match &*last {
                             ParentStackItem::Impl {
+                                // impl Trait for &T { fn method(self); }
+                                //
+                                // When generating a function index with the above shape, we want it
+                                // associated with `T`, not with the primitive reference type. It should
+                                // show up as `T::method`, rather than `reference::method`, in the search
+                                // results page.
                                 for_: clean::Type::BorrowedRef { type_, .. },
                                 ..
                             } => type_.def_id(&self.cache),
