@@ -120,6 +120,87 @@ const fn contains_nonascii(x: usize) -> bool {
     (x & NONASCII_MASK) != 0
 }
 
+/// Reads the first code point out of a byte slice validating whether it’s
+/// valid.
+///
+/// This is different than [`next_code_point`] in that it doesn’t assume
+/// argument is well-formed UTF-8-like string.  Together with the character its
+/// encoded length is returned.
+///
+/// If front of the bytes slice doesn’t contain valid UTF-8 bytes sequence (that
+/// includes a WTF-8 encoded surrogate) returns `None`.
+///
+/// ```
+/// #![feature(str_internals)]
+/// use core::str::try_next_code_point;
+///
+/// assert_eq!(Some(('f', 1)), try_next_code_point(b"foo".as_ref()));
+/// assert_eq!(Some(('Ż', 2)), try_next_code_point("Żółw".as_bytes()));
+/// assert_eq!(None, try_next_code_point(b"\xffoo".as_ref()));
+/// ```
+#[unstable(feature = "str_internals", issue = "none")]
+#[inline]
+pub const fn try_next_code_point(bytes: &[u8]) -> Option<(char, usize)> {
+    let first = match bytes.first() {
+        Some(&byte) => byte,
+        None => return None,
+    };
+    let (value, length) = if first < 0x80 {
+        (first as u32, 1)
+    } else if let Ok((cp, len)) = try_finish_byte_sequence(first, bytes, 0) {
+        (cp, len)
+    } else {
+        return None;
+    };
+    // SAFETY: We’ve just verified value is correct Unicode scalar value.
+    // Either ASCII (first branch of the if-else-if-else) or non-ASCII Unicode
+    // character (second branch).
+    Some((unsafe { char::from_u32_unchecked(value) }, length))
+}
+
+/// Reads the last code point out of a byte slice validating whether it’s
+/// valid.
+///
+/// This is different than `next_code_point_reverse` in that it doesn’t assume
+/// argument is well-formed UTF-8-like string.  Together with the character its
+/// encoded length is returned.
+///
+/// If back of the bytes slice doesn’t contain valid UTF-8 bytes sequence (that
+/// includes a WTF-8 encoded surrogate) returns `None`.
+///
+/// ```
+/// #![feature(str_internals)]
+/// use core::str::try_next_code_point_reverse;
+///
+/// assert_eq!(Some(('o', 1)), try_next_code_point_reverse(b"foo".as_ref()));
+/// assert_eq!(Some(('‽', 3)), try_next_code_point_reverse("Uh‽".as_bytes()));
+/// assert_eq!(None, try_next_code_point_reverse(b"foo\xff".as_ref()));
+/// ```
+#[unstable(feature = "str_internals", issue = "none")]
+#[inline]
+pub const fn try_next_code_point_reverse(bytes: &[u8]) -> Option<(char, usize)> {
+    let mut n = 1;
+    let limit = bytes.len();
+    let limit = if limit < 4 { limit } else { 4 }; // not .min(4) because of const
+    while n <= limit && !bytes[bytes.len() - n].is_utf8_char_boundary() {
+        n += 1;
+    }
+    if n <= limit {
+        // It’s not clear to me why, but range indexing isn’t const here,
+        // i.e. `&bytes[bytes.len() - n..]` doesn’t compile.  Because of that
+        // I’m resorting to unsafe block with from_raw_parts.
+        // SAFETY: n ≤ limit ≤ bytes.len() thus bytes.len() - n ≥ 0 and we
+        // have n remaining bytes.
+        let bytes = unsafe { crate::slice::from_raw_parts(bytes.as_ptr().add(bytes.len() - n), n) };
+        if let Some((chr, len)) = try_next_code_point(bytes) {
+            if n == len {
+                return Some((chr, len));
+            }
+        }
+    }
+    None
+}
+
 /// Walks through `v` checking that it's a valid UTF-8 sequence,
 /// returning `Ok(())` in that case, or, if it is invalid, `Err(err)`.
 #[inline(always)]
@@ -134,78 +215,13 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
     let align = v.as_ptr().align_offset(usize_bytes);
 
     while index < len {
-        let old_offset = index;
-        macro_rules! err {
-            ($error_len: expr) => {
-                return Err(Utf8Error { valid_up_to: old_offset, error_len: $error_len })
-            };
-        }
-
-        macro_rules! next {
-            () => {{
-                index += 1;
-                // we needed data, but there was none: error!
-                if index >= len {
-                    err!(None)
-                }
-                v[index]
-            }};
-        }
-
+        let valid_up_to = index;
         let first = v[index];
         if first >= 128 {
-            let w = utf8_char_width(first);
-            // 2-byte encoding is for codepoints  \u{0080} to  \u{07ff}
-            //        first  C2 80        last DF BF
-            // 3-byte encoding is for codepoints  \u{0800} to  \u{ffff}
-            //        first  E0 A0 80     last EF BF BF
-            //   excluding surrogates codepoints  \u{d800} to  \u{dfff}
-            //               ED A0 80 to       ED BF BF
-            // 4-byte encoding is for codepoints \u{1000}0 to \u{10ff}ff
-            //        first  F0 90 80 80  last F4 8F BF BF
-            //
-            // Use the UTF-8 syntax from the RFC
-            //
-            // https://tools.ietf.org/html/rfc3629
-            // UTF8-1      = %x00-7F
-            // UTF8-2      = %xC2-DF UTF8-tail
-            // UTF8-3      = %xE0 %xA0-BF UTF8-tail / %xE1-EC 2( UTF8-tail ) /
-            //               %xED %x80-9F UTF8-tail / %xEE-EF 2( UTF8-tail )
-            // UTF8-4      = %xF0 %x90-BF 2( UTF8-tail ) / %xF1-F3 3( UTF8-tail ) /
-            //               %xF4 %x80-8F 2( UTF8-tail )
-            match w {
-                2 => {
-                    if next!() as i8 >= -64 {
-                        err!(Some(1))
-                    }
-                }
-                3 => {
-                    match (first, next!()) {
-                        (0xE0, 0xA0..=0xBF)
-                        | (0xE1..=0xEC, 0x80..=0xBF)
-                        | (0xED, 0x80..=0x9F)
-                        | (0xEE..=0xEF, 0x80..=0xBF) => {}
-                        _ => err!(Some(1)),
-                    }
-                    if next!() as i8 >= -64 {
-                        err!(Some(2))
-                    }
-                }
-                4 => {
-                    match (first, next!()) {
-                        (0xF0, 0x90..=0xBF) | (0xF1..=0xF3, 0x80..=0xBF) | (0xF4, 0x80..=0x8F) => {}
-                        _ => err!(Some(1)),
-                    }
-                    if next!() as i8 >= -64 {
-                        err!(Some(2))
-                    }
-                    if next!() as i8 >= -64 {
-                        err!(Some(3))
-                    }
-                }
-                _ => err!(Some(1)),
+            match try_finish_byte_sequence(first, v, index) {
+                Ok((_value, length)) => index += length,
+                Err(error_len) => return Err(Utf8Error { valid_up_to, error_len }),
             }
-            index += 1;
         } else {
             // Ascii case, try to skip forward quickly.
             // When the pointer is aligned, read 2 words of data per iteration
@@ -239,6 +255,93 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
     }
 
     Ok(())
+}
+
+/// Try to finish an UTF-8 byte sequence.
+///
+/// Assumes that `bytes[index] == first` and than `first >= 128`, i.e. that
+/// `index` points at the beginning of a non-ASCII UTF-8 sequence in `bytes`.
+///
+/// If the byte sequence at the index is correct, returns decoded code point and
+/// length of the sequence.  If it was invalid returns number of invalid bytes
+/// or None if read was cut short.
+#[inline(always)]
+#[rustc_const_unstable(feature = "str_internals", issue = "none")]
+const fn try_finish_byte_sequence(
+    first: u8,
+    bytes: &[u8],
+    index: usize,
+) -> Result<(u32, usize), Option<u8>> {
+    macro_rules! get {
+        (raw $offset:expr) => {
+            if index + $offset < bytes.len() {
+                bytes[index + $offset]
+            } else {
+                return Err(None)
+            }
+        };
+        (cont $offset:expr) => {{
+            let byte = get!(raw $offset);
+            if !utf8_is_cont_byte(byte) {
+                return Err(Some($offset as u8))
+            }
+            byte
+        }}
+    }
+
+    // 2-byte encoding is for codepoints  \u{0080} to  \u{07ff}
+    //        first  C2 80        last DF BF
+    // 3-byte encoding is for codepoints  \u{0800} to  \u{ffff}
+    //        first  E0 A0 80     last EF BF BF
+    //   excluding surrogates codepoints  \u{d800} to  \u{dfff}
+    //               ED A0 80 to       ED BF BF
+    // 4-byte encoding is for codepoints \u{1000}0 to \u{10ff}ff
+    //        first  F0 90 80 80  last F4 8F BF BF
+    //
+    // Use the UTF-8 syntax from the RFC
+    //
+    // https://tools.ietf.org/html/rfc3629
+    // UTF8-1      = %x00-7F
+    // UTF8-2      = %xC2-DF UTF8-tail
+    // UTF8-3      = %xE0 %xA0-BF UTF8-tail / %xE1-EC 2( UTF8-tail ) /
+    //               %xED %x80-9F UTF8-tail / %xEE-EF 2( UTF8-tail )
+    // UTF8-4      = %xF0 %x90-BF 2( UTF8-tail ) / %xF1-F3 3( UTF8-tail ) /
+    //               %xF4 %x80-8F 2( UTF8-tail )
+    match utf8_char_width(first) {
+        2 => {
+            let second = get!(cont 1);
+            let value = utf8_first_byte(first, 3);
+            let value = utf8_acc_cont_byte(value, second);
+            Ok((value, 2))
+        }
+        3 => {
+            let second = get!(raw 1);
+            match (first, second) {
+                (0xE0, 0xA0..=0xBF)
+                | (0xE1..=0xEC, 0x80..=0xBF)
+                | (0xED, 0x80..=0x9F)
+                | (0xEE..=0xEF, 0x80..=0xBF) => {}
+                _ => return Err(Some(1)),
+            }
+            let value = utf8_first_byte(first, 3);
+            let value = utf8_acc_cont_byte(value, second);
+            let value = utf8_acc_cont_byte(value, get!(cont 2));
+            Ok((value, 3))
+        }
+        4 => {
+            let second = get!(raw 1);
+            match (first, second) {
+                (0xF0, 0x90..=0xBF) | (0xF1..=0xF3, 0x80..=0xBF) | (0xF4, 0x80..=0x8F) => {}
+                _ => return Err(Some(1)),
+            }
+            let value = utf8_first_byte(first, 4);
+            let value = utf8_acc_cont_byte(value, second);
+            let value = utf8_acc_cont_byte(value, get!(cont 2));
+            let value = utf8_acc_cont_byte(value, get!(cont 3));
+            Ok((value, 4))
+        }
+        _ => Err(Some(1)),
+    }
 }
 
 // https://tools.ietf.org/html/rfc3629
