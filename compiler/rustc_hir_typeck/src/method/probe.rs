@@ -735,7 +735,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             debug!("impl_ty: {:?}", impl_ty);
 
             // Determine the receiver type that the method itself expects.
-            let (xform_self_ty, xform_ret_ty) = self.xform_self_ty(&item, impl_ty, impl_substs);
+            let (xform_self_ty, xform_ret_ty) = self.xform_self_ty(item, impl_ty, impl_substs);
             debug!("xform_self_ty: {:?}, xform_ret_ty: {:?}", xform_self_ty, xform_ret_ty);
 
             // We can't use normalize_associated_types_in as it will pollute the
@@ -796,7 +796,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             let new_trait_ref = this.erase_late_bound_regions(new_trait_ref);
 
             let (xform_self_ty, xform_ret_ty) =
-                this.xform_self_ty(&item, new_trait_ref.self_ty(), new_trait_ref.substs);
+                this.xform_self_ty(item, new_trait_ref.self_ty(), new_trait_ref.substs);
             this.push_candidate(
                 Candidate {
                     xform_self_ty,
@@ -846,7 +846,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             let trait_ref = this.erase_late_bound_regions(poly_trait_ref);
 
             let (xform_self_ty, xform_ret_ty) =
-                this.xform_self_ty(&item, trait_ref.self_ty(), trait_ref.substs);
+                this.xform_self_ty(item, trait_ref.self_ty(), trait_ref.substs);
 
             // Because this trait derives from a where-clause, it
             // should not contain any inference variables or other
@@ -917,7 +917,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn matches_return_type(
         &self,
-        method: &ty::AssocItem,
+        method: ty::AssocItem,
         self_ty: Option<Ty<'tcx>>,
         expected: Ty<'tcx>,
     ) -> bool {
@@ -966,11 +966,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     } else {
                         let new_trait_ref = self.erase_late_bound_regions(bound_trait_ref);
 
-                        let (xform_self_ty, xform_ret_ty) = self.xform_self_ty(
-                            &item,
-                            new_trait_ref.self_ty(),
-                            new_trait_ref.substs,
-                        );
+                        let (xform_self_ty, xform_ret_ty) =
+                            self.xform_self_ty(item, new_trait_ref.self_ty(), new_trait_ref.substs);
                         self.push_candidate(
                             Candidate {
                                 xform_self_ty,
@@ -998,7 +995,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
 
                 let (xform_self_ty, xform_ret_ty) =
-                    self.xform_self_ty(&item, trait_ref.self_ty(), trait_substs);
+                    self.xform_self_ty(item, trait_ref.self_ty(), trait_substs);
                 self.push_candidate(
                     Candidate {
                         xform_self_ty,
@@ -1025,7 +1022,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             .filter(|candidate| candidate_filter(&candidate.item))
             .filter(|candidate| {
                 if let Some(return_ty) = self.return_type {
-                    self.matches_return_type(&candidate.item, None, return_ty)
+                    self.matches_return_type(candidate.item, None, return_ty)
                 } else {
                     true
                 }
@@ -1884,7 +1881,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn xform_self_ty(
         &self,
-        item: &ty::AssocItem,
+        item: ty::AssocItem,
         impl_ty: Ty<'tcx>,
         substs: SubstsRef<'tcx>,
     ) -> (Ty<'tcx>, Option<Ty<'tcx>>) {

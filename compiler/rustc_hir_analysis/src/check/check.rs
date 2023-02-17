@@ -537,7 +537,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
             let assoc_items = tcx.associated_items(id.owner_id);
             check_on_unimplemented(tcx, id);
 
-            for assoc_item in assoc_items.in_definition_order() {
+            for &assoc_item in assoc_items.in_definition_order() {
                 match assoc_item.kind {
                     ty::AssocKind::Fn => {
                         let abi = tcx.fn_sig(assoc_item.def_id).skip_binder().abi();
@@ -670,7 +670,7 @@ pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, item: hir::ItemId) {
 pub(super) fn check_specialization_validity<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def: &ty::TraitDef,
-    trait_item: &ty::AssocItem,
+    trait_item: ty::AssocItem,
     impl_id: DefId,
     impl_item: DefId,
 ) {
@@ -767,17 +767,17 @@ fn check_impl_items_against_trait<'tcx>(
                 ));
             }
             ty::AssocKind::Fn => {
-                compare_impl_method(tcx, &ty_impl_item, &ty_trait_item, impl_trait_ref);
+                compare_impl_method(tcx, ty_impl_item, ty_trait_item, impl_trait_ref);
             }
             ty::AssocKind::Type => {
-                compare_impl_ty(tcx, &ty_impl_item, &ty_trait_item, impl_trait_ref);
+                compare_impl_ty(tcx, ty_impl_item, ty_trait_item, impl_trait_ref);
             }
         }
 
         check_specialization_validity(
             tcx,
             trait_def,
-            &ty_trait_item,
+            ty_trait_item,
             impl_id.to_def_id(),
             impl_item,
         );

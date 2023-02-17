@@ -689,12 +689,12 @@ fn resolve_associated_trait_item<'a>(
             .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, trait_)
             .map(|trait_assoc| {
                 trait_assoc_to_impl_assoc_item(cx.tcx, impl_, trait_assoc.def_id)
-                    .unwrap_or(trait_assoc)
+                    .unwrap_or(*trait_assoc)
             })
     });
     // FIXME(#74563): warn about ambiguity
     debug!("the candidates were {:?}", candidates.clone().collect::<Vec<_>>());
-    candidates.next().copied()
+    candidates.next()
 }
 
 /// Find the associated item in the impl `impl_id` that corresponds to the
@@ -711,7 +711,7 @@ fn trait_assoc_to_impl_assoc_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_id: DefId,
     trait_assoc_id: DefId,
-) -> Option<&'tcx ty::AssocItem> {
+) -> Option<ty::AssocItem> {
     let trait_to_impl_assoc_map = tcx.impl_item_implementor_ids(impl_id);
     debug!(?trait_to_impl_assoc_map);
     let impl_assoc_id = *trait_to_impl_assoc_map.get(&trait_assoc_id)?;

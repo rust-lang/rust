@@ -97,7 +97,7 @@ fn check_is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
 /// object. Note that object-safe traits can have some
 /// non-vtable-safe methods, so long as they require `Self: Sized` or
 /// otherwise ensure that they cannot be used when `Self = Trait`.
-pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: &ty::AssocItem) -> bool {
+pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: ty::AssocItem) -> bool {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
     // Any method that has a `Self: Sized` bound cannot be called.
@@ -120,8 +120,8 @@ fn object_safety_violations_for_trait(
         .associated_items(trait_def_id)
         .in_definition_order()
         .filter(|item| item.kind == ty::AssocKind::Fn)
-        .filter_map(|item| {
-            object_safety_violation_for_method(tcx, trait_def_id, &item)
+        .filter_map(|&item| {
+            object_safety_violation_for_method(tcx, trait_def_id, item)
                 .map(|(code, span)| ObjectSafetyViolation::Method(item.name, code, span))
         })
         .collect();
@@ -387,7 +387,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 fn object_safety_violation_for_method(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
-    method: &ty::AssocItem,
+    method: ty::AssocItem,
 ) -> Option<(MethodViolationCode, Span)> {
     debug!("object_safety_violation_for_method({:?}, {:?})", trait_def_id, method);
     // Any method that has a `Self : Sized` requisite is otherwise
@@ -420,7 +420,7 @@ fn object_safety_violation_for_method(
 fn virtual_call_violation_for_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
-    method: &ty::AssocItem,
+    method: ty::AssocItem,
 ) -> Option<MethodViolationCode> {
     let sig = tcx.fn_sig(method.def_id).subst_identity();
 
@@ -722,7 +722,7 @@ fn object_ty_for_trait<'tcx>(
 #[allow(dead_code)]
 fn receiver_is_dispatchable<'tcx>(
     tcx: TyCtxt<'tcx>,
-    method: &ty::AssocItem,
+    method: ty::AssocItem,
     receiver_ty: Ty<'tcx>,
 ) -> bool {
     debug!("receiver_is_dispatchable: method = {:?}, receiver_ty = {:?}", method, receiver_ty);

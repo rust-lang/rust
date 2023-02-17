@@ -26,7 +26,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
     }
 }
 
-fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItems<'_> {
+fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItems {
     if tcx.is_trait_alias(def_id) {
         ty::AssocItems::new(Vec::new())
     } else {

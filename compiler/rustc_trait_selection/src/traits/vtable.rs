@@ -197,12 +197,12 @@ fn own_existential_vtable_entries(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &[Def
         .in_definition_order()
         .filter(|item| item.kind == ty::AssocKind::Fn);
     // Now list each method's DefId (for within its trait).
-    let own_entries = trait_methods.filter_map(move |trait_method| {
+    let own_entries = trait_methods.filter_map(move |&trait_method| {
         debug!("own_existential_vtable_entry: trait_method={:?}", trait_method);
         let def_id = trait_method.def_id;
 
         // Some methods cannot be called on an object; skip those.
-        if !is_vtable_safe_method(tcx, trait_def_id, &trait_method) {
+        if !is_vtable_safe_method(tcx, trait_def_id, trait_method) {
             debug!("own_existential_vtable_entry: not vtable safe");
             return None;
         }

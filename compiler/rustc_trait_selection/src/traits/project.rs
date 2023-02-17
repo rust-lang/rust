@@ -2149,7 +2149,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     } else {
         ty.map_bound(|ty| ty.into())
     };
-    if !check_substs_compatible(tcx, &assoc_ty.item, substs) {
+    if !check_substs_compatible(tcx, assoc_ty.item, substs) {
         let err = tcx.ty_error_with_message(
             obligation.cause.span,
             "impl item and trait item have different parameters",
@@ -2164,7 +2164,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
 // Verify that the trait item and its implementation have compatible substs lists
 fn check_substs_compatible<'tcx>(
     tcx: TyCtxt<'tcx>,
-    assoc_item: &ty::AssocItem,
+    assoc_item: ty::AssocItem,
     substs: ty::SubstsRef<'tcx>,
 ) -> bool {
     fn check_substs_compatible_inner<'tcx>(
@@ -2238,7 +2238,7 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         leaf_def.defining_node,
     );
 
-    if !check_substs_compatible(tcx, &leaf_def.item, impl_fn_substs) {
+    if !check_substs_compatible(tcx, leaf_def.item, impl_fn_substs) {
         let err = tcx.ty_error_with_message(
             obligation.cause.span,
             "impl method and trait method have different parameters",

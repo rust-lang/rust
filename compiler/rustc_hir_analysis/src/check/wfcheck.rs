@@ -1180,7 +1180,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
 ///
 /// Assuming the defaults are used, check that all predicates (bounds on the
 /// assoc type and where clauses on the trait) hold.
-fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: &ty::AssocItem, span: Span) {
+fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocItem, span: Span) {
     let bounds = wfcx.tcx().explicit_item_bounds(item.def_id);
 
     debug!("check_associated_type_bounds: bounds={:?}", bounds);
@@ -1630,7 +1630,7 @@ const HELP_FOR_SELF_TYPE: &str = "consider changing to `self`, `&self`, `&mut se
 fn check_method_receiver<'tcx>(
     wfcx: &WfCheckingCtxt<'_, 'tcx>,
     fn_sig: &hir::FnSig<'_>,
-    method: &ty::AssocItem,
+    method: ty::AssocItem,
     self_ty: Ty<'tcx>,
 ) {
     let tcx = wfcx.tcx();

@@ -2206,7 +2206,7 @@ impl<'tcx> TyCtxt<'tcx> {
         Some(Ident::new(def, span))
     }
 
-    pub fn opt_associated_item(self, def_id: DefId) -> Option<&'tcx AssocItem> {
+    pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
         if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
             Some(self.associated_item(def_id))
         } else {
