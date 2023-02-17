@@ -2,10 +2,10 @@
 
 set -e
 
+TOOLCHAIN=${TOOLCHAIN:-$(date +%Y-%m-%d)}
+
 case $1 in
     "prepare")
-        TOOLCHAIN=$(date +%Y-%m-%d)
-
         echo "=> Installing new nightly"
         rustup toolchain install --profile minimal "nightly-${TOOLCHAIN}" # Sanity check to see if the nightly exists
         sed -i "s/\"nightly-.*\"/\"nightly-${TOOLCHAIN}\"/" rust-toolchain
@@ -42,13 +42,16 @@ case $1 in
         git merge sync_from_rust
 	;;
     "pull")
+        RUST_VERS=$(curl "https://static.rust-lang.org/dist/$TOOLCHAIN/channel-rust-nightly-git-commit-hash.txt")
+        echo "Pulling $RUST_VERS ($TOOLCHAIN)"
+
         cg_clif=$(pwd)
         pushd ../rust
-        git pull origin master
-        rust_vers="$(git rev-parse HEAD)"
+        git fetch origin master
+        git checkout "$RUST_VERS"
         git subtree push --prefix=compiler/rustc_codegen_cranelift/ "$cg_clif" sync_from_rust
         popd
-        git merge sync_from_rust -m "Sync from rust $rust_vers"
+        git merge sync_from_rust -m "Sync from rust $RUST_VERS"
         git branch -d sync_from_rust
         ;;
     *)
