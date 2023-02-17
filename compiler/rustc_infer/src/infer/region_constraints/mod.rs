@@ -420,7 +420,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         // `RegionConstraintData` contains the relationship here.
         if *any_unifications {
             *any_unifications = false;
-            self.unification_table().reset_unifications(|_| UnifiedRegion(None));
+            self.unification_table_mut().reset_unifications(|_| UnifiedRegion(None));
         }
 
         data
@@ -447,7 +447,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ) -> RegionVid {
         let vid = self.var_infos.push(RegionVariableInfo { origin, universe });
 
-        let u_vid = self.unification_table().new_key(UnifiedRegion(None));
+        let u_vid = self.unification_table_mut().new_key(UnifiedRegion(None));
         assert_eq!(vid, u_vid.vid);
         self.undo_log.push(AddVar(vid));
         debug!("created new region variable {:?} in {:?} with origin {:?}", vid, universe, origin);
@@ -516,13 +516,13 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             match (sub, sup) {
                 (Region(Interned(ReVar(sub), _)), Region(Interned(ReVar(sup), _))) => {
                     debug!("make_eqregion: unifying {:?} with {:?}", sub, sup);
-                    self.unification_table().union(*sub, *sup);
+                    self.unification_table_mut().union(*sub, *sup);
                     self.any_unifications = true;
                 }
                 (Region(Interned(ReVar(vid), _)), value)
                 | (value, Region(Interned(ReVar(vid), _))) => {
                     debug!("make_eqregion: unifying {:?} with {:?}", vid, value);
-                    self.unification_table().union_value(*vid, UnifiedRegion(Some(value)));
+                    self.unification_table_mut().union_value(*vid, UnifiedRegion(Some(value)));
                     self.any_unifications = true;
                 }
                 (_, _) => {}
@@ -640,8 +640,9 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         tcx: TyCtxt<'tcx>,
         vid: ty::RegionVid,
     ) -> ty::Region<'tcx> {
-        let root_vid = self.unification_table().find(vid).vid;
-        self.unification_table().probe_value(root_vid).0.unwrap_or_else(|| tcx.mk_re_var(root_vid))
+        let mut ut = self.unification_table_mut(); // FIXME(rust-lang/ena#42): unnecessary mut
+        let root_vid = ut.find(vid).vid;
+        ut.probe_value(root_vid).0.unwrap_or_else(|| tcx.mk_re_var(root_vid))
     }
 
     fn combine_map(&mut self, t: CombineMapType) -> &mut CombineMap<'tcx> {
@@ -719,7 +720,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     #[inline]
-    fn unification_table(&mut self) -> super::UnificationTable<'_, 'tcx, RegionVidKey<'tcx>> {
+    fn unification_table_mut(&mut self) -> super::UnificationTable<'_, 'tcx, RegionVidKey<'tcx>> {
         ut::UnificationTable::with_log(&mut self.storage.unification_table, self.undo_log)
     }
 }
