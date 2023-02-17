@@ -1,0 +1,35 @@
+- // MIR for `reraw` before CopyProp
++ // MIR for `reraw` after CopyProp
+  
+  fn reraw(_1: u8) -> () {
+      debug x => _1;                       // in scope 0 at $DIR/reborrow.rs:+0:10: +0:15
+      let mut _0: ();                      // return place in scope 0 at $DIR/reborrow.rs:+0:21: +0:21
+      let _2: &mut u8;                     // in scope 0 at $DIR/reborrow.rs:+1:9: +1:10
+      scope 1 {
+          debug a => _2;                   // in scope 1 at $DIR/reborrow.rs:+1:9: +1:10
+          let _3: *mut u8;                 // in scope 1 at $DIR/reborrow.rs:+2:9: +2:10
+          scope 2 {
+              debug b => _3;               // in scope 2 at $DIR/reborrow.rs:+2:9: +2:10
+              let _4: &mut u8;             // in scope 2 at $DIR/reborrow.rs:+3:9: +3:10
+              scope 3 {
+-                 debug c => _4;           // in scope 3 at $DIR/reborrow.rs:+3:9: +3:10
++                 debug c => _2;           // in scope 3 at $DIR/reborrow.rs:+3:9: +3:10
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);                 // scope 0 at $DIR/reborrow.rs:+1:9: +1:10
+          _2 = &mut _1;                    // scope 0 at $DIR/reborrow.rs:+1:13: +1:19
+          StorageLive(_3);                 // scope 1 at $DIR/reborrow.rs:+2:9: +2:10
+          _3 = &raw mut (*_2);             // scope 1 at $DIR/reborrow.rs:+2:13: +2:24
+-         StorageLive(_4);                 // scope 2 at $DIR/reborrow.rs:+3:9: +3:10
+-         _4 = move _2;                    // scope 2 at $DIR/reborrow.rs:+3:13: +3:14
+          _0 = const ();                   // scope 0 at $DIR/reborrow.rs:+0:21: +4:2
+-         StorageDead(_4);                 // scope 2 at $DIR/reborrow.rs:+4:1: +4:2
+          StorageDead(_3);                 // scope 1 at $DIR/reborrow.rs:+4:1: +4:2
+-         StorageDead(_2);                 // scope 0 at $DIR/reborrow.rs:+4:1: +4:2
+          return;                          // scope 0 at $DIR/reborrow.rs:+4:2: +4:2
+      }
+  }
+  
