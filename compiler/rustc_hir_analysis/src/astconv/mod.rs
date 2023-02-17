@@ -2232,41 +2232,40 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let param_env = tcx.param_env(block.owner.to_def_id());
         let cause = ObligationCause::misc(span, block.owner.def_id);
         let mut fulfillment_errors = Vec::new();
-        let mut applicable_candidates = Vec::new();
+        let mut applicable_candidates: Vec<_> = candidates
+            .iter()
+            .filter_map(|&(impl_, (assoc_item, def_scope))| {
+                let ocx = ObligationCtxt::new(&infcx);
 
-        for &(impl_, (assoc_item, def_scope)) in &candidates {
-            let ocx = ObligationCtxt::new(&infcx);
+                let impl_ty = tcx.type_of(impl_);
+                let impl_substs = self.fresh_item_substs(impl_, &infcx);
+                let impl_ty = impl_ty.subst(tcx, impl_substs);
+                let impl_ty = ocx.normalize(&cause, param_env, impl_ty);
 
-            let impl_ty = tcx.type_of(impl_);
-            let impl_substs = self.fresh_item_substs(impl_, &infcx);
-            let impl_ty = impl_ty.subst(tcx, impl_substs);
-            let impl_ty = ocx.normalize(&cause, param_env, impl_ty);
+                // Check that the Self-types can be related.
+                // FIXME(fmease): Should we use `eq` here?
+                ocx.sup(&ObligationCause::dummy(), param_env, impl_ty, self_ty).ok()?;
 
-            // Check that the Self-types can be related.
-            // FIXME(fmease): Should we use `eq` here?
-            if ocx.sup(&ObligationCause::dummy(), param_env, impl_ty, self_ty).is_err() {
-                continue;
-            }
+                // Check whether the impl imposes obligations we have to worry about.
+                let impl_bounds = tcx.predicates_of(impl_);
+                let impl_bounds = impl_bounds.instantiate(tcx, impl_substs);
 
-            // Check whether the impl imposes obligations we have to worry about.
-            let impl_bounds = tcx.predicates_of(impl_);
-            let impl_bounds = impl_bounds.instantiate(tcx, impl_substs);
+                let impl_bounds = ocx.normalize(&cause, param_env, impl_bounds);
 
-            let impl_bounds = ocx.normalize(&cause, param_env, impl_bounds);
+                let impl_obligations =
+                    traits::predicates_for_generics(|_, _| cause.clone(), param_env, impl_bounds);
 
-            let impl_obligations =
-                traits::predicates_for_generics(|_, _| cause.clone(), param_env, impl_bounds);
+                ocx.register_obligations(impl_obligations);
 
-            ocx.register_obligations(impl_obligations);
+                let errors = ocx.select_where_possible();
+                if !errors.is_empty() {
+                    fulfillment_errors = errors;
+                    return None;
+                }
 
-            let errors = ocx.select_where_possible();
-            if !errors.is_empty() {
-                fulfillment_errors = errors;
-                continue;
-            }
-
-            applicable_candidates.push((assoc_item, def_scope));
-        }
+                Some((assoc_item, def_scope))
+            })
+            .collect();
 
         if applicable_candidates.len() > 1 {
             return Err(self.complain_about_ambiguous_inherent_assoc_type(
