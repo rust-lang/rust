@@ -866,7 +866,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
             let mut projection = vec![PlaceElem::Deref];
             projection.extend(place.projection);
-            place.projection = tcx.intern_place_elems(&projection);
+            place.projection = tcx.mk_place_elems(&projection);
 
             // Create a temp to hold the promoted reference.
             // This is because `*r` requires `r` to be a local,

@@ -413,19 +413,19 @@ impl<'tcx, T: TypeVisitable<'tcx>> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Bind
 
 impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_poly_existential_predicates(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_poly_existential_predicates(v))
     }
 }
 
 impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Const<'tcx>> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_const_list(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_const_list(v))
     }
 }
 
 impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ProjectionKind> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_projs(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_projs(v))
     }
 }
 
@@ -592,7 +592,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Predicate<'tcx> {
 
 impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<ty::Predicate<'tcx>> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_predicates(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_predicates(v))
     }
 }
 

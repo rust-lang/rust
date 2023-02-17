@@ -292,7 +292,7 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
     assert!(!self_ty.has_escaping_bound_vars());
     let arguments_tuple = match tuple_arguments {
         TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
-        TupleArgumentsFlag::Yes => tcx.intern_tup(sig.skip_binder().inputs()),
+        TupleArgumentsFlag::Yes => tcx.mk_tup(sig.skip_binder().inputs()),
     };
     let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, [self_ty, arguments_tuple]);
     sig.map_bound(|sig| (trait_ref, sig.output()))

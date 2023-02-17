@@ -572,7 +572,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         debug_assert!(!out_value.needs_infer() && !out_value.has_placeholders());
 
         let canonical_variables =
-            tcx.intern_canonical_var_infos(&canonicalizer.universe_canonicalized_variables());
+            tcx.mk_canonical_var_infos(&canonicalizer.universe_canonicalized_variables());
 
         let max_universe = canonical_variables
             .iter()

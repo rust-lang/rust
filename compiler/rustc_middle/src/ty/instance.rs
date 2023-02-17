@@ -540,7 +540,7 @@ impl<'tcx> Instance<'tcx> {
 
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
-        let substs = tcx.intern_substs(&[ty.into()]);
+        let substs = tcx.mk_substs(&[ty.into()]);
         Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs)
     }
 

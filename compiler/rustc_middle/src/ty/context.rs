@@ -177,7 +177,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         }
     }
 
-    /// Interns a type.
+    /// Interns a type. (Use `mk_*` functions instead, where possible.)
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline(never)]
     fn intern_ty(&self, kind: TyKind<'tcx>, sess: &Session, untracked: &Untracked) -> Ty<'tcx> {
@@ -217,6 +217,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         }
     }
 
+    /// Interns a predicate. (Use `mk_predicate` instead, where possible.)
     #[inline(never)]
     fn intern_predicate(
         &self,
@@ -615,21 +616,21 @@ impl<'tcx> TyCtxt<'tcx> {
         self.arena.alloc(Steal::new(promoted))
     }
 
-    pub fn alloc_adt_def(
+    pub fn mk_adt_def(
         self,
         did: DefId,
         kind: AdtKind,
         variants: IndexVec<VariantIdx, ty::VariantDef>,
         repr: ReprOptions,
     ) -> ty::AdtDef<'tcx> {
-        self.intern_adt_def(ty::AdtDefData::new(self, did, kind, variants, repr))
+        self.mk_adt_def_from_data(ty::AdtDefData::new(self, did, kind, variants, repr))
     }
 
     /// Allocates a read-only byte or string literal for `mir::interpret`.
     pub fn allocate_bytes(self, bytes: &[u8]) -> interpret::AllocId {
         // Create an allocation that just contains these bytes.
         let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes);
-        let alloc = self.intern_const_alloc(alloc);
+        let alloc = self.mk_const_alloc(alloc);
         self.create_memory_alloc(alloc)
     }
 
@@ -1194,7 +1195,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_imm_ref(
             self.lifetimes.re_static,
             self.type_of(self.require_lang_item(LangItem::PanicLocation, None))
-                .subst(self, self.intern_substs(&[self.lifetimes.re_static.into()])),
+                .subst(self, self.mk_substs(&[self.lifetimes.re_static.into()])),
         )
     }
 
@@ -1281,7 +1282,7 @@ macro_rules! nop_lift {
 
 // Can't use the macros as we have reuse the `substs` here.
 //
-// See `intern_type_list` for more info.
+// See `mk_type_list` for more info.
 impl<'a, 'tcx> Lift<'tcx> for &'a List<Ty<'a>> {
     type Lifted = &'tcx List<Ty<'tcx>>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
@@ -1522,7 +1523,7 @@ impl<'tcx, T: Hash> Hash for InternedInSet<'tcx, List<T>> {
 }
 
 macro_rules! direct_interners {
-    ($($name:ident: $method:ident($ty:ty): $ret_ctor:ident -> $ret_ty:ty,)+) => {
+    ($($name:ident: $vis:vis $method:ident($ty:ty): $ret_ctor:ident -> $ret_ty:ty,)+) => {
         $(impl<'tcx> Borrow<$ty> for InternedInSet<'tcx, $ty> {
             fn borrow<'a>(&'a self) -> &'a $ty {
                 &self.0
@@ -1548,7 +1549,7 @@ macro_rules! direct_interners {
         }
 
         impl<'tcx> TyCtxt<'tcx> {
-            pub fn $method(self, v: $ty) -> $ret_ty {
+            $vis fn $method(self, v: $ty) -> $ret_ty {
                 $ret_ctor(Interned::new_unchecked(self.interners.$name.intern(v, |v| {
                     InternedInSet(self.interners.arena.alloc(v))
                 }).0))
@@ -1557,19 +1558,23 @@ macro_rules! direct_interners {
     }
 }
 
+// Functions with a `mk_` prefix are intended for use outside this file and
+// crate. Functions with an `intern_` prefix are intended for use within this
+// file only, and have a corresponding `mk_` function.
 direct_interners! {
     region: intern_region(RegionKind<'tcx>): Region -> Region<'tcx>,
-    const_: mk_const_internal(ConstData<'tcx>): Const -> Const<'tcx>,
-    const_allocation: intern_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
-    layout: intern_layout(LayoutS): Layout -> Layout<'tcx>,
-    adt_def: intern_adt_def(AdtDefData): AdtDef -> AdtDef<'tcx>,
-    external_constraints: intern_external_constraints(ExternalConstraintsData<'tcx>): ExternalConstraints -> ExternalConstraints<'tcx>,
+    const_: intern_const(ConstData<'tcx>): Const -> Const<'tcx>,
+    const_allocation: pub mk_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
+    layout: pub mk_layout(LayoutS): Layout -> Layout<'tcx>,
+    adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
+    external_constraints: pub mk_external_constraints(ExternalConstraintsData<'tcx>):
+        ExternalConstraints -> ExternalConstraints<'tcx>,
 }
 
 macro_rules! slice_interners {
-    ($($field:ident: $method:ident($ty:ty)),+ $(,)?) => (
+    ($($field:ident: $vis:vis $method:ident($ty:ty)),+ $(,)?) => (
         impl<'tcx> TyCtxt<'tcx> {
-            $(pub fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
+            $($vis fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
                 if v.is_empty() {
                     List::empty()
                 } else {
@@ -1582,16 +1587,18 @@ macro_rules! slice_interners {
     );
 }
 
+// These functions intern slices. They all have a corresponding
+// `mk_foo_from_iter` function that interns an iterator. The slice version
+// should be used when possible, because it's faster.
 slice_interners!(
-    const_lists: intern_const_list(Const<'tcx>),
-    substs: intern_substs(GenericArg<'tcx>),
-    canonical_var_infos: intern_canonical_var_infos(CanonicalVarInfo<'tcx>),
-    poly_existential_predicates:
-        _intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
-    predicates: _intern_predicates(Predicate<'tcx>),
-    projs: intern_projs(ProjectionKind),
-    place_elems: intern_place_elems(PlaceElem<'tcx>),
-    bound_variable_kinds: intern_bound_variable_kinds(ty::BoundVariableKind),
+    const_lists: pub mk_const_list(Const<'tcx>),
+    substs: pub mk_substs(GenericArg<'tcx>),
+    canonical_var_infos: pub mk_canonical_var_infos(CanonicalVarInfo<'tcx>),
+    poly_existential_predicates: intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
+    predicates: intern_predicates(Predicate<'tcx>),
+    projs: pub mk_projs(ProjectionKind),
+    place_elems: pub mk_place_elems(PlaceElem<'tcx>),
+    bound_variable_kinds: pub mk_bound_variable_kinds(ty::BoundVariableKind),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -1839,16 +1846,16 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn intern_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
-        if ts.is_empty() { self.types.unit } else { self.mk_ty(Tuple(self.intern_type_list(&ts))) }
+    pub fn mk_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
+        if ts.is_empty() { self.types.unit } else { self.mk_ty(Tuple(self.mk_type_list(&ts))) }
     }
 
-    pub fn mk_tup<I, T>(self, iter: I) -> T::Output
+    pub fn mk_tup_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
         T: CollectAndApply<Ty<'tcx>, Ty<'tcx>>,
     {
-        T::collect_and_apply(iter, |ts| self.intern_tup(ts))
+        T::collect_and_apply(iter, |ts| self.mk_tup(ts))
     }
 
     #[inline]
@@ -1867,12 +1874,12 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id: DefId,
         substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
     ) -> Ty<'tcx> {
-        let substs = self.check_substs(def_id, substs);
+        let substs = self.check_and_mk_substs(def_id, substs);
         self.mk_ty(FnDef(def_id, substs))
     }
 
     #[inline(always)]
-    fn check_substs(
+    fn check_and_mk_substs(
         self,
         _def_id: DefId,
         substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
@@ -1888,7 +1895,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 substs.collect::<Vec<_>>(),
             );
         }
-        self.mk_substs(substs)
+        self.mk_substs_from_iter(substs)
     }
 
     #[inline]
@@ -1939,7 +1946,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_task_context(self) -> Ty<'tcx> {
         let context_did = self.require_lang_item(LangItem::Context, None);
         let context_adt_ref = self.adt_def(context_did);
-        let context_substs = self.intern_substs(&[self.lifetimes.re_erased.into()]);
+        let context_substs = self.mk_substs(&[self.lifetimes.re_erased.into()]);
         let context_ty = self.mk_adt(context_adt_ref, context_substs);
         self.mk_mut_ref(self.lifetimes.re_erased, context_ty)
     }
@@ -1951,7 +1958,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_const(self, kind: impl Into<ty::ConstKind<'tcx>>, ty: Ty<'tcx>) -> Const<'tcx> {
-        self.mk_const_internal(ty::ConstData { kind: kind.into(), ty })
+        self.intern_const(ty::ConstData { kind: kind.into(), ty })
     }
 
     #[inline]
@@ -2141,10 +2148,10 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut projection = place.projection.to_vec();
         projection.push(elem);
 
-        Place { local: place.local, projection: self.intern_place_elems(&projection) }
+        Place { local: place.local, projection: self.mk_place_elems(&projection) }
     }
 
-    pub fn intern_poly_existential_predicates(
+    pub fn mk_poly_existential_predicates(
         self,
         eps: &[PolyExistentialPredicate<'tcx>],
     ) -> &'tcx List<PolyExistentialPredicate<'tcx>> {
@@ -2154,25 +2161,25 @@ impl<'tcx> TyCtxt<'tcx> {
                 .all(|[a, b]| a.skip_binder().stable_cmp(self, &b.skip_binder())
                     != Ordering::Greater)
         );
-        self._intern_poly_existential_predicates(eps)
+        self.intern_poly_existential_predicates(eps)
     }
 
-    pub fn intern_predicates(self, preds: &[Predicate<'tcx>]) -> &'tcx List<Predicate<'tcx>> {
+    pub fn mk_predicates(self, preds: &[Predicate<'tcx>]) -> &'tcx List<Predicate<'tcx>> {
         // FIXME consider asking the input slice to be sorted to avoid
         // re-interning permutations, in which case that would be asserted
         // here.
-        self._intern_predicates(preds)
+        self.intern_predicates(preds)
     }
 
-    pub fn mk_const_list<I, T>(self, iter: I) -> T::Output
+    pub fn mk_const_list_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
         T: CollectAndApply<ty::Const<'tcx>, &'tcx List<ty::Const<'tcx>>>,
     {
-        T::collect_and_apply(iter, |xs| self.intern_const_list(xs))
+        T::collect_and_apply(iter, |xs| self.mk_const_list(xs))
     }
 
-    pub fn intern_type_list(self, ts: &[Ty<'tcx>]) -> &'tcx List<Ty<'tcx>> {
+    pub fn mk_type_list(self, ts: &[Ty<'tcx>]) -> &'tcx List<Ty<'tcx>> {
         // Actually intern type lists as lists of `GenericArg`s.
         //
         // Transmuting from `Ty<'tcx>` to `GenericArg<'tcx>` is sound
@@ -2180,15 +2187,14 @@ impl<'tcx> TyCtxt<'tcx> {
         // we guarantee that even when transmuting between `List<Ty<'tcx>>`
         // and `List<GenericArg<'tcx>>`, the uniqueness requirement for
         // lists is upheld.
-        let substs = self.intern_substs(ty::subst::ty_slice_as_generic_args(ts));
+        let substs = self.mk_substs(ty::subst::ty_slice_as_generic_args(ts));
         substs.try_as_type_list().unwrap()
     }
 
-    // Unlike various other `mk_*` functions, this one uses `I: IntoIterator`
-    // instead of `I: Iterator`. Unlike those other functions, this one doesn't
-    // have a `intern_fn_sig` variant that can be used for cases where `I` is
-    // something like a `Vec`. That's because of the need to combine `inputs`
-    // and `output`.
+    // Unlike various other `mk_*_from_iter` functions, this one uses `I:
+    // IntoIterator` instead of `I: Iterator`, and it doesn't have a slice
+    // variant, because of the need to combine `inputs` and `output`. This
+    // explains the lack of `_from_iter` suffix.
     pub fn mk_fn_sig<I, T>(
         self,
         inputs: I,
@@ -2202,14 +2208,14 @@ impl<'tcx> TyCtxt<'tcx> {
         T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
     {
         T::collect_and_apply(inputs.into_iter().chain(iter::once(output)), |xs| ty::FnSig {
-            inputs_and_output: self.intern_type_list(xs),
+            inputs_and_output: self.mk_type_list(xs),
             c_variadic,
             unsafety,
             abi,
         })
     }
 
-    pub fn mk_poly_existential_predicates<I, T>(self, iter: I) -> T::Output
+    pub fn mk_poly_existential_predicates_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
         T: CollectAndApply<
@@ -2217,39 +2223,39 @@ impl<'tcx> TyCtxt<'tcx> {
                 &'tcx List<PolyExistentialPredicate<'tcx>>,
             >,
     {
-        T::collect_and_apply(iter, |xs| self.intern_poly_existential_predicates(xs))
+        T::collect_and_apply(iter, |xs| self.mk_poly_existential_predicates(xs))
     }
 
-    pub fn mk_predicates<I, T>(self, iter: I) -> T::Output
+    pub fn mk_predicates_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
         T: CollectAndApply<Predicate<'tcx>, &'tcx List<Predicate<'tcx>>>,
     {
-        T::collect_and_apply(iter, |xs| self.intern_predicates(xs))
+        T::collect_and_apply(iter, |xs| self.mk_predicates(xs))
     }
 
-    pub fn mk_type_list<I, T>(self, iter: I) -> T::Output
+    pub fn mk_type_list_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
         T: CollectAndApply<Ty<'tcx>, &'tcx List<Ty<'tcx>>>,
     {
-        T::collect_and_apply(iter, |xs| self.intern_type_list(xs))
+        T::collect_and_apply(iter, |xs| self.mk_type_list(xs))
     }
 
-    pub fn mk_substs<I, T>(self, iter: I) -> T::Output
+    pub fn mk_substs_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
         T: CollectAndApply<GenericArg<'tcx>, &'tcx List<GenericArg<'tcx>>>,
     {
-        T::collect_and_apply(iter, |xs| self.intern_substs(xs))
+        T::collect_and_apply(iter, |xs| self.mk_substs(xs))
     }
 
-    pub fn mk_place_elems<I, T>(self, iter: I) -> T::Output
+    pub fn mk_place_elems_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
         T: CollectAndApply<PlaceElem<'tcx>, &'tcx List<PlaceElem<'tcx>>>,
     {
-        T::collect_and_apply(iter, |xs| self.intern_place_elems(xs))
+        T::collect_and_apply(iter, |xs| self.mk_place_elems(xs))
     }
 
     pub fn mk_substs_trait(
@@ -2257,7 +2263,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self_ty: Ty<'tcx>,
         rest: impl IntoIterator<Item = GenericArg<'tcx>>,
     ) -> SubstsRef<'tcx> {
-        self.mk_substs(iter::once(self_ty.into()).chain(rest))
+        self.mk_substs_from_iter(iter::once(self_ty.into()).chain(rest))
     }
 
     pub fn mk_trait_ref(
@@ -2265,7 +2271,7 @@ impl<'tcx> TyCtxt<'tcx> {
         trait_def_id: DefId,
         substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
     ) -> ty::TraitRef<'tcx> {
-        let substs = self.check_substs(trait_def_id, substs);
+        let substs = self.check_and_mk_substs(trait_def_id, substs);
         ty::TraitRef { def_id: trait_def_id, substs, _use_mk_trait_ref_instead: () }
     }
 
@@ -2274,16 +2280,16 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id: DefId,
         substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
     ) -> ty::AliasTy<'tcx> {
-        let substs = self.check_substs(def_id, substs);
+        let substs = self.check_and_mk_substs(def_id, substs);
         ty::AliasTy { def_id, substs, _use_mk_alias_ty_instead: () }
     }
 
-    pub fn mk_bound_variable_kinds<I, T>(self, iter: I) -> T::Output
+    pub fn mk_bound_variable_kinds_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
         T: CollectAndApply<ty::BoundVariableKind, &'tcx List<ty::BoundVariableKind>>,
     {
-        T::collect_and_apply(iter, |xs| self.intern_bound_variable_kinds(xs))
+        T::collect_and_apply(iter, |xs| self.mk_bound_variable_kinds(xs))
     }
 
     /// Emit a lint at `span` from a lint struct (some type that implements `DecorateLint`,
@@ -2368,7 +2374,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn late_bound_vars(self, id: HirId) -> &'tcx List<ty::BoundVariableKind> {
-        self.intern_bound_variable_kinds(
+        self.mk_bound_variable_kinds(
             &self
                 .late_bound_vars_map(id.owner)
                 .and_then(|map| map.get(&id.local_id).cloned())

@@ -237,7 +237,7 @@ pub fn implements_trait_with_env<'tcx>(
         kind: TypeVariableOriginKind::MiscVariable,
         span: DUMMY_SP,
     };
-    let ty_params = tcx.mk_substs(
+    let ty_params = tcx.mk_substs_from_iter(
         ty_params
             .into_iter()
             .map(|arg| arg.unwrap_or_else(|| infcx.next_ty_var(orig).into())),
@@ -1065,7 +1065,7 @@ pub fn make_projection<'tcx>(
         tcx,
         container_id,
         assoc_ty,
-        tcx.mk_substs(substs.into_iter().map(Into::into)),
+        tcx.mk_substs_from_iter(substs.into_iter().map(Into::into)),
     )
 }
 

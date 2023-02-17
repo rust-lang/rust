@@ -307,7 +307,7 @@ impl<'tcx> Cx<'tcx> {
 
                     let arg_tys = args.iter().map(|e| self.typeck_results().expr_ty_adjusted(e));
                     let tupled_args = Expr {
-                        ty: tcx.mk_tup(arg_tys),
+                        ty: tcx.mk_tup_from_iter(arg_tys),
                         temp_lifetime,
                         span: expr.span,
                         kind: ExprKind::Tuple { fields: self.mirror_exprs(args) },

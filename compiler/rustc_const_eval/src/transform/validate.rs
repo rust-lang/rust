@@ -315,7 +315,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             ProjectionElem::Field(f, ty) => {
-                let parent = Place { local, projection: self.tcx.intern_place_elems(proj_base) };
+                let parent = Place { local, projection: self.tcx.mk_place_elems(proj_base) };
                 let parent_ty = parent.ty(&self.body.local_decls, self.tcx);
                 let fail_out_of_bounds = |this: &Self, location| {
                     this.fail(location, format!("Out of bounds field {:?} for {:?}", f, parent_ty));

@@ -2230,7 +2230,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
                 // (*) binder moved here
-                let all_vars = self.tcx().mk_bound_variable_kinds(
+                let all_vars = self.tcx().mk_bound_variable_kinds_from_iter(
                     obligation.predicate.bound_vars().iter().chain(binder.bound_vars().iter()),
                 );
                 Where(ty::Binder::bind_with_vars(witness_tys.to_vec(), all_vars))
@@ -3034,7 +3034,7 @@ fn bind_generator_hidden_types_above<'tcx>(
     if considering_regions {
         debug_assert!(!hidden_types.has_erased_regions());
     }
-    let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.iter().chain(
+    let bound_vars = tcx.mk_bound_variable_kinds_from_iter(bound_vars.iter().chain(
         (num_bound_variables..counter).map(|i| ty::BoundVariableKind::Region(ty::BrAnon(i, None))),
     ));
     ty::Binder::bind_with_vars(hidden_types, bound_vars)

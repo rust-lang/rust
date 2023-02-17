@@ -96,7 +96,7 @@ pub(crate) fn evaluate_goal<'tcx>(
         use rustc_middle::infer::canonical::CanonicalVarInfo;
 
         let mut reverse_param_substitutor = ReverseParamsSubstitutor::new(tcx, params);
-        let var_values = tcx.mk_substs(
+        let var_values = tcx.mk_substs_from_iter(
             subst
                 .as_slice(interner)
                 .iter()
@@ -126,7 +126,7 @@ pub(crate) fn evaluate_goal<'tcx>(
         let max_universe = binders.iter(interner).map(|v| v.skip_kind().counter).max().unwrap_or(0);
         let sol = Canonical {
             max_universe: ty::UniverseIndex::from_usize(max_universe),
-            variables: tcx.intern_canonical_var_infos(&variables),
+            variables: tcx.mk_canonical_var_infos(&variables),
             value: QueryResponse {
                 var_values: CanonicalVarValues { var_values },
                 region_constraints: QueryRegionConstraints::default(),

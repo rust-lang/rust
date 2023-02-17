@@ -121,7 +121,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
 
                 *rvalue = Rvalue::Use(Operand::Copy(Place {
                     local: base.local,
-                    projection: self.tcx.intern_place_elems(base.projection),
+                    projection: self.tcx.mk_place_elems(base.projection),
                 }));
             }
         }

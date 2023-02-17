@@ -596,7 +596,7 @@ where
                     ty::Adt(def, _) => def.variant(variant_index).fields.len(),
                     _ => bug!(),
                 };
-                tcx.intern_layout(LayoutS {
+                tcx.mk_layout(LayoutS {
                     variants: Variants::Single { index: variant_index },
                     fields: match NonZeroUsize::new(fields) {
                         Some(fields) => FieldsShape::Union(fields),
@@ -609,7 +609,7 @@ where
                 })
             }
 
-            Variants::Multiple { ref variants, .. } => cx.tcx().intern_layout(variants[variant_index].clone()),
+            Variants::Multiple { ref variants, .. } => cx.tcx().mk_layout(variants[variant_index].clone()),
         };
 
         assert_eq!(*layout.variants(), Variants::Single { index: variant_index });
@@ -631,7 +631,7 @@ where
             let tcx = cx.tcx();
             let tag_layout = |tag: Scalar| -> TyAndLayout<'tcx> {
                 TyAndLayout {
-                    layout: tcx.intern_layout(LayoutS::scalar(cx, tag)),
+                    layout: tcx.mk_layout(LayoutS::scalar(cx, tag)),
                     ty: tag.primitive().to_ty(tcx),
                 }
             };
@@ -687,7 +687,7 @@ where
                         Increase this counter if you tried to implement this but
                         failed to do it without duplicating a lot of code from
                         other places in the compiler: 2
-                        tcx.intern_tup(&[
+                        tcx.mk_tup(&[
                             tcx.mk_array(tcx.types.usize, 3),
                             tcx.mk_array(Option<fn()>),
                         ])

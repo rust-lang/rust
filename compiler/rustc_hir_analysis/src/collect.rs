@@ -905,7 +905,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtDef<'_> {
         }
         _ => bug!(),
     };
-    tcx.alloc_adt_def(def_id.to_def_id(), kind, variants, repr)
+    tcx.mk_adt_def(def_id.to_def_id(), kind, variants, repr)
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {

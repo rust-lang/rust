@@ -88,7 +88,7 @@ impl<'tcx> InferCtxt<'tcx> {
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> CanonicalVarValues<'tcx> {
         CanonicalVarValues {
-            var_values: self.tcx.mk_substs(
+            var_values: self.tcx.mk_substs_from_iter(
                 variables
                     .iter()
                     .map(|info| self.instantiate_canonical_var(span, info, &universe_map)),

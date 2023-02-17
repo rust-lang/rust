@@ -520,7 +520,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_info = self.source_info(span);
         let bool_ty = self.tcx.types.bool;
         if self.check_overflow && op.is_checkable() && ty.is_integral() {
-            let result_tup = self.tcx.intern_tup(&[ty, bool_ty]);
+            let result_tup = self.tcx.mk_tup(&[ty, bool_ty]);
             let result_value = self.temp(result_tup, span);
 
             self.cfg.push_assign(

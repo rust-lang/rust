@@ -493,8 +493,9 @@ fn augment_param_env<'tcx>(
         return param_env;
     }
 
-    let bounds =
-        tcx.mk_predicates(param_env.caller_bounds().iter().chain(new_predicates.iter().cloned()));
+    let bounds = tcx.mk_predicates_from_iter(
+        param_env.caller_bounds().iter().chain(new_predicates.iter().cloned()),
+    );
     // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
     // i.e. traits::normalize_param_env_or_error
     ty::ParamEnv::new(bounds, param_env.reveal(), param_env.constness())
@@ -1476,7 +1477,7 @@ fn check_fn_or_method<'tcx>(
         |idx| hir_decl.inputs.get(idx).map_or(hir_decl.output.span(), |arg: &hir::Ty<'_>| arg.span);
 
     sig.inputs_and_output =
-        tcx.mk_type_list(sig.inputs_and_output.iter().enumerate().map(|(idx, ty)| {
+        tcx.mk_type_list_from_iter(sig.inputs_and_output.iter().enumerate().map(|(idx, ty)| {
             wfcx.normalize(
                 arg_span(idx),
                 Some(WellFormedLoc::Param {

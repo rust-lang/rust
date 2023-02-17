@@ -363,7 +363,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
                 tcx,
                 ty::ParamEnv::reveal_all(),
                 start_id,
-                tcx.intern_substs(&[ty::subst::GenericArg::from(main_ret_ty)]),
+                tcx.mk_substs(&[ty::subst::GenericArg::from(main_ret_ty)]),
             )
             .unwrap()
             .unwrap();

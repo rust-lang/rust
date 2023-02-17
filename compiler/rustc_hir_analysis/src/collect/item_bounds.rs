@@ -103,7 +103,7 @@ pub(super) fn item_bounds(
     tcx: TyCtxt<'_>,
     def_id: DefId,
 ) -> ty::EarlyBinder<&'_ ty::List<ty::Predicate<'_>>> {
-    let bounds = tcx.mk_predicates(
+    let bounds = tcx.mk_predicates_from_iter(
         util::elaborate_predicates(
             tcx,
             tcx.explicit_item_bounds(def_id).iter().map(|&(bound, _span)| bound),
