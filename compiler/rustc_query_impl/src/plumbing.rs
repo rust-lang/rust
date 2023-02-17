@@ -53,7 +53,7 @@ impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
 }
 
 impl QueryContext for QueryCtxt<'_> {
-    fn next_job_id(&self) -> QueryJobId {
+    fn next_job_id(self) -> QueryJobId {
         QueryJobId(
             NonZeroU64::new(
                 self.queries.jobs.fetch_add(1, rustc_data_structures::sync::Ordering::Relaxed),
@@ -62,31 +62,31 @@ impl QueryContext for QueryCtxt<'_> {
         )
     }
 
-    fn current_query_job(&self) -> Option<QueryJobId> {
-        tls::with_related_context(**self, |icx| icx.query)
+    fn current_query_job(self) -> Option<QueryJobId> {
+        tls::with_related_context(*self, |icx| icx.query)
     }
 
-    fn try_collect_active_jobs(&self) -> Option<QueryMap<DepKind>> {
-        self.queries.try_collect_active_jobs(**self)
+    fn try_collect_active_jobs(self) -> Option<QueryMap<DepKind>> {
+        self.queries.try_collect_active_jobs(*self)
     }
 
     // Interactions with on_disk_cache
-    fn load_side_effects(&self, prev_dep_node_index: SerializedDepNodeIndex) -> QuerySideEffects {
+    fn load_side_effects(self, prev_dep_node_index: SerializedDepNodeIndex) -> QuerySideEffects {
         self.queries
             .on_disk_cache
             .as_ref()
-            .map(|c| c.load_side_effects(**self, prev_dep_node_index))
+            .map(|c| c.load_side_effects(*self, prev_dep_node_index))
             .unwrap_or_default()
     }
 
-    fn store_side_effects(&self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects) {
+    fn store_side_effects(self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects) {
         if let Some(c) = self.queries.on_disk_cache.as_ref() {
             c.store_side_effects(dep_node_index, side_effects)
         }
     }
 
     fn store_side_effects_for_anon_node(
-        &self,
+        self,
         dep_node_index: DepNodeIndex,
         side_effects: QuerySideEffects,
     ) {
@@ -100,7 +100,7 @@ impl QueryContext for QueryCtxt<'_> {
     /// captured during execution and the actual result.
     #[inline(always)]
     fn start_query<R>(
-        &self,
+        self,
         token: QueryJobId,
         depth_limit: bool,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
@@ -109,14 +109,14 @@ impl QueryContext for QueryCtxt<'_> {
         // The `TyCtxt` stored in TLS has the same global interner lifetime
         // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
         // when accessing the `ImplicitCtxt`.
-        tls::with_related_context(**self, move |current_icx| {
+        tls::with_related_context(*self, move |current_icx| {
             if depth_limit && !self.recursion_limit().value_within_limit(current_icx.query_depth) {
                 self.depth_limit_error(token);
             }
 
             // Update the `ImplicitCtxt` to point to our new query job.
             let new_icx = ImplicitCtxt {
-                tcx: **self,
+                tcx: *self,
                 query: Some(token),
                 diagnostics,
                 query_depth: current_icx.query_depth + depth_limit as usize,
@@ -130,7 +130,7 @@ impl QueryContext for QueryCtxt<'_> {
         })
     }
 
-    fn depth_limit_error(&self, job: QueryJobId) {
+    fn depth_limit_error(self, job: QueryJobId) {
         let mut span = None;
         let mut layout_of_depth = None;
         if let Some(map) = self.try_collect_active_jobs() {
