@@ -4,7 +4,7 @@ warning: the feature `non_lifetime_binders` is incomplete and may not be safe to
 LL | #![feature(non_lifetime_binders)]
    |            ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
 error: late-bound type parameter not allowed on function pointer types

@@ -34,7 +34,7 @@ error[E0658]: only lifetime parameters can be used in this context
 LL | type FnBad = for<#[cfg(no)] 'a, #[cfg(yes)] T> fn();
    |                                             ^
    |
-   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
    = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
 
 error[E0658]: only lifetime parameters can be used in this context
@@ -43,7 +43,7 @@ error[E0658]: only lifetime parameters can be used in this context
 LL | type PolyBad = dyn for<#[cfg(no)] 'a, #[cfg(yes)] T> Copy;
    |                                                   ^
    |
-   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
    = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
 
 error[E0658]: only lifetime parameters can be used in this context
@@ -52,7 +52,7 @@ error[E0658]: only lifetime parameters can be used in this context
 LL | struct WhereBad where for<#[cfg(no)] 'a, #[cfg(yes)] T> u8: Copy;
    |                                                      ^
    |
-   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
    = help: add `#![feature(non_lifetime_binders)]` to the crate attributes to enable
 
 error: aborting due to 8 previous errors
