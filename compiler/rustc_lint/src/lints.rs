@@ -8,7 +8,7 @@ use rustc_errors::{
 };
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::{Predicate, Ty, TyCtxt};
+use rustc_middle::ty::{PolyExistentialTraitRef, Predicate, Ty, TyCtxt};
 use rustc_session::parse::ParseSess;
 use rustc_span::{edition::Edition, sym, symbol::Ident, Span, Symbol};
 
@@ -556,8 +556,7 @@ pub struct BuiltinUnexpectedCliConfigValue {
 #[diag(lint_supertrait_as_deref_target)]
 pub struct SupertraitAsDerefTarget<'a> {
     pub t: Ty<'a>,
-    pub target_principal: String,
-    // pub target_principal: Binder<'a, ExistentialTraitRef<'b>>,
+    pub target_principal: PolyExistentialTraitRef<'a>,
     #[subdiagnostic]
     pub label: Option<SupertraitAsDerefTargetLabel>,
 }
