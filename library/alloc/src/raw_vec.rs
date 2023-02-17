@@ -281,6 +281,7 @@ where
         &self.alloc
     }
 
+    // @FIXME
     #[inline]
     const fn assert_alignment() {
         assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0);
