@@ -414,7 +414,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                             }
                         });
 
-                        let new_subst = cx.tcx.mk_substs(
+                        let new_subst = cx.tcx.mk_substs_from_iter(
                             call_substs.iter()
                                 .enumerate()
                                 .map(|(i, t)|
