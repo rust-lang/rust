@@ -780,7 +780,7 @@ impl core::ops::Add<u32> for EnumValue {
 #[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 pub fn read_explicit_enum_value(tcx: TyCtxt<'_>, id: DefId) -> Option<EnumValue> {
     if let Ok(ConstValue::Scalar(Scalar::Int(value))) = tcx.const_eval_poly(id) {
-        match tcx.type_of(id).kind() {
+        match tcx.type_of(id).subst_identity().kind() {
             ty::Int(_) => Some(EnumValue::Signed(match value.size().bytes() {
                 1 => i128::from(value.assert_bits(Size::from_bytes(1)) as u8 as i8),
                 2 => i128::from(value.assert_bits(Size::from_bytes(2)) as u16 as i16),
@@ -903,7 +903,7 @@ pub fn variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<&'tcx Va
             let var_id = cx.tcx.parent(id);
             Some(cx.tcx.adt_def(cx.tcx.parent(var_id)).variant_with_id(var_id))
         },
-        Res::SelfCtor(id) => Some(cx.tcx.type_of(id).ty_adt_def().unwrap().non_enum_variant()),
+        Res::SelfCtor(id) => Some(cx.tcx.type_of(id).subst_identity().ty_adt_def().unwrap().non_enum_variant()),
         _ => None,
     }
 }
