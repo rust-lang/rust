@@ -6,7 +6,7 @@ pub mod tls;
 
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
-use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
+use crate::infer::canonical::CanonicalVarInfo;
 use crate::lint::struct_lint_level;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::resolve_bound_vars;
@@ -1570,24 +1570,28 @@ macro_rules! slice_interners {
     ($($field:ident: $method:ident($ty:ty)),+ $(,)?) => (
         impl<'tcx> TyCtxt<'tcx> {
             $(pub fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
-                self.interners.$field.intern_ref(v, || {
-                    InternedInSet(List::from_arena(&*self.arena, v))
-                }).0
+                if v.is_empty() {
+                    List::empty()
+                } else {
+                    self.interners.$field.intern_ref(v, || {
+                        InternedInSet(List::from_arena(&*self.arena, v))
+                    }).0
+                }
             })+
         }
     );
 }
 
 slice_interners!(
-    const_lists: _intern_const_list(Const<'tcx>),
-    substs: _intern_substs(GenericArg<'tcx>),
-    canonical_var_infos: _intern_canonical_var_infos(CanonicalVarInfo<'tcx>),
+    const_lists: intern_const_list(Const<'tcx>),
+    substs: intern_substs(GenericArg<'tcx>),
+    canonical_var_infos: intern_canonical_var_infos(CanonicalVarInfo<'tcx>),
     poly_existential_predicates:
         _intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
     predicates: _intern_predicates(Predicate<'tcx>),
-    projs: _intern_projs(ProjectionKind),
-    place_elems: _intern_place_elems(PlaceElem<'tcx>),
-    bound_variable_kinds: _intern_bound_variable_kinds(ty::BoundVariableKind),
+    projs: intern_projs(ProjectionKind),
+    place_elems: intern_place_elems(PlaceElem<'tcx>),
+    bound_variable_kinds: intern_bound_variable_kinds(ty::BoundVariableKind),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2157,12 +2161,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // FIXME consider asking the input slice to be sorted to avoid
         // re-interning permutations, in which case that would be asserted
         // here.
-        if preds.is_empty() {
-            // The macro-generated method below asserts we don't intern an empty slice.
-            List::empty()
-        } else {
-            self._intern_predicates(preds)
-        }
+        self._intern_predicates(preds)
     }
 
     pub fn mk_const_list<I, T>(self, iter: I) -> T::Output
@@ -2173,50 +2172,16 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.intern_const_list(xs))
     }
 
-    pub fn intern_const_list(self, cs: &[ty::Const<'tcx>]) -> &'tcx List<ty::Const<'tcx>> {
-        if cs.is_empty() { List::empty() } else { self._intern_const_list(cs) }
-    }
-
     pub fn intern_type_list(self, ts: &[Ty<'tcx>]) -> &'tcx List<Ty<'tcx>> {
-        if ts.is_empty() {
-            List::empty()
-        } else {
-            // Actually intern type lists as lists of `GenericArg`s.
-            //
-            // Transmuting from `Ty<'tcx>` to `GenericArg<'tcx>` is sound
-            // as explained in ty_slice_as_generic_arg`. With this,
-            // we guarantee that even when transmuting between `List<Ty<'tcx>>`
-            // and `List<GenericArg<'tcx>>`, the uniqueness requirement for
-            // lists is upheld.
-            let substs = self._intern_substs(ty::subst::ty_slice_as_generic_args(ts));
-            substs.try_as_type_list().unwrap()
-        }
-    }
-
-    pub fn intern_substs(self, ts: &[GenericArg<'tcx>]) -> &'tcx List<GenericArg<'tcx>> {
-        if ts.is_empty() { List::empty() } else { self._intern_substs(ts) }
-    }
-
-    pub fn intern_projs(self, ps: &[ProjectionKind]) -> &'tcx List<ProjectionKind> {
-        if ps.is_empty() { List::empty() } else { self._intern_projs(ps) }
-    }
-
-    pub fn intern_place_elems(self, ts: &[PlaceElem<'tcx>]) -> &'tcx List<PlaceElem<'tcx>> {
-        if ts.is_empty() { List::empty() } else { self._intern_place_elems(ts) }
-    }
-
-    pub fn intern_canonical_var_infos(
-        self,
-        ts: &[CanonicalVarInfo<'tcx>],
-    ) -> CanonicalVarInfos<'tcx> {
-        if ts.is_empty() { List::empty() } else { self._intern_canonical_var_infos(ts) }
-    }
-
-    pub fn intern_bound_variable_kinds(
-        self,
-        ts: &[ty::BoundVariableKind],
-    ) -> &'tcx List<ty::BoundVariableKind> {
-        if ts.is_empty() { List::empty() } else { self._intern_bound_variable_kinds(ts) }
+        // Actually intern type lists as lists of `GenericArg`s.
+        //
+        // Transmuting from `Ty<'tcx>` to `GenericArg<'tcx>` is sound
+        // as explained in ty_slice_as_generic_arg`. With this,
+        // we guarantee that even when transmuting between `List<Ty<'tcx>>`
+        // and `List<GenericArg<'tcx>>`, the uniqueness requirement for
+        // lists is upheld.
+        let substs = self.intern_substs(ty::subst::ty_slice_as_generic_args(ts));
+        substs.try_as_type_list().unwrap()
     }
 
     // Unlike various other `mk_*` functions, this one uses `I: IntoIterator`
