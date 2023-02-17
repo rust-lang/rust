@@ -531,6 +531,24 @@ LLVM KCFI is supported on the following targets:
 See the [Clang KernelControlFlowIntegrity documentation][clang-kcfi] for more
 details.
 
+# KernelAddressSanitizer
+
+KernelAddressSanitizer (KASAN) is a freestanding version of AddressSanitizer
+which is suitable for detecting memory errors in programs which do not have a
+runtime environment, such as operating system kernels. KernelAddressSanitizer
+requires manual implementation of the underlying functions used for tracking
+KernelAddressSanitizer state.
+
+KernelAddressSanitizer is supported on the following targets:
+
+* `aarch64-unknown-none`
+* `riscv64gc-unknown-none-elf`
+* `riscv64imac-unknown-none-elf`
+* `x86_64-unknown-none`
+
+See the [Linux Kernel's KernelAddressSanitizer documentation][linux-kasan] for
+more details.
+
 # LeakSanitizer
 
 LeakSanitizer is run-time memory leak detector.
@@ -714,6 +732,7 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 * [AddressSanitizer in Clang][clang-asan]
 * [ControlFlowIntegrity in Clang][clang-cfi]
 * [HWAddressSanitizer in Clang][clang-hwasan]
+* [Linux Kernel's KernelAddressSanitizer documentation][linux-kasan]
 * [LeakSanitizer in Clang][clang-lsan]
 * [MemorySanitizer in Clang][clang-msan]
 * [MemTagSanitizer in LLVM][llvm-memtag]
@@ -727,4 +746,5 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 [clang-msan]: https://clang.llvm.org/docs/MemorySanitizer.html
 [clang-scs]: https://clang.llvm.org/docs/ShadowCallStack.html
 [clang-tsan]: https://clang.llvm.org/docs/ThreadSanitizer.html
+[linux-kasan]: https://www.kernel.org/doc/html/latest/dev-tools/kasan.html
 [llvm-memtag]: https://llvm.org/docs/MemTagSanitizer.html

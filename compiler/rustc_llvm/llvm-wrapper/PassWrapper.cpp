@@ -594,6 +594,8 @@ struct LLVMRustSanitizerOptions {
   bool SanitizeThread;
   bool SanitizeHWAddress;
   bool SanitizeHWAddressRecover;
+  bool SanitizeKernelAddress;
+  bool SanitizeKernelAddressRecover;
 };
 
 extern "C" LLVMRustResult
@@ -765,15 +767,17 @@ LLVMRustOptimize(
       );
     }
 
-    if (SanitizerOptions->SanitizeAddress) {
+    if (SanitizerOptions->SanitizeAddress || SanitizerOptions->SanitizeKernelAddress) {
       OptimizerLastEPCallbacks.push_back(
         [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
+          auto CompileKernel = SanitizerOptions->SanitizeKernelAddress;
 #if LLVM_VERSION_LT(15, 0)
           MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
 #endif
           AddressSanitizerOptions opts = AddressSanitizerOptions{
-            /*CompileKernel=*/false,
-            SanitizerOptions->SanitizeAddressRecover,
+            CompileKernel,
+            SanitizerOptions->SanitizeAddressRecover
+              || SanitizerOptions->SanitizeKernelAddressRecover,
             /*UseAfterScope=*/true,
             AsanDetectStackUseAfterReturnMode::Runtime,
           };
