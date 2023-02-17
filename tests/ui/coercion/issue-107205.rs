@@ -1,3 +1,5 @@
+// build-pass
+
 use std::fmt;
 
 pub struct Wrapper(fn(val: &()));
