@@ -1,0 +1,17 @@
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/on-dyn.rs:3:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: late-bound type parameter not allowed on trait object types
+  --> $DIR/on-dyn.rs:8:30
+   |
+LL | fn foo() -> &'static dyn for<T> Test<T> {
+   |                              ^
+
+error: aborting due to previous error; 1 warning emitted
+

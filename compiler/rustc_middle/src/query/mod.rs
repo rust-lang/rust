@@ -781,7 +781,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query issue33140_self_ty(key: DefId) -> Option<ty::Ty<'tcx>> {
+    query issue33140_self_ty(key: DefId) -> Option<ty::EarlyBinder<ty::Ty<'tcx>>> {
         desc { |tcx| "computing Self type wrt issue #33140 `{}`", tcx.def_path_str(key) }
     }
 
@@ -1641,12 +1641,12 @@ rustc_queries! {
     /// Does lifetime resolution on items. Importantly, we can't resolve
     /// lifetimes directly on things like trait methods, because of trait params.
     /// See `rustc_resolve::late::lifetimes for details.
-    query resolve_lifetimes(_: hir::OwnerId) -> &'tcx ResolveLifetimes {
+    query resolve_bound_vars(_: hir::OwnerId) -> &'tcx ResolveBoundVars {
         arena_cache
         desc { "resolving lifetimes" }
     }
-    query named_region_map(_: hir::OwnerId) ->
-        Option<&'tcx FxHashMap<ItemLocalId, Region>> {
+    query named_variable_map(_: hir::OwnerId) ->
+        Option<&'tcx FxHashMap<ItemLocalId, ResolvedArg>> {
         desc { "looking up a named region" }
     }
     query is_late_bound_map(_: hir::OwnerId) -> Option<&'tcx FxIndexSet<ItemLocalId>> {

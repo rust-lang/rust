@@ -158,7 +158,7 @@ impl<'tcx> Elaborator<'tcx> {
                                 traits::ImplDerivedObligation(Box::new(
                                     traits::ImplDerivedObligationCause {
                                         derived,
-                                        impl_def_id: data.def_id(),
+                                        impl_or_alias_def_id: data.def_id(),
                                         impl_def_predicate_index: Some(index),
                                         span,
                                     },

@@ -2657,7 +2657,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let cause = cause.clone().derived_cause(parent_trait_pred, |derived| {
                 ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
                     derived,
-                    impl_def_id: def_id,
+                    impl_or_alias_def_id: def_id,
                     impl_def_predicate_index: Some(index),
                     span,
                 }))

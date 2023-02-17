@@ -11,6 +11,8 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi;
 
+use crate::errors::ForbiddenLifetimeBound;
+
 macro_rules! gate_feature_fn {
     ($visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $help: expr) => {{
         let (visitor, has_feature, span, name, explain, help) =
@@ -136,6 +138,34 @@ impl<'a> PostExpansionVisitor<'a> {
         }
         ImplTraitVisitor { vis: self }.visit_ty(ty);
     }
+
+    fn check_late_bound_lifetime_defs(&self, params: &[ast::GenericParam]) {
+        // Check only lifetime parameters are present and that the lifetime
+        // parameters that are present have no bounds.
+        let non_lt_param_spans: Vec<_> = params
+            .iter()
+            .filter_map(|param| match param.kind {
+                ast::GenericParamKind::Lifetime { .. } => None,
+                _ => Some(param.ident.span),
+            })
+            .collect();
+        // FIXME: gate_feature_post doesn't really handle multispans...
+        if !non_lt_param_spans.is_empty() && !self.features.non_lifetime_binders {
+            feature_err(
+                &self.sess.parse_sess,
+                sym::non_lifetime_binders,
+                non_lt_param_spans,
+                rustc_errors::fluent::ast_passes_forbidden_non_lifetime_param,
+            )
+            .emit();
+        }
+        for param in params {
+            if !param.bounds.is_empty() {
+                let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
+                self.sess.emit_err(ForbiddenLifetimeBound { spans });
+            }
+        }
+    }
 }
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
@@ -147,7 +177,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ..
         }) = attr_info
         {
-            gate_feature_fn!(self, has_feature, attr.span, *name, descr);
+            gate_feature_fn!(self, has_feature, attr.span, *name, *descr);
         }
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.has_name(sym::doc) {
@@ -306,6 +336,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TyKind::BareFn(bare_fn_ty) => {
                 // Function pointers cannot be `const`
                 self.check_extern(bare_fn_ty.ext, ast::Const::No);
+                self.check_late_bound_lifetime_defs(&bare_fn_ty.generic_params);
             }
             ast::TyKind::Never => {
                 gate_feature_post!(&self, never_type, ty.span, "the `!` type is experimental");
@@ -316,6 +347,19 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_ty(self, ty)
+    }
+
+    fn visit_generics(&mut self, g: &'a ast::Generics) {
+        for predicate in &g.where_clause.predicates {
+            match predicate {
+                ast::WherePredicate::BoundPredicate(bound_pred) => {
+                    // A type binding, eg `for<'c> Foo: Send+Clone+'c`
+                    self.check_late_bound_lifetime_defs(&bound_pred.bound_generic_params);
+                }
+                _ => {}
+            }
+        }
+        visit::walk_generics(self, g);
     }
 
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FnRetTy) {
@@ -437,10 +481,19 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_pat(self, pattern)
     }
 
+    fn visit_poly_trait_ref(&mut self, t: &'a ast::PolyTraitRef) {
+        self.check_late_bound_lifetime_defs(&t.bound_generic_params);
+        visit::walk_poly_trait_ref(self, t);
+    }
+
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
         if let Some(header) = fn_kind.header() {
             // Stability of const fn methods are covered in `visit_assoc_item` below.
             self.check_extern(header.ext, header.constness);
+        }
+
+        if let FnKind::Closure(ast::ClosureBinder::For { generic_params, .. }, ..) = fn_kind {
+            self.check_late_bound_lifetime_defs(generic_params);
         }
 
         if fn_kind.ctxt() != Some(FnCtxt::Foreign) && fn_kind.decl().c_variadic() {

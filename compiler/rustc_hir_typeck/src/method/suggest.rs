@@ -616,7 +616,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ObligationCauseCode::ImplDerivedObligation(data)
                         if matches!(p.kind().skip_binder(), ty::PredicateKind::Clause(_)) =>
                     {
-                        Some((p, parent, data.impl_def_id, data))
+                        Some((p, parent, data.impl_or_alias_def_id, data))
                     }
                     _ => None,
                 })
@@ -714,7 +714,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                     }
                     Some(Node::Item(hir::Item {
-                        ident, kind: hir::ItemKind::Trait(..), ..
+                        ident,
+                        kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
+                        ..
                     })) => {
                         skip_list.insert(p);
                         let entry = spanned_predicates.entry(ident.span);

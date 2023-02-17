@@ -129,7 +129,7 @@ fn external_generic_args<'tcx>(
         });
         GenericArgs::Parenthesized { inputs, output }
     } else {
-        GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() }
+        GenericArgs::AngleBracketed { args: args.into(), bindings }
     }
 }
 

@@ -477,14 +477,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // This is the "trait" (meaning, the predicate "proved" by this `impl`) which provides the `Self` type we care about.
         // For the purposes of this function, we hope that it is a `struct` type, and that our current `expr` is a literal of
         // that struct type.
-        let impl_trait_self_ref = if self.tcx.is_trait_alias(obligation.impl_def_id) {
+        let impl_trait_self_ref = if self.tcx.is_trait_alias(obligation.impl_or_alias_def_id) {
             self.tcx.mk_trait_ref(
-                obligation.impl_def_id,
-                ty::InternalSubsts::identity_for_item(self.tcx, obligation.impl_def_id),
+                obligation.impl_or_alias_def_id,
+                ty::InternalSubsts::identity_for_item(self.tcx, obligation.impl_or_alias_def_id),
             )
         } else {
             self.tcx
-                .impl_trait_ref(obligation.impl_def_id)
+                .impl_trait_ref(obligation.impl_or_alias_def_id)
                 .map(|impl_def| impl_def.skip_binder())
                 // It is possible that this is absent. In this case, we make no progress.
                 .ok_or(expr)?
@@ -494,7 +494,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let impl_self_ty: Ty<'tcx> = impl_trait_self_ref.self_ty();
 
         let impl_predicates: ty::GenericPredicates<'tcx> =
-            self.tcx.predicates_of(obligation.impl_def_id);
+            self.tcx.predicates_of(obligation.impl_or_alias_def_id);
         let Some(impl_predicate_index) = obligation.impl_def_predicate_index else {
             // We don't have the index, so we can only guess.
             return Err(expr);

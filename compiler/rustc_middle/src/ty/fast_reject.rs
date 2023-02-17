@@ -290,7 +290,7 @@ impl DeepRejectCtxt {
             // Impls cannot contain these types as these cannot be named directly.
             ty::FnDef(..) | ty::Closure(..) | ty::Generator(..) => false,
 
-            ty::Placeholder(..) => false,
+            ty::Placeholder(..) | ty::Bound(..) => false,
 
             // Depending on the value of `treat_obligation_params`, we either
             // treat generic parameters like placeholders or like inference variables.
@@ -310,7 +310,7 @@ impl DeepRejectCtxt {
 
             ty::Error(_) => true,
 
-            ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) | ty::Bound(..) => {
+            ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => {
                 bug!("unexpected obligation type: {:?}", obligation_ty)
             }
         }
