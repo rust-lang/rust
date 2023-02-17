@@ -4,9 +4,10 @@
 
 [`rustc_codegen_ssa`]
 provides an abstract interface for all backends to implement,
-to allow other codegen backends (e.g. [Cranelift]).
+namely LLVM, [Cranelift], and [GCC].
 
-[Cranelift]: https://github.com/bytecodealliance/wasmtime/tree/HEAD/cranelift
+[Cranelift]: https://github.com/bjorn3/rustc_codegen_cranelift
+[GCC]: https://github.com/rust-lang/rustc_codegen_gcc
 [`rustc_codegen_ssa`]: https://doc.rust-lang.org/stable/nightly-rustc/rustc_codegen_ssa/index.html
 
 # Refactoring of `rustc_codegen_llvm`
