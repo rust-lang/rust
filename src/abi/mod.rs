@@ -149,13 +149,23 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                         size: 16,
                     }));
                 args.insert(0, ret_ptr.get_addr(self));
-                self.lib_call(name, params, vec![], &args);
+                self.lib_call_unadjusted(name, params, vec![], &args);
                 return Cow::Owned(vec![ret_ptr.load(self, types::I128, MemFlags::trusted())]);
             } else {
-                return self.lib_call(name, params, returns, &args);
+                return self.lib_call_unadjusted(name, params, returns, &args);
             }
         }
 
+        self.lib_call_unadjusted(name, params, returns, args)
+    }
+
+    pub(crate) fn lib_call_unadjusted(
+        &mut self,
+        name: &str,
+        params: Vec<AbiParam>,
+        returns: Vec<AbiParam>,
+        args: &[Value],
+    ) -> Cow<'_, [Value]> {
         let sig = Signature { params, returns, call_conv: self.target_config.default_call_conv };
         let func_id = self.module.declare_function(name, Linkage::Import, &sig).unwrap();
         let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
