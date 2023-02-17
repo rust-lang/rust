@@ -29,32 +29,17 @@ pub(crate) fn maybe_codegen<'tcx>(
         BinOp::Add | BinOp::Sub if !checked => None,
         BinOp::Mul if !checked || is_signed => {
             if !checked {
-                let val_ty = if is_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 };
-                if fx.tcx.sess.target.is_like_windows {
-                    let ret_place = CPlace::new_stack_slot(fx, lhs.layout());
-                    let args =
-                        [ret_place.to_ptr().get_addr(fx), lhs.load_scalar(fx), rhs.load_scalar(fx)];
-                    fx.lib_call(
-                        "__multi3",
-                        vec![
-                            AbiParam::special(fx.pointer_type, ArgumentPurpose::StructReturn),
-                            AbiParam::new(types::I128),
-                            AbiParam::new(types::I128),
-                        ],
-                        vec![],
-                        &args,
-                    );
-                    Some(ret_place.to_cvalue(fx))
-                } else {
-                    let args: Vec<_> = vec![lhs.load_scalar(fx), rhs.load_scalar(fx)];
-                    let ret_val = fx.lib_call(
-                        "__multi3",
-                        vec![AbiParam::new(types::I128), AbiParam::new(types::I128)],
-                        vec![AbiParam::new(types::I128)],
-                        &args,
-                    )[0];
-                    Some(CValue::by_val(ret_val, fx.layout_of(val_ty)))
-                }
+                let args = [lhs.load_scalar(fx), rhs.load_scalar(fx)];
+                let ret_val = fx.lib_call(
+                    "__multi3",
+                    vec![AbiParam::new(types::I128), AbiParam::new(types::I128)],
+                    vec![AbiParam::new(types::I128)],
+                    &args,
+                )[0];
+                Some(CValue::by_val(
+                    ret_val,
+                    fx.layout_of(if is_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 }),
+                ))
             } else {
                 let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
                 let oflow = CPlace::new_stack_slot(fx, fx.layout_of(fx.tcx.types.i32));
@@ -120,7 +105,7 @@ pub(crate) fn maybe_codegen<'tcx>(
                 ret_place.to_ptr().store(fx, ret, MemFlags::trusted());
                 Some(ret_place.to_cvalue(fx))
             } else {
-                let args: Vec<_> = vec![lhs.load_scalar(fx), rhs.load_scalar(fx)];
+                let args = [lhs.load_scalar(fx), rhs.load_scalar(fx)];
                 let ret_val = fx.lib_call(
                     name,
                     vec![AbiParam::new(types::I128), AbiParam::new(types::I128)],
