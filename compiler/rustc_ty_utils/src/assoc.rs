@@ -118,6 +118,12 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
     }
 }
 
+/// Given an `fn_def_id` of a trait or of an impl that implements a given trait:
+/// if `fn_def_id` is the def id of a function defined inside a trait, then it creates and returns
+/// the associated items that correspond to each impl trait in return position for that trait.
+/// if `fn_def_id` is the def id of a function defined inside an impl that implements a trait, then it
+/// creates and returns the associated items that correspond to each impl trait in return position
+/// of the implemented trait.
 fn associated_items_for_impl_trait_in_trait(tcx: TyCtxt<'_>, fn_def_id: DefId) -> &'_ [DefId] {
     let parent_def_id = tcx.parent(fn_def_id);
 
@@ -174,6 +180,8 @@ fn associated_items_for_impl_trait_in_trait(tcx: TyCtxt<'_>, fn_def_id: DefId) -
     }
 }
 
+/// Given an `opaque_ty_def_id` corresponding to an impl trait in trait, create and return the
+/// corresponding associated item.
 fn associated_item_for_impl_trait_in_trait(
     tcx: TyCtxt<'_>,
     opaque_ty_def_id: LocalDefId,
@@ -188,6 +196,9 @@ fn associated_item_for_impl_trait_in_trait(
     trait_assoc_ty.def_id()
 }
 
+/// Given an `trait_assoc_def_id` that corresponds to a previously synthethized impl trait in trait
+/// into an associated type and an `impl_def_id` corresponding to an impl block, create and return
+/// the corresponding associated item inside the impl block.
 fn impl_associated_item_for_impl_trait_in_trait(
     tcx: TyCtxt<'_>,
     trait_assoc_def_id: LocalDefId,

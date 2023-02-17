@@ -767,7 +767,12 @@ rustc_queries! {
         desc { |tcx| "comparing impl items against trait for `{}`", tcx.def_path_str(impl_id) }
     }
 
-    /// Given an `fn_def_id`, create and return the associated items for that function.
+    /// Given `fn_def_id` of a trait or of an impl that implements a given trait:
+    /// if `fn_def_id` is the def id of a function defined inside a trait, then it creates and returns
+    /// the associated items that correspond to each impl trait in return position for that trait.
+    /// if `fn_def_id` is the def id of a function defined inside an impl that implements a trait, then it
+    /// creates and returns the associated items that correspond to each impl trait in return position
+    /// of the implemented trait.
     query associated_items_for_impl_trait_in_trait(fn_def_id: DefId) -> &'tcx [DefId] {
         desc { |tcx| "creating associated items for impl trait in trait returned by `{}`", tcx.def_path_str(fn_def_id) }
         cache_on_disk_if { fn_def_id.is_local() }
