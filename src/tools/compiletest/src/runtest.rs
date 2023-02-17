@@ -3300,7 +3300,7 @@ impl<'test> TestCx<'test> {
         }
 
         if errors > 0 {
-            println!("To update references, rerun the tests and pass the `--bless` flag");
+            println!("To update references, run `cargo dev bless`");
             let relative_path_to_file =
                 self.testpaths.relative_dir.join(self.testpaths.file.file_name().unwrap());
             println!(
