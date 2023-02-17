@@ -130,8 +130,6 @@ impl<'a> Location<'a> {
     #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
     #[inline]
     pub const fn file(&self) -> &str {
-        // let mut s = self.file.split('\0');
-        // s.next().unwrap()
         self.file
     }
 

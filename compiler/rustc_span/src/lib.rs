@@ -2157,7 +2157,7 @@ where
 }
 
 /// CRC-32b
-pub fn crc32(input: &str) -> u32 {
+fn crc32(input: &str) -> u32 {
     let mut crc: u32 = 0xFFFFFFFF;
     for ch in input.as_bytes() {
         let mut ch = *ch;
