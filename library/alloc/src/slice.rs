@@ -103,7 +103,17 @@ pub(crate) mod hack {
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
     #[allow(unused_braces)]
-    pub fn into_vec<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
+    pub fn into_vec<T, A: Allocator>(
+        b: Box<[T], A>,
+    ) -> Vec<T, A>
+    where
+        [(); { crate::meta_num_slots_default!(A) }]:,
+    {
+        into_vec_co::<T, A, {crate::CO_ALLOC_PREF_META_DEFAULT!()}>(b)
+    }
+
+    #[allow(unused_braces)]
+    pub fn into_vec_co<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
         b: Box<[T], A>,
     ) -> Vec<T, A, CO_ALLOC_PREF>
     where
@@ -648,7 +658,7 @@ impl<T> [T] {
         [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
     {
         // N.B., see the `hack` module in this file for more details.
-        hack::into_vec(self)
+        hack::into_vec_co(self)
     }
 
     /// Creates a vector by copying a slice `n` times.

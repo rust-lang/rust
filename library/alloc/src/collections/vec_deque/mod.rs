@@ -2844,11 +2844,21 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T, const CO_ALLOC_PREF: CoAllocPref> FromIterator<T> for VecDeque<T, Global, CO_ALLOC_PREF>
+impl<T> FromIterator<T> for VecDeque<T>
+{
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {
+        SpecFromIterCo::spec_from_iter_co(iter.into_iter())
+    }
+}
+
+#[unstable(feature = "global_co_alloc", issue = "none")]
+#[allow(unused_braces)]
+impl<T, const CO_ALLOC_PREF: CoAllocPref> VecDeque<T, Global, CO_ALLOC_PREF>
 where
     [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
-    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T, Global, CO_ALLOC_PREF> {
+    /// Like [from_iter], but coallocation-aware.
+    pub fn from_iter_co<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T, Global, CO_ALLOC_PREF> {
         SpecFromIterCo::spec_from_iter_co(iter.into_iter())
     }
 }

@@ -2,6 +2,7 @@
 #![feature(alloc_layout_extra)]
 #![feature(assert_matches)]
 #![feature(btree_drain_filter)]
+#![feature(global_co_alloc_meta)]
 #![feature(cow_is_borrowed)]
 #![feature(const_box)]
 #![feature(const_convert)]

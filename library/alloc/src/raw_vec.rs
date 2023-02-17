@@ -281,6 +281,11 @@ where
         &self.alloc
     }
 
+    #[inline]
+    const fn assert_alignment() {
+        assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0);
+    }
+
     fn current_memory(&self) -> Option<(NonNull<u8>, Layout)> {
         if T::IS_ZST || self.cap == 0 {
             None
@@ -289,7 +294,8 @@ where
             // and could hypothetically handle differences between stride and size, but this memory
             // has already been allocated so we know it can't overflow and currently rust does not
             // support such types. So we can do better by skipping some checks and avoid an unwrap.
-            let _: () = const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
+            let _: () = Self::assert_alignment();
+            //let _: () = const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
             unsafe {
                 let align = mem::align_of::<T>();
                 let size = mem::size_of::<T>().unchecked_mul(self.cap);
@@ -483,7 +489,8 @@ where
 
         let (ptr, layout) = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
         // See current_memory() why this assert is here
-        let _: () = const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
+        let _: () = Self::assert_alignment();
+        //let _: () = const { assert!(mem::size_of::<T>() % mem::align_of::<T>() == 0) };
         let ptr = unsafe {
             // `Layout::array` cannot overflow here because it would have
             // overflowed earlier when capacity was larger.

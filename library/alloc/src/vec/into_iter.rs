@@ -465,7 +465,7 @@ where
     }
     #[cfg(test)]
     fn clone(&self) -> Self {
-        crate::slice::to_vec(self.as_slice(), self.alloc.deref().clone()).into_iter()
+        crate::slice::to_vec_co(self.as_slice(), self.alloc.deref().clone()).into_iter()
     }
 }
 

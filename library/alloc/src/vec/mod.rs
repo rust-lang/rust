@@ -2864,7 +2864,7 @@ where
     #[cfg(test)]
     fn clone(&self) -> Self {
         let alloc = self.allocator().clone();
-        crate::slice::to_vec(&**self, alloc)
+        crate::slice::to_vec_co(&**self, alloc)
     }
 
     fn clone_from(&mut self, other: &Self) {
