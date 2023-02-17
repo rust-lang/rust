@@ -49,7 +49,7 @@ extern "C" {
 
 /// For each packed 32-bit integer maps the value to the number of logical 1 bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_popcnt_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_popcnt_epi32)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq")]
 #[cfg_attr(test, assert_instr(vpopcntd))]
@@ -62,7 +62,7 @@ pub unsafe fn _mm512_popcnt_epi32(a: __m512i) -> __m512i {
 /// Uses the writemask in k - elements are zeroed in the result if the corresponding mask bit is not set.
 /// Otherwise the computation result is written into the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_popcnt_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_popcnt_epi32)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq")]
 #[cfg_attr(test, assert_instr(vpopcntd))]
@@ -76,7 +76,7 @@ pub unsafe fn _mm512_maskz_popcnt_epi32(k: __mmask16, a: __m512i) -> __m512i {
 /// Uses the writemask in k - elements are copied from src if the corresponding mask bit is not set.
 /// Otherwise the computation result is written into the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_popcnt_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_popcnt_epi32)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq")]
 #[cfg_attr(test, assert_instr(vpopcntd))]
@@ -90,7 +90,7 @@ pub unsafe fn _mm512_mask_popcnt_epi32(src: __m512i, k: __mmask16, a: __m512i) -
 
 /// For each packed 32-bit integer maps the value to the number of logical 1 bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_popcnt_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_popcnt_epi32)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq,avx512vl")]
 #[cfg_attr(test, assert_instr(vpopcntd))]
@@ -103,7 +103,7 @@ pub unsafe fn _mm256_popcnt_epi32(a: __m256i) -> __m256i {
 /// Uses the writemask in k - elements are zeroed in the result if the corresponding mask bit is not set.
 /// Otherwise the computation result is written into the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_popcnt_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_popcnt_epi32)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq,avx512vl")]
 #[cfg_attr(test, assert_instr(vpopcntd))]
@@ -117,7 +117,7 @@ pub unsafe fn _mm256_maskz_popcnt_epi32(k: __mmask8, a: __m256i) -> __m256i {
 /// Uses the writemask in k - elements are copied from src if the corresponding mask bit is not set.
 /// Otherwise the computation result is written into the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_popcnt_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_popcnt_epi32)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq,avx512vl")]
 #[cfg_attr(test, assert_instr(vpopcntd))]
@@ -131,7 +131,7 @@ pub unsafe fn _mm256_mask_popcnt_epi32(src: __m256i, k: __mmask8, a: __m256i) ->
 
 /// For each packed 32-bit integer maps the value to the number of logical 1 bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_popcnt_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_popcnt_epi32)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq,avx512vl")]
 #[cfg_attr(test, assert_instr(vpopcntd))]
@@ -144,7 +144,7 @@ pub unsafe fn _mm_popcnt_epi32(a: __m128i) -> __m128i {
 /// Uses the writemask in k - elements are zeroed in the result if the corresponding mask bit is not set.
 /// Otherwise the computation result is written into the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_popcnt_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_popcnt_epi32)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq,avx512vl")]
 #[cfg_attr(test, assert_instr(vpopcntd))]
@@ -158,7 +158,7 @@ pub unsafe fn _mm_maskz_popcnt_epi32(k: __mmask8, a: __m128i) -> __m128i {
 /// Uses the writemask in k - elements are copied from src if the corresponding mask bit is not set.
 /// Otherwise the computation result is written into the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_popcnt_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_popcnt_epi32)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq,avx512vl")]
 #[cfg_attr(test, assert_instr(vpopcntd))]
@@ -172,7 +172,7 @@ pub unsafe fn _mm_mask_popcnt_epi32(src: __m128i, k: __mmask8, a: __m128i) -> __
 
 /// For each packed 64-bit integer maps the value to the number of logical 1 bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_popcnt_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_popcnt_epi64)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq")]
 #[cfg_attr(test, assert_instr(vpopcntq))]
@@ -185,7 +185,7 @@ pub unsafe fn _mm512_popcnt_epi64(a: __m512i) -> __m512i {
 /// Uses the writemask in k - elements are zeroed in the result if the corresponding mask bit is not set.
 /// Otherwise the computation result is written into the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_popcnt_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_popcnt_epi64)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq")]
 #[cfg_attr(test, assert_instr(vpopcntq))]
@@ -199,7 +199,7 @@ pub unsafe fn _mm512_maskz_popcnt_epi64(k: __mmask8, a: __m512i) -> __m512i {
 /// Uses the writemask in k - elements are copied from src if the corresponding mask bit is not set.
 /// Otherwise the computation result is written into the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_popcnt_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_popcnt_epi64)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq")]
 #[cfg_attr(test, assert_instr(vpopcntq))]
@@ -213,7 +213,7 @@ pub unsafe fn _mm512_mask_popcnt_epi64(src: __m512i, k: __mmask8, a: __m512i) ->
 
 /// For each packed 64-bit integer maps the value to the number of logical 1 bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_popcnt_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_popcnt_epi64)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq,avx512vl")]
 #[cfg_attr(test, assert_instr(vpopcntq))]
@@ -226,7 +226,7 @@ pub unsafe fn _mm256_popcnt_epi64(a: __m256i) -> __m256i {
 /// Uses the writemask in k - elements are zeroed in the result if the corresponding mask bit is not set.
 /// Otherwise the computation result is written into the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_popcnt_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_popcnt_epi64)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq,avx512vl")]
 #[cfg_attr(test, assert_instr(vpopcntq))]
@@ -240,7 +240,7 @@ pub unsafe fn _mm256_maskz_popcnt_epi64(k: __mmask8, a: __m256i) -> __m256i {
 /// Uses the writemask in k - elements are copied from src if the corresponding mask bit is not set.
 /// Otherwise the computation result is written into the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_popcnt_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_popcnt_epi64)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq,avx512vl")]
 #[cfg_attr(test, assert_instr(vpopcntq))]
@@ -254,7 +254,7 @@ pub unsafe fn _mm256_mask_popcnt_epi64(src: __m256i, k: __mmask8, a: __m256i) ->
 
 /// For each packed 64-bit integer maps the value to the number of logical 1 bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_popcnt_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_popcnt_epi64)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq,avx512vl")]
 #[cfg_attr(test, assert_instr(vpopcntq))]
@@ -267,7 +267,7 @@ pub unsafe fn _mm_popcnt_epi64(a: __m128i) -> __m128i {
 /// Uses the writemask in k - elements are zeroed in the result if the corresponding mask bit is not set.
 /// Otherwise the computation result is written into the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_popcnt_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_popcnt_epi64)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq,avx512vl")]
 #[cfg_attr(test, assert_instr(vpopcntq))]
@@ -281,7 +281,7 @@ pub unsafe fn _mm_maskz_popcnt_epi64(k: __mmask8, a: __m128i) -> __m128i {
 /// Uses the writemask in k - elements are copied from src if the corresponding mask bit is not set.
 /// Otherwise the computation result is written into the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_popcnt_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_popcnt_epi64)
 #[inline]
 #[target_feature(enable = "avx512vpopcntdq,avx512vl")]
 #[cfg_attr(test, assert_instr(vpopcntq))]

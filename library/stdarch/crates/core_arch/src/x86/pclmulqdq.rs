@@ -22,7 +22,7 @@ extern "C" {
 /// The immediate byte is used for determining which halves of `a` and `b`
 /// should be used. Immediate bits other than 0 and 4 are ignored.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_clmulepi64_si128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_clmulepi64_si128)
 #[inline]
 #[target_feature(enable = "pclmulqdq")]
 #[cfg_attr(all(test, not(target_os = "linux")), assert_instr(pclmulqdq, IMM8 = 0))]

@@ -24,7 +24,7 @@ use stdarch_test::assert_instr;
 ///
 /// When the operand is zero, it returns its size in bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_lzcnt_u64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_lzcnt_u64)
 #[inline]
 #[target_feature(enable = "lzcnt")]
 #[cfg_attr(test, assert_instr(lzcnt))]
@@ -35,7 +35,7 @@ pub unsafe fn _lzcnt_u64(x: u64) -> u64 {
 
 /// Counts the bits that are set.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_popcnt64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_popcnt64)
 #[inline]
 #[target_feature(enable = "popcnt")]
 #[cfg_attr(test, assert_instr(popcnt))]

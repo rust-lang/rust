@@ -15,7 +15,7 @@ use stdarch_test::assert_instr;
 /// Extracts bits in range [`start`, `start` + `length`) from `a` into
 /// the least significant bits of the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_bextr_u64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_bextr_u64)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(bextr))]
@@ -31,7 +31,7 @@ pub unsafe fn _bextr_u64(a: u64, start: u32, len: u32) -> u64 {
 /// Bits `[7,0]` of `control` specify the index to the first bit in the range
 /// to be extracted, and bits `[15,8]` specify the length of the range.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_bextr2_u64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_bextr2_u64)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(bextr))]
@@ -43,7 +43,7 @@ pub unsafe fn _bextr2_u64(a: u64, control: u64) -> u64 {
 
 /// Bitwise logical `AND` of inverted `a` with `b`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_andn_u64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_andn_u64)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(andn))]
@@ -54,7 +54,7 @@ pub unsafe fn _andn_u64(a: u64, b: u64) -> u64 {
 
 /// Extracts lowest set isolated bit.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_blsi_u64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_blsi_u64)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(blsi))]
@@ -66,7 +66,7 @@ pub unsafe fn _blsi_u64(x: u64) -> u64 {
 
 /// Gets mask up to lowest set bit.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_blsmsk_u64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_blsmsk_u64)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(blsmsk))]
@@ -80,7 +80,7 @@ pub unsafe fn _blsmsk_u64(x: u64) -> u64 {
 ///
 /// If `x` is sets CF.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_blsr_u64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_blsr_u64)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(blsr))]
@@ -94,7 +94,7 @@ pub unsafe fn _blsr_u64(x: u64) -> u64 {
 ///
 /// When the source operand is `0`, it returns its size in bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tzcnt_u64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_tzcnt_u64)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(tzcnt))]
@@ -107,7 +107,7 @@ pub unsafe fn _tzcnt_u64(x: u64) -> u64 {
 ///
 /// When the source operand is `0`, it returns its size in bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_tzcnt_64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_tzcnt_64)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(tzcnt))]

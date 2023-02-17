@@ -18,7 +18,7 @@ use stdarch_test::assert_instr;
 /// On processors that support the Intel 64 architecture, the
 /// high-order 32 bits of each of RAX and RDX are cleared.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_rdtsc)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_rdtsc)
 #[inline]
 #[cfg_attr(test, assert_instr(rdtsc))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -41,7 +41,7 @@ pub unsafe fn _rdtsc() -> u64 {
 /// On processors that support the Intel 64 architecture, the
 /// high-order 32 bits of each of RAX, RDX, and RCX are cleared.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__rdtscp)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=__rdtscp)
 #[inline]
 #[cfg_attr(test, assert_instr(rdtscp))]
 #[stable(feature = "simd_x86", since = "1.27.0")]

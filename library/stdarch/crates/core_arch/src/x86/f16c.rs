@@ -1,6 +1,6 @@
 //! [F16C intrinsics].
 //!
-//! [F16C intrinsics]: https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=fp16&expand=1769
+//! [F16C intrinsics]: https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=fp16&expand=1769
 
 use crate::{
     core_arch::{simd::*, x86::*},

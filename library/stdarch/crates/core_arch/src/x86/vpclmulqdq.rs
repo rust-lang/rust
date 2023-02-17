@@ -30,7 +30,7 @@ extern "C" {
 /// should be used. Immediate bits other than 0 and 4 are ignored.
 /// All lanes share immediate byte.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_clmulepi64_epi128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_clmulepi64_epi128)
 #[inline]
 #[target_feature(enable = "vpclmulqdq,avx512f")]
 // technically according to Intel's documentation we don't need avx512f here, however LLVM gets confused otherwise
@@ -48,7 +48,7 @@ pub unsafe fn _mm512_clmulepi64_epi128<const IMM8: i32>(a: __m512i, b: __m512i) 
 /// should be used. Immediate bits other than 0 and 4 are ignored.
 /// All lanes share immediate byte.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_clmulepi64_epi128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_clmulepi64_epi128)
 #[inline]
 #[target_feature(enable = "vpclmulqdq")]
 #[cfg_attr(test, assert_instr(vpclmul, IMM8 = 0))]

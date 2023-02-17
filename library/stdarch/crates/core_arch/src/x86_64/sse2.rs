@@ -19,7 +19,7 @@ extern "C" {
 /// Converts the lower double-precision (64-bit) floating-point element in a to
 /// a 64-bit integer.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsd_si64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtsd_si64)
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtsd2si))]
@@ -30,7 +30,7 @@ pub unsafe fn _mm_cvtsd_si64(a: __m128d) -> i64 {
 
 /// Alias for `_mm_cvtsd_si64`
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsd_si64x)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtsd_si64x)
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtsd2si))]
@@ -42,7 +42,7 @@ pub unsafe fn _mm_cvtsd_si64x(a: __m128d) -> i64 {
 /// Converts the lower double-precision (64-bit) floating-point element in `a`
 /// to a 64-bit integer with truncation.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvttsd_si64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvttsd_si64)
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvttsd2si))]
@@ -53,7 +53,7 @@ pub unsafe fn _mm_cvttsd_si64(a: __m128d) -> i64 {
 
 /// Alias for `_mm_cvttsd_si64`
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvttsd_si64x)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvttsd_si64x)
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvttsd2si))]
@@ -66,7 +66,7 @@ pub unsafe fn _mm_cvttsd_si64x(a: __m128d) -> i64 {
 /// To minimize caching, the data is flagged as non-temporal (unlikely to be
 /// used again soon).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_stream_si64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_stream_si64)
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movnti))]
@@ -78,7 +78,7 @@ pub unsafe fn _mm_stream_si64(mem_addr: *mut i64, a: i64) {
 /// Returns a vector whose lowest element is `a` and all higher elements are
 /// `0`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi64_si128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtsi64_si128)
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(all(test, not(windows)), assert_instr(movq))]
@@ -90,7 +90,7 @@ pub unsafe fn _mm_cvtsi64_si128(a: i64) -> __m128i {
 /// Returns a vector whose lowest element is `a` and all higher elements are
 /// `0`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi64x_si128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtsi64x_si128)
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(all(test, not(windows)), assert_instr(movq))]
@@ -101,7 +101,7 @@ pub unsafe fn _mm_cvtsi64x_si128(a: i64) -> __m128i {
 
 /// Returns the lowest element of `a`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi128_si64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtsi128_si64)
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(all(test, not(windows)), assert_instr(movq))]
@@ -112,7 +112,7 @@ pub unsafe fn _mm_cvtsi128_si64(a: __m128i) -> i64 {
 
 /// Returns the lowest element of `a`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi128_si64x)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtsi128_si64x)
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(all(test, not(windows)), assert_instr(movq))]
@@ -124,7 +124,7 @@ pub unsafe fn _mm_cvtsi128_si64x(a: __m128i) -> i64 {
 /// Returns `a` with its lower element replaced by `b` after converting it to
 /// an `f64`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi64_sd)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtsi64_sd)
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtsi2sd))]
@@ -136,7 +136,7 @@ pub unsafe fn _mm_cvtsi64_sd(a: __m128d, b: i64) -> __m128d {
 /// Returns `a` with its lower element replaced by `b` after converting it to
 /// an `f64`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi64x_sd)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvtsi64x_sd)
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cvtsi2sd))]

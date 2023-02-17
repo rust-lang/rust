@@ -36,7 +36,7 @@ extern "C" {
 /// Performs one round of an AES encryption flow on each 128-bit word (state) in `a` using
 /// the corresponding 128-bit word (key) in `round_key`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_aesenc_epi128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_aesenc_epi128)
 #[inline]
 #[target_feature(enable = "vaes")]
 #[cfg_attr(test, assert_instr(vaesenc))]
@@ -47,7 +47,7 @@ pub unsafe fn _mm256_aesenc_epi128(a: __m256i, round_key: __m256i) -> __m256i {
 /// Performs the last round of an AES encryption flow on each 128-bit word (state) in `a` using
 /// the corresponding 128-bit word (key) in `round_key`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_aesenclast_epi128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_aesenclast_epi128)
 #[inline]
 #[target_feature(enable = "vaes")]
 #[cfg_attr(test, assert_instr(vaesenclast))]
@@ -58,7 +58,7 @@ pub unsafe fn _mm256_aesenclast_epi128(a: __m256i, round_key: __m256i) -> __m256
 /// Performs one round of an AES decryption flow on each 128-bit word (state) in `a` using
 /// the corresponding 128-bit word (key) in `round_key`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_aesdec_epi128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_aesdec_epi128)
 #[inline]
 #[target_feature(enable = "vaes")]
 #[cfg_attr(test, assert_instr(vaesdec))]
@@ -69,7 +69,7 @@ pub unsafe fn _mm256_aesdec_epi128(a: __m256i, round_key: __m256i) -> __m256i {
 /// Performs the last round of an AES decryption flow on each 128-bit word (state) in `a` using
 /// the corresponding 128-bit word (key) in `round_key`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_aesdeclast_epi128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_aesdeclast_epi128)
 #[inline]
 #[target_feature(enable = "vaes")]
 #[cfg_attr(test, assert_instr(vaesdeclast))]
@@ -80,7 +80,7 @@ pub unsafe fn _mm256_aesdeclast_epi128(a: __m256i, round_key: __m256i) -> __m256
 /// Performs one round of an AES encryption flow on each 128-bit word (state) in `a` using
 /// the corresponding 128-bit word (key) in `round_key`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_aesenc_epi128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_aesenc_epi128)
 #[inline]
 #[target_feature(enable = "vaes,avx512f")]
 #[cfg_attr(test, assert_instr(vaesenc))]
@@ -91,7 +91,7 @@ pub unsafe fn _mm512_aesenc_epi128(a: __m512i, round_key: __m512i) -> __m512i {
 /// Performs the last round of an AES encryption flow on each 128-bit word (state) in `a` using
 /// the corresponding 128-bit word (key) in `round_key`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_aesenclast_epi128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_aesenclast_epi128)
 #[inline]
 #[target_feature(enable = "vaes,avx512f")]
 #[cfg_attr(test, assert_instr(vaesenclast))]
@@ -102,7 +102,7 @@ pub unsafe fn _mm512_aesenclast_epi128(a: __m512i, round_key: __m512i) -> __m512
 /// Performs one round of an AES decryption flow on each 128-bit word (state) in `a` using
 /// the corresponding 128-bit word (key) in `round_key`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_aesdec_epi128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_aesdec_epi128)
 #[inline]
 #[target_feature(enable = "vaes,avx512f")]
 #[cfg_attr(test, assert_instr(vaesdec))]
@@ -113,7 +113,7 @@ pub unsafe fn _mm512_aesdec_epi128(a: __m512i, round_key: __m512i) -> __m512i {
 /// Performs the last round of an AES decryption flow on each 128-bit word (state) in `a` using
 /// the corresponding 128-bit word (key) in `round_key`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_aesdeclast_epi128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_aesdeclast_epi128)
 #[inline]
 #[target_feature(enable = "vaes,avx512f")]
 #[cfg_attr(test, assert_instr(vaesdeclast))]

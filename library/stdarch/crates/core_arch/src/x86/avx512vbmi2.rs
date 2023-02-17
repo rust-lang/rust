@@ -8,7 +8,7 @@ use stdarch_test::assert_instr;
 
 /// Load contiguous active 16-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_expandloadu_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_expandloadu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vbmi2")]
 pub unsafe fn _mm512_mask_expandloadu_epi16(
@@ -29,7 +29,7 @@ pub unsafe fn _mm512_mask_expandloadu_epi16(
 
 /// Load contiguous active 16-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_expandloadu_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_expandloadu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vbmi2")]
 pub unsafe fn _mm512_maskz_expandloadu_epi16(k: __mmask32, mem_addr: *const i16) -> __m512i {
@@ -46,7 +46,7 @@ pub unsafe fn _mm512_maskz_expandloadu_epi16(k: __mmask32, mem_addr: *const i16)
 
 /// Load contiguous active 16-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_expandloadu_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_expandloadu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vbmi2,avx512vl,avx")]
 pub unsafe fn _mm256_mask_expandloadu_epi16(
@@ -67,7 +67,7 @@ pub unsafe fn _mm256_mask_expandloadu_epi16(
 
 /// Load contiguous active 16-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_expandloadu_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_expandloadu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vbmi2,avx512vl,avx")]
 pub unsafe fn _mm256_maskz_expandloadu_epi16(k: __mmask16, mem_addr: *const i16) -> __m256i {
@@ -84,7 +84,7 @@ pub unsafe fn _mm256_maskz_expandloadu_epi16(k: __mmask16, mem_addr: *const i16)
 
 /// Load contiguous active 16-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_expandloadu_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_expandloadu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vbmi2,avx512vl,avx,sse")]
 pub unsafe fn _mm_mask_expandloadu_epi16(
@@ -105,7 +105,7 @@ pub unsafe fn _mm_mask_expandloadu_epi16(
 
 /// Load contiguous active 16-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_expandloadu_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_expandloadu_epi16)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vbmi2,avx512vl,avx,sse")]
 pub unsafe fn _mm_maskz_expandloadu_epi16(k: __mmask8, mem_addr: *const i16) -> __m128i {
@@ -122,7 +122,7 @@ pub unsafe fn _mm_maskz_expandloadu_epi16(k: __mmask8, mem_addr: *const i16) -> 
 
 /// Load contiguous active 8-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_expandloadu_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_expandloadu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vbmi2")]
 pub unsafe fn _mm512_mask_expandloadu_epi8(
@@ -143,7 +143,7 @@ pub unsafe fn _mm512_mask_expandloadu_epi8(
 
 /// Load contiguous active 8-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_expandloadu_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_expandloadu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vbmi2")]
 pub unsafe fn _mm512_maskz_expandloadu_epi8(k: __mmask64, mem_addr: *const i8) -> __m512i {
@@ -160,7 +160,7 @@ pub unsafe fn _mm512_maskz_expandloadu_epi8(k: __mmask64, mem_addr: *const i8) -
 
 /// Load contiguous active 8-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_expandloadu_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_expandloadu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vbmi2,avx512vl,avx")]
 pub unsafe fn _mm256_mask_expandloadu_epi8(
@@ -181,7 +181,7 @@ pub unsafe fn _mm256_mask_expandloadu_epi8(
 
 /// Load contiguous active 8-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_expandloadu_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_expandloadu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512bw,avx512vbmi2,avx512vl,avx")]
 pub unsafe fn _mm256_maskz_expandloadu_epi8(k: __mmask32, mem_addr: *const i8) -> __m256i {
@@ -198,7 +198,7 @@ pub unsafe fn _mm256_maskz_expandloadu_epi8(k: __mmask32, mem_addr: *const i8) -
 
 /// Load contiguous active 8-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_expandloadu_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_expandloadu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vbmi2,avx512vl,avx,sse")]
 pub unsafe fn _mm_mask_expandloadu_epi8(
@@ -219,7 +219,7 @@ pub unsafe fn _mm_mask_expandloadu_epi8(
 
 /// Load contiguous active 8-bit integers from unaligned memory at mem_addr (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_expandloadu_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_expandloadu_epi8)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vbmi2,avx512vl,avx,sse")]
 pub unsafe fn _mm_maskz_expandloadu_epi8(k: __mmask16, mem_addr: *const i8) -> __m128i {
@@ -236,7 +236,7 @@ pub unsafe fn _mm_maskz_expandloadu_epi8(k: __mmask16, mem_addr: *const i8) -> _
 
 /// Contiguously store the active 16-bit integers in a (those with their respective bit set in writemask k) to unaligned memory at base_addr.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_compressstoreu_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_compressstoreu_epi16)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
@@ -246,7 +246,7 @@ pub unsafe fn _mm512_mask_compressstoreu_epi16(base_addr: *mut u8, k: __mmask32,
 
 /// Contiguously store the active 16-bit integers in a (those with their respective bit set in writemask k) to unaligned memory at base_addr.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_compressstoreu_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_compressstoreu_epi16)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
@@ -256,7 +256,7 @@ pub unsafe fn _mm256_mask_compressstoreu_epi16(base_addr: *mut u8, k: __mmask16,
 
 /// Contiguously store the active 16-bit integers in a (those with their respective bit set in writemask k) to unaligned memory at base_addr.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_compressstoreu_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_compressstoreu_epi16)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
@@ -266,7 +266,7 @@ pub unsafe fn _mm_mask_compressstoreu_epi16(base_addr: *mut u8, k: __mmask8, a: 
 
 /// Contiguously store the active 8-bit integers in a (those with their respective bit set in writemask k) to unaligned memory at base_addr.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_compressstoreu_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_compressstoreu_epi8)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
@@ -276,7 +276,7 @@ pub unsafe fn _mm512_mask_compressstoreu_epi8(base_addr: *mut u8, k: __mmask64, 
 
 /// Contiguously store the active 8-bit integers in a (those with their respective bit set in writemask k) to unaligned memory at base_addr.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_compressstoreu_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_compressstoreu_epi8)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
@@ -286,7 +286,7 @@ pub unsafe fn _mm256_mask_compressstoreu_epi8(base_addr: *mut u8, k: __mmask32, 
 
 /// Contiguously store the active 8-bit integers in a (those with their respective bit set in writemask k) to unaligned memory at base_addr.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_compressstoreu_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_compressstoreu_epi8)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
@@ -296,7 +296,7 @@ pub unsafe fn _mm_mask_compressstoreu_epi8(base_addr: *mut u8, k: __mmask16, a: 
 
 /// Contiguously store the active 16-bit integers in a (those with their respective bit set in writemask k) to dst, and pass through the remaining elements from src.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_compress_epi16&expand=1192)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_compress_epi16&expand=1192)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
@@ -306,7 +306,7 @@ pub unsafe fn _mm512_mask_compress_epi16(src: __m512i, k: __mmask32, a: __m512i)
 
 /// Contiguously store the active 16-bit integers in a (those with their respective bit set in zeromask k) to dst, and set the remaining elements to zero.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_compress_epi16&expand=1193)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_compress_epi16&expand=1193)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
@@ -320,7 +320,7 @@ pub unsafe fn _mm512_maskz_compress_epi16(k: __mmask32, a: __m512i) -> __m512i {
 
 /// Contiguously store the active 16-bit integers in a (those with their respective bit set in writemask k) to dst, and pass through the remaining elements from src.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_compress_epi16&expand=1190)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_compress_epi16&expand=1190)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
@@ -330,7 +330,7 @@ pub unsafe fn _mm256_mask_compress_epi16(src: __m256i, k: __mmask16, a: __m256i)
 
 /// Contiguously store the active 16-bit integers in a (those with their respective bit set in zeromask k) to dst, and set the remaining elements to zero.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_compress_epi16&expand=1191)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_compress_epi16&expand=1191)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
@@ -344,7 +344,7 @@ pub unsafe fn _mm256_maskz_compress_epi16(k: __mmask16, a: __m256i) -> __m256i {
 
 /// Contiguously store the active 16-bit integers in a (those with their respective bit set in writemask k) to dst, and pass through the remaining elements from src.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_compress_epi16&expand=1188)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_compress_epi16&expand=1188)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
@@ -354,7 +354,7 @@ pub unsafe fn _mm_mask_compress_epi16(src: __m128i, k: __mmask8, a: __m128i) -> 
 
 /// Contiguously store the active 16-bit integers in a (those with their respective bit set in zeromask k) to dst, and set the remaining elements to zero.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_compress_epi16&expand=1189)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_compress_epi16&expand=1189)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpcompressw))]
@@ -368,7 +368,7 @@ pub unsafe fn _mm_maskz_compress_epi16(k: __mmask8, a: __m128i) -> __m128i {
 
 /// Contiguously store the active 8-bit integers in a (those with their respective bit set in writemask k) to dst, and pass through the remaining elements from src.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_compress_epi8&expand=1210)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_compress_epi8&expand=1210)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
@@ -378,7 +378,7 @@ pub unsafe fn _mm512_mask_compress_epi8(src: __m512i, k: __mmask64, a: __m512i) 
 
 /// Contiguously store the active 8-bit integers in a (those with their respective bit set in zeromask k) to dst, and set the remaining elements to zero.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_compress_epi8&expand=1211)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_compress_epi8&expand=1211)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
@@ -392,7 +392,7 @@ pub unsafe fn _mm512_maskz_compress_epi8(k: __mmask64, a: __m512i) -> __m512i {
 
 /// Contiguously store the active 8-bit integers in a (those with their respective bit set in writemask k) to dst, and pass through the remaining elements from src.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_compress_epi8&expand=1208)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_compress_epi8&expand=1208)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
@@ -402,7 +402,7 @@ pub unsafe fn _mm256_mask_compress_epi8(src: __m256i, k: __mmask32, a: __m256i) 
 
 /// Contiguously store the active 8-bit integers in a (those with their respective bit set in zeromask k) to dst, and set the remaining elements to zero.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_compress_epi8&expand=1209)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_compress_epi8&expand=1209)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
@@ -416,7 +416,7 @@ pub unsafe fn _mm256_maskz_compress_epi8(k: __mmask32, a: __m256i) -> __m256i {
 
 /// Contiguously store the active 8-bit integers in a (those with their respective bit set in writemask k) to dst, and pass through the remaining elements from src.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_compress_epi8&expand=1206)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_compress_epi8&expand=1206)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
@@ -426,7 +426,7 @@ pub unsafe fn _mm_mask_compress_epi8(src: __m128i, k: __mmask16, a: __m128i) -> 
 
 /// Contiguously store the active 8-bit integers in a (those with their respective bit set in zeromask k) to dst, and set the remaining elements to zero.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_compress_epi8&expand=1207)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_compress_epi8&expand=1207)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpcompressb))]
@@ -440,7 +440,7 @@ pub unsafe fn _mm_maskz_compress_epi8(k: __mmask16, a: __m128i) -> __m128i {
 
 /// Load contiguous active 16-bit integers from a (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_expand_epi16&expand=2310)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_expand_epi16&expand=2310)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
@@ -450,7 +450,7 @@ pub unsafe fn _mm512_mask_expand_epi16(src: __m512i, k: __mmask32, a: __m512i) -
 
 /// Load contiguous active 16-bit integers from a (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_expand_epi16&expand=2311)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_expand_epi16&expand=2311)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
@@ -464,7 +464,7 @@ pub unsafe fn _mm512_maskz_expand_epi16(k: __mmask32, a: __m512i) -> __m512i {
 
 /// Load contiguous active 16-bit integers from a (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_expand_epi16&expand=2308)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_expand_epi16&expand=2308)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
@@ -474,7 +474,7 @@ pub unsafe fn _mm256_mask_expand_epi16(src: __m256i, k: __mmask16, a: __m256i) -
 
 /// Load contiguous active 16-bit integers from a (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_expand_epi16&expand=2309)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_expand_epi16&expand=2309)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
@@ -488,7 +488,7 @@ pub unsafe fn _mm256_maskz_expand_epi16(k: __mmask16, a: __m256i) -> __m256i {
 
 /// Load contiguous active 16-bit integers from a (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_expand_epi16&expand=2306)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_expand_epi16&expand=2306)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
@@ -498,7 +498,7 @@ pub unsafe fn _mm_mask_expand_epi16(src: __m128i, k: __mmask8, a: __m128i) -> __
 
 /// Load contiguous active 16-bit integers from a (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_expand_epi16&expand=2307)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_expand_epi16&expand=2307)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandw))]
@@ -512,7 +512,7 @@ pub unsafe fn _mm_maskz_expand_epi16(k: __mmask8, a: __m128i) -> __m128i {
 
 /// Load contiguous active 8-bit integers from a (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_expand_epi8&expand=2328)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_expand_epi8&expand=2328)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
@@ -522,7 +522,7 @@ pub unsafe fn _mm512_mask_expand_epi8(src: __m512i, k: __mmask64, a: __m512i) ->
 
 /// Load contiguous active 8-bit integers from a (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_expand_epi8&expand=2329)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_expand_epi8&expand=2329)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
@@ -536,7 +536,7 @@ pub unsafe fn _mm512_maskz_expand_epi8(k: __mmask64, a: __m512i) -> __m512i {
 
 /// Load contiguous active 8-bit integers from a (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_expand_epi8&expand=2326)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_expand_epi8&expand=2326)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
@@ -546,7 +546,7 @@ pub unsafe fn _mm256_mask_expand_epi8(src: __m256i, k: __mmask32, a: __m256i) ->
 
 /// Load contiguous active 8-bit integers from a (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_expand_epi8&expand=2327)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_expand_epi8&expand=2327)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
@@ -560,7 +560,7 @@ pub unsafe fn _mm256_maskz_expand_epi8(k: __mmask32, a: __m256i) -> __m256i {
 
 /// Load contiguous active 8-bit integers from a (those with their respective bit set in mask k), and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_expand_epi8&expand=2324)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_expand_epi8&expand=2324)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
@@ -570,7 +570,7 @@ pub unsafe fn _mm_mask_expand_epi8(src: __m128i, k: __mmask16, a: __m128i) -> __
 
 /// Load contiguous active 8-bit integers from a (those with their respective bit set in mask k), and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_expand_epi8&expand=2325)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_expand_epi8&expand=2325)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpexpandb))]
@@ -584,7 +584,7 @@ pub unsafe fn _mm_maskz_expand_epi8(k: __mmask16, a: __m128i) -> __m128i {
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shldv_epi64&expand=5087)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shldv_epi64&expand=5087)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldvq))]
@@ -594,7 +594,7 @@ pub unsafe fn _mm512_shldv_epi64(a: __m512i, b: __m512i, c: __m512i) -> __m512i 
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shldv_epi64&expand=5085)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shldv_epi64&expand=5085)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldvq))]
@@ -605,7 +605,7 @@ pub unsafe fn _mm512_mask_shldv_epi64(a: __m512i, k: __mmask8, b: __m512i, c: __
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shldv_epi64&expand=5086)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shldv_epi64&expand=5086)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldvq))]
@@ -617,7 +617,7 @@ pub unsafe fn _mm512_maskz_shldv_epi64(k: __mmask8, a: __m512i, b: __m512i, c: _
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shldv_epi64&expand=5084)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shldv_epi64&expand=5084)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvq))]
@@ -627,7 +627,7 @@ pub unsafe fn _mm256_shldv_epi64(a: __m256i, b: __m256i, c: __m256i) -> __m256i 
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shldv_epi64&expand=5082)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_shldv_epi64&expand=5082)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvq))]
@@ -638,7 +638,7 @@ pub unsafe fn _mm256_mask_shldv_epi64(a: __m256i, k: __mmask8, b: __m256i, c: __
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shldv_epi64&expand=5083)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_shldv_epi64&expand=5083)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvq))]
@@ -650,7 +650,7 @@ pub unsafe fn _mm256_maskz_shldv_epi64(k: __mmask8, a: __m256i, b: __m256i, c: _
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shldv_epi64&expand=5081)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shldv_epi64&expand=5081)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvq))]
@@ -660,7 +660,7 @@ pub unsafe fn _mm_shldv_epi64(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shldv_epi64&expand=5079)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_shldv_epi64&expand=5079)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvq))]
@@ -671,7 +671,7 @@ pub unsafe fn _mm_mask_shldv_epi64(a: __m128i, k: __mmask8, b: __m128i, c: __m12
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 64-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shldv_epi64&expand=5080)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_shldv_epi64&expand=5080)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvq))]
@@ -683,7 +683,7 @@ pub unsafe fn _mm_maskz_shldv_epi64(k: __mmask8, a: __m128i, b: __m128i, c: __m1
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shldv_epi32&expand=5078)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shldv_epi32&expand=5078)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldvd))]
@@ -693,7 +693,7 @@ pub unsafe fn _mm512_shldv_epi32(a: __m512i, b: __m512i, c: __m512i) -> __m512i 
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shldv_epi32&expand=5076)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shldv_epi32&expand=5076)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldvd))]
@@ -704,7 +704,7 @@ pub unsafe fn _mm512_mask_shldv_epi32(a: __m512i, k: __mmask16, b: __m512i, c: _
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shldv_epi32&expand=5077)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shldv_epi32&expand=5077)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldvd))]
@@ -721,7 +721,7 @@ pub unsafe fn _mm512_maskz_shldv_epi32(
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shldv_epi32&expand=5075)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shldv_epi32&expand=5075)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvd))]
@@ -731,7 +731,7 @@ pub unsafe fn _mm256_shldv_epi32(a: __m256i, b: __m256i, c: __m256i) -> __m256i 
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shldv_epi32&expand=5073)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_shldv_epi32&expand=5073)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvd))]
@@ -742,7 +742,7 @@ pub unsafe fn _mm256_mask_shldv_epi32(a: __m256i, k: __mmask8, b: __m256i, c: __
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shldv_epi32&expand=5074)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_shldv_epi32&expand=5074)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvd))]
@@ -754,7 +754,7 @@ pub unsafe fn _mm256_maskz_shldv_epi32(k: __mmask8, a: __m256i, b: __m256i, c: _
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shldv_epi32&expand=5072)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shldv_epi32&expand=5072)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvd))]
@@ -764,7 +764,7 @@ pub unsafe fn _mm_shldv_epi32(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shldv_epi32&expand=5070)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_shldv_epi32&expand=5070)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvd))]
@@ -775,7 +775,7 @@ pub unsafe fn _mm_mask_shldv_epi32(a: __m128i, k: __mmask8, b: __m128i, c: __m12
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 32-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shldv_epi32&expand=5071)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_shldv_epi32&expand=5071)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvd))]
@@ -787,7 +787,7 @@ pub unsafe fn _mm_maskz_shldv_epi32(k: __mmask8, a: __m128i, b: __m128i, c: __m1
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shldv_epi16&expand=5069)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shldv_epi16&expand=5069)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldvw))]
@@ -797,7 +797,7 @@ pub unsafe fn _mm512_shldv_epi16(a: __m512i, b: __m512i, c: __m512i) -> __m512i 
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shldv_epi16&expand=5067)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shldv_epi16&expand=5067)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldvw))]
@@ -808,7 +808,7 @@ pub unsafe fn _mm512_mask_shldv_epi16(a: __m512i, k: __mmask32, b: __m512i, c: _
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shldv_epi16&expand=5068)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shldv_epi16&expand=5068)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldvw))]
@@ -825,7 +825,7 @@ pub unsafe fn _mm512_maskz_shldv_epi16(
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shldv_epi16&expand=5066)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shldv_epi16&expand=5066)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvw))]
@@ -835,7 +835,7 @@ pub unsafe fn _mm256_shldv_epi16(a: __m256i, b: __m256i, c: __m256i) -> __m256i 
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shldv_epi16&expand=5064)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_shldv_epi16&expand=5064)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvw))]
@@ -846,7 +846,7 @@ pub unsafe fn _mm256_mask_shldv_epi16(a: __m256i, k: __mmask16, b: __m256i, c: _
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shldv_epi16&expand=5065)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_shldv_epi16&expand=5065)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvw))]
@@ -863,7 +863,7 @@ pub unsafe fn _mm256_maskz_shldv_epi16(
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shldv_epi16&expand=5063)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shldv_epi16&expand=5063)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvw))]
@@ -873,7 +873,7 @@ pub unsafe fn _mm_shldv_epi16(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shldv_epi16&expand=5061)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_shldv_epi16&expand=5061)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvw))]
@@ -884,7 +884,7 @@ pub unsafe fn _mm_mask_shldv_epi16(a: __m128i, k: __mmask8, b: __m128i, c: __m12
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by the amount specified in the corresponding element of c, and store the upper 16-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shldv_epi16&expand=5062)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_shldv_epi16&expand=5062)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldvw))]
@@ -896,7 +896,7 @@ pub unsafe fn _mm_maskz_shldv_epi16(k: __mmask8, a: __m128i, b: __m128i, c: __m1
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shrdv_epi64&expand=5141)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shrdv_epi64&expand=5141)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshrdvq))]
@@ -906,7 +906,7 @@ pub unsafe fn _mm512_shrdv_epi64(a: __m512i, b: __m512i, c: __m512i) -> __m512i 
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shrdv_epi64&expand=5139)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shrdv_epi64&expand=5139)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshrdvq))]
@@ -917,7 +917,7 @@ pub unsafe fn _mm512_mask_shrdv_epi64(a: __m512i, k: __mmask8, b: __m512i, c: __
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shrdv_epi64&expand=5140)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shrdv_epi64&expand=5140)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshrdvq))]
@@ -929,7 +929,7 @@ pub unsafe fn _mm512_maskz_shrdv_epi64(k: __mmask8, a: __m512i, b: __m512i, c: _
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shrdv_epi64&expand=5138)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shrdv_epi64&expand=5138)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvq))]
@@ -939,7 +939,7 @@ pub unsafe fn _mm256_shrdv_epi64(a: __m256i, b: __m256i, c: __m256i) -> __m256i 
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shrdv_epi64&expand=5136)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_shrdv_epi64&expand=5136)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvq))]
@@ -950,7 +950,7 @@ pub unsafe fn _mm256_mask_shrdv_epi64(a: __m256i, k: __mmask8, b: __m256i, c: __
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shrdv_epi64&expand=5137)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_shrdv_epi64&expand=5137)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvq))]
@@ -962,7 +962,7 @@ pub unsafe fn _mm256_maskz_shrdv_epi64(k: __mmask8, a: __m256i, b: __m256i, c: _
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shrdv_epi64&expand=5135)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shrdv_epi64&expand=5135)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvq))]
@@ -972,7 +972,7 @@ pub unsafe fn _mm_shrdv_epi64(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shrdv_epi64&expand=5133)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_shrdv_epi64&expand=5133)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvq))]
@@ -983,7 +983,7 @@ pub unsafe fn _mm_mask_shrdv_epi64(a: __m128i, k: __mmask8, b: __m128i, c: __m12
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 64-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shrdv_epi64&expand=5134)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_shrdv_epi64&expand=5134)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvq))]
@@ -995,7 +995,7 @@ pub unsafe fn _mm_maskz_shrdv_epi64(k: __mmask8, a: __m128i, b: __m128i, c: __m1
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shrdv_epi32&expand=5132)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shrdv_epi32&expand=5132)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshrdvd))]
@@ -1005,7 +1005,7 @@ pub unsafe fn _mm512_shrdv_epi32(a: __m512i, b: __m512i, c: __m512i) -> __m512i 
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shrdv_epi32&expand=5130)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shrdv_epi32&expand=5130)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshrdvd))]
@@ -1016,7 +1016,7 @@ pub unsafe fn _mm512_mask_shrdv_epi32(a: __m512i, k: __mmask16, b: __m512i, c: _
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shrdv_epi32&expand=5131)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shrdv_epi32&expand=5131)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshrdvd))]
@@ -1033,7 +1033,7 @@ pub unsafe fn _mm512_maskz_shrdv_epi32(
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shrdv_epi32&expand=5129)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shrdv_epi32&expand=5129)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvd))]
@@ -1043,7 +1043,7 @@ pub unsafe fn _mm256_shrdv_epi32(a: __m256i, b: __m256i, c: __m256i) -> __m256i 
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shrdv_epi32&expand=5127)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_shrdv_epi32&expand=5127)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvd))]
@@ -1054,7 +1054,7 @@ pub unsafe fn _mm256_mask_shrdv_epi32(a: __m256i, k: __mmask8, b: __m256i, c: __
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shrdv_epi32&expand=5128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_shrdv_epi32&expand=5128)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvd))]
@@ -1066,7 +1066,7 @@ pub unsafe fn _mm256_maskz_shrdv_epi32(k: __mmask8, a: __m256i, b: __m256i, c: _
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shrdv_epi32&expand=5126)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shrdv_epi32&expand=5126)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvd))]
@@ -1076,7 +1076,7 @@ pub unsafe fn _mm_shrdv_epi32(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shrdv_epi32&expand=5124)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_shrdv_epi32&expand=5124)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvd))]
@@ -1087,7 +1087,7 @@ pub unsafe fn _mm_mask_shrdv_epi32(a: __m128i, k: __mmask8, b: __m128i, c: __m12
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 32-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shrdv_epi32&expand=5125)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_shrdv_epi32&expand=5125)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvd))]
@@ -1099,7 +1099,7 @@ pub unsafe fn _mm_maskz_shrdv_epi32(k: __mmask8, a: __m128i, b: __m128i, c: __m1
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shrdv_epi16&expand=5123)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shrdv_epi16&expand=5123)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshrdvw))]
@@ -1109,7 +1109,7 @@ pub unsafe fn _mm512_shrdv_epi16(a: __m512i, b: __m512i, c: __m512i) -> __m512i 
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shrdv_epi16&expand=5121)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shrdv_epi16&expand=5121)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshrdvw))]
@@ -1120,7 +1120,7 @@ pub unsafe fn _mm512_mask_shrdv_epi16(a: __m512i, k: __mmask32, b: __m512i, c: _
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shrdv_epi16&expand=5122)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shrdv_epi16&expand=5122)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshrdvw))]
@@ -1137,7 +1137,7 @@ pub unsafe fn _mm512_maskz_shrdv_epi16(
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shrdv_epi16&expand=5120)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shrdv_epi16&expand=5120)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvw))]
@@ -1147,7 +1147,7 @@ pub unsafe fn _mm256_shrdv_epi16(a: __m256i, b: __m256i, c: __m256i) -> __m256i 
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shrdv_epi16&expand=5118)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_shrdv_epi16&expand=5118)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvw))]
@@ -1158,7 +1158,7 @@ pub unsafe fn _mm256_mask_shrdv_epi16(a: __m256i, k: __mmask16, b: __m256i, c: _
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shrdv_epi16&expand=5119)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_shrdv_epi16&expand=5119)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvw))]
@@ -1175,7 +1175,7 @@ pub unsafe fn _mm256_maskz_shrdv_epi16(
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shrdv_epi16&expand=5117)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shrdv_epi16&expand=5117)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvw))]
@@ -1185,7 +1185,7 @@ pub unsafe fn _mm_shrdv_epi16(a: __m128i, b: __m128i, c: __m128i) -> __m128i {
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst using writemask k (elements are copied from a when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shrdv_epi16&expand=5115)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_shrdv_epi16&expand=5115)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvw))]
@@ -1196,7 +1196,7 @@ pub unsafe fn _mm_mask_shrdv_epi16(a: __m128i, k: __mmask8, b: __m128i, c: __m12
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by the amount specified in the corresponding element of c, and store the lower 16-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shrdv_epi16&expand=5116)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_shrdv_epi16&expand=5116)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshrdvw))]
@@ -1208,7 +1208,7 @@ pub unsafe fn _mm_maskz_shrdv_epi16(k: __mmask8, a: __m128i, b: __m128i, c: __m1
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by imm8 bits, and store the upper 64-bits in dst).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shldi_epi64&expand=5060)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shldi_epi64&expand=5060)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
@@ -1225,7 +1225,7 @@ pub unsafe fn _mm512_shldi_epi64<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by imm8 bits, and store the upper 64-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shldi_epi64&expand=5058)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shldi_epi64&expand=5058)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
@@ -1248,7 +1248,7 @@ pub unsafe fn _mm512_mask_shldi_epi64<const IMM8: i32>(
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by imm8 bits, and store the upper 64-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shldi_epi64&expand=5059)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shldi_epi64&expand=5059)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
@@ -1271,7 +1271,7 @@ pub unsafe fn _mm512_maskz_shldi_epi64<const IMM8: i32>(
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by imm8 bits, and store the upper 64-bits in dst).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shldi_epi64&expand=5057)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shldi_epi64&expand=5057)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
@@ -1288,7 +1288,7 @@ pub unsafe fn _mm256_shldi_epi64<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by imm8 bits, and store the upper 64-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shldi_epi64&expand=5055)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_shldi_epi64&expand=5055)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
@@ -1311,7 +1311,7 @@ pub unsafe fn _mm256_mask_shldi_epi64<const IMM8: i32>(
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by imm8 bits, and store the upper 64-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shldi_epi64&expand=5056)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_shldi_epi64&expand=5056)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
@@ -1334,7 +1334,7 @@ pub unsafe fn _mm256_maskz_shldi_epi64<const IMM8: i32>(
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by imm8 bits, and store the upper 64-bits in dst).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shldi_epi64&expand=5054)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shldi_epi64&expand=5054)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
@@ -1351,7 +1351,7 @@ pub unsafe fn _mm_shldi_epi64<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by imm8 bits, and store the upper 64-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shldi_epi64&expand=5052)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_shldi_epi64&expand=5052)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
@@ -1370,7 +1370,7 @@ pub unsafe fn _mm_mask_shldi_epi64<const IMM8: i32>(
 
 /// Concatenate packed 64-bit integers in a and b producing an intermediate 128-bit result. Shift the result left by imm8 bits, and store the upper 64-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shldi_epi64&expand=5053)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_shldi_epi64&expand=5053)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
@@ -1389,7 +1389,7 @@ pub unsafe fn _mm_maskz_shldi_epi64<const IMM8: i32>(
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by imm8 bits, and store the upper 32-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shldi_epi32&expand=5051)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shldi_epi32&expand=5051)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
@@ -1405,7 +1405,7 @@ pub unsafe fn _mm512_shldi_epi32<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by imm8 bits, and store the upper 32-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shldi_epi32&expand=5049)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shldi_epi32&expand=5049)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
@@ -1427,7 +1427,7 @@ pub unsafe fn _mm512_mask_shldi_epi32<const IMM8: i32>(
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by imm8 bits, and store the upper 32-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shldi_epi32&expand=5050)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shldi_epi32&expand=5050)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
@@ -1449,7 +1449,7 @@ pub unsafe fn _mm512_maskz_shldi_epi32<const IMM8: i32>(
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by imm8 bits, and store the upper 32-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shldi_epi32&expand=5048)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shldi_epi32&expand=5048)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
@@ -1465,7 +1465,7 @@ pub unsafe fn _mm256_shldi_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by imm8 bits, and store the upper 32-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shldi_epi32&expand=5046)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_shldi_epi32&expand=5046)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
@@ -1487,7 +1487,7 @@ pub unsafe fn _mm256_mask_shldi_epi32<const IMM8: i32>(
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by imm8 bits, and store the upper 32-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shldi_epi32&expand=5047)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_shldi_epi32&expand=5047)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
@@ -1509,7 +1509,7 @@ pub unsafe fn _mm256_maskz_shldi_epi32<const IMM8: i32>(
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by imm8 bits, and store the upper 32-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shldi_epi32&expand=5045)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shldi_epi32&expand=5045)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
@@ -1525,7 +1525,7 @@ pub unsafe fn _mm_shldi_epi32<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by imm8 bits, and store the upper 32-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shldi_epi32&expand=5043)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_shldi_epi32&expand=5043)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
@@ -1543,7 +1543,7 @@ pub unsafe fn _mm_mask_shldi_epi32<const IMM8: i32>(
 
 /// Concatenate packed 32-bit integers in a and b producing an intermediate 64-bit result. Shift the result left by imm8 bits, and store the upper 32-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shldi_epi32&expand=5044)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_shldi_epi32&expand=5044)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
@@ -1561,7 +1561,7 @@ pub unsafe fn _mm_maskz_shldi_epi32<const IMM8: i32>(
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by imm8 bits, and store the upper 16-bits in dst).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shldi_epi16&expand=5042)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shldi_epi16&expand=5042)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
@@ -1578,7 +1578,7 @@ pub unsafe fn _mm512_shldi_epi16<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by imm8 bits, and store the upper 16-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shldi_epi16&expand=5040)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shldi_epi16&expand=5040)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
@@ -1601,7 +1601,7 @@ pub unsafe fn _mm512_mask_shldi_epi16<const IMM8: i32>(
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by imm8 bits, and store the upper 16-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shldi_epi16&expand=5041)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shldi_epi16&expand=5041)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
@@ -1624,7 +1624,7 @@ pub unsafe fn _mm512_maskz_shldi_epi16<const IMM8: i32>(
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by imm8 bits, and store the upper 16-bits in dst).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shldi_epi16&expand=5039)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shldi_epi16&expand=5039)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
@@ -1641,7 +1641,7 @@ pub unsafe fn _mm256_shldi_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by imm8 bits, and store the upper 16-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shldi_epi16&expand=5037)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_shldi_epi16&expand=5037)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
@@ -1664,7 +1664,7 @@ pub unsafe fn _mm256_mask_shldi_epi16<const IMM8: i32>(
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by imm8 bits, and store the upper 16-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shldi_epi16&expand=5038)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_shldi_epi16&expand=5038)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
@@ -1687,7 +1687,7 @@ pub unsafe fn _mm256_maskz_shldi_epi16<const IMM8: i32>(
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by imm8 bits, and store the upper 16-bits in dst).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shldi_epi16&expand=5036)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shldi_epi16&expand=5036)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
@@ -1704,7 +1704,7 @@ pub unsafe fn _mm_shldi_epi16<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by imm8 bits, and store the upper 16-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shldi_epi16&expand=5034)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_shldi_epi16&expand=5034)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
@@ -1723,7 +1723,7 @@ pub unsafe fn _mm_mask_shldi_epi16<const IMM8: i32>(
 
 /// Concatenate packed 16-bit integers in a and b producing an intermediate 32-bit result. Shift the result left by imm8 bits, and store the upper 16-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shldi_epi16&expand=5035)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_shldi_epi16&expand=5035)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
@@ -1742,7 +1742,7 @@ pub unsafe fn _mm_maskz_shldi_epi16<const IMM8: i32>(
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by imm8 bits, and store the lower 64-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shrdi_epi64&expand=5114)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shrdi_epi64&expand=5114)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
@@ -1759,7 +1759,7 @@ pub unsafe fn _mm512_shrdi_epi64<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by imm8 bits, and store the lower 64-bits in dst using writemask k (elements are copied from src" when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shrdi_epi64&expand=5112)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shrdi_epi64&expand=5112)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
@@ -1782,7 +1782,7 @@ pub unsafe fn _mm512_mask_shrdi_epi64<const IMM8: i32>(
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by imm8 bits, and store the lower 64-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shrdi_epi64&expand=5113)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shrdi_epi64&expand=5113)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 255))] //should be vpshrdq
@@ -1805,7 +1805,7 @@ pub unsafe fn _mm512_maskz_shrdi_epi64<const IMM8: i32>(
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by imm8 bits, and store the lower 64-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shrdi_epi64&expand=5111)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shrdi_epi64&expand=5111)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
@@ -1822,7 +1822,7 @@ pub unsafe fn _mm256_shrdi_epi64<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by imm8 bits, and store the lower 64-bits in dst using writemask k (elements are copied from src" when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shrdi_epi64&expand=5109)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_shrdi_epi64&expand=5109)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
@@ -1845,7 +1845,7 @@ pub unsafe fn _mm256_mask_shrdi_epi64<const IMM8: i32>(
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by imm8 bits, and store the lower 64-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shrdi_epi64&expand=5110)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_shrdi_epi64&expand=5110)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
@@ -1868,7 +1868,7 @@ pub unsafe fn _mm256_maskz_shrdi_epi64<const IMM8: i32>(
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by imm8 bits, and store the lower 64-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shrdi_epi64&expand=5108)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shrdi_epi64&expand=5108)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
@@ -1885,7 +1885,7 @@ pub unsafe fn _mm_shrdi_epi64<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by imm8 bits, and store the lower 64-bits in dst using writemask k (elements are copied from src" when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shrdi_epi64&expand=5106)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_shrdi_epi64&expand=5106)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
@@ -1904,7 +1904,7 @@ pub unsafe fn _mm_mask_shrdi_epi64<const IMM8: i32>(
 
 /// Concatenate packed 64-bit integers in b and a producing an intermediate 128-bit result. Shift the result right by imm8 bits, and store the lower 64-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shrdi_epi64&expand=5107)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_shrdi_epi64&expand=5107)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
@@ -1923,7 +1923,7 @@ pub unsafe fn _mm_maskz_shrdi_epi64<const IMM8: i32>(
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by imm8 bits, and store the lower 32-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shrdi_epi32&expand=5105)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shrdi_epi32&expand=5105)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
@@ -1939,7 +1939,7 @@ pub unsafe fn _mm512_shrdi_epi32<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by imm8 bits, and store the lower 32-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shrdi_epi32&expand=5103)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shrdi_epi32&expand=5103)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
@@ -1961,7 +1961,7 @@ pub unsafe fn _mm512_mask_shrdi_epi32<const IMM8: i32>(
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by imm8 bits, and store the lower 32-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shrdi_epi32&expand=5104)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shrdi_epi32&expand=5104)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
@@ -1983,7 +1983,7 @@ pub unsafe fn _mm512_maskz_shrdi_epi32<const IMM8: i32>(
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by imm8 bits, and store the lower 32-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shrdi_epi32&expand=5102)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shrdi_epi32&expand=5102)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
@@ -1999,7 +1999,7 @@ pub unsafe fn _mm256_shrdi_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by imm8 bits, and store the lower 32-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shrdi_epi32&expand=5100)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_shrdi_epi32&expand=5100)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
@@ -2021,7 +2021,7 @@ pub unsafe fn _mm256_mask_shrdi_epi32<const IMM8: i32>(
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by imm8 bits, and store the lower 32-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shrdi_epi32&expand=5101)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_shrdi_epi32&expand=5101)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
@@ -2043,7 +2043,7 @@ pub unsafe fn _mm256_maskz_shrdi_epi32<const IMM8: i32>(
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by imm8 bits, and store the lower 32-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shrdi_epi32&expand=5099)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shrdi_epi32&expand=5099)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
@@ -2059,7 +2059,7 @@ pub unsafe fn _mm_shrdi_epi32<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by imm8 bits, and store the lower 32-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shrdi_epi32&expand=5097)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_shrdi_epi32&expand=5097)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
@@ -2077,7 +2077,7 @@ pub unsafe fn _mm_mask_shrdi_epi32<const IMM8: i32>(
 
 /// Concatenate packed 32-bit integers in b and a producing an intermediate 64-bit result. Shift the result right by imm8 bits, and store the lower 32-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shrdi_epi32&expand=5098)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_shrdi_epi32&expand=5098)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
@@ -2095,7 +2095,7 @@ pub unsafe fn _mm_maskz_shrdi_epi32<const IMM8: i32>(
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by imm8 bits, and store the lower 16-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shrdi_epi16&expand=5096)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_shrdi_epi16&expand=5096)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
@@ -2113,7 +2113,7 @@ pub unsafe fn _mm512_shrdi_epi16<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by imm8 bits, and store the lower 16-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shrdi_epi16&expand=5094)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_shrdi_epi16&expand=5094)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
@@ -2137,7 +2137,7 @@ pub unsafe fn _mm512_mask_shrdi_epi16<const IMM8: i32>(
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by imm8 bits, and store the lower 16-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shrdi_epi16&expand=5095)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_shrdi_epi16&expand=5095)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
@@ -2161,7 +2161,7 @@ pub unsafe fn _mm512_maskz_shrdi_epi16<const IMM8: i32>(
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by imm8 bits, and store the lower 16-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shrdi_epi16&expand=5093)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shrdi_epi16&expand=5093)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
@@ -2179,7 +2179,7 @@ pub unsafe fn _mm256_shrdi_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by imm8 bits, and store the lower 16-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shrdi_epi16&expand=5091)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_shrdi_epi16&expand=5091)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
@@ -2203,7 +2203,7 @@ pub unsafe fn _mm256_mask_shrdi_epi16<const IMM8: i32>(
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by imm8 bits, and store the lower 16-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shrdi_epi16&expand=5092)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_shrdi_epi16&expand=5092)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
@@ -2226,7 +2226,7 @@ pub unsafe fn _mm256_maskz_shrdi_epi16<const IMM8: i32>(
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by imm8 bits, and store the lower 16-bits in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shrdi_epi16&expand=5090)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shrdi_epi16&expand=5090)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
@@ -2243,7 +2243,7 @@ pub unsafe fn _mm_shrdi_epi16<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by imm8 bits, and store the lower 16-bits in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shrdi_epi16&expand=5088)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_shrdi_epi16&expand=5088)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
@@ -2262,7 +2262,7 @@ pub unsafe fn _mm_mask_shrdi_epi16<const IMM8: i32>(
 
 /// Concatenate packed 16-bit integers in b and a producing an intermediate 32-bit result. Shift the result right by imm8 bits, and store the lower 16-bits in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shrdi_epi16&expand=5089)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_shrdi_epi16&expand=5089)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
 #[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw

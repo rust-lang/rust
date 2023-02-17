@@ -22,7 +22,7 @@ use crate::core_arch::{simd_llvm::*, x86::*};
 
 /// Extracts a 64-bit integer from `a`, selected with `INDEX`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extract_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_extract_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[rustc_legacy_const_generics(1)]

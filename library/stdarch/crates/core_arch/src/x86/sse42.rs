@@ -67,7 +67,7 @@ pub const _SIDD_UNIT_MASK: i32 = 0b0100_0000;
 /// Compares packed strings with implicit lengths in `a` and `b` using the
 /// control in `IMM8`, and return the generated mask.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistrm)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpistrm)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistrm, IMM8 = 0))]
@@ -255,7 +255,7 @@ pub unsafe fn _mm_cmpistrm<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 /// # }
 /// ```
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistri)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpistri)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
@@ -270,7 +270,7 @@ pub unsafe fn _mm_cmpistri<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 /// control in `IMM8`, and return `1` if any character in `b` was null.
 /// and `0` otherwise.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistrz)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpistrz)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
@@ -285,7 +285,7 @@ pub unsafe fn _mm_cmpistrz<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 /// control in `IMM8`, and return `1` if the resulting mask was non-zero,
 /// and `0` otherwise.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistrc)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpistrc)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
@@ -300,7 +300,7 @@ pub unsafe fn _mm_cmpistrc<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 /// control in `IMM8`, and returns `1` if any character in `a` was null,
 /// and `0` otherwise.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistrs)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpistrs)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
@@ -314,7 +314,7 @@ pub unsafe fn _mm_cmpistrs<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 /// Compares packed strings with implicit lengths in `a` and `b` using the
 /// control in `IMM8`, and return bit `0` of the resulting bit mask.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistro)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpistro)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
@@ -329,7 +329,7 @@ pub unsafe fn _mm_cmpistro<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 /// control in `IMM8`, and return `1` if `b` did not contain a null
 /// character and the resulting mask was zero, and `0` otherwise.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistra)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpistra)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
@@ -343,7 +343,7 @@ pub unsafe fn _mm_cmpistra<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
 /// Compares packed strings in `a` and `b` with lengths `la` and `lb`
 /// using the control in `IMM8`, and return the generated mask.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestrm)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpestrm)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestrm, IMM8 = 0))]
@@ -432,7 +432,7 @@ pub unsafe fn _mm_cmpestrm<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 /// [`_SIDD_MOST_SIGNIFICANT`]: constant._SIDD_MOST_SIGNIFICANT.html
 /// [`_mm_cmpistri`]: fn._mm_cmpistri.html
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestri)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpestri)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
@@ -447,7 +447,7 @@ pub unsafe fn _mm_cmpestri<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 /// using the control in `IMM8`, and return `1` if any character in
 /// `b` was null, and `0` otherwise.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestrz)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpestrz)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
@@ -462,7 +462,7 @@ pub unsafe fn _mm_cmpestrz<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 /// using the control in `IMM8`, and return `1` if the resulting mask
 /// was non-zero, and `0` otherwise.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestrc)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpestrc)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
@@ -477,7 +477,7 @@ pub unsafe fn _mm_cmpestrc<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 /// using the control in `IMM8`, and return `1` if any character in
 /// a was null, and `0` otherwise.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestrs)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpestrs)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
@@ -492,7 +492,7 @@ pub unsafe fn _mm_cmpestrs<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 /// using the control in `IMM8`, and return bit `0` of the resulting
 /// bit mask.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestro)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpestro)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
@@ -508,7 +508,7 @@ pub unsafe fn _mm_cmpestro<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 /// contain a null character and the resulting mask was zero, and `0`
 /// otherwise.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestra)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpestra)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
@@ -522,7 +522,7 @@ pub unsafe fn _mm_cmpestra<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 /// Starting with the initial value in `crc`, return the accumulated
 /// CRC32-C value for unsigned 8-bit integer `v`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_crc32_u8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_crc32_u8)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(crc32))]
@@ -534,7 +534,7 @@ pub unsafe fn _mm_crc32_u8(crc: u32, v: u8) -> u32 {
 /// Starting with the initial value in `crc`, return the accumulated
 /// CRC32-C value for unsigned 16-bit integer `v`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_crc32_u16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_crc32_u16)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(crc32))]
@@ -546,7 +546,7 @@ pub unsafe fn _mm_crc32_u16(crc: u32, v: u16) -> u32 {
 /// Starting with the initial value in `crc`, return the accumulated
 /// CRC32-C value for unsigned 32-bit integer `v`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_crc32_u32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_crc32_u32)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(crc32))]
@@ -558,7 +558,7 @@ pub unsafe fn _mm_crc32_u32(crc: u32, v: u32) -> u32 {
 /// Compares packed 64-bit integers in `a` and `b` for greater-than,
 /// return the results.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpgt_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpgt_epi64)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpgtq))]

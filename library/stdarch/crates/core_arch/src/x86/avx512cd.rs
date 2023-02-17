@@ -8,7 +8,7 @@ use stdarch_test::assert_instr;
 
 /// Broadcast the low 16-bits from input mask k to all 32-bit elements of dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_broadcastmw_epi32&expand=553)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_broadcastmw_epi32&expand=553)
 #[inline]
 #[target_feature(enable = "avx512cd")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmw2d
@@ -18,7 +18,7 @@ pub unsafe fn _mm512_broadcastmw_epi32(k: __mmask16) -> __m512i {
 
 /// Broadcast the low 16-bits from input mask k to all 32-bit elements of dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_broadcastmw_epi32&expand=552)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_broadcastmw_epi32&expand=552)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmw2d
@@ -28,7 +28,7 @@ pub unsafe fn _mm256_broadcastmw_epi32(k: __mmask16) -> __m256i {
 
 /// Broadcast the low 16-bits from input mask k to all 32-bit elements of dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_broadcastmw_epi32&expand=551)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_broadcastmw_epi32&expand=551)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmw2d
@@ -38,7 +38,7 @@ pub unsafe fn _mm_broadcastmw_epi32(k: __mmask16) -> __m128i {
 
 /// Broadcast the low 8-bits from input mask k to all 64-bit elements of dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_broadcastmb_epi64&expand=550)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_broadcastmb_epi64&expand=550)
 #[inline]
 #[target_feature(enable = "avx512cd")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmb2q
@@ -48,7 +48,7 @@ pub unsafe fn _mm512_broadcastmb_epi64(k: __mmask8) -> __m512i {
 
 /// Broadcast the low 8-bits from input mask k to all 64-bit elements of dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_broadcastmb_epi64&expand=549)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_broadcastmb_epi64&expand=549)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmb2q
@@ -58,7 +58,7 @@ pub unsafe fn _mm256_broadcastmb_epi64(k: __mmask8) -> __m256i {
 
 /// Broadcast the low 8-bits from input mask k to all 64-bit elements of dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_broadcastmb_epi64&expand=548)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_broadcastmb_epi64&expand=548)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpbroadcast))] // should be vpbroadcastmb2q
@@ -68,7 +68,7 @@ pub unsafe fn _mm_broadcastmb_epi64(k: __mmask8) -> __m128i {
 
 /// Test each 32-bit element of a for equality with all other elements in a closer to the least significant bit. Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_conflict_epi32&expand=1248)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_conflict_epi32&expand=1248)
 #[inline]
 #[target_feature(enable = "avx512cd")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
@@ -78,7 +78,7 @@ pub unsafe fn _mm512_conflict_epi32(a: __m512i) -> __m512i {
 
 /// Test each 32-bit element of a for equality with all other elements in a closer to the least significant bit using writemask k (elements are copied from src when the corresponding mask bit is not set). Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_conflict_epi32&expand=1249)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_conflict_epi32&expand=1249)
 #[inline]
 #[target_feature(enable = "avx512cd")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
@@ -89,7 +89,7 @@ pub unsafe fn _mm512_mask_conflict_epi32(src: __m512i, k: __mmask16, a: __m512i)
 
 /// Test each 32-bit element of a for equality with all other elements in a closer to the least significant bit using zeromask k (elements are zeroed out when the corresponding mask bit is not set). Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_conflict_epi32&expand=1250)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_conflict_epi32&expand=1250)
 #[inline]
 #[target_feature(enable = "avx512cd")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
@@ -101,7 +101,7 @@ pub unsafe fn _mm512_maskz_conflict_epi32(k: __mmask16, a: __m512i) -> __m512i {
 
 /// Test each 32-bit element of a for equality with all other elements in a closer to the least significant bit. Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_conflict_epi32&expand=1245)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_conflict_epi32&expand=1245)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
@@ -111,7 +111,7 @@ pub unsafe fn _mm256_conflict_epi32(a: __m256i) -> __m256i {
 
 /// Test each 32-bit element of a for equality with all other elements in a closer to the least significant bit using writemask k (elements are copied from src when the corresponding mask bit is not set). Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_conflict_epi32&expand=1246)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_conflict_epi32&expand=1246)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
@@ -122,7 +122,7 @@ pub unsafe fn _mm256_mask_conflict_epi32(src: __m256i, k: __mmask8, a: __m256i) 
 
 /// Test each 32-bit element of a for equality with all other elements in a closer to the least significant bit using zeromask k (elements are zeroed out when the corresponding mask bit is not set). Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_conflict_epi32&expand=1247)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_conflict_epi32&expand=1247)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
@@ -134,7 +134,7 @@ pub unsafe fn _mm256_maskz_conflict_epi32(k: __mmask8, a: __m256i) -> __m256i {
 
 /// Test each 32-bit element of a for equality with all other elements in a closer to the least significant bit. Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_conflict_epi32&expand=1242)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_conflict_epi32&expand=1242)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
@@ -144,7 +144,7 @@ pub unsafe fn _mm_conflict_epi32(a: __m128i) -> __m128i {
 
 /// Test each 32-bit element of a for equality with all other elements in a closer to the least significant bit using writemask k (elements are copied from src when the corresponding mask bit is not set). Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_conflict_epi32&expand=1243)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_conflict_epi32&expand=1243)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
@@ -155,7 +155,7 @@ pub unsafe fn _mm_mask_conflict_epi32(src: __m128i, k: __mmask8, a: __m128i) -> 
 
 /// Test each 32-bit element of a for equality with all other elements in a closer to the least significant bit using zeromask k (elements are zeroed out when the corresponding mask bit is not set). Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_conflict_epi32&expand=1244)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_conflict_epi32&expand=1244)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpconflictd))]
@@ -167,7 +167,7 @@ pub unsafe fn _mm_maskz_conflict_epi32(k: __mmask8, a: __m128i) -> __m128i {
 
 /// Test each 64-bit element of a for equality with all other elements in a closer to the least significant bit. Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_conflict_epi64&expand=1257)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_conflict_epi64&expand=1257)
 #[inline]
 #[target_feature(enable = "avx512cd")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
@@ -177,7 +177,7 @@ pub unsafe fn _mm512_conflict_epi64(a: __m512i) -> __m512i {
 
 /// Test each 64-bit element of a for equality with all other elements in a closer to the least significant bit using writemask k (elements are copied from src when the corresponding mask bit is not set). Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_conflict_epi64&expand=1258)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_conflict_epi64&expand=1258)
 #[inline]
 #[target_feature(enable = "avx512cd")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
@@ -188,7 +188,7 @@ pub unsafe fn _mm512_mask_conflict_epi64(src: __m512i, k: __mmask8, a: __m512i) 
 
 /// Test each 64-bit element of a for equality with all other elements in a closer to the least significant bit using zeromask k (elements are zeroed out when the corresponding mask bit is not set). Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_conflict_epi64&expand=1259)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_conflict_epi64&expand=1259)
 #[inline]
 #[target_feature(enable = "avx512cd")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
@@ -200,7 +200,7 @@ pub unsafe fn _mm512_maskz_conflict_epi64(k: __mmask8, a: __m512i) -> __m512i {
 
 /// Test each 64-bit element of a for equality with all other elements in a closer to the least significant bit. Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_conflict_epi64&expand=1254)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_conflict_epi64&expand=1254)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
@@ -210,7 +210,7 @@ pub unsafe fn _mm256_conflict_epi64(a: __m256i) -> __m256i {
 
 /// Test each 64-bit element of a for equality with all other elements in a closer to the least significant bit using writemask k (elements are copied from src when the corresponding mask bit is not set). Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_conflict_epi64&expand=1255)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_conflict_epi64&expand=1255)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
@@ -221,7 +221,7 @@ pub unsafe fn _mm256_mask_conflict_epi64(src: __m256i, k: __mmask8, a: __m256i) 
 
 /// Test each 64-bit element of a for equality with all other elements in a closer to the least significant bit using zeromask k (elements are zeroed out when the corresponding mask bit is not set). Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_conflict_epi64&expand=1256)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_conflict_epi64&expand=1256)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
@@ -233,7 +233,7 @@ pub unsafe fn _mm256_maskz_conflict_epi64(k: __mmask8, a: __m256i) -> __m256i {
 
 /// Test each 64-bit element of a for equality with all other elements in a closer to the least significant bit. Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_conflict_epi64&expand=1251)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_conflict_epi64&expand=1251)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
@@ -243,7 +243,7 @@ pub unsafe fn _mm_conflict_epi64(a: __m128i) -> __m128i {
 
 /// Test each 64-bit element of a for equality with all other elements in a closer to the least significant bit using writemask k (elements are copied from src when the corresponding mask bit is not set). Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_conflict_epi64&expand=1252)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_conflict_epi64&expand=1252)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
@@ -254,7 +254,7 @@ pub unsafe fn _mm_mask_conflict_epi64(src: __m128i, k: __mmask8, a: __m128i) -> 
 
 /// Test each 64-bit element of a for equality with all other elements in a closer to the least significant bit using zeromask k (elements are zeroed out when the corresponding mask bit is not set). Each element's comparison forms a zero extended bit vector in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_conflict_epi64&expand=1253)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_conflict_epi64&expand=1253)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vpconflictq))]
@@ -266,7 +266,7 @@ pub unsafe fn _mm_maskz_conflict_epi64(k: __mmask8, a: __m128i) -> __m128i {
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_lzcnt_epi32&expand=3491)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_lzcnt_epi32&expand=3491)
 #[inline]
 #[target_feature(enable = "avx512cd")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
@@ -276,7 +276,7 @@ pub unsafe fn _mm512_lzcnt_epi32(a: __m512i) -> __m512i {
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_lzcnt_epi32&expand=3492)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_lzcnt_epi32&expand=3492)
 #[inline]
 #[target_feature(enable = "avx512cd")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
@@ -287,7 +287,7 @@ pub unsafe fn _mm512_mask_lzcnt_epi32(src: __m512i, k: __mmask16, a: __m512i) ->
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_lzcnt_epi32&expand=3493)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_lzcnt_epi32&expand=3493)
 #[inline]
 #[target_feature(enable = "avx512cd")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
@@ -299,7 +299,7 @@ pub unsafe fn _mm512_maskz_lzcnt_epi32(k: __mmask16, a: __m512i) -> __m512i {
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_lzcnt_epi32&expand=3488)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_lzcnt_epi32&expand=3488)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
@@ -309,7 +309,7 @@ pub unsafe fn _mm256_lzcnt_epi32(a: __m256i) -> __m256i {
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_lzcnt_epi32&expand=3489)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_lzcnt_epi32&expand=3489)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
@@ -320,7 +320,7 @@ pub unsafe fn _mm256_mask_lzcnt_epi32(src: __m256i, k: __mmask8, a: __m256i) -> 
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_lzcnt_epi32&expand=3490)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_lzcnt_epi32&expand=3490)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
@@ -332,7 +332,7 @@ pub unsafe fn _mm256_maskz_lzcnt_epi32(k: __mmask8, a: __m256i) -> __m256i {
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_lzcnt_epi32&expand=3485)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_lzcnt_epi32&expand=3485)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
@@ -342,7 +342,7 @@ pub unsafe fn _mm_lzcnt_epi32(a: __m128i) -> __m128i {
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_lzcnt_epi32&expand=3486)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_lzcnt_epi32&expand=3486)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
@@ -353,7 +353,7 @@ pub unsafe fn _mm_mask_lzcnt_epi32(src: __m128i, k: __mmask8, a: __m128i) -> __m
 
 /// Counts the number of leading zero bits in each packed 32-bit integer in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_lzcnt_epi32&expand=3487)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_lzcnt_epi32&expand=3487)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vplzcntd))]
@@ -365,7 +365,7 @@ pub unsafe fn _mm_maskz_lzcnt_epi32(k: __mmask8, a: __m128i) -> __m128i {
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_lzcnt_epi64&expand=3500)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_lzcnt_epi64&expand=3500)
 #[inline]
 #[target_feature(enable = "avx512cd")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
@@ -375,7 +375,7 @@ pub unsafe fn _mm512_lzcnt_epi64(a: __m512i) -> __m512i {
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_lzcnt_epi64&expand=3501)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_mask_lzcnt_epi64&expand=3501)
 #[inline]
 #[target_feature(enable = "avx512cd")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
@@ -386,7 +386,7 @@ pub unsafe fn _mm512_mask_lzcnt_epi64(src: __m512i, k: __mmask8, a: __m512i) -> 
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_lzcnt_epi64&expand=3502)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maskz_lzcnt_epi64&expand=3502)
 #[inline]
 #[target_feature(enable = "avx512cd")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
@@ -398,7 +398,7 @@ pub unsafe fn _mm512_maskz_lzcnt_epi64(k: __mmask8, a: __m512i) -> __m512i {
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_lzcnt_epi64&expand=3497)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_lzcnt_epi64&expand=3497)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
@@ -408,7 +408,7 @@ pub unsafe fn _mm256_lzcnt_epi64(a: __m256i) -> __m256i {
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_lzcnt_epi64&expand=3498)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_lzcnt_epi64&expand=3498)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
@@ -419,7 +419,7 @@ pub unsafe fn _mm256_mask_lzcnt_epi64(src: __m256i, k: __mmask8, a: __m256i) -> 
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_lzcnt_epi64&expand=3499)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskz_lzcnt_epi64&expand=3499)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
@@ -431,7 +431,7 @@ pub unsafe fn _mm256_maskz_lzcnt_epi64(k: __mmask8, a: __m256i) -> __m256i {
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_lzcnt_epi64&expand=3494)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_lzcnt_epi64&expand=3494)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
@@ -441,7 +441,7 @@ pub unsafe fn _mm_lzcnt_epi64(a: __m128i) -> __m128i {
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_lzcnt_epi64&expand=3495)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_lzcnt_epi64&expand=3495)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vplzcntq))]
@@ -452,7 +452,7 @@ pub unsafe fn _mm_mask_lzcnt_epi64(src: __m128i, k: __mmask8, a: __m128i) -> __m
 
 /// Counts the number of leading zero bits in each packed 64-bit integer in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_lzcnt_epi64&expand=3496)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskz_lzcnt_epi64&expand=3496)
 #[inline]
 #[target_feature(enable = "avx512cd,avx512vl")]
 #[cfg_attr(test, assert_instr(vplzcntq))]

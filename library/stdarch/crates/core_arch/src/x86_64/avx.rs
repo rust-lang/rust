@@ -21,7 +21,7 @@ use crate::{
 /// Copies `a` to result, and insert the 64-bit integer `i` into result
 /// at the location specified by `index`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_insert_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_insert_epi64)
 #[inline]
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "avx")]

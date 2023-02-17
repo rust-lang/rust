@@ -18,7 +18,7 @@ use stdarch_test::assert_instr;
 /// Unsigned multiplication of `a` with `b` returning a pair `(lo, hi)` with
 /// the low half and the high half of the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mulx_u32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mulx_u32)
 #[inline]
 // LLVM BUG (should be mulxl): https://bugs.llvm.org/show_bug.cgi?id=34232
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(imul))]
@@ -33,7 +33,7 @@ pub unsafe fn _mulx_u32(a: u32, b: u32, hi: &mut u32) -> u32 {
 
 /// Zeroes higher bits of `a` >= `index`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_bzhi_u32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_bzhi_u32)
 #[inline]
 #[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(bzhi))]
@@ -45,7 +45,7 @@ pub unsafe fn _bzhi_u32(a: u32, index: u32) -> u32 {
 /// Scatter contiguous low order bits of `a` to the result at the positions
 /// specified by the `mask`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_pdep_u32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_pdep_u32)
 #[inline]
 #[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(pdep))]
@@ -57,7 +57,7 @@ pub unsafe fn _pdep_u32(a: u32, mask: u32) -> u32 {
 /// Gathers the bits of `x` specified by the `mask` into the contiguous low
 /// order bit positions of the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_pext_u32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_pext_u32)
 #[inline]
 #[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(pext))]

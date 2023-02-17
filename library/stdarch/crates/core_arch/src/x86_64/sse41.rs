@@ -10,7 +10,7 @@ use stdarch_test::assert_instr;
 
 /// Extracts an 64-bit integer from `a` selected with `IMM1`
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_extract_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_extract_epi64)
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(all(test, not(target_os = "windows")), assert_instr(pextrq, IMM1 = 1))]
@@ -24,7 +24,7 @@ pub unsafe fn _mm_extract_epi64<const IMM1: i32>(a: __m128i) -> i64 {
 /// Returns a copy of `a` with the 64-bit integer from `i` inserted at a
 /// location specified by `IMM1`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_insert_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_insert_epi64)
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pinsrq, IMM1 = 0))]

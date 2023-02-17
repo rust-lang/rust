@@ -37,7 +37,7 @@ pub unsafe fn _mm512_madd52lo_epu64(a: __m512i, b: __m512i, c: __m512i) -> __m51
 /// corresponding unsigned 64-bit integer in `a`, and store the
 /// results in `dst`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=vpmadd52&avx512techs=AVX512IFMA52,AVX512VL&expand=3485)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=vpmadd52&avx512techs=AVX512IFMA52,AVX512VL&expand=3485)
 #[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
 #[cfg_attr(test, assert_instr(vpmadd52huq))]
@@ -51,7 +51,7 @@ pub unsafe fn _mm256_madd52hi_epu64(a: __m256i, b: __m256i, c: __m256i) -> __m25
 /// corresponding unsigned 64-bit integer in `a`, and store the
 /// results in `dst`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=vpmadd52&avx512techs=AVX512IFMA52,AVX512VL&expand=3494)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=vpmadd52&avx512techs=AVX512IFMA52,AVX512VL&expand=3494)
 #[inline]
 #[target_feature(enable = "avx512ifma,avx512vl")]
 #[cfg_attr(test, assert_instr(vpmadd52luq))]

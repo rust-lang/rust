@@ -28,7 +28,7 @@ use stdarch_test::assert_instr;
 
 /// Computes the absolute values of packed 32-bit integers in `a`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_abs_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_abs_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpabsd))]
@@ -39,7 +39,7 @@ pub unsafe fn _mm256_abs_epi32(a: __m256i) -> __m256i {
 
 /// Computes the absolute values of packed 16-bit integers in `a`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_abs_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_abs_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpabsw))]
@@ -50,7 +50,7 @@ pub unsafe fn _mm256_abs_epi16(a: __m256i) -> __m256i {
 
 /// Computes the absolute values of packed 8-bit integers in `a`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_abs_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_abs_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpabsb))]
@@ -61,7 +61,7 @@ pub unsafe fn _mm256_abs_epi8(a: __m256i) -> __m256i {
 
 /// Adds packed 64-bit integers in `a` and `b`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_add_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_add_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpaddq))]
@@ -72,7 +72,7 @@ pub unsafe fn _mm256_add_epi64(a: __m256i, b: __m256i) -> __m256i {
 
 /// Adds packed 32-bit integers in `a` and `b`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_add_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_add_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpaddd))]
@@ -83,7 +83,7 @@ pub unsafe fn _mm256_add_epi32(a: __m256i, b: __m256i) -> __m256i {
 
 /// Adds packed 16-bit integers in `a` and `b`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_add_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_add_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpaddw))]
@@ -94,7 +94,7 @@ pub unsafe fn _mm256_add_epi16(a: __m256i, b: __m256i) -> __m256i {
 
 /// Adds packed 8-bit integers in `a` and `b`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_add_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_add_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpaddb))]
@@ -105,7 +105,7 @@ pub unsafe fn _mm256_add_epi8(a: __m256i, b: __m256i) -> __m256i {
 
 /// Adds packed 8-bit integers in `a` and `b` using saturation.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_adds_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_adds_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpaddsb))]
@@ -116,7 +116,7 @@ pub unsafe fn _mm256_adds_epi8(a: __m256i, b: __m256i) -> __m256i {
 
 /// Adds packed 16-bit integers in `a` and `b` using saturation.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_adds_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_adds_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpaddsw))]
@@ -127,7 +127,7 @@ pub unsafe fn _mm256_adds_epi16(a: __m256i, b: __m256i) -> __m256i {
 
 /// Adds packed unsigned 8-bit integers in `a` and `b` using saturation.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_adds_epu8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_adds_epu8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpaddusb))]
@@ -138,7 +138,7 @@ pub unsafe fn _mm256_adds_epu8(a: __m256i, b: __m256i) -> __m256i {
 
 /// Adds packed unsigned 16-bit integers in `a` and `b` using saturation.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_adds_epu16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_adds_epu16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpaddusw))]
@@ -150,7 +150,7 @@ pub unsafe fn _mm256_adds_epu16(a: __m256i, b: __m256i) -> __m256i {
 /// Concatenates pairs of 16-byte blocks in `a` and `b` into a 32-byte temporary
 /// result, shifts the result right by `n` bytes, and returns the low 16 bytes.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_alignr_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_alignr_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpalignr, IMM8 = 7))]
@@ -311,7 +311,7 @@ pub unsafe fn _mm256_alignr_epi8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
 /// Computes the bitwise AND of 256 bits (representing integer data)
 /// in `a` and `b`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_and_si256)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_and_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vandps))]
@@ -323,7 +323,7 @@ pub unsafe fn _mm256_and_si256(a: __m256i, b: __m256i) -> __m256i {
 /// Computes the bitwise NOT of 256 bits (representing integer data)
 /// in `a` and then AND with `b`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_andnot_si256)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_andnot_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vandnps))]
@@ -338,7 +338,7 @@ pub unsafe fn _mm256_andnot_si256(a: __m256i, b: __m256i) -> __m256i {
 
 /// Averages packed unsigned 16-bit integers in `a` and `b`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_avg_epu16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_avg_epu16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpavgw))]
@@ -349,7 +349,7 @@ pub unsafe fn _mm256_avg_epu16(a: __m256i, b: __m256i) -> __m256i {
 
 /// Averages packed unsigned 8-bit integers in `a` and `b`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_avg_epu8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_avg_epu8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpavgb))]
@@ -360,7 +360,7 @@ pub unsafe fn _mm256_avg_epu8(a: __m256i, b: __m256i) -> __m256i {
 
 /// Blends packed 32-bit integers from `a` and `b` using control mask `IMM4`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_blend_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_blend_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vblendps, IMM4 = 9))]
@@ -385,7 +385,7 @@ pub unsafe fn _mm_blend_epi32<const IMM4: i32>(a: __m128i, b: __m128i) -> __m128
 
 /// Blends packed 32-bit integers from `a` and `b` using control mask `IMM8`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_blend_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_blend_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vblendps, IMM8 = 9))]
@@ -414,7 +414,7 @@ pub unsafe fn _mm256_blend_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
 
 /// Blends packed 16-bit integers from `a` and `b` using control mask `IMM8`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_blend_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_blend_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpblendw, IMM8 = 9))]
@@ -452,7 +452,7 @@ pub unsafe fn _mm256_blend_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
 
 /// Blends packed 8-bit integers from `a` and `b` using `mask`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_blendv_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_blendv_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpblendvb))]
@@ -464,7 +464,7 @@ pub unsafe fn _mm256_blendv_epi8(a: __m256i, b: __m256i, mask: __m256i) -> __m25
 /// Broadcasts the low packed 8-bit integer from `a` to all elements of
 /// the 128-bit returned value.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_broadcastb_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_broadcastb_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpbroadcastb))]
@@ -478,7 +478,7 @@ pub unsafe fn _mm_broadcastb_epi8(a: __m128i) -> __m128i {
 /// Broadcasts the low packed 8-bit integer from `a` to all elements of
 /// the 256-bit returned value.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_broadcastb_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_broadcastb_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpbroadcastb))]
@@ -494,7 +494,7 @@ pub unsafe fn _mm256_broadcastb_epi8(a: __m128i) -> __m256i {
 /// Broadcasts the low packed 32-bit integer from `a` to all elements of
 /// the 128-bit returned value.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_broadcastd_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_broadcastd_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vbroadcastss))]
@@ -510,7 +510,7 @@ pub unsafe fn _mm_broadcastd_epi32(a: __m128i) -> __m128i {
 /// Broadcasts the low packed 32-bit integer from `a` to all elements of
 /// the 256-bit returned value.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_broadcastd_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_broadcastd_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vbroadcastss))]
@@ -524,7 +524,7 @@ pub unsafe fn _mm256_broadcastd_epi32(a: __m128i) -> __m256i {
 /// Broadcasts the low packed 64-bit integer from `a` to all elements of
 /// the 128-bit returned value.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_broadcastq_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_broadcastq_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 // Emits `vmovddup` instead of `vpbroadcastq`
@@ -539,7 +539,7 @@ pub unsafe fn _mm_broadcastq_epi64(a: __m128i) -> __m128i {
 /// Broadcasts the low packed 64-bit integer from `a` to all elements of
 /// the 256-bit returned value.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_broadcastq_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_broadcastq_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vbroadcastsd))]
@@ -552,7 +552,7 @@ pub unsafe fn _mm256_broadcastq_epi64(a: __m128i) -> __m256i {
 /// Broadcasts the low double-precision (64-bit) floating-point element
 /// from `a` to all elements of the 128-bit returned value.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_broadcastsd_pd)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_broadcastsd_pd)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vmovddup))]
@@ -564,7 +564,7 @@ pub unsafe fn _mm_broadcastsd_pd(a: __m128d) -> __m128d {
 /// Broadcasts the low double-precision (64-bit) floating-point element
 /// from `a` to all elements of the 256-bit returned value.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_broadcastsd_pd)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_broadcastsd_pd)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vbroadcastsd))]
@@ -578,7 +578,7 @@ pub unsafe fn _mm256_broadcastsd_pd(a: __m128d) -> __m256d {
 /// Broadcasts 128 bits of integer data from a to all 128-bit lanes in
 /// the 256-bit returned value.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_broadcastsi128_si256)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_broadcastsi128_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -591,7 +591,7 @@ pub unsafe fn _mm256_broadcastsi128_si256(a: __m128i) -> __m256i {
 /// Broadcasts the low single-precision (32-bit) floating-point element
 /// from `a` to all elements of the 128-bit returned value.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_broadcastss_ps)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_broadcastss_ps)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vbroadcastss))]
@@ -603,7 +603,7 @@ pub unsafe fn _mm_broadcastss_ps(a: __m128) -> __m128 {
 /// Broadcasts the low single-precision (32-bit) floating-point element
 /// from `a` to all elements of the 256-bit returned value.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_broadcastss_ps)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_broadcastss_ps)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vbroadcastss))]
@@ -615,7 +615,7 @@ pub unsafe fn _mm256_broadcastss_ps(a: __m128) -> __m256 {
 /// Broadcasts the low packed 16-bit integer from a to all elements of
 /// the 128-bit returned value
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_broadcastw_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_broadcastw_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
@@ -629,7 +629,7 @@ pub unsafe fn _mm_broadcastw_epi16(a: __m128i) -> __m128i {
 /// Broadcasts the low packed 16-bit integer from a to all elements of
 /// the 256-bit returned value
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_broadcastw_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_broadcastw_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
@@ -642,7 +642,7 @@ pub unsafe fn _mm256_broadcastw_epi16(a: __m128i) -> __m256i {
 
 /// Compares packed 64-bit integers in `a` and `b` for equality.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cmpeq_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cmpeq_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpcmpeqq))]
@@ -653,7 +653,7 @@ pub unsafe fn _mm256_cmpeq_epi64(a: __m256i, b: __m256i) -> __m256i {
 
 /// Compares packed 32-bit integers in `a` and `b` for equality.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cmpeq_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cmpeq_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpcmpeqd))]
@@ -664,7 +664,7 @@ pub unsafe fn _mm256_cmpeq_epi32(a: __m256i, b: __m256i) -> __m256i {
 
 /// Compares packed 16-bit integers in `a` and `b` for equality.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cmpeq_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cmpeq_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpcmpeqw))]
@@ -675,7 +675,7 @@ pub unsafe fn _mm256_cmpeq_epi16(a: __m256i, b: __m256i) -> __m256i {
 
 /// Compares packed 8-bit integers in `a` and `b` for equality.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cmpeq_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cmpeq_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpcmpeqb))]
@@ -686,7 +686,7 @@ pub unsafe fn _mm256_cmpeq_epi8(a: __m256i, b: __m256i) -> __m256i {
 
 /// Compares packed 64-bit integers in `a` and `b` for greater-than.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cmpgt_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cmpgt_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpcmpgtq))]
@@ -697,7 +697,7 @@ pub unsafe fn _mm256_cmpgt_epi64(a: __m256i, b: __m256i) -> __m256i {
 
 /// Compares packed 32-bit integers in `a` and `b` for greater-than.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cmpgt_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cmpgt_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpcmpgtd))]
@@ -708,7 +708,7 @@ pub unsafe fn _mm256_cmpgt_epi32(a: __m256i, b: __m256i) -> __m256i {
 
 /// Compares packed 16-bit integers in `a` and `b` for greater-than.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cmpgt_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cmpgt_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpcmpgtw))]
@@ -719,7 +719,7 @@ pub unsafe fn _mm256_cmpgt_epi16(a: __m256i, b: __m256i) -> __m256i {
 
 /// Compares packed 8-bit integers in `a` and `b` for greater-than.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cmpgt_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cmpgt_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpcmpgtb))]
@@ -730,7 +730,7 @@ pub unsafe fn _mm256_cmpgt_epi8(a: __m256i, b: __m256i) -> __m256i {
 
 /// Sign-extend 16-bit integers to 32-bit integers.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepi16_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtepi16_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmovsxwd))]
@@ -741,7 +741,7 @@ pub unsafe fn _mm256_cvtepi16_epi32(a: __m128i) -> __m256i {
 
 /// Sign-extend 16-bit integers to 64-bit integers.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepi16_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtepi16_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmovsxwq))]
@@ -754,7 +754,7 @@ pub unsafe fn _mm256_cvtepi16_epi64(a: __m128i) -> __m256i {
 
 /// Sign-extend 32-bit integers to 64-bit integers.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepi32_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtepi32_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmovsxdq))]
@@ -765,7 +765,7 @@ pub unsafe fn _mm256_cvtepi32_epi64(a: __m128i) -> __m256i {
 
 /// Sign-extend 8-bit integers to 16-bit integers.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepi8_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtepi8_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmovsxbw))]
@@ -776,7 +776,7 @@ pub unsafe fn _mm256_cvtepi8_epi16(a: __m128i) -> __m256i {
 
 /// Sign-extend 8-bit integers to 32-bit integers.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepi8_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtepi8_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmovsxbd))]
@@ -789,7 +789,7 @@ pub unsafe fn _mm256_cvtepi8_epi32(a: __m128i) -> __m256i {
 
 /// Sign-extend 8-bit integers to 64-bit integers.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepi8_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtepi8_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmovsxbq))]
@@ -803,7 +803,7 @@ pub unsafe fn _mm256_cvtepi8_epi64(a: __m128i) -> __m256i {
 /// Zeroes extend packed unsigned 16-bit integers in `a` to packed 32-bit
 /// integers, and stores the results in `dst`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepu16_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtepu16_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmovzxwd))]
@@ -815,7 +815,7 @@ pub unsafe fn _mm256_cvtepu16_epi32(a: __m128i) -> __m256i {
 /// Zero-extend the lower four unsigned 16-bit integers in `a` to 64-bit
 /// integers. The upper four elements of `a` are unused.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepu16_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtepu16_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmovzxwq))]
@@ -828,7 +828,7 @@ pub unsafe fn _mm256_cvtepu16_epi64(a: __m128i) -> __m256i {
 
 /// Zero-extend unsigned 32-bit integers in `a` to 64-bit integers.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepu32_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtepu32_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmovzxdq))]
@@ -839,7 +839,7 @@ pub unsafe fn _mm256_cvtepu32_epi64(a: __m128i) -> __m256i {
 
 /// Zero-extend unsigned 8-bit integers in `a` to 16-bit integers.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepu8_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtepu8_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmovzxbw))]
@@ -851,7 +851,7 @@ pub unsafe fn _mm256_cvtepu8_epi16(a: __m128i) -> __m256i {
 /// Zero-extend the lower eight unsigned 8-bit integers in `a` to 32-bit
 /// integers. The upper eight elements of `a` are unused.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepu8_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtepu8_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmovzxbd))]
@@ -865,7 +865,7 @@ pub unsafe fn _mm256_cvtepu8_epi32(a: __m128i) -> __m256i {
 /// Zero-extend the lower four unsigned 8-bit integers in `a` to 64-bit
 /// integers. The upper twelve elements of `a` are unused.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtepu8_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtepu8_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmovzxbq))]
@@ -878,7 +878,7 @@ pub unsafe fn _mm256_cvtepu8_epi64(a: __m128i) -> __m256i {
 
 /// Extracts 128 bits (of integer data) from `a` selected with `IMM1`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extracti128_si256)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_extracti128_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(
@@ -897,7 +897,7 @@ pub unsafe fn _mm256_extracti128_si256<const IMM1: i32>(a: __m256i) -> __m128i {
 
 /// Horizontally adds adjacent pairs of 16-bit integers in `a` and `b`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_hadd_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_hadd_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vphaddw))]
@@ -908,7 +908,7 @@ pub unsafe fn _mm256_hadd_epi16(a: __m256i, b: __m256i) -> __m256i {
 
 /// Horizontally adds adjacent pairs of 32-bit integers in `a` and `b`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_hadd_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_hadd_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vphaddd))]
@@ -920,7 +920,7 @@ pub unsafe fn _mm256_hadd_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// Horizontally adds adjacent pairs of 16-bit integers in `a` and `b`
 /// using saturation.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_hadds_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_hadds_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vphaddsw))]
@@ -931,7 +931,7 @@ pub unsafe fn _mm256_hadds_epi16(a: __m256i, b: __m256i) -> __m256i {
 
 /// Horizontally subtract adjacent pairs of 16-bit integers in `a` and `b`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_hsub_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_hsub_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vphsubw))]
@@ -942,7 +942,7 @@ pub unsafe fn _mm256_hsub_epi16(a: __m256i, b: __m256i) -> __m256i {
 
 /// Horizontally subtract adjacent pairs of 32-bit integers in `a` and `b`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_hsub_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_hsub_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vphsubd))]
@@ -954,7 +954,7 @@ pub unsafe fn _mm256_hsub_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// Horizontally subtract adjacent pairs of 16-bit integers in `a` and `b`
 /// using saturation.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_hsubs_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_hsubs_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vphsubsw))]
@@ -967,7 +967,7 @@ pub unsafe fn _mm256_hsubs_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32gather_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_i32gather_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdd, SCALE = 1))]
@@ -991,7 +991,7 @@ pub unsafe fn _mm_i32gather_epi32<const SCALE: i32>(
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i32gather_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_i32gather_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdd, SCALE = 1))]
@@ -1016,7 +1016,7 @@ pub unsafe fn _mm_mask_i32gather_epi32<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i32gather_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_i32gather_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdd, SCALE = 1))]
@@ -1040,7 +1040,7 @@ pub unsafe fn _mm256_i32gather_epi32<const SCALE: i32>(
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i32gather_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_i32gather_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdd, SCALE = 1))]
@@ -1065,7 +1065,7 @@ pub unsafe fn _mm256_mask_i32gather_epi32<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32gather_ps)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_i32gather_ps)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdps, SCALE = 1))]
@@ -1085,7 +1085,7 @@ pub unsafe fn _mm_i32gather_ps<const SCALE: i32>(slice: *const f32, offsets: __m
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i32gather_ps)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_i32gather_ps)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdps, SCALE = 1))]
@@ -1107,7 +1107,7 @@ pub unsafe fn _mm_mask_i32gather_ps<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i32gather_ps)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_i32gather_ps)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdps, SCALE = 1))]
@@ -1127,7 +1127,7 @@ pub unsafe fn _mm256_i32gather_ps<const SCALE: i32>(slice: *const f32, offsets: 
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i32gather_ps)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_i32gather_ps)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdps, SCALE = 1))]
@@ -1149,7 +1149,7 @@ pub unsafe fn _mm256_mask_i32gather_ps<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32gather_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_i32gather_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdq, SCALE = 1))]
@@ -1173,7 +1173,7 @@ pub unsafe fn _mm_i32gather_epi64<const SCALE: i32>(
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i32gather_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_i32gather_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdq, SCALE = 1))]
@@ -1198,7 +1198,7 @@ pub unsafe fn _mm_mask_i32gather_epi64<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i32gather_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_i32gather_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdq, SCALE = 1))]
@@ -1222,7 +1222,7 @@ pub unsafe fn _mm256_i32gather_epi64<const SCALE: i32>(
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i32gather_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_i32gather_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherdq, SCALE = 1))]
@@ -1247,7 +1247,7 @@ pub unsafe fn _mm256_mask_i32gather_epi64<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32gather_pd)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_i32gather_pd)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdpd, SCALE = 1))]
@@ -1267,7 +1267,7 @@ pub unsafe fn _mm_i32gather_pd<const SCALE: i32>(slice: *const f64, offsets: __m
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i32gather_pd)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_i32gather_pd)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdpd, SCALE = 1))]
@@ -1289,7 +1289,7 @@ pub unsafe fn _mm_mask_i32gather_pd<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i32gather_pd)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_i32gather_pd)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdpd, SCALE = 1))]
@@ -1312,7 +1312,7 @@ pub unsafe fn _mm256_i32gather_pd<const SCALE: i32>(
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i32gather_pd)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_i32gather_pd)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherdpd, SCALE = 1))]
@@ -1334,7 +1334,7 @@ pub unsafe fn _mm256_mask_i32gather_pd<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i64gather_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_i64gather_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqd, SCALE = 1))]
@@ -1358,7 +1358,7 @@ pub unsafe fn _mm_i64gather_epi32<const SCALE: i32>(
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i64gather_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_i64gather_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqd, SCALE = 1))]
@@ -1383,7 +1383,7 @@ pub unsafe fn _mm_mask_i64gather_epi32<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i64gather_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_i64gather_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqd, SCALE = 1))]
@@ -1407,7 +1407,7 @@ pub unsafe fn _mm256_i64gather_epi32<const SCALE: i32>(
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i64gather_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_i64gather_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqd, SCALE = 1))]
@@ -1432,7 +1432,7 @@ pub unsafe fn _mm256_mask_i64gather_epi32<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i64gather_ps)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_i64gather_ps)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqps, SCALE = 1))]
@@ -1452,7 +1452,7 @@ pub unsafe fn _mm_i64gather_ps<const SCALE: i32>(slice: *const f32, offsets: __m
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i64gather_ps)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_i64gather_ps)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqps, SCALE = 1))]
@@ -1474,7 +1474,7 @@ pub unsafe fn _mm_mask_i64gather_ps<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i64gather_ps)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_i64gather_ps)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqps, SCALE = 1))]
@@ -1494,7 +1494,7 @@ pub unsafe fn _mm256_i64gather_ps<const SCALE: i32>(slice: *const f32, offsets: 
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i64gather_ps)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_i64gather_ps)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqps, SCALE = 1))]
@@ -1516,7 +1516,7 @@ pub unsafe fn _mm256_mask_i64gather_ps<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i64gather_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_i64gather_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqq, SCALE = 1))]
@@ -1540,7 +1540,7 @@ pub unsafe fn _mm_i64gather_epi64<const SCALE: i32>(
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i64gather_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_i64gather_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqq, SCALE = 1))]
@@ -1565,7 +1565,7 @@ pub unsafe fn _mm_mask_i64gather_epi64<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i64gather_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_i64gather_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqq, SCALE = 1))]
@@ -1589,7 +1589,7 @@ pub unsafe fn _mm256_i64gather_epi64<const SCALE: i32>(
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i64gather_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_i64gather_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpgatherqq, SCALE = 1))]
@@ -1614,7 +1614,7 @@ pub unsafe fn _mm256_mask_i64gather_epi64<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i64gather_pd)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_i64gather_pd)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqpd, SCALE = 1))]
@@ -1634,7 +1634,7 @@ pub unsafe fn _mm_i64gather_pd<const SCALE: i32>(slice: *const f64, offsets: __m
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i64gather_pd)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_i64gather_pd)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqpd, SCALE = 1))]
@@ -1656,7 +1656,7 @@ pub unsafe fn _mm_mask_i64gather_pd<const SCALE: i32>(
 /// where
 /// `scale` should be 1, 2, 4 or 8.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_i64gather_pd)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_i64gather_pd)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqpd, SCALE = 1))]
@@ -1679,7 +1679,7 @@ pub unsafe fn _mm256_i64gather_pd<const SCALE: i32>(
 /// `scale` should be 1, 2, 4 or 8. If mask is set, load the value from `src` in
 /// that position instead.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i64gather_pd)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_i64gather_pd)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vgatherqpd, SCALE = 1))]
@@ -1700,7 +1700,7 @@ pub unsafe fn _mm256_mask_i64gather_pd<const SCALE: i32>(
 /// Copies `a` to `dst`, then insert 128 bits (of integer data) from `b` at the
 /// location specified by `IMM1`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_inserti128_si256)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_inserti128_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(
@@ -1721,7 +1721,7 @@ pub unsafe fn _mm256_inserti128_si256<const IMM1: i32>(a: __m256i, b: __m128i) -
 /// intermediate signed 32-bit integers. Horizontally add adjacent pairs
 /// of intermediate 32-bit integers.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_madd_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_madd_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaddwd))]
@@ -1735,7 +1735,7 @@ pub unsafe fn _mm256_madd_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// signed 16-bit integers. Horizontally add adjacent pairs of intermediate
 /// signed 16-bit integers
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maddubs_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maddubs_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaddubsw))]
@@ -1748,7 +1748,7 @@ pub unsafe fn _mm256_maddubs_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// (elements are zeroed out when the highest bit is not set in the
 /// corresponding element).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskload_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskload_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaskmovd))]
@@ -1761,7 +1761,7 @@ pub unsafe fn _mm_maskload_epi32(mem_addr: *const i32, mask: __m128i) -> __m128i
 /// (elements are zeroed out when the highest bit is not set in the
 /// corresponding element).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskload_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskload_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaskmovd))]
@@ -1774,7 +1774,7 @@ pub unsafe fn _mm256_maskload_epi32(mem_addr: *const i32, mask: __m256i) -> __m2
 /// (elements are zeroed out when the highest bit is not set in the
 /// corresponding element).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskload_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskload_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaskmovq))]
@@ -1787,7 +1787,7 @@ pub unsafe fn _mm_maskload_epi64(mem_addr: *const i64, mask: __m128i) -> __m128i
 /// (elements are zeroed out when the highest bit is not set in the
 /// corresponding element).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskload_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskload_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaskmovq))]
@@ -1800,7 +1800,7 @@ pub unsafe fn _mm256_maskload_epi64(mem_addr: *const i64, mask: __m256i) -> __m2
 /// using `mask` (elements are not stored when the highest bit is not set
 /// in the corresponding element).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskstore_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskstore_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaskmovd))]
@@ -1813,7 +1813,7 @@ pub unsafe fn _mm_maskstore_epi32(mem_addr: *mut i32, mask: __m128i, a: __m128i)
 /// using `mask` (elements are not stored when the highest bit is not set
 /// in the corresponding element).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskstore_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskstore_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaskmovd))]
@@ -1826,7 +1826,7 @@ pub unsafe fn _mm256_maskstore_epi32(mem_addr: *mut i32, mask: __m256i, a: __m25
 /// using `mask` (elements are not stored when the highest bit is not set
 /// in the corresponding element).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskstore_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskstore_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaskmovq))]
@@ -1839,7 +1839,7 @@ pub unsafe fn _mm_maskstore_epi64(mem_addr: *mut i64, mask: __m128i, a: __m128i)
 /// using `mask` (elements are not stored when the highest bit is not set
 /// in the corresponding element).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskstore_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maskstore_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaskmovq))]
@@ -1851,7 +1851,7 @@ pub unsafe fn _mm256_maskstore_epi64(mem_addr: *mut i64, mask: __m256i, a: __m25
 /// Compares packed 16-bit integers in `a` and `b`, and returns the packed
 /// maximum values.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_max_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_max_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaxsw))]
@@ -1865,7 +1865,7 @@ pub unsafe fn _mm256_max_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// Compares packed 32-bit integers in `a` and `b`, and returns the packed
 /// maximum values.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_max_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_max_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaxsd))]
@@ -1879,7 +1879,7 @@ pub unsafe fn _mm256_max_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// Compares packed 8-bit integers in `a` and `b`, and returns the packed
 /// maximum values.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_max_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_max_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaxsb))]
@@ -1893,7 +1893,7 @@ pub unsafe fn _mm256_max_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// Compares packed unsigned 16-bit integers in `a` and `b`, and returns
 /// the packed maximum values.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_max_epu16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_max_epu16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaxuw))]
@@ -1907,7 +1907,7 @@ pub unsafe fn _mm256_max_epu16(a: __m256i, b: __m256i) -> __m256i {
 /// Compares packed unsigned 32-bit integers in `a` and `b`, and returns
 /// the packed maximum values.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_max_epu32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_max_epu32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaxud))]
@@ -1921,7 +1921,7 @@ pub unsafe fn _mm256_max_epu32(a: __m256i, b: __m256i) -> __m256i {
 /// Compares packed unsigned 8-bit integers in `a` and `b`, and returns
 /// the packed maximum values.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_max_epu8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_max_epu8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmaxub))]
@@ -1935,7 +1935,7 @@ pub unsafe fn _mm256_max_epu8(a: __m256i, b: __m256i) -> __m256i {
 /// Compares packed 16-bit integers in `a` and `b`, and returns the packed
 /// minimum values.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_min_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_min_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpminsw))]
@@ -1949,7 +1949,7 @@ pub unsafe fn _mm256_min_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// Compares packed 32-bit integers in `a` and `b`, and returns the packed
 /// minimum values.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_min_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_min_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpminsd))]
@@ -1963,7 +1963,7 @@ pub unsafe fn _mm256_min_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// Compares packed 8-bit integers in `a` and `b`, and returns the packed
 /// minimum values.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_min_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_min_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpminsb))]
@@ -1977,7 +1977,7 @@ pub unsafe fn _mm256_min_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// Compares packed unsigned 16-bit integers in `a` and `b`, and returns
 /// the packed minimum values.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_min_epu16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_min_epu16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpminuw))]
@@ -1991,7 +1991,7 @@ pub unsafe fn _mm256_min_epu16(a: __m256i, b: __m256i) -> __m256i {
 /// Compares packed unsigned 32-bit integers in `a` and `b`, and returns
 /// the packed minimum values.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_min_epu32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_min_epu32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpminud))]
@@ -2005,7 +2005,7 @@ pub unsafe fn _mm256_min_epu32(a: __m256i, b: __m256i) -> __m256i {
 /// Compares packed unsigned 8-bit integers in `a` and `b`, and returns
 /// the packed minimum values.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_min_epu8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_min_epu8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpminub))]
@@ -2019,7 +2019,7 @@ pub unsafe fn _mm256_min_epu8(a: __m256i, b: __m256i) -> __m256i {
 /// Creates mask from the most significant bit of each 8-bit element in `a`,
 /// return the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_movemask_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_movemask_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmovmskb))]
@@ -2038,7 +2038,7 @@ pub unsafe fn _mm256_movemask_epi8(a: __m256i) -> i32 {
 /// quadruplets are formed from sequential 8-bit integers selected from `a`
 /// starting at the offset specified in `imm8`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mpsadbw_epu8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mpsadbw_epu8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vmpsadbw, IMM8 = 0))]
@@ -2054,7 +2054,7 @@ pub unsafe fn _mm256_mpsadbw_epu8<const IMM8: i32>(a: __m256i, b: __m256i) -> __
 ///
 /// Returns the 64-bit results.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mul_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mul_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmuldq))]
@@ -2068,7 +2068,7 @@ pub unsafe fn _mm256_mul_epi32(a: __m256i, b: __m256i) -> __m256i {
 ///
 /// Returns the unsigned 64-bit results.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mul_epu32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mul_epu32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmuludq))]
@@ -2081,7 +2081,7 @@ pub unsafe fn _mm256_mul_epu32(a: __m256i, b: __m256i) -> __m256i {
 /// intermediate 32-bit integers and returning the high 16 bits of the
 /// intermediate integers.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mulhi_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mulhi_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmulhw))]
@@ -2094,7 +2094,7 @@ pub unsafe fn _mm256_mulhi_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// intermediate 32-bit integers and returning the high 16 bits of the
 /// intermediate integers.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mulhi_epu16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mulhi_epu16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmulhuw))]
@@ -2107,7 +2107,7 @@ pub unsafe fn _mm256_mulhi_epu16(a: __m256i, b: __m256i) -> __m256i {
 /// intermediate 32-bit integers, and returns the low 16 bits of the
 /// intermediate integers
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mullo_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mullo_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmullw))]
@@ -2120,7 +2120,7 @@ pub unsafe fn _mm256_mullo_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// intermediate 64-bit integers, and returns the low 32 bits of the
 /// intermediate integers
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mullo_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mullo_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmulld))]
@@ -2134,7 +2134,7 @@ pub unsafe fn _mm256_mullo_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// integer to the 18 most significant bits, round by adding 1, and
 /// return bits `[16:1]`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mulhrs_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mulhrs_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpmulhrsw))]
@@ -2146,7 +2146,7 @@ pub unsafe fn _mm256_mulhrs_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// Computes the bitwise OR of 256 bits (representing integer data) in `a`
 /// and `b`
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_or_si256)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_or_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vorps))]
@@ -2158,7 +2158,7 @@ pub unsafe fn _mm256_or_si256(a: __m256i, b: __m256i) -> __m256i {
 /// Converts packed 16-bit integers from `a` and `b` to packed 8-bit integers
 /// using signed saturation
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_packs_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpacksswb))]
@@ -2170,7 +2170,7 @@ pub unsafe fn _mm256_packs_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// Converts packed 32-bit integers from `a` and `b` to packed 16-bit integers
 /// using signed saturation
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_packs_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpackssdw))]
@@ -2182,7 +2182,7 @@ pub unsafe fn _mm256_packs_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// Converts packed 16-bit integers from `a` and `b` to packed 8-bit integers
 /// using unsigned saturation
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_packus_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packus_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpackuswb))]
@@ -2194,7 +2194,7 @@ pub unsafe fn _mm256_packus_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// Converts packed 32-bit integers from `a` and `b` to packed 16-bit integers
 /// using unsigned saturation
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_packus_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packus_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpackusdw))]
@@ -2208,7 +2208,7 @@ pub unsafe fn _mm256_packus_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// The last 3 bits of each integer of `b` are used as addresses into the 8
 /// integers of `a`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permutevar8x32_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permutevar8x32_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpermps))]
@@ -2219,7 +2219,7 @@ pub unsafe fn _mm256_permutevar8x32_epi32(a: __m256i, b: __m256i) -> __m256i {
 
 /// Permutes 64-bit integers from `a` using control mask `imm8`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permute4x64_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute4x64_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpermpd, IMM8 = 9))]
@@ -2243,7 +2243,7 @@ pub unsafe fn _mm256_permute4x64_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
 
 /// Shuffles 128-bits of integer data selected by `imm8` from `a` and `b`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permute2x128_si256)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute2x128_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vperm2f128, IMM8 = 9))]
@@ -2257,7 +2257,7 @@ pub unsafe fn _mm256_permute2x128_si256<const IMM8: i32>(a: __m256i, b: __m256i)
 /// Shuffles 64-bit floating-point elements in `a` across lanes using the
 /// control in `imm8`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permute4x64_pd)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute4x64_pd)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpermpd, IMM8 = 1))]
@@ -2280,7 +2280,7 @@ pub unsafe fn _mm256_permute4x64_pd<const IMM8: i32>(a: __m256d) -> __m256d {
 /// Shuffles eight 32-bit floating-point elements in `a` across lanes using
 /// the corresponding 32-bit integer index in `idx`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permutevar8x32_ps)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permutevar8x32_ps)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpermps))]
@@ -2294,7 +2294,7 @@ pub unsafe fn _mm256_permutevar8x32_ps(a: __m256, idx: __m256i) -> __m256 {
 /// produce four unsigned 16-bit integers, and pack these unsigned 16-bit
 /// integers in the low 16 bits of the 64-bit return value
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sad_epu8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sad_epu8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsadbw))]
@@ -2332,7 +2332,7 @@ pub unsafe fn _mm256_sad_epu8(a: __m256i, b: __m256i) -> __m256i {
 /// }
 /// ```
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shuffle_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shuffle_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpshufb))]
@@ -2370,7 +2370,7 @@ pub unsafe fn _mm256_shuffle_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// # }
 /// ```
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shuffle_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shuffle_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpermilps, MASK = 9))]
@@ -2399,7 +2399,7 @@ pub unsafe fn _mm256_shuffle_epi32<const MASK: i32>(a: __m256i) -> __m256i {
 /// the control in `imm8`. The low 64 bits of 128-bit lanes of `a` are copied
 /// to the output.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shufflehi_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shufflehi_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpshufhw, IMM8 = 9))]
@@ -2437,7 +2437,7 @@ pub unsafe fn _mm256_shufflehi_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
 /// the control in `imm8`. The high 64 bits of 128-bit lanes of `a` are copied
 /// to the output.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shufflelo_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_shufflelo_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpshuflw, IMM8 = 9))]
@@ -2475,7 +2475,7 @@ pub unsafe fn _mm256_shufflelo_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
 /// 16-bit integer in `b` is negative, and returns the results.
 /// Results are zeroed out when the corresponding element in `b` is zero.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sign_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sign_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsignw))]
@@ -2488,7 +2488,7 @@ pub unsafe fn _mm256_sign_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// 32-bit integer in `b` is negative, and returns the results.
 /// Results are zeroed out when the corresponding element in `b` is zero.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sign_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sign_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsignd))]
@@ -2501,7 +2501,7 @@ pub unsafe fn _mm256_sign_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// 8-bit integer in `b` is negative, and returns the results.
 /// Results are zeroed out when the corresponding element in `b` is zero.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sign_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sign_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsignb))]
@@ -2513,7 +2513,7 @@ pub unsafe fn _mm256_sign_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// Shifts packed 16-bit integers in `a` left by `count` while
 /// shifting in zeros, and returns the result
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sll_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sll_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsllw))]
@@ -2525,7 +2525,7 @@ pub unsafe fn _mm256_sll_epi16(a: __m256i, count: __m128i) -> __m256i {
 /// Shifts packed 32-bit integers in `a` left by `count` while
 /// shifting in zeros, and returns the result
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sll_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sll_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpslld))]
@@ -2537,7 +2537,7 @@ pub unsafe fn _mm256_sll_epi32(a: __m256i, count: __m128i) -> __m256i {
 /// Shifts packed 64-bit integers in `a` left by `count` while
 /// shifting in zeros, and returns the result
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sll_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sll_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsllq))]
@@ -2549,7 +2549,7 @@ pub unsafe fn _mm256_sll_epi64(a: __m256i, count: __m128i) -> __m256i {
 /// Shifts packed 16-bit integers in `a` left by `IMM8` while
 /// shifting in zeros, return the results;
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_slli_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_slli_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsllw, IMM8 = 7))]
@@ -2563,7 +2563,7 @@ pub unsafe fn _mm256_slli_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
 /// Shifts packed 32-bit integers in `a` left by `IMM8` while
 /// shifting in zeros, return the results;
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_slli_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_slli_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpslld, IMM8 = 7))]
@@ -2577,7 +2577,7 @@ pub unsafe fn _mm256_slli_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
 /// Shifts packed 64-bit integers in `a` left by `IMM8` while
 /// shifting in zeros, return the results;
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_slli_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_slli_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsllq, IMM8 = 7))]
@@ -2590,7 +2590,7 @@ pub unsafe fn _mm256_slli_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
 
 /// Shifts 128-bit lanes in `a` left by `imm8` bytes while shifting in zeros.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_slli_si256)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_slli_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpslldq, IMM8 = 3))]
@@ -2603,7 +2603,7 @@ pub unsafe fn _mm256_slli_si256<const IMM8: i32>(a: __m256i) -> __m256i {
 
 /// Shifts 128-bit lanes in `a` left by `imm8` bytes while shifting in zeros.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_bslli_epi128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_bslli_epi128)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpslldq, IMM8 = 3))]
@@ -2666,7 +2666,7 @@ pub unsafe fn _mm256_bslli_epi128<const IMM8: i32>(a: __m256i) -> __m256i {
 /// specified by the corresponding element in `count` while
 /// shifting in zeros, and returns the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sllv_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sllv_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsllvd))]
@@ -2679,7 +2679,7 @@ pub unsafe fn _mm_sllv_epi32(a: __m128i, count: __m128i) -> __m128i {
 /// specified by the corresponding element in `count` while
 /// shifting in zeros, and returns the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sllv_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sllv_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsllvd))]
@@ -2692,7 +2692,7 @@ pub unsafe fn _mm256_sllv_epi32(a: __m256i, count: __m256i) -> __m256i {
 /// specified by the corresponding element in `count` while
 /// shifting in zeros, and returns the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sllv_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sllv_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsllvq))]
@@ -2705,7 +2705,7 @@ pub unsafe fn _mm_sllv_epi64(a: __m128i, count: __m128i) -> __m128i {
 /// specified by the corresponding element in `count` while
 /// shifting in zeros, and returns the result.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sllv_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sllv_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsllvq))]
@@ -2717,7 +2717,7 @@ pub unsafe fn _mm256_sllv_epi64(a: __m256i, count: __m256i) -> __m256i {
 /// Shifts packed 16-bit integers in `a` right by `count` while
 /// shifting in sign bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sra_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sra_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsraw))]
@@ -2729,7 +2729,7 @@ pub unsafe fn _mm256_sra_epi16(a: __m256i, count: __m128i) -> __m256i {
 /// Shifts packed 32-bit integers in `a` right by `count` while
 /// shifting in sign bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sra_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sra_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrad))]
@@ -2741,7 +2741,7 @@ pub unsafe fn _mm256_sra_epi32(a: __m256i, count: __m128i) -> __m256i {
 /// Shifts packed 16-bit integers in `a` right by `IMM8` while
 /// shifting in sign bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srai_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_srai_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsraw, IMM8 = 7))]
@@ -2755,7 +2755,7 @@ pub unsafe fn _mm256_srai_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
 /// Shifts packed 32-bit integers in `a` right by `IMM8` while
 /// shifting in sign bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srai_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_srai_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrad, IMM8 = 7))]
@@ -2769,7 +2769,7 @@ pub unsafe fn _mm256_srai_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
 /// Shifts packed 32-bit integers in `a` right by the amount specified by the
 /// corresponding element in `count` while shifting in sign bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_srav_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_srav_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsravd))]
@@ -2781,7 +2781,7 @@ pub unsafe fn _mm_srav_epi32(a: __m128i, count: __m128i) -> __m128i {
 /// Shifts packed 32-bit integers in `a` right by the amount specified by the
 /// corresponding element in `count` while shifting in sign bits.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srav_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_srav_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsravd))]
@@ -2792,7 +2792,7 @@ pub unsafe fn _mm256_srav_epi32(a: __m256i, count: __m256i) -> __m256i {
 
 /// Shifts 128-bit lanes in `a` right by `imm8` bytes while shifting in zeros.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srli_si256)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_srli_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrldq, IMM8 = 1))]
@@ -2805,7 +2805,7 @@ pub unsafe fn _mm256_srli_si256<const IMM8: i32>(a: __m256i) -> __m256i {
 
 /// Shifts 128-bit lanes in `a` right by `imm8` bytes while shifting in zeros.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_bsrli_epi128)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_bsrli_epi128)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrldq, IMM8 = 1))]
@@ -2952,7 +2952,7 @@ pub unsafe fn _mm256_bsrli_epi128<const IMM8: i32>(a: __m256i) -> __m256i {
 /// Shifts packed 16-bit integers in `a` right by `count` while shifting in
 /// zeros.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srl_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_srl_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrlw))]
@@ -2964,7 +2964,7 @@ pub unsafe fn _mm256_srl_epi16(a: __m256i, count: __m128i) -> __m256i {
 /// Shifts packed 32-bit integers in `a` right by `count` while shifting in
 /// zeros.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srl_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_srl_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrld))]
@@ -2976,7 +2976,7 @@ pub unsafe fn _mm256_srl_epi32(a: __m256i, count: __m128i) -> __m256i {
 /// Shifts packed 64-bit integers in `a` right by `count` while shifting in
 /// zeros.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srl_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_srl_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrlq))]
@@ -2988,7 +2988,7 @@ pub unsafe fn _mm256_srl_epi64(a: __m256i, count: __m128i) -> __m256i {
 /// Shifts packed 16-bit integers in `a` right by `IMM8` while shifting in
 /// zeros
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srli_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_srli_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrlw, IMM8 = 7))]
@@ -3002,7 +3002,7 @@ pub unsafe fn _mm256_srli_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
 /// Shifts packed 32-bit integers in `a` right by `IMM8` while shifting in
 /// zeros
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srli_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_srli_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrld, IMM8 = 7))]
@@ -3016,7 +3016,7 @@ pub unsafe fn _mm256_srli_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
 /// Shifts packed 64-bit integers in `a` right by `IMM8` while shifting in
 /// zeros
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srli_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_srli_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrlq, IMM8 = 7))]
@@ -3030,7 +3030,7 @@ pub unsafe fn _mm256_srli_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
 /// Shifts packed 32-bit integers in `a` right by the amount specified by
 /// the corresponding element in `count` while shifting in zeros,
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_srlv_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_srlv_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrlvd))]
@@ -3042,7 +3042,7 @@ pub unsafe fn _mm_srlv_epi32(a: __m128i, count: __m128i) -> __m128i {
 /// Shifts packed 32-bit integers in `a` right by the amount specified by
 /// the corresponding element in `count` while shifting in zeros,
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srlv_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_srlv_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrlvd))]
@@ -3054,7 +3054,7 @@ pub unsafe fn _mm256_srlv_epi32(a: __m256i, count: __m256i) -> __m256i {
 /// Shifts packed 64-bit integers in `a` right by the amount specified by
 /// the corresponding element in `count` while shifting in zeros,
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_srlv_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_srlv_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrlvq))]
@@ -3066,7 +3066,7 @@ pub unsafe fn _mm_srlv_epi64(a: __m128i, count: __m128i) -> __m128i {
 /// Shifts packed 64-bit integers in `a` right by the amount specified by
 /// the corresponding element in `count` while shifting in zeros,
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srlv_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_srlv_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsrlvq))]
@@ -3079,7 +3079,7 @@ pub unsafe fn _mm256_srlv_epi64(a: __m256i, count: __m256i) -> __m256i {
 
 /// Subtract packed 16-bit integers in `b` from packed 16-bit integers in `a`
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sub_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sub_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsubw))]
@@ -3090,7 +3090,7 @@ pub unsafe fn _mm256_sub_epi16(a: __m256i, b: __m256i) -> __m256i {
 
 /// Subtract packed 32-bit integers in `b` from packed 32-bit integers in `a`
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sub_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sub_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsubd))]
@@ -3101,7 +3101,7 @@ pub unsafe fn _mm256_sub_epi32(a: __m256i, b: __m256i) -> __m256i {
 
 /// Subtract packed 64-bit integers in `b` from packed 64-bit integers in `a`
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sub_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sub_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsubq))]
@@ -3112,7 +3112,7 @@ pub unsafe fn _mm256_sub_epi64(a: __m256i, b: __m256i) -> __m256i {
 
 /// Subtract packed 8-bit integers in `b` from packed 8-bit integers in `a`
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sub_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sub_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsubb))]
@@ -3124,7 +3124,7 @@ pub unsafe fn _mm256_sub_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// Subtract packed 16-bit integers in `b` from packed 16-bit integers in
 /// `a` using saturation.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_subs_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_subs_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsubsw))]
@@ -3136,7 +3136,7 @@ pub unsafe fn _mm256_subs_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// Subtract packed 8-bit integers in `b` from packed 8-bit integers in
 /// `a` using saturation.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_subs_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_subs_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsubsb))]
@@ -3148,7 +3148,7 @@ pub unsafe fn _mm256_subs_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// Subtract packed unsigned 16-bit integers in `b` from packed 16-bit
 /// integers in `a` using saturation.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_subs_epu16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_subs_epu16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsubusw))]
@@ -3160,7 +3160,7 @@ pub unsafe fn _mm256_subs_epu16(a: __m256i, b: __m256i) -> __m256i {
 /// Subtract packed unsigned 8-bit integers in `b` from packed 8-bit
 /// integers in `a` using saturation.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_subs_epu8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_subs_epu8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpsubusb))]
@@ -3207,7 +3207,7 @@ pub unsafe fn _mm256_subs_epu8(a: __m256i, b: __m256i) -> __m256i {
 /// # }
 /// ```
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_unpackhi_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_unpackhi_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpunpckhbw))]
@@ -3260,7 +3260,7 @@ pub unsafe fn _mm256_unpackhi_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// # }
 /// ```
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_unpacklo_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_unpacklo_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpunpcklbw))]
@@ -3309,7 +3309,7 @@ pub unsafe fn _mm256_unpacklo_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// # }
 /// ```
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_unpackhi_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_unpackhi_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpunpckhwd))]
@@ -3357,7 +3357,7 @@ pub unsafe fn _mm256_unpackhi_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// # }
 /// ```
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_unpacklo_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_unpacklo_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vpunpcklwd))]
@@ -3398,7 +3398,7 @@ pub unsafe fn _mm256_unpacklo_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// # }
 /// ```
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_unpackhi_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_unpackhi_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vunpckhps))]
@@ -3435,7 +3435,7 @@ pub unsafe fn _mm256_unpackhi_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// # }
 /// ```
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_unpacklo_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_unpacklo_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vunpcklps))]
@@ -3472,7 +3472,7 @@ pub unsafe fn _mm256_unpacklo_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// # }
 /// ```
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_unpackhi_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_unpackhi_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vunpckhpd))]
@@ -3509,7 +3509,7 @@ pub unsafe fn _mm256_unpackhi_epi64(a: __m256i, b: __m256i) -> __m256i {
 /// # }
 /// ```
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_unpacklo_epi64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_unpacklo_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vunpcklpd))]
@@ -3522,7 +3522,7 @@ pub unsafe fn _mm256_unpacklo_epi64(a: __m256i, b: __m256i) -> __m256i {
 /// Computes the bitwise XOR of 256 bits (representing integer data)
 /// in `a` and `b`
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_xor_si256)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_xor_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vxorps))]
@@ -3536,7 +3536,7 @@ pub unsafe fn _mm256_xor_si256(a: __m256i, b: __m256i) -> __m256i {
 ///
 /// See [LLVM commit D20468](https://reviews.llvm.org/D20468).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extract_epi8)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_extract_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
 // This intrinsic has no corresponding instruction.
@@ -3552,7 +3552,7 @@ pub unsafe fn _mm256_extract_epi8<const INDEX: i32>(a: __m256i) -> i32 {
 ///
 /// See [LLVM commit D20468](https://reviews.llvm.org/D20468).
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extract_epi16)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_extract_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
 // This intrinsic has no corresponding instruction.
@@ -3565,7 +3565,7 @@ pub unsafe fn _mm256_extract_epi16<const INDEX: i32>(a: __m256i) -> i32 {
 
 /// Extracts a 32-bit integer from `a`, selected with `INDEX`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extract_epi32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_extract_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
 // This intrinsic has no corresponding instruction.
@@ -3578,7 +3578,7 @@ pub unsafe fn _mm256_extract_epi32<const INDEX: i32>(a: __m256i) -> i32 {
 
 /// Returns the first element of the input vector of `[4 x double]`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtsd_f64)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtsd_f64)
 #[inline]
 #[target_feature(enable = "avx2")]
 //#[cfg_attr(test, assert_instr(movsd))] FIXME
@@ -3589,7 +3589,7 @@ pub unsafe fn _mm256_cvtsd_f64(a: __m256d) -> f64 {
 
 /// Returns the first element of the input vector of `[8 x i32]`.
 ///
-/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtsi256_si32)
+/// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_cvtsi256_si32)
 #[inline]
 #[target_feature(enable = "avx2")]
 //#[cfg_attr(test, assert_instr(movd))] FIXME
