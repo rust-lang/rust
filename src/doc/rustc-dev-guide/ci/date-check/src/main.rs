@@ -170,7 +170,7 @@ fn main() {
 
         for (path, dates) in dates_by_file {
             println!(
-                "- [ ] {}",
+                "- {}",
                 path.strip_prefix(&root_dir_path).unwrap_or(&path).display(),
             );
             for (line, date) in dates {
