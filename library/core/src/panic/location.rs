@@ -34,6 +34,8 @@ pub struct Location<'a> {
     file: &'a str,
     line: u32,
     pos: u32,
+    len: u32,
+    hash: u32,
 }
 
 impl<'a> Location<'a> {
@@ -126,6 +128,8 @@ impl<'a> Location<'a> {
     #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
     #[inline]
     pub const fn file(&self) -> &str {
+        // let mut s = self.file.split('\0');
+        // s.next().unwrap()
         self.file
     }
 
@@ -176,7 +180,7 @@ impl<'a> Location<'a> {
     #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
     #[inline]
     pub const fn column(&self) -> u32 {
-        self.pos & u16::MAX as u32
+        self.pos
     }
 
     /// The distance in bytes from the start column to the end of the panicking expression.
@@ -185,7 +189,16 @@ impl<'a> Location<'a> {
     #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
     #[inline]
     pub const fn length(&self) -> Option<NonZeroU16> {
-        NonZeroU16::new((self.pos >> 16) as u16)
+        NonZeroU16::new(self.len as u16)
+    }
+
+    /// A 32bit hash that can be used to determine if the file where the panic was emitted has been
+    /// modified since the binary was compiled.
+    #[must_use]
+    #[unstable(feature = "panic_internals", issue = "none")]
+    #[inline]
+    pub fn file_hash(&self) -> u32 {
+        self.hash
     }
 }
 
@@ -196,8 +209,14 @@ impl<'a> Location<'a> {
 )]
 impl<'a> Location<'a> {
     #[doc(hidden)]
-    pub const fn internal_constructor(file: &'a str, line: u32, pos: u32) -> Self {
-        Location { file, line, pos }
+    pub const fn internal_constructor(
+        file: &'a str,
+        line: u32,
+        pos: u32,
+        len: u32,
+        hash: u32,
+    ) -> Self {
+        Location { file, line, pos, len, hash }
     }
 }
 

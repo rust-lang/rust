@@ -614,6 +614,19 @@ impl Key for (Symbol, u32, u32) {
     }
 }
 
+impl Key for (Symbol, u32, u32, u32, u32) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl<'tcx> Key for (DefId, Ty<'tcx>, SubstsRef<'tcx>, ty::ParamEnv<'tcx>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 

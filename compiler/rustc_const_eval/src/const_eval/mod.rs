@@ -25,12 +25,12 @@ pub(crate) use valtrees::{const_to_valtree_inner, valtree_to_const_value};
 
 pub(crate) fn const_caller_location(
     tcx: TyCtxt<'_>,
-    (file, line, col): (Symbol, u32, u32),
+    (file, line, col, len, hash): (Symbol, u32, u32, u32, u32),
 ) -> ConstValue<'_> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), false);
 
-    let loc_place = ecx.alloc_caller_location(file, line, col);
+    let loc_place = ecx.alloc_caller_location(file, line, col, len, hash);
     if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).is_err() {
         bug!("intern_const_alloc_recursive should not error in this case")
     }

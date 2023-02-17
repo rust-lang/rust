@@ -2,7 +2,7 @@ use rustc_ast::Mutability;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Pos, Span, Symbol};
 
 use crate::interpret::{
     intrinsics::{InterpCx, Machine},
@@ -76,6 +76,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         filename: Symbol,
         line: u32,
         col: u32,
+        len: u32,
+        hash: u32,
     ) -> MPlaceTy<'tcx, M::Provenance> {
         let loc_details = &self.tcx.sess.opts.unstable_opts.location_detail;
         // This can fail if rustc runs out of memory right here. Trying to emit an error would be
@@ -91,6 +93,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         let line = if loc_details.line { Scalar::from_u32(line) } else { Scalar::from_u32(0) };
         let col = if loc_details.column { Scalar::from_u32(col) } else { Scalar::from_u32(0) };
+        let len = if loc_details.column { Scalar::from_u32(len) } else { Scalar::from_u32(0) };
+        let hash = if loc_details.column { Scalar::from_u32(hash) } else { Scalar::from_u32(0) };
 
         // Allocate memory for `CallerLocation` struct.
         let loc_ty = self
@@ -107,22 +111,29 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .expect("writing to memory we just allocated cannot fail");
         self.write_scalar(col, &self.mplace_field(&location, 2).unwrap().into())
             .expect("writing to memory we just allocated cannot fail");
+        self.write_scalar(len, &self.mplace_field(&location, 3).unwrap().into())
+            .expect("writing to memory we just allocated cannot fail");
+        self.write_scalar(hash, &self.mplace_field(&location, 4).unwrap().into())
+            .expect("writing to memory we just allocated cannot fail");
 
         location
     }
 
-    pub(crate) fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
+    pub(crate) fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32, u32, u32) {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
+        let hash = 0;
         (
             Symbol::intern(&caller.file.name.prefer_remapped().to_string_lossy()),
             u32::try_from(caller.line).unwrap(),
             u32::try_from(caller.col_display).unwrap().checked_add(1).unwrap(),
+            (topmost.hi() - topmost.lo()).to_u32().try_into().unwrap_or(0),
+            hash,
         )
     }
 
     pub fn alloc_caller_location_for_span(&mut self, span: Span) -> MPlaceTy<'tcx, M::Provenance> {
-        let (file, line, column) = self.location_triple_for_span(span);
-        self.alloc_caller_location(file, line, column)
+        let (file, line, column, len, hash) = self.location_triple_for_span(span);
+        self.alloc_caller_location(file, line, column, len, hash)
     }
 }

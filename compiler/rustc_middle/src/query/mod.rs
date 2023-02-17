@@ -1069,7 +1069,7 @@ rustc_queries! {
         remap_env_constness
     }
 
-    query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> ConstValue<'tcx> {
+    query const_caller_location(key: (rustc_span::Symbol, u32, u32, u32, u32)) -> ConstValue<'tcx> {
         desc { "getting a &core::panic::Location referring to a span" }
     }
 

@@ -9,8 +9,10 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use crate::fs::File;
+use crate::fs::OpenOptions;
 use crate::io::{BufRead, BufReader};
+#[cfg(unix)]
+use crate::os::unix::fs::OpenOptionsExt;
 use crate::panic::BacktraceStyle;
 use crate::path::PathBuf;
 use core::panic::{BoxMeUp, Location, PanicInfo};
@@ -266,8 +268,16 @@ fn default_hook(info: &PanicInfo<'_>) {
             // We check if `path` is a symlink to avoid people creating a symlink for a file they
             // don't have permissions, but that the running binary does, to use it as an
             // exfiltration vector.
-            if !path.is_symlink() && let Ok(file) = File::open(path) {
-                let reader = BufReader::new(file);
+            let mut options = OpenOptions::new();
+            options.read(true);
+            if cfg!(unix) {
+                options.custom_flags(libc::O_NOFOLLOW);
+            }
+            if let Ok(file) = options.open(path)
+                && let reader = BufReader::new(file)
+                && let hash = 0
+                && location.file_hash() == hash
+            {
                 let mut lineno = location.line();
                 let mut len = location.length().map(|l| l.get()).unwrap_or(0) as usize;
                 let start_line = lineno - 2.min(lineno - 1);
