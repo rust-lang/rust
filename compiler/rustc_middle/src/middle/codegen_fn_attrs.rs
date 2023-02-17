@@ -91,7 +91,8 @@ bitflags! {
         /// the MIR `InstrumentCoverage` pass and not added to the coverage map
         /// during codegen.
         const NO_COVERAGE               = 1 << 15;
-        /// `#[used(linker)]`: indicates that LLVM nor the linker can eliminate this function.
+        /// `#[used(linker)]`:
+        /// indicates that neither LLVM nor the linker will eliminate this function.
         const USED_LINKER               = 1 << 16;
         /// `#[rustc_deallocator]`: a hint to LLVM that the function only deallocates memory.
         const DEALLOCATOR               = 1 << 17;
