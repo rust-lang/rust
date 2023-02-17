@@ -159,9 +159,21 @@ where
                 _region,
             ))) => ty.visit_with(self),
             ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..)) => ControlFlow::Continue(()),
+            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                ct.visit_with(self)?;
+                ty.visit_with(self)
+            }
             ty::PredicateKind::ConstEvaluatable(ct) => ct.visit_with(self),
             ty::PredicateKind::WellFormed(arg) => arg.visit_with(self),
-            _ => bug!("unexpected predicate: {:?}", predicate),
+
+            ty::PredicateKind::ObjectSafe(_)
+            | ty::PredicateKind::ClosureKind(_, _, _)
+            | ty::PredicateKind::Subtype(_)
+            | ty::PredicateKind::Coerce(_)
+            | ty::PredicateKind::ConstEquate(_, _)
+            | ty::PredicateKind::TypeWellFormedFromEnv(_)
+            | ty::PredicateKind::Ambiguous
+            | ty::PredicateKind::AliasEq(_, _) => bug!("unexpected predicate: {:?}", predicate),
         }
     }
 

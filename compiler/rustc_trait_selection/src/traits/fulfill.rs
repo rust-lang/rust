@@ -601,8 +601,18 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::AliasEq(..) => {
                     bug!("AliasEq is only used for new solver")
                 }
-                ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => {
-                    unimplemented!()
+                ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                    match self
+                        .selcx
+                        .infcx
+                        .at(&obligation.cause, obligation.param_env)
+                        .eq(ct.ty(), ty)
+                    {
+                        Ok(inf_ok) => ProcessResult::Changed(mk_pending(inf_ok.into_obligations())),
+                        Err(_) => ProcessResult::Error(FulfillmentErrorCode::CodeSelectionError(
+                            SelectionError::Unimplemented,
+                        )),
+                    }
                 }
             },
         }

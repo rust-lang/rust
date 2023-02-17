@@ -13,7 +13,7 @@ struct Foo<const N: [u8; { //[min]~ ERROR `[u8; _]` is forbidden
     }
 
     Foo::<17>::value()
-    //[full]~^ ERROR cannot call non-const fn
+    //~^ ERROR cannot call non-const fn
 }]>;
 
 fn main() {}
