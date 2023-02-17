@@ -119,7 +119,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         location
     }
 
-    pub(crate) fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32, u32, u32) {
+    pub(crate) fn location_tuple_for_span(&self, span: Span) -> (Symbol, u32, u32, u32, u32) {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
         (
@@ -132,7 +132,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     pub fn alloc_caller_location_for_span(&mut self, span: Span) -> MPlaceTy<'tcx, M::Provenance> {
-        let (file, line, column, len, hash) = self.location_triple_for_span(span);
+        let (file, line, column, len, hash) = self.location_tuple_for_span(span);
         self.alloc_caller_location(file, line, column, len, hash)
     }
 }

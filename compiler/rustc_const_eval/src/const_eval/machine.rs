@@ -197,7 +197,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
 
             let msg = Symbol::intern(self.read_str(&msg_place)?);
             let span = self.find_closest_untracked_caller_location();
-            let (file, line, col, ..) = self.location_triple_for_span(span);
+            let (file, line, col, ..) = self.location_tuple_for_span(span);
             return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
         } else if Some(def_id) == self.tcx.lang_items().panic_fmt() {
             // For panic_fmt, call const_panic_fmt instead.
