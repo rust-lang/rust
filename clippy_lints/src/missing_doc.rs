@@ -103,7 +103,7 @@ impl MissingDoc {
 
         if self.crate_items_only && def_id != CRATE_DEF_ID {
             let vis = cx.tcx.visibility(def_id);
-            if vis != Visibility::Public && vis != Visibility::Restricted(CRATE_DEF_ID.into()) {
+            if vis == Visibility::Public || vis != Visibility::Restricted(CRATE_DEF_ID.into()) {
                 return;
             }
         }

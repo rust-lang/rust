@@ -1,4 +1,5 @@
 //! this is crate
+#![allow(missing_docs)]
 #![warn(clippy::missing_docs_in_private_items)]
 
 /// this is mod
@@ -44,6 +45,13 @@ mod my_mod {
         priv_field_no_docs: (),
     }
 }
+
+/// some docs
+type CrateTypedefWithDocs = String;
+type CrateTypedefNoDocs = String;
+/// some docs
+pub type PubTypedefWithDocs = String;
+pub type PubTypedefNoDocs = String;
 
 fn main() {
     my_mod::crate_with_docs();

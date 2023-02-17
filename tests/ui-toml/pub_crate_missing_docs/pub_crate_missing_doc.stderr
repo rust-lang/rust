@@ -1,5 +1,5 @@
 error: missing documentation for a function
-  --> $DIR/pub_crate_missing_doc.rs:11:5
+  --> $DIR/pub_crate_missing_doc.rs:12:5
    |
 LL |     pub(crate) fn crate_no_docs() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,25 +7,25 @@ LL |     pub(crate) fn crate_no_docs() {}
    = note: `-D clippy::missing-docs-in-private-items` implied by `-D warnings`
 
 error: missing documentation for a function
-  --> $DIR/pub_crate_missing_doc.rs:14:5
+  --> $DIR/pub_crate_missing_doc.rs:15:5
    |
 LL |     pub(super) fn super_no_docs() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
-  --> $DIR/pub_crate_missing_doc.rs:22:9
+  --> $DIR/pub_crate_missing_doc.rs:23:9
    |
 LL |         pub(crate) fn sub_crate_no_docs() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a struct field
-  --> $DIR/pub_crate_missing_doc.rs:32:9
+  --> $DIR/pub_crate_missing_doc.rs:33:9
    |
 LL |         pub(crate) crate_field_no_docs: (),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a struct
-  --> $DIR/pub_crate_missing_doc.rs:38:5
+  --> $DIR/pub_crate_missing_doc.rs:39:5
    |
 LL | /     pub(crate) struct CrateStructNoDocs {
 LL | |         /// some docs
@@ -37,10 +37,16 @@ LL | |     }
    | |_____^
 
 error: missing documentation for a struct field
-  --> $DIR/pub_crate_missing_doc.rs:41:9
+  --> $DIR/pub_crate_missing_doc.rs:42:9
    |
 LL |         pub(crate) crate_field_no_docs: (),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: missing documentation for a type alias
+  --> $DIR/pub_crate_missing_doc.rs:51:1
+   |
+LL | type CrateTypedefNoDocs = String;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
 
