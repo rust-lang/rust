@@ -898,7 +898,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         assert_eq!(self.new_block(), START_BLOCK);
         self.visit_rvalue(
             &mut rvalue,
-            Location { block: BasicBlock::new(0), statement_index: usize::MAX },
+            Location { block: START_BLOCK, statement_index: usize::MAX },
         );
 
         let span = self.promoted.span;
