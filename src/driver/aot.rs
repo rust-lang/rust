@@ -248,17 +248,13 @@ fn reuse_workproduct_for_cgu(
             dwarf_object: None,
             bytecode: None,
         },
-        module_global_asm: if has_global_asm {
-            Some(CompiledModule {
-                name: cgu.name().to_string(),
-                kind: ModuleKind::Regular,
-                object: Some(obj_out_global_asm),
-                dwarf_object: None,
-                bytecode: None,
-            })
-        } else {
-            None
-        },
+        module_global_asm: has_global_asm.then(|| CompiledModule {
+            name: cgu.name().to_string(),
+            kind: ModuleKind::Regular,
+            object: Some(obj_out_global_asm),
+            dwarf_object: None,
+            bytecode: None,
+        }),
         existing_work_product: Some((cgu.work_product_id(), work_product)),
     })
 }

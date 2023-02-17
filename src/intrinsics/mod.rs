@@ -644,10 +644,14 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(ty);
             let do_panic = match intrinsic {
                 sym::assert_inhabited => layout.abi.is_uninhabited(),
-                sym::assert_zero_valid => !fx.tcx.permits_zero_init(fx.param_env().and(layout)),
-                sym::assert_mem_uninitialized_valid => {
-                    !fx.tcx.permits_uninit_init(fx.param_env().and(layout))
-                }
+                sym::assert_zero_valid => !fx
+                    .tcx
+                    .permits_zero_init(fx.param_env().and(ty))
+                    .expect("expected to have layout during codegen"),
+                sym::assert_mem_uninitialized_valid => !fx
+                    .tcx
+                    .permits_uninit_init(fx.param_env().and(ty))
+                    .expect("expected to have layout during codegen"),
                 _ => unreachable!(),
             };
             if do_panic {
