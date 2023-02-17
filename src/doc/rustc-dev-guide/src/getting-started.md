@@ -81,7 +81,7 @@ normally used for: building, testing, creating releases, formatting, etc.
 
 [bootstrapping]: ./building/bootstrapping.md
 
-### Configuring the Compiler
+### Configuring the compiler
 
 In the top level of the repo:
 

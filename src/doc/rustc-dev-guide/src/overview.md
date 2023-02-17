@@ -1,4 +1,4 @@
-# Overview of the Compiler
+# Overview of the compiler
 
 <!-- toc -->
 

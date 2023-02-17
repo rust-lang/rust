@@ -1,4 +1,4 @@
-# How to Build and Run the Compiler
+# How to build and run the compiler
 
 The compiler is built using a tool called `x.py`. You will need to
 have Python installed to run it.

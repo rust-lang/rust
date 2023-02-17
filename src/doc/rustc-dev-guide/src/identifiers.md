@@ -1,4 +1,4 @@
-# Identifiers in the Compiler
+# Identifiers in the compiler
 
 If you have read the few previous chapters, you now know that `rustc` uses
 many different intermediate representations to perform different kinds of analyses.

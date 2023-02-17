@@ -8,7 +8,7 @@
 
 # Building and debugging `rustc`
 
-- [How to Build and Run the Compiler](./building/how-to-build-and-run.md)
+- [How to build and run the compiler](./building/how-to-build-and-run.md)
     - [Prerequisites](./building/prerequisites.md)
     - [Suggested Workflows](./building/suggested.md)
     - [Distribution artifacts](./building/build-install-distribution-artifacts.md)
@@ -25,7 +25,7 @@
         - [Test headers](./tests/headers.md)
     - [Performance testing](./tests/perf.md)
     - [Crater](./tests/crater.md)
-- [Debugging the Compiler](./compiler-debugging.md)
+- [Debugging the compiler](./compiler-debugging.md)
     - [Using the tracing/logging instrumentation](./tracing.md)
 - [Profiling the compiler](./profiling.md)
     - [with the linux perf tool](./profiling/with_perf.md)
@@ -57,7 +57,7 @@
 # High-level Compiler Architecture
 
 - [Prologue](./part-2-intro.md)
-- [Overview of the Compiler](./overview.md)
+- [Overview of the compiler](./overview.md)
 - [The compiler source code](./compiler-src.md)
 - [Bootstrapping](./building/bootstrapping.md)
 - [Queries: demand-driven compilation](./query.md)
@@ -95,7 +95,7 @@
     - [MIR construction](./mir/construction.md)
     - [MIR visitor and traversal](./mir/visitor.md)
     - [MIR passes: getting the MIR for a function](./mir/passes.md)
-- [Identifiers in the Compiler](./identifiers.md)
+- [Identifiers in the compiler](./identifiers.md)
 - [Closure expansion](./closure.md)
 - [Inline assembly](./asm.md)
 
@@ -168,7 +168,7 @@
 - [Profile-guided Optimization](./profile-guided-optimization.md)
 - [LLVM Source-Based Code Coverage](./llvm-coverage-instrumentation.md)
 - [Sanitizers Support](./sanitizers.md)
-- [Debugging Support in the Rust Compiler](./debugging-support-in-rustc.md)
+- [Debugging support in the Rust compiler](./debugging-support-in-rustc.md)
 
 ---
 

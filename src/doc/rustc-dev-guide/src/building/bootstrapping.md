@@ -1,4 +1,4 @@
-# Bootstrapping the Compiler
+# Bootstrapping the compiler
 
 <!-- toc -->
 
@@ -90,7 +90,7 @@ because one must first build the new compiler with an older compiler
 and then use that to build the new compiler with itself.
 For development, you usually only want the `stage1` compiler,
 which you can build with `./x.py build library`.
-See [Building the Compiler](./how-to-build-and-run.html#building-the-compiler).
+See [Building the compiler](./how-to-build-and-run.html#building-the-compiler).
 
 ### Stage 3
 
