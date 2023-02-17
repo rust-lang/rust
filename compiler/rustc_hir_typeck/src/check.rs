@@ -79,7 +79,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(span));
         let region = fcx.next_region_var(RegionVariableOrigin::MiscVariable(span));
 
-        tcx.bound_type_of(va_list_did).subst(tcx, &[region.into()])
+        tcx.type_of(va_list_did).subst(tcx, &[region.into()])
     });
 
     // Add formal parameters.

@@ -217,7 +217,11 @@ fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> 
 pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg, cx: &mut DocContext<'tcx>) -> Constant {
     let def_id = cx.tcx.hir().body_owner_def_id(constant.value.body).to_def_id();
     Constant {
-        type_: clean_middle_ty(ty::Binder::dummy(cx.tcx.type_of(def_id)), cx, Some(def_id)),
+        type_: clean_middle_ty(
+            ty::Binder::dummy(cx.tcx.type_of(def_id).subst_identity()),
+            cx,
+            Some(def_id),
+        ),
         kind: ConstantKind::Anonymous { body: constant.value.body },
     }
 }
@@ -482,7 +486,7 @@ fn clean_generic_param_def<'tcx>(
         ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
             let default = if has_default {
                 Some(clean_middle_ty(
-                    ty::Binder::dummy(cx.tcx.type_of(def.def_id)),
+                    ty::Binder::dummy(cx.tcx.type_of(def.def_id).subst_identity()),
                     cx,
                     Some(def.def_id),
                 ))
@@ -504,7 +508,12 @@ fn clean_generic_param_def<'tcx>(
             GenericParamDefKind::Const {
                 did: def.def_id,
                 ty: Box::new(clean_middle_ty(
-                    ty::Binder::dummy(cx.tcx.type_of(def.def_id)),
+                    ty::Binder::dummy(
+                        cx.tcx
+                            .type_of(def.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic"),
+                    ),
                     cx,
                     Some(def.def_id),
                 )),
@@ -1214,7 +1223,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
     let kind = match assoc_item.kind {
         ty::AssocKind::Const => {
             let ty = clean_middle_ty(
-                ty::Binder::dummy(tcx.type_of(assoc_item.def_id)),
+                ty::Binder::dummy(tcx.type_of(assoc_item.def_id).subst_identity()),
                 cx,
                 Some(assoc_item.def_id),
             );
@@ -1253,7 +1262,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
 
             if assoc_item.fn_has_self_parameter {
                 let self_ty = match assoc_item.container {
-                    ty::ImplContainer => tcx.type_of(assoc_item.container_id(tcx)),
+                    ty::ImplContainer => tcx.type_of(assoc_item.container_id(tcx)).subst_identity(),
                     ty::TraitContainer => tcx.types.self_param,
                 };
                 let self_arg_ty = sig.input(0).skip_binder();
@@ -1400,7 +1409,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                     AssocTypeItem(
                         Box::new(Typedef {
                             type_: clean_middle_ty(
-                                ty::Binder::dummy(tcx.type_of(assoc_item.def_id)),
+                                ty::Binder::dummy(tcx.type_of(assoc_item.def_id).subst_identity()),
                                 cx,
                                 Some(assoc_item.def_id),
                             ),
@@ -1418,7 +1427,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                 AssocTypeItem(
                     Box::new(Typedef {
                         type_: clean_middle_ty(
-                            ty::Binder::dummy(tcx.type_of(assoc_item.def_id)),
+                            ty::Binder::dummy(tcx.type_of(assoc_item.def_id).subst_identity()),
                             cx,
                             Some(assoc_item.def_id),
                         ),
@@ -1928,7 +1937,11 @@ pub(crate) fn clean_middle_field<'tcx>(field: &ty::FieldDef, cx: &mut DocContext
     clean_field_with_def_id(
         field.did,
         field.name,
-        clean_middle_ty(ty::Binder::dummy(cx.tcx.type_of(field.did)), cx, Some(field.did)),
+        clean_middle_ty(
+            ty::Binder::dummy(cx.tcx.type_of(field.did).subst_identity()),
+            cx,
+            Some(field.did),
+        ),
         cx,
     )
 }
@@ -2375,9 +2388,11 @@ fn clean_impl<'tcx>(
 
     let for_ = clean_ty(impl_.self_ty, cx);
     let type_alias = for_.def_id(&cx.cache).and_then(|did| match tcx.def_kind(did) {
-        DefKind::TyAlias => {
-            Some(clean_middle_ty(ty::Binder::dummy(tcx.type_of(did)), cx, Some(did)))
-        }
+        DefKind::TyAlias => Some(clean_middle_ty(
+            ty::Binder::dummy(tcx.type_of(did).subst_identity()),
+            cx,
+            Some(did),
+        )),
         _ => None,
     });
     let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {

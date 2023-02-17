@@ -1149,7 +1149,7 @@ impl<'tcx> TyCtxt<'tcx> {
             _ => return None,
         }
 
-        let ret_ty = self.type_of(scope_def_id);
+        let ret_ty = self.type_of(scope_def_id).subst_identity();
         match ret_ty.kind() {
             ty::FnDef(_, _) => {
                 let sig = ret_ty.fn_sig(self);
@@ -1189,7 +1189,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn caller_location_ty(self) -> Ty<'tcx> {
         self.mk_imm_ref(
             self.lifetimes.re_static,
-            self.bound_type_of(self.require_lang_item(LangItem::PanicLocation, None))
+            self.type_of(self.require_lang_item(LangItem::PanicLocation, None))
                 .subst(self, self.mk_substs([self.lifetimes.re_static.into()].iter())),
         )
     }
@@ -1754,7 +1754,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         ty_param.into()
                     } else {
                         assert!(has_default);
-                        self.bound_type_of(param.def_id).subst(self, substs).into()
+                        self.type_of(param.def_id).subst(self, substs).into()
                     }
                 }
             });
@@ -2002,7 +2002,9 @@ impl<'tcx> TyCtxt<'tcx> {
             GenericParamDefKind::Const { .. } => self
                 .mk_const(
                     ParamConst { index: param.index, name: param.name },
-                    self.type_of(param.def_id),
+                    self.type_of(param.def_id)
+                        .no_bound_vars()
+                        .expect("const parameter types cannot be generic"),
                 )
                 .into(),
         }

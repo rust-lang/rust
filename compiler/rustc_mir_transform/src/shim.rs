@@ -692,7 +692,7 @@ fn build_call_shim<'tcx>(
 
         // `FnDef` call with optional receiver.
         CallKind::Direct(def_id) => {
-            let ty = tcx.type_of(def_id);
+            let ty = tcx.type_of(def_id).subst_identity();
             (
                 Operand::Constant(Box::new(Constant {
                     span,

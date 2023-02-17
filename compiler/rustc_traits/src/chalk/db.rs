@@ -246,7 +246,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         // Grab the ADT and the param we might need to calculate its layout
         let param_env = tcx.param_env(did);
-        let adt_ty = tcx.type_of(did);
+        let adt_ty = tcx.type_of(did).subst_identity();
 
         // The ADT is a 1-zst if it's a ZST and its alignment is 1.
         // Mark the ADT as _not_ a 1-zst if there was a layout error.
@@ -468,7 +468,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let ty = self
             .interner
             .tcx
-            .bound_type_of(def_id)
+            .type_of(def_id)
             .subst(self.interner.tcx, bound_vars)
             .lower_into(self.interner);
 
@@ -738,7 +738,7 @@ fn bound_vars_for_item(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
         ty::GenericParamDefKind::Const { .. } => tcx
             .mk_const(
                 ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
-                tcx.type_of(param.def_id),
+                tcx.type_of(param.def_id).subst_identity(),
             )
             .into(),
     })

@@ -229,11 +229,11 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
             Res::Def(DefKind::Static(_), def_id) => read_mir_alloc_def_path(
                 cx,
                 cx.tcx.eval_static_initializer(def_id).ok()?.inner(),
-                cx.tcx.type_of(def_id),
+                cx.tcx.type_of(def_id).subst_identity(),
             ),
             Res::Def(DefKind::Const, def_id) => match cx.tcx.const_eval_poly(def_id).ok()? {
                 ConstValue::ByRef { alloc, offset } if offset.bytes() == 0 => {
-                    read_mir_alloc_def_path(cx, alloc.inner(), cx.tcx.type_of(def_id))
+                    read_mir_alloc_def_path(cx, alloc.inner(), cx.tcx.type_of(def_id).subst_identity())
                 },
                 _ => None,
             },

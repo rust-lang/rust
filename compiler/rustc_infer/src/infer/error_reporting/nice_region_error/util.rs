@@ -123,7 +123,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         br: ty::BoundRegionKind,
         hir_sig: &hir::FnSig<'_>,
     ) -> Option<Span> {
-        let fn_ty = self.tcx().type_of(scope_def_id);
+        let fn_ty = self.tcx().type_of(scope_def_id).subst_identity();
         if let ty::FnDef(_, _) = fn_ty.kind() {
             let ret_ty = fn_ty.fn_sig(self.tcx()).output();
             let span = hir_sig.decl.output.span();

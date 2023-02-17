@@ -450,7 +450,7 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
         }
         ty::AssocKind::Type => format!("type {} = Type;", assoc.name),
         ty::AssocKind::Const => {
-            let ty = tcx.type_of(assoc.def_id);
+            let ty = tcx.type_of(assoc.def_id).subst_identity();
             let val = ty_kind_suggestion(ty).unwrap_or("value");
             format!("const {}: {} = {};", assoc.name, ty, val)
         }

@@ -312,7 +312,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // same rules that check_expr_struct uses for macro hygiene.
                 if self.tcx.adjust_ident(expr_field.ident, variant_def_id) == field.ident(self.tcx)
                 {
-                    return Some((expr_field.expr, self.tcx.type_of(field.did)));
+                    return Some((expr_field.expr, self.tcx.type_of(field.did).subst_identity()));
                 }
             }
         }
@@ -339,7 +339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         receiver: Option<&'tcx hir::Expr<'tcx>>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> bool {
-        let ty = self.tcx.type_of(def_id);
+        let ty = self.tcx.type_of(def_id).subst_identity();
         if !ty.is_fn() {
             return false;
         }

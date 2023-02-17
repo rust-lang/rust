@@ -2174,7 +2174,7 @@ impl CheckAttrVisitor<'_> {
         let tcx = self.tcx;
         if target == Target::Fn {
             let Some(tokenstream) = tcx.get_diagnostic_item(sym::TokenStream) else {return};
-            let tokenstream = tcx.type_of(tokenstream);
+            let tokenstream = tcx.type_of(tokenstream).subst_identity();
 
             let id = hir_id.expect_owner();
             let hir_sig = tcx.hir().fn_sig_by_hir_id(hir_id).unwrap();
