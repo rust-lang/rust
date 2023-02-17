@@ -1,8 +1,12 @@
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
+#[cfg(not(bootstrap))]
+use rustc_middle::ty::ir::TypeVisitable;
 use rustc_middle::ty::{
-    self, Binder, EarlyBinder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt,
+    self, ir::TypeVisitor, Binder, EarlyBinder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt,
+    TypeSuperVisitable,
 };
 use rustc_session::config::TraitSolver;
 use rustc_span::def_id::{DefId, CRATE_DEF_ID};
@@ -136,6 +140,19 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         predicates.extend(environment);
     }
 
+    if tcx.def_kind(def_id) == DefKind::AssocFn
+        && tcx.associated_item(def_id).container == ty::AssocItemContainer::TraitContainer
+    {
+        let sig = tcx.fn_sig(def_id).subst_identity();
+        sig.visit_with(&mut ImplTraitInTraitFinder {
+            tcx,
+            fn_def_id: def_id,
+            bound_vars: sig.bound_vars(),
+            predicates: &mut predicates,
+            seen: FxHashSet::default(),
+        });
+    }
+
     let local_did = def_id.as_local();
     let hir_id = local_did.map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id));
 
@@ -220,6 +237,46 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     let body_id = local_did.unwrap_or(CRATE_DEF_ID);
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
+}
+
+/// Walk through a function type, gathering all RPITITs and installing a
+/// `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))` predicate into the
+/// predicates list. This allows us to observe that an RPITIT projects to
+/// its corresponding opaque within the body of a default-body trait method.
+struct ImplTraitInTraitFinder<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    predicates: &'a mut Vec<Predicate<'tcx>>,
+    fn_def_id: DefId,
+    bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
+    seen: FxHashSet<DefId>,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
+        if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
+            && self.tcx.def_kind(alias_ty.def_id) == DefKind::ImplTraitPlaceholder
+            && self.tcx.impl_trait_in_trait_parent(alias_ty.def_id) == self.fn_def_id
+            && self.seen.insert(alias_ty.def_id)
+        {
+            self.predicates.push(
+                ty::Binder::bind_with_vars(
+                    ty::ProjectionPredicate {
+                        projection_ty: alias_ty,
+                        term: self.tcx.mk_alias(ty::Opaque, alias_ty).into(),
+                    },
+                    self.bound_vars,
+                )
+                .to_predicate(self.tcx),
+            );
+
+            for bound in self.tcx.item_bounds(alias_ty.def_id).subst_iter(self.tcx, alias_ty.substs)
+            {
+                bound.visit_with(self);
+            }
+        }
+
+        ty.super_visit_with(self)
+    }
 }
 
 /// Elaborate the environment.
