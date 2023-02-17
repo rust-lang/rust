@@ -117,6 +117,28 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         returns: Vec<AbiParam>,
         args: &[Value],
     ) -> &[Value] {
+        if self.tcx.sess.target.is_like_windows
+            && params.iter().any(|param| param.value_type == types::I128)
+        {
+            let (params, args): (Vec<_>, Vec<_>) =
+                params
+                    .into_iter()
+                    .zip(args)
+                    .map(|(param, &arg)| {
+                        if param.value_type == types::I128 {
+                            let arg_ptr = Pointer::stack_slot(self.bcx.create_sized_stack_slot(
+                                StackSlotData { kind: StackSlotKind::ExplicitSlot, size: 16 },
+                            ));
+                            arg_ptr.store(self, arg, MemFlags::trusted());
+                            (AbiParam::new(self.pointer_type), arg_ptr.get_addr(self))
+                        } else {
+                            (param, arg)
+                        }
+                    })
+                    .unzip();
+            return self.lib_call(name, params, returns, &args);
+        }
+
         let sig = Signature { params, returns, call_conv: self.target_config.default_call_conv };
         let func_id = self.module.declare_function(name, Linkage::Import, &sig).unwrap();
         let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);

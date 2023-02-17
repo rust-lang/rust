@@ -64,29 +64,12 @@ pub(crate) fn clif_int_or_float_cast(
                 },
             );
 
-            if fx.tcx.sess.target.is_like_windows {
-                // FIXME move this logic into lib_call
-                let arg_place = CPlace::new_stack_slot(
-                    fx,
-                    fx.layout_of(if from_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 }),
-                );
-                let arg_ptr = arg_place.to_ptr();
-                arg_ptr.store(fx, from, MemFlags::trusted());
-                let args = [arg_ptr.get_addr(fx)];
-                return fx.lib_call(
-                    &name,
-                    vec![AbiParam::new(fx.pointer_type)],
-                    vec![AbiParam::new(to_ty)],
-                    &args,
-                )[0];
-            } else {
-                return fx.lib_call(
-                    &name,
-                    vec![AbiParam::new(types::I128)],
-                    vec![AbiParam::new(to_ty)],
-                    &[from],
-                )[0];
-            }
+            return fx.lib_call(
+                &name,
+                vec![AbiParam::new(types::I128)],
+                vec![AbiParam::new(to_ty)],
+                &[from],
+            )[0];
         }
 
         // int-like -> float
