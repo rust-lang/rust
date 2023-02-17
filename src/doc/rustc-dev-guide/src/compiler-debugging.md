@@ -1,5 +1,4 @@
 # Debugging the compiler
-[debugging]: #debugging
 
 <!-- toc -->
 
