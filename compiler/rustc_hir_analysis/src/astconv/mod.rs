@@ -2219,12 +2219,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return Ok(None);
         }
 
+        let param_env = tcx.param_env(block.owner.to_def_id());
         let cause = ObligationCause::misc(span, block.owner.def_id);
         let mut unsatisfied_predicates = Vec::new();
 
         for &(impl_, (assoc_item, def_scope)) in &candidates {
             let infcx = tcx.infer_ctxt().ignoring_regions().build();
-            let param_env = tcx.param_env(impl_);
 
             let impl_ty = tcx.type_of(impl_);
             let impl_substs = self.fresh_item_substs(impl_, &infcx);

@@ -1,5 +1,5 @@
 error: the associated type `Yield` exists for `Container<[u8]>`, but its trait bounds were not satisfied
-  --> $DIR/not-found-unsatisfied-bounds.rs:19:29
+  --> $DIR/not-found-unsatisfied-bounds-0.rs:19:29
    |
 LL | struct Container<T: ?Sized>(T);
    | --------------------------- associated item `Yield` not found for this struct
@@ -11,7 +11,7 @@ LL |     let _: Container<[u8]>::Yield = 1;
            `[u8]: Sized`
 
 error: the associated type `Combination` exists for `Duple<String, Rc<str>>`, but its trait bounds were not satisfied
-  --> $DIR/not-found-unsatisfied-bounds.rs:20:45
+  --> $DIR/not-found-unsatisfied-bounds-0.rs:20:45
    |
 LL | struct Duple<T, U>(T, U);
    | ------------------ associated item `Combination` not found for this struct

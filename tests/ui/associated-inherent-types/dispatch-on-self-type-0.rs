@@ -33,3 +33,9 @@ fn main() {
     let _: Choose<NonCopy>::Result = ();
     let _: Choose<&str>::Result = vec!["..."];
 }
+
+// Test if we use the correct `ParamEnv` when proving obligations.
+
+pub fn parameterized<T: Copy>(x: T) {
+    let _: Choose<T>::Result = vec![x];
+}
