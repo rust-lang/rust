@@ -318,7 +318,9 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
                 BacktraceStyle::Full
             } else if &x == "snippet,full" || &x == "full,snippet" {
                 BacktraceStyle::FullSnippet
-            } else if x.as_os_str().to_str().map_or(false, |s| s.contains(&"snippet")) {
+            } else if x.as_os_str().to_str().map_or(false, |s| {
+                s == "snippet" || s.contains(&"snippet,") || s.contains(&",snippet")
+            }) {
                 BacktraceStyle::ShortSnippet
             } else {
                 BacktraceStyle::Short
