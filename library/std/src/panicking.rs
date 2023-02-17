@@ -358,9 +358,6 @@ fn default_hook(info: &PanicInfo<'_>) {
                 let _ = print_snippet();
                 drop(backtrace::print(err, crate::backtrace_rs::PrintFmt::Full))
             }
-            Some(BacktraceStyle::Snippet) => {
-                let _ = print_snippet();
-            }
             Some(BacktraceStyle::Short) => {
                 let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
                 drop(backtrace::print(err, crate::backtrace_rs::PrintFmt::Short))

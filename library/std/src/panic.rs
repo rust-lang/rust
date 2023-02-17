@@ -225,9 +225,6 @@ pub enum BacktraceStyle {
     /// opportunistically prints out a snippet of the code where the
     /// panic was raised.
     FullSnippet,
-    /// Opportunistically prints out only a snippet of the code where
-    /// the panic was raised.
-    Snippet,
     /// Disable collecting and displaying backtraces.
     Off,
 }
@@ -242,9 +239,8 @@ impl BacktraceStyle {
             BacktraceStyle::Short => 1,
             BacktraceStyle::Full => 2,
             BacktraceStyle::Off => 3,
-            BacktraceStyle::Snippet => 4,
-            BacktraceStyle::ShortSnippet => 5,
-            BacktraceStyle::FullSnippet => 6,
+            BacktraceStyle::ShortSnippet => 4,
+            BacktraceStyle::FullSnippet => 5,
         }
     }
 
@@ -254,9 +250,8 @@ impl BacktraceStyle {
             1 => BacktraceStyle::Short,
             2 => BacktraceStyle::Full,
             3 => BacktraceStyle::Off,
-            4 => BacktraceStyle::Snippet,
-            5 => BacktraceStyle::ShortSnippet,
-            6 => BacktraceStyle::FullSnippet,
+            4 => BacktraceStyle::ShortSnippet,
+            5 => BacktraceStyle::FullSnippet,
             _ => unreachable!(),
         })
     }
@@ -323,14 +318,8 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
                 BacktraceStyle::Full
             } else if &x == "snippet,full" || &x == "full,snippet" {
                 BacktraceStyle::FullSnippet
-            } else if &x == "snippet,short"
-                || &x == "short,snippet"
-                || &x == "snippet,1"
-                || &x == "1,snippet"
-            {
+            } else if x.as_os_str().to_str().map_or(false, |s| s.contains(&"snippet")) {
                 BacktraceStyle::ShortSnippet
-            } else if &x == "snippet" {
-                BacktraceStyle::Snippet
             } else {
                 BacktraceStyle::Short
             }
