@@ -323,7 +323,7 @@ macro_rules! make_mir_visitor {
                     self.visit_source_scope($(& $mutability)? *parent_scope);
                 }
                 if let Some((callee, callsite_span)) = inlined {
-                    let location = START_BLOCK.start_location();
+                    let location = Location::START;
 
                     self.visit_span($(& $mutability)? *callsite_span);
 
@@ -837,7 +837,7 @@ macro_rules! make_mir_visitor {
                 } = var_debug_info;
 
                 self.visit_source_info(source_info);
-                let location = START_BLOCK.start_location();
+                let location = Location::START;
                 match value {
                     VarDebugInfoContents::Const(c) => self.visit_constant(c, location),
                     VarDebugInfoContents::Place(place) =>
@@ -1026,7 +1026,7 @@ macro_rules! super_body {
         $self.visit_span($(& $mutability)? $body.span);
 
         for const_ in &$($mutability)? $body.required_consts {
-            let location = START_BLOCK.start_location();
+            let location = Location::START;
             $self.visit_constant(const_, location);
         }
     }
