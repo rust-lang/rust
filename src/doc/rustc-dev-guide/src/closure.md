@@ -155,7 +155,7 @@ This uses the stage1 compiler and enables `debug!` logging for the
 
 The other option is to step through the code using lldb or gdb.
 
-1. `rust-lldb build/x86_64-apple-darwin/stage1/bin/rustc test.rs`
+1. `rust-lldb build/host/stage1/bin/rustc test.rs`
 2. In lldb:
     1. `b upvar.rs:134`  // Setting the breakpoint on a certain line in the upvar.rs file`
     2. `r`  // Run the program until it hits the breakpoint

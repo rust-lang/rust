@@ -361,9 +361,9 @@ from the directory where it is built (does not have to be "installed"):
         "request": "launch",
         "name": "Launch",
         "args": [],  // array of string command-line arguments to pass to compiler
-        "program": "${workspaceFolder}/build/TARGET/stage1/bin/rustc",
+        "program": "${workspaceFolder}/build/host/stage1/bin/rustc",
         "windows": {  // applicable if using windows
-            "program": "${workspaceFolder}/build/x86_64-pc-windows-msvc/stage1/bin/rustc.exe"
+            "program": "${workspaceFolder}/build/host/stage1/bin/rustc.exe"
         },
         "cwd": "${workspaceFolder}",  // current working directory at program start
         "stopOnEntry": false,
