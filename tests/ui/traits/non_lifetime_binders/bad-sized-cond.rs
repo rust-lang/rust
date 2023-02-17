@@ -18,4 +18,6 @@ fn main() {
     //~^ ERROR the size for values of type `V` cannot be known at compilation time
 
     bar();
+    //~^ ERROR the size for values of type `V` cannot be known at compilation time
+    //~| ERROR `V` is not an iterator
 }
