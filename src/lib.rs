@@ -188,7 +188,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
     }
 
     fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<rustc_span::Symbol> {
-        vec![Symbol::intern("llvm14-builtins-abi")]
+        vec![]
     }
 
     fn print_version(&self) {
