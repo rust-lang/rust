@@ -2217,12 +2217,24 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return Ok(None);
         }
 
+        // In contexts that have no inference context, just make a new one.
+        // We do need a local variable to store it, though.
+        let infcx_;
+        let infcx = match self.infcx() {
+            Some(infcx) => infcx,
+            None => {
+                assert!(!self_ty.needs_infer());
+                infcx_ = tcx.infer_ctxt().ignoring_regions().build();
+                &infcx_
+            }
+        };
+
         let param_env = tcx.param_env(block.owner.to_def_id());
         let cause = ObligationCause::misc(span, block.owner.def_id);
         let mut fulfillment_errors = Vec::new();
+        let mut applicable_candidates = Vec::new();
 
         for &(impl_, (assoc_item, def_scope)) in &candidates {
-            let infcx = tcx.infer_ctxt().ignoring_regions().build();
             let ocx = ObligationCtxt::new(&infcx);
 
             let impl_ty = tcx.type_of(impl_);
@@ -2253,6 +2265,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 continue;
             }
 
+            applicable_candidates.push((assoc_item, def_scope));
+        }
+
+        if applicable_candidates.len() > 1 {
+            return Err(self.complain_about_ambiguous_inherent_assoc_type(
+                name,
+                applicable_candidates,
+                span,
+            ));
+        }
+
+        if let Some((assoc_item, def_scope)) = applicable_candidates.pop() {
             self.check_assoc_ty(assoc_item, name, def_scope, block, span);
 
             let ty::Adt(_, adt_substs) = self_ty.kind() else {
@@ -2269,7 +2293,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // associated type hold, if any.
             let ty = tcx.type_of(assoc_item).subst(tcx, item_substs);
 
-            // FIXME(fmease): Don't return early here! There might be multiple applicable candidates.
             return Ok(Some((ty, assoc_item)));
         }
 

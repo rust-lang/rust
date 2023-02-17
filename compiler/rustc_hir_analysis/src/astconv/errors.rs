@@ -222,6 +222,66 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         err.emit()
     }
 
+    pub(crate) fn complain_about_ambiguous_inherent_assoc_type(
+        &self,
+        name: Ident,
+        candidates: Vec<(DefId, DefId)>,
+        span: Span,
+    ) -> ErrorGuaranteed {
+        let mut err = struct_span_err!(
+            self.tcx().sess,
+            name.span,
+            E0034,
+            "multiple applicable items in scope"
+        );
+        err.span_label(name.span, format!("multiple `{name}` found"));
+        self.note_ambiguous_inherent_assoc_type(&mut err, candidates, span);
+        err.emit()
+    }
+
+    // FIXME(fmease): Heavily adapted from `rustc_hir_typeck::method::suggest`. Deduplicate.
+    fn note_ambiguous_inherent_assoc_type(
+        &self,
+        err: &mut Diagnostic,
+        candidates: Vec<(DefId, DefId)>,
+        span: Span,
+    ) {
+        let tcx = self.tcx();
+
+        // Dynamic limit to avoid hiding just one candidate, which is silly.
+        let limit = if candidates.len() == 5 { 5 } else { 4 };
+
+        for (index, &(assoc_item, _)) in candidates.iter().take(limit).enumerate() {
+            let impl_ = tcx.impl_of_method(assoc_item).unwrap();
+
+            let note_span = if assoc_item.is_local() {
+                Some(tcx.def_span(assoc_item))
+            } else if impl_.is_local() {
+                Some(tcx.def_span(impl_))
+            } else {
+                None
+            };
+
+            let title = if candidates.len() > 1 {
+                format!("candidate #{}", index + 1)
+            } else {
+                "the candidate".into()
+            };
+
+            let impl_ty = tcx.at(span).type_of(impl_).subst_identity();
+            let note = format!("{title} is defined in an impl for the type `{impl_ty}`");
+
+            if let Some(span) = note_span {
+                err.span_note(span, &note);
+            } else {
+                err.note(&note);
+            }
+        }
+        if candidates.len() > limit {
+            err.note(&format!("and {} others", candidates.len() - limit));
+        }
+    }
+
     // FIXME(inherent_associated_types): Find similarly named associated types and suggest them.
     pub(crate) fn complain_about_inherent_assoc_type_not_found(
         &self,
