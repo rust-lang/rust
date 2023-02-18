@@ -2,7 +2,7 @@
 
 <!-- toc -->
 
-<!-- date-check: Aug 2022 -->
+<!-- date-check: Feb 2023 -->
 There is no formal policy about when to update LLVM or what it can be updated to,
 but a few guidelines are applied:
 
@@ -16,9 +16,9 @@ but a few guidelines are applied:
 
 There are two reasons we would want to update LLVM:
 
-* A bug could have been fixed! Often we find bugs in the compiler and fix
-  them upstream in LLVM. We'll want to pull fixes back to the compiler itself as
-  they're merged upstream.
+* A bug could have been fixed!
+  Note that if we are the ones who fixed such a bug,
+  we prefer to upstream it, then pull it back for use by rustc.
 
 * LLVM itself may have a new release.
 
