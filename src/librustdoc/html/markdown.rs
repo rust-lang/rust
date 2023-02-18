@@ -34,7 +34,6 @@ use rustc_span::{Span, Symbol};
 
 use once_cell::sync::Lazy;
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt::Write;
@@ -1226,13 +1225,11 @@ pub(crate) struct MarkdownLink {
 
 pub(crate) fn markdown_links<R>(
     md: &str,
-    filter_map: impl Fn(MarkdownLink) -> Option<R>,
+    preprocess_link: impl Fn(MarkdownLink) -> Option<R>,
 ) -> Vec<R> {
     if md.is_empty() {
         return vec![];
     }
-
-    let links = RefCell::new(vec![]);
 
     // FIXME: remove this function once pulldown_cmark can provide spans for link definitions.
     let locate = |s: &str, fallback: Range<usize>| unsafe {
@@ -1265,21 +1262,14 @@ pub(crate) fn markdown_links<R>(
         }
     };
 
-    let mut push = |link: BrokenLink<'_>| {
-        let span = span_for_link(&link.reference, link.span);
-        filter_map(MarkdownLink {
-            kind: LinkType::ShortcutUnknown,
-            link: link.reference.to_string(),
-            range: span,
-        })
-        .map(|link| links.borrow_mut().push(link));
-        None
-    };
-
-    for ev in Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut push))
-        .into_offset_iter()
-    {
-        if let Event::Start(Tag::Link(
+    Parser::new_with_broken_link_callback(
+        md,
+        main_body_opts(),
+        Some(&mut |link: BrokenLink<'_>| Some((link.reference, "".into()))),
+    )
+    .into_offset_iter()
+    .filter_map(|(event, span)| match event {
+        Event::Start(Tag::Link(
             // `<>` links cannot be intra-doc links so we skip them.
             kind @ (LinkType::Inline
             | LinkType::Reference
@@ -1290,16 +1280,14 @@ pub(crate) fn markdown_links<R>(
             | LinkType::ShortcutUnknown),
             dest,
             _,
-        )) = ev.0
-        {
-            debug!("found link: {dest}");
-            let span = span_for_link(&dest, ev.1);
-            filter_map(MarkdownLink { kind, link: dest.into_string(), range: span })
-                .map(|link| links.borrow_mut().push(link));
-        }
-    }
-
-    links.into_inner()
+        )) => preprocess_link(MarkdownLink {
+            kind,
+            range: span_for_link(&dest, span),
+            link: dest.into_string(),
+        }),
+        _ => None,
+    })
+    .collect()
 }
 
 #[derive(Debug)]

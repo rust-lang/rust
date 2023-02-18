@@ -5,7 +5,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
-use std::cell::RefCell;
 use std::{cmp, mem};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -354,16 +353,14 @@ pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<Strin
     let (doc_fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
     let doc = prepare_to_doc_link_resolution(&doc_fragments).into_values().next().unwrap();
 
-    let links = RefCell::new(Vec::new());
-    let mut callback = |link: BrokenLink<'_>| {
-        links.borrow_mut().push(preprocess_link(&link.reference));
-        None
-    };
-    for event in Parser::new_with_broken_link_callback(&doc, main_body_opts(), Some(&mut callback))
-    {
-        if let Event::Start(Tag::Link(_, dest, _)) = event {
-            links.borrow_mut().push(preprocess_link(&dest));
-        }
-    }
-    links.into_inner()
+    Parser::new_with_broken_link_callback(
+        &doc,
+        main_body_opts(),
+        Some(&mut |link: BrokenLink<'_>| Some((link.reference, "".into()))),
+    )
+    .filter_map(|event| match event {
+        Event::Start(Tag::Link(_, dest, _)) => Some(preprocess_link(&dest)),
+        _ => None,
+    })
+    .collect()
 }
