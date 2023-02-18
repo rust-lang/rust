@@ -546,6 +546,49 @@ fn let_else() {
 }
 
 #[test]
+fn function_param_patterns() {
+    check_number(
+        r#"
+    const fn f((a, b): &(u8, u8)) -> u8 {
+        *a + *b
+    }
+    const GOAL: u8 = f(&(2, 3));
+        "#,
+        5,
+    );
+    check_number(
+        r#"
+    const fn f(c @ (a, b): &(u8, u8)) -> u8 {
+        *a + *b + (*c).1
+    }
+    const GOAL: u8 = f(&(2, 3));
+        "#,
+        8,
+    );
+    check_number(
+        r#"
+    const fn f(ref a: u8) -> u8 {
+        *a
+    }
+    const GOAL: u8 = f(2);
+        "#,
+        2,
+    );
+    check_number(
+        r#"
+    struct Foo(u8);
+    impl Foo {
+        const fn f(&self, (a, b): &(u8, u8)) -> u8 {
+            self.0 + *a + *b
+        }
+    }
+    const GOAL: u8 = Foo(4).f(&(2, 3));
+        "#,
+        9,
+    );
+}
+
+#[test]
 fn options() {
     check_number(
         r#"

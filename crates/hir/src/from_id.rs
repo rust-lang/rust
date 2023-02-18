@@ -4,7 +4,7 @@
 //! are splitting the hir.
 
 use hir_def::{
-    expr::{LabelId, PatId},
+    expr::{BindingId, LabelId},
     AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, GenericDefId, GenericParamId,
     ModuleDefId, VariantId,
 };
@@ -251,9 +251,9 @@ impl From<AssocItem> for GenericDefId {
     }
 }
 
-impl From<(DefWithBodyId, PatId)> for Local {
-    fn from((parent, pat_id): (DefWithBodyId, PatId)) -> Self {
-        Local { parent, pat_id }
+impl From<(DefWithBodyId, BindingId)> for Local {
+    fn from((parent, binding_id): (DefWithBodyId, BindingId)) -> Self {
+        Local { parent, binding_id }
     }
 }
 

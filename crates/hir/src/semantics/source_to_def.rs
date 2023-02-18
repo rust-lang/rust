@@ -89,7 +89,7 @@ use base_db::FileId;
 use hir_def::{
     child_by_source::ChildBySource,
     dyn_map::DynMap,
-    expr::{LabelId, PatId},
+    expr::{BindingId, LabelId},
     keys::{self, Key},
     AdtId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, FieldId, FunctionId,
     GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId, StaticId, StructId,
@@ -98,7 +98,7 @@ use hir_def::{
 use hir_expand::{attrs::AttrId, name::AsName, HirFileId, MacroCallId};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use stdx::impl_from;
+use stdx::{impl_from, never};
 use syntax::{
     ast::{self, HasName},
     AstNode, SyntaxNode,
@@ -216,14 +216,14 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn bind_pat_to_def(
         &mut self,
         src: InFile<ast::IdentPat>,
-    ) -> Option<(DefWithBodyId, PatId)> {
+    ) -> Option<(DefWithBodyId, BindingId)> {
         let container = self.find_pat_or_label_container(src.syntax())?;
         let (body, source_map) = self.db.body_with_source_map(container);
         let src = src.map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
         // the pattern could resolve to a constant, verify that that is not the case
-        if let crate::Pat::Bind { .. } = body[pat_id] {
-            Some((container, pat_id))
+        if let crate::Pat::Bind { id, .. } = body[pat_id] {
+            Some((container, id))
         } else {
             None
         }
@@ -231,11 +231,16 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn self_param_to_def(
         &mut self,
         src: InFile<ast::SelfParam>,
-    ) -> Option<(DefWithBodyId, PatId)> {
+    ) -> Option<(DefWithBodyId, BindingId)> {
         let container = self.find_pat_or_label_container(src.syntax())?;
-        let (_body, source_map) = self.db.body_with_source_map(container);
+        let (body, source_map) = self.db.body_with_source_map(container);
         let pat_id = source_map.node_self_param(src.as_ref())?;
-        Some((container, pat_id))
+        if let crate::Pat::Bind { id, .. } = body[pat_id] {
+            Some((container, id))
+        } else {
+            never!();
+            None
+        }
     }
     pub(super) fn label_to_def(
         &mut self,

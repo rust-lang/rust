@@ -5,7 +5,7 @@ use std::fmt::{self, Write};
 use syntax::ast::HasName;
 
 use crate::{
-    expr::{Array, BindingAnnotation, ClosureKind, Literal, Movability, Statement},
+    expr::{Array, BindingAnnotation, BindingId, ClosureKind, Literal, Movability, Statement},
     pretty::{print_generic_args, print_path, print_type_ref},
     type_ref::TypeRef,
 };
@@ -524,14 +524,8 @@ impl<'a> Printer<'a> {
             }
             Pat::Path(path) => self.print_path(path),
             Pat::Lit(expr) => self.print_expr(*expr),
-            Pat::Bind { mode, name, subpat } => {
-                let mode = match mode {
-                    BindingAnnotation::Unannotated => "",
-                    BindingAnnotation::Mutable => "mut ",
-                    BindingAnnotation::Ref => "ref ",
-                    BindingAnnotation::RefMut => "ref mut ",
-                };
-                w!(self, "{}{}", mode, name);
+            Pat::Bind { id, subpat } => {
+                self.print_binding(*id);
                 if let Some(pat) = subpat {
                     self.whitespace();
                     self.print_pat(*pat);
@@ -634,5 +628,16 @@ impl<'a> Printer<'a> {
 
     fn print_path(&mut self, path: &Path) {
         print_path(path, self).unwrap();
+    }
+
+    fn print_binding(&mut self, id: BindingId) {
+        let Binding { name, mode, .. } = &self.body.bindings[id];
+        let mode = match mode {
+            BindingAnnotation::Unannotated => "",
+            BindingAnnotation::Mutable => "mut ",
+            BindingAnnotation::Ref => "ref ",
+            BindingAnnotation::RefMut => "ref mut ",
+        };
+        w!(self, "{}{}", mode, name);
     }
 }

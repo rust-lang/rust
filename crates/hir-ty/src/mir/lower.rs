@@ -6,7 +6,8 @@ use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
     body::Body,
     expr::{
-        Array, BindingAnnotation, ExprId, LabelId, Literal, MatchArm, Pat, PatId, RecordLitField,
+        Array, BindingAnnotation, BindingId, ExprId, LabelId, Literal, MatchArm, Pat, PatId,
+        RecordLitField,
     },
     layout::LayoutError,
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
@@ -30,7 +31,7 @@ struct LoopBlocks {
 struct MirLowerCtx<'a> {
     result: MirBody,
     owner: DefWithBodyId,
-    binding_locals: ArenaMap<PatId, LocalId>,
+    binding_locals: ArenaMap<BindingId, LocalId>,
     current_loop_blocks: Option<LoopBlocks>,
     discr_temp: Option<Place>,
     db: &'a dyn HirDatabase,
@@ -43,7 +44,9 @@ pub enum MirLowerError {
     ConstEvalError(Box<ConstEvalError>),
     LayoutError(LayoutError),
     IncompleteExpr,
-    UnresolvedName,
+    UnresolvedName(String),
+    UnresolvedMethod,
+    UnresolvedField,
     MissingFunctionDefinition,
     TypeError(&'static str),
     NotSupported(String),
@@ -222,22 +225,23 @@ impl MirLowerCtx<'_> {
         match &self.body.exprs[expr_id] {
             Expr::Missing => Err(MirLowerError::IncompleteExpr),
             Expr::Path(p) => {
+                let unresolved_name = || MirLowerError::UnresolvedName("".to_string());
                 let resolver = resolver_for_expr(self.db.upcast(), self.owner, expr_id);
                 let pr = resolver
                     .resolve_path_in_value_ns(self.db.upcast(), p.mod_path())
-                    .ok_or(MirLowerError::UnresolvedName)?;
+                    .ok_or_else(unresolved_name)?;
                 let pr = match pr {
                     ResolveValueResult::ValueNs(v) => v,
                     ResolveValueResult::Partial(..) => {
                         return match self
                             .infer
                             .assoc_resolutions_for_expr(expr_id)
-                            .ok_or(MirLowerError::UnresolvedName)?
+                            .ok_or_else(unresolved_name)?
                             .0
                             //.ok_or(ConstEvalError::SemanticError("unresolved assoc item"))?
                         {
                             hir_def::AssocItemId::ConstId(c) => self.lower_const(c, current, place),
-                            _ => return Err(MirLowerError::UnresolvedName),
+                            _ => return Err(unresolved_name()),
                         };
                     }
                 };
@@ -394,7 +398,7 @@ impl MirLowerCtx<'_> {
             }
             Expr::MethodCall { receiver, args, .. } => {
                 let (func_id, generic_args) =
-                    self.infer.method_resolution(expr_id).ok_or(MirLowerError::UnresolvedName)?;
+                    self.infer.method_resolution(expr_id).ok_or(MirLowerError::UnresolvedMethod)?;
                 let ty = chalk_ir::TyKind::FnDef(
                     CallableDefId::FunctionId(func_id).to_chalk(self.db),
                     generic_args,
@@ -476,7 +480,7 @@ impl MirLowerCtx<'_> {
                 let variant_id = self
                     .infer
                     .variant_resolution_for_expr(expr_id)
-                    .ok_or(MirLowerError::UnresolvedName)?;
+                    .ok_or_else(|| MirLowerError::UnresolvedName("".to_string()))?;
                 let subst = match self.expr_ty(expr_id).kind(Interner) {
                     TyKind::Adt(_, s) => s.clone(),
                     _ => not_supported!("Non ADT record literal"),
@@ -487,7 +491,7 @@ impl MirLowerCtx<'_> {
                         let mut operands = vec![None; variant_data.fields().len()];
                         for RecordLitField { name, expr } in fields.iter() {
                             let field_id =
-                                variant_data.field(name).ok_or(MirLowerError::UnresolvedName)?;
+                                variant_data.field(name).ok_or(MirLowerError::UnresolvedField)?;
                             let op;
                             (op, current) = self.lower_expr_to_some_operand(*expr, current)?;
                             operands[u32::from(field_id.into_raw()) as usize] = Some(op);
@@ -509,7 +513,7 @@ impl MirLowerCtx<'_> {
                             not_supported!("Union record literal with more than one field");
                         };
                         let local_id =
-                            variant_data.field(name).ok_or(MirLowerError::UnresolvedName)?;
+                            variant_data.field(name).ok_or(MirLowerError::UnresolvedField)?;
                         let mut place = place;
                         place
                             .projection
@@ -529,7 +533,7 @@ impl MirLowerCtx<'_> {
                     let field = self
                         .infer
                         .field_resolution(expr_id)
-                        .ok_or(MirLowerError::UnresolvedName)?;
+                        .ok_or(MirLowerError::UnresolvedField)?;
                     current_place.projection.push(ProjectionElem::Field(field));
                 }
                 self.push_assignment(current, place, Operand::Copy(current_place).into());
@@ -962,8 +966,9 @@ impl MirLowerCtx<'_> {
                 }
                 (then_target, Some(else_target))
             }
-            Pat::Bind { mode, name: _, subpat } => {
-                let target_place = self.binding_locals[pattern];
+            Pat::Bind { id, subpat } => {
+                let target_place = self.binding_locals[*id];
+                let mode = self.body.bindings[*id].mode;
                 if let Some(subpat) = subpat {
                     (current, current_else) = self.pattern_match(
                         current,
@@ -975,7 +980,7 @@ impl MirLowerCtx<'_> {
                     )?
                 }
                 if matches!(mode, BindingAnnotation::Ref | BindingAnnotation::RefMut) {
-                    binding_mode = *mode;
+                    binding_mode = mode;
                 }
                 self.push_assignment(
                     current,
@@ -1189,17 +1194,40 @@ pub fn lower_to_mir(
     let mut locals = Arena::new();
     // 0 is return local
     locals.alloc(Local { mutability: Mutability::Mut, ty: infer[root_expr].clone() });
-    let mut create_local_of_path = |p: PatId| {
-        // FIXME: mutablity is broken
-        locals.alloc(Local { mutability: Mutability::Not, ty: infer[p].clone() })
+    let mut binding_locals: ArenaMap<BindingId, LocalId> = ArenaMap::new();
+    let param_locals: ArenaMap<PatId, LocalId> = if let DefWithBodyId::FunctionId(fid) = owner {
+        let substs = TyBuilder::placeholder_subst(db, fid);
+        let callable_sig = db.callable_item_signature(fid.into()).substitute(Interner, &substs);
+        // 1 to param_len is for params
+        body.params
+            .iter()
+            .zip(callable_sig.params().iter())
+            .map(|(&x, ty)| {
+                let local_id = locals.alloc(Local { mutability: Mutability::Not, ty: ty.clone() });
+                if let Pat::Bind { id, subpat: None } = body[x] {
+                    if matches!(
+                        body.bindings[id].mode,
+                        BindingAnnotation::Unannotated | BindingAnnotation::Mutable
+                    ) {
+                        binding_locals.insert(id, local_id);
+                    }
+                }
+                (x, local_id)
+            })
+            .collect()
+    } else {
+        if !body.params.is_empty() {
+            return Err(MirLowerError::TypeError("Unexpected parameter for non function body"));
+        }
+        ArenaMap::new()
     };
-    // 1 to param_len is for params
-    let mut binding_locals: ArenaMap<PatId, LocalId> =
-        body.params.iter().map(|&x| (x, create_local_of_path(x))).collect();
     // and then rest of bindings
-    for (pat_id, _) in body.pats.iter() {
-        if !binding_locals.contains_idx(pat_id) {
-            binding_locals.insert(pat_id, create_local_of_path(pat_id));
+    for (id, _) in body.bindings.iter() {
+        if !binding_locals.contains_idx(id) {
+            binding_locals.insert(
+                id,
+                locals.alloc(Local { mutability: Mutability::Not, ty: infer[id].clone() }),
+            );
         }
     }
     let mir = MirBody { basic_blocks, locals, start_block, owner, arg_count: body.params.len() };
@@ -1213,7 +1241,27 @@ pub fn lower_to_mir(
         current_loop_blocks: None,
         discr_temp: None,
     };
-    let b = ctx.lower_expr_to_place(root_expr, return_slot().into(), start_block)?;
+    let mut current = start_block;
+    for &param in &body.params {
+        if let Pat::Bind { id, .. } = body[param] {
+            if param_locals[param] == ctx.binding_locals[id] {
+                continue;
+            }
+        }
+        let r = ctx.pattern_match(
+            current,
+            None,
+            param_locals[param].into(),
+            ctx.result.locals[param_locals[param]].ty.clone(),
+            param,
+            BindingAnnotation::Unannotated,
+        )?;
+        if let Some(b) = r.1 {
+            ctx.set_terminator(b, Terminator::Unreachable);
+        }
+        current = r.0;
+    }
+    let b = ctx.lower_expr_to_place(root_expr, return_slot().into(), current)?;
     ctx.result.basic_blocks[b].terminator = Some(Terminator::Return);
     Ok(ctx.result)
 }

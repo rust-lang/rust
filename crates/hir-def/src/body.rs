@@ -24,7 +24,7 @@ use syntax::{ast, AstPtr, SyntaxNode, SyntaxNodePtr};
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    expr::{dummy_expr_id, Expr, ExprId, Label, LabelId, Pat, PatId},
+    expr::{dummy_expr_id, Binding, BindingId, Expr, ExprId, Label, LabelId, Pat, PatId},
     item_scope::BuiltinShadowMode,
     macro_id_to_def_id,
     nameres::DefMap,
@@ -270,6 +270,7 @@ pub struct Mark {
 pub struct Body {
     pub exprs: Arena<Expr>,
     pub pats: Arena<Pat>,
+    pub bindings: Arena<Binding>,
     pub or_pats: FxHashMap<PatId, Arc<[PatId]>>,
     pub labels: Arena<Label>,
     /// The patterns for the function's parameters. While the parameter types are
@@ -435,13 +436,24 @@ impl Body {
     }
 
     fn shrink_to_fit(&mut self) {
-        let Self { _c: _, body_expr: _, block_scopes, or_pats, exprs, labels, params, pats } = self;
+        let Self {
+            _c: _,
+            body_expr: _,
+            block_scopes,
+            or_pats,
+            exprs,
+            labels,
+            params,
+            pats,
+            bindings,
+        } = self;
         block_scopes.shrink_to_fit();
         or_pats.shrink_to_fit();
         exprs.shrink_to_fit();
         labels.shrink_to_fit();
         params.shrink_to_fit();
         pats.shrink_to_fit();
+        bindings.shrink_to_fit();
     }
 }
 
@@ -451,6 +463,7 @@ impl Default for Body {
             body_expr: dummy_expr_id(),
             exprs: Default::default(),
             pats: Default::default(),
+            bindings: Default::default(),
             or_pats: Default::default(),
             labels: Default::default(),
             params: Default::default(),
@@ -481,6 +494,14 @@ impl Index<LabelId> for Body {
 
     fn index(&self, label: LabelId) -> &Label {
         &self.labels[label]
+    }
+}
+
+impl Index<BindingId> for Body {
+    type Output = Binding;
+
+    fn index(&self, b: BindingId) -> &Binding {
+        &self.bindings[b]
     }
 }
 

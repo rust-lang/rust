@@ -635,8 +635,8 @@ fn local(db: &RootDatabase, it: hir::Local) -> Option<Markup> {
     let ty = it.ty(db);
     let ty = ty.display_truncated(db, None);
     let is_mut = if it.is_mut(db) { "mut " } else { "" };
-    let desc = match it.source(db).value {
-        Either::Left(ident) => {
+    let desc = match it.primary_source(db).into_ident_pat() {
+        Some(ident) => {
             let name = it.name(db);
             let let_kw = if ident
                 .syntax()
@@ -649,7 +649,7 @@ fn local(db: &RootDatabase, it: hir::Local) -> Option<Markup> {
             };
             format!("{let_kw}{is_mut}{name}: {ty}")
         }
-        Either::Right(_) => format!("{is_mut}self: {ty}"),
+        None => format!("{is_mut}self: {ty}"),
     };
     markup(None, desc, None)
 }

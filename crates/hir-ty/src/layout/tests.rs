@@ -65,17 +65,9 @@ fn eval_expr(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
         })
         .unwrap();
     let hir_body = db.body(adt_id.into());
-    let pat = hir_body
-        .pats
-        .iter()
-        .find(|x| match x.1 {
-            hir_def::expr::Pat::Bind { name, .. } => name.to_smol_str() == "goal",
-            _ => false,
-        })
-        .unwrap()
-        .0;
+    let b = hir_body.bindings.iter().find(|x| x.1.name.to_smol_str() == "goal").unwrap().0;
     let infer = db.infer(adt_id.into());
-    let goal_ty = infer.type_of_pat[pat].clone();
+    let goal_ty = infer.type_of_binding[b].clone();
     layout_of_ty(&db, &goal_ty, module_id.krate())
 }
 

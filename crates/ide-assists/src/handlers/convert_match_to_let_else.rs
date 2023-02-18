@@ -101,7 +101,7 @@ fn find_extracted_variable(ctx: &AssistContext<'_>, arm: &ast::MatchArm) -> Opti
             let name_ref = path.syntax().descendants().find_map(ast::NameRef::cast)?;
             match NameRefClass::classify(&ctx.sema, &name_ref)? {
                 NameRefClass::Definition(Definition::Local(local)) => {
-                    let source = local.source(ctx.db()).value.left()?;
+                    let source = local.primary_source(ctx.db()).into_ident_pat()?;
                     Some(source.name()?)
                 }
                 _ => None,
