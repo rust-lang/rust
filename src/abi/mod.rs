@@ -119,9 +119,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         returns: Vec<AbiParam>,
         args: &[Value],
     ) -> Cow<'_, [Value]> {
-        if self.tcx.sess.target.is_like_windows
-            && params.iter().any(|param| param.value_type == types::I128)
-        {
+        if self.tcx.sess.target.is_like_windows {
             let (mut params, mut args): (Vec<_>, Vec<_>) =
                 params
                     .into_iter()
