@@ -1,49 +1,97 @@
-//! Levenshtein distances.
+//! Damerau-Levenshtein distances.
 //!
-//! The [Levenshtein distance] is a metric for measuring the difference between two strings.
+//! The [Damerau-Levenshtein distance] is a metric for measuring the difference between two strings.
+//! This implementation is a restricted version of the algorithm, as it does not permit modifying
+//! characters that have already been transposed.
 //!
-//! [Levenshtein distance]: https://en.wikipedia.org/wiki/Levenshtein_distance
+//! [Damerau-Levenshtein distance]: https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance
 
 use crate::symbol::Symbol;
-use std::cmp;
+use std::{cmp, mem};
 
 #[cfg(test)]
 mod tests;
 
-/// Finds the Levenshtein distance between two strings.
+/// Finds the restricted Damerau-Levenshtein distance between two strings. Characters that have
+/// already been transposed may not be modified.
 ///
 /// Returns None if the distance exceeds the limit.
 pub fn lev_distance(a: &str, b: &str, limit: usize) -> Option<usize> {
-    let n = a.chars().count();
-    let m = b.chars().count();
-    let min_dist = if n < m { m - n } else { n - m };
+    let mut a = &a.chars().collect::<Vec<_>>()[..];
+    let mut b = &b.chars().collect::<Vec<_>>()[..];
 
+    // Ensure that `b` is the shorter string, minimizing memory use.
+    if a.len() < b.len() {
+        mem::swap(&mut a, &mut b);
+    }
+
+    let min_dist = a.len() - b.len();
+    // If we know the limit will be exceeded, we can return early.
     if min_dist > limit {
         return None;
     }
-    if n == 0 || m == 0 {
-        return (min_dist <= limit).then_some(min_dist);
+
+    // Strip common prefix.
+    while let Some(((b_char, b_rest), (a_char, a_rest))) = b.split_first().zip(a.split_first())
+        && a_char == b_char
+    {
+        a = a_rest;
+        b = b_rest;
+    }
+    // Strip common suffix.
+    while let Some(((b_char, b_rest), (a_char, a_rest))) = b.split_last().zip(a.split_last())
+        && a_char == b_char
+    {
+        a = a_rest;
+        b = b_rest;
     }
 
-    let mut dcol: Vec<_> = (0..=m).collect();
+    // If either string is empty, the distance is the length of the other.
+    // We know that `b` is the shorter string, so we don't need to check `a`.
+    if b.len() == 0 {
+        return Some(min_dist);
+    }
 
-    for (i, sc) in a.chars().enumerate() {
-        let mut current = i;
-        dcol[0] = current + 1;
+    let mut prev_prev = vec![usize::MAX; b.len() + 1];
+    let mut prev = (0..=b.len()).collect::<Vec<_>>();
+    let mut current = vec![0; b.len() + 1];
 
-        for (j, tc) in b.chars().enumerate() {
-            let next = dcol[j + 1];
-            if sc == tc {
-                dcol[j + 1] = current;
-            } else {
-                dcol[j + 1] = cmp::min(current, next);
-                dcol[j + 1] = cmp::min(dcol[j + 1], dcol[j]) + 1;
+    // row by row
+    for i in 1..=a.len() {
+        current[0] = i;
+        let a_idx = i - 1;
+
+        // column by column
+        for j in 1..=b.len() {
+            let b_idx = j - 1;
+
+            // There is no cost to substitute a character with itself.
+            let substitution_cost = if a[a_idx] == b[b_idx] { 0 } else { 1 };
+
+            current[j] = cmp::min(
+                // deletion
+                prev[j] + 1,
+                cmp::min(
+                    // insertion
+                    current[j - 1] + 1,
+                    // substitution
+                    prev[j - 1] + substitution_cost,
+                ),
+            );
+
+            if (i > 1) && (j > 1) && (a[a_idx] == b[b_idx - 1]) && (a[a_idx - 1] == b[b_idx]) {
+                // transposition
+                current[j] = cmp::min(current[j], prev_prev[j - 2] + 1);
             }
-            current = next;
         }
+
+        // Rotate the buffers, reusing the memory.
+        [prev_prev, prev, current] = [prev, current, prev_prev];
     }
 
-    (dcol[m] <= limit).then_some(dcol[m])
+    // `prev` because we already rotated the buffers.
+    let distance = prev[b.len()];
+    (distance <= limit).then_some(distance)
 }
 
 /// Provides a word similarity score between two words that accounts for substrings being more
