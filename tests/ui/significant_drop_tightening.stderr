@@ -1,5 +1,29 @@
 error: temporary with significant `Drop` can be early dropped
-  --> $DIR/significant_drop_tightening.rs:25:13
+  --> $DIR/significant_drop_tightening.rs:12:9
+   |
+LL |   pub fn complex_return_triggers_the_lint() -> i32 {
+   |  __________________________________________________-
+LL | |     fn foo() -> i32 {
+LL | |         1
+LL | |     }
+LL | |     let mutex = Mutex::new(1);
+LL | |     let lock = mutex.lock().unwrap();
+   | |         ^^^^
+...  |
+LL | |     foo()
+LL | | }
+   | |_- temporary `lock` is currently being dropped at the end of its contained scope
+   |
+   = note: this might lead to unnecessary resource contention
+   = note: `-D clippy::significant-drop-tightening` implied by `-D warnings`
+help: drop the temporary after the end of its last usage
+   |
+LL ~     let _ = *lock;
+LL +     drop(lock);
+   |
+
+error: temporary with significant `Drop` can be early dropped
+  --> $DIR/significant_drop_tightening.rs:44:13
    |
 LL | /     {
 LL | |         let mutex = Mutex::new(1i32);
@@ -12,7 +36,6 @@ LL | |     }
    | |_____- temporary `lock` is currently being dropped at the end of its contained scope
    |
    = note: this might lead to unnecessary resource contention
-   = note: `-D clippy::significant-drop-tightening` implied by `-D warnings`
 help: drop the temporary after the end of its last usage
    |
 LL ~         let rslt1 = lock.is_positive();
@@ -20,7 +43,7 @@ LL +         drop(lock);
    |
 
 error: temporary with significant `Drop` can be early dropped
-  --> $DIR/significant_drop_tightening.rs:46:13
+  --> $DIR/significant_drop_tightening.rs:65:13
    |
 LL | /     {
 LL | |         let mutex = Mutex::new(1i32);
@@ -44,7 +67,7 @@ LL +
    |
 
 error: temporary with significant `Drop` can be early dropped
-  --> $DIR/significant_drop_tightening.rs:52:17
+  --> $DIR/significant_drop_tightening.rs:71:17
    |
 LL | /     {
 LL | |         let mutex = Mutex::new(vec![1i32]);
@@ -67,5 +90,5 @@ LL -         lock.clear();
 LL +         
    |
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

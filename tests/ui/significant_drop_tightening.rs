@@ -4,6 +4,25 @@
 
 use std::sync::Mutex;
 
+pub fn complex_return_triggers_the_lint() -> i32 {
+    fn foo() -> i32 {
+        1
+    }
+    let mutex = Mutex::new(1);
+    let lock = mutex.lock().unwrap();
+    let _ = *lock;
+    let _ = *lock;
+    foo()
+}
+
+pub fn path_return_can_be_ignored() -> i32 {
+    let mutex = Mutex::new(1);
+    let lock = mutex.lock().unwrap();
+    let rslt = *lock;
+    let _ = *lock;
+    rslt
+}
+
 pub fn post_bindings_can_be_ignored() {
     let mutex = Mutex::new(1);
     let lock = mutex.lock().unwrap();
