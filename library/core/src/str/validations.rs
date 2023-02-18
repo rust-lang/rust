@@ -125,34 +125,37 @@ const fn contains_nonascii(x: usize) -> bool {
 #[inline(always)]
 #[rustc_const_unstable(feature = "str_internals", issue = "none")]
 pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
-    let mut index = 0;
     let len = v.len();
-
     let usize_bytes = mem::size_of::<usize>();
     let ascii_block_size = 2 * usize_bytes;
     let blocks_end = if len >= ascii_block_size { len - ascii_block_size + 1 } else { 0 };
     let align = v.as_ptr().align_offset(usize_bytes);
 
-    while index < len {
-        let old_offset = index;
+    let mut index = 0;
+    while let Some(&first) = v.get(index) {
+        let valid_up_to = index;
         macro_rules! err {
             ($error_len: expr) => {
-                return Err(Utf8Error { valid_up_to: old_offset, error_len: $error_len })
+                return Err(Utf8Error { valid_up_to, error_len: $error_len })
             };
         }
 
-        macro_rules! next {
-            () => {{
-                index += 1;
-                // we needed data, but there was none: error!
-                if index >= len {
-                    err!(None)
+        macro_rules! get_byte {
+            ($off:expr) => {
+                match v.get(index + $off) {
+                    Some(&byte) => byte,
+                    None => err!(None),
                 }
-                v[index]
-            }};
+            }
+        }
+        macro_rules! check_cont_byte {
+            ($off:expr) => {
+                if !utf8_is_cont_byte(get_byte!($off)) {
+                    err!(Some($off as u8))
+                }
+            }
         }
 
-        let first = v[index];
         if first >= 128 {
             let w = utf8_char_width(first);
             // 2-byte encoding is for codepoints  \u{0080} to  \u{07ff}
@@ -174,38 +177,28 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             // UTF8-4      = %xF0 %x90-BF 2( UTF8-tail ) / %xF1-F3 3( UTF8-tail ) /
             //               %xF4 %x80-8F 2( UTF8-tail )
             match w {
-                2 => {
-                    if next!() as i8 >= -64 {
-                        err!(Some(1))
-                    }
-                }
+                2 => check_cont_byte!(1),
                 3 => {
-                    match (first, next!()) {
+                    match (first, get_byte!(1)) {
                         (0xE0, 0xA0..=0xBF)
                         | (0xE1..=0xEC, 0x80..=0xBF)
                         | (0xED, 0x80..=0x9F)
                         | (0xEE..=0xEF, 0x80..=0xBF) => {}
                         _ => err!(Some(1)),
                     }
-                    if next!() as i8 >= -64 {
-                        err!(Some(2))
-                    }
+                    check_cont_byte!(2);
                 }
                 4 => {
-                    match (first, next!()) {
+                    match (first, get_byte!(1)) {
                         (0xF0, 0x90..=0xBF) | (0xF1..=0xF3, 0x80..=0xBF) | (0xF4, 0x80..=0x8F) => {}
                         _ => err!(Some(1)),
                     }
-                    if next!() as i8 >= -64 {
-                        err!(Some(2))
-                    }
-                    if next!() as i8 >= -64 {
-                        err!(Some(3))
-                    }
+                    check_cont_byte!(2);
+                    check_cont_byte!(3);
                 }
                 _ => err!(Some(1)),
             }
-            index += 1;
+            index += w;
         } else {
             // Ascii case, try to skip forward quickly.
             // When the pointer is aligned, read 2 words of data per iteration
