@@ -812,6 +812,7 @@ bitflags::bitflags! {
         const MEMTAG  = 1 << 6;
         const SHADOWCALLSTACK = 1 << 7;
         const KCFI    = 1 << 8;
+        const KERNELADDRESS = 1 << 9;
     }
 }
 
@@ -824,6 +825,7 @@ impl SanitizerSet {
             SanitizerSet::ADDRESS => "address",
             SanitizerSet::CFI => "cfi",
             SanitizerSet::KCFI => "kcfi",
+            SanitizerSet::KERNELADDRESS => "kernel-address",
             SanitizerSet::LEAK => "leak",
             SanitizerSet::MEMORY => "memory",
             SanitizerSet::MEMTAG => "memtag",
@@ -866,6 +868,7 @@ impl IntoIterator for SanitizerSet {
             SanitizerSet::SHADOWCALLSTACK,
             SanitizerSet::THREAD,
             SanitizerSet::HWADDRESS,
+            SanitizerSet::KERNELADDRESS,
         ]
         .iter()
         .copied()
@@ -2341,6 +2344,7 @@ impl Target {
                                 Some("address") => SanitizerSet::ADDRESS,
                                 Some("cfi") => SanitizerSet::CFI,
                                 Some("kcfi") => SanitizerSet::KCFI,
+                                Some("kernel-address") => SanitizerSet::KERNELADDRESS,
                                 Some("leak") => SanitizerSet::LEAK,
                                 Some("memory") => SanitizerSet::MEMORY,
                                 Some("memtag") => SanitizerSet::MEMTAG,
