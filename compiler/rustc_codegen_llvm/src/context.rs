@@ -145,8 +145,10 @@ pub unsafe fn create_module<'ll>(
     let llvm_version = llvm_util::get_version();
     if llvm_version < (16, 0, 0) {
         if sess.target.arch == "s390x" {
+            // See https://reviews.llvm.org/D131158
             target_data_layout = target_data_layout.replace("-v128:64", "");
         } else if sess.target.arch == "riscv64" {
+            // See https://reviews.llvm.org/D116735
             target_data_layout = target_data_layout.replace("-n32:64-", "-n64-");
         }
     }
