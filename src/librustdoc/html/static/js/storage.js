@@ -150,7 +150,7 @@ function switchTheme(newThemeName, saveTheme) {
     }
 
     if (!window.currentTheme) {
-        document.write("<link rel=\"stylesheet\" id=\"themeStyle\" href=\"" + newHref + "\">");
+        document.write(`<link rel="stylesheet" id="themeStyle" href="${newHref}">`);
         window.currentTheme = document.getElementById("themeStyle");
     } else if (newHref !== window.currentTheme.href) {
         window.currentTheme.href = newHref;
