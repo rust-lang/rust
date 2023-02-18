@@ -1,11 +1,10 @@
-use pulldown_cmark::{BrokenLink, Event, Options, Parser, Tag};
+use pulldown_cmark::{BrokenLink, Event, LinkType, Options, Parser, Tag};
 use rustc_ast as ast;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
-use std::cell::RefCell;
 use std::{cmp, mem};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -348,22 +347,37 @@ fn preprocess_link(link: &str) -> String {
     strip_generics_from_path(link).unwrap_or_else(|_| link.to_string())
 }
 
+/// Keep inline and reference links `[]`,
+/// but skip autolinks `<>` which we never consider to be intra-doc links.
+pub fn may_be_doc_link(link_type: LinkType) -> bool {
+    match link_type {
+        LinkType::Inline
+        | LinkType::Reference
+        | LinkType::ReferenceUnknown
+        | LinkType::Collapsed
+        | LinkType::CollapsedUnknown
+        | LinkType::Shortcut
+        | LinkType::ShortcutUnknown => true,
+        LinkType::Autolink | LinkType::Email => false,
+    }
+}
+
 /// Simplified version of `preprocessed_markdown_links` from rustdoc.
 /// Must return at least the same links as it, but may add some more links on top of that.
 pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<String> {
     let (doc_fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
     let doc = prepare_to_doc_link_resolution(&doc_fragments).into_values().next().unwrap();
 
-    let links = RefCell::new(Vec::new());
-    let mut callback = |link: BrokenLink<'_>| {
-        links.borrow_mut().push(preprocess_link(&link.reference));
-        None
-    };
-    for event in Parser::new_with_broken_link_callback(&doc, main_body_opts(), Some(&mut callback))
-    {
-        if let Event::Start(Tag::Link(_, dest, _)) = event {
-            links.borrow_mut().push(preprocess_link(&dest));
+    Parser::new_with_broken_link_callback(
+        &doc,
+        main_body_opts(),
+        Some(&mut |link: BrokenLink<'_>| Some((link.reference, "".into()))),
+    )
+    .filter_map(|event| match event {
+        Event::Start(Tag::Link(link_type, dest, _)) if may_be_doc_link(link_type) => {
+            Some(preprocess_link(&dest))
         }
-    }
-    links.into_inner()
+        _ => None,
+    })
+    .collect()
 }
