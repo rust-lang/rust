@@ -4,6 +4,7 @@ error: assert without any message
 LL |     assert!(foo());
    |     ^^^^^^^^^^^^^^
    |
+   = help: consider describing why the failing assert is problematic
    = note: `-D clippy::missing-assert-message` implied by `-D warnings`
 
 error: assert without any message
@@ -11,90 +12,120 @@ error: assert without any message
    |
 LL |     assert_eq!(foo(), foo());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:16:5
    |
 LL |     assert_ne!(foo(), foo());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:17:5
    |
 LL |     debug_assert!(foo());
    |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:18:5
    |
 LL |     debug_assert_eq!(foo(), foo());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:19:5
    |
 LL |     debug_assert_ne!(foo(), foo());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:24:5
    |
 LL |     assert!(bar!(true));
    |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:25:5
    |
 LL |     assert!(bar!(true, false));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:26:5
    |
 LL |     assert_eq!(bar!(true), foo());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:27:5
    |
 LL |     assert_ne!(bar!(true, true), bar!(true));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:32:5
    |
 LL |     assert!(foo(),);
    |     ^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:33:5
    |
 LL |     assert_eq!(foo(), foo(),);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:34:5
    |
 LL |     assert_ne!(foo(), foo(),);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:35:5
    |
 LL |     debug_assert!(foo(),);
    |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:36:5
    |
 LL |     debug_assert_eq!(foo(), foo(),);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: assert without any message
   --> $DIR/missing_assert_message.rs:37:5
    |
 LL |     debug_assert_ne!(foo(), foo(),);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider describing why the failing assert is problematic
 
 error: aborting due to 16 previous errors
 

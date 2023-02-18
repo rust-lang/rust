@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast;
 use rustc_ast::{
     token::{Token, TokenKind},
@@ -13,19 +13,23 @@ declare_clippy_lint! {
     /// Checks assertions without a custom panic message.
     ///
     /// ### Why is this bad?
-    /// If the assertion fails, the custom message may make it easier to understand what went wrong.
+    /// Without a good custom message, it'd be hard to understand what went wrong when the assertion fails.
+    /// A good custom message should be more about why the failure of the assertion is problematic
+    /// and not what is failed because the assertion already conveys that.
     ///
     /// ### Example
     /// ```rust
-    /// let threshold = 50;
-    /// let num = 42;
-    /// assert!(num < threshold);
+    /// # struct Service { ready: bool }
+    /// fn call(service: Service) {
+    ///     assert!(service.ready);
+    /// }
     /// ```
     /// Use instead:
     /// ```rust
-    /// let threshold = 50;
-    /// let num = 42;
-    /// assert!(num < threshold, "{num} is lower than threshold ({threshold})");
+    /// # struct Service { ready: bool }
+    /// fn call(service: Service) {
+    ///     assert!(service.ready, "`service.poll_ready()` must be called first to ensure that service is ready to receive requests");
+    /// }
     /// ```
     #[clippy::version = "1.69.0"]
     pub MISSING_ASSERT_MESSAGE,
@@ -56,11 +60,13 @@ impl EarlyLintPass for MissingAssertMessage {
         let num_separators = num_commas_on_arguments(mac_call);
 
         if num_separators < num_separators_needed {
-            span_lint(
+            span_lint_and_help(
                 cx,
                 MISSING_ASSERT_MESSAGE,
                 mac_call.span(),
                 "assert without any message",
+                None,
+                "consider describing why the failing assert is problematic",
             );
         }
     }
