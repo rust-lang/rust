@@ -1186,11 +1186,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return None;
             };
             debug!("checking call args for uses of inner_param: {:?}", args);
-            if args.contains(&Operand::Move(inner_param)) {
-                Some((loc, term))
-            } else {
-                None
-            }
+            args.contains(&Operand::Move(inner_param)).then_some((loc, term))
         }) else {
             debug!("no uses of inner_param found as a by-move call arg");
             return;
@@ -2596,7 +2592,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if is_closure {
                 None
             } else {
-                let ty = self.infcx.tcx.type_of(self.mir_def_id());
+                let ty = self.infcx.tcx.type_of(self.mir_def_id()).subst_identity();
                 match ty.kind() {
                     ty::FnDef(_, _) | ty::FnPtr(_) => self.annotate_fn_sig(
                         self.mir_def_id(),

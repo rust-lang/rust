@@ -96,7 +96,7 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
         history: Vec::new(),
         changed: false,
     };
-    let blocks = BasicBlock::new(0)..body.basic_blocks.next_index();
+    let blocks = START_BLOCK..body.basic_blocks.next_index();
     this.process_blocks(body, blocks);
     this.changed
 }
@@ -900,7 +900,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
 
             let kind = match parent_ty.ty.kind() {
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                    self.tcx.bound_type_of(def_id).subst(self.tcx, substs).kind()
+                    self.tcx.type_of(def_id).subst(self.tcx, substs).kind()
                 }
                 kind => kind,
             };

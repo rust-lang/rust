@@ -27,7 +27,7 @@ use rustc_middle::ty::{self, Predicate, Ty, TyCtxt};
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
 pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorGuaranteed> {
-    let dtor_self_type = tcx.type_of(drop_impl_did);
+    let dtor_self_type = tcx.type_of(drop_impl_did).subst_identity();
     let dtor_predicates = tcx.predicates_of(drop_impl_did);
     match dtor_self_type.kind() {
         ty::Adt(adt_def, self_to_impl_substs) => {

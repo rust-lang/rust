@@ -47,8 +47,7 @@ fn has_back_edge(
         return false;
     }
     // Check if any of the dominators of the node are also the node's successor.
-    doms.dominators(node)
-        .any(|dom| node_data.terminator().successors().into_iter().any(|succ| succ == dom))
+    doms.dominators(node).any(|dom| node_data.terminator().successors().any(|succ| succ == dom))
 }
 
 fn insert_counter(basic_block_data: &mut BasicBlockData<'_>) {

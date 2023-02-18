@@ -18,7 +18,7 @@ use rustc_hir::{
 };
 use rustc_hir::{MethodKind, Target, Unsafety};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
+use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
@@ -2174,7 +2174,7 @@ impl CheckAttrVisitor<'_> {
         let tcx = self.tcx;
         if target == Target::Fn {
             let Some(tokenstream) = tcx.get_diagnostic_item(sym::TokenStream) else {return};
-            let tokenstream = tcx.type_of(tokenstream);
+            let tokenstream = tcx.type_of(tokenstream).subst_identity();
 
             let id = hir_id.expect_owner();
             let hir_sig = tcx.hir().fn_sig_by_hir_id(hir_id).unwrap();

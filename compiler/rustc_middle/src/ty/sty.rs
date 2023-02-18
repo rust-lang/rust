@@ -933,6 +933,12 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
     }
 }
 
+impl rustc_errors::IntoDiagnosticArg for PolyExistentialTraitRef<'_> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub enum BoundVariableKind {
@@ -1187,7 +1193,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for SkipBindersAt<'tcx> {
             if index == self.index {
                 Err(())
             } else {
-                Ok(self.interner().mk_region(ty::ReLateBound(index.shifted_out(1), bv)))
+                Ok(self.interner().mk_re_late_bound(index.shifted_out(1), bv))
             }
         } else {
             r.try_super_fold_with(self)
@@ -2268,7 +2274,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Str | ty::Slice(_) => (tcx.types.usize, false),
             ty::Dynamic(..) => {
                 let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
-                (tcx.bound_type_of(dyn_metadata).subst(tcx, &[tail.into()]), false)
+                (tcx.type_of(dyn_metadata).subst(tcx, &[tail.into()]), false)
             },
 
             // type parameters only have unit metadata if they're sized, so return true

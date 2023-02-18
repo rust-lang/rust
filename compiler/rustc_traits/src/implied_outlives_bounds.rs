@@ -99,6 +99,9 @@ fn compute_implied_outlives_bounds<'tcx>(
             };
             match pred {
                 ty::PredicateKind::Clause(ty::Clause::Trait(..))
+                // FIXME(const_generics): Make sure that `<'a, 'b, const N: &'a &'b u32>` is sound
+                // if we ever support that
+                | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::Clause(ty::Clause::Projection(..))

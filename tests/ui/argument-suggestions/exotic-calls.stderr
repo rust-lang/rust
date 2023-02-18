@@ -2,65 +2,61 @@ error[E0057]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/exotic-calls.rs:2:5
    |
 LL |     t(1i32);
-   |     ^ ---- argument of type `i32` unexpected
+   |     ^ ----
+   |       |
+   |       unexpected argument of type `i32`
+   |       help: remove the extra argument
    |
 note: callable defined here
   --> $DIR/exotic-calls.rs:1:11
    |
 LL | fn foo<T: Fn()>(t: T) {
    |           ^^^^
-help: remove the extra argument
-   |
-LL |     t();
-   |      ~~
 
 error[E0057]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/exotic-calls.rs:7:5
    |
 LL |     t(1i32);
-   |     ^ ---- argument of type `i32` unexpected
+   |     ^ ----
+   |       |
+   |       unexpected argument of type `i32`
+   |       help: remove the extra argument
    |
 note: type parameter defined here
   --> $DIR/exotic-calls.rs:6:11
    |
 LL | fn bar(t: impl Fn()) {
    |           ^^^^^^^^^
-help: remove the extra argument
-   |
-LL |     t();
-   |      ~~
 
 error[E0057]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/exotic-calls.rs:16:5
    |
 LL |     baz()(1i32)
-   |     ^^^^^ ---- argument of type `i32` unexpected
+   |     ^^^^^ ----
+   |           |
+   |           unexpected argument of type `i32`
+   |           help: remove the extra argument
    |
 note: opaque type defined here
   --> $DIR/exotic-calls.rs:11:13
    |
 LL | fn baz() -> impl Fn() {
    |             ^^^^^^^^^
-help: remove the extra argument
-   |
-LL |     baz()()
-   |          ~~
 
 error[E0057]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/exotic-calls.rs:22:5
    |
 LL |     x(1i32);
-   |     ^ ---- argument of type `i32` unexpected
+   |     ^ ----
+   |       |
+   |       unexpected argument of type `i32`
+   |       help: remove the extra argument
    |
 note: closure defined here
   --> $DIR/exotic-calls.rs:21:13
    |
 LL |     let x = || {};
    |             ^^
-help: remove the extra argument
-   |
-LL |     x();
-   |      ~~
 
 error: aborting due to 4 previous errors
 

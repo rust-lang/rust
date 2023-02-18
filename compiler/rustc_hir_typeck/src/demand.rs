@@ -1269,10 +1269,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // ```
                 let ref_ty = match mutability {
                     hir::Mutability::Mut => {
-                        self.tcx.mk_mut_ref(self.tcx.mk_region(ty::ReStatic), checked_ty)
+                        self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, checked_ty)
                     }
                     hir::Mutability::Not => {
-                        self.tcx.mk_imm_ref(self.tcx.mk_region(ty::ReStatic), checked_ty)
+                        self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, checked_ty)
                     }
                 };
                 if self.can_coerce(ref_ty, expected) {
@@ -2037,7 +2037,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                    args: &[hir::Expr<'_>],
                                    kind: CallableKind| {
             let arg_idx = args.iter().position(|a| a.hir_id == expr.hir_id).unwrap();
-            let fn_ty = self.tcx.bound_type_of(def_id).0;
+            let fn_ty = self.tcx.type_of(def_id).skip_binder();
             if !fn_ty.is_fn() {
                 return;
             }

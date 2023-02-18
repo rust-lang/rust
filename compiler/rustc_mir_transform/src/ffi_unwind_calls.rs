@@ -49,7 +49,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
 
     let body = &*tcx.mir_built(ty::WithOptConstParam::unknown(local_def_id)).borrow();
 
-    let body_ty = tcx.type_of(def_id);
+    let body_ty = tcx.type_of(def_id).skip_binder();
     let body_abi = match body_ty.kind() {
         ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
         ty::Closure(..) => Abi::RustCall,

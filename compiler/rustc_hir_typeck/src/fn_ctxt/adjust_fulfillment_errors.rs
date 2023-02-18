@@ -312,7 +312,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // same rules that check_expr_struct uses for macro hygiene.
                 if self.tcx.adjust_ident(expr_field.ident, variant_def_id) == field.ident(self.tcx)
                 {
-                    return Some((expr_field.expr, self.tcx.type_of(field.did)));
+                    return Some((expr_field.expr, self.tcx.type_of(field.did).subst_identity()));
                 }
             }
         }
@@ -339,7 +339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         receiver: Option<&'tcx hir::Expr<'tcx>>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> bool {
-        let ty = self.tcx.type_of(def_id);
+        let ty = self.tcx.type_of(def_id).subst_identity();
         if !ty.is_fn() {
             return false;
         }
@@ -477,19 +477,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // This is the "trait" (meaning, the predicate "proved" by this `impl`) which provides the `Self` type we care about.
         // For the purposes of this function, we hope that it is a `struct` type, and that our current `expr` is a literal of
         // that struct type.
-        let impl_trait_self_ref: Option<ty::TraitRef<'tcx>> =
-            self.tcx.impl_trait_ref(obligation.impl_def_id).map(|impl_def| impl_def.skip_binder());
-
-        let Some(impl_trait_self_ref) = impl_trait_self_ref else {
-            // It is possible that this is absent. In this case, we make no progress.
-            return Err(expr);
+        let impl_trait_self_ref = if self.tcx.is_trait_alias(obligation.impl_or_alias_def_id) {
+            self.tcx.mk_trait_ref(
+                obligation.impl_or_alias_def_id,
+                ty::InternalSubsts::identity_for_item(self.tcx, obligation.impl_or_alias_def_id),
+            )
+        } else {
+            self.tcx
+                .impl_trait_ref(obligation.impl_or_alias_def_id)
+                .map(|impl_def| impl_def.skip_binder())
+                // It is possible that this is absent. In this case, we make no progress.
+                .ok_or(expr)?
         };
 
         // We only really care about the `Self` type itself, which we extract from the ref.
         let impl_self_ty: Ty<'tcx> = impl_trait_self_ref.self_ty();
 
         let impl_predicates: ty::GenericPredicates<'tcx> =
-            self.tcx.predicates_of(obligation.impl_def_id);
+            self.tcx.predicates_of(obligation.impl_or_alias_def_id);
         let Some(impl_predicate_index) = obligation.impl_def_predicate_index else {
             // We don't have the index, so we can only guess.
             return Err(expr);

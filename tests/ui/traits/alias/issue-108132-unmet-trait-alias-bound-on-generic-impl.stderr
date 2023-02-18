@@ -1,0 +1,25 @@
+error[E0599]: the function or associated item `f` exists for struct `Foo<()>`, but its trait bounds were not satisfied
+  --> $DIR/issue-108132-unmet-trait-alias-bound-on-generic-impl.rs:14:16
+   |
+LL | struct Foo<I>(I);
+   | ------------- function or associated item `f` not found for this struct
+...
+LL |     Foo::<()>::f()
+   |                ^ function or associated item cannot be called on `Foo<()>` due to unsatisfied trait bounds
+   |
+note: trait bound `(): Iterator` was not satisfied
+  --> $DIR/issue-108132-unmet-trait-alias-bound-on-generic-impl.rs:5:23
+   |
+LL | trait IteratorAlias = Iterator;
+   |       -------------   ^^^^^^^^ unsatisfied trait bound introduced here
+note: trait bound `(): IteratorAlias` was not satisfied
+  --> $DIR/issue-108132-unmet-trait-alias-bound-on-generic-impl.rs:9:9
+   |
+LL | impl<I: IteratorAlias> Foo<I> {
+   |         ^^^^^^^^^^^^^  ------
+   |         |
+   |         unsatisfied trait bound introduced here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

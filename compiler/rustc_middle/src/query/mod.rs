@@ -152,7 +152,7 @@ rustc_queries! {
     /// to an alias, it will "skip" this alias to return the aliased type.
     ///
     /// [`DefId`]: rustc_hir::def_id::DefId
-    query type_of(key: DefId) -> Ty<'tcx> {
+    query type_of(key: DefId) -> ty::EarlyBinder<Ty<'tcx>> {
         desc { |tcx|
             "{action} `{path}`",
             action = {
@@ -729,15 +729,14 @@ rustc_queries! {
     }
 
     /// Maps from a trait item to the trait item "descriptor".
-    query associated_item(key: DefId) -> &'tcx ty::AssocItem {
+    query associated_item(key: DefId) -> ty::AssocItem {
         desc { |tcx| "computing associated item data for `{}`", tcx.def_path_str(key) }
-        arena_cache
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
 
     /// Collects the associated items defined on a trait or impl.
-    query associated_items(key: DefId) -> &'tcx ty::AssocItems<'tcx> {
+    query associated_items(key: DefId) -> &'tcx ty::AssocItems {
         arena_cache
         desc { |tcx| "collecting associated items of `{}`", tcx.def_path_str(key) }
     }
@@ -781,7 +780,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query issue33140_self_ty(key: DefId) -> Option<ty::Ty<'tcx>> {
+    query issue33140_self_ty(key: DefId) -> Option<ty::EarlyBinder<ty::Ty<'tcx>>> {
         desc { |tcx| "computing Self type wrt issue #33140 `{}`", tcx.def_path_str(key) }
     }
 
@@ -1641,12 +1640,12 @@ rustc_queries! {
     /// Does lifetime resolution on items. Importantly, we can't resolve
     /// lifetimes directly on things like trait methods, because of trait params.
     /// See `rustc_resolve::late::lifetimes for details.
-    query resolve_lifetimes(_: hir::OwnerId) -> &'tcx ResolveLifetimes {
+    query resolve_bound_vars(_: hir::OwnerId) -> &'tcx ResolveBoundVars {
         arena_cache
         desc { "resolving lifetimes" }
     }
-    query named_region_map(_: hir::OwnerId) ->
-        Option<&'tcx FxHashMap<ItemLocalId, Region>> {
+    query named_variable_map(_: hir::OwnerId) ->
+        Option<&'tcx FxHashMap<ItemLocalId, ResolvedArg>> {
         desc { "looking up a named region" }
     }
     query is_late_bound_map(_: hir::OwnerId) -> Option<&'tcx FxIndexSet<ItemLocalId>> {

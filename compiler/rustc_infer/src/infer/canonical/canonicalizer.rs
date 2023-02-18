@@ -363,7 +363,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                      opportunistically resolved to {:?}",
                     vid, resolved_vid
                 );
-                let r = self.tcx.reuse_or_mk_region(r, ty::ReVar(resolved_vid));
+                let r = self.tcx.mk_re_var(resolved_vid);
                 self.canonicalize_mode.canonicalize_free_region(self, r)
             }
 
@@ -737,8 +737,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
         let br = ty::BoundRegion { var, kind: ty::BrAnon(var.as_u32(), None) };
-        let region = ty::ReLateBound(self.binder_index, br);
-        self.interner().mk_region(region)
+        self.interner().mk_re_late_bound(self.binder_index, br)
     }
 
     /// Given a type variable `ty_var` of the given kind, first check

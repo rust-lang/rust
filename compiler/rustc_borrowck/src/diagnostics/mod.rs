@@ -1185,7 +1185,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let parent_self_ty =
                         matches!(tcx.def_kind(parent_did), rustc_hir::def::DefKind::Impl { .. })
                             .then_some(parent_did)
-                            .and_then(|did| match tcx.type_of(did).kind() {
+                            .and_then(|did| match tcx.type_of(did).subst_identity().kind() {
                                 ty::Adt(def, ..) => Some(def.did()),
                                 _ => None,
                             });

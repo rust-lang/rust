@@ -80,6 +80,10 @@ pub struct Flags {
     pub llvm_profile_generate: bool,
     pub llvm_bolt_profile_generate: bool,
     pub llvm_bolt_profile_use: Option<String>,
+
+    /// Arguments appearing after `--` to be forwarded to tools,
+    /// e.g. `--fix-broken` or test arguments.
+    pub free_args: Option<Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -157,6 +161,12 @@ impl Default for Subcommand {
 
 impl Flags {
     pub fn parse(args: &[String]) -> Flags {
+        let (args, free_args) = if let Some(pos) = args.iter().position(|s| s == "--") {
+            let (args, free) = args.split_at(pos);
+            (args, Some(free[1..].to_vec()))
+        } else {
+            (args, None)
+        };
         let mut subcommand_help = String::from(
             "\
 Usage: x.py <subcommand> [options] [<paths>...]
@@ -709,6 +719,7 @@ Arguments:
             llvm_profile_generate: matches.opt_present("llvm-profile-generate"),
             llvm_bolt_profile_generate: matches.opt_present("llvm-bolt-profile-generate"),
             llvm_bolt_profile_use: matches.opt_str("llvm-bolt-profile-use"),
+            free_args,
         }
     }
 }

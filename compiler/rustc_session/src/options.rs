@@ -370,7 +370,7 @@ mod desc {
     pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub const parse_oom_strategy: &str = "either `panic` or `abort`";
     pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
-    pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `hwaddress`, `kcfi`, `leak`, `memory`, `memtag`, `shadow-call-stack`, or `thread`";
+    pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `hwaddress`, `kcfi`, `kernel-address`, `leak`, `memory`, `memtag`, `shadow-call-stack`, or `thread`";
     pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
     pub const parse_cfguard: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
@@ -684,6 +684,7 @@ mod parse {
                     "address" => SanitizerSet::ADDRESS,
                     "cfi" => SanitizerSet::CFI,
                     "kcfi" => SanitizerSet::KCFI,
+                    "kernel-address" => SanitizerSet::KERNELADDRESS,
                     "leak" => SanitizerSet::LEAK,
                     "memory" => SanitizerSet::MEMORY,
                     "memtag" => SanitizerSet::MEMTAG,
@@ -809,7 +810,7 @@ mod parse {
         if v.is_some() {
             let mut bool_arg = None;
             if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() { Some(MirSpanview::Statement) } else { None };
+                *slot = bool_arg.unwrap().then_some(MirSpanview::Statement);
                 return true;
             }
         }
@@ -850,7 +851,7 @@ mod parse {
         if v.is_some() {
             let mut bool_arg = None;
             if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() { Some(InstrumentCoverage::All) } else { None };
+                *slot = bool_arg.unwrap().then_some(InstrumentCoverage::All);
                 return true;
             }
         }

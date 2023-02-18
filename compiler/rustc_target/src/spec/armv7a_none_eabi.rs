@@ -27,7 +27,7 @@ pub fn target() -> Target {
         max_atomic_width: Some(64),
         panic_strategy: PanicStrategy::Abort,
         emit_debug_gdb_scripts: false,
-        c_enum_min_bits: 8,
+        c_enum_min_bits: Some(8),
         ..Default::default()
     };
     Target {

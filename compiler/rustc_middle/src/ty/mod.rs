@@ -552,6 +552,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(Clause::RegionOutlives(_))
             | PredicateKind::Clause(Clause::TypeOutlives(_))
             | PredicateKind::Clause(Clause::Projection(_))
+            | PredicateKind::Clause(Clause::ConstArgHasType(..))
             | PredicateKind::AliasEq(..)
             | PredicateKind::ObjectSafe(_)
             | PredicateKind::ClosureKind(_, _, _)
@@ -590,6 +591,10 @@ pub enum Clause<'tcx> {
     /// `where <T as TraitRef>::Name == X`, approximately.
     /// See the `ProjectionPredicate` struct for details.
     Projection(ProjectionPredicate<'tcx>),
+
+    /// Ensures that a const generic argument to a parameter `const N: u8`
+    /// is of type `u8`.
+    ConstArgHasType(Const<'tcx>, Ty<'tcx>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
@@ -1193,6 +1198,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(Clause::Trait(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Projection(..))
+            | PredicateKind::Clause(Clause::ConstArgHasType(..))
             | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
@@ -1213,6 +1219,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(Clause::Projection(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Trait(..))
+            | PredicateKind::Clause(Clause::ConstArgHasType(..))
             | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
@@ -1233,6 +1240,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(Clause::TypeOutlives(data)) => Some(predicate.rebind(data)),
             PredicateKind::Clause(Clause::Trait(..))
+            | PredicateKind::Clause(Clause::ConstArgHasType(..))
             | PredicateKind::Clause(Clause::Projection(..))
             | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
@@ -2017,7 +2025,7 @@ impl<'tcx> FieldDef {
     /// Returns the type of this field. The resulting type is not normalized. The `subst` is
     /// typically obtained via the second field of [`TyKind::Adt`].
     pub fn ty(&self, tcx: TyCtxt<'tcx>, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
-        tcx.bound_type_of(self.did).subst(tcx, subst)
+        tcx.type_of(self.did).subst(tcx, subst)
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
@@ -2198,7 +2206,7 @@ impl<'tcx> TyCtxt<'tcx> {
         Some(Ident::new(def, span))
     }
 
-    pub fn opt_associated_item(self, def_id: DefId) -> Option<&'tcx AssocItem> {
+    pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
         if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
             Some(self.associated_item(def_id))
         } else {

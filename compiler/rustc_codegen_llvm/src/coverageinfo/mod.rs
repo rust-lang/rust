@@ -27,8 +27,6 @@ use rustc_middle::ty::Instance;
 use std::cell::RefCell;
 use std::ffi::CString;
 
-use std::iter;
-
 pub mod mapgen;
 
 const UNUSED_FUNCTION_COUNTER_ID: CounterValueReference = CounterValueReference::START;
@@ -201,7 +199,7 @@ fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: DefId) -> Instance<
         tcx.symbol_name(instance).name,
         cx.fn_abi_of_fn_ptr(
             ty::Binder::dummy(tcx.mk_fn_sig(
-                iter::once(tcx.mk_unit()),
+                [tcx.mk_unit()],
                 tcx.mk_unit(),
                 false,
                 hir::Unsafety::Unsafe,

@@ -1093,7 +1093,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> ty::Region<'tcx> {
         let region_var =
             self.inner.borrow_mut().unwrap_region_constraints().new_region_var(universe, origin);
-        self.tcx.mk_region(ty::ReVar(region_var))
+        self.tcx.mk_re_var(region_var)
     }
 
     /// Return the universe that the region `r` was created in. For
@@ -1166,7 +1166,15 @@ impl<'tcx> InferCtxt<'tcx> {
                         origin,
                         val: ConstVariableValue::Unknown { universe: self.universe() },
                     });
-                self.tcx.mk_const(const_var_id, self.tcx.type_of(param.def_id)).into()
+                self.tcx
+                    .mk_const(
+                        const_var_id,
+                        self.tcx
+                            .type_of(param.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic"),
+                    )
+                    .into()
             }
         }
     }

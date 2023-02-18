@@ -414,7 +414,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 // Check that sym actually points to a function. Later passes
                 // depend on this.
                 hir::InlineAsmOperand::SymFn { anon_const } => {
-                    let ty = self.tcx.type_of(anon_const.def_id);
+                    let ty = self.tcx.type_of(anon_const.def_id).subst_identity();
                     match ty.kind() {
                         ty::Never | ty::Error(_) => {}
                         ty::FnDef(..) => {}

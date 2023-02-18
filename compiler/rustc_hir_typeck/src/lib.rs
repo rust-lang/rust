@@ -154,7 +154,7 @@ fn typeck_const_arg<'tcx>(
     tcx: TyCtxt<'tcx>,
     (did, param_did): (LocalDefId, DefId),
 ) -> &ty::TypeckResults<'tcx> {
-    let fallback = move || tcx.type_of(param_did);
+    let fallback = move || tcx.type_of(param_did).subst_identity();
     typeck_with_fallback(tcx, did, fallback)
 }
 
@@ -162,7 +162,7 @@ fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tc
     if let Some(param_did) = tcx.opt_const_param_of(def_id) {
         tcx.typeck_const_arg((def_id, param_did))
     } else {
-        let fallback = move || tcx.type_of(def_id.to_def_id());
+        let fallback = move || tcx.type_of(def_id.to_def_id()).subst_identity();
         typeck_with_fallback(tcx, def_id, fallback)
     }
 }

@@ -85,7 +85,7 @@ impl GenericParamDef {
     ) -> Option<EarlyBinder<ty::GenericArg<'tcx>>> {
         match self.kind {
             GenericParamDefKind::Type { has_default, .. } if has_default => {
-                Some(tcx.bound_type_of(self.def_id).map_bound(|t| t.into()))
+                Some(tcx.type_of(self.def_id).map_bound(|t| t.into()))
             }
             GenericParamDefKind::Const { has_default } if has_default => {
                 Some(tcx.const_param_default(self.def_id).map_bound(|c| c.into()))
@@ -100,10 +100,10 @@ impl GenericParamDef {
         preceding_substs: &[ty::GenericArg<'tcx>],
     ) -> ty::GenericArg<'tcx> {
         match &self.kind {
-            ty::GenericParamDefKind::Lifetime => tcx.re_error_misc().into(),
+            ty::GenericParamDefKind::Lifetime => tcx.mk_re_error_misc().into(),
             ty::GenericParamDefKind::Type { .. } => tcx.ty_error().into(),
             ty::GenericParamDefKind::Const { .. } => {
-                tcx.const_error(tcx.bound_type_of(self.def_id).subst(tcx, preceding_substs)).into()
+                tcx.const_error(tcx.type_of(self.def_id).subst(tcx, preceding_substs)).into()
             }
         }
     }

@@ -211,7 +211,7 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
             ..
         }) = item.kind
         {
-            let ty = cx.tcx.type_of(item.owner_id);
+            let ty = cx.tcx.type_of(item.owner_id).subst_identity();
             let is_automatically_derived = cx.tcx.has_attr(item.owner_id.to_def_id(), sym::automatically_derived);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
@@ -347,7 +347,7 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
             let has_copy_impl = cx.tcx.all_local_trait_impls(()).get(&copy_id).map_or(false, |impls| {
                 impls
                     .iter()
-                    .any(|&id| matches!(cx.tcx.type_of(id).kind(), ty::Adt(adt, _) if ty_adt.did() == adt.did()))
+                    .any(|&id| matches!(cx.tcx.type_of(id).subst_identity().kind(), ty::Adt(adt, _) if ty_adt.did() == adt.did()))
             });
             if !has_copy_impl {
                 return;

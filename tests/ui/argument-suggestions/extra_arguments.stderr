@@ -2,57 +2,54 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/extra_arguments.rs:7:3
    |
 LL |   empty("");
-   |   ^^^^^ -- argument of type `&'static str` unexpected
+   |   ^^^^^ --
+   |         |
+   |         unexpected argument of type `&'static str`
+   |         help: remove the extra argument
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:1:4
    |
 LL | fn empty() {}
    |    ^^^^^
-help: remove the extra argument
-   |
-LL |   empty();
-   |        ~~
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/extra_arguments.rs:9:3
    |
 LL |   one_arg(1, 1);
-   |   ^^^^^^^    - argument of type `{integer}` unexpected
+   |   ^^^^^^^  ---
+   |            | |
+   |            | unexpected argument of type `{integer}`
+   |            help: remove the extra argument
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg(_a: i32) {}
    |    ^^^^^^^ -------
-help: remove the extra argument
-   |
-LL |   one_arg(1);
-   |          ~~~
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/extra_arguments.rs:10:3
    |
 LL |   one_arg(1, "");
-   |   ^^^^^^^    -- argument of type `&'static str` unexpected
+   |   ^^^^^^^  ----
+   |            | |
+   |            | unexpected argument of type `&'static str`
+   |            help: remove the extra argument
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg(_a: i32) {}
    |    ^^^^^^^ -------
-help: remove the extra argument
-   |
-LL |   one_arg(1);
-   |          ~~~
 
 error[E0061]: this function takes 1 argument but 3 arguments were supplied
   --> $DIR/extra_arguments.rs:11:3
    |
 LL |   one_arg(1, "", 1.0);
-   |   ^^^^^^^    --  --- argument of type `{float}` unexpected
+   |   ^^^^^^^    --  --- unexpected argument of type `{float}`
    |              |
-   |              argument of type `&'static str` unexpected
+   |              unexpected argument of type `&'static str`
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:2:4
@@ -61,80 +58,77 @@ LL | fn one_arg(_a: i32) {}
    |    ^^^^^^^ -------
 help: remove the extra arguments
    |
-LL |   one_arg(1);
-   |          ~~~
+LL -   one_arg(1, "", 1.0);
+LL +   one_arg(1);
+   |
 
 error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/extra_arguments.rs:13:3
    |
 LL |   two_arg_same(1, 1, 1);
-   |   ^^^^^^^^^^^^       - argument of type `{integer}` unexpected
+   |   ^^^^^^^^^^^^     ---
+   |                    | |
+   |                    | unexpected argument of type `{integer}`
+   |                    help: remove the extra argument
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:3:4
    |
 LL | fn two_arg_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^^^^^ -------  -------
-help: remove the extra argument
-   |
-LL |   two_arg_same(1, 1);
-   |               ~~~~~~
 
 error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/extra_arguments.rs:14:3
    |
 LL |   two_arg_same(1, 1, 1.0);
-   |   ^^^^^^^^^^^^       --- argument of type `{float}` unexpected
+   |   ^^^^^^^^^^^^     -----
+   |                    | |
+   |                    | unexpected argument of type `{float}`
+   |                    help: remove the extra argument
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:3:4
    |
 LL | fn two_arg_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^^^^^ -------  -------
-help: remove the extra argument
-   |
-LL |   two_arg_same(1, 1);
-   |               ~~~~~~
 
 error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/extra_arguments.rs:16:3
    |
 LL |   two_arg_diff(1, 1, "");
-   |   ^^^^^^^^^^^^    - argument of type `{integer}` unexpected
+   |   ^^^^^^^^^^^^  ---
+   |                 | |
+   |                 | unexpected argument of type `{integer}`
+   |                 help: remove the extra argument
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:4:4
    |
 LL | fn two_arg_diff(_a: i32, _b: &str) {}
    |    ^^^^^^^^^^^^ -------  --------
-help: remove the extra argument
-   |
-LL |   two_arg_diff(1, "");
-   |               ~~~~~~~
 
 error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/extra_arguments.rs:17:3
    |
 LL |   two_arg_diff(1, "", "");
-   |   ^^^^^^^^^^^^        -- argument of type `&'static str` unexpected
+   |   ^^^^^^^^^^^^      ----
+   |                     | |
+   |                     | unexpected argument of type `&'static str`
+   |                     help: remove the extra argument
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:4:4
    |
 LL | fn two_arg_diff(_a: i32, _b: &str) {}
    |    ^^^^^^^^^^^^ -------  --------
-help: remove the extra argument
-   |
-LL |   two_arg_diff(1, "");
-   |               ~~~~~~~
 
 error[E0061]: this function takes 2 arguments but 4 arguments were supplied
   --> $DIR/extra_arguments.rs:18:3
    |
 LL |   two_arg_diff(1, 1, "", "");
-   |   ^^^^^^^^^^^^    -      -- argument of type `&'static str` unexpected
+   |   ^^^^^^^^^^^^    -      -- unexpected argument of type `&'static str`
    |                   |
-   |                   argument of type `{integer}` unexpected
+   |                   unexpected argument of type `{integer}`
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:4:4
@@ -143,16 +137,17 @@ LL | fn two_arg_diff(_a: i32, _b: &str) {}
    |    ^^^^^^^^^^^^ -------  --------
 help: remove the extra arguments
    |
-LL |   two_arg_diff(1, "");
-   |               ~~~~~~~
+LL -   two_arg_diff(1, 1, "", "");
+LL +   two_arg_diff(1, "");
+   |
 
 error[E0061]: this function takes 2 arguments but 4 arguments were supplied
   --> $DIR/extra_arguments.rs:19:3
    |
 LL |   two_arg_diff(1, "", 1, "");
-   |   ^^^^^^^^^^^^        -  -- argument of type `&'static str` unexpected
+   |   ^^^^^^^^^^^^        -  -- unexpected argument of type `&'static str`
    |                       |
-   |                       argument of type `{integer}` unexpected
+   |                       unexpected argument of type `{integer}`
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:4:4
@@ -161,78 +156,78 @@ LL | fn two_arg_diff(_a: i32, _b: &str) {}
    |    ^^^^^^^^^^^^ -------  --------
 help: remove the extra arguments
    |
-LL |   two_arg_diff(1, "");
-   |               ~~~~~~~
+LL -   two_arg_diff(1, "", 1, "");
+LL +   two_arg_diff(1, "");
+   |
 
 error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/extra_arguments.rs:22:3
    |
 LL |   two_arg_same(1, 1,     "");
-   |   ^^^^^^^^^^^^           -- argument of type `&'static str` unexpected
+   |   ^^^^^^^^^^^^     --------
+   |                    |     |
+   |                    |     unexpected argument of type `&'static str`
+   |                    help: remove the extra argument
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:3:4
    |
 LL | fn two_arg_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^^^^^ -------  -------
-help: remove the extra argument
-   |
-LL |   two_arg_same(1, 1);
-   |               ~~~~~~
 
 error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/extra_arguments.rs:23:3
    |
 LL |   two_arg_diff(1, 1,     "");
-   |   ^^^^^^^^^^^^    - argument of type `{integer}` unexpected
+   |   ^^^^^^^^^^^^  ---
+   |                 | |
+   |                 | unexpected argument of type `{integer}`
+   |                 help: remove the extra argument
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:4:4
    |
 LL | fn two_arg_diff(_a: i32, _b: &str) {}
    |    ^^^^^^^^^^^^ -------  --------
-help: remove the extra argument
-   |
-LL |   two_arg_diff(1, "");
-   |               ~~~~~~~
 
 error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/extra_arguments.rs:24:3
    |
-LL |   two_arg_same(
-   |   ^^^^^^^^^^^^
-...
-LL |     ""
-   |     -- argument of type `&'static str` unexpected
+LL |     two_arg_same(
+   |     ^^^^^^^^^^^^
+LL |       1,
+LL |       1,
+   |  ______-
+LL | |     ""
+   | |     --
+   | |_____||
+   |       |help: remove the extra argument
+   |       unexpected argument of type `&'static str`
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:3:4
    |
 LL | fn two_arg_same(_a: i32, _b: i32) {}
    |    ^^^^^^^^^^^^ -------  -------
-help: remove the extra argument
-   |
-LL |   two_arg_same(1, 1);
-   |               ~~~~~~
 
 error[E0061]: this function takes 2 arguments but 3 arguments were supplied
   --> $DIR/extra_arguments.rs:30:3
    |
-LL |   two_arg_diff(
-   |   ^^^^^^^^^^^^
-LL |     1,
-LL |     1,
-   |     - argument of type `{integer}` unexpected
+LL |     two_arg_diff(
+   |     ^^^^^^^^^^^^
+LL |       1,
+   |  ______-
+LL | |     1,
+   | |     -
+   | |     |
+   | |_____unexpected argument of type `{integer}`
+   |       help: remove the extra argument
    |
 note: function defined here
   --> $DIR/extra_arguments.rs:4:4
    |
 LL | fn two_arg_diff(_a: i32, _b: &str) {}
    |    ^^^^^^^^^^^^ -------  --------
-help: remove the extra argument
-   |
-LL |   two_arg_diff(1, "");
-   |               ~~~~~~~
 
 error: aborting due to 14 previous errors
 

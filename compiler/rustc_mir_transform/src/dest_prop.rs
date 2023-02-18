@@ -136,8 +136,8 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::{dump_mir, PassWhere};
 use rustc_middle::mir::{
-    traversal, BasicBlock, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place,
-    Rvalue, Statement, StatementKind, TerminatorKind,
+    traversal, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place, Rvalue,
+    Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::MaybeLiveLocals;
@@ -468,7 +468,7 @@ impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
             // to reuse the allocation.
             write_info: write_info_alloc,
             // Doesn't matter what we put here, will be overwritten before being used
-            at: Location { block: BasicBlock::from_u32(0), statement_index: 0 },
+            at: Location::START,
         };
         this.internal_filter_liveness();
     }

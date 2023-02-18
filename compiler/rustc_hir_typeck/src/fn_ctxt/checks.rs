@@ -755,15 +755,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         errors.drain_filter(|error| {
-                let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(e))) = error else { return false };
-                let (provided_ty, provided_span) = provided_arg_tys[*provided_idx];
-                let trace = mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
-                if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308(_)) {
-                    self.err_ctxt().report_and_explain_type_error(trace, *e).emit();
-                    return true;
-                }
-                false
-            });
+            let Error::Invalid(
+                provided_idx,
+                expected_idx,
+                Compatibility::Incompatible(Some(e)),
+            ) = error else { return false };
+            let (provided_ty, provided_span) = provided_arg_tys[*provided_idx];
+            let trace =
+                mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
+            if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308(_)) {
+                self.err_ctxt().report_and_explain_type_error(trace, *e).emit();
+                return true;
+            }
+            false
+        });
 
         // We're done if we found errors, but we already emitted them.
         if errors.is_empty() {
@@ -864,7 +869,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let mut suggestion_text = SuggestionText::None;
 
+        let ty_to_snippet = |ty: Ty<'tcx>, expected_idx: ExpectedIdx| {
+            if ty.is_unit() {
+                "()".to_string()
+            } else if ty.is_suggestable(tcx, false) {
+                format!("/* {} */", ty)
+            } else if let Some(fn_def_id) = fn_def_id
+                && self.tcx.def_kind(fn_def_id).is_fn_like()
+                && let self_implicit =
+                    matches!(call_expr.kind, hir::ExprKind::MethodCall(..)) as usize
+                && let Some(arg) = self.tcx.fn_arg_names(fn_def_id)
+                    .get(expected_idx.as_usize() + self_implicit)
+                && arg.name != kw::SelfLower
+            {
+                format!("/* {} */", arg.name)
+            } else {
+                "/* value */".to_string()
+            }
+        };
+
         let mut errors = errors.into_iter().peekable();
+        let mut suggestions = vec![];
         while let Some(error) = errors.next() {
             match error {
                 Error::Invalid(provided_idx, expected_idx, compatibility) => {
@@ -905,7 +930,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "".to_string()
                     };
                     labels
-                        .push((provided_span, format!("argument{} unexpected", provided_ty_name)));
+                        .push((provided_span, format!("unexpected argument{}", provided_ty_name)));
+                    let mut span = provided_span;
+                    if arg_idx.index() > 0
+                        && let Some((_, prev)) = provided_arg_tys
+                            .get(ProvidedIdx::from_usize(arg_idx.index() - 1)
+                    ) {
+                        // Include previous comma
+                        span = span.with_lo(prev.hi());
+                    } else if let Some((_, next)) = provided_arg_tys.get(
+                        ProvidedIdx::from_usize(arg_idx.index() + 1),
+                    ) {
+                        // Include next comma
+                        span = span.until(*next);
+                    }
+                    suggestions.push((span, String::new()));
+
                     suggestion_text = match suggestion_text {
                         SuggestionText::None => SuggestionText::Remove(false),
                         SuggestionText::Remove(_) => SuggestionText::Remove(true),
@@ -1095,6 +1135,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        // Incorporate the argument changes in the removal suggestion.
+        // When a type is *missing*, and the rest are additional, we want to suggest these with a
+        // multipart suggestion, but in order to do so we need to figure out *where* the arg that
+        // was provided but had the wrong type should go, because when looking at `expected_idx`
+        // that is the position in the argument list in the definition, while `provided_idx` will
+        // not be present. So we have to look at what the *last* provided position was, and point
+        // one after to suggest the replacement. FIXME(estebank): This is hacky, and there's
+        // probably a better more involved change we can make to make this work.
+        // For example, if we have
+        // ```
+        // fn foo(i32, &'static str) {}
+        // foo((), (), ());
+        // ```
+        // what should be suggested is
+        // ```
+        // foo(/* i32 */, /* &str */);
+        // ```
+        // which includes the replacement of the first two `()` for the correct type, and the
+        // removal of the last `()`.
+        let mut prev = -1;
+        for (expected_idx, provided_idx) in matched_inputs.iter_enumerated() {
+            // We want to point not at the *current* argument expression index, but rather at the
+            // index position where it *should have been*, which is *after* the previous one.
+            if let Some(provided_idx) = provided_idx {
+                prev = provided_idx.index() as i64;
+            }
+            let idx = ProvidedIdx::from_usize((prev + 1) as usize);
+            if let None = provided_idx
+                && let Some((_, arg_span)) = provided_arg_tys.get(idx)
+            {
+                // There is a type that was *not* found anywhere, so it isn't a move, but a
+                // replacement and we look at what type it should have been. This will allow us
+                // To suggest a multipart suggestion when encountering `foo(1, "")` where the def
+                // was `fn foo(())`.
+                let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
+                suggestions.push((*arg_span, ty_to_snippet(expected_ty, expected_idx)));
+            }
+        }
+
         // If we have less than 5 things to say, it would be useful to call out exactly what's wrong
         if labels.len() <= 5 {
             for (span, label) in labels {
@@ -1112,7 +1191,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(format!("provide the argument{}", if plural { "s" } else { "" }))
             }
             SuggestionText::Remove(plural) => {
-                Some(format!("remove the extra argument{}", if plural { "s" } else { "" }))
+                err.multipart_suggestion(
+                    &format!("remove the extra argument{}", if plural { "s" } else { "" }),
+                    suggestions,
+                    Applicability::HasPlaceholders,
+                );
+                None
             }
             SuggestionText::Swap => Some("swap these arguments".to_string()),
             SuggestionText::Reorder => Some("reorder these arguments".to_string()),
@@ -1151,20 +1235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     // Propose a placeholder of the correct type
                     let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
-                    if expected_ty.is_unit() {
-                        "()".to_string()
-                    } else if expected_ty.is_suggestable(tcx, false) {
-                        format!("/* {} */", expected_ty)
-                    } else if let Some(fn_def_id) = fn_def_id
-                        && self.tcx.def_kind(fn_def_id).is_fn_like()
-                        && let self_implicit = matches!(call_expr.kind, hir::ExprKind::MethodCall(..)) as usize
-                        && let Some(arg) = self.tcx.fn_arg_names(fn_def_id).get(expected_idx.as_usize() + self_implicit)
-                        && arg.name != kw::SelfLower
-                    {
-                        format!("/* {} */", arg.name)
-                    } else {
-                        "/* value */".to_string()
-                    }
+                    ty_to_snippet(expected_ty, expected_idx)
                 };
                 suggestion += &suggestion_text;
             }
@@ -1669,7 +1740,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match *qpath {
             QPath::Resolved(ref maybe_qself, ref path) => {
                 let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself).raw);
-                let ty = self.astconv().res_to_ty(self_ty, path, true);
+                let ty = self.astconv().res_to_ty(self_ty, path, hir_id, true);
                 (path.res, self.handle_raw_ty(path_span, ty))
             }
             QPath::TypeRelative(ref qself, ref segment) => {

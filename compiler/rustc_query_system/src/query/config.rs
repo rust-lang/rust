@@ -20,10 +20,9 @@ pub trait QueryConfig<Qcx: QueryContext> {
     const NAME: &'static str;
 
     type Key: DepNodeParams<Qcx::DepContext> + Eq + Hash + Clone + Debug;
-    type Value: Debug;
-    type Stored: Debug + Copy + std::borrow::Borrow<Self::Value>;
+    type Value: Debug + Copy;
 
-    type Cache: QueryCache<Key = Self::Key, Stored = Self::Stored, Value = Self::Value>;
+    type Cache: QueryCache<Key = Self::Key, Value = Self::Value>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_state<'a>(tcx: Qcx) -> &'a QueryState<Self::Key, Qcx::DepKind>
@@ -38,9 +37,9 @@ pub trait QueryConfig<Qcx: QueryContext> {
     fn cache_on_disk(tcx: Qcx::DepContext, key: &Self::Key) -> bool;
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
-    fn execute_query(tcx: Qcx::DepContext, k: Self::Key) -> Self::Stored;
+    fn execute_query(tcx: Qcx::DepContext, k: Self::Key) -> Self::Value;
 
-    fn compute(tcx: Qcx, key: &Self::Key) -> fn(Qcx::DepContext, Self::Key) -> Self::Value;
+    fn compute(tcx: Qcx, key: Self::Key) -> Self::Value;
 
     fn try_load_from_disk(qcx: Qcx, idx: &Self::Key) -> TryLoadFromDisk<Qcx, Self>;
 

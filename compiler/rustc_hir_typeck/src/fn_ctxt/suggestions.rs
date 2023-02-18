@@ -1378,7 +1378,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Same item
             return false;
         }
-        let item_ty = self.tcx.type_of(item.def_id);
+        let item_ty = self.tcx.type_of(item.def_id).subst_identity();
         // FIXME(compiler-errors): This check is *so* rudimentary
         if item_ty.needs_subst() {
             return false;

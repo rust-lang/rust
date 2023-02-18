@@ -182,7 +182,7 @@ impl<'tcx> RegionHighlightMode<'tcx> {
 
     /// Convenience wrapper for `highlighting_region`.
     pub fn highlighting_region_vid(&mut self, vid: ty::RegionVid, number: usize) {
-        self.highlighting_region(self.tcx.mk_region(ty::ReVar(vid)), number)
+        self.highlighting_region(self.tcx.mk_re_var(vid), number)
     }
 
     /// Returns `Some(n)` with the number to use for the given region, if any.
@@ -754,7 +754,7 @@ pub trait PrettyPrinter<'tcx>:
                         // NOTE: I know we should check for NO_QUERIES here, but it's alright.
                         // `type_of` on a type alias or assoc type should never cause a cycle.
                         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: d, .. }) =
-                            *self.tcx().type_of(parent).kind()
+                            *self.tcx().type_of(parent).subst_identity().kind()
                         {
                             if d == def_id {
                                 // If the type alias directly starts with the `impl` of the
@@ -2271,7 +2271,7 @@ impl<'a, 'tcx> ty::ir::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
         };
         if let ty::ReLateBound(debruijn1, br) = *region {
             assert_eq!(debruijn1, ty::INNERMOST);
-            self.tcx.mk_region(ty::ReLateBound(self.current_index, br))
+            self.tcx.mk_re_late_bound(self.current_index, br)
         } else {
             region
         }
@@ -2383,10 +2383,10 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = ty::BrNamed(CRATE_DEF_ID.to_def_id(), name);
-                                return tcx.mk_region(ty::ReLateBound(
+                                return tcx.mk_re_late_bound(
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
-                                ));
+                                );
                             }
                         }
 
@@ -2398,10 +2398,10 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = ty::BrNamed(def_id, name);
-                                return tcx.mk_region(ty::ReLateBound(
+                                return tcx.mk_re_late_bound(
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
-                                ));
+                                );
                             }
                         }
 
@@ -2411,10 +2411,10 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = br.kind;
-                                return tcx.mk_region(ty::ReLateBound(
+                                return tcx.mk_re_late_bound(
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
-                                ));
+                                );
                             }
                         }
 
@@ -2426,7 +2426,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     start_or_continue(&mut self, "for<", ", ");
                     do_continue(&mut self, name);
                 }
-                tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion { var: br.var, kind }))
+                tcx.mk_re_late_bound(ty::INNERMOST, ty::BoundRegion { var: br.var, kind })
             };
             let mut folder = RegionFolder {
                 tcx,
@@ -2822,15 +2822,18 @@ define_print_and_forward_display! {
             ty::PredicateKind::Clause(ty::Clause::RegionOutlives(predicate)) => p!(print(predicate)),
             ty::PredicateKind::Clause(ty::Clause::TypeOutlives(predicate)) => p!(print(predicate)),
             ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) => p!(print(predicate)),
+            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                p!("the constant `", print(ct), "` has type `", print(ty), "`")
+            },
             ty::PredicateKind::WellFormed(arg) => p!(print(arg), " well-formed"),
             ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 p!("the trait `", print_def_path(trait_def_id, &[]), "` is object-safe")
             }
-            ty::PredicateKind::ClosureKind(closure_def_id, _closure_substs, kind) => {
-                p!("the closure `",
+            ty::PredicateKind::ClosureKind(closure_def_id, _closure_substs, kind) => p!(
+                "the closure `",
                 print_value_path(closure_def_id, &[]),
-                write("` implements the trait `{}`", kind))
-            }
+                write("` implements the trait `{}`", kind)
+            ),
             ty::PredicateKind::ConstEvaluatable(ct) => {
                 p!("the constant `", print(ct), "` can be evaluated")
             }

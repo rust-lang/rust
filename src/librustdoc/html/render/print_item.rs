@@ -1855,7 +1855,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
 
     let tcx = cx.tcx();
     let param_env = tcx.param_env(ty_def_id);
-    let ty = tcx.type_of(ty_def_id);
+    let ty = tcx.type_of(ty_def_id).subst_identity();
     match tcx.layout_of(param_env.and(ty)) {
         Ok(ty_layout) => {
             writeln!(

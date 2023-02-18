@@ -954,10 +954,10 @@ impl Session {
     /// Checks if LLVM lifetime markers should be emitted.
     pub fn emit_lifetime_markers(&self) -> bool {
         self.opts.optimize != config::OptLevel::No
-        // AddressSanitizer uses lifetimes to detect use after scope bugs.
+        // AddressSanitizer and KernelAddressSanitizer uses lifetimes to detect use after scope bugs.
         // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
         // HWAddressSanitizer will use lifetimes to detect use after scope bugs in the future.
-        || self.opts.unstable_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
+        || self.opts.unstable_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
     }
 
     pub fn is_proc_macro_attr(&self, attr: &Attribute) -> bool {

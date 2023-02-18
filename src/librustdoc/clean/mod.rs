@@ -11,6 +11,8 @@ pub(crate) mod types;
 pub(crate) mod utils;
 
 use rustc_ast as ast;
+use rustc_ast::token::{Token, TokenKind};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_hir as hir;
@@ -19,7 +21,7 @@ use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::PredicateOrigin;
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
-use rustc_middle::middle::resolve_lifetime as rl;
+use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::ty::fold::ir::TypeFolder;
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::TypeVisitable;
@@ -198,11 +200,11 @@ fn clean_poly_trait_ref_with_bindings<'tcx>(
 }
 
 fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> Lifetime {
-    let def = cx.tcx.named_region(lifetime.hir_id);
+    let def = cx.tcx.named_bound_var(lifetime.hir_id);
     if let Some(
-        rl::Region::EarlyBound(node_id)
-        | rl::Region::LateBound(_, _, node_id)
-        | rl::Region::Free(_, node_id),
+        rbv::ResolvedArg::EarlyBound(node_id)
+        | rbv::ResolvedArg::LateBound(_, _, node_id)
+        | rbv::ResolvedArg::Free(_, node_id),
     ) = def
     {
         if let Some(lt) = cx.substs.get(&node_id).and_then(|p| p.as_lt()).cloned() {
@@ -215,7 +217,11 @@ fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> 
 pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg, cx: &mut DocContext<'tcx>) -> Constant {
     let def_id = cx.tcx.hir().body_owner_def_id(constant.value.body).to_def_id();
     Constant {
-        type_: clean_middle_ty(ty::Binder::dummy(cx.tcx.type_of(def_id)), cx, Some(def_id)),
+        type_: clean_middle_ty(
+            ty::Binder::dummy(cx.tcx.type_of(def_id).subst_identity()),
+            cx,
+            Some(def_id),
+        ),
         kind: ConstantKind::Anonymous { body: constant.value.body },
     }
 }
@@ -314,6 +320,7 @@ pub(crate) fn clean_predicate<'tcx>(
         // FIXME(generic_const_exprs): should this do something?
         ty::PredicateKind::ConstEvaluatable(..) => None,
         ty::PredicateKind::WellFormed(..) => None,
+        ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => None,
 
         ty::PredicateKind::Subtype(..)
         | ty::PredicateKind::AliasEq(..)
@@ -480,7 +487,7 @@ fn clean_generic_param_def<'tcx>(
         ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
             let default = if has_default {
                 Some(clean_middle_ty(
-                    ty::Binder::dummy(cx.tcx.type_of(def.def_id)),
+                    ty::Binder::dummy(cx.tcx.type_of(def.def_id).subst_identity()),
                     cx,
                     Some(def.def_id),
                 ))
@@ -502,7 +509,12 @@ fn clean_generic_param_def<'tcx>(
             GenericParamDefKind::Const {
                 did: def.def_id,
                 ty: Box::new(clean_middle_ty(
-                    ty::Binder::dummy(cx.tcx.type_of(def.def_id)),
+                    ty::Binder::dummy(
+                        cx.tcx
+                            .type_of(def.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic"),
+                    ),
                     cx,
                     Some(def.def_id),
                 )),
@@ -1212,7 +1224,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
     let kind = match assoc_item.kind {
         ty::AssocKind::Const => {
             let ty = clean_middle_ty(
-                ty::Binder::dummy(tcx.type_of(assoc_item.def_id)),
+                ty::Binder::dummy(tcx.type_of(assoc_item.def_id).subst_identity()),
                 cx,
                 Some(assoc_item.def_id),
             );
@@ -1251,7 +1263,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
 
             if assoc_item.fn_has_self_parameter {
                 let self_ty = match assoc_item.container {
-                    ty::ImplContainer => tcx.type_of(assoc_item.container_id(tcx)),
+                    ty::ImplContainer => tcx.type_of(assoc_item.container_id(tcx)).subst_identity(),
                     ty::TraitContainer => tcx.types.self_param,
                 };
                 let self_arg_ty = sig.input(0).skip_binder();
@@ -1398,7 +1410,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                     AssocTypeItem(
                         Box::new(Typedef {
                             type_: clean_middle_ty(
-                                ty::Binder::dummy(tcx.type_of(assoc_item.def_id)),
+                                ty::Binder::dummy(tcx.type_of(assoc_item.def_id).subst_identity()),
                                 cx,
                                 Some(assoc_item.def_id),
                             ),
@@ -1416,7 +1428,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                 AssocTypeItem(
                     Box::new(Typedef {
                         type_: clean_middle_ty(
-                            ty::Binder::dummy(tcx.type_of(assoc_item.def_id)),
+                            ty::Binder::dummy(tcx.type_of(assoc_item.def_id).subst_identity()),
                             cx,
                             Some(assoc_item.def_id),
                         ),
@@ -1926,7 +1938,11 @@ pub(crate) fn clean_middle_field<'tcx>(field: &ty::FieldDef, cx: &mut DocContext
     clean_field_with_def_id(
         field.did,
         field.name,
-        clean_middle_ty(ty::Binder::dummy(cx.tcx.type_of(field.did)), cx, Some(field.did)),
+        clean_middle_ty(
+            ty::Binder::dummy(cx.tcx.type_of(field.did).subst_identity()),
+            cx,
+            Some(field.did),
+        ),
         cx,
     )
 }
@@ -2079,8 +2095,8 @@ impl<'hir> hir::intravisit::Visitor<'hir> for OneLevelVisitor<'hir> {
     fn visit_item(&mut self, item: &'hir hir::Item<'hir>) {
         if self.item.is_none()
             && item.ident == self.looking_for
-            && matches!(item.kind, hir::ItemKind::Use(_, _))
-            || item.owner_id.def_id == self.target_def_id
+            && (matches!(item.kind, hir::ItemKind::Use(_, _))
+                || item.owner_id.def_id == self.target_def_id)
         {
             self.item = Some(item);
         }
@@ -2096,30 +2112,145 @@ fn get_all_import_attributes<'hir>(
     tcx: TyCtxt<'hir>,
     target_def_id: LocalDefId,
     attributes: &mut Vec<ast::Attribute>,
+    is_inline: bool,
 ) {
     let hir_map = tcx.hir();
     let mut visitor = OneLevelVisitor::new(hir_map, target_def_id);
     let mut visited = FxHashSet::default();
     // If the item is an import and has at least a path with two parts, we go into it.
-    while let hir::ItemKind::Use(path, _) = item.kind &&
-        path.segments.len() > 1 &&
-        let hir::def::Res::Def(_, def_id) = path.segments[path.segments.len() - 2].res &&
-        visited.insert(def_id)
-    {
-        if let Some(hir::Node::Item(parent_item)) = hir_map.get_if_local(def_id) {
-            // We add the attributes from this import into the list.
-            attributes.extend_from_slice(hir_map.attrs(item.hir_id()));
-            // We get the `Ident` we will be looking for into `item`.
-            let looking_for = path.segments[path.segments.len() - 1].ident;
-            visitor.reset(looking_for);
-            hir::intravisit::walk_item(&mut visitor, parent_item);
-            if let Some(i) = visitor.item {
-                item = i;
-            } else {
-                break;
+    while let hir::ItemKind::Use(path, _) = item.kind && visited.insert(item.hir_id()) {
+        // We add the attributes from this import into the list.
+        add_without_unwanted_attributes(attributes, hir_map.attrs(item.hir_id()), is_inline);
+
+        let def_id = if path.segments.len() > 1 {
+            match path.segments[path.segments.len() - 2].res {
+                hir::def::Res::Def(_, def_id) => def_id,
+                _ => break,
             }
         } else {
+            // If the path doesn't have a parent, then the parent is the current module.
+            tcx.parent(item.owner_id.def_id.to_def_id())
+        };
+
+        let Some(parent) = hir_map.get_if_local(def_id) else { break };
+
+        // We get the `Ident` we will be looking for into `item`.
+        let looking_for = path.segments[path.segments.len() - 1].ident;
+        visitor.reset(looking_for);
+
+        match parent {
+            hir::Node::Item(parent_item) => {
+                hir::intravisit::walk_item(&mut visitor, parent_item);
+            }
+            hir::Node::Crate(m) => {
+                hir::intravisit::walk_mod(
+                    &mut visitor,
+                    m,
+                    tcx.local_def_id_to_hir_id(def_id.as_local().unwrap()),
+                );
+            }
+            _ => break,
+        }
+        if let Some(i) = visitor.item {
+            item = i;
+        } else {
             break;
+        }
+    }
+}
+
+fn filter_tokens_from_list(
+    args_tokens: TokenStream,
+    should_retain: impl Fn(&TokenTree) -> bool,
+) -> Vec<TokenTree> {
+    let mut tokens = Vec::with_capacity(args_tokens.len());
+    let mut skip_next_comma = false;
+    for token in args_tokens.into_trees() {
+        match token {
+            TokenTree::Token(Token { kind: TokenKind::Comma, .. }, _) if skip_next_comma => {
+                skip_next_comma = false;
+            }
+            token if should_retain(&token) => {
+                skip_next_comma = false;
+                tokens.push(token);
+            }
+            _ => {
+                skip_next_comma = true;
+            }
+        }
+    }
+    tokens
+}
+
+/// When inlining items, we merge its attributes (and all the reexports attributes too) with the
+/// final reexport. For example:
+///
+/// ```ignore (just an example)
+/// #[doc(hidden, cfg(feature = "foo"))]
+/// pub struct Foo;
+///
+/// #[doc(cfg(feature = "bar"))]
+/// #[doc(hidden, no_inline)]
+/// pub use Foo as Foo1;
+///
+/// #[doc(inline)]
+/// pub use Foo2 as Bar;
+/// ```
+///
+/// So `Bar` at the end will have both `cfg(feature = "...")`. However, we don't want to merge all
+/// attributes so we filter out the following ones:
+/// * `doc(inline)`
+/// * `doc(no_inline)`
+/// * `doc(hidden)`
+fn add_without_unwanted_attributes(
+    attrs: &mut Vec<ast::Attribute>,
+    new_attrs: &[ast::Attribute],
+    is_inline: bool,
+) {
+    // If it's `#[doc(inline)]`, we don't want all attributes, otherwise we keep everything.
+    if !is_inline {
+        attrs.extend_from_slice(new_attrs);
+        return;
+    }
+    for attr in new_attrs {
+        let mut attr = attr.clone();
+        match attr.kind {
+            ast::AttrKind::Normal(ref mut normal) => {
+                if let [ident] = &*normal.item.path.segments &&
+                    let ident = ident.ident.name &&
+                    ident == sym::doc
+                {
+                    match normal.item.args {
+                        ast::AttrArgs::Delimited(ref mut args) => {
+                            let tokens =
+                                filter_tokens_from_list(args.tokens.clone(), |token| {
+                                    !matches!(
+                                        token,
+                                        TokenTree::Token(
+                                            Token {
+                                                kind: TokenKind::Ident(
+                                                    sym::hidden | sym::inline | sym::no_inline,
+                                                    _,
+                                                ),
+                                                ..
+                                            },
+                                            _,
+                                        ),
+                                    )
+                                });
+                            args.tokens = TokenStream::new(tokens);
+                            attrs.push(attr);
+                        }
+                        ast::AttrArgs::Empty | ast::AttrArgs::Eq(..) => {
+                            attrs.push(attr);
+                            continue;
+                        }
+                    }
+                }
+            }
+            ast::AttrKind::DocComment(..) => {
+                attrs.push(attr);
+            }
         }
     }
 }
@@ -2212,19 +2343,20 @@ fn clean_maybe_renamed_item<'tcx>(
         {
             // First, we add the attributes from the current import.
             extra_attrs.extend_from_slice(inline::load_attrs(cx, import_id.to_def_id()));
+            let is_inline = extra_attrs.lists(sym::doc).get_word_attr(sym::inline).is_some();
             // Then we get all the various imports' attributes.
-            get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut extra_attrs);
+            get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut extra_attrs, is_inline);
+            add_without_unwanted_attributes(&mut extra_attrs, inline::load_attrs(cx, def_id), is_inline);
+        } else {
+            // We only keep the item's attributes.
+            extra_attrs.extend_from_slice(inline::load_attrs(cx, def_id));
         }
 
-        let mut item = if !extra_attrs.is_empty() {
-            extra_attrs.extend_from_slice(inline::load_attrs(cx, def_id));
-            let attrs = Attributes::from_ast(&extra_attrs);
-            let cfg = extra_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
+        let attrs = Attributes::from_ast(&extra_attrs);
+        let cfg = extra_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
 
-            Item::from_def_id_and_attrs_and_parts(def_id, Some(name), kind, Box::new(attrs), cfg)
-        } else {
-            Item::from_def_id_and_parts(def_id, Some(name), kind, cx)
-        };
+        let mut item =
+            Item::from_def_id_and_attrs_and_parts(def_id, Some(name), kind, Box::new(attrs), cfg);
         item.inline_stmt_id = import_id.map(|def_id| def_id.to_def_id());
         vec![item]
     })
@@ -2257,9 +2389,11 @@ fn clean_impl<'tcx>(
 
     let for_ = clean_ty(impl_.self_ty, cx);
     let type_alias = for_.def_id(&cx.cache).and_then(|did| match tcx.def_kind(did) {
-        DefKind::TyAlias => {
-            Some(clean_middle_ty(ty::Binder::dummy(tcx.type_of(did)), cx, Some(did)))
-        }
+        DefKind::TyAlias => Some(clean_middle_ty(
+            ty::Binder::dummy(tcx.type_of(did).subst_identity()),
+            cx,
+            Some(did),
+        )),
         _ => None,
     });
     let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {

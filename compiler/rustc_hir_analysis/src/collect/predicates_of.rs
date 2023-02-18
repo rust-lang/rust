@@ -9,8 +9,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{GenericPredicates, ToPredicate};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -151,7 +151,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     trace!(?generics);
 
     // Collect the predicates that were written inline by the user on each
-    // type parameter (e.g., `<T: Foo>`).
+    // type parameter (e.g., `<T: Foo>`). Also add `ConstArgHasType` predicates
+    // for each const parameter.
     for param in ast_generics.params {
         match param.kind {
             // We already dealt with early bound lifetimes above.
@@ -175,7 +176,19 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 trace!(?predicates);
             }
             GenericParamKind::Const { .. } => {
-                // Bounds on const parameters are currently not possible.
+                let name = param.name.ident().name;
+                let param_const = ty::ParamConst::new(index, name);
+
+                let ct_ty = tcx.type_of(param.def_id.to_def_id()).subst_identity();
+
+                let ct = tcx.mk_const(param_const, ct_ty);
+
+                let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
+                    ty::Clause::ConstArgHasType(ct, ct_ty),
+                ))
+                .to_predicate(tcx);
+                predicates.insert((predicate, param.span));
+
                 index += 1;
             }
         }
@@ -251,7 +264,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     // in trait checking. See `setup_constraining_predicates`
     // for details.
     if let Node::Item(&Item { kind: ItemKind::Impl { .. }, .. }) = node {
-        let self_ty = tcx.type_of(def_id);
+        let self_ty = tcx.type_of(def_id).subst_identity();
         let trait_ref = tcx.impl_trait_ref(def_id).map(ty::EarlyBinder::subst_identity);
         cgp::setup_constraining_predicates(
             tcx,
@@ -284,11 +297,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
             let Some(dup_index) = generics.param_def_id_to_index(tcx, dup_def) else { bug!() };
 
-            let dup_region = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
+            let dup_region = tcx.mk_re_early_bound(ty::EarlyBoundRegion {
                 def_id: dup_def,
                 index: dup_index,
                 name: duplicate.name.ident().name,
-            }));
+            });
             predicates.push((
                 ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
                     ty::OutlivesPredicate(orig_region, dup_region),
@@ -439,7 +452,9 @@ pub(super) fn explicit_predicates_of<'tcx>(
             let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
             let parent_def_id = tcx.hir().get_parent_item(hir_id);
 
-            if tcx.hir().opt_const_param_default_param_def_id(hir_id).is_some() {
+            if let Some(defaulted_param_def_id) =
+                tcx.hir().opt_const_param_default_param_def_id(hir_id)
+            {
                 // In `generics_of` we set the generics' parent to be our parent's parent which means that
                 // we lose out on the predicates of our actual parent if we dont return those predicates here.
                 // (See comment in `generics_of` for more information on why the parent shenanigans is necessary)
@@ -452,7 +467,39 @@ pub(super) fn explicit_predicates_of<'tcx>(
                 //
                 // In the above code we want the anon const to have predicates in its param env for `T: Trait`
                 // and we would be calling `explicit_predicates_of(Foo)` here
-                return tcx.explicit_predicates_of(parent_def_id);
+                let parent_preds = tcx.explicit_predicates_of(parent_def_id);
+
+                // If we dont filter out `ConstArgHasType` predicates then every single defaulted const parameter
+                // will ICE because of #106994. FIXME(generic_const_exprs): remove this when a more general solution
+                // to #106994 is implemented.
+                let filtered_predicates = parent_preds
+                    .predicates
+                    .into_iter()
+                    .filter(|(pred, _)| {
+                        if let ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, _)) =
+                            pred.kind().skip_binder()
+                        {
+                            match ct.kind() {
+                                ty::ConstKind::Param(param_const) => {
+                                    let defaulted_param_idx = tcx
+                                        .generics_of(parent_def_id)
+                                        .param_def_id_to_index[&defaulted_param_def_id.to_def_id()];
+                                    param_const.index < defaulted_param_idx
+                                }
+                                _ => bug!(
+                                    "`ConstArgHasType` in `predicates_of`\
+                                 that isn't a `Param` const"
+                                ),
+                            }
+                        } else {
+                            true
+                        }
+                    })
+                    .cloned();
+                return GenericPredicates {
+                    parent: parent_preds.parent,
+                    predicates: { tcx.arena.alloc_from_iter(filtered_predicates) },
+                };
             }
 
             let parent_def_kind = tcx.def_kind(parent_def_id);

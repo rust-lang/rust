@@ -499,9 +499,10 @@ impl<'tcx> Collector<'tcx> {
         let argument_types: &List<Ty<'_>> = self.tcx.erase_late_bound_regions(
             self.tcx
                 .type_of(item.id.owner_id)
+                .subst_identity()
                 .fn_sig(self.tcx)
                 .inputs()
-                .map_bound(|slice| self.tcx.mk_type_list(slice.iter())),
+                .map_bound(|slice| self.tcx.intern_type_list(slice)),
         );
 
         argument_types

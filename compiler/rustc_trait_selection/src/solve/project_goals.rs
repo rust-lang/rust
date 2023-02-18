@@ -244,7 +244,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
             // Finally we construct the actual value of the associated type.
             let is_const = matches!(tcx.def_kind(assoc_def.item.def_id), DefKind::AssocConst);
-            let ty = tcx.bound_type_of(assoc_def.item.def_id);
+            let ty = tcx.type_of(assoc_def.item.def_id);
             let term: ty::EarlyBinder<ty::Term<'tcx>> = if is_const {
                 let identity_substs =
                     ty::InternalSubsts::identity_for_item(tcx, assoc_def.item.def_id);
@@ -388,7 +388,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
                 ty::Dynamic(_, _, _) => {
                     let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
-                    tcx.bound_type_of(dyn_metadata)
+                    tcx.type_of(dyn_metadata)
                         .subst(tcx, &[ty::GenericArg::from(goal.predicate.self_ty())])
                 }
 

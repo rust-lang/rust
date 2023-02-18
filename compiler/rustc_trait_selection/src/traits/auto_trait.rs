@@ -830,6 +830,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 // and these don't correspond to adding any new bounds to
                 // the `ParamEnv`.
                 ty::PredicateKind::WellFormed(..)
+                | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                 | ty::PredicateKind::AliasEq(..)
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ClosureKind(..)

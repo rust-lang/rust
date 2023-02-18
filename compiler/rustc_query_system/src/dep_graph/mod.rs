@@ -23,7 +23,7 @@ pub trait DepContext: Copy {
     type DepKind: self::DepKind;
 
     /// Create a hashing context for hashing new results.
-    fn with_stable_hashing_context<R>(&self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R;
+    fn with_stable_hashing_context<R>(self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R;
 
     /// Access the DepGraph.
     fn dep_graph(&self) -> &DepGraph<Self::DepKind>;
@@ -37,7 +37,7 @@ pub trait DepContext: Copy {
     fn dep_kind_info(&self, dep_node: Self::DepKind) -> &DepKindStruct<Self>;
 
     #[inline(always)]
-    fn fingerprint_style(&self, kind: Self::DepKind) -> FingerprintStyle {
+    fn fingerprint_style(self, kind: Self::DepKind) -> FingerprintStyle {
         let data = self.dep_kind_info(kind);
         if data.is_anon {
             return FingerprintStyle::Opaque;
@@ -47,7 +47,7 @@ pub trait DepContext: Copy {
 
     #[inline(always)]
     /// Return whether this kind always require evaluation.
-    fn is_eval_always(&self, kind: Self::DepKind) -> bool {
+    fn is_eval_always(self, kind: Self::DepKind) -> bool {
         self.dep_kind_info(kind).is_eval_always
     }
 

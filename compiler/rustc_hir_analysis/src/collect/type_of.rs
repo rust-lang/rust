@@ -243,7 +243,7 @@ fn get_path_containing_arg_in_pat<'hir>(
     arg_path
 }
 
-pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
+pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>> {
     let def_id = def_id.expect_local();
     use rustc_hir::*;
 
@@ -251,7 +251,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
     let icx = ItemCtxt::new(tcx, def_id.to_def_id());
 
-    match tcx.hir().get(hir_id) {
+    let output = match tcx.hir().get(hir_id) {
         Node::TraitItem(item) => match item.kind {
             TraitItemKind::Fn(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
@@ -259,13 +259,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
             TraitItemKind::Const(ty, body_id) => body_id
                 .and_then(|body_id| {
-                    if is_suggestable_infer_ty(ty) {
-                        Some(infer_placeholder_type(
-                            tcx, def_id, body_id, ty.span, item.ident, "constant",
-                        ))
-                    } else {
-                        None
-                    }
+                    is_suggestable_infer_ty(ty)
+                        .then(|| infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident, "constant",))
                 })
                 .unwrap_or_else(|| icx.to_ty(ty)),
             TraitItemKind::Type(_, Some(ty)) => icx.to_ty(ty),
@@ -382,7 +377,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         Node::Ctor(def) | Node::Variant(Variant { data: def, .. }) => match def {
             VariantData::Unit(..) | VariantData::Struct(..) => {
-                tcx.type_of(tcx.hir().get_parent_item(hir_id))
+                tcx.type_of(tcx.hir().get_parent_item(hir_id)).subst_identity()
             }
             VariantData::Tuple(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
@@ -399,7 +394,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         Node::AnonConst(_) if let Some(param) = tcx.opt_const_param_of(def_id) => {
             // We defer to `type_of` of the corresponding parameter
             // for generic arguments.
-            tcx.type_of(param)
+            tcx.type_of(param).subst_identity()
         }
 
         Node::AnonConst(_) => {
@@ -451,7 +446,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     && e.hir_id == hir_id =>
                 {
                     let Some(trait_def_id) = trait_ref.trait_def_id() else {
-                        return tcx.ty_error_with_message(DUMMY_SP, "Could not find trait");
+                        return ty::EarlyBinder(tcx.ty_error_with_message(DUMMY_SP, "Could not find trait"));
                     };
                     let assoc_items = tcx.associated_items(trait_def_id);
                     let assoc_item = assoc_items.find_by_name_and_kind(
@@ -461,7 +456,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         def_id.to_def_id(),
                     );
                     if let Some(assoc_item) = assoc_item {
-                        tcx.type_of(assoc_item.def_id)
+                        tcx.type_of(assoc_item.def_id).subst_identity()
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
@@ -485,7 +480,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         }) =>
                 {
                     let Some(trait_def_id) = trait_ref.trait_def_id() else {
-                        return tcx.ty_error_with_message(DUMMY_SP, "Could not find trait");
+                        return ty::EarlyBinder(tcx.ty_error_with_message(DUMMY_SP, "Could not find trait"));
                     };
                     let assoc_items = tcx.associated_items(trait_def_id);
                     let assoc_item = assoc_items.find_by_name_and_kind(
@@ -506,7 +501,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     if let Some(param)
                         = assoc_item.map(|item| &tcx.generics_of(item.def_id).params[idx]).filter(|param| param.kind.is_ty_or_const())
                     {
-                        tcx.type_of(param.def_id)
+                        tcx.type_of(param.def_id).subst_identity()
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
@@ -520,7 +515,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     def_id: param_def_id,
                     kind: GenericParamKind::Const { default: Some(ct), .. },
                     ..
-                }) if ct.hir_id == hir_id => tcx.type_of(param_def_id),
+                }) if ct.hir_id == hir_id => tcx.type_of(param_def_id).subst_identity(),
 
                 x => tcx.ty_error_with_message(
                     DUMMY_SP,
@@ -538,7 +533,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         x => {
             bug!("unexpected sort of node in type_of(): {:?}", x);
         }
-    }
+    };
+    ty::EarlyBinder(output)
 }
 
 #[instrument(skip(tcx), level = "debug")]

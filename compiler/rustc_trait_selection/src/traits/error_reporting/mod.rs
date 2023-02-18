@@ -1282,6 +1282,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         span,
                         "AliasEq predicate should never be the predicate cause of a SelectionError"
                     ),
+
+                    ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                        self.tcx.sess.struct_span_err(
+                            span,
+                            &format!("the constant `{}` is not of type `{}`", ct, ty),
+                        )
+                    }
                 }
             }
 
@@ -2432,7 +2439,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             };
                             let mut suggestions = vec![(
                                 path.span.shrink_to_lo(),
-                                format!("<{} as ", self.tcx.type_of(impl_def_id))
+                                format!("<{} as ", self.tcx.type_of(impl_def_id).subst_identity())
                             )];
                             if let Some(generic_arg) = trait_path_segment.args {
                                 let between_span = trait_path_segment.ident.span.between(generic_arg.span_ext);
