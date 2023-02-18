@@ -76,10 +76,10 @@ pub fn register_plugins<'a>(
     sess: &'a Session,
     metadata_loader: &'a dyn MetadataLoader,
     register_lints: impl Fn(&Session, &mut LintStore),
-    mut krate: ast::Crate,
+    krate: &mut ast::Crate,
     crate_name: Symbol,
-) -> Result<(ast::Crate, LintStore)> {
-    krate = sess.time("attributes_injection", || {
+) -> Result<LintStore> {
+    sess.time("attributes_injection", || {
         rustc_builtin_macros::cmdline_attrs::inject(
             krate,
             &sess.parse_sess,
@@ -87,7 +87,7 @@ pub fn register_plugins<'a>(
         )
     });
 
-    let (krate, features) = rustc_expand::config::features(sess, krate, CRATE_NODE_ID);
+    let features = rustc_expand::config::features(sess, krate, CRATE_NODE_ID);
     // these need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
 
@@ -117,8 +117,8 @@ pub fn register_plugins<'a>(
     let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
     register_lints(sess, &mut lint_store);
 
-    let registrars =
-        sess.time("plugin_loading", || plugin::load::load_plugins(sess, metadata_loader, &krate));
+    let registrars = sess
+        .time("plugin_loading", || plugin::load::load_plugins(sess, metadata_loader, &krate.attrs));
     sess.time("plugin_registration", || {
         let mut registry = plugin::Registry { lint_store: &mut lint_store };
         for registrar in registrars {
@@ -126,7 +126,7 @@ pub fn register_plugins<'a>(
         }
     });
 
-    Ok((krate, lint_store))
+    Ok(lint_store)
 }
 
 fn pre_expansion_lint<'a>(
@@ -181,8 +181,8 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
     pre_expansion_lint(sess, lint_store, tcx.registered_tools(()), &krate, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
-    krate = sess.time("crate_injection", || {
-        rustc_builtin_macros::standard_library_imports::inject(krate, resolver, sess)
+    sess.time("crate_injection", || {
+        rustc_builtin_macros::standard_library_imports::inject(&mut krate, resolver, sess)
     });
 
     util::check_attr_crate_type(sess, &krate.attrs, &mut resolver.lint_buffer());
@@ -263,7 +263,7 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
     });
 
     sess.time("maybe_building_test_harness", || {
-        rustc_builtin_macros::test_harness::inject(sess, resolver, &mut krate)
+        rustc_builtin_macros::test_harness::inject(&mut krate, sess, resolver)
     });
 
     let has_proc_macro_decls = sess.time("AST_validation", || {
@@ -287,12 +287,12 @@ fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) 
         sess.emit_warning(errors::ProcMacroCratePanicAbort);
     }
 
-    krate = sess.time("maybe_create_a_macro_crate", || {
+    sess.time("maybe_create_a_macro_crate", || {
         let is_test_crate = sess.opts.test;
         rustc_builtin_macros::proc_macro_harness::inject(
+            &mut krate,
             sess,
             resolver,
-            krate,
             is_proc_macro_crate,
             has_proc_macro_decls,
             is_test_crate,

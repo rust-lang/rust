@@ -1688,7 +1688,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         res
     }
 
-    fn expand_cfg_attr(&self, node: &mut impl HasAttrs, attr: ast::Attribute, pos: usize) {
+    fn expand_cfg_attr(&self, node: &mut impl HasAttrs, attr: &ast::Attribute, pos: usize) {
         node.visit_attrs(|attrs| {
             // Repeated `insert` calls is inefficient, but the number of
             // insertions is almost always 0 or 1 in practice.
@@ -1712,7 +1712,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         Default::default()
                     }
                     sym::cfg_attr => {
-                        self.expand_cfg_attr(&mut node, attr, pos);
+                        self.expand_cfg_attr(&mut node, &attr, pos);
                         continue;
                     }
                     _ => {
@@ -1760,7 +1760,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         continue;
                     }
                     sym::cfg_attr => {
-                        self.expand_cfg_attr(node, attr, pos);
+                        self.expand_cfg_attr(node, &attr, pos);
                         continue;
                     }
                     _ => visit_clobber(node, |node| {
