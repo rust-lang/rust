@@ -673,7 +673,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
                     for (a_arg, b_arg) in aa.iter().zip(ba.iter()) {
                         related_args.push(r.consts(a_arg, b_arg)?);
                     }
-                    let related_args = tcx.mk_const_list(related_args.iter());
+                    let related_args = tcx.intern_const_list(&related_args);
                     Expr::FunctionCall(func, related_args)
                 }
                 _ => return Err(TypeError::ConstMismatch(expected_found(r, a, b))),

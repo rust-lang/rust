@@ -141,8 +141,8 @@ fn fn_sig_for_fn_abi<'tcx>(
 
             ty::Binder::bind_with_vars(
                 tcx.mk_fn_sig(
-                    [env_ty, resume_ty].iter(),
-                    &ret_ty,
+                    [env_ty, resume_ty],
+                    ret_ty,
                     false,
                     hir::Unsafety::Normal,
                     rustc_target::spec::abi::Abi::Rust,

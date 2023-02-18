@@ -564,10 +564,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 .into()
                             }
                         });
-                        let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
+                        let bound_vars = tcx.intern_bound_variable_kinds(&bound_vars);
                         let assoc_ty_substs = tcx.intern_substs(&substs);
-
-                        let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
                         let bound =
                             bound.map_bound(|b| b.kind().skip_binder()).subst(tcx, assoc_ty_substs);
                         tcx.mk_predicate(ty::Binder::bind_with_vars(bound, bound_vars))

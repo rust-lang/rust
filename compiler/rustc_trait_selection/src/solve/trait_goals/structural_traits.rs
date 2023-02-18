@@ -191,10 +191,10 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         ty::FnDef(def_id, substs) => Ok(Some(
             tcx.fn_sig(def_id)
                 .subst(tcx, substs)
-                .map_bound(|sig| (tcx.mk_tup(sig.inputs().iter()), sig.output())),
+                .map_bound(|sig| (tcx.intern_tup(sig.inputs()), sig.output())),
         )),
         ty::FnPtr(sig) => {
-            Ok(Some(sig.map_bound(|sig| (tcx.mk_tup(sig.inputs().iter()), sig.output()))))
+            Ok(Some(sig.map_bound(|sig| (tcx.intern_tup(sig.inputs()), sig.output()))))
         }
         ty::Closure(_, substs) => {
             let closure_substs = substs.as_closure();

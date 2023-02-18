@@ -2589,7 +2589,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             DefKind::InlineConst => substs.as_inline_const().parent_substs(),
             other => bug!("unexpected item {:?}", other),
         };
-        let parent_substs = tcx.mk_substs(parent_substs.iter());
+        let parent_substs = tcx.intern_substs(parent_substs);
 
         assert_eq!(typeck_root_substs.len(), parent_substs.len());
         if let Err(_) = self.eq_substs(

@@ -781,8 +781,8 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 let output = transform_ty(tcx, fn_sig.skip_binder().output(), options);
                 ty = tcx.mk_fn_ptr(ty::Binder::bind_with_vars(
                     tcx.mk_fn_sig(
-                        parameters.iter(),
-                        &output,
+                        parameters,
+                        output,
                         fn_sig.c_variadic(),
                         fn_sig.unsafety(),
                         fn_sig.abi(),
@@ -813,21 +813,18 @@ fn transform_substs<'tcx>(
     substs: SubstsRef<'tcx>,
     options: TransformTyOptions,
 ) -> SubstsRef<'tcx> {
-    let substs: Vec<GenericArg<'tcx>> = substs
-        .iter()
-        .map(|subst| {
-            if let GenericArgKind::Type(ty) = subst.unpack() {
-                if is_c_void_ty(tcx, ty) {
-                    tcx.mk_unit().into()
-                } else {
-                    transform_ty(tcx, ty, options).into()
-                }
+    let substs = substs.iter().map(|subst| {
+        if let GenericArgKind::Type(ty) = subst.unpack() {
+            if is_c_void_ty(tcx, ty) {
+                tcx.mk_unit().into()
             } else {
-                subst
+                transform_ty(tcx, ty, options).into()
             }
-        })
-        .collect();
-    tcx.mk_substs(substs.iter())
+        } else {
+            subst
+        }
+    });
+    tcx.mk_substs(substs)
 }
 
 /// Returns a type metadata identifier for the specified FnAbi using the Itanium C++ ABI with vendor
