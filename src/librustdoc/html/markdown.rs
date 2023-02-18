@@ -29,6 +29,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
+use rustc_resolve::rustdoc::may_be_doc_link;
 use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
 
@@ -1269,22 +1270,13 @@ pub(crate) fn markdown_links<R>(
     )
     .into_offset_iter()
     .filter_map(|(event, span)| match event {
-        Event::Start(Tag::Link(
-            // `<>` links cannot be intra-doc links so we skip them.
-            kind @ (LinkType::Inline
-            | LinkType::Reference
-            | LinkType::ReferenceUnknown
-            | LinkType::Collapsed
-            | LinkType::CollapsedUnknown
-            | LinkType::Shortcut
-            | LinkType::ShortcutUnknown),
-            dest,
-            _,
-        )) => preprocess_link(MarkdownLink {
-            kind,
-            range: span_for_link(&dest, span),
-            link: dest.into_string(),
-        }),
+        Event::Start(Tag::Link(link_type, dest, _)) if may_be_doc_link(link_type) => {
+            preprocess_link(MarkdownLink {
+                kind: link_type,
+                range: span_for_link(&dest, span),
+                link: dest.into_string(),
+            })
+        }
         _ => None,
     })
     .collect()

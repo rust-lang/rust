@@ -1,4 +1,4 @@
-use pulldown_cmark::{BrokenLink, Event, Options, Parser, Tag};
+use pulldown_cmark::{BrokenLink, Event, LinkType, Options, Parser, Tag};
 use rustc_ast as ast;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_data_structures::fx::FxHashMap;
@@ -347,6 +347,21 @@ fn preprocess_link(link: &str) -> String {
     strip_generics_from_path(link).unwrap_or_else(|_| link.to_string())
 }
 
+/// Keep inline and reference links `[]`,
+/// but skip autolinks `<>` which we never consider to be intra-doc links.
+pub fn may_be_doc_link(link_type: LinkType) -> bool {
+    match link_type {
+        LinkType::Inline
+        | LinkType::Reference
+        | LinkType::ReferenceUnknown
+        | LinkType::Collapsed
+        | LinkType::CollapsedUnknown
+        | LinkType::Shortcut
+        | LinkType::ShortcutUnknown => true,
+        LinkType::Autolink | LinkType::Email => false,
+    }
+}
+
 /// Simplified version of `preprocessed_markdown_links` from rustdoc.
 /// Must return at least the same links as it, but may add some more links on top of that.
 pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<String> {
@@ -359,7 +374,9 @@ pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<Strin
         Some(&mut |link: BrokenLink<'_>| Some((link.reference, "".into()))),
     )
     .filter_map(|event| match event {
-        Event::Start(Tag::Link(_, dest, _)) => Some(preprocess_link(&dest)),
+        Event::Start(Tag::Link(link_type, dest, _)) if may_be_doc_link(link_type) => {
+            Some(preprocess_link(&dest))
+        }
         _ => None,
     })
     .collect()
