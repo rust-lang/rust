@@ -176,7 +176,7 @@ keep in mind while going through them:
   Bisection is definitely your friend here
   (yes LLVM takes forever to build, yet bisection is still your friend).
   Note that you can make use of [Dev Desktops],
-  an initiative to provide remote access to powerful hardware to developers of Rust.
+  which is an initiative to provide the contributors with remote access to powerful hardware.
 * If you've got general questions, [wg-llvm] can help you out.
 * Creating branches is a privileged operation on GitHub, so you'll need someone
   with write access to create the branches for you most likely.
