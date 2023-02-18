@@ -4,6 +4,14 @@
 
 use std::sync::Mutex;
 
+pub fn post_bindings_can_be_ignored() {
+    let mutex = Mutex::new(1);
+    let lock = mutex.lock().unwrap();
+    let rslt = *lock;
+    let another = rslt;
+    let _ = another;
+}
+
 pub fn unnecessary_contention_with_multiple_owned_results() {
     {
         let mutex = Mutex::new(1i32);

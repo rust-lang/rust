@@ -1,5 +1,5 @@
 error: temporary with significant `Drop` can be early dropped
-  --> $DIR/significant_drop_tightening.rs:17:13
+  --> $DIR/significant_drop_tightening.rs:25:13
    |
 LL | /     {
 LL | |         let mutex = Mutex::new(1i32);
@@ -20,7 +20,7 @@ LL +         drop(lock);
    |
 
 error: temporary with significant `Drop` can be early dropped
-  --> $DIR/significant_drop_tightening.rs:38:13
+  --> $DIR/significant_drop_tightening.rs:46:13
    |
 LL | /     {
 LL | |         let mutex = Mutex::new(1i32);
@@ -44,7 +44,7 @@ LL +
    |
 
 error: temporary with significant `Drop` can be early dropped
-  --> $DIR/significant_drop_tightening.rs:44:17
+  --> $DIR/significant_drop_tightening.rs:52:17
    |
 LL | /     {
 LL | |         let mutex = Mutex::new(vec![1i32]);
