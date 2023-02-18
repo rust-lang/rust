@@ -564,3 +564,118 @@ nzint_impl_try_from_nzint! { NonZeroI32: NonZeroU32, NonZeroU64, NonZeroI64, Non
 nzint_impl_try_from_nzint! { NonZeroI64: NonZeroU64, NonZeroU128, NonZeroI128, NonZeroUsize, NonZeroIsize }
 nzint_impl_try_from_nzint! { NonZeroI128: NonZeroU128, NonZeroUsize, NonZeroIsize }
 nzint_impl_try_from_nzint! { NonZeroIsize: NonZeroU16, NonZeroU32, NonZeroI32, NonZeroU64, NonZeroI64, NonZeroU128, NonZeroI128, NonZeroUsize }
+
+// The conversions below follow the ones used by regular ints, with the same justifications, see
+// earlier in the file for them
+
+macro_rules! num_from_nzint {
+    ($Source: ty => $( $Dest: ty )+ ) => {
+        $(
+            #[stable(feature = "num_from_and_try_from_nzint_conv", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
+            impl const From<$Source> for $Dest {
+                // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
+                // Rustdocs on functions do not.
+                #[doc = concat!("Converts `", stringify!($Source), "` to `", stringify!($Dest), "` losslessly.")]
+                #[inline(always)]
+                fn from(small: $Source) -> Self {
+                    small.get() as Self
+                }
+            }
+        )+
+    };
+}
+
+// Non-zero unsigned -> Regular (un)signed
+num_from_nzint! { NonZeroU8 => u16 u32 u64 u128 usize i16 i32 i64 i128 isize }
+num_from_nzint! { NonZeroU16 => u32 u64 u128 usize i32 i64 i128 }
+num_from_nzint! { NonZeroU32 => u64 u128 i64 i128 }
+num_from_nzint! { NonZeroU64 => u128 i128 }
+
+// Non-zero signed -> Regular signed
+num_from_nzint! { NonZeroI8 => i16 i32 i64 i128 isize }
+num_from_nzint! { NonZeroI16 => i32 i64 i128 isize }
+num_from_nzint! { NonZeroI32 => i64 i128 }
+num_from_nzint! { NonZeroI64 => i128 }
+
+// Non-zero unsigned -> Float
+num_from_nzint! { NonZeroU8 => f32 f64 }
+num_from_nzint! { NonZeroU16 => f32 f64 }
+num_from_nzint! { NonZeroU32 => f64 }
+
+// Non-zero signed -> Float
+num_from_nzint! { NonZeroI8 => f32 f64 }
+num_from_nzint! { NonZeroI16 => f32 f64 }
+num_from_nzint! { NonZeroI32 => f64 }
+
+macro_rules! int_try_from_nzint {
+    ($Source: ident ($inner: ty) => $( $Dest: ty )+ ) => {
+        $(
+            #[stable(feature = "num_from_and_try_from_nzint_conv", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
+            impl const TryFrom<$Source> for $Dest {
+                type Error = <$Dest as TryFrom<$inner>>::Error;
+
+                #[doc = concat!("Attempts to convert `", stringify!($Source), "` to `", stringify!($Dest), "`.")]
+                #[inline(always)]
+                fn try_from(value: $Source) -> Result<Self, Self::Error> {
+                    <$Dest>::try_from(value.get())
+                }
+            }
+        )+
+    }
+}
+
+// Non-zero unsigned -> Regular (un)signed
+int_try_from_nzint! { NonZeroU8(u8) => i8 }
+int_try_from_nzint! { NonZeroU16(u16) => u8 i8 i16 isize }
+int_try_from_nzint! { NonZeroU32(u32) => u8 u16 usize i8 i16 i32 isize }
+int_try_from_nzint! { NonZeroU64(u64) => u8 u16 u32 usize i8 i16 i32 i64 isize }
+int_try_from_nzint! { NonZeroU128(u128) => u8 u16 u32 u64 usize i8 i16 i32 i64 i128 isize }
+int_try_from_nzint! { NonZeroUsize(usize) => u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 isize }
+
+// Non-zero signed -> Regular signed
+int_try_from_nzint! { NonZeroI8(i8) => u8 u16 u32 u64 u128 usize }
+int_try_from_nzint! { NonZeroI16(i16) => u8 u16 u32 u64 u128 usize i8 }
+int_try_from_nzint! { NonZeroI32(i32) => u8 u16 u32 u64 u128 usize i8 i16 isize }
+int_try_from_nzint! { NonZeroI64(i64) => u8 u16 u32 u64 u128 usize i8 i16 i32 isize }
+int_try_from_nzint! { NonZeroI128(i128) => u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize }
+int_try_from_nzint! { NonZeroIsize(isize) => u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 }
+
+macro_rules! nzint_try_from_int {
+    ($Dest: ident ($inner: ty) <= $( $Source: ty )+ ) => {
+        $(
+            #[stable(feature = "num_from_and_try_from_nzint_conv", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_unstable(feature = "const_num_from_num", issue = "87852")]
+            impl const TryFrom<$Source> for $Dest {
+                type Error = TryFromIntError;
+
+                #[doc = concat!("Attempts to convert `", stringify!($Dest), "` to `", stringify!($Dest), "`.")]
+                #[inline(always)]
+                fn try_from(value: $Source) -> Result<Self, Self::Error> {
+                    match <$inner>::try_from(value) {
+                            // SAFETY: we checked value is not 0
+                        Ok(value) if value != 0 => Ok(unsafe { Self::new_unchecked(value) }),
+                        _ => Err(TryFromIntError(())),
+                    }
+                }
+            }
+        )+
+    }
+}
+
+// Regular (un)signed -> Non-zero unsigned
+nzint_try_from_int! { NonZeroU8(u8) <= u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
+nzint_try_from_int! { NonZeroU16(u16) <= u8 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
+nzint_try_from_int! { NonZeroU32(u32) <= u8 u16 u64 u128 usize i8 i16 i32 i64 i128 isize }
+nzint_try_from_int! { NonZeroU64(u64) <= u8 u16 u32 u128 usize i8 i16 i32 i64 i128 isize }
+nzint_try_from_int! { NonZeroU128(u128) <= u8 u16 u32 u64 usize i8 i16 i32 i64 i128 isize }
+nzint_try_from_int! { NonZeroUsize(usize) <= u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 isize }
+
+// Regular (un)signed -> Non-zero signed
+nzint_try_from_int! { NonZeroI8(i8) <= u8 u16 u32 u64 u128 usize i16 i32 i64 i128 isize }
+nzint_try_from_int! { NonZeroI16(i16) <= u8 u16 u32 u64 u128 usize i8 i32 i64 i128 isize }
+nzint_try_from_int! { NonZeroI32(i32) <= u8 u16 u32 u64 u128 usize i8 i16 i64 i128 isize }
+nzint_try_from_int! { NonZeroI64(i64) <= u8 u16 u32 u64 u128 usize i8 i16 i32 i128 isize }
+nzint_try_from_int! { NonZeroI128(i128) <= u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize }
+nzint_try_from_int! { NonZeroIsize(isize) <= u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 }
