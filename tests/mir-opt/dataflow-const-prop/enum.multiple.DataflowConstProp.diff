@@ -71,8 +71,7 @@
   
       bb7: {
           StorageLive(_9);                 // scope 2 at $DIR/enum.rs:+11:9: +11:10
--         _9 = _6;                         // scope 2 at $DIR/enum.rs:+11:13: +11:14
-+         _9 = const 0_u8;                 // scope 2 at $DIR/enum.rs:+11:13: +11:14
+          _9 = _6;                         // scope 2 at $DIR/enum.rs:+11:13: +11:14
           _0 = const ();                   // scope 0 at $DIR/enum.rs:+0:29: +12:2
           StorageDead(_9);                 // scope 2 at $DIR/enum.rs:+12:1: +12:2
           StorageDead(_6);                 // scope 1 at $DIR/enum.rs:+12:1: +12:2

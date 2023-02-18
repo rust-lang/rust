@@ -122,7 +122,10 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
     ) {
         match rvalue {
             Rvalue::Aggregate(kind, operands) => {
-                state.flood_with(target.as_ref(), self.map(), FlatSet::Bottom);
+                // If we assign `target = Enum::Variant#0(operand)`,
+                // we must make sure that all `target as Variant#i` are `Top`.
+                state.flood(target.as_ref(), self.map());
+
                 if let Some(target_idx) = self.map().find(target.as_ref()) {
                     let (variant_target, variant_index) = match **kind {
                         AggregateKind::Tuple | AggregateKind::Closure(..) => {
