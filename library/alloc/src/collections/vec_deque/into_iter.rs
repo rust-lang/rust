@@ -1,6 +1,6 @@
-use core::iter::{FusedIterator, TrustedLen};
-use core::{alloc, array, fmt, mem::MaybeUninit, ops::Try, ptr};
 use crate::co_alloc::CoAllocPref;
+use core::iter::{FusedIterator, TrustedLen};
+use core::{array, fmt, mem::MaybeUninit, ops::Try, ptr};
 
 use crate::alloc::{Allocator, Global};
 
@@ -93,13 +93,19 @@ where
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
-        struct Guard<'a, T, A: Allocator> {
-            deque: &'a mut VecDeque<T, A>,
+        struct Guard<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
+        where
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+        {
+            deque: &'a mut VecDeque<T, A, CO_ALLOC_PREF>,
             // `consumed <= deque.len` always holds.
             consumed: usize,
         }
 
-        impl<'a, T, A: Allocator> Drop for Guard<'a, T, A> {
+        impl<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop for Guard<'a, T, A, CO_ALLOC_PREF>
+        where
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+        {
             fn drop(&mut self) {
                 self.deque.len -= self.consumed;
                 self.deque.head = self.deque.to_physical_idx(self.consumed);
@@ -221,13 +227,19 @@ where
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
-        struct Guard<'a, T, A: Allocator> {
-            deque: &'a mut VecDeque<T, A>,
+        struct Guard<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>
+        where
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+        {
+            deque: &'a mut VecDeque<T, A, CO_ALLOC_PREF>,
             // `consumed <= deque.len` always holds.
             consumed: usize,
         }
 
-        impl<'a, T, A: Allocator> Drop for Guard<'a, T, A> {
+        impl<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop for Guard<'a, T, A, CO_ALLOC_PREF>
+        where
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+        {
             fn drop(&mut self) {
                 self.deque.len -= self.consumed;
             }

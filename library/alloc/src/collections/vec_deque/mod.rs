@@ -2844,8 +2844,7 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(unused_braces)]
-impl<T> FromIterator<T> for VecDeque<T>
-{
+impl<T> FromIterator<T> for VecDeque<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {
         SpecFromIterCo::spec_from_iter_co(iter.into_iter())
     }
