@@ -408,10 +408,7 @@ fn do_check(lint: &mut NonExpressiveNames, cx: &EarlyContext<'_>, attrs: &[Attri
 /// Precondition: `a_name.chars().count() < b_name.chars().count()`.
 #[must_use]
 fn levenstein_not_1(a_name: &str, b_name: &str) -> bool {
-    debug_assert!(
-        a_name.chars().count() < b_name.chars().count(),
-        "Precondition: `a_name.chars().count() < b_name.chars().count()` does not meet"
-    );
+    debug_assert!(a_name.chars().count() < b_name.chars().count());
     let mut a_chars = a_name.chars();
     let mut b_chars = b_name.chars();
     while let (Some(a), Some(b)) = (a_chars.next(), b_chars.next()) {

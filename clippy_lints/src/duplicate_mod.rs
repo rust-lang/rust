@@ -90,11 +90,7 @@ impl EarlyLintPass for DuplicateMod {
             }
 
             // At this point the lint would be emitted
-            assert_eq!(
-                spans.len(),
-                lint_levels.len(),
-                "`spans` and `lint_levels` should have equal lengths"
-            );
+            assert_eq!(spans.len(), lint_levels.len());
             let spans: Vec<_> = spans
                 .iter()
                 .zip(lint_levels)

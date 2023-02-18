@@ -410,10 +410,7 @@ fn check_rustfix_coverage() {
     };
 
     if let Ok(missing_coverage_contents) = std::fs::read_to_string(missing_coverage_path) {
-        assert!(
-            RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS.iter().is_sorted_by_key(Path::new),
-            "`RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS` should be sorted"
-        );
+        assert!(RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS.iter().is_sorted_by_key(Path::new));
 
         for rs_file in missing_coverage_contents.lines() {
             let rs_path = Path::new(rs_file);

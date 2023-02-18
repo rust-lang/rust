@@ -225,7 +225,8 @@ pub fn implements_trait_with_env<'tcx>(
     trait_id: DefId,
     ty_params: impl IntoIterator<Item = Option<GenericArg<'tcx>>>,
 ) -> bool {
-    assert!(!ty.needs_infer(), "Clippy shouldn't have infer types");
+    // Clippy shouldn't have infer types
+    assert!(!ty.needs_infer());
 
     let ty = tcx.erase_regions(ty);
     if ty.has_escaping_bound_vars() {
