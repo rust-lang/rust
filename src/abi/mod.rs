@@ -4,6 +4,8 @@ mod comments;
 mod pass_mode;
 mod returning;
 
+use std::borrow::Cow;
+
 use cranelift_module::ModuleError;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::FnAbiOf;
@@ -116,7 +118,52 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         params: Vec<AbiParam>,
         returns: Vec<AbiParam>,
         args: &[Value],
-    ) -> &[Value] {
+    ) -> Cow<'_, [Value]> {
+        if self.tcx.sess.target.is_like_windows {
+            let (mut params, mut args): (Vec<_>, Vec<_>) =
+                params
+                    .into_iter()
+                    .zip(args)
+                    .map(|(param, &arg)| {
+                        if param.value_type == types::I128 {
+                            let arg_ptr = Pointer::stack_slot(self.bcx.create_sized_stack_slot(
+                                StackSlotData { kind: StackSlotKind::ExplicitSlot, size: 16 },
+                            ));
+                            arg_ptr.store(self, arg, MemFlags::trusted());
+                            (AbiParam::new(self.pointer_type), arg_ptr.get_addr(self))
+                        } else {
+                            (param, arg)
+                        }
+                    })
+                    .unzip();
+
+            let indirect_ret_val = returns.len() == 1 && returns[0].value_type == types::I128;
+
+            if indirect_ret_val {
+                params.insert(0, AbiParam::new(self.pointer_type));
+                let ret_ptr =
+                    Pointer::stack_slot(self.bcx.create_sized_stack_slot(StackSlotData {
+                        kind: StackSlotKind::ExplicitSlot,
+                        size: 16,
+                    }));
+                args.insert(0, ret_ptr.get_addr(self));
+                self.lib_call_unadjusted(name, params, vec![], &args);
+                return Cow::Owned(vec![ret_ptr.load(self, types::I128, MemFlags::trusted())]);
+            } else {
+                return self.lib_call_unadjusted(name, params, returns, &args);
+            }
+        }
+
+        self.lib_call_unadjusted(name, params, returns, args)
+    }
+
+    pub(crate) fn lib_call_unadjusted(
+        &mut self,
+        name: &str,
+        params: Vec<AbiParam>,
+        returns: Vec<AbiParam>,
+        args: &[Value],
+    ) -> Cow<'_, [Value]> {
         let sig = Signature { params, returns, call_conv: self.target_config.default_call_conv };
         let func_id = self.module.declare_function(name, Linkage::Import, &sig).unwrap();
         let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
@@ -125,41 +172,11 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         }
         let call_inst = self.bcx.ins().call(func_ref, args);
         if self.clif_comments.enabled() {
-            self.add_comment(call_inst, format!("easy_call {}", name));
+            self.add_comment(call_inst, format!("lib_call {}", name));
         }
         let results = self.bcx.inst_results(call_inst);
         assert!(results.len() <= 2, "{}", results.len());
-        results
-    }
-
-    pub(crate) fn easy_call(
-        &mut self,
-        name: &str,
-        args: &[CValue<'tcx>],
-        return_ty: Ty<'tcx>,
-    ) -> CValue<'tcx> {
-        let (input_tys, args): (Vec<_>, Vec<_>) = args
-            .iter()
-            .map(|arg| {
-                (AbiParam::new(self.clif_type(arg.layout().ty).unwrap()), arg.load_scalar(self))
-            })
-            .unzip();
-        let return_layout = self.layout_of(return_ty);
-        let return_tys = if let ty::Tuple(tup) = return_ty.kind() {
-            tup.iter().map(|ty| AbiParam::new(self.clif_type(ty).unwrap())).collect()
-        } else {
-            vec![AbiParam::new(self.clif_type(return_ty).unwrap())]
-        };
-        let ret_vals = self.lib_call(name, input_tys, return_tys, &args);
-        match *ret_vals {
-            [] => CValue::by_ref(
-                Pointer::const_addr(self, i64::from(self.pointer_type.bytes())),
-                return_layout,
-            ),
-            [val] => CValue::by_val(val, return_layout),
-            [val, extra] => CValue::by_val_pair(val, extra, return_layout),
-            _ => unreachable!(),
-        }
+        Cow::Borrowed(results)
     }
 }
 
