@@ -174,7 +174,9 @@ keep in mind while going through them:
 
 * LLVM bugs are hard to find, don't hesitate to ask for help! Bisection is
   definitely your friend here (yes LLVM takes forever to build, yet bisection is
-  still your friend)
+  still your friend).
+  Note that you can make use of [Dev Desktops],
+  an initiative to provide remote access to powerful hardware to developers of Rust.
 * If you've got general questions, [wg-llvm] can help you out.
 * Creating branches is a privileged operation on GitHub, so you'll need someone
   with write access to create the branches for you most likely.
@@ -184,3 +186,4 @@ keep in mind while going through them:
 [llvm/llvm-project repository]: https://github.com/llvm/llvm-project
 [`llvm-wrapper`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_llvm/llvm-wrapper
 [wg-llvm]: https://rust-lang.zulipchat.com/#narrow/stream/187780-t-compiler.2Fwg-llvm
+[Dev Desktops]: https://forge.rust-lang.org/infra/docs/dev-desktop.html
