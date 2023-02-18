@@ -10,10 +10,10 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks assertions that doesn't have a custom panic message.
+    /// Checks assertions without a custom panic message.
     ///
     /// ### Why is this bad?
-    /// If the assertion fails, a custom message may make it easier to debug what went wrong.
+    /// If the assertion fails, the custom message may make it easier to understand what went wrong.
     ///
     /// ### Example
     /// ```rust
@@ -30,7 +30,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.69.0"]
     pub MISSING_ASSERT_MESSAGE,
     pedantic,
-    "checks assertions that doesn't have a custom panic message"
+    "checks assertions without a custom panic message"
 }
 
 #[derive(Default, Clone, Debug)]
