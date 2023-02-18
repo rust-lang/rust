@@ -1,7 +1,7 @@
 // run-rustfix
 
 #![warn(clippy::all, clippy::pedantic)]
-#![allow(unused, clippy::missing_assert_message)]
+#![allow(unused)]
 
 fn main() {
     let a = ["1", "lol", "3", "NaN", "5"];
