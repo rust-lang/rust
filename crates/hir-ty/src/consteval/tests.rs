@@ -559,11 +559,11 @@ fn function_param_patterns() {
     check_number(
         r#"
     const fn f(c @ (a, b): &(u8, u8)) -> u8 {
-        *a + *b + (*c).1
+        *a + *b + c.0 + (*c).1
     }
     const GOAL: u8 = f(&(2, 3));
         "#,
-        8,
+        10,
     );
     check_number(
         r#"
@@ -638,6 +638,44 @@ fn options() {
     const GOAL: Option<&u8> = None;
         "#,
         0,
+    );
+}
+
+#[test]
+fn or_pattern() {
+    check_number(
+        r#"
+    const GOAL: u8 = {
+        let (a | a) = 2;
+        a
+    };
+        "#,
+        2,
+    );
+    check_number(
+        r#"
+    //- minicore: option
+    const fn f(x: Option<i32>) -> i32 {
+        let (Some(a) | Some(a)) = x else { return 2; };
+        a
+    }
+    const GOAL: i32 = f(Some(10)) + f(None);
+        "#,
+        12,
+    );
+    check_number(
+        r#"
+    //- minicore: option
+    const fn f(x: Option<i32>, y: Option<i32>) -> i32 {
+        match (x, y) {
+            (Some(x), Some(y)) => x * y,
+            (Some(a), _) | (_, Some(a)) => a,
+            _ => 10,
+        }
+    }
+    const GOAL: i32 = f(Some(10), Some(20)) + f(Some(30), None) + f(None, Some(40)) + f(None, None);
+        "#,
+        280,
     );
 }
 
