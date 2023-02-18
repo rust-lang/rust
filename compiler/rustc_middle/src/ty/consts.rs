@@ -149,6 +149,9 @@ impl<'tcx> Const<'tcx> {
                         ty::ConstKind::Bound(debruijn, ty::BoundVar::from_u32(index)),
                         ty,
                     )),
+                    Some(rbv::ResolvedArg::Error(guar)) => {
+                        Some(tcx.const_error_with_guaranteed(ty, guar))
+                    }
                     arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", expr.hir_id),
                 }
             }

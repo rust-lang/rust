@@ -134,7 +134,8 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                             rbv::ResolvedArg::StaticLifetime
                             | rbv::ResolvedArg::Free(_, _)
                             | rbv::ResolvedArg::EarlyBound(_)
-                            | rbv::ResolvedArg::LateBound(_, _, _),
+                            | rbv::ResolvedArg::LateBound(_, _, _)
+                            | rbv::ResolvedArg::Error(_),
                         )
                         | None,
                         _,
@@ -211,7 +212,8 @@ impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
                     rbv::ResolvedArg::StaticLifetime
                     | rbv::ResolvedArg::EarlyBound(_)
                     | rbv::ResolvedArg::LateBound(_, _, _)
-                    | rbv::ResolvedArg::Free(_, _),
+                    | rbv::ResolvedArg::Free(_, _)
+                    | rbv::ResolvedArg::Error(_),
                 )
                 | None,
                 _,
