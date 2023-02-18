@@ -1236,6 +1236,38 @@ impl<'a> Parser<'a> {
 
     /// Parse an indexing expression `expr[...]`.
     fn parse_index_expr(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
+        if self.prev_token.is_ident()
+            && matches!(self.token.kind, token::OpenDelim(Delimiter::Bracket))
+            && self.look_ahead(1, |t| t.is_lit())
+            && self.look_ahead(2, |t| matches!(t.kind, token::Semi))
+            && self.look_ahead(3, |t| t.is_lit())
+            && self.look_ahead(4, |t| matches!(t.kind, token::CloseDelim(Delimiter::Bracket)))
+            && let token::Ident(symbol, _) = self.prev_token.kind
+            && self.may_recover()
+        {
+            let ident = symbol.as_str().to_owned();
+            self.bump(); // [
+            if let token::Literal(lit) = self.token.kind {
+                let lit1 = lit.symbol.as_str().to_owned();
+                self.bump(); // lit
+                let span = self.token.span;
+                self.bump(); // ;
+                if let token::Literal(lit) = self.token.kind {
+                    let lit2 = lit.symbol.as_str().to_owned();
+                    let mut err = self.struct_span_err(
+                        span,
+                        "expected one of `.`, `?`, `]`, or an operator, found `;`",
+                    );
+                    err.span_label(
+                        span,
+                        "expected one of `.`, `?`, `]`, or an operator",
+                    );
+                    err.note(format!("`[{}; {}]` would construct an array literal, but not immediately following the identifier `{}`", lit1, lit2, ident));
+                    return Err(err);
+                }
+            }
+        }
+
         let prev_span = self.prev_token.span;
         let open_delim_span = self.token.span;
         self.bump(); // `[`

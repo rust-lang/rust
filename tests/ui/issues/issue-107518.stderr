@@ -1,0 +1,10 @@
+error: expected one of `.`, `?`, `]`, or an operator, found `;`
+  --> $DIR/issue-107518.rs:2:38
+   |
+LL |     (a_function_that_takes_an_array[0; 10]);
+   |                                      ^ expected one of `.`, `?`, `]`, or an operator
+   |
+   = note: `[0; 10]` would construct an array literal, but not immediately following the identifier `a_function_that_takes_an_array`
+
+error: aborting due to previous error
+
