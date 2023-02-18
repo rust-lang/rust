@@ -172,9 +172,9 @@ so let's go through each in detail.
 Ideally the above instructions are pretty smooth, but here's some caveats to
 keep in mind while going through them:
 
-* LLVM bugs are hard to find, don't hesitate to ask for help! Bisection is
-  definitely your friend here (yes LLVM takes forever to build, yet bisection is
-  still your friend).
+* LLVM bugs are hard to find, don't hesitate to ask for help!
+  Bisection is definitely your friend here
+  (yes LLVM takes forever to build, yet bisection is still your friend).
   Note that you can make use of [Dev Desktops],
   an initiative to provide remote access to powerful hardware to developers of Rust.
 * If you've got general questions, [wg-llvm] can help you out.
