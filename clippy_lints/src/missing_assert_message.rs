@@ -33,7 +33,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.69.0"]
     pub MISSING_ASSERT_MESSAGE,
-    pedantic,
+    restriction,
     "checks assertions without a custom panic message"
 }
 
