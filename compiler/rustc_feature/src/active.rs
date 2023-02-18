@@ -474,7 +474,7 @@ declare_features! (
     /// Allows using the `non_exhaustive_omitted_patterns` lint.
     (active, non_exhaustive_omitted_patterns_lint, "1.57.0", Some(89554), None),
     /// Allows `for<T>` binders in where-clauses
-    (incomplete, non_lifetime_binders, "CURRENT_RUSTC_VERSION", Some(1), None),
+    (incomplete, non_lifetime_binders, "CURRENT_RUSTC_VERSION", Some(108185), None),
     /// Allows making `dyn Trait` well-formed even if `Trait` is not object safe.
     /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
     /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.

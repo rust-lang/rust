@@ -1,0 +1,86 @@
+error: labeled expression must be followed by `:`
+  --> $DIR/issue-108019-bad-emoji-recovery.rs:11:5
+   |
+LL |       '🐱 loop {
+   |       ^--- help: add `:` after the label
+   |       |
+   |  _____the label
+   | |
+LL | |
+LL | |
+LL | |         break
+LL | |     }
+   | |_____^
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+
+error: labeled expression must be followed by `:`
+  --> $DIR/issue-108019-bad-emoji-recovery.rs:19:5
+   |
+LL |       'a🐱 loop {
+   |       ^---- help: add `:` after the label
+   |       |
+   |  _____the label
+   | |
+LL | |
+LL | |
+LL | |         break
+LL | |     }
+   | |_____^
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+
+error: labeled expression must be followed by `:`
+  --> $DIR/issue-108019-bad-emoji-recovery.rs:27:5
+   |
+LL |       '1🐱 loop {
+   |       ^---- help: add `:` after the label
+   |       |
+   |  _____the label
+   | |
+LL | |
+LL | |
+LL | |         break
+LL | |     }
+   | |_____^
+   |
+   = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
+
+error: lifetimes or labels cannot contain emojis
+  --> $DIR/issue-108019-bad-emoji-recovery.rs:11:5
+   |
+LL |     '🐱 loop {
+   |     ^^^
+
+error: lifetimes or labels cannot contain emojis
+  --> $DIR/issue-108019-bad-emoji-recovery.rs:19:5
+   |
+LL |     'a🐱 loop {
+   |     ^^^^
+
+error: lifetimes or labels cannot start with a number
+  --> $DIR/issue-108019-bad-emoji-recovery.rs:27:5
+   |
+LL |     '1🐱 loop {
+   |     ^^^^
+
+error: lifetimes or labels cannot contain emojis
+  --> $DIR/issue-108019-bad-emoji-recovery.rs:34:6
+   |
+LL | fn x<'🐱>() -> &'🐱 () {
+   |      ^^^
+
+error: lifetimes or labels cannot contain emojis
+  --> $DIR/issue-108019-bad-emoji-recovery.rs:34:16
+   |
+LL | fn x<'🐱>() -> &'🐱 () {
+   |                 ^^^
+
+error: lifetimes or labels cannot contain emojis
+  --> $DIR/issue-108019-bad-emoji-recovery.rs:41:5
+   |
+LL |     'a🐱: loop {}
+   |     ^^^^
+
+error: aborting due to 9 previous errors
+

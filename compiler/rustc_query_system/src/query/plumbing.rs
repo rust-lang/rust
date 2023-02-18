@@ -19,7 +19,6 @@ use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_session::Session;
 use rustc_span::{Span, DUMMY_SP};
-use std::borrow::Borrow;
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
@@ -364,25 +363,13 @@ where
             let (result, dep_node_index) =
                 execute_job::<Q, Qcx>(qcx, key.clone(), dep_node, job.id);
             if Q::FEEDABLE {
-                // We may have put a value inside the cache from inside the execution.
-                // Verify that it has the same hash as what we have now, to ensure consistency.
+                // We should not compute queries that also got a value via feeding.
+                // This can't happen, as query feeding adds the very dependencies to the fed query
+                // as its feeding query had. So if the fed query is red, so is its feeder, which will
+                // get evaluated first, and re-feed the query.
                 if let Some((cached_result, _)) = cache.lookup(&key) {
-                    let hasher = Q::HASH_RESULT.expect("feedable forbids no_hash");
-
-                    let old_hash = qcx.dep_context().with_stable_hashing_context(|mut hcx| {
-                        hasher(&mut hcx, cached_result.borrow())
-                    });
-                    let new_hash = qcx
-                        .dep_context()
-                        .with_stable_hashing_context(|mut hcx| hasher(&mut hcx, &result));
-                    debug_assert_eq!(
-                        old_hash,
-                        new_hash,
-                        "Computed query value for {:?}({:?}) is inconsistent with fed value,\ncomputed={:#?}\nfed={:#?}",
-                        Q::DEP_KIND,
-                        key,
-                        result,
-                        cached_result,
+                    panic!(
+                        "fed query later has its value computed. The already cached value: {cached_result:?}"
                     );
                 }
             }

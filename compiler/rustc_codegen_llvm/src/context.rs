@@ -145,8 +145,13 @@ pub unsafe fn create_module<'ll>(
     let llvm_version = llvm_util::get_version();
     if llvm_version < (16, 0, 0) {
         if sess.target.arch == "s390x" {
+            // LLVM 16 data layout changed to always set 64-bit vector alignment,
+            // which is conditional in earlier LLVM versions.
+            // https://reviews.llvm.org/D131158 for the discussion.
             target_data_layout = target_data_layout.replace("-v128:64", "");
         } else if sess.target.arch == "riscv64" {
+            // LLVM 16 introduced this change so as to produce more efficient code.
+            // See https://reviews.llvm.org/D116735 for the discussion.
             target_data_layout = target_data_layout.replace("-n32:64-", "-n64-");
         }
     }

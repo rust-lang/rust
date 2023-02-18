@@ -398,7 +398,12 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
                 Some(rbv::ResolvedArg::StaticLifetime | rbv::ResolvedArg::EarlyBound(..)) => {}
                 Some(rbv::ResolvedArg::LateBound(debruijn, _, _))
                     if debruijn < self.outer_index => {}
-                Some(rbv::ResolvedArg::LateBound(..) | rbv::ResolvedArg::Free(..)) | None => {
+                Some(
+                    rbv::ResolvedArg::LateBound(..)
+                    | rbv::ResolvedArg::Free(..)
+                    | rbv::ResolvedArg::Error(_),
+                )
+                | None => {
                     self.has_late_bound_regions = Some(lt.ident.span);
                 }
             }
