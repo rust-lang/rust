@@ -103,13 +103,11 @@ pub(crate) mod hack {
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
     #[allow(unused_braces)]
-    pub fn into_vec<T, A: Allocator>(
-        b: Box<[T], A>,
-    ) -> Vec<T, A>
+    pub fn into_vec<T, A: Allocator>(b: Box<[T], A>) -> Vec<T, A>
     where
         [(); { crate::meta_num_slots_default!(A) }]:,
     {
-        into_vec_co::<T, A, {crate::CO_ALLOC_PREF_META_DEFAULT!()}>(b)
+        into_vec_co::<T, A, { crate::CO_ALLOC_PREF_META_DEFAULT!() }>(b)
     }
 
     #[allow(unused_braces)]

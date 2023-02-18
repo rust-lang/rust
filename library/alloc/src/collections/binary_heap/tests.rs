@@ -1,7 +1,7 @@
 use super::*;
 use crate::boxed::Box;
-use crate::{CO_ALLOC_PREF_META_YES, CO_ALLOC_PREF_META_NO};
 use crate::testing::crash_test::{CrashTestDummy, Panic};
+use crate::{CO_ALLOC_PREF_META_NO, CO_ALLOC_PREF_META_YES};
 use core::mem;
 use std::iter::TrustedLen;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -449,10 +449,14 @@ fn test_extend_specialization() {
 
 #[allow(dead_code)]
 fn assert_covariance() {
-    fn drain<'new>(d: Drain<'static, &'static str, {CO_ALLOC_PREF_META_NO!()}>) -> Drain<'new, &'new str, {CO_ALLOC_PREF_META_NO!()}> {
+    fn drain<'new>(
+        d: Drain<'static, &'static str, { CO_ALLOC_PREF_META_NO!() }>,
+    ) -> Drain<'new, &'new str, { CO_ALLOC_PREF_META_NO!() }> {
         d
     }
-    fn drain_co<'new>(d: Drain<'static, &'static str, {CO_ALLOC_PREF_META_YES!()}>) -> Drain<'new, &'new str, {CO_ALLOC_PREF_META_YES!()}> {
+    fn drain_co<'new>(
+        d: Drain<'static, &'static str, { CO_ALLOC_PREF_META_YES!() }>,
+    ) -> Drain<'new, &'new str, { CO_ALLOC_PREF_META_YES!() }> {
         d
     }
 }
