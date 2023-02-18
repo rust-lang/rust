@@ -29,21 +29,10 @@ fn normalize(x: f64) -> Num {
     Num { m: ix, e, sign }
 }
 
+#[inline]
 fn mul(x: u64, y: u64) -> (u64, u64) {
-    let t1: u64;
-    let t2: u64;
-    let t3: u64;
-    let xlo: u64 = x as u32 as u64;
-    let xhi: u64 = x >> 32;
-    let ylo: u64 = y as u32 as u64;
-    let yhi: u64 = y >> 32;
-
-    t1 = xlo * ylo;
-    t2 = xlo * yhi + xhi * ylo;
-    t3 = xhi * yhi;
-    let lo = t1.wrapping_add(t2 << 32);
-    let hi = t3 + (t2 >> 32) + (t1 > lo) as u64;
-    (hi, lo)
+    let t = (x as u128).wrapping_mul(y as u128);
+    ((t >> 64) as u64, t as u64)
 }
 
 /// Floating multiply add (f64)
