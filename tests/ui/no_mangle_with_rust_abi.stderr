@@ -1,0 +1,45 @@
+error: attribute #[no_mangle] set on a Rust ABI function
+  --> $DIR/no_mangle_with_rust_abi.rs:7:1
+   |
+LL | fn rust_abi_fn_one(arg_one: u32, arg_two: usize) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `extern "C" fn rust_abi_fn_one(arg_one: u32, arg_two: usize)`
+   |
+   = note: `-D clippy::no-mangle-with-rust-abi` implied by `-D warnings`
+
+error: attribute #[no_mangle] set on a Rust ABI function
+  --> $DIR/no_mangle_with_rust_abi.rs:10:1
+   |
+LL | pub fn rust_abi_fn_two(arg_one: u32, arg_two: usize) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `pub extern "C" fn rust_abi_fn_two(arg_one: u32, arg_two: usize)`
+
+error: attribute #[no_mangle] set on a Rust ABI function
+  --> $DIR/no_mangle_with_rust_abi.rs:15:1
+   |
+LL | pub unsafe fn rust_abi_fn_three(arg_one: u32, arg_two: usize) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `pub unsafe extern "C" fn rust_abi_fn_three(arg_one: u32, arg_two: usize)`
+
+error: attribute #[no_mangle] set on a Rust ABI function
+  --> $DIR/no_mangle_with_rust_abi.rs:20:1
+   |
+LL | unsafe fn rust_abi_fn_four(arg_one: u32, arg_two: usize) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unsafe extern "C" fn rust_abi_fn_four(arg_one: u32, arg_two: usize)`
+
+error: attribute #[no_mangle] set on a Rust ABI function
+  --> $DIR/no_mangle_with_rust_abi.rs:23:1
+   |
+LL | / fn rust_abi_multiline_function_really_long_name_to_overflow_args_to_multiple_lines(
+LL | |     arg_one: u32,
+LL | |     arg_two: usize,
+LL | | ) -> u32 {
+   | |________^
+   |
+help: try
+   |
+LL + extern "C" fn rust_abi_multiline_function_really_long_name_to_overflow_args_to_multiple_lines(
+LL +     arg_one: u32,
+LL +     arg_two: usize,
+LL ~ ) -> u32 {
+   |
+
+error: aborting due to 5 previous errors
+
