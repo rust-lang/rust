@@ -856,12 +856,25 @@ impl<'tcx> Cx<'tcx> {
 
             Res::Def(DefKind::ConstParam, def_id) => {
                 let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-                let generics = self.tcx.generics_of(hir_id.owner);
-                let index = generics.param_def_id_to_index[&def_id];
-                let name = self.tcx.hir().name(hir_id);
-                let param = ty::ParamConst::new(index, name);
-
-                ExprKind::ConstParam { param, def_id }
+                if let Some(index) =
+                    self.tcx.generics_of(hir_id.owner).param_def_id_to_index.get(&def_id)
+                {
+                    let name = self.tcx.hir().name(hir_id);
+                    let param = ty::ParamConst::new(*index, name);
+                    ExprKind::ConstParam { param, def_id }
+                } else {
+                    use rustc_middle::middle::resolve_bound_vars as rbv;
+                    match self.tcx.named_bound_var(expr.hir_id) {
+                        Some(rbv::ResolvedArg::LateBound(_, index, _)) => {
+                            let name = self.tcx.hir().name(hir_id);
+                            let param = ty::ParamConst::new(index, name);
+                            ExprKind::ConstParam { param, def_id }
+                        }
+                        arg => {
+                            bug!("unexpected bound var resolution for {:?}: {arg:?}", expr.hir_id)
+                        }
+                    }
+                }
             }
 
             Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
