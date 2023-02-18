@@ -46,7 +46,7 @@ pub(crate) fn maybe_codegen<'tcx>(
                 let lhs = lhs.load_scalar(fx);
                 let rhs = rhs.load_scalar(fx);
                 let oflow_ptr = oflow.to_ptr().get_addr(fx);
-                let res = fx.lib_call(
+                let res = fx.lib_call_unadjusted(
                     "__muloti4",
                     vec![
                         AbiParam::new(types::I128),
