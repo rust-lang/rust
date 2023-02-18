@@ -122,6 +122,7 @@ you will likely need to build at some point; for example, if you want
 to run the entire test suite).
 
 ```bash
+rustup toolchain link stage0 build/host/stage0-sysroot # beta compiler + stage0 std
 rustup toolchain link stage1 build/host/stage1
 rustup toolchain link stage2 build/host/stage2
 ```
