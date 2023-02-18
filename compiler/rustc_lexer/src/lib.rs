@@ -95,7 +95,7 @@ pub enum TokenKind {
     Literal { kind: LiteralKind, suffix_start: u32 },
 
     /// "'a"
-    Lifetime { starts_with_number: bool },
+    Lifetime { starts_with_number: bool, contains_emoji: bool },
 
     // One-char tokens:
     /// ";"
@@ -630,7 +630,13 @@ impl Cursor<'_> {
             // If the first symbol is valid for identifier, it can be a lifetime.
             // Also check if it's a number for a better error reporting (so '0 will
             // be reported as invalid lifetime and not as unterminated char literal).
-            is_id_start(self.first()) || self.first().is_digit(10)
+            // We also have to account for potential `'🐱` emojis to avoid reporting
+            // it as an unterminated char literal.
+            is_id_start(self.first())
+                || self.first().is_digit(10)
+                // FIXME(#108019): `unic-emoji-char` seems to have data tables only up to Unicode
+                // 5.0, but Unicode is already newer than this.
+                || unic_emoji_char::is_emoji(self.first())
         };
 
         if !can_be_a_lifetime {
@@ -643,16 +649,33 @@ impl Cursor<'_> {
             return Literal { kind, suffix_start };
         }
 
-        // Either a lifetime or a character literal with
-        // length greater than 1.
+        // Either a lifetime or a character literal.
 
         let starts_with_number = self.first().is_digit(10);
+        let mut contains_emoji = false;
 
-        // Skip the literal contents.
-        // First symbol can be a number (which isn't a valid identifier start),
-        // so skip it without any checks.
-        self.bump();
-        self.eat_while(is_id_continue);
+        // FIXME(#108019): `unic-emoji-char` seems to have data tables only up to Unicode
+        // 5.0, but Unicode is already newer than this.
+        if unic_emoji_char::is_emoji(self.first()) {
+            contains_emoji = true;
+        } else {
+            // Skip the literal contents.
+            // First symbol can be a number (which isn't a valid identifier start),
+            // so skip it without any checks.
+            self.bump();
+        }
+        self.eat_while(|c| {
+            if is_id_continue(c) {
+                true
+            // FIXME(#108019): `unic-emoji-char` seems to have data tables only up to Unicode
+            // 5.0, but Unicode is already newer than this.
+            } else if unic_emoji_char::is_emoji(c) {
+                contains_emoji = true;
+                true
+            } else {
+                false
+            }
+        });
 
         // Check if after skipping literal contents we've met a closing
         // single quote (which means that user attempted to create a
@@ -662,7 +685,7 @@ impl Cursor<'_> {
             let kind = Char { terminated: true };
             Literal { kind, suffix_start: self.pos_within_token() }
         } else {
-            Lifetime { starts_with_number }
+            Lifetime { starts_with_number, contains_emoji }
         }
     }
 
