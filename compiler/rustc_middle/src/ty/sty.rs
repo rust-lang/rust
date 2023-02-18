@@ -933,6 +933,12 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
     }
 }
 
+impl rustc_errors::IntoDiagnosticArg for PolyExistentialTraitRef<'_> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub enum BoundVariableKind {
