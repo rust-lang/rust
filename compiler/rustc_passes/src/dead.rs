@@ -315,7 +315,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     //// This is done to handle the case where, for example, the static
                     //// method of a private type is used, but the type itself is never
                     //// called directly.
-                    let self_ty = self.tcx.type_of(item);
+                    let self_ty = self.tcx.type_of(item).subst_identity();
                     match *self_ty.kind() {
                         ty::Adt(def, _) => self.check_def_id(def.did()),
                         ty::Foreign(did) => self.check_def_id(did),
@@ -654,7 +654,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         if self.live_symbols.contains(&field.did.expect_local()) {
             return ShouldWarnAboutField::No;
         }
-        let field_type = self.tcx.type_of(field.did);
+        let field_type = self.tcx.type_of(field.did).subst_identity();
         if field_type.is_phantom_data() {
             return ShouldWarnAboutField::No;
         }

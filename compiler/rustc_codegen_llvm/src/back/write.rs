@@ -412,11 +412,7 @@ fn get_pgo_sample_use_path(config: &ModuleConfig) -> Option<CString> {
 }
 
 fn get_instr_profile_output_path(config: &ModuleConfig) -> Option<CString> {
-    if config.instrument_coverage {
-        Some(CString::new("default_%m_%p.profraw").unwrap())
-    } else {
-        None
-    }
+    config.instrument_coverage.then(|| CString::new("default_%m_%p.profraw").unwrap())
 }
 
 pub(crate) unsafe fn llvm_optimize(
@@ -446,16 +442,19 @@ pub(crate) unsafe fn llvm_optimize(
             sanitize_thread: config.sanitizer.contains(SanitizerSet::THREAD),
             sanitize_hwaddress: config.sanitizer.contains(SanitizerSet::HWADDRESS),
             sanitize_hwaddress_recover: config.sanitizer_recover.contains(SanitizerSet::HWADDRESS),
+            sanitize_kernel_address: config.sanitizer.contains(SanitizerSet::KERNELADDRESS),
+            sanitize_kernel_address_recover: config
+                .sanitizer_recover
+                .contains(SanitizerSet::KERNELADDRESS),
         })
     } else {
         None
     };
 
-    let mut llvm_profiler = if cgcx.prof.llvm_recording_enabled() {
-        Some(LlvmSelfProfiler::new(cgcx.prof.get_self_profiler().unwrap()))
-    } else {
-        None
-    };
+    let mut llvm_profiler = cgcx
+        .prof
+        .llvm_recording_enabled()
+        .then(|| LlvmSelfProfiler::new(cgcx.prof.get_self_profiler().unwrap()));
 
     let llvm_selfprofiler =
         llvm_profiler.as_mut().map(|s| s as *mut _ as *mut c_void).unwrap_or(std::ptr::null_mut());

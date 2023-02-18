@@ -1588,6 +1588,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             .collect();
 
         test_args.append(&mut builder.config.cmd.test_args());
+        test_args.extend(builder.config.free_args.iter().map(|s| s.as_str()));
 
         // On Windows, replace forward slashes in test-args by backslashes
         // so the correct filters are passed to libtest

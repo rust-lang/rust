@@ -29,7 +29,7 @@ pub mod lib_features {
 pub mod limits;
 pub mod privacy;
 pub mod region;
-pub mod resolve_lifetime;
+pub mod resolve_bound_vars;
 pub mod stability;
 
 pub fn provide(providers: &mut crate::ty::query::Providers) {

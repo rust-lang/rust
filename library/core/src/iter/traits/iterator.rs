@@ -3502,8 +3502,10 @@ pub trait Iterator {
         }
     }
 
-    /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those
-    /// of another.
+    /// [Lexicographically](Ord#lexicographical-comparison) compares the [`PartialOrd`] elements of
+    /// this [`Iterator`] with those of another. The comparison works like short-circuit
+    /// evaluation, returning a result without comparing the remaining elements.
+    /// As soon as an order can be determined, the evaluation stops and a result is returned.
     ///
     /// # Examples
     ///
@@ -3513,9 +3515,25 @@ pub trait Iterator {
     /// assert_eq!([1.].iter().partial_cmp([1.].iter()), Some(Ordering::Equal));
     /// assert_eq!([1.].iter().partial_cmp([1., 2.].iter()), Some(Ordering::Less));
     /// assert_eq!([1., 2.].iter().partial_cmp([1.].iter()), Some(Ordering::Greater));
+    /// ```
     ///
+    /// For floating-point numbers, NaN does not have a total order and will result
+    /// in `None` when compared:
+    ///
+    /// ```
     /// assert_eq!([f64::NAN].iter().partial_cmp([1.].iter()), None);
     /// ```
+    ///
+    /// The results are determined by the order of evaluation.
+    ///
+    /// ```
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!([1.0, f64::NAN].iter().partial_cmp([2.0, f64::NAN].iter()), Some(Ordering::Less));
+    /// assert_eq!([2.0, f64::NAN].iter().partial_cmp([1.0, f64::NAN].iter()), Some(Ordering::Greater));
+    /// assert_eq!([f64::NAN, 1.0].iter().partial_cmp([f64::NAN, 2.0].iter()), None);
+    /// ```
+    ///
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn partial_cmp<I>(self, other: I) -> Option<Ordering>
     where

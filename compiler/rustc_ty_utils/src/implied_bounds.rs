@@ -28,7 +28,7 @@ fn assumed_wf_types(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Ty<'_>> {
                     tcx.intern_type_list(&types)
                 }
                 // Only the impl self type
-                None => tcx.intern_type_list(&[tcx.type_of(def_id)]),
+                None => tcx.intern_type_list(&[tcx.type_of(def_id).subst_identity()]),
             }
         }
         DefKind::AssocConst | DefKind::AssocTy => tcx.assumed_wf_types(tcx.parent(def_id)),

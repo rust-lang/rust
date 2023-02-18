@@ -384,7 +384,15 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         let tcx = self.cfcx.tcx();
-                        self.cfcx.ct_infer(tcx.type_of(param.def_id), Some(param), inf.span).into()
+                        self.cfcx
+                            .ct_infer(
+                                tcx.type_of(param.def_id)
+                                    .no_bound_vars()
+                                    .expect("const parameter types cannot be generic"),
+                                Some(param),
+                                inf.span,
+                            )
+                            .into()
                     }
                     _ => unreachable!(),
                 }

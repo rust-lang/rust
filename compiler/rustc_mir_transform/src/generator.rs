@@ -487,7 +487,7 @@ fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     let get_context_def_id = tcx.require_lang_item(LangItem::GetContext, None);
 
-    for bb in BasicBlock::new(0)..body.basic_blocks.next_index() {
+    for bb in START_BLOCK..body.basic_blocks.next_index() {
         let bb_data = &body[bb];
         if bb_data.is_cleanup {
             continue;
@@ -1255,7 +1255,7 @@ fn create_generator_resume_function<'tcx>(
     use rustc_middle::mir::AssertKind::{ResumedAfterPanic, ResumedAfterReturn};
 
     // Jump to the entry point on the unresumed
-    cases.insert(0, (UNRESUMED, BasicBlock::new(0)));
+    cases.insert(0, (UNRESUMED, START_BLOCK));
 
     // Panic when resumed on the returned or poisoned state
     let generator_kind = body.generator_kind().unwrap();
@@ -1481,7 +1481,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // When first entering the generator, move the resume argument into its new local.
         let source_info = SourceInfo::outermost(body.span);
-        let stmts = &mut body.basic_blocks_mut()[BasicBlock::new(0)].statements;
+        let stmts = &mut body.basic_blocks_mut()[START_BLOCK].statements;
         stmts.insert(
             0,
             Statement {

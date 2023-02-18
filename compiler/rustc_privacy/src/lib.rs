@@ -159,9 +159,21 @@ where
                 _region,
             ))) => ty.visit_with(self),
             ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..)) => ControlFlow::Continue(()),
+            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                ct.visit_with(self)?;
+                ty.visit_with(self)
+            }
             ty::PredicateKind::ConstEvaluatable(ct) => ct.visit_with(self),
             ty::PredicateKind::WellFormed(arg) => arg.visit_with(self),
-            _ => bug!("unexpected predicate: {:?}", predicate),
+
+            ty::PredicateKind::ObjectSafe(_)
+            | ty::PredicateKind::ClosureKind(_, _, _)
+            | ty::PredicateKind::Subtype(_)
+            | ty::PredicateKind::Coerce(_)
+            | ty::PredicateKind::ConstEquate(_, _)
+            | ty::PredicateKind::TypeWellFormedFromEnv(_)
+            | ty::PredicateKind::Ambiguous
+            | ty::PredicateKind::AliasEq(_, _) => bug!("unexpected predicate: {:?}", predicate),
         }
     }
 
@@ -207,7 +219,7 @@ where
                 // so we need to visit the self type additionally.
                 if let Some(assoc_item) = tcx.opt_associated_item(def_id) {
                     if let Some(impl_def_id) = assoc_item.impl_container(tcx) {
-                        tcx.type_of(impl_def_id).visit_with(self)?;
+                        tcx.type_of(impl_def_id).subst_identity().visit_with(self)?;
                     }
                 }
             }
@@ -270,10 +282,11 @@ where
             | ty::Ref(..)
             | ty::FnPtr(..)
             | ty::Param(..)
+            | ty::Bound(..)
             | ty::Error(_)
             | ty::GeneratorWitness(..)
             | ty::GeneratorWitnessMIR(..) => {}
-            ty::Bound(..) | ty::Placeholder(..) | ty::Infer(..) => {
+            ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
             }
         }
@@ -341,7 +354,7 @@ trait VisibilityLike: Sized {
         effective_visibilities: &EffectiveVisibilities,
     ) -> Self {
         let mut find = FindMin { tcx, effective_visibilities, min: Self::MAX };
-        find.visit(tcx.type_of(def_id));
+        find.visit(tcx.type_of(def_id).subst_identity());
         if let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
             find.visit_trait(trait_ref.subst_identity());
         }
@@ -837,11 +850,11 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
                 GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type { has_default, .. } => {
                     if has_default {
-                        self.visit(self.ev.tcx.type_of(param.def_id));
+                        self.visit(self.ev.tcx.type_of(param.def_id).subst_identity());
                     }
                 }
                 GenericParamDefKind::Const { has_default } => {
-                    self.visit(self.ev.tcx.type_of(param.def_id));
+                    self.visit(self.ev.tcx.type_of(param.def_id).subst_identity());
                     if has_default {
                         self.visit(self.ev.tcx.const_param_default(param.def_id).subst_identity());
                     }
@@ -857,7 +870,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
     }
 
     fn ty(&mut self) -> &mut Self {
-        self.visit(self.ev.tcx.type_of(self.item_def_id));
+        self.visit(self.ev.tcx.type_of(self.item_def_id).subst_identity());
         self
     }
 
@@ -1268,7 +1281,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 // Method calls have to be checked specially.
                 self.span = segment.ident.span;
                 if let Some(def_id) = self.typeck_results().type_dependent_def_id(expr.hir_id) {
-                    if self.visit(self.tcx.type_of(def_id)).is_break() {
+                    if self.visit(self.tcx.type_of(def_id).subst_identity()).is_break() {
                         return;
                     }
                 } else {
@@ -1742,12 +1755,12 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type { has_default, .. } => {
                     if has_default {
-                        self.visit(self.tcx.type_of(param.def_id));
+                        self.visit(self.tcx.type_of(param.def_id).subst_identity());
                     }
                 }
                 // FIXME(generic_const_exprs): May want to look inside const here
                 GenericParamDefKind::Const { .. } => {
-                    self.visit(self.tcx.type_of(param.def_id));
+                    self.visit(self.tcx.type_of(param.def_id).subst_identity());
                 }
             }
         }
@@ -1774,7 +1787,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
     }
 
     fn ty(&mut self) -> &mut Self {
-        self.visit(self.tcx.type_of(self.item_def_id));
+        self.visit(self.tcx.type_of(self.item_def_id).subst_identity());
         self
     }
 

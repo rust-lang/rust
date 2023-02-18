@@ -1541,8 +1541,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables.impl_defaultness.set_some(def_id.index, *defaultness);
                 self.tables.constness.set_some(def_id.index, *constness);
 
-                let trait_ref = self.tcx.impl_trait_ref(def_id).map(ty::EarlyBinder::skip_binder);
+                let trait_ref = self.tcx.impl_trait_ref(def_id);
                 if let Some(trait_ref) = trait_ref {
+                    let trait_ref = trait_ref.skip_binder();
                     let trait_def = self.tcx.trait_def(trait_ref.def_id);
                     if let Ok(mut an) = trait_def.ancestors(self.tcx, def_id) {
                         if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {

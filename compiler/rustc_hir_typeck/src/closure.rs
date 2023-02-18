@@ -126,7 +126,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // the `closures` table.
         let sig = bound_sig.map_bound(|sig| {
             self.tcx.mk_fn_sig(
-                iter::once(self.tcx.intern_tup(sig.inputs())),
+                [self.tcx.intern_tup(sig.inputs())],
                 sig.output(),
                 sig.c_variadic,
                 sig.unsafety,
@@ -326,7 +326,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!(?ret_param_ty);
 
         let sig = projection.rebind(self.tcx.mk_fn_sig(
-            input_tys.iter(),
+            input_tys,
             ret_param_ty,
             false,
             hir::Unsafety::Normal,

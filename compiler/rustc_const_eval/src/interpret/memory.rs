@@ -690,7 +690,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(self.tcx.is_static(def_id));
                 assert!(!self.tcx.is_thread_local_static(def_id));
                 // Use size and align of the type.
-                let ty = self.tcx.type_of(def_id);
+                let ty = self
+                    .tcx
+                    .type_of(def_id)
+                    .no_bound_vars()
+                    .expect("statics should not have generic parameters");
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
                 assert!(layout.is_sized());
                 (layout.size, layout.align.abi, AllocKind::LiveData)

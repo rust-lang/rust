@@ -308,7 +308,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                     let impl_self_ty = tcx.subst_and_normalize_erasing_regions(
                         instance.substs,
                         ty::ParamEnv::reveal_all(),
-                        tcx.type_of(impl_def_id),
+                        tcx.type_of(impl_def_id).skip_binder(),
                     );
                     if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
                         return Some(def_id);

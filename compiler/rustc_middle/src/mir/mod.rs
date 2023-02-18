@@ -414,7 +414,7 @@ impl<'tcx> Body<'tcx> {
         (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             let decl = &self.local_decls[local];
-            (decl.is_user_variable() && decl.mutability.is_mut()).then(|| local)
+            (decl.is_user_variable() && decl.mutability.is_mut()).then_some(local)
         })
     }
 
@@ -2497,7 +2497,7 @@ impl<'tcx> ConstantKind<'tcx> {
         };
         debug!("expr.kind: {:?}", expr.kind);
 
-        let ty = tcx.type_of(def.def_id_for_type_of());
+        let ty = tcx.type_of(def.def_id_for_type_of()).subst_identity();
         debug!(?ty);
 
         // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
@@ -2525,14 +2525,12 @@ impl<'tcx> ConstantKind<'tcx> {
         }
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-        let parent_substs = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id) {
-            if let Some(parent_did) = parent_hir_id.as_owner() {
-                InternalSubsts::identity_for_item(tcx, parent_did.to_def_id())
-            } else {
-                tcx.mk_substs(Vec::<GenericArg<'tcx>>::new().into_iter())
-            }
+        let parent_substs = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id)
+            && let Some(parent_did) = parent_hir_id.as_owner()
+        {
+            InternalSubsts::identity_for_item(tcx, parent_did.to_def_id())
         } else {
-            tcx.mk_substs(Vec::<GenericArg<'tcx>>::new().into_iter())
+            tcx.intern_substs(&[])
         };
         debug!(?parent_substs);
 

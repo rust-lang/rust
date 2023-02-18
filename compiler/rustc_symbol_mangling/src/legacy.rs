@@ -26,7 +26,7 @@ pub(super) fn mangle<'tcx>(
         let key = tcx.def_key(ty_def_id);
         match key.disambiguated_data.data {
             DefPathData::TypeNs(_) | DefPathData::ValueNs(_) => {
-                instance_ty = tcx.type_of(ty_def_id);
+                instance_ty = tcx.type_of(ty_def_id).subst_identity();
                 debug!(?instance_ty);
                 break;
             }

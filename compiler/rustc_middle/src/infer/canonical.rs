@@ -353,7 +353,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                                 var: ty::BoundVar::from_usize(i),
                                 kind: ty::BrAnon(i as u32, None),
                             };
-                            tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
+                            tcx.mk_re_late_bound(ty::INNERMOST, br).into()
                         }
                         CanonicalVarKind::Const(_, ty)
                         | CanonicalVarKind::PlaceholderConst(_, ty) => tcx

@@ -113,7 +113,6 @@ use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
-use std::iter;
 use std::ops::Not;
 
 use astconv::AstConv;
@@ -187,7 +186,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
 
     fn main_fn_diagnostics_def_id(tcx: TyCtxt<'_>, def_id: DefId, sp: Span) -> LocalDefId {
         if let Some(local_def_id) = def_id.as_local() {
-            let hir_type = tcx.type_of(local_def_id);
+            let hir_type = tcx.type_of(local_def_id).subst_identity();
             if !matches!(hir_type.kind(), ty::FnDef(..)) {
                 span_bug!(sp, "main has a non-function type: found `{}`", hir_type);
             }
@@ -204,7 +203,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         match tcx.hir().find(hir_id) {
             Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })) => {
-                generics.params.is_empty().not().then(|| generics.span)
+                generics.params.is_empty().not().then_some(generics.span)
             }
             _ => {
                 span_bug!(tcx.def_span(def_id), "main has a non-function type");
@@ -348,7 +347,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     }
 
     let se_ty = tcx.mk_fn_ptr(expected_return_type.map_bound(|expected_return_type| {
-        tcx.mk_fn_sig(iter::empty(), expected_return_type, false, hir::Unsafety::Normal, Abi::Rust)
+        tcx.mk_fn_sig([], expected_return_type, false, hir::Unsafety::Normal, Abi::Rust)
     }));
 
     require_same_types(
@@ -366,7 +365,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     let start_def_id = start_def_id.expect_local();
     let start_id = tcx.hir().local_def_id_to_hir_id(start_def_id);
     let start_span = tcx.def_span(start_def_id);
-    let start_t = tcx.type_of(start_def_id);
+    let start_t = tcx.type_of(start_def_id).subst_identity();
     match start_t.kind() {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
@@ -434,7 +433,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
             }
 
             let se_ty = tcx.mk_fn_ptr(ty::Binder::dummy(tcx.mk_fn_sig(
-                [tcx.types.isize, tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))].iter().cloned(),
+                [tcx.types.isize, tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))],
                 tcx.types.isize,
                 false,
                 hir::Unsafety::Normal,

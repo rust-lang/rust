@@ -62,7 +62,7 @@ pub fn inject(
     // the one with the prelude.
     let name = names[0];
 
-    let root = (edition == Edition2015).then(|| kw::PathRoot);
+    let root = (edition == Edition2015).then_some(kw::PathRoot);
 
     let import_path = root
         .iter()

@@ -2,17 +2,16 @@ error[E0061]: this method takes 0 arguments but 1 argument was supplied
   --> $DIR/method-call-err-msg.rs:13:7
    |
 LL |     x.zero(0)
-   |       ^^^^ - argument of type `{integer}` unexpected
+   |       ^^^^ -
+   |            |
+   |            unexpected argument of type `{integer}`
+   |            help: remove the extra argument
    |
 note: associated function defined here
   --> $DIR/method-call-err-msg.rs:5:8
    |
 LL |     fn zero(self) -> Foo { self }
    |        ^^^^
-help: remove the extra argument
-   |
-LL |     x.zero()
-   |           ~~
 
 error[E0061]: this method takes 1 argument but 0 arguments were supplied
   --> $DIR/method-call-err-msg.rs:14:7

@@ -14,7 +14,7 @@ use crate::errors::{
     AmbiguousLifetimeBound, MultipleRelaxedDefaultBounds, TraitObjectDeclaredWithNoTraits,
     TypeofReservedKeywordUsed, ValueOfAssociatedStructAlreadySpecified,
 };
-use crate::middle::resolve_lifetime as rl;
+use crate::middle::resolve_bound_vars as rbv;
 use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -30,9 +30,9 @@ use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
+use rustc_middle::ty::DynKind;
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, Const, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeVisitable};
-use rustc_middle::ty::{DynKind, EarlyBinder};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECTS};
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -225,34 +225,35 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
         let lifetime_name = |def_id| tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id));
 
-        match tcx.named_region(lifetime.hir_id) {
-            Some(rl::Region::Static) => tcx.lifetimes.re_static,
+        match tcx.named_bound_var(lifetime.hir_id) {
+            Some(rbv::ResolvedArg::StaticLifetime) => tcx.lifetimes.re_static,
 
-            Some(rl::Region::LateBound(debruijn, index, def_id)) => {
+            Some(rbv::ResolvedArg::LateBound(debruijn, index, def_id)) => {
                 let name = lifetime_name(def_id.expect_local());
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_u32(index),
                     kind: ty::BrNamed(def_id, name),
                 };
-                tcx.mk_region(ty::ReLateBound(debruijn, br))
+                tcx.mk_re_late_bound(debruijn, br)
             }
 
-            Some(rl::Region::EarlyBound(def_id)) => {
+            Some(rbv::ResolvedArg::EarlyBound(def_id)) => {
                 let name = tcx.hir().ty_param_name(def_id.expect_local());
                 let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
-                tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }))
+                tcx.mk_re_early_bound(ty::EarlyBoundRegion { def_id, index, name })
             }
 
-            Some(rl::Region::Free(scope, id)) => {
+            Some(rbv::ResolvedArg::Free(scope, id)) => {
                 let name = lifetime_name(id.expect_local());
-                tcx.mk_region(ty::ReFree(ty::FreeRegion {
-                    scope,
-                    bound_region: ty::BrNamed(id, name),
-                }))
+                tcx.mk_re_free(scope, ty::BrNamed(id, name))
 
                 // (*) -- not late-bound, won't change
+            }
+
+            Some(rbv::ResolvedArg::Error(_)) => {
+                bug!("only ty/ct should resolve as ResolvedArg::Error")
             }
 
             None => {
@@ -263,7 +264,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     // elision. `resolve_lifetime` should have
                     // reported an error in this case -- but if
                     // not, let's error out.
-                    tcx.re_error_with_message(lifetime.ident.span, "unelided lifetime in signature")
+                    tcx.mk_re_error_with_message(
+                        lifetime.ident.span,
+                        "unelided lifetime in signature",
+                    )
                 })
             }
         }
@@ -450,7 +454,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         .into()
                     }
                     (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
-                        let ty = tcx.at(self.span).type_of(param.def_id);
+                        let ty = tcx
+                            .at(self.span)
+                            .type_of(param.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic");
                         if self.astconv.allow_ty_infer() {
                             self.astconv.ct_infer(ty, Some(param), inf.span).into()
                         } else {
@@ -477,7 +485,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             debug!(?param, "unelided lifetime in signature");
 
                             // This indicates an illegal lifetime in a non-assoc-trait position
-                            tcx.re_error_with_message(self.span, "unelided lifetime in signature")
+                            tcx.mk_re_error_with_message(
+                                self.span,
+                                "unelided lifetime in signature",
+                            )
                         })
                         .into(),
                     GenericParamDefKind::Type { has_default, .. } => {
@@ -491,7 +502,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // Avoid ICE #86756 when type error recovery goes awry.
                                 return tcx.ty_error().into();
                             }
-                            tcx.at(self.span).bound_type_of(param.def_id).subst(tcx, substs).into()
+                            tcx.at(self.span).type_of(param.def_id).subst(tcx, substs).into()
                         } else if infer_args {
                             self.astconv.ty_infer(Some(param), self.span).into()
                         } else {
@@ -500,7 +511,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         }
                     }
                     GenericParamDefKind::Const { has_default } => {
-                        let ty = tcx.at(self.span).type_of(param.def_id);
+                        let ty = tcx
+                            .at(self.span)
+                            .type_of(param.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic");
                         if ty.references_error() {
                             return tcx.const_error(ty).into();
                         }
@@ -1227,7 +1242,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             }
                             hir::def::DefKind::AssocConst => tcx
                                 .const_error_with_guaranteed(
-                                    tcx.bound_type_of(assoc_item_def_id)
+                                    tcx.type_of(assoc_item_def_id)
                                         .subst(tcx, projection_ty.skip_binder().substs),
                                     reported,
                                 )
@@ -1264,7 +1279,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         item_segment: &hir::PathSegment<'_>,
     ) -> Ty<'tcx> {
         let substs = self.ast_path_substs_for_ty(span, did, item_segment);
-        self.tcx().at(span).bound_type_of(did).subst(self.tcx(), substs)
+        self.tcx().at(span).type_of(did).subst(self.tcx(), substs)
     }
 
     fn conv_object_ty_poly_trait_ref(
@@ -1317,7 +1332,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ty::Clause::TypeOutlives(_) => {
                         // Do nothing, we deal with regions separately
                     }
-                    ty::Clause::RegionOutlives(_) => bug!(),
+                    ty::Clause::RegionOutlives(_) | ty::Clause::ConstArgHasType(..) => bug!(),
                 },
                 ty::PredicateKind::WellFormed(_)
                 | ty::PredicateKind::AliasEq(..)
@@ -1597,14 +1612,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .collect::<SmallVec<[_; 8]>>();
         v.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
         v.dedup();
-        let existential_predicates = tcx.mk_poly_existential_predicates(v.into_iter());
+        let existential_predicates = tcx.intern_poly_existential_predicates(&v);
 
         // Use explicitly-specified region bound.
         let region_bound = if !lifetime.is_elided() {
             self.ast_region_to_region(lifetime, None)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                if tcx.named_region(lifetime.hir_id).is_some() {
+                if tcx.named_bound_var(lifetime.hir_id).is_some() {
                     self.ast_region_to_region(lifetime, None)
                 } else {
                     self.re_infer(None, span).unwrap_or_else(|| {
@@ -1622,7 +1637,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         } else {
                             err.emit()
                         };
-                        tcx.re_error(e)
+                        tcx.mk_re_error(e)
                     })
                 }
             })
@@ -2043,7 +2058,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     assoc_segment,
                     adt_substs,
                 );
-                let ty = tcx.bound_type_of(assoc_ty_did).subst(tcx, item_substs);
+                let ty = tcx.type_of(assoc_ty_did).subst(tcx, item_substs);
                 return Ok((ty, DefKind::AssocTy, assoc_ty_did));
             }
         }
@@ -2597,6 +2612,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         opt_self_ty: Option<Ty<'tcx>>,
         path: &hir::Path<'_>,
+        hir_id: hir::HirId,
         permit_variants: bool,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
@@ -2660,11 +2676,26 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 });
 
-                let def_id = def_id.expect_local();
-                let item_def_id = tcx.hir().ty_param_owner(def_id);
-                let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&def_id.to_def_id()];
-                tcx.mk_ty_param(index, tcx.hir().ty_param_name(def_id))
+                match tcx.named_bound_var(hir_id) {
+                    Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => {
+                        let name =
+                            tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id.expect_local()));
+                        let br = ty::BoundTy {
+                            var: ty::BoundVar::from_u32(index),
+                            kind: ty::BoundTyKind::Param(def_id, name),
+                        };
+                        tcx.mk_ty(ty::Bound(debruijn, br))
+                    }
+                    Some(rbv::ResolvedArg::EarlyBound(_)) => {
+                        let def_id = def_id.expect_local();
+                        let item_def_id = tcx.hir().ty_param_owner(def_id);
+                        let generics = tcx.generics_of(item_def_id);
+                        let index = generics.param_def_id_to_index[&def_id.to_def_id()];
+                        tcx.mk_ty_param(index, tcx.hir().ty_param_name(def_id))
+                    }
+                    Some(rbv::ResolvedArg::Error(guar)) => tcx.ty_error_with_guaranteed(guar),
+                    arg => bug!("unexpected bound var resolution for {hir_id:?}: {arg:?}"),
+                }
             }
             Res::SelfTyParam { .. } => {
                 // `Self` in trait or type alias.
@@ -2685,7 +2716,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // `Self` in impl (we know the concrete type).
                 assert_eq!(opt_self_ty, None);
                 // Try to evaluate any array length constants.
-                let ty = tcx.at(span).type_of(def_id);
+                let ty = tcx.at(span).type_of(def_id).subst_identity();
                 let span_of_impl = tcx.span_of_impl(def_id);
                 self.prohibit_generics(path.segments.iter(), |err| {
                     let def_id = match *ty.kind() {
@@ -2882,12 +2913,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     TraitObjectSyntax::Dyn | TraitObjectSyntax::None => ty::Dyn,
                     TraitObjectSyntax::DynStar => ty::DynStar,
                 };
+
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime, borrowed, repr)
             }
             hir::TyKind::Path(hir::QPath::Resolved(maybe_qself, path)) => {
                 debug!(?maybe_qself, ?path);
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.ast_ty_to_ty(qself));
-                self.res_to_ty(opt_self_ty, path, false)
+                self.res_to_ty(opt_self_ty, path, ast_ty.hir_id, false)
             }
             &hir::TyKind::OpaqueDef(item_id, lifetimes, in_trait) => {
                 let opaque_ty = tcx.hir().item(item_id);
@@ -2919,7 +2951,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     None,
                     ty::BoundConstness::NotConst,
                 );
-                EarlyBinder(tcx.at(span).type_of(def_id)).subst(tcx, substs)
+                tcx.at(span).type_of(def_id).subst(tcx, substs)
             }
             hir::TyKind::Array(ty, length) => {
                 let length = match length {
@@ -2932,7 +2964,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_array_with_const_len(self.ast_ty_to_ty(ty), length)
             }
             hir::TyKind::Typeof(e) => {
-                let ty_erased = tcx.type_of(e.def_id);
+                let ty_erased = tcx.type_of(e.def_id).subst_identity();
                 let ty = tcx.fold_regions(ty_erased, |r, _| {
                     if r.is_erased() { tcx.lifetimes.re_static } else { r }
                 });
@@ -3060,7 +3092,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         debug!(?output_ty);
 
-        let fn_ty = tcx.mk_fn_sig(input_tys.into_iter(), output_ty, decl.c_variadic, unsafety, abi);
+        let fn_ty = tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi);
         let bare_fn_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
 
         if !self.allow_ty_infer() && !(visitor.0.is_empty() && infer_replacements.is_empty()) {

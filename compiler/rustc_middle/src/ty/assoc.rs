@@ -83,7 +83,7 @@ impl AssocItem {
             }
             ty::AssocKind::Type => format!("type {};", self.name),
             ty::AssocKind::Const => {
-                format!("const {}: {:?};", self.name, tcx.type_of(self.def_id))
+                format!("const {}: {:?};", self.name, tcx.type_of(self.def_id).subst_identity())
             }
         }
     }
@@ -129,13 +129,13 @@ impl std::fmt::Display for AssocKind {
 /// it is relatively expensive. Instead, items are indexed by `Symbol` and hygienic comparison is
 /// done only on items with the same name.
 #[derive(Debug, Clone, PartialEq, HashStable)]
-pub struct AssocItems<'tcx> {
-    items: SortedIndexMultiMap<u32, Symbol, &'tcx ty::AssocItem>,
+pub struct AssocItems {
+    items: SortedIndexMultiMap<u32, Symbol, ty::AssocItem>,
 }
 
-impl<'tcx> AssocItems<'tcx> {
+impl AssocItems {
     /// Constructs an `AssociatedItems` map from a series of `ty::AssocItem`s in definition order.
-    pub fn new(items_in_def_order: impl IntoIterator<Item = &'tcx ty::AssocItem>) -> Self {
+    pub fn new(items_in_def_order: impl IntoIterator<Item = ty::AssocItem>) -> Self {
         let items = items_in_def_order.into_iter().map(|item| (item.name, item)).collect();
         AssocItems { items }
     }
@@ -145,7 +145,7 @@ impl<'tcx> AssocItems<'tcx> {
     /// New code should avoid relying on definition order. If you need a particular associated item
     /// for a known trait, make that trait a lang item instead of indexing this array.
     pub fn in_definition_order(&self) -> impl '_ + Iterator<Item = &ty::AssocItem> {
-        self.items.iter().map(|(_, v)| *v)
+        self.items.iter().map(|(_, v)| v)
     }
 
     pub fn len(&self) -> usize {
@@ -157,7 +157,7 @@ impl<'tcx> AssocItems<'tcx> {
         &self,
         name: Symbol,
     ) -> impl '_ + Iterator<Item = &ty::AssocItem> {
-        self.items.get_by_key(name).copied()
+        self.items.get_by_key(name)
     }
 
     /// Returns the associated item with the given name and `AssocKind`, if one exists.

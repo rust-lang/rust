@@ -496,7 +496,7 @@ impl UsedLocals {
         self.increment = false;
 
         // The location of the statement is irrelevant.
-        let location = Location { block: START_BLOCK, statement_index: 0 };
+        let location = Location::START;
         self.visit_statement(statement, location);
     }
 

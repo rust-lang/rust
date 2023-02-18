@@ -280,17 +280,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         debug!("give_region_a_name: error_region = {:?}", error_region);
         match *error_region {
-            ty::ReEarlyBound(ebr) => {
-                if ebr.has_name() {
-                    let span = tcx.hir().span_if_local(ebr.def_id).unwrap_or(DUMMY_SP);
-                    Some(RegionName {
-                        name: ebr.name,
-                        source: RegionNameSource::NamedEarlyBoundRegion(span),
-                    })
-                } else {
-                    None
-                }
-            }
+            ty::ReEarlyBound(ebr) => ebr.has_name().then(|| {
+                let span = tcx.hir().span_if_local(ebr.def_id).unwrap_or(DUMMY_SP);
+                RegionName { name: ebr.name, source: RegionNameSource::NamedEarlyBoundRegion(span) }
+            }),
 
             ty::ReStatic => {
                 Some(RegionName { name: kw::StaticLifetime, source: RegionNameSource::Static })
@@ -856,8 +849,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             return None;
         };
 
-        let found = tcx
-            .any_free_region_meets(&tcx.type_of(region_parent), |r| *r == ty::ReEarlyBound(region));
+        let found = tcx.any_free_region_meets(&tcx.type_of(region_parent).subst_identity(), |r| {
+            *r == ty::ReEarlyBound(region)
+        });
 
         Some(RegionName {
             name: self.synthesize_region_name(),

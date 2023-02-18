@@ -935,6 +935,7 @@ pub fn make_test_description<R: Read>(
     let has_asan = util::ASAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_cfi = util::CFI_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_kcfi = util::KCFI_SUPPORTED_TARGETS.contains(&&*config.target);
+    let has_kasan = util::KASAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
@@ -1010,6 +1011,7 @@ pub fn make_test_description<R: Read>(
         reason!(!has_asan && config.parse_name_directive(ln, "needs-sanitizer-address"));
         reason!(!has_cfi && config.parse_name_directive(ln, "needs-sanitizer-cfi"));
         reason!(!has_kcfi && config.parse_name_directive(ln, "needs-sanitizer-kcfi"));
+        reason!(!has_kasan && config.parse_name_directive(ln, "needs-sanitizer-kasan"));
         reason!(!has_lsan && config.parse_name_directive(ln, "needs-sanitizer-leak"));
         reason!(!has_msan && config.parse_name_directive(ln, "needs-sanitizer-memory"));
         reason!(!has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread"));

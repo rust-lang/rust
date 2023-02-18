@@ -1,7 +1,9 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
-use rustc_middle::ty::{self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{
+    self, Binder, EarlyBinder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt,
+};
 use rustc_session::config::TraitSolver;
 use rustc_span::def_id::{DefId, CRATE_DEF_ID};
 use rustc_trait_selection::traits;
@@ -103,7 +105,7 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
         def.variants()
             .iter()
             .flat_map(|v| v.fields.last())
-            .flat_map(|f| sized_constraint_for_ty(tcx, def, tcx.type_of(f.did))),
+            .flat_map(|f| sized_constraint_for_ty(tcx, def, tcx.type_of(f.did).subst_identity())),
     );
 
     debug!("adt_sized_constraint: {:?} => {:?}", def, result);
@@ -299,7 +301,7 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predica
         // In an inherent impl, we assume that the receiver type and all its
         // constituents are well-formed.
         NodeKind::InherentImpl => {
-            let self_ty = tcx.type_of(def_id);
+            let self_ty = tcx.type_of(def_id).subst_identity();
             inputs.extend(self_ty.walk());
         }
 
@@ -355,7 +357,7 @@ fn instance_def_size_estimate<'tcx>(
 /// If `def_id` is an issue 33140 hack impl, returns its self type; otherwise, returns `None`.
 ///
 /// See [`ty::ImplOverlapKind::Issue33140`] for more details.
-fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
+fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'_>>> {
     debug!("issue33140_self_ty({:?})", def_id);
 
     let trait_ref = tcx
@@ -394,7 +396,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 
     if self_ty_matches {
         debug!("issue33140_self_ty - MATCHES!");
-        Some(self_ty)
+        Some(EarlyBinder(self_ty))
     } else {
         debug!("issue33140_self_ty - non-matching self type");
         None
@@ -434,7 +436,7 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
     };
 
     let mut unsizing_params = BitSet::new_empty(num_params);
-    for arg in tcx.bound_type_of(tail_field.did).subst_identity().walk() {
+    for arg in tcx.type_of(tail_field.did).subst_identity().walk() {
         if let Some(i) = maybe_unsizing_param_idx(arg) {
             unsizing_params.insert(i);
         }
@@ -443,7 +445,7 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
     // Ensure none of the other fields mention the parameters used
     // in unsizing.
     for field in prefix_fields {
-        for arg in tcx.bound_type_of(field.did).subst_identity().walk() {
+        for arg in tcx.type_of(field.did).subst_identity().walk() {
             if let Some(i) = maybe_unsizing_param_idx(arg) {
                 unsizing_params.remove(i);
             }

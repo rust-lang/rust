@@ -301,7 +301,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Build a tuple (U0..Un) of the final upvar types U0..Un
         // and unify the upvar tuple type in the closure with it:
-        let final_tupled_upvars_type = self.tcx.mk_tup(final_upvar_tys.iter());
+        let final_tupled_upvars_type = self.tcx.intern_tup(&final_upvar_tys);
         self.demand_suptype(span, substs.tupled_upvars_ty(), final_tupled_upvars_type);
 
         let fake_reads = delegate
@@ -315,8 +315,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.typeck_results.borrow_mut().closure_size_eval.insert(
                 closure_def_id,
                 ClosureSizeProfileData {
-                    before_feature_tys: self.tcx.mk_tup(before_feature_tys.into_iter()),
-                    after_feature_tys: self.tcx.mk_tup(after_feature_tys.into_iter()),
+                    before_feature_tys: self.tcx.intern_tup(&before_feature_tys),
+                    after_feature_tys: self.tcx.intern_tup(&after_feature_tys),
                 },
             );
         }

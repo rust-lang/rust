@@ -378,11 +378,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             let self_ty = trait_ref.self_ty();
                             let (trait_desc, self_desc) = with_no_trimmed_paths!({
                                 let trait_desc = trait_ref.print_only_trait_path().to_string();
-                                let self_desc = if self_ty.has_concrete_skeleton() {
-                                    Some(self_ty.to_string())
-                                } else {
-                                    None
-                                };
+                                let self_desc =
+                                    self_ty.has_concrete_skeleton().then(|| self_ty.to_string());
                                 (trait_desc, self_desc)
                             });
                             let cause = if let Conflict::Upstream = conflict {
@@ -996,6 +993,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     bug!("AliasEq is only used for new solver")
                 }
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
+                ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                    match self.infcx.at(&obligation.cause, obligation.param_env).eq(ct.ty(), ty) {
+                        Ok(inf_ok) => self.evaluate_predicates_recursively(
+                            previous_stack,
+                            inf_ok.into_obligations(),
+                        ),
+                        Err(_) => Ok(EvaluatedToErr),
+                    }
+                }
             }
         })
     }
@@ -2353,7 +2359,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // We can resolve the `impl Trait` to its concrete type,
                 // which enforces a DAG between the functions requiring
                 // the auto trait bounds in question.
-                t.rebind(vec![self.tcx().bound_type_of(def_id).subst(self.tcx(), substs)])
+                t.rebind(vec![self.tcx().type_of(def_id).subst(self.tcx(), substs)])
             }
         }
     }
@@ -2660,7 +2666,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let cause = cause.clone().derived_cause(parent_trait_pred, |derived| {
                 ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
                     derived,
-                    impl_def_id: def_id,
+                    impl_or_alias_def_id: def_id,
                     impl_def_predicate_index: Some(index),
                     span,
                 }))
@@ -3023,7 +3029,7 @@ fn bind_generator_hidden_types_above<'tcx>(
                             kind: ty::BrAnon(counter, None),
                         };
                         counter += 1;
-                        r = tcx.mk_region(ty::ReLateBound(current_depth, br));
+                        r = tcx.mk_re_late_bound(current_depth, br);
                     }
                     r
                 })

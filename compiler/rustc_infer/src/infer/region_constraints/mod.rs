@@ -651,7 +651,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
                 let unified_region = self.unification_table().probe_value(rid);
                 unified_region.0.unwrap_or_else(|| {
                     let root = self.unification_table().find(rid).vid;
-                    tcx.reuse_or_mk_region(region, ty::ReVar(root))
+                    tcx.mk_re_var(root)
                 })
             }
             _ => region,
@@ -675,7 +675,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ) -> Region<'tcx> {
         let vars = TwoRegions { a, b };
         if let Some(&c) = self.combine_map(t).get(&vars) {
-            return tcx.mk_region(ReVar(c));
+            return tcx.mk_re_var(c);
         }
         let a_universe = self.universe(a);
         let b_universe = self.universe(b);
@@ -683,7 +683,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         let c = self.new_region_var(c_universe, MiscVariable(origin.span()));
         self.combine_map(t).insert(vars, c);
         self.undo_log.push(AddCombination(t, vars));
-        let new_r = tcx.mk_region(ReVar(c));
+        let new_r = tcx.mk_re_var(c);
         for old_r in [a, b] {
             match t {
                 Glb => self.make_subregion(origin.clone(), new_r, old_r),

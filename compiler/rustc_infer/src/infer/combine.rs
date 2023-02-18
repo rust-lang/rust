@@ -125,11 +125,11 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             (ty::Alias(AliasKind::Projection, _), _) if self.tcx.trait_solver_next() => {
-                relation.register_type_equate_obligation(a.into(), b.into());
+                relation.register_type_equate_obligation(a, b);
                 Ok(b)
             }
             (_, ty::Alias(AliasKind::Projection, _)) if self.tcx.trait_solver_next() => {
-                relation.register_type_equate_obligation(b.into(), a.into());
+                relation.register_type_equate_obligation(b, a);
                 Ok(a)
             }
 

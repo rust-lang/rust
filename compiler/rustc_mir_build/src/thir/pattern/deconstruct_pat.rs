@@ -172,7 +172,7 @@ impl IntRange {
         ty: Ty<'tcx>,
         end: &RangeEnd,
     ) -> Option<IntRange> {
-        if Self::is_integral(ty) {
+        Self::is_integral(ty).then(|| {
             // Perform a shift if the underlying types are signed,
             // which makes the interval arithmetic simpler.
             let bias = IntRange::signed_bias(tcx, ty);
@@ -182,10 +182,8 @@ impl IntRange {
                 // This should have been caught earlier by E0030.
                 bug!("malformed range pattern: {}..={}", lo, (hi - offset));
             }
-            Some(IntRange { range: lo..=(hi - offset), bias })
-        } else {
-            None
-        }
+            IntRange { range: lo..=(hi - offset), bias }
+        })
     }
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.

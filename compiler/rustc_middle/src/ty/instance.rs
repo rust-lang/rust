@@ -103,7 +103,7 @@ impl<'tcx> Instance<'tcx> {
     /// lifetimes erased, allowing a `ParamEnv` to be specified for use during normalization.
     pub fn ty(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
-        tcx.subst_and_normalize_erasing_regions(self.substs, param_env, ty)
+        tcx.subst_and_normalize_erasing_regions(self.substs, param_env, ty.skip_binder())
     }
 
     /// Finds a crate that contains a monomorphization of this instance that
@@ -584,7 +584,7 @@ impl<'tcx> Instance<'tcx> {
     /// this function returns `None`, then the MIR body does not require substitution during
     /// codegen.
     fn substs_for_mir_body(&self) -> Option<SubstsRef<'tcx>> {
-        if self.def.has_polymorphic_mir_body() { Some(self.substs) } else { None }
+        self.def.has_polymorphic_mir_body().then_some(self.substs)
     }
 
     pub fn subst_mir<T>(&self, tcx: TyCtxt<'tcx>, v: &T) -> T
@@ -662,7 +662,7 @@ fn polymorphize<'tcx>(
     let def_id = instance.def_id();
     let upvars_ty = if tcx.is_closure(def_id) {
         Some(substs.as_closure().tupled_upvars_ty())
-    } else if tcx.type_of(def_id).is_generator() {
+    } else if tcx.type_of(def_id).skip_binder().is_generator() {
         Some(substs.as_generator().tupled_upvars_ty())
     } else {
         None

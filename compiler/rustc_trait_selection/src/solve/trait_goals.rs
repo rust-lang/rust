@@ -326,7 +326,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                         .fields
                         .last()
                         .expect("expected unsized ADT to have a tail field");
-                    let tail_field_ty = tcx.bound_type_of(tail_field.did);
+                    let tail_field_ty = tcx.type_of(tail_field.did);
 
                     let a_tail_ty = tail_field_ty.subst(tcx, a_substs);
                     let b_tail_ty = tail_field_ty.subst(tcx, b_substs);
@@ -359,7 +359,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     let b_last_ty = b_tys.last().unwrap();
 
                     // Substitute just the tail field of B., and require that they're equal.
-                    let unsized_a_ty = tcx.mk_tup(a_rest_tys.iter().chain([b_last_ty]));
+                    let unsized_a_ty = tcx.mk_tup(a_rest_tys.iter().chain([b_last_ty]).copied());
                     let mut nested_goals = ecx.infcx.eq(goal.param_env, unsized_a_ty, b_ty)?;
 
                     // Similar to ADTs, require that the rest of the fields are equal.

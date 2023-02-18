@@ -2,11 +2,11 @@ error[E0061]: this function takes 4 arguments but 7 arguments were supplied
   --> $DIR/issue-97484.rs:12:5
    |
 LL |     foo(&&A, B, C, D, E, F, G);
-   |     ^^^      -  -     -  - argument of type `F` unexpected
+   |     ^^^      -  -     -  - unexpected argument of type `F`
    |              |  |     |
    |              |  |     expected `&E`, found `E`
-   |              |  argument of type `C` unexpected
-   |              argument of type `B` unexpected
+   |              |  unexpected argument of type `C`
+   |              unexpected argument of type `B`
    |
 note: function defined here
   --> $DIR/issue-97484.rs:9:4
@@ -19,8 +19,9 @@ LL |     foo(&&A, B, C, D, &E, F, G);
    |                       ~~
 help: remove the extra arguments
    |
-LL |     foo(&&A, D, /* &E */, G);
-   |        ~~~~~~~~~~~~~~~~~~~~~
+LL -     foo(&&A, B, C, D, E, F, G);
+LL +     foo(&&A, D, /* &E */, G);
+   |
 
 error: aborting due to previous error
 

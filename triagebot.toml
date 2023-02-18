@@ -538,6 +538,7 @@ diagnostics = [
     "@TaKO8Ki",
 ]
 parser = [
+    "@compiler-errors",
     "@davidtwco",
     "@nnethercote",
     "@petrochenkov",
@@ -567,6 +568,7 @@ borrowck = [
     "@pnkfelix",
 ]
 ast_lowering = [
+    "@compiler-errors",
     "@spastorino",
 ]
 fallback = [
@@ -630,7 +632,7 @@ style-team = [
 "/src/stage0.json" =                         ["bootstrap"]
 "/tests/ui" =                                ["compiler"]
 "/src/tools/cargo" =                         ["@ehuss", "@joshtriplett"]
-"/src/tools/compiletest" =                   ["bootstrap"]
+"/src/tools/compiletest" =                   ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors"]
 "/src/tools/linkchecker" =                   ["@ehuss"]
 "/src/tools/rust-installer" =                ["bootstrap"]
 "/src/tools/rustbook" =                      ["@ehuss"]

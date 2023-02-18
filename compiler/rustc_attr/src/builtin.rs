@@ -731,7 +731,7 @@ pub fn eval_condition(
                             sess,
                             sym::cfg_target_compact,
                             cfg.span,
-                            &"compact `cfg(target(..))` is experimental and subject to change"
+                            "compact `cfg(target(..))` is experimental and subject to change"
                         ).emit();
                     }
 

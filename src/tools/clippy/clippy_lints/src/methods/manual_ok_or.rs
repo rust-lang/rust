@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
     if_chain! {
         if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let Some(impl_id) = cx.tcx.impl_of_method(method_id);
-        if is_type_diagnostic_item(cx, cx.tcx.type_of(impl_id), sym::Option);
+        if is_type_diagnostic_item(cx, cx.tcx.type_of(impl_id).subst_identity(), sym::Option);
         if let ExprKind::Call(err_path, [err_arg]) = or_expr.kind;
         if is_res_lang_ctor(cx, path_res(cx, err_path), ResultErr);
         if is_ok_wrapping(cx, map_expr);

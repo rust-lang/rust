@@ -575,7 +575,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *output_ty.kind() {
-            output_ty = self.infcx.tcx.type_of(def_id)
+            output_ty = self.infcx.tcx.type_of(def_id).subst_identity()
         };
 
         debug!("report_fnmut_error: output_ty={:?}", output_ty);
@@ -896,7 +896,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             debug!(?fn_did, ?substs);
 
             // Only suggest this on function calls, not closures
-            let ty = tcx.type_of(fn_did);
+            let ty = tcx.type_of(fn_did).subst_identity();
             debug!("ty: {:?}, ty.kind: {:?}", ty, ty.kind());
             if let ty::Closure(_, _) = ty.kind() {
                 return;

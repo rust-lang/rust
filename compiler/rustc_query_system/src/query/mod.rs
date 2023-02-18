@@ -101,22 +101,22 @@ impl QuerySideEffects {
 }
 
 pub trait QueryContext: HasDepContext {
-    fn next_job_id(&self) -> QueryJobId;
+    fn next_job_id(self) -> QueryJobId;
 
     /// Get the query information from the TLS context.
-    fn current_query_job(&self) -> Option<QueryJobId>;
+    fn current_query_job(self) -> Option<QueryJobId>;
 
-    fn try_collect_active_jobs(&self) -> Option<QueryMap<Self::DepKind>>;
+    fn try_collect_active_jobs(self) -> Option<QueryMap<Self::DepKind>>;
 
     /// Load side effects associated to the node in the previous session.
-    fn load_side_effects(&self, prev_dep_node_index: SerializedDepNodeIndex) -> QuerySideEffects;
+    fn load_side_effects(self, prev_dep_node_index: SerializedDepNodeIndex) -> QuerySideEffects;
 
     /// Register diagnostics for the given node, for use in next session.
-    fn store_side_effects(&self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects);
+    fn store_side_effects(self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects);
 
     /// Register diagnostics for the given node, for use in next session.
     fn store_side_effects_for_anon_node(
-        &self,
+        self,
         dep_node_index: DepNodeIndex,
         side_effects: QuerySideEffects,
     );
@@ -125,12 +125,12 @@ pub trait QueryContext: HasDepContext {
     /// new query job while it executes. It returns the diagnostics
     /// captured during execution and the actual result.
     fn start_query<R>(
-        &self,
+        self,
         token: QueryJobId,
         depth_limit: bool,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
         compute: impl FnOnce() -> R,
     ) -> R;
 
-    fn depth_limit_error(&self, job: QueryJobId);
+    fn depth_limit_error(self, job: QueryJobId);
 }

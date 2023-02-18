@@ -271,7 +271,7 @@ impl<'a> AstValidator<'a> {
 
         self.session.emit_err(InvalidVisibility {
             span: vis.span,
-            implied: if vis.kind.is_pub() { Some(vis.span) } else { None },
+            implied: vis.kind.is_pub().then_some(vis.span),
             note,
         });
     }
@@ -291,27 +291,6 @@ impl<'a> AstValidator<'a> {
     fn check_trait_fn_not_const(&self, constness: Const) {
         if let Const::Yes(span) = constness {
             self.session.emit_err(TraitFnConst { span });
-        }
-    }
-
-    fn check_late_bound_lifetime_defs(&self, params: &[GenericParam]) {
-        // Check only lifetime parameters are present and that the lifetime
-        // parameters that are present have no bounds.
-        let non_lt_param_spans: Vec<_> = params
-            .iter()
-            .filter_map(|param| match param.kind {
-                GenericParamKind::Lifetime { .. } => {
-                    if !param.bounds.is_empty() {
-                        let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
-                        self.session.emit_err(ForbiddenLifetimeBound { spans });
-                    }
-                    None
-                }
-                _ => Some(param.ident.span),
-            })
-            .collect();
-        if !non_lt_param_spans.is_empty() {
-            self.session.emit_err(ForbiddenNonLifetimeParam { spans: non_lt_param_spans });
         }
     }
 
@@ -745,7 +724,6 @@ impl<'a> AstValidator<'a> {
                     )
                     .emit();
                 });
-                self.check_late_bound_lifetime_defs(&bfty.generic_params);
                 if let Extern::Implicit(_) = bfty.ext {
                     let sig_span = self.session.source_map().next_point(ty.span.shrink_to_lo());
                     self.maybe_lint_missing_abi(sig_span, ty.id);
@@ -1318,9 +1296,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         for predicate in &generics.where_clause.predicates {
             match predicate {
                 WherePredicate::BoundPredicate(bound_pred) => {
-                    // A type binding, eg `for<'c> Foo: Send+Clone+'c`
-                    self.check_late_bound_lifetime_defs(&bound_pred.bound_generic_params);
-
                     // This is slightly complicated. Our representation for poly-trait-refs contains a single
                     // binder and thus we only allow a single level of quantification. However,
                     // the syntax of Rust permits quantification in two places in where clauses,
@@ -1396,11 +1371,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_param_bound(self, bound)
     }
 
-    fn visit_poly_trait_ref(&mut self, t: &'a PolyTraitRef) {
-        self.check_late_bound_lifetime_defs(&t.bound_generic_params);
-        visit::walk_poly_trait_ref(self, t);
-    }
-
     fn visit_variant_data(&mut self, s: &'a VariantData) {
         self.with_banned_assoc_ty_bound(|this| visit::walk_struct_def(this, s))
     }
@@ -1435,10 +1405,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 .span_label(*aspan, "`async` because of this")
                 .span_label(span, "") // Point at the fn header.
                 .emit();
-        }
-
-        if let FnKind::Closure(ClosureBinder::For { generic_params, .. }, ..) = fk {
-            self.check_late_bound_lifetime_defs(generic_params);
         }
 
         if let FnKind::Fn(

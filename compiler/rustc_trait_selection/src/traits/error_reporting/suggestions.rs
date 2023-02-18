@@ -82,11 +82,8 @@ impl<'tcx, 'a> GeneratorData<'tcx, 'a> {
                     upvars.iter().find_map(|(upvar_id, upvar)| {
                         let upvar_ty = typeck_results.node_type(*upvar_id);
                         let upvar_ty = infer_context.resolve_vars_if_possible(upvar_ty);
-                        if ty_matches(ty::Binder::dummy(upvar_ty)) {
-                            Some(GeneratorInteriorOrUpvar::Upvar(upvar.span))
-                        } else {
-                            None
-                        }
+                        ty_matches(ty::Binder::dummy(upvar_ty))
+                            .then(|| GeneratorInteriorOrUpvar::Upvar(upvar.span))
                     })
                 })
             }
@@ -770,15 +767,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             obligation.param_env,
                             real_trait_pred_and_ty,
                         );
-                        if obligations
+                        let may_hold = obligations
                             .iter()
                             .chain([&obligation])
                             .all(|obligation| self.predicate_may_hold(obligation))
-                        {
-                            Some(steps)
-                        } else {
-                            None
-                        }
+                            .then_some(steps);
+
+                        may_hold
                     })
                 {
                     if steps > 0 {
@@ -1061,7 +1056,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
-        let ty = self.tcx.erase_late_bound_regions(self_ty);
+        let ty = self.instantiate_binder_with_placeholders(self_ty);
         let Some(generics) = self.tcx.hir().get_generics(obligation.cause.body_id) else { return false };
         let ty::Ref(_, inner_ty, hir::Mutability::Not) = ty.kind() else { return false };
         let ty::Param(param) = inner_ty.kind() else { return false };
@@ -2017,7 +2012,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let sig = match inputs.kind() {
                 ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id()) => {
                     infcx.tcx.mk_fn_sig(
-                        inputs.iter(),
+                        *inputs,
                         infcx.next_ty_var(TypeVariableOrigin {
                             span: DUMMY_SP,
                             kind: TypeVariableOriginKind::MiscVariable,
@@ -2028,7 +2023,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     )
                 }
                 _ => infcx.tcx.mk_fn_sig(
-                    std::iter::once(inputs),
+                    [inputs],
                     infcx.next_ty_var(TypeVariableOrigin {
                         span: DUMMY_SP,
                         kind: TypeVariableOriginKind::MiscVariable,
@@ -3148,7 +3143,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     parent_trait_pred.print_modifiers_and_trait_path()
                 );
                 let mut is_auto_trait = false;
-                match self.tcx.hir().get_if_local(data.impl_def_id) {
+                match self.tcx.hir().get_if_local(data.impl_or_alias_def_id) {
                     Some(Node::Item(hir::Item {
                         kind: hir::ItemKind::Trait(is_auto, ..),
                         ident,

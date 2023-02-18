@@ -154,7 +154,7 @@ fn struct_llfields<'a, 'tcx>(
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
     }
-    let field_remapping = if padding_used { Some(field_remapping) } else { None };
+    let field_remapping = padding_used.then_some(field_remapping);
     (result, packed, field_remapping)
 }
 

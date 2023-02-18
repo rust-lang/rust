@@ -171,7 +171,9 @@ pub struct TargetDataLayout {
 
     pub instruction_address_space: AddressSpace,
 
-    /// Minimum size of #[repr(C)] enums (default I32 bits)
+    /// Minimum size of #[repr(C)] enums (default c_int::BITS, usually 32)
+    /// Note: This isn't in LLVM's data layout string, it is `short_enum`
+    /// so the only valid spec for LLVM is c_int::BITS or 8
     pub c_enum_min_size: Integer,
 }
 

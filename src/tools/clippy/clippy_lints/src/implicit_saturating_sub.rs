@@ -102,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
                             if let Some(const_id) = cx.typeck_results().type_dependent_def_id(cond_num_val.hir_id);
                             if let Some(impl_id) = cx.tcx.impl_of_method(const_id);
                             if let None = cx.tcx.impl_trait_ref(impl_id); // An inherent impl
-                            if cx.tcx.type_of(impl_id).is_integral();
+                            if cx.tcx.type_of(impl_id).subst_identity().is_integral();
                             then {
                                 print_lint_and_sugg(cx, var_name, expr)
                             }
@@ -115,7 +115,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
                             if let Some(func_id) = cx.typeck_results().type_dependent_def_id(func.hir_id);
                             if let Some(impl_id) = cx.tcx.impl_of_method(func_id);
                             if let None = cx.tcx.impl_trait_ref(impl_id); // An inherent impl
-                            if cx.tcx.type_of(impl_id).is_integral();
+                            if cx.tcx.type_of(impl_id).subst_identity().is_integral();
                             then {
                                 print_lint_and_sugg(cx, var_name, expr)
                             }

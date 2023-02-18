@@ -93,7 +93,7 @@ fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
 /// Check that the fields of the `union` do not need dropping.
 fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> bool {
-    let item_type = tcx.type_of(item_def_id);
+    let item_type = tcx.type_of(item_def_id).subst_identity();
     if let ty::Adt(def, substs) = item_type.kind() {
         assert!(def.is_union());
 
@@ -170,7 +170,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // would be enough to check this for `extern` statics, as statics with an initializer will
     // have UB during initialization if they are uninhabited, but there also seems to be no good
     // reason to allow any statics to be uninhabited.
-    let ty = tcx.type_of(def_id);
+    let ty = tcx.type_of(def_id).subst_identity();
     let span = tcx.def_span(def_id);
     let layout = match tcx.layout_of(ParamEnv::reveal_all().and(ty)) {
         Ok(l) => l,
@@ -227,7 +227,7 @@ fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
     if !tcx.features().impl_trait_projections {
         check_opaque_for_inheriting_lifetimes(tcx, item.owner_id.def_id, span);
     }
-    if tcx.type_of(item.owner_id.def_id).references_error() {
+    if tcx.type_of(item.owner_id.def_id).subst_identity().references_error() {
         return;
     }
     if check_opaque_for_cycles(tcx, item.owner_id.def_id, substs, span, &origin).is_err() {
@@ -425,7 +425,7 @@ fn check_opaque_meets_bounds<'tcx>(
     //
     // FIXME: Consider wrapping the hidden type in an existential `Binder` and instantiating it
     // here rather than using ReErased.
-    let hidden_ty = tcx.bound_type_of(def_id.to_def_id()).subst(tcx, substs);
+    let hidden_ty = tcx.type_of(def_id.to_def_id()).subst(tcx, substs);
     let hidden_ty = tcx.fold_regions(hidden_ty, |re, _dbi| match re.kind() {
         ty::ReErased => infcx.next_region_var(RegionVariableOrigin::MiscVariable(span)),
         _ => re,
@@ -492,7 +492,7 @@ fn is_enum_of_nonnullable_ptr<'tcx>(
 
 fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     if tcx.codegen_fn_attrs(def_id).import_linkage.is_some() {
-        if match tcx.type_of(def_id).kind() {
+        if match tcx.type_of(def_id).subst_identity().kind() {
             ty::RawPtr(_) => false,
             ty::Adt(adt_def, substs) => !is_enum_of_nonnullable_ptr(tcx, *adt_def, *substs),
             _ => true,
@@ -537,7 +537,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
             let assoc_items = tcx.associated_items(id.owner_id);
             check_on_unimplemented(tcx, id);
 
-            for assoc_item in assoc_items.in_definition_order() {
+            for &assoc_item in assoc_items.in_definition_order() {
                 match assoc_item.kind {
                     ty::AssocKind::Fn => {
                         let abi = tcx.fn_sig(assoc_item.def_id).skip_binder().abi();
@@ -578,7 +578,7 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
             }
         }
         DefKind::TyAlias => {
-            let pty_ty = tcx.type_of(id.owner_id);
+            let pty_ty = tcx.type_of(id.owner_id).subst_identity();
             let generics = tcx.generics_of(id.owner_id);
             check_type_params_are_used(tcx, &generics, pty_ty);
         }
@@ -670,7 +670,7 @@ pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, item: hir::ItemId) {
 pub(super) fn check_specialization_validity<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def: &ty::TraitDef,
-    trait_item: &ty::AssocItem,
+    trait_item: ty::AssocItem,
     impl_id: DefId,
     impl_item: DefId,
 ) {
@@ -767,17 +767,17 @@ fn check_impl_items_against_trait<'tcx>(
                 ));
             }
             ty::AssocKind::Fn => {
-                compare_impl_method(tcx, &ty_impl_item, &ty_trait_item, impl_trait_ref);
+                compare_impl_method(tcx, ty_impl_item, ty_trait_item, impl_trait_ref);
             }
             ty::AssocKind::Type => {
-                compare_impl_ty(tcx, &ty_impl_item, &ty_trait_item, impl_trait_ref);
+                compare_impl_ty(tcx, ty_impl_item, ty_trait_item, impl_trait_ref);
             }
         }
 
         check_specialization_validity(
             tcx,
             trait_def,
-            &ty_trait_item,
+            ty_trait_item,
             impl_id.to_def_id(),
             impl_item,
         );
@@ -854,7 +854,7 @@ fn check_impl_items_against_trait<'tcx>(
 }
 
 pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
-    let t = tcx.type_of(def_id);
+    let t = tcx.type_of(def_id).subst_identity();
     if let ty::Adt(def, substs) = t.kind()
         && def.is_struct()
     {
@@ -974,7 +974,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
                             &if first {
                                 format!(
                                     "`{}` contains a field of type `{}`",
-                                    tcx.type_of(def.did()),
+                                    tcx.type_of(def.did()).subst_identity(),
                                     ident
                                 )
                             } else {
@@ -996,7 +996,7 @@ pub(super) fn check_packed_inner(
     def_id: DefId,
     stack: &mut Vec<DefId>,
 ) -> Option<Vec<(DefId, Span)>> {
-    if let ty::Adt(def, substs) = tcx.type_of(def_id).kind() {
+    if let ty::Adt(def, substs) = tcx.type_of(def_id).subst_identity().kind() {
         if def.is_struct() || def.is_union() {
             if def.repr().align.is_some() {
                 return Some(vec![(def.did(), DUMMY_SP)]);

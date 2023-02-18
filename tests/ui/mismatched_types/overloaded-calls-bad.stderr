@@ -32,7 +32,7 @@ error[E0057]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/overloaded-calls-bad.rs:37:15
    |
 LL |     let ans = s("burma", "shave");
-   |               ^ -------  ------- argument of type `&'static str` unexpected
+   |               ^ -------  ------- unexpected argument of type `&'static str`
    |                 |
    |                 expected `isize`, found `&str`
    |
@@ -43,8 +43,9 @@ LL | impl FnMut<(isize,)> for S {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: remove the extra argument
    |
-LL |     let ans = s(/* isize */);
-   |                ~~~~~~~~~~~~~
+LL -     let ans = s("burma", "shave");
+LL +     let ans = s(/* isize */);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/overloaded-calls-bad.rs:40:7

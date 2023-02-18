@@ -199,7 +199,7 @@ fn report_forbidden_specialization(tcx: TyCtxt<'_>, impl_item: DefId, parent_imp
 fn missing_items_err(
     tcx: TyCtxt<'_>,
     impl_span: Span,
-    missing_items: &[&ty::AssocItem],
+    missing_items: &[ty::AssocItem],
     full_impl_span: Span,
 ) {
     let missing_items_msg = missing_items
@@ -225,7 +225,7 @@ fn missing_items_err(
     let padding =
         tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(|| String::new());
 
-    for trait_item in missing_items {
+    for &trait_item in missing_items {
         let snippet = suggestion_signature(trait_item, tcx);
         let code = format!("{}{}\n{}", padding, snippet, padding);
         let msg = format!("implement the missing item: `{snippet}`");
@@ -272,7 +272,7 @@ fn default_body_is_unstable(
     reason: Option<Symbol>,
     issue: Option<NonZeroU32>,
 ) {
-    let missing_item_name = &tcx.associated_item(item_did).name;
+    let missing_item_name = tcx.associated_item(item_did).name;
     let use_of_unstable_library_feature_note = match reason {
         Some(r) => format!("use of unstable library feature '{feature}': {r}"),
         None => format!("use of unstable library feature '{feature}'"),
@@ -365,7 +365,7 @@ fn fn_sig_suggestion<'tcx>(
     sig: ty::FnSig<'tcx>,
     ident: Ident,
     predicates: ty::GenericPredicates<'tcx>,
-    assoc: &ty::AssocItem,
+    assoc: ty::AssocItem,
 ) -> String {
     let args = sig
         .inputs()
@@ -433,7 +433,7 @@ pub fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
 /// Return placeholder code for the given associated item.
 /// Similar to `ty::AssocItem::suggestion`, but appropriate for use as the code snippet of a
 /// structured suggestion.
-fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
+fn suggestion_signature(assoc: ty::AssocItem, tcx: TyCtxt<'_>) -> String {
     match assoc.kind {
         ty::AssocKind::Fn => {
             // We skip the binder here because the binder would deanonymize all
@@ -450,7 +450,7 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
         }
         ty::AssocKind::Type => format!("type {} = Type;", assoc.name),
         ty::AssocKind::Const => {
-            let ty = tcx.type_of(assoc.def_id);
+            let ty = tcx.type_of(assoc.def_id).subst_identity();
             let val = ty_kind_suggestion(ty).unwrap_or("value");
             format!("const {}: {} = {};", assoc.name, ty, val)
         }

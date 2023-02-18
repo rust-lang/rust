@@ -129,7 +129,7 @@ fn external_generic_args<'tcx>(
         });
         GenericArgs::Parenthesized { inputs, output }
     } else {
-        GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() }
+        GenericArgs::AngleBracketed { args: args.into(), bindings }
     }
 }
 
@@ -266,7 +266,7 @@ pub(crate) fn print_evaluated_const(
     underscores_and_type: bool,
 ) -> Option<String> {
     tcx.const_eval_poly(def_id).ok().and_then(|val| {
-        let ty = tcx.type_of(def_id);
+        let ty = tcx.type_of(def_id).subst_identity();
         match (val, ty.kind()) {
             (_, &ty::Ref(..)) => None,
             (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,

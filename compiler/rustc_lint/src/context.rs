@@ -487,7 +487,7 @@ impl LintStore {
         let mut groups: Vec<_> = self
             .lint_groups
             .iter()
-            .filter_map(|(k, LintGroup { depr, .. })| if depr.is_none() { Some(k) } else { None })
+            .filter_map(|(k, LintGroup { depr, .. })| depr.is_none().then_some(k))
             .collect();
         groups.sort();
         let groups = groups.iter().map(|k| Symbol::intern(k));
@@ -1112,11 +1112,9 @@ impl<'tcx> LateContext<'tcx> {
                 .maybe_typeck_results()
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)
                 .or_else(|| {
-                    if self.tcx.has_typeck_results(id.owner.to_def_id()) {
-                        Some(self.tcx.typeck(id.owner.def_id))
-                    } else {
-                        None
-                    }
+                    self.tcx
+                        .has_typeck_results(id.owner.to_def_id())
+                        .then(|| self.tcx.typeck(id.owner.def_id))
                 })
                 .and_then(|typeck_results| typeck_results.type_dependent_def(id))
                 .map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),

@@ -110,11 +110,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
     fn combine_ref_deref(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Ref(_, _, place) = rvalue {
             if let Some((base, ProjectionElem::Deref)) = place.as_ref().last_projection() {
-                if let ty::Ref(_, _, Mutability::Not) =
-                    base.ty(self.local_decls, self.tcx).ty.kind()
-                {
-                    // The dereferenced place must have type `&_`, so that we don't copy `&mut _`.
-                } else {
+                if rvalue.ty(self.local_decls, self.tcx) != base.ty(self.local_decls, self.tcx).ty {
                     return;
                 }
 

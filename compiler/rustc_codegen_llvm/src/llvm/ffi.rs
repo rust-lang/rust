@@ -482,6 +482,8 @@ pub struct SanitizerOptions {
     pub sanitize_thread: bool,
     pub sanitize_hwaddress: bool,
     pub sanitize_hwaddress_recover: bool,
+    pub sanitize_kernel_address: bool,
+    pub sanitize_kernel_address_recover: bool,
 }
 
 /// LLVMRelocMode

@@ -19,7 +19,7 @@ pub fn target() -> Target {
             max_atomic_width: Some(32),
             emit_debug_gdb_scripts: false,
             // GCC and Clang default to 8 for arm-none here
-            c_enum_min_bits: 8,
+            c_enum_min_bits: Some(8),
             ..Default::default()
         },
     }

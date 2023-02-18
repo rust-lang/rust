@@ -93,7 +93,7 @@ fn relate_mir_and_user_substs<'tcx>(
     let tcx = ocx.infcx.tcx;
     let cause = ObligationCause::dummy_with_span(span);
 
-    let ty = tcx.bound_type_of(def_id).subst(tcx, substs);
+    let ty = tcx.type_of(def_id).subst(tcx, substs);
     let ty = ocx.normalize(&cause, param_env, ty);
     debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
 
@@ -122,7 +122,7 @@ fn relate_mir_and_user_substs<'tcx>(
 
     if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
         let self_ty = ocx.normalize(&cause, param_env, self_ty);
-        let impl_self_ty = tcx.bound_type_of(impl_def_id).subst(tcx, substs);
+        let impl_self_ty = tcx.type_of(impl_def_id).subst(tcx, substs);
         let impl_self_ty = ocx.normalize(&cause, param_env, impl_self_ty);
 
         ocx.eq(&cause, param_env, self_ty, impl_self_ty)?;
