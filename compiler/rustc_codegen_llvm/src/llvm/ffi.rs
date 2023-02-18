@@ -1103,7 +1103,7 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
         ret_primary_ret = false;
     }
 
-    let mut args_tree = typetree.input_tt.into_iter()
+    let mut args_tree = typetree.input_tt.iter()
         .map(|x| x.inner).collect::<Vec<_>>();
 
     //let mut args_tree = vec![TypeTree::new().inner; typetree.input_tt.len()];
@@ -2932,11 +2932,13 @@ impl TypeTree {
         self
     }
 
-    pub fn merge(&mut self, other: Self) {
+    pub fn merge(self, other: Self) -> Self {
         unsafe {
             EnzymeMergeTypeTree(self.inner, other.inner);
         }
         drop(other);
+
+        self
     }
 
     #[must_use]

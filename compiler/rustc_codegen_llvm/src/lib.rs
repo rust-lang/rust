@@ -21,7 +21,7 @@ extern crate rustc_macros;
 
 use back::write::{create_informational_target_machine, create_target_machine};
 
-use llvm::TypeTree;
+use llvm::{TypeTree, CConcreteType};
 pub use llvm_util::target_features;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
@@ -36,7 +36,7 @@ use rustc_errors::{ErrorGuaranteed, FatalError, Handler};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{TyCtxt, Ty, ParamEnvAnd, ParamEnv, Param, Adt};
+use rustc_middle::ty::{TyCtxt, Ty, FloatTy, ParamEnvAnd, ParamEnv, Adt, self};
 use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
@@ -198,6 +198,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         modules: Vec<FatLTOInput<Self>>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
         ) -> Result<LtoModuleCodegen<Self>, FatalError> {
+        println!("Fat LTO");
         back::lto::run_fat(cgcx, modules, cached_modules)
     }
     fn run_thin_lto(
@@ -405,37 +406,52 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 }
 
-pub fn get_enzyme_typetree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
-                                 tcx: TyCtxt<'tcx>, llcx: &'_ llvm::Context, depth: u8) -> TypeTree {
-    let mut tt = TypeTree::new();
-    if depth > 6 {
-        panic!("depth > 6! Abort");
+pub fn get_enzyme_typetree2<'tcx>( _tcx: TyCtxt<'tcx>, llcx: &'_ llvm::Context, ty: Ty<'tcx>, depth: u8) -> Option<TypeTree> {
+    assert!(depth <= 6);
+
+    match ty.kind() {
+        ty::Bool | ty::Char => Some(TypeTree::from_type(CConcreteType::DT_Unknown, llcx)),
+        ty::Float(x) if *x == FloatTy::F32 => Some(TypeTree::from_type(CConcreteType::DT_Float, llcx)),
+        ty::Float(x) if *x == FloatTy::F64 => Some(TypeTree::from_type(CConcreteType::DT_Double, llcx)),
+        ty::Int(_) | ty::Uint(_) => Some(TypeTree::from_type(CConcreteType::DT_Integer, llcx)),
+        _ => unreachable!(),
     }
+}
+
+pub fn get_enzyme_typetree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str, tcx: TyCtxt<'tcx>, llcx: &'_ llvm::Context, depth: u8) -> TypeTree {
+    assert!(depth <= 6);
+    let mut tt = TypeTree::new();
 
     if id.is_unsafe_ptr() || id.is_ref() || id.is_box() {
         if  id.is_fn_ptr() {
             unimplemented!("what to do whith fn ptr?");
         }
 
-        if id.is_unsafe_ptr() {
-            dbg!("a raw ptr");
-        } else if id.is_ref() {
-            dbg!("a ref");
-        } else {
-            dbg!("a box");
-        }
-
-        tt = TypeTree::from_type(llvm_::CConcreteType::DT_Pointer, llcx).only(-1);
+        let tt = TypeTree::from_type(llvm_::CConcreteType::DT_Pointer, llcx);
         let inner_id = id.builtin_deref(true).unwrap().ty;
         let inner_tt = get_enzyme_typetree(inner_id, llvm_data_layout, tcx, llcx, depth+1);
-        tt.merge(inner_tt.only(-1));
-        //println!("returning tt with indirection: {}", tt);
-        return tt;
+
+        let param_env_and = ParamEnvAnd {
+            param_env: ParamEnv::empty(),
+            value: inner_id,
+        };
+        let size = tcx.layout_of(param_env_and).unwrap().size.bytes();
+
+        dbg!(&inner_tt);
+        dbg!(&id);
+
+        if id.is_unsafe_ptr() {
+            return tt.merge(inner_tt).only(-1);
+        } else {
+            let shifted = inner_tt.shift(llvm_data_layout, 0, size as isize, 0);
+            dbg!(&shifted);
+            return tt.merge(shifted).only(-1);
+        }
     }
 
     if id.is_scalar() {
         assert!(!id.is_any_ptr());
-        dbg!("a scalar");
+
         let scalar_type = if id.is_integral() {
             llvm::CConcreteType::DT_Integer
         } else {
@@ -446,11 +462,8 @@ pub fn get_enzyme_typetree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
                 _ => panic!("floatTy scalar that is neither f32 nor f64"),
             }
         };
-        return llvm::TypeTree::from_type(scalar_type, llcx).only(-1);
-    }
 
-    if let Param(_) = id.kind() {
-        return TypeTree::new();
+        return llvm::TypeTree::from_type(scalar_type, llcx).only(-1);
     }
 
     let param_env_and = ParamEnvAnd {
@@ -458,6 +471,7 @@ pub fn get_enzyme_typetree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
         value: id,
     };
 
+    dbg!(&id);
     let layout = tcx.layout_of(param_env_and);
     assert!(layout.is_ok());
 
@@ -465,44 +479,69 @@ pub fn get_enzyme_typetree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
     let fields = layout.fields();
     let _abi = layout.abi();
     let max_size = layout.size();
-    dbg!(layout);
-    // dbg!(fields);
-    // dbg!(abi);
-    // dbg!(max_size);
 
     if id.is_adt() {
         dbg!("an ADT");
         let adt_def = id.ty_adt_def().unwrap();
         let substs = match id.kind() {
             Adt(_, subst_ref) => subst_ref,
-            _ => unreachable!(),
+            _ => panic!(""),
         };
 
         if adt_def.is_struct() {
-            dbg!("a struct");
             let (offsets, memory_index) = match fields {
                 FieldsShape::Arbitrary{ offsets: o, memory_index: m } => (o,m),
                 _ => panic!(""),
             };
             let fields = adt_def.all_fields();
             let mut field_tt = vec![];
+            let mut field_sizes = vec![];
             for field in fields {
                 let field_ty: Ty<'_> = field.ty(tcx, substs);
-                let inner_tt = get_enzyme_typetree(field_ty, llvm_data_layout, tcx, llcx, depth+1).data0();
+                let field_ty: Ty<'_> = tcx.normalize_erasing_regions(ParamEnv::empty(), field_ty);
+
                 dbg!(field_ty);
+                if field_ty.is_phantom_data() {
+                    continue;
+                }
+
+                let inner_tt = get_enzyme_typetree(field_ty, llvm_data_layout, tcx, llcx, depth+1);
+
                 println!("inner tt: {}", inner_tt);
                 field_tt.push(inner_tt);
+
+                if field_ty.is_adt() {
+                    let param_env_and = ParamEnvAnd {
+                        param_env: ParamEnv::empty(),
+                        value: field_ty,
+                    };
+                    field_sizes.push(tcx.layout_of(param_env_and).unwrap().size.bytes());
+                } else {
+                    field_sizes.push(1);
+                }
             }
             dbg!(offsets);
             dbg!(memory_index);
+            dbg!(&field_sizes);
+
             // Now let's move those typeTrees in the order that rustc mandates.
             let mut ret_tt = TypeTree::new();
+            dbg!(&field_tt);
             for i in 0..field_tt.len() {
                 let tt = &field_tt[i];
                 let offset = offsets[i];
-                ret_tt.merge(tt.clone().only(offset.bytes_usize() as isize));
+                let size = (field_sizes[i]) as isize;
+                dbg!(offset.bytes_usize());
+                dbg!(size);
+                let tt = tt.clone();
+                //let tt = tt.only(offset.bytes_usize() as isize);
+                let tt = tt.shift(llvm_data_layout, 0, size, offset.bytes_usize() as usize);
+                dbg!(&tt);
+
+                ret_tt = ret_tt.merge(tt);
             }
-            //println!("struct tt: {}", ret_tt);
+
+            dbg!(&ret_tt);
             return ret_tt;
         } else {
             unimplemented!("adt that isn't a struct");
@@ -524,10 +563,15 @@ pub fn get_enzyme_typetree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str,
         assert!(*count > 0); // return empty TT for empty?
         let sub_id = id.builtin_index().unwrap();
         let sub_tt = get_enzyme_typetree(sub_id, llvm_data_layout, tcx, llcx, depth+1).data0();
+        dbg!(&sub_tt, isize_count);
         for i in 0isize..isize_count {
-            tt.merge(sub_tt.clone().only(i * (byte_stride as isize)));
+            tt = tt.merge(sub_tt.clone().only(i * (byte_stride as isize)));
         }
         println!("array tt: {}", tt);
+        //tt = TypeTree::from_type(llvm_::CConcreteType::DT_Pointer, llcx)
+        //    .merge(tt).only(-1);
+
+        //tt = tt.only(-1);
     }
     //println!("returning tt: {}", tt);
     return tt;
