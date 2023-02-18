@@ -1,6 +1,8 @@
 use crate::fmt;
-use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map, TrustedLen};
+use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map, TrustedLen, Once};
 use crate::ops::{ControlFlow, Try};
+use crate::option;
+use crate::result;
 
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.
@@ -467,37 +469,12 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<U::Item> {
-        loop {
-            if let elt @ Some(_) = and_then_or_clear(&mut self.frontiter, Iterator::next) {
-                return elt;
-            }
-            match self.iter.next() {
-                None => return and_then_or_clear(&mut self.backiter, Iterator::next),
-                Some(inner) => self.frontiter = Some(inner.into_iter()),
-            }
-        }
+        SpecOnceIter::spec_next(self)
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (flo, fhi) = self.frontiter.as_ref().map_or((0, Some(0)), U::size_hint);
-        let (blo, bhi) = self.backiter.as_ref().map_or((0, Some(0)), U::size_hint);
-        let lo = flo.saturating_add(blo);
-
-        if let Some(fixed_size) = <<I as Iterator>::Item as ConstSizeIntoIterator>::size() {
-            let (lower, upper) = self.iter.size_hint();
-
-            let lower = lower.saturating_mul(fixed_size).saturating_add(lo);
-            let upper =
-                try { fhi?.checked_add(bhi?)?.checked_add(fixed_size.checked_mul(upper?)?)? };
-
-            return (lower, upper);
-        }
-
-        match (self.iter.size_hint(), fhi, bhi) {
-            ((0, Some(0)), Some(a), Some(b)) => (lo, a.checked_add(b)),
-            _ => (lo, None),
-        }
+        SpecOnceIter::spec_size(self)
     }
 
     #[inline]
@@ -676,6 +653,87 @@ impl<T, const N: usize> ConstSizeIntoIterator for &mut [T; N] {
         Some(N)
     }
 }
+
+#[rustc_specialization_trait]
+trait AtMostOnceIter {}
+
+impl<T> AtMostOnceIter for option::IntoIter<T> {}
+impl<T> AtMostOnceIter for option::Iter<'_, T> {}
+impl<T> AtMostOnceIter for option::IterMut<'_, T> {}
+impl<T> AtMostOnceIter for result::IntoIter<T> {}
+impl<T> AtMostOnceIter for result::Iter<'_, T> {}
+impl<T> AtMostOnceIter for result::IterMut<'_, T> {}
+impl<T> AtMostOnceIter for Once<T> {}
+
+trait SpecOnceIter: Iterator {
+    fn spec_next(&mut self) -> Option<Self::Item>;
+
+    fn spec_size(&self) -> (usize, Option<usize>);
+}
+
+impl<I, U> SpecOnceIter for FlattenCompat<I, U> where
+    I: Iterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
+    U: Iterator,
+{
+    #[inline]
+    default fn spec_next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let elt @ Some(_) = and_then_or_clear(&mut self.frontiter, Iterator::next) {
+                return elt;
+            }
+            match self.iter.next() {
+                None => return and_then_or_clear(&mut self.backiter, Iterator::next),
+                Some(inner) => self.frontiter = Some(inner.into_iter()),
+            }
+        }
+    }
+
+    #[inline]
+    default fn spec_size(&self) -> (usize, Option<usize>) {
+        let (flo, fhi) = self.frontiter.as_ref().map_or((0, Some(0)), U::size_hint);
+        let (blo, bhi) = self.backiter.as_ref().map_or((0, Some(0)), U::size_hint);
+        let lo = flo.saturating_add(blo);
+
+        if let Some(fixed_size) = <<I as Iterator>::Item as ConstSizeIntoIterator>::size() {
+            let (lower, upper) = self.iter.size_hint();
+
+            let lower = lower.saturating_mul(fixed_size).saturating_add(lo);
+            let upper =
+                try { fhi?.checked_add(bhi?)?.checked_add(fixed_size.checked_mul(upper?)?)? };
+
+            return (lower, upper);
+        }
+
+        match (self.iter.size_hint(), fhi, bhi) {
+            ((0, Some(0)), Some(a), Some(b)) => (lo, a.checked_add(b)),
+            _ => (lo, None),
+        }
+    }
+}
+
+impl<I, U> SpecOnceIter for FlattenCompat<I, U> where
+    I: Iterator<Item: IntoIterator<IntoIter = U, Item = U::Item>>,
+    U: Iterator + AtMostOnceIter,
+{
+    #[inline]
+    fn spec_next(&mut self) -> Option<Self::Item> {
+        debug_assert!(self.frontiter.is_none() && self.backiter.is_none());
+        while let Some(inner) = self.iter.next() {
+            if let e @ Some(_) = inner.into_iter().next() {
+                return e;
+            }
+        }
+        None
+    }
+
+    #[inline]
+    fn spec_size(&self) -> (usize, Option<usize>) {
+        let (_, upper) = self.iter.size_hint();
+        (0, upper)
+    }
+}
+
+
 
 #[doc(hidden)]
 #[unstable(feature = "std_internals", issue = "none")]
