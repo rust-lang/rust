@@ -689,7 +689,7 @@ pub unsafe fn _mm_ceil_ps(a: __m128) -> __m128 {
 
 /// Round the lower double-precision (64-bit) floating-point element in `b`
 /// up to an integer value, store the result as a double-precision
-/// floating-point element in the lower element of the intrisic result,
+/// floating-point element in the lower element of the intrinsic result,
 /// and copies the upper element from `a` to the upper element
 /// of the intrinsic result.
 ///

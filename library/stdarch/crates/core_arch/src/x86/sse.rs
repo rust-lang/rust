@@ -1380,7 +1380,7 @@ pub unsafe fn _mm_getcsr() -> u32 {
 
 /// Sets the MXCSR register with the 32-bit unsigned integer value.
 ///
-/// This register constrols how SIMD instructions handle floating point
+/// This register controls how SIMD instructions handle floating point
 /// operations. Modifying this register only affects the current thread.
 ///
 /// It contains several groups of flags:

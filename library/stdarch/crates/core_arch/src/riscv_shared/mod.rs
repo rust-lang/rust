@@ -488,7 +488,7 @@ pub unsafe fn hinval_gvma_all() {
 /// Register `fcsr` is a 32-bit read/write register that selects the dynamic rounding mode
 /// for floating-point arithmetic operations and holds the accrued exception flag.
 ///
-/// Accoding to "F" Standard Extension for Single-Precision Floating-Point, Version 2.2,
+/// According to "F" Standard Extension for Single-Precision Floating-Point, Version 2.2,
 /// register `fcsr` is defined as:
 ///
 /// | Bit index | Meaning |
@@ -521,7 +521,7 @@ pub fn fscsr(value: u32) -> u32 {
 
 /// Reads the floating-point rounding mode register `frm`
 ///
-/// Accoding to "F" Standard Extension for Single-Precision Floating-Point, Version 2.2,
+/// According to "F" Standard Extension for Single-Precision Floating-Point, Version 2.2,
 /// the rounding mode field is defined as listed in the table below:
 ///
 /// | Rounding Mode | Mnemonic | Meaning |
@@ -558,8 +558,8 @@ pub fn fsrm(value: u32) -> u32 {
 /// The accrued exception flags indicate the exception conditions that have arisen
 /// on any floating-point arithmetic instruction since the field was last reset by software.
 ///
-/// Accoding to "F" Standard Extension for Single-Precision Floating-Point, Version 2.2,
-/// the accured exception flags is defined as a bit vector of 5 bits.
+/// According to "F" Standard Extension for Single-Precision Floating-Point, Version 2.2,
+/// the accrued exception flags is defined as a bit vector of 5 bits.
 /// The meaning of each binary bit is listed in the table below.
 ///
 /// | Bit index | Mnemonic | Meaning |

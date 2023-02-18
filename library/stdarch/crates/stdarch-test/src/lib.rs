@@ -115,7 +115,7 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
                 "cpuid" => 30,
 
                 // Apparently, on Windows, LLVM generates a bunch of
-                // saves/restores of xmm registers around these intstructions,
+                // saves/restores of xmm registers around these instructions,
                 // which exceeds the limit of 20 below. As it seems dictated by
                 // Windows's ABI (I believe?), we probably can't do much
                 // about it.

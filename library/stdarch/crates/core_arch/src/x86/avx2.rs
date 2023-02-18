@@ -2277,7 +2277,7 @@ pub unsafe fn _mm256_permute4x64_pd<const IMM8: i32>(a: __m256d) -> __m256d {
     )
 }
 
-/// Shuffles eight 32-bit foating-point elements in `a` across lanes using
+/// Shuffles eight 32-bit floating-point elements in `a` across lanes using
 /// the corresponding 32-bit integer index in `idx`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permutevar8x32_ps)

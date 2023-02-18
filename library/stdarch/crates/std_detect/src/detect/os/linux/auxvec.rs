@@ -52,7 +52,7 @@ pub(crate) struct AuxVec {
 /// Note that run-time feature detection is not invoked for features that can
 /// be detected at compile-time. Also note that if this function returns an
 /// error, cpuinfo still can (and will) be used to try to perform run-time
-/// feature detecton on some platforms.
+/// feature detection on some platforms.
 ///
 /// Note: The `std_detect_dlsym_getauxval` cargo feature is ignored on `*-linux-gnu*` targets,
 /// since [all `*-linux-gnu*` targets ([since Rust 1.64](https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html))

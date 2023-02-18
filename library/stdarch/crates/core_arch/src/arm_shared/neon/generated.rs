@@ -29382,7 +29382,7 @@ pub unsafe fn vabal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     simd_add(a, simd_cast(e))
 }
 
-/// Singned saturating Absolute value
+/// Signed saturating Absolute value
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabs_s8)
 #[inline]
@@ -29401,7 +29401,7 @@ pub unsafe fn vqabs_s8(a: int8x8_t) -> int8x8_t {
 vqabs_s8_(a)
 }
 
-/// Singned saturating Absolute value
+/// Signed saturating Absolute value
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsq_s8)
 #[inline]
@@ -29420,7 +29420,7 @@ pub unsafe fn vqabsq_s8(a: int8x16_t) -> int8x16_t {
 vqabsq_s8_(a)
 }
 
-/// Singned saturating Absolute value
+/// Signed saturating Absolute value
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabs_s16)
 #[inline]
@@ -29439,7 +29439,7 @@ pub unsafe fn vqabs_s16(a: int16x4_t) -> int16x4_t {
 vqabs_s16_(a)
 }
 
-/// Singned saturating Absolute value
+/// Signed saturating Absolute value
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsq_s16)
 #[inline]
@@ -29458,7 +29458,7 @@ pub unsafe fn vqabsq_s16(a: int16x8_t) -> int16x8_t {
 vqabsq_s16_(a)
 }
 
-/// Singned saturating Absolute value
+/// Signed saturating Absolute value
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabs_s32)
 #[inline]
@@ -29477,7 +29477,7 @@ pub unsafe fn vqabs_s32(a: int32x2_t) -> int32x2_t {
 vqabs_s32_(a)
 }
 
-/// Singned saturating Absolute value
+/// Signed saturating Absolute value
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsq_s32)
 #[inline]

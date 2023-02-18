@@ -14,7 +14,7 @@
 // Sections start with EXACTLY three slashes followed
 // by AT LEAST one space. Sections are used for two things:
 //
-// 1) they serve as the doc comment for the given intrinics.
+// 1) they serve as the doc comment for the given intrinsics.
 // 2) they reset all variables (name, fn, etc.)
 //
 // # Variables
@@ -29,16 +29,16 @@
 //           the function will exclusively be generated for
 //           aarch64.
 //           This is used to generate both aarch64 specific and
-//           shared intrinics by first only specifying th aarch64
+//           shared intrinsics by first only specifying th aarch64
 //           variant then the arm variant.
 //
-// arm     - The arm v7 intrinics used to checked for arm code
+// arm     - The arm v7 intrinsics used to checked for arm code
 //           generation. All neon functions available in arm are
-//           also available in aarch64. If no aarch64 intrinic was
+//           also available in aarch64. If no aarch64 intrinsic was
 //           set they are assumed to be the same.
-//           Intrinics ending with a `.` will have a size suffixes
+//           Intrinsics ending with a `.` will have a size suffixes
 //           added (such as `i8` or `i64`) that is not sign specific
-//           Intrinics ending with a `.s` will have a size suffixes
+//           Intrinsics ending with a `.s` will have a size suffixes
 //           added (such as `s8` or `u64`) that is sign specific
 //
 // a       - First input for tests, it gets scaled to the size of
@@ -7490,10 +7490,10 @@ aarch64 = sabal
 generate int64x2_t:int32x4_t:int32x4_t:int64x2_t
 
 ////////////////////
-// Singned saturating Absolute value
+// Signed saturating Absolute value
 ////////////////////
 
-/// Singned saturating Absolute value
+/// Signed saturating Absolute value
 name = vqabs
 a = MIN, MAX, -6, -5, -4, -3, -2, -1, 0, -127, 127, 1, 2, 3, 4, 5
 validate MAX, MAX, 6, 5, 4, 3, 2, 1, 0, 127, 127, 1, 2, 3, 4, 5
@@ -7504,7 +7504,7 @@ link-arm = vqabs._EXT_
 link-aarch64 = sqabs._EXT_
 generate int*_t
 
-/// Singned saturating Absolute value
+/// Signed saturating Absolute value
 name = vqabs
 a = MIN, -7
 validate MAX, 7

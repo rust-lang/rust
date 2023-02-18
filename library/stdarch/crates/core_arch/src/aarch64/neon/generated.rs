@@ -16978,7 +16978,7 @@ pub unsafe fn vabal_high_s32(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x
     simd_add(a, simd_cast(f))
 }
 
-/// Singned saturating Absolute value
+/// Signed saturating Absolute value
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabs_s64)
 #[inline]
@@ -16994,7 +16994,7 @@ pub unsafe fn vqabs_s64(a: int64x1_t) -> int64x1_t {
     vqabs_s64_(a)
 }
 
-/// Singned saturating Absolute value
+/// Signed saturating Absolute value
 ///
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqabsq_s64)
 #[inline]

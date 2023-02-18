@@ -227,7 +227,7 @@ impl From<super::cpuinfo::CpuInfo> for AtHwcap {
 impl AtHwcap {
     /// Initializes the cache from the feature -bits.
     ///
-    /// The feature dependencies here come directly from LLVM's feature definintions:
+    /// The feature dependencies here come directly from LLVM's feature definitions:
     /// https://github.com/llvm/llvm-project/blob/main/llvm/lib/Target/AArch64/AArch64.td
     fn cache(self, is_exynos9810: bool) -> cache::Initializer {
         let mut value = cache::Initializer::default();
