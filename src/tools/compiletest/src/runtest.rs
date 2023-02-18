@@ -1148,10 +1148,20 @@ impl<'test> TestCx<'test> {
         debugger_script: &Path,
         rust_src_root: &Path,
     ) -> ProcRes {
+        let mut cmd: Command;
+        if (self.config.matches_arch("aarch64")
+            || self.config.matches_arch("arm64"))
+            && self.config.matches_os("macos")
+        {
+            cmd = Command::new("arch");
+            cmd.arg("-arm64").arg(&self.config.python);
+        } else {
+            cmd = Command::new(&self.config.python);
+        };
         // Prepare the lldb_batchmode which executes the debugger script
         let lldb_script_path = rust_src_root.join("src/etc/lldb_batchmode.py");
         self.cmd2procres(
-            Command::new(&self.config.python)
+            cmd
                 .arg(&lldb_script_path)
                 .arg(test_executable)
                 .arg(debugger_script)
