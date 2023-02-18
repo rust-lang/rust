@@ -1275,15 +1275,10 @@ pub(crate) fn markdown_links<R>(
         .map(|link| links.borrow_mut().push(link));
         None
     };
-    let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut push))
-        .into_offset_iter();
 
-    // There's no need to thread an IdMap through to here because
-    // the IDs generated aren't going to be emitted anywhere.
-    let mut ids = IdMap::new();
-    let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids, HeadingOffset::H1));
-
-    for ev in iter {
+    for ev in Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut push))
+        .into_offset_iter()
+    {
         if let Event::Start(Tag::Link(
             // `<>` links cannot be intra-doc links so we skip them.
             kind @ (LinkType::Inline
