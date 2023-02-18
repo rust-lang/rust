@@ -186,7 +186,8 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn tys(&mut self, pattern: Ty<'tcx>, value: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        if let ty::Error(_) = pattern.kind() {
+        // FIXME(non_lifetime_binders): What to do here?
+        if matches!(pattern.kind(), ty::Error(_) | ty::Bound(..)) {
             // Unlike normal `TypeRelation` rules, `ty::Error` does not equal any type.
             self.no_match()
         } else if pattern == value {
