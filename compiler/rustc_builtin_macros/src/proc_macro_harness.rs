@@ -43,14 +43,14 @@ struct CollectProcMacros<'a> {
 }
 
 pub fn inject(
+    krate: &mut ast::Crate,
     sess: &Session,
     resolver: &mut dyn ResolverExpand,
-    mut krate: ast::Crate,
     is_proc_macro_crate: bool,
     has_proc_macro_decls: bool,
     is_test_crate: bool,
     handler: &rustc_errors::Handler,
-) -> ast::Crate {
+) {
     let ecfg = ExpansionConfig::default("proc_macro".to_string());
     let mut cx = ExtCtxt::new(sess, ecfg, resolver, None);
 
@@ -64,22 +64,20 @@ pub fn inject(
     };
 
     if has_proc_macro_decls || is_proc_macro_crate {
-        visit::walk_crate(&mut collect, &krate);
+        visit::walk_crate(&mut collect, krate);
     }
     let macros = collect.macros;
 
     if !is_proc_macro_crate {
-        return krate;
+        return;
     }
 
     if is_test_crate {
-        return krate;
+        return;
     }
 
     let decls = mk_decls(&mut cx, &macros);
     krate.items.push(decls);
-
-    krate
 }
 
 impl<'a> CollectProcMacros<'a> {

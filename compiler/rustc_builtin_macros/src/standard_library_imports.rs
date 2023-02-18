@@ -8,16 +8,12 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use thin_vec::thin_vec;
 
-pub fn inject(
-    mut krate: ast::Crate,
-    resolver: &mut dyn ResolverExpand,
-    sess: &Session,
-) -> ast::Crate {
+pub fn inject(krate: &mut ast::Crate, resolver: &mut dyn ResolverExpand, sess: &Session) {
     let edition = sess.parse_sess.edition;
 
     // the first name in this list is the crate name of the crate with the prelude
     let names: &[Symbol] = if attr::contains_name(&krate.attrs, sym::no_core) {
-        return krate;
+        return;
     } else if attr::contains_name(&krate.attrs, sym::no_std) {
         if attr::contains_name(&krate.attrs, sym::compiler_builtins) {
             &[sym::core]
@@ -88,6 +84,4 @@ pub fn inject(
     );
 
     krate.items.insert(0, use_item);
-
-    krate
 }

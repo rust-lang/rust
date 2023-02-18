@@ -136,14 +136,14 @@ impl<'tcx> Queries<'tcx> {
     pub fn register_plugins(&self) -> Result<QueryResult<'_, (ast::Crate, Lrc<LintStore>)>> {
         self.register_plugins.compute(|| {
             let crate_name = *self.crate_name()?.borrow();
-            let krate = self.parse()?.steal();
+            let mut krate = self.parse()?.steal();
 
             let empty: &(dyn Fn(&Session, &mut LintStore) + Sync + Send) = &|_, _| {};
-            let (krate, lint_store) = passes::register_plugins(
+            let lint_store = passes::register_plugins(
                 self.session(),
                 &*self.codegen_backend().metadata_loader(),
                 self.compiler.register_lints.as_deref().unwrap_or_else(|| empty),
-                krate,
+                &mut krate,
                 crate_name,
             )?;
 
