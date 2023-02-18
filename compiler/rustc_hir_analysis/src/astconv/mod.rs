@@ -252,6 +252,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // (*) -- not late-bound, won't change
             }
 
+            Some(rbv::ResolvedArg::Error(_)) => {
+                bug!("only ty/ct should resolve as ResolvedArg::Error")
+            }
+
             None => {
                 self.re_infer(def, lifetime.ident.span).unwrap_or_else(|| {
                     debug!(?lifetime, "unelided lifetime in signature");
@@ -2689,6 +2693,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let index = generics.param_def_id_to_index[&def_id.to_def_id()];
                         tcx.mk_ty_param(index, tcx.hir().ty_param_name(def_id))
                     }
+                    Some(rbv::ResolvedArg::Error(guar)) => tcx.ty_error_with_guaranteed(guar),
                     arg => bug!("unexpected bound var resolution for {hir_id:?}: {arg:?}"),
                 }
             }
@@ -2893,22 +2898,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir::TyKind::BareFn(bf) => {
                 require_c_abi_if_c_variadic(tcx, bf.decl, bf.abi, ast_ty.span);
 
-                let fn_ptr_ty = tcx.mk_fn_ptr(self.ty_of_fn(
+                tcx.mk_fn_ptr(self.ty_of_fn(
                     ast_ty.hir_id,
                     bf.unsafety,
                     bf.abi,
                     bf.decl,
                     None,
                     Some(ast_ty),
-                ));
-
-                if let Some(guar) =
-                    deny_non_region_late_bound(tcx, bf.generic_params, "function pointer")
-                {
-                    tcx.ty_error_with_guaranteed(guar)
-                } else {
-                    fn_ptr_ty
-                }
+                ))
             }
             hir::TyKind::TraitObject(bounds, lifetime, repr) => {
                 self.maybe_lint_bare_trait(ast_ty, in_path);
@@ -2917,21 +2914,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     TraitObjectSyntax::DynStar => ty::DynStar,
                 };
 
-                let object_ty = self.conv_object_ty_poly_trait_ref(
-                    ast_ty.span,
-                    bounds,
-                    lifetime,
-                    borrowed,
-                    repr,
-                );
-
-                if let Some(guar) = bounds.iter().find_map(|trait_ref| {
-                    deny_non_region_late_bound(tcx, trait_ref.bound_generic_params, "trait object")
-                }) {
-                    tcx.ty_error_with_guaranteed(guar)
-                } else {
-                    object_ty
-                }
+                self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime, borrowed, repr)
             }
             hir::TyKind::Path(hir::QPath::Resolved(maybe_qself, path)) => {
                 debug!(?maybe_qself, ?path);
@@ -3391,25 +3374,4 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
     }
-}
-
-fn deny_non_region_late_bound(
-    tcx: TyCtxt<'_>,
-    params: &[hir::GenericParam<'_>],
-    where_: &str,
-) -> Option<ErrorGuaranteed> {
-    params.iter().find_map(|bad_param| {
-        let what = match bad_param.kind {
-            hir::GenericParamKind::Type { .. } => "type",
-            hir::GenericParamKind::Const { .. } => "const",
-            hir::GenericParamKind::Lifetime { .. } => return None,
-        };
-
-        let mut diag = tcx.sess.struct_span_err(
-            bad_param.span,
-            format!("late-bound {what} parameter not allowed on {where_} types"),
-        );
-
-        Some(if tcx.features().non_lifetime_binders { diag.emit() } else { diag.delay_as_bug() })
-    })
 }

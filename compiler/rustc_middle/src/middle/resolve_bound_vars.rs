@@ -3,6 +3,7 @@
 use crate::ty;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{ItemLocalId, OwnerId};
 use rustc_macros::HashStable;
@@ -13,6 +14,7 @@ pub enum ResolvedArg {
     EarlyBound(/* decl */ DefId),
     LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* decl */ DefId),
     Free(DefId, /* lifetime decl */ DefId),
+    Error(ErrorGuaranteed),
 }
 
 /// A set containing, at most, one known element.
