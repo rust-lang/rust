@@ -44,7 +44,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools, TyCtxt};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::cstore::{CrateStore, Untracked};
+use rustc_session::cstore::CrateStore;
 use rustc_session::lint::LintBuffer;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::source_map::Spanned;
@@ -1113,27 +1113,10 @@ impl<'a, 'tcx> AsMut<Resolver<'a, 'tcx>> for Resolver<'a, 'tcx> {
     }
 }
 
-/// A minimal subset of resolver that can implemenent `DefIdTree`, sometimes
-/// required to satisfy borrow checker by avoiding borrowing the whole resolver.
-#[derive(Clone, Copy)]
-struct ResolverTree<'a>(&'a Untracked);
-
-impl DefIdTree for ResolverTree<'_> {
-    #[inline]
-    fn opt_parent(self, id: DefId) -> Option<DefId> {
-        let ResolverTree(Untracked { definitions, cstore, .. }) = self;
-        match id.as_local() {
-            Some(id) => definitions.read().def_key(id).parent,
-            None => cstore.read().as_any().downcast_ref::<CStore>().unwrap().def_key(id).parent,
-        }
-        .map(|index| DefId { index, ..id })
-    }
-}
-
 impl<'a, 'b, 'tcx> DefIdTree for &'a Resolver<'b, 'tcx> {
     #[inline]
     fn opt_parent(self, id: DefId) -> Option<DefId> {
-        ResolverTree(&self.tcx.untracked()).opt_parent(id)
+        self.tcx.opt_parent(id)
     }
 }
 

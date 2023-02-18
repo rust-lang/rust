@@ -1,4 +1,4 @@
-use crate::{NameBinding, NameBindingKind, Resolver, ResolverTree};
+use crate::{NameBinding, NameBindingKind, Resolver};
 use rustc_ast::ast;
 use rustc_ast::visit;
 use rustc_ast::visit::Visitor;
@@ -100,11 +100,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
         for (binding, eff_vis) in visitor.import_effective_visibilities.iter() {
             let NameBindingKind::Import { import, .. } = binding.kind else { unreachable!() };
             if let Some(node_id) = import.id() {
-                r.effective_visibilities.update_eff_vis(
-                    r.local_def_id(node_id),
-                    eff_vis,
-                    ResolverTree(&r.tcx.untracked()),
-                )
+                r.effective_visibilities.update_eff_vis(r.local_def_id(node_id), eff_vis, r.tcx)
             }
         }
 
