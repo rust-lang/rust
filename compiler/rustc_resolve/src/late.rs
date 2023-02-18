@@ -1075,7 +1075,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                     for rib in self.lifetime_ribs.iter().rev() {
                         match rib.kind {
                             // We are inside a `PolyTraitRef`. The lifetimes are
-                            // to be intoduced in that (maybe implicit) `for<>` binder.
+                            // to be introduced in that (maybe implicit) `for<>` binder.
                             LifetimeRibKind::Generics {
                                 binder,
                                 kind: LifetimeBinderKind::PolyTrait,
@@ -3537,7 +3537,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             if this.should_report_errs() {
                 if candidates.is_empty() {
                     if path.len() == 2 && prefix_path.len() == 1 {
-                        // Delay to check whether methond name is an associated function or not
+                        // Delay to check whether method name is an associated function or not
                         // ```
                         // let foo = Foo {};
                         // foo::bar(); // possibly suggest to foo.bar();

@@ -506,7 +506,7 @@ error: foo
 }
 
 #[test]
-fn non_overlaping() {
+fn non_overlapping() {
     test_harness(
         r#"
 fn foo() {
@@ -545,7 +545,7 @@ error: foo
 }
 
 #[test]
-fn overlaping_start_and_end() {
+fn overlapping_start_and_end() {
     test_harness(
         r#"
 fn foo() {

@@ -122,7 +122,7 @@ pub enum Lld {
 /// target properties, in accordance with the first design goal.
 ///
 /// The first component of the flavor is tightly coupled with the compilation target,
-/// while the `Cc` and `Lld` flags can vary withing the same target.
+/// while the `Cc` and `Lld` flags can vary within the same target.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum LinkerFlavor {
     /// Unix-like linker with GNU extensions (both naked and compiler-wrapped forms).
@@ -1508,7 +1508,7 @@ pub struct TargetOptions {
     pub is_like_aix: bool,
     /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
     /// in particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
-    /// Also indiates whether to use Apple-specific ABI changes, such as extending function
+    /// Also indicates whether to use Apple-specific ABI changes, such as extending function
     /// parameters to 32-bits.
     pub is_like_osx: bool,
     /// Whether the target toolchain is like Solaris's.
@@ -2271,13 +2271,13 @@ impl Target {
                     }
                 }
             } );
-            ($key_name:ident, falliable_list) => ( {
+            ($key_name:ident, fallible_list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.remove(&name).and_then(|j| {
                     if let Some(v) = j.as_array() {
                         match v.iter().map(|a| FromStr::from_str(a.as_str().unwrap())).collect() {
                             Ok(l) => { base.$key_name = l },
-                            // FIXME: `falliable_list` can't re-use the `key!` macro for list
+                            // FIXME: `fallible_list` can't re-use the `key!` macro for list
                             // elements and the error messages from that macro, so it has a bad
                             // generic message instead
                             Err(_) => return Some(Err(
@@ -2595,7 +2595,7 @@ impl Target {
         key!(has_thumb_interworking, bool);
         key!(debuginfo_kind, DebuginfoKind)?;
         key!(split_debuginfo, SplitDebuginfo)?;
-        key!(supported_split_debuginfo, falliable_list)?;
+        key!(supported_split_debuginfo, fallible_list)?;
         key!(supported_sanitizers, SanitizerSet)?;
         key!(default_adjusted_cabi, Option<Abi>)?;
         key!(generate_arange_section, bool);

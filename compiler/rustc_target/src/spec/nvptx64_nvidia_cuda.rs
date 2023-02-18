@@ -33,7 +33,7 @@ pub fn target() -> Target {
             // Let the `ptx-linker` to handle LLVM lowering into MC / assembly.
             obj_is_bitcode: true,
 
-            // Convenient and predicable naming scheme.
+            // Convenient and predictable naming scheme.
             dll_prefix: "".into(),
             dll_suffix: ".ptx".into(),
             exe_suffix: ".ptx".into(),

@@ -1342,7 +1342,7 @@ pub trait PrettyPrinter<'tcx>:
                             p!(write("{}::{}", self.tcx().crate_name(def.did.krate), self.tcx().def_path(def.did).to_string_no_crate_verbose()))
                         }
                     }
-                    defkind => bug!("`{:?}` has unexpcted defkind {:?}", ct, defkind),
+                    defkind => bug!("`{:?}` has unexpected defkind {:?}", ct, defkind),
                 }
             }
             ty::ConstKind::Infer(infer_ct) => {

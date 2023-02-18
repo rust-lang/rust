@@ -205,7 +205,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
     let is_static = tcx.is_static(def_id);
-    // This is just accessing an already computed constant, so no need to check alginment here.
+    // This is just accessing an already computed constant, so no need to check alignment here.
     let ecx = mk_eval_cx(
         tcx,
         tcx.def_span(key.value.instance.def_id()),

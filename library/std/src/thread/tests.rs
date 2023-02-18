@@ -140,7 +140,7 @@ fn test_spawn_sched() {
 }
 
 #[test]
-fn test_spawn_sched_childs_on_default_sched() {
+fn test_spawn_sched_children_on_default_sched() {
     let (tx, rx) = channel();
 
     thread::spawn(move || {

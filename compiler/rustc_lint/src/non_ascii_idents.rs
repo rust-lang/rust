@@ -250,7 +250,7 @@ impl EarlyLintPass for NonAsciiIdents {
             let latin_augmented_script_set = AugmentedScriptSet::for_char('A');
             script_states.insert(latin_augmented_script_set, ScriptSetUsage::Verified);
 
-            let mut has_suspicous = false;
+            let mut has_suspicious = false;
             for (symbol, &sp) in symbols.iter() {
                 let symbol_str = symbol.as_str();
                 for ch in symbol_str.chars() {
@@ -278,14 +278,14 @@ impl EarlyLintPass for NonAsciiIdents {
                             if !is_potential_mixed_script_confusable_char(ch) {
                                 ScriptSetUsage::Verified
                             } else {
-                                has_suspicous = true;
+                                has_suspicious = true;
                                 ScriptSetUsage::Suspicious(vec![ch], sp)
                             }
                         });
                 }
             }
 
-            if has_suspicous {
+            if has_suspicious {
                 let verified_augmented_script_sets = script_states
                     .iter()
                     .flat_map(|(k, v)| match v {

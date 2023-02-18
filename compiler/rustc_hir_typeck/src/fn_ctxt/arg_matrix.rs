@@ -368,7 +368,7 @@ impl<'tcx> ArgMatrix<'tcx> {
                     // We didn't find any issues, so we need to push the algorithm forward
                     // First, eliminate any arguments that currently satisfy their inputs
                     let eliminated = self.eliminate_satisfied();
-                    assert!(!eliminated.is_empty(), "didn't eliminated any indice in this round");
+                    assert!(!eliminated.is_empty(), "didn't eliminated any index in this round");
                     for (inp, arg) in eliminated {
                         matched_inputs[arg] = Some(inp);
                     }

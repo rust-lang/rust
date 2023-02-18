@@ -918,7 +918,7 @@ pub struct CStringPtr {
 
 // multiple_supertrait_upcastable.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_multple_supertrait_upcastable)]
+#[diag(lint_multiple_supertrait_upcastable)]
 pub struct MultipleSupertraitUpcastable {
     pub ident: Ident,
 }

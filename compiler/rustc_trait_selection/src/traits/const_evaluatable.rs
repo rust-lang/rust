@@ -83,7 +83,7 @@ pub fn is_const_evaluatable<'tcx>(
                     Ok(_) => Ok(()),
                 }
             }
-            _ => bug!("unexpected constkind in `is_const_evalautable: {unexpanded_ct:?}`"),
+            _ => bug!("unexpected constkind in `is_const_evaluatable: {unexpanded_ct:?}`"),
         }
     } else {
         let uv = match unexpanded_ct.kind() {
@@ -91,7 +91,7 @@ pub fn is_const_evaluatable<'tcx>(
             ty::ConstKind::Expr(_) => {
                 bug!("`ConstKind::Expr` without `feature(generic_const_exprs)` enabled")
             }
-            _ => bug!("unexpected constkind in `is_const_evalautable: {unexpanded_ct:?}`"),
+            _ => bug!("unexpected constkind in `is_const_evaluatable: {unexpanded_ct:?}`"),
         };
 
         // FIXME: We should only try to evaluate a given constant here if it is fully concrete
@@ -161,7 +161,7 @@ fn satisfied_from_param_env<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> bool {
     // Try to unify with each subtree in the AbstractConst to allow for
-    // `N + 1` being const evaluatable even if theres only a `ConstEvaluatable`
+    // `N + 1` being const evaluatable even if there is only a `ConstEvaluatable`
     // predicate for `(N + 1) * 2`
     struct Visitor<'a, 'tcx> {
         ct: ty::Const<'tcx>,

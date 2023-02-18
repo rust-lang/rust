@@ -881,7 +881,7 @@ pub fn object_region_bounds<'tcx>(
     existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> Vec<ty::Region<'tcx>> {
     // Since we don't actually *know* the self type for an object,
-    // this "open(err)" serves as a kind of dummy standin -- basically
+    // this "open(err)" serves as a kind of dummy stand-in -- basically
     // a placeholder type.
     let open_ty = tcx.mk_fresh_ty(0);
 

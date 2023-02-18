@@ -1605,7 +1605,7 @@ impl<T, A: Allocator> Vec<T, A> {
         //
         // This drop guard will be invoked when predicate or `drop` of element panicked.
         // It shifts unchecked elements to cover holes and `set_len` to the correct length.
-        // In cases when predicate and `drop` never panick, it will be optimized out.
+        // In cases when predicate and `drop` never panic, it will be optimized out.
         struct BackshiftOnDrop<'a, T, A: Allocator> {
             v: &'a mut Vec<T, A>,
             processed_len: usize,

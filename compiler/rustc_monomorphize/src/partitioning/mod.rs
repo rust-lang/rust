@@ -474,7 +474,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
     (tcx.arena.alloc(mono_items), codegen_units)
 }
 
-/// Outputs stats about instantation counts and estimated size, per `MonoItem`'s
+/// Outputs stats about instantiation counts and estimated size, per `MonoItem`'s
 /// def, to a file in the given output directory.
 fn dump_mono_items_stats<'tcx>(
     tcx: TyCtxt<'tcx>,

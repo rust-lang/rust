@@ -182,7 +182,7 @@ pub(crate) fn emit_unescape_error(
             };
             err.span_label(span, &format!("must be ASCII{}", postfix));
             // Note: the \\xHH suggestions are not given for raw byte string
-            // literals, because they are araw and so cannot use any escapes.
+            // literals, because they are raw and so cannot use any escapes.
             if (c as u32) <= 0xFF && mode != Mode::RawByteStr {
                 err.span_suggestion(
                     span,

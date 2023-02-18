@@ -912,7 +912,7 @@ impl<T> Drop for Guard<'_, T> {
 /// `next` at most `N` times, the iterator can still be used afterwards to
 /// retrieve the remaining items.
 ///
-/// If `iter.next()` panicks, all items already yielded by the iterator are
+/// If `iter.next()` panics, all items already yielded by the iterator are
 /// dropped.
 ///
 /// Used for [`Iterator::next_chunk`].

@@ -601,7 +601,7 @@ pub struct MultipleMutBorrows {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub occurences: Vec<Conflict>,
+    pub occurrences: Vec<Conflict>,
 }
 
 #[derive(Diagnostic)]
@@ -610,7 +610,7 @@ pub struct AlreadyBorrowed {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub occurences: Vec<Conflict>,
+    pub occurrences: Vec<Conflict>,
 }
 
 #[derive(Diagnostic)]
@@ -619,7 +619,7 @@ pub struct AlreadyMutBorrowed {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub occurences: Vec<Conflict>,
+    pub occurrences: Vec<Conflict>,
 }
 
 #[derive(Diagnostic)]
@@ -628,7 +628,7 @@ pub struct MovedWhileBorrowed {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub occurences: Vec<Conflict>,
+    pub occurrences: Vec<Conflict>,
 }
 
 #[derive(Subdiagnostic)]

@@ -58,7 +58,7 @@ IMAGE_BASE:
     globvar DEBUG 1
     /*  The base address (relative to enclave start) of the enclave text section */
     globvar TEXT_BASE 8
-    /*  The size in bytes of enclacve text section */
+    /*  The size in bytes of enclave text section */
     globvar TEXT_SIZE 8
     /*  The base address (relative to enclave start) of the enclave .eh_frame_hdr section */
     globvar EH_FRM_HDR_OFFSET 8
@@ -66,7 +66,7 @@ IMAGE_BASE:
     globvar EH_FRM_HDR_LEN 8
     /*  The base address (relative to enclave start) of the enclave .eh_frame section */
     globvar EH_FRM_OFFSET 8
-    /*  The size in bytes of enclacve .eh_frame section */
+    /*  The size in bytes of enclave .eh_frame section */
     globvar EH_FRM_LEN 8
 
 .org .Lxsave_clear+512

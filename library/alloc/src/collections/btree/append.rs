@@ -6,7 +6,7 @@ use core::iter::FusedIterator;
 impl<K, V> Root<K, V> {
     /// Appends all key-value pairs from the union of two ascending iterators,
     /// incrementing a `length` variable along the way. The latter makes it
-    /// easier for the caller to avoid a leak when a drop handler panicks.
+    /// easier for the caller to avoid a leak when a drop handler panics.
     ///
     /// If both iterators produce the same key, this method drops the pair from
     /// the left iterator and appends the pair from the right iterator.
@@ -34,7 +34,7 @@ impl<K, V> Root<K, V> {
 
     /// Pushes all key-value pairs to the end of the tree, incrementing a
     /// `length` variable along the way. The latter makes it easier for the
-    /// caller to avoid a leak when the iterator panicks.
+    /// caller to avoid a leak when the iterator panics.
     pub fn bulk_push<I, A: Allocator + Clone>(&mut self, iter: I, length: &mut usize, alloc: A)
     where
         I: Iterator<Item = (K, V)>,
@@ -83,7 +83,7 @@ impl<K, V> Root<K, V> {
             }
 
             // Increment length every iteration, to make sure the map drops
-            // the appended elements even if advancing the iterator panicks.
+            // the appended elements even if advancing the iterator panics.
             *length += 1;
         }
         self.fix_right_border_of_plentiful();

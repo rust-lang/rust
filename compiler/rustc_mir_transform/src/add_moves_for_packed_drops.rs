@@ -10,7 +10,7 @@ use rustc_middle::mir::patch::MirPatch;
 /// they are dropped from an aligned address.
 ///
 /// For example, if we have something like
-/// ```ignore (ilustrative)
+/// ```ignore (illustrative)
 /// #[repr(packed)]
 /// struct Foo {
 ///     dealign: u8,
@@ -25,7 +25,7 @@ use rustc_middle::mir::patch::MirPatch;
 /// its address is not aligned.
 ///
 /// Instead, we move `foo.data` to a local and drop that:
-/// ```ignore (ilustrative)
+/// ```ignore (illustrative)
 ///     storage.live(drop_temp)
 ///     drop_temp = foo.data;
 ///     drop(drop_temp) -> next

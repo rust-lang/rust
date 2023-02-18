@@ -9,7 +9,7 @@ use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_middle::ty::{self, RePlaceholder, Region};
 
 impl<'tcx> NiceRegionError<'_, 'tcx> {
-    /// Emitted wwhen given a `ConcreteFailure` when relating two placeholders.
+    /// Emitted when given a `ConcreteFailure` when relating two placeholders.
     pub(super) fn try_report_placeholder_relation(
         &self,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {

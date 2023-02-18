@@ -238,7 +238,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
         debug_assert!(height > 0);
         let node = NonNull::from(Box::leak(internal)).cast();
         let mut this = NodeRef { height, node, _marker: PhantomData };
-        this.borrow_mut().correct_all_childrens_parent_links();
+        this.borrow_mut().correct_all_children_parent_links();
         this
     }
 }
@@ -546,16 +546,16 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
     /// # Safety
     /// Every item returned by `range` is a valid edge index for the node.
-    unsafe fn correct_childrens_parent_links<R: Iterator<Item = usize>>(&mut self, range: R) {
+    unsafe fn correct_children_parent_links<R: Iterator<Item = usize>>(&mut self, range: R) {
         for i in range {
             debug_assert!(i <= self.len());
             unsafe { Handle::new_edge(self.reborrow_mut(), i) }.correct_parent_link();
         }
     }
 
-    fn correct_all_childrens_parent_links(&mut self) {
+    fn correct_all_children_parent_links(&mut self) {
         let len = self.len();
-        unsafe { self.correct_childrens_parent_links(0..=len) };
+        unsafe { self.correct_children_parent_links(0..=len) };
     }
 }
 
@@ -972,7 +972,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
             slice_insert(self.node.edge_area_mut(..new_len + 1), self.idx + 1, edge.node);
             *self.node.len_mut() = new_len as u16;
 
-            self.node.correct_childrens_parent_links(self.idx + 1..new_len + 1);
+            self.node.correct_children_parent_links(self.idx + 1..new_len + 1);
         }
     }
 
@@ -1375,7 +1375,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
             );
 
             slice_remove(&mut parent_node.edge_area_mut(..old_parent_len + 1), parent_idx + 1);
-            parent_node.correct_childrens_parent_links(parent_idx + 1..old_parent_len);
+            parent_node.correct_children_parent_links(parent_idx + 1..old_parent_len);
             *parent_node.len_mut() -= 1;
 
             if parent_node.height > 1 {
@@ -1388,7 +1388,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
                     left_node.edge_area_mut(old_left_len + 1..new_left_len + 1),
                 );
 
-                left_node.correct_childrens_parent_links(old_left_len + 1..new_left_len + 1);
+                left_node.correct_children_parent_links(old_left_len + 1..new_left_len + 1);
 
                 alloc.deallocate(right_node.node.cast(), Layout::new::<InternalNode<K, V>>());
             } else {
@@ -1523,7 +1523,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
                         right.edge_area_mut(..count),
                     );
 
-                    right.correct_childrens_parent_links(0..new_right_len + 1);
+                    right.correct_children_parent_links(0..new_right_len + 1);
                 }
                 (ForceResult::Leaf(_), ForceResult::Leaf(_)) => {}
                 _ => unreachable!(),
@@ -1586,8 +1586,8 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
                     // Fill gap where stolen edges used to be.
                     slice_shl(right.edge_area_mut(..old_right_len + 1), count);
 
-                    left.correct_childrens_parent_links(old_left_len + 1..new_left_len + 1);
-                    right.correct_childrens_parent_links(0..new_right_len + 1);
+                    left.correct_children_parent_links(old_left_len + 1..new_left_len + 1);
+                    right.correct_children_parent_links(0..new_right_len + 1);
                 }
                 (ForceResult::Leaf(_), ForceResult::Leaf(_)) => {}
                 _ => unreachable!(),
@@ -1685,7 +1685,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
                             left.edge_area_mut(new_left_len + 1..old_left_len + 1),
                             right.edge_area_mut(1..new_right_len + 1),
                         );
-                        right.correct_childrens_parent_links(1..new_right_len + 1);
+                        right.correct_children_parent_links(1..new_right_len + 1);
                     }
                     (ForceResult::Leaf(_), ForceResult::Leaf(_)) => {}
                     _ => unreachable!(),
