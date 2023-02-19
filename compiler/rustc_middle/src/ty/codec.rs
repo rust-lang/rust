@@ -270,9 +270,9 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Region<'tcx> {
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for CanonicalVarInfos<'tcx> {
     fn decode(decoder: &mut D) -> Self {
         let len = decoder.read_usize();
-        let interned: Vec<CanonicalVarInfo<'tcx>> =
-            (0..len).map(|_| Decodable::decode(decoder)).collect();
-        decoder.interner().mk_canonical_var_infos(&interned)
+        decoder.interner().mk_canonical_var_infos_from_iter(
+            (0..len).map::<CanonicalVarInfo<'tcx>, _>(|_| Decodable::decode(decoder)),
+        )
     }
 }
 

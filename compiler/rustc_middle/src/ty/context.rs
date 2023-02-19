@@ -2258,6 +2258,14 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_substs(xs))
     }
 
+    pub fn mk_canonical_var_infos_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<CanonicalVarInfo<'tcx>, &'tcx List<CanonicalVarInfo<'tcx>>>,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_canonical_var_infos(xs))
+    }
+
     pub fn mk_place_elems_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
