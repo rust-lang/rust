@@ -110,7 +110,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
         let origin = NllRegionVariableOrigin::Existential { from_forall };
 
         let reg_var =
-            self.type_checker.infcx.next_nll_region_var(origin, RegionCtxt::Existential(_name));
+            self.type_checker.infcx.next_nll_region_var(origin, || RegionCtxt::Existential(_name));
 
         reg_var
     }
@@ -150,9 +150,16 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
         let reg_var = reg
             .try_get_var()
             .unwrap_or_else(|| bug!("expected region {:?} to be of kind ReVar", reg));
-        let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
-        let prev = var_to_origin.insert(reg_var, RegionCtxt::Existential(None));
-        assert!(matches!(prev, None));
+
+        if cfg!(debug_assertions) {
+            let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
+            let prev = var_to_origin.insert(reg_var, RegionCtxt::Existential(None));
+
+            // It only makes sense to track region vars in non-canonicalization contexts. If this
+            // ever changes we either want to get rid of `BorrowckInferContext::reg_var_to_origin`
+            // or modify how we track nll region vars for that map.
+            assert!(matches!(prev, None));
+        }
 
         reg
     }

@@ -244,6 +244,7 @@ pub enum ExtraConstraintInfo {
     PlaceholderFromPredicate(Span),
 }
 
+#[cfg(debug_assertions)]
 #[instrument(skip(infcx, sccs), level = "debug")]
 fn sccs_info<'cx, 'tcx>(
     infcx: &'cx BorrowckInferCtxt<'cx, 'tcx>,
@@ -252,31 +253,43 @@ fn sccs_info<'cx, 'tcx>(
     use crate::renumber::RegionCtxt;
 
     let var_to_origin = infcx.reg_var_to_origin.borrow();
+
+    let mut var_to_origin_sorted = var_to_origin.clone().into_iter().collect::<Vec<_>>();
+    var_to_origin_sorted.sort_by(|a, b| a.0.cmp(&b.0));
+    let mut debug_str = "region variables to origins:\n".to_string();
+    for (reg_var, origin) in var_to_origin_sorted.into_iter() {
+        debug_str.push_str(&format!("{:?}: {:?}\n", reg_var, origin));
+    }
+    debug!(debug_str);
+
     let num_components = sccs.scc_data.ranges.len();
     let mut components = vec![FxHashSet::default(); num_components];
 
     for (reg_var_idx, scc_idx) in sccs.scc_indices.iter().enumerate() {
         let reg_var = ty::RegionVid::from_usize(reg_var_idx);
         let origin = var_to_origin.get(&reg_var).unwrap_or_else(|| &RegionCtxt::Unknown);
-        components[scc_idx.as_usize()].insert(*origin);
+        components[scc_idx.as_usize()].insert((reg_var, *origin));
     }
 
-    debug!(
-        "strongly connected components: {:#?}",
-        components
-            .iter()
-            .enumerate()
-            .map(|(idx, origin)| { (ConstraintSccIndex::from_usize(idx), origin) })
-            .collect::<Vec<_>>()
-    );
+    let mut components_str = "strongly connected components:";
+    for (scc_idx, reg_vars_origins) in components.iter().enumerate() {
+        let regions_info = reg_vars_origins.clone().into_iter().collect::<Vec<_>>();
+        components_str.push(&format(
+            "{:?}: {:?})",
+            ConstraintSccIndex::from_usize(scc_idx),
+            regions_info,
+        ))
+    }
+    debug!(components_str);
 
-    // Now let's calculate the best representative for each component
+    // calculate the best representative for each component
     let components_representatives = components
         .into_iter()
         .enumerate()
         .map(|(scc_idx, region_ctxts)| {
             let repr = region_ctxts
                 .into_iter()
+                .map(|reg_var_origin| reg_var_origin.1)
                 .max_by(|x, y| x.preference_value().cmp(&y.preference_value()))
                 .unwrap();
 
@@ -333,6 +346,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let fr_static = universal_regions.fr_static;
         let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph, fr_static));
 
+        #[cfg(debug_assertions)]
         sccs_info(_infcx, constraint_sccs.clone());
 
         let mut scc_values =

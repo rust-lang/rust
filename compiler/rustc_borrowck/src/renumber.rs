@@ -31,18 +31,19 @@ pub fn renumber_mir<'tcx>(
 
 /// Replaces all regions appearing in `value` with fresh inference
 /// variables.
-#[instrument(skip(infcx), level = "debug")]
-pub(crate) fn renumber_regions<'tcx, T>(
+#[instrument(skip(infcx, get_ctxt_fn), level = "debug")]
+pub(crate) fn renumber_regions<'tcx, T, F>(
     infcx: &BorrowckInferCtxt<'_, 'tcx>,
     value: T,
-    ctxt: RegionCtxt,
+    get_ctxt_fn: F,
 ) -> T
 where
     T: TypeFoldable<'tcx>,
+    F: Fn() -> RegionCtxt,
 {
     infcx.tcx.fold_regions(value, |_region, _depth| {
         let origin = NllRegionVariableOrigin::Existential { from_forall: false };
-        infcx.next_nll_region_var(origin, ctxt)
+        infcx.next_nll_region_var(origin, || get_ctxt_fn())
     })
 }
 
@@ -61,13 +62,14 @@ pub(crate) enum RegionCtxt {
     LateBound(BoundRegionInfo),
     Existential(Option<Symbol>),
     Placeholder(BoundRegionInfo),
+    #[cfg(debug_assertions)]
     Unknown,
 }
 
 impl RegionCtxt {
     /// Used to determine the representative of a component in the strongly connected
     /// constraint graph
-    /// FIXME: don't use underscore here. Got a 'not used' error for some reason
+    #[cfg(debug_assertions)]
     pub(crate) fn preference_value(self) -> usize {
         let _anon = Symbol::intern("anon");
 
@@ -87,11 +89,12 @@ struct NllVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> NllVisitor<'a, 'tcx> {
-    fn renumber_regions<T>(&mut self, value: T, ctxt: RegionCtxt) -> T
+    fn renumber_regions<T, F>(&mut self, value: T, region_ctxt_fn: F) -> T
     where
         T: TypeFoldable<'tcx>,
+        F: Fn() -> RegionCtxt,
     {
-        renumber_regions(self.infcx, value, ctxt)
+        renumber_regions(self.infcx, value, region_ctxt_fn)
     }
 }
 
@@ -101,15 +104,15 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _ty_context: TyContext) {
-        *ty = self.renumber_regions(*ty, RegionCtxt::TyContext(_ty_context));
+    fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
+        *ty = self.renumber_regions(*ty, || RegionCtxt::TyContext(ty_context));
 
         debug!(?ty);
     }
 
     #[instrument(skip(self), level = "debug")]
     fn visit_substs(&mut self, substs: &mut SubstsRef<'tcx>, location: Location) {
-        *substs = self.renumber_regions(*substs, RegionCtxt::Location(location));
+        *substs = self.renumber_regions(*substs, || RegionCtxt::Location(location));
 
         debug!(?substs);
     }
@@ -117,7 +120,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn visit_region(&mut self, region: &mut ty::Region<'tcx>, location: Location) {
         let old_region = *region;
-        *region = self.renumber_regions(old_region, RegionCtxt::Location(location));
+        *region = self.renumber_regions(old_region, || RegionCtxt::Location(location));
 
         debug!(?region);
     }
@@ -125,7 +128,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, _location: Location) {
         let literal = constant.literal;
-        constant.literal = self.renumber_regions(literal, RegionCtxt::Location(_location));
+        constant.literal = self.renumber_regions(literal, || RegionCtxt::Location(_location));
         debug!("constant: {:#?}", constant);
     }
 }

@@ -495,49 +495,59 @@ impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
         BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()) }
     }
 
-    pub(crate) fn next_region_var(
+    pub(crate) fn next_region_var<F>(
         &self,
         origin: RegionVariableOrigin,
-        ctxt: RegionCtxt,
-    ) -> ty::Region<'tcx> {
+        get_ctxt_fn: F,
+    ) -> ty::Region<'tcx>
+    where
+        F: Fn() -> RegionCtxt,
+    {
         let next_region = self.infcx.next_region_var(origin);
         let vid = next_region
             .try_get_var()
             .unwrap_or_else(|| bug!("expected RegionKind::RegionVar on {:?}", next_region));
 
-        debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
-        let mut var_to_origin = self.reg_var_to_origin.borrow_mut();
-        let prev = var_to_origin.insert(vid, ctxt);
-        debug!("var_to_origin after insertion: {:?}", var_to_origin);
+        if cfg!(debug_assertions) {
+            debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
+            let ctxt = get_ctxt_fn();
+            let mut var_to_origin = self.reg_var_to_origin.borrow_mut();
+            let prev = var_to_origin.insert(vid, ctxt);
 
-        // This only makes sense if not called in a canonicalization context. If this
-        // ever changes we either want to get rid of `BorrowckInferContext::reg_var_to_origin`
-        // or modify how we track nll region vars for that map.
-        assert!(matches!(prev, None));
+            // This only makes sense if not called in a canonicalization context. If this
+            // ever changes we either want to get rid of `BorrowckInferContext::reg_var_to_origin`
+            // or modify how we track nll region vars for that map.
+            assert!(matches!(prev, None));
+        }
 
         next_region
     }
 
-    #[instrument(skip(self), level = "debug")]
-    pub(crate) fn next_nll_region_var(
+    #[instrument(skip(self, get_ctxt_fn), level = "debug")]
+    pub(crate) fn next_nll_region_var<F>(
         &self,
         origin: NllRegionVariableOrigin,
-        ctxt: RegionCtxt,
-    ) -> ty::Region<'tcx> {
+        get_ctxt_fn: F,
+    ) -> ty::Region<'tcx>
+    where
+        F: Fn() -> RegionCtxt,
+    {
         let next_region = self.infcx.next_nll_region_var(origin.clone());
         let vid = next_region
             .try_get_var()
             .unwrap_or_else(|| bug!("expected RegionKind::RegionVar on {:?}", next_region));
 
-        debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
-        let mut var_to_origin = self.reg_var_to_origin.borrow_mut();
-        let prev = var_to_origin.insert(vid, ctxt);
-        debug!("var_to_origin after insertion: {:?}", var_to_origin);
+        if cfg!(debug_assertions) {
+            debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
+            let ctxt = get_ctxt_fn();
+            let mut var_to_origin = self.reg_var_to_origin.borrow_mut();
+            let prev = var_to_origin.insert(vid, ctxt);
 
-        // This only makes sense if not called in a canonicalization context. If this
-        // ever changes we either want to get rid of `BorrowckInferContext::reg_var_to_origin`
-        // or modify how we track nll region vars for that map.
-        assert!(matches!(prev, None));
+            // This only makes sense if not called in a canonicalization context. If this
+            // ever changes we either want to get rid of `BorrowckInferContext::reg_var_to_origin`
+            // or modify how we track nll region vars for that map.
+            assert!(matches!(prev, None));
+        }
 
         next_region
     }

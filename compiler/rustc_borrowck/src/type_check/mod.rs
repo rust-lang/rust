@@ -1338,14 +1338,21 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     use crate::renumber::{BoundRegionInfo, RegionCtxt};
                     use rustc_span::Symbol;
 
-                    let reg_info = match br.kind {
-                        // FIXME Probably better to use the `Span` here
-                        ty::BoundRegionKind::BrAnon(_, Some(span)) => BoundRegionInfo::Span(span),
-                        ty::BoundRegionKind::BrAnon(..) => {
-                            BoundRegionInfo::Name(Symbol::intern("anon"))
-                        }
-                        ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
-                        ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(Symbol::intern("env")),
+                    let region_ctxt_fn = || {
+                        let reg_info = match br.kind {
+                            ty::BoundRegionKind::BrAnon(_, Some(span)) => {
+                                BoundRegionInfo::Span(span)
+                            }
+                            ty::BoundRegionKind::BrAnon(..) => {
+                                BoundRegionInfo::Name(Symbol::intern("anon"))
+                            }
+                            ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
+                            ty::BoundRegionKind::BrEnv => {
+                                BoundRegionInfo::Name(Symbol::intern("env"))
+                            }
+                        };
+
+                        RegionCtxt::LateBound(reg_info)
                     };
 
                     self.infcx.next_region_var(
@@ -1354,7 +1361,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             br.kind,
                             LateBoundRegionConversionTime::FnCall,
                         ),
-                        RegionCtxt::LateBound(reg_info),
+                        region_ctxt_fn,
                     )
                 });
                 debug!(?sig);

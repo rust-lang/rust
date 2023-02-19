@@ -408,7 +408,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         // Create the "global" region that is always free in all contexts: 'static.
         let fr_static = self
             .infcx
-            .next_nll_region_var(FR, RegionCtxt::Free(Symbol::intern("static")))
+            .next_nll_region_var(FR, || RegionCtxt::Free(Symbol::intern("static")))
             .to_region_vid();
 
         // We've now added all the global regions. The next ones we
@@ -447,10 +447,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                                 _ => Symbol::intern("anon"),
                             };
 
-                            self.infcx.next_nll_region_var(
-                                FR,
-                                RegionCtxt::LateBound(BoundRegionInfo::Name(name)),
-                            )
+                            self.infcx.next_nll_region_var(FR, || {
+                                RegionCtxt::LateBound(BoundRegionInfo::Name(name))
+                            })
                         };
 
                         debug!(?region_vid);
@@ -486,8 +485,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                         _ => Symbol::intern("anon"),
                     };
 
-                    self.infcx
-                        .next_nll_region_var(FR, RegionCtxt::LateBound(BoundRegionInfo::Name(name)))
+                    self.infcx.next_nll_region_var(FR, || {
+                        RegionCtxt::LateBound(BoundRegionInfo::Name(name))
+                    })
                 };
 
                 debug!(?region_vid);
@@ -506,9 +506,13 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     LangItem::VaList,
                     Some(self.infcx.tcx.def_span(self.mir_def.did)),
                 );
-                let reg_vid = self.infcx.next_nll_region_var(FR, RegionCtxt::Free(Symbol::intern("c-variadic")).to_region_vid();
-                let region =
-                    self.infcx.tcx.mk_re_var(reg_vid);
+
+                let reg_vid = self
+                    .infcx
+                    .next_nll_region_var(FR, || RegionCtxt::Free(Symbol::intern("c-variadic")))
+                    .to_region_vid();
+
+                let region = self.infcx.tcx.mk_re_var(reg_vid);
                 let va_list_ty =
                     self.infcx.tcx.type_of(va_list_did).subst(self.infcx.tcx, &[region.into()]);
 
@@ -520,7 +524,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         let fr_fn_body = self
             .infcx
-            .next_nll_region_var(FR, RegionCtxt::Free(Symbol::intern("fn_body")))
+            .next_nll_region_var(FR, || RegionCtxt::Free(Symbol::intern("fn_body")))
             .to_region_vid();
 
         let num_universals = self.infcx.num_region_vars();
@@ -766,7 +770,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
             };
             debug!(?region, ?name);
 
-            let reg_var = self.next_nll_region_var(origin, RegionCtxt::Free(name));
+            let reg_var = self.next_nll_region_var(origin, || RegionCtxt::Free(name));
 
             reg_var
         })
@@ -786,7 +790,15 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
         let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
             debug!(?br);
             let liberated_region = self.tcx.mk_re_free(all_outlive_scope.to_def_id(), br.kind);
-            let region_vid = self.next_nll_region_var(origin, RegionCtxt::Bound(BoundRegionInfo::Name(name)));
+            let region_vid = {
+                let name = match br.kind.get_name() {
+                    Some(name) => name,
+                    _ => Symbol::intern("anon"),
+                };
+
+                self.next_nll_region_var(origin, || RegionCtxt::Bound(BoundRegionInfo::Name(name)))
+            };
+
             indices.insert_late_bound_region(liberated_region, region_vid.to_region_vid());
             debug!(?liberated_region, ?region_vid);
             region_vid
@@ -818,7 +830,9 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
                         _ => Symbol::intern("anon"),
                     };
 
-                    self.next_nll_region_var(FR, RegionCtxt::LateBound(BoundRegionInfo::Name(name)))
+                    self.next_nll_region_var(FR, || {
+                        RegionCtxt::LateBound(BoundRegionInfo::Name(name))
+                    })
                 };
 
                 debug!(?region_vid);
@@ -842,7 +856,9 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
                         _ => Symbol::intern("anon"),
                     };
 
-                    self.next_nll_region_var(FR, RegionCtxt::LateBound(BoundRegionInfo::Name(name)))
+                    self.next_nll_region_var(FR, || {
+                        RegionCtxt::LateBound(BoundRegionInfo::Name(name))
+                    })
                 };
 
                 indices.insert_late_bound_region(r, region_vid.to_region_vid());
