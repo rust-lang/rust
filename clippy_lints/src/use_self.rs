@@ -10,8 +10,8 @@ use rustc_hir::{
     def::{CtorOf, DefKind, Res},
     def_id::LocalDefId,
     intravisit::{walk_inf, walk_ty, Visitor},
-    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath,
-    TyKind,
+    Expr, ExprKind, FnRetTy, FnSig, GenericArg, GenericParam, GenericParamKind, HirId, Impl, ImplItemKind, Item,
+    ItemKind, Pat, PatKind, Path, QPath, Ty, TyKind,
 };
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         // avoid linting on nested items, we push `StackItem::NoCheck` on the stack to signal, that
         // we're in an `impl` or nested item, that we don't want to lint
         let stack_item = if_chain! {
-            if let ItemKind::Impl(Impl { self_ty, .. }) = item.kind;
+            if let ItemKind::Impl(Impl { self_ty, generics,.. }) = item.kind;
             if let TyKind::Path(QPath::Resolved(_, item_path)) = self_ty.kind;
             let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
             if parameters.as_ref().map_or(true, |params| {
@@ -105,10 +105,17 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             if !item.span.from_expansion();
             if !is_from_proc_macro(cx, item); // expensive, should be last check
             then {
+                // Self cannot be used inside const generic parameters
+                let types_to_skip = generics.params.iter().filter_map(|param| {
+                    match param {
+                        GenericParam { kind: GenericParamKind::Const { ty: Ty { hir_id, ..}, ..}, ..} => Some(*hir_id),
+                        _ => None,
+                    }
+                }).chain(std::iter::once(self_ty.hir_id)).collect();
                 StackItem::Check {
                     impl_id: item.owner_id.def_id,
                     in_body: 0,
-                    types_to_skip: std::iter::once(self_ty.hir_id).collect(),
+                    types_to_skip,
                 }
             } else {
                 StackItem::NoCheck
