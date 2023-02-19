@@ -65,6 +65,7 @@ a type parameter).
 mod check;
 mod compare_impl_item;
 pub mod dropck;
+mod entry;
 pub mod intrinsic;
 pub mod intrinsicck;
 mod region;
