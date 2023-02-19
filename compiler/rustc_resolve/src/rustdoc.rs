@@ -339,6 +339,7 @@ pub fn inner_docs(attrs: &[ast::Attribute]) -> bool {
 fn preprocess_link(link: &str) -> String {
     let link = link.replace('`', "");
     let link = link.split('#').next().unwrap();
+    let link = link.trim();
     let link = link.rsplit('@').next().unwrap();
     let link = link.strip_suffix("()").unwrap_or(link);
     let link = link.strip_suffix("{}").unwrap_or(link);
