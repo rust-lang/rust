@@ -344,10 +344,8 @@ fn main() {
     #[repr(simd)]
     struct V([f64; 2]);
 
-    unsafe {
-        let f = V([0.0, 1.0]);
-        let _a = f.0[0];
-    }
+    let f = V([0.0, 1.0]);
+    let _a = f.0[0];
 }
 
 #[cfg(all(not(jit), target_arch = "x86_64", any(target_os = "linux", target_os = "darwin")))]
