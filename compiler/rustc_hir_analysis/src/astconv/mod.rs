@@ -2261,9 +2261,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                     ocx.register_obligations(impl_obligations);
 
-                    let errors = ocx.select_where_possible();
+                    let mut errors = ocx.select_where_possible();
                     if !errors.is_empty() {
-                        fulfillment_errors = errors;
+                        fulfillment_errors.append(&mut errors);
                         return None;
                     }
 
