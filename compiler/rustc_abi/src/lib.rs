@@ -1,11 +1,11 @@
 #![cfg_attr(feature = "nightly", feature(step_trait, rustc_attrs, min_specialization))]
 
+use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
 use std::num::{NonZeroUsize, ParseIntError};
 use std::ops::{Add, AddAssign, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
-use std::{cmp, fmt};
 
 use bitflags::bitflags;
 use rustc_data_structures::intern::Interned;
@@ -1277,9 +1277,7 @@ impl Abi {
     pub fn inherent_align<C: HasDataLayout>(&self, cx: &C) -> Option<AbiAndPrefAlign> {
         Some(match *self {
             Abi::Scalar(s) => s.align(cx),
-            Abi::ScalarPair(s1, s2) => {
-                AbiAndPrefAlign::new(cmp::max(s1.align(cx).abi, s2.align(cx).abi))
-            }
+            Abi::ScalarPair(s1, s2) => s1.align(cx).max(s2.align(cx)),
             Abi::Vector { element, count } => {
                 cx.data_layout().vector_align(element.size(cx) * count)
             }
