@@ -81,7 +81,7 @@ error: layout_of(E) = Layout {
                ],
            },
        }
-  --> $DIR/debug.rs:6:1
+  --> $DIR/debug.rs:7:1
    |
 LL | enum E { Foo, Bar(!, i32, i32) }
    | ^^^^^^
@@ -125,7 +125,7 @@ error: layout_of(S) = Layout {
                index: 0,
            },
        }
-  --> $DIR/debug.rs:9:1
+  --> $DIR/debug.rs:10:1
    |
 LL | struct S { f1: i32, f2: (), f3: i32 }
    | ^^^^^^^^
@@ -147,7 +147,7 @@ error: layout_of(U) = Layout {
                index: 0,
            },
        }
-  --> $DIR/debug.rs:12:1
+  --> $DIR/debug.rs:13:1
    |
 LL | union U { f1: (i32, i32), f3: i32 }
    | ^^^^^^^
@@ -276,7 +276,7 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                ],
            },
        }
-  --> $DIR/debug.rs:15:1
+  --> $DIR/debug.rs:16:1
    |
 LL | type Test = Result<i32, i32>;
    | ^^^^^^^^^
@@ -302,7 +302,7 @@ error: layout_of(i32) = Layout {
                index: 0,
            },
        }
-  --> $DIR/debug.rs:18:1
+  --> $DIR/debug.rs:19:1
    |
 LL | type T = impl std::fmt::Debug;
    | ^^^^^^
@@ -324,7 +324,7 @@ error: layout_of(V) = Layout {
                index: 0,
            },
        }
-  --> $DIR/debug.rs:21:1
+  --> $DIR/debug.rs:22:1
    |
 LL | pub union V {
    | ^^^^^^^^^^^
@@ -346,7 +346,7 @@ error: layout_of(W) = Layout {
                index: 0,
            },
        }
-  --> $DIR/debug.rs:27:1
+  --> $DIR/debug.rs:28:1
    |
 LL | pub union W {
    | ^^^^^^^^^^^
@@ -368,10 +368,98 @@ error: layout_of(Y) = Layout {
                index: 0,
            },
        }
-  --> $DIR/debug.rs:33:1
+  --> $DIR/debug.rs:34:1
    |
 LL | pub union Y {
    | ^^^^^^^^^^^
+
+error: layout_of(P1) = Layout {
+           size: Size(4 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: $PREF_ALIGN,
+           },
+           abi: Aggregate {
+               sized: true,
+           },
+           fields: Union(
+               1,
+           ),
+           largest_niche: None,
+           variants: Single {
+               index: 0,
+           },
+       }
+  --> $DIR/debug.rs:41:1
+   |
+LL | union P1 { x: u32 }
+   | ^^^^^^^^
+
+error: layout_of(P2) = Layout {
+           size: Size(8 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: $PREF_ALIGN,
+           },
+           abi: Aggregate {
+               sized: true,
+           },
+           fields: Union(
+               1,
+           ),
+           largest_niche: None,
+           variants: Single {
+               index: 0,
+           },
+       }
+  --> $DIR/debug.rs:45:1
+   |
+LL | union P2 { x: (u32, u32) }
+   | ^^^^^^^^
+
+error: layout_of(P3) = Layout {
+           size: Size(16 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: $PREF_ALIGN,
+           },
+           abi: Aggregate {
+               sized: true,
+           },
+           fields: Union(
+               1,
+           ),
+           largest_niche: None,
+           variants: Single {
+               index: 0,
+           },
+       }
+  --> $DIR/debug.rs:53:1
+   |
+LL | union P3 { x: F32x4 }
+   | ^^^^^^^^
+
+error: layout_of(P4) = Layout {
+           size: Size(12 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: $PREF_ALIGN,
+           },
+           abi: Aggregate {
+               sized: true,
+           },
+           fields: Union(
+               1,
+           ),
+           largest_niche: None,
+           variants: Single {
+               index: 0,
+           },
+       }
+  --> $DIR/debug.rs:57:1
+   |
+LL | union P4 { x: E }
+   | ^^^^^^^^
 
 error: layout_of(std::mem::MaybeUninit<u8>) = Layout {
            size: Size(1 bytes),
@@ -395,10 +483,10 @@ error: layout_of(std::mem::MaybeUninit<u8>) = Layout {
                index: 0,
            },
        }
-  --> $DIR/debug.rs:39:1
+  --> $DIR/debug.rs:60:1
    |
 LL | type X = std::mem::MaybeUninit<u8>;
    | ^^^^^^
 
-error: aborting due to 9 previous errors
+error: aborting due to 13 previous errors
 

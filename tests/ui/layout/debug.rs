@@ -1,8 +1,9 @@
 // normalize-stderr-test "pref: Align\([1-8] bytes\)" -> "pref: $$PREF_ALIGN"
-#![feature(never_type, rustc_attrs, type_alias_impl_trait)]
+#![feature(never_type, rustc_attrs, type_alias_impl_trait, repr_simd)]
 #![crate_type = "lib"]
 
 #[rustc_layout(debug)]
+#[derive(Copy, Clone)]
 enum E { Foo, Bar(!, i32, i32) } //~ ERROR: layout_of
 
 #[rustc_layout(debug)]
@@ -34,6 +35,26 @@ pub union Y { //~ ERROR: layout_of
     b: [u8; 0],
     a: [u16; 0],
 }
+
+#[rustc_layout(debug)]
+#[repr(packed(1))]
+union P1 { x: u32 } //~ ERROR: layout_of
+
+#[rustc_layout(debug)]
+#[repr(packed(1))]
+union P2 { x: (u32, u32) } //~ ERROR: layout_of
+
+#[repr(simd)]
+#[derive(Copy, Clone)]
+struct F32x4(f32, f32, f32, f32);
+
+#[rustc_layout(debug)]
+#[repr(packed(1))]
+union P3 { x: F32x4 } //~ ERROR: layout_of
+
+#[rustc_layout(debug)]
+#[repr(packed(1))]
+union P4 { x: E } //~ ERROR: layout_of
 
 #[rustc_layout(debug)]
 type X = std::mem::MaybeUninit<u8>; //~ ERROR: layout_of
