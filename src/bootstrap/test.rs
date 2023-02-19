@@ -22,9 +22,9 @@ use crate::flags::Subcommand;
 use crate::llvm;
 use crate::tool::{self, SourceType, Tool};
 use crate::toolstate::ToolState;
+use crate::util::up_to_date;
 use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var, output, t};
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
-use crate::util::up_to_date;
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
