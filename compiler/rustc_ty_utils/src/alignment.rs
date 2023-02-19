@@ -94,7 +94,7 @@ fn align_of_uncached<'tcx>(
         assert!(size.bits() <= 128);
         Scalar::Initialized { value, valid_range: WrappingRange::full(size) }
     };
-    let scalar = |value: Primitive| tcx.intern_layout(LayoutS::scalar(cx, scalar_unit(value)));
+    let scalar = |value: Primitive| scalar_unit(value).align(cx);
 
     let univariant = |fields: &[TyAndLayout<'_>], repr: &ReprOptions, kind| {
         Ok(tcx.intern_layout(univariant_uninterned(cx, ty, fields, repr, kind)?))
@@ -103,31 +103,14 @@ fn align_of_uncached<'tcx>(
 
     Ok(match *ty.kind() {
         // Basic scalars.
-        ty::Bool => tcx
-            .intern_layout(LayoutS::scalar(
-                cx,
-                Scalar::Initialized {
-                    value: Int(I8, false),
-                    valid_range: WrappingRange { start: 0, end: 1 },
-                },
-            ))
-            .align(),
-        ty::Char => tcx
-            .intern_layout(LayoutS::scalar(
-                cx,
-                Scalar::Initialized {
-                    value: Int(I32, false),
-                    valid_range: WrappingRange { start: 0, end: 0x10FFFF },
-                },
-            ))
-            .align(),
-        ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)).align(),
-        ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)).align(),
-        ty::Float(fty) => scalar(match fty {
+        ty::Bool => I8.align(cx),
+        ty::Char => I32.align(cx),
+        ty::Int(ity) => Integer::from_int_ty(dl, ity).align(cx),
+        ty::Uint(ity) => Integer::from_uint_ty(dl, ity).align(cx),
+        ty::Float(fty) => match fty {
             ty::FloatTy::F32 => F32,
             ty::FloatTy::F64 => F64,
-        })
-        .align(),
+        }.align(cx),
         ty::FnPtr(_) => {
             let mut ptr = scalar_unit(Pointer(dl.instruction_address_space));
             ptr.valid_range_mut().start = 1;
