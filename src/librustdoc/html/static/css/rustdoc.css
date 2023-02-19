@@ -201,7 +201,7 @@ h1, h2, h3, h4, h5, h6,
 .mobile-topbar,
 .search-input,
 .search-results .result-name,
-.item-left > a,
+.item-name > a,
 .out-of-band,
 span.since,
 a.srclink,
@@ -750,14 +750,16 @@ table,
 
 .item-table {
 	display: table;
+	padding: 0;
+	margin: 0;
 }
-.item-row {
+.item-table > li {
 	display: table-row;
 }
-.item-left, .item-right {
+.item-table > li > div {
 	display: table-cell;
 }
-.item-left {
+.item-table > li > .item-name {
 	padding-right: 1.25rem;
 }
 
@@ -962,7 +964,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	padding: 3px;
 	margin-bottom: 5px;
 }
-.item-left .stab {
+.item-name .stab {
 	margin-left: 0.3125em;
 }
 .stab {
@@ -1695,7 +1697,7 @@ in storage.js
 	}
 
 	/* Display an alternating layout on tablets and phones */
-	.item-table, .item-row, .item-left, .item-right,
+	.item-table, .item-row, .item-table > li, .item-table > li > div,
 	.search-results > a, .search-results > a > div {
 		display: block;
 	}
@@ -1704,7 +1706,7 @@ in storage.js
 	.search-results > a {
 		padding: 5px 0px;
 	}
-	.search-results > a > div.desc, .item-right {
+	.search-results > a > div.desc, .item-table > li > div.desc {
 		padding-left: 2em;
 	}
 

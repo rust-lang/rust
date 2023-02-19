@@ -8,13 +8,13 @@ extern crate reexport_check;
 #[allow(deprecated, deprecated_in_future)]
 pub use std::i32;
 // @!has 'foo/index.html' '//code' 'pub use self::string::String;'
-// @has 'foo/index.html' '//div[@class="item-left"]' 'String'
+// @has 'foo/index.html' '//div[@class="item-name"]' 'String'
 pub use std::string::String;
 
 // i32 is deprecated, String is not
 // @count 'foo/index.html' '//span[@class="stab deprecated"]' 1
 
-// @has 'foo/index.html' '//div[@class="item-right docblock-short"]' 'Docs in original'
+// @has 'foo/index.html' '//div[@class="desc docblock-short"]' 'Docs in original'
 // this is a no-op, but shows what happens if there's an attribute that isn't a doc-comment
 #[doc(inline)]
 pub use reexport_check::S;
