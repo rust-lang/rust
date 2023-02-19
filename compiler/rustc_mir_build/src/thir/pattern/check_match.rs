@@ -603,6 +603,7 @@ fn non_exhaustive_match<'p, 'tcx>(
             expr_span,
             span,
             scrut_ty,
+            type_note: errors::TypeNote::new(scrut_ty),
         });
         return;
     }
@@ -622,17 +623,9 @@ fn non_exhaustive_match<'p, 'tcx>(
         span,
         uncovered: errors::Uncovered::new(span, &cx, &witnesses),
         adt_defined_here: errors::AdtDefinedHere::new(&cx, scrut_ty, &witnesses),
+        type_note: errors::TypeNote::new(scrut_ty),
     });
 
-    let is_variant_list_non_exhaustive = match scrut_ty.kind() {
-        ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local() => true,
-        _ => false,
-    };
-    err.note(&format!(
-        "the matched value is of type `{}`{}",
-        scrut_ty,
-        if is_variant_list_non_exhaustive { ", which is marked as non-exhaustive" } else { "" }
-    ));
     if (scrut_ty == cx.tcx.types.usize || scrut_ty == cx.tcx.types.isize)
         && !is_empty_match
         && witnesses.len() == 1

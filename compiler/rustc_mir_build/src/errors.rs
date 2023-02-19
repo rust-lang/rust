@@ -354,6 +354,7 @@ pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
     pub expr_span: Span,
     pub span: Span,
     pub scrut_ty: Ty<'tcx>,
+    pub type_note: TypeNote<'tcx>,
 }
 
 impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
@@ -385,18 +386,12 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
             diag.span_note(span, fluent::mir_build_def_note);
         }
 
-        let is_variant_list_non_exhaustive = match self.scrut_ty.kind() {
-            ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local() => {
-                true
+        match self.type_note {
+            TypeNote::MarkedExhaustive { .. } => {
+                diag.note(fluent::non_exhaustive_type_note)
             }
-            _ => false,
+            TypeNote::NotMarkedExhaustive { .. } => diag.note(fluent::type_note),
         };
-
-        if is_variant_list_non_exhaustive {
-            diag.note(fluent::mir_build_non_exhaustive_type_note);
-        } else {
-            diag.note(fluent::mir_build_type_note);
-        }
 
         if let ty::Ref(_, sub_ty, _) = self.scrut_ty.kind() {
             if !sub_ty.is_inhabited_from(self.cx.tcx, self.cx.module, self.cx.param_env) {
@@ -953,4 +948,25 @@ pub(crate) struct NonExhaustivePatterns<'tcx> {
     pub uncovered: Uncovered<'tcx>,
     #[subdiagnostic]
     pub adt_defined_here: Option<AdtDefinedHere<'tcx>>,
+    #[subdiagnostic]
+    pub type_note: TypeNote<'tcx>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum TypeNote<'tcx> {
+    #[note(mir_build_type_note)]
+    NotMarkedExhaustive { scrut_ty: Ty<'tcx> },
+    #[note(mir_build_type_note_non_exhaustive)]
+    MarkedExhaustive { scrut_ty: Ty<'tcx> },
+}
+
+impl<'tcx> TypeNote<'tcx> {
+    pub fn new(scrut_ty: Ty<'tcx>) -> Self {
+        match scrut_ty.kind() {
+            ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local() => {
+                TypeNote::MarkedExhaustive { scrut_ty }
+            }
+            _ => TypeNote::NotMarkedExhaustive { scrut_ty },
+        }
+    }
 }

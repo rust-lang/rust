@@ -381,3 +381,7 @@ mir_build_rustc_box_attribute_error = `#[rustc_box]` attribute used incorrectly
     .missing_box = `#[rustc_box]` requires the `owned_box` lang item
 
 mir_build_non_exhaustive_pattern = match is non-exhaustive
+
+mir_build_type_note = the matched value is of type `{$scrut_ty}`
+
+mir_build_type_note_non_exhaustive = the matched value is of type `{$scrut_ty}`, which is marked as non-exhaustive
