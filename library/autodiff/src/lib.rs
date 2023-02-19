@@ -1,0 +1,45 @@
+use proc_macro::TokenStream;
+use proc_macro_error::proc_macro_error;
+use quote::quote;
+
+mod parser;
+mod gen;
+
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn autodiff(args: TokenStream, input: TokenStream) -> TokenStream {
+    let mut params = parser::parse(args.into(), input.clone().into());
+    let (body, fnc_source) = gen::generate_body(&params);
+    let header = gen::generate_header(&params);
+
+    // generate function
+
+    let out = if params.block.is_none() {
+        let sig = &params.sig;
+        quote!(
+            #[autodiff_into]
+            #fnc_source
+
+            #header
+            #sig {
+                #body
+            }
+        )
+    } else {
+        params.sig.ident = params.header.name.get_ident().unwrap().clone();
+        let sig = &params.sig;
+        let input: proc_macro2::TokenStream = input.into();
+
+        quote!(
+            #[autodiff_into]
+            #input
+
+            #header
+            #sig {
+                #body
+            }
+        )
+    };
+
+    out.into()
+}

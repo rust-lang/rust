@@ -433,6 +433,8 @@ fn collect_and_partition_mono_items<'tcx>(
             let target_symbol = symbol_name_for_instance_in_crate(tcx, instance.clone(), LOCAL_CRATE);
             let range = inlining_map.index.get(&item).unwrap();
 
+            //dbg!(&inlining_map.targets[range.clone()]);
+            dbg!(&range);
             inlining_map.targets[range.clone()].into_iter()
                 .filter_map(|item| match *item {
                     MonoItem::Fn(ref instance_s) => {

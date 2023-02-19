@@ -419,7 +419,7 @@ pub fn get_enzyme_typetree2<'tcx>( _tcx: TyCtxt<'tcx>, llcx: &'_ llvm::Context, 
 }
 
 pub fn get_enzyme_typetree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str, tcx: TyCtxt<'tcx>, llcx: &'_ llvm::Context, depth: u8) -> TypeTree {
-    assert!(depth <= 6);
+    assert!(depth <= 20);
     let mut tt = TypeTree::new();
 
     if id.is_unsafe_ptr() || id.is_ref() || id.is_box() {

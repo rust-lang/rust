@@ -370,7 +370,7 @@ symbols! {
         attributes,
         augmented_assignments,
         auto_traits,
-        autodiff,
+        autodiff_into,
         automatically_derived,
         avx,
         avx512_target_feature,

@@ -2755,7 +2755,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
 
     let attrs = attrs
         .into_iter()
-        .filter(|attr| attr.name_or_empty() == sym::autodiff)
+        .filter(|attr| attr.name_or_empty() == sym::autodiff_into)
         .collect::<Vec<_>>();
 
     // check for exactly one autodiff attribute on extern block

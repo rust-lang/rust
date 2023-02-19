@@ -1401,6 +1401,7 @@ impl<'a> Resolver<'a> {
             proc_macros,
             confused_type_with_std_module,
             registered_tools: self.registered_tools,
+            autodiff_map: Default::default(),
         }
     }
 
@@ -1426,6 +1427,7 @@ impl<'a> Resolver<'a> {
             proc_macros,
             confused_type_with_std_module: self.confused_type_with_std_module.clone(),
             registered_tools: self.registered_tools.clone(),
+            autodiff_map: Default::default(),
         }
     }
 

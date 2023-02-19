@@ -1531,6 +1531,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         }
                         Message::AddAutoDiffItems(mut items) => {
                             autodiff_items.append(&mut items);
+                            dbg!(&autodiff_items);
                         }
                         // If the thread failed that means it panicked, so we abort immediately.
                         Message::Done { result: Err(None), worker_id: _ } => {
@@ -1875,6 +1876,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             self.backend.print_pass_timings()
         }
 
+        // HERE
         (
             CodegenResults {
                 metadata: self.metadata,

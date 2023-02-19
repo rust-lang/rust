@@ -146,7 +146,10 @@ pub struct ResolverOutputs {
     pub proc_macros: Vec<LocalDefId>,
     /// Mapping from ident span to path span for paths that don't exist as written, but that
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
+
     pub confused_type_with_std_module: FxHashMap<Span, Span>,
+    /// Mapping of autodiff function IDs
+    pub autodiff_map: FxHashMap<LocalDefId, LocalDefId>,
     pub registered_tools: RegisteredTools,
 }
 

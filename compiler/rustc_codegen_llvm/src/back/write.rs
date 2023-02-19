@@ -719,6 +719,8 @@ pub(crate) unsafe fn differentiate(
         llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrint), 1);
     }
 
+    dbg!(&diff_items);
+
     for item in diff_items {
         let tt = typetrees.get(&item.source).unwrap().clone();
 

@@ -330,7 +330,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Autodiff
     ungated!(
-        autodiff, Normal,
+        autodiff_into, Normal,
         template!(Word, List: r#""...""#),
         DuplicatesOk,
     ),

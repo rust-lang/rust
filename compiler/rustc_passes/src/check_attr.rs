@@ -155,7 +155,7 @@ impl CheckAttrVisitor<'_> {
                 sym::no_implicit_prelude => {
                     self.check_generic_attr(hir_id, attr, target, &[Target::Mod])
                 }
-                sym::autodiff => self.check_autodiff(hir_id, attr, span, target),
+                sym::autodiff_into => self.check_autodiff(hir_id, attr, span, target),
                 _ => {}
             }
 
