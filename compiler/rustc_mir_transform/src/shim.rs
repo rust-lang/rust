@@ -341,12 +341,10 @@ fn build_thread_local_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'t
         is_cleanup: false,
     });
 
-    let ret_ty = Rvalue::ThreadLocalRef(def_id).ty(&IndexVec::new(), tcx);
-
     new_body(
         MirSource::from_instance(instance),
         blocks,
-        iter::once(LocalDecl::new(ret_ty, span)).collect(),
+        IndexVec::from_raw(vec![LocalDecl::new(tcx.thread_local_ptr_ty(def_id), span)]),
         0,
         span,
     )

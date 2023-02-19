@@ -82,8 +82,9 @@ pub enum InstanceDef<'tcx> {
     /// The `DefId` is the ID of the `call_once` method in `FnOnce`.
     ClosureOnceShim { call_once: DefId, track_caller: bool },
 
-    /// Compiler-generated accessor for thread locals. This is used to export thread locals
-    /// from dylibs on platforms lacking native support.
+    /// Compiler-generated accessor for thread locals which returns a reference to the thread local
+    /// the `DefId` defines. This is used to export thread locals from dylibs on platforms lacking
+    /// native support.
     ThreadLocalShim(DefId),
 
     /// `core::ptr::drop_in_place::<T>`.
