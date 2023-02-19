@@ -94,7 +94,6 @@ fn align_of_uncached<'tcx>(
         assert!(size.bits() <= 128);
         Scalar::Initialized { value, valid_range: WrappingRange::full(size) }
     };
-    let scalar = |value: Primitive| scalar_unit(value).align(cx);
 
     let univariant = |fields: &[TyAndLayout<'_>], repr: &ReprOptions, kind| {
         Ok(tcx.intern_layout(univariant_uninterned(cx, ty, fields, repr, kind)?))
@@ -110,31 +109,25 @@ fn align_of_uncached<'tcx>(
         ty::Float(fty) => match fty {
             ty::FloatTy::F32 => F32,
             ty::FloatTy::F64 => F64,
-        }.align(cx),
-        ty::FnPtr(_) => {
-            let mut ptr = scalar_unit(Pointer(dl.instruction_address_space));
-            ptr.valid_range_mut().start = 1;
-            tcx.intern_layout(LayoutS::scalar(cx, ptr)).align()
         }
+        .align(cx),
+        ty::FnPtr(_) => Pointer(dl.instruction_address_space).align(cx),
 
         // The never type.
         ty::Never => tcx.intern_layout(cx.layout_of_never_type()).align(),
 
         // Potentially-wide pointers.
         ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
-            let mut data_ptr = scalar_unit(Pointer(AddressSpace::DATA));
-            if !ty.is_unsafe_ptr() {
-                data_ptr.valid_range_mut().start = 1;
-            }
+            let data_ptr_align = Pointer(AddressSpace::DATA).align(cx);
 
             let pointee = tcx.normalize_erasing_regions(param_env, pointee);
             if pointee.is_sized(tcx, param_env) {
-                return Ok(tcx.intern_layout(LayoutS::scalar(cx, data_ptr)).align());
+                return Ok(data_ptr_align);
             }
 
             let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
 
-            let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
+            let metadata_align = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
                 let metadata_ty = tcx.normalize_erasing_regions(
                     param_env,
                     tcx.mk_projection(metadata_def_id, [pointee]),
@@ -142,32 +135,27 @@ fn align_of_uncached<'tcx>(
                 let metadata_layout = cx.layout_of(metadata_ty)?;
                 // If the metadata is a 1-zst, then the pointer is thin.
                 if metadata_layout.is_zst() && metadata_layout.align.abi.bytes() == 1 {
-                    return Ok(tcx.intern_layout(LayoutS::scalar(cx, data_ptr)).align());
+                    return Ok(data_ptr_align);
                 }
 
                 let Abi::Scalar(metadata) = metadata_layout.abi else {
                     return Err(LayoutError::Unknown(unsized_part));
                 };
-                metadata
+                metadata.align(dl)
             } else {
                 match unsized_part.kind() {
                     ty::Foreign(..) => {
-                        return Ok(tcx.intern_layout(LayoutS::scalar(cx, data_ptr)).align());
+                        return Ok(data_ptr_align);
                     }
-                    ty::Slice(_) | ty::Str => scalar_unit(Int(dl.ptr_sized_integer(), false)),
-                    ty::Dynamic(..) => {
-                        let mut vtable = scalar_unit(Pointer(AddressSpace::DATA));
-                        vtable.valid_range_mut().start = 1;
-                        vtable
-                    }
+                    ty::Slice(_) | ty::Str => dl.ptr_sized_integer().align(cx),
+                    ty::Dynamic(..) => data_ptr_align,
                     _ => {
                         return Err(LayoutError::Unknown(unsized_part));
                     }
                 }
             };
-
             // Effectively a (ptr, meta) tuple.
-            tcx.intern_layout(cx.scalar_pair(data_ptr, metadata)).align()
+            data_ptr_align.max(metadata_align).max(dl.aggregate_align)
         }
 
         ty::Dynamic(_, _, ty::DynStar) => {
