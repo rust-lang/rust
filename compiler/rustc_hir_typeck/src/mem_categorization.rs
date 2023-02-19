@@ -525,89 +525,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
     pub(crate) fn cat_pattern<F>(
         &self,
-        place: PlaceWithHirId<'tcx>,
-        pat: &hir::Pat<'_>,
-        mut op: F,
-    ) -> McResult<()>
-    where
-        F: FnMut(&PlaceWithHirId<'tcx>, &hir::Pat<'_>),
-    {
-        self.cat_pattern_(place, pat, &mut op)
-    }
-
-    /// Returns the variant index for an ADT used within a Struct or TupleStruct pattern
-    /// Here `pat_hir_id` is the HirId of the pattern itself.
-    fn variant_index_for_adt(
-        &self,
-        qpath: &hir::QPath<'_>,
-        pat_hir_id: hir::HirId,
-        span: Span,
-    ) -> McResult<VariantIdx> {
-        let res = self.typeck_results.qpath_res(qpath, pat_hir_id);
-        let ty = self.typeck_results.node_type(pat_hir_id);
-        let ty::Adt(adt_def, _) = ty.kind() else {
-            self.tcx()
-                .sess
-                .delay_span_bug(span, "struct or tuple struct pattern not applied to an ADT");
-            return Err(());
-        };
-
-        match res {
-            Res::Def(DefKind::Variant, variant_id) => Ok(adt_def.variant_index_with_id(variant_id)),
-            Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_id) => {
-                Ok(adt_def.variant_index_with_ctor_id(variant_ctor_id))
-            }
-            Res::Def(DefKind::Ctor(CtorOf::Struct, ..), _)
-            | Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
-            | Res::SelfCtor(..)
-            | Res::SelfTyParam { .. }
-            | Res::SelfTyAlias { .. } => {
-                // Structs and Unions have only have one variant.
-                Ok(VariantIdx::new(0))
-            }
-            _ => bug!("expected ADT path, found={:?}", res),
-        }
-    }
-
-    /// Returns the total number of fields in an ADT variant used within a pattern.
-    /// Here `pat_hir_id` is the HirId of the pattern itself.
-    fn total_fields_in_adt_variant(
-        &self,
-        pat_hir_id: hir::HirId,
-        variant_index: VariantIdx,
-        span: Span,
-    ) -> McResult<usize> {
-        let ty = self.typeck_results.node_type(pat_hir_id);
-        match ty.kind() {
-            ty::Adt(adt_def, _) => Ok(adt_def.variant(variant_index).fields.len()),
-            _ => {
-                self.tcx()
-                    .sess
-                    .delay_span_bug(span, "struct or tuple struct pattern not applied to an ADT");
-                Err(())
-            }
-        }
-    }
-
-    /// Returns the total number of fields in a tuple used within a Tuple pattern.
-    /// Here `pat_hir_id` is the HirId of the pattern itself.
-    fn total_fields_in_tuple(&self, pat_hir_id: hir::HirId, span: Span) -> McResult<usize> {
-        let ty = self.typeck_results.node_type(pat_hir_id);
-        match ty.kind() {
-            ty::Tuple(substs) => Ok(substs.len()),
-            _ => {
-                self.tcx().sess.delay_span_bug(span, "tuple pattern not applied to a tuple");
-                Err(())
-            }
-        }
-    }
-
-    // FIXME(#19596) This is a workaround, but there should be a better way to do this
-    fn cat_pattern_<F>(
-        &self,
         mut place_with_id: PlaceWithHirId<'tcx>,
         pat: &hir::Pat<'_>,
-        op: &mut F,
+        mut op: F,
     ) -> McResult<()>
     where
         F: FnMut(&PlaceWithHirId<'tcx>, &hir::Pat<'_>),
@@ -681,7 +601,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     let projection_kind = ProjectionKind::Field(i as u32, VariantIdx::new(0));
                     let sub_place =
                         self.cat_projection(pat, place_with_id.clone(), subpat_ty, projection_kind);
-                    self.cat_pattern_(sub_place, subpat, op)?;
+                    self.cat_pattern(sub_place, subpat, &mut op)?;
                 }
             }
 
@@ -696,7 +616,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     let projection_kind = ProjectionKind::Field(i as u32, variant_index);
                     let sub_place =
                         self.cat_projection(pat, place_with_id.clone(), subpat_ty, projection_kind);
-                    self.cat_pattern_(sub_place, subpat, op)?;
+                    self.cat_pattern(sub_place, subpat, &mut op)?;
                 }
             }
 
@@ -720,18 +640,18 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                         field_ty,
                         ProjectionKind::Field(field_index as u32, variant_index),
                     );
-                    self.cat_pattern_(field_place, fp.pat, op)?;
+                    self.cat_pattern(field_place, fp.pat, &mut op)?;
                 }
             }
 
             PatKind::Or(pats) => {
                 for pat in pats {
-                    self.cat_pattern_(place_with_id.clone(), pat, op)?;
+                    self.cat_pattern(place_with_id.clone(), pat, &mut op)?;
                 }
             }
 
             PatKind::Binding(.., Some(ref subpat)) => {
-                self.cat_pattern_(place_with_id, subpat, op)?;
+                self.cat_pattern(place_with_id, subpat, op)?;
             }
 
             PatKind::Box(ref subpat) | PatKind::Ref(ref subpat, _) => {
@@ -739,7 +659,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 // PatKind::Ref since that information is already contained
                 // in the type.
                 let subplace = self.cat_deref(pat, place_with_id)?;
-                self.cat_pattern_(subplace, subpat, op)?;
+                self.cat_pattern(subplace, subpat, op)?;
             }
 
             PatKind::Slice(before, ref slice, after) => {
@@ -754,7 +674,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     ProjectionKind::Index,
                 );
                 for before_pat in before {
-                    self.cat_pattern_(elt_place.clone(), before_pat, op)?;
+                    self.cat_pattern(elt_place.clone(), before_pat, &mut op)?;
                 }
                 if let Some(ref slice_pat) = *slice {
                     let slice_pat_ty = self.pat_ty_adjusted(slice_pat)?;
@@ -764,10 +684,10 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                         slice_pat_ty,
                         ProjectionKind::Subslice,
                     );
-                    self.cat_pattern_(slice_place, slice_pat, op)?;
+                    self.cat_pattern(slice_place, slice_pat, &mut op)?;
                 }
                 for after_pat in after {
-                    self.cat_pattern_(elt_place.clone(), after_pat, op)?;
+                    self.cat_pattern(elt_place.clone(), after_pat, &mut op)?;
                 }
             }
 
@@ -781,5 +701,72 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         }
 
         Ok(())
+    }
+
+    /// Returns the variant index for an ADT used within a Struct or TupleStruct pattern
+    /// Here `pat_hir_id` is the HirId of the pattern itself.
+    fn variant_index_for_adt(
+        &self,
+        qpath: &hir::QPath<'_>,
+        pat_hir_id: hir::HirId,
+        span: Span,
+    ) -> McResult<VariantIdx> {
+        let res = self.typeck_results.qpath_res(qpath, pat_hir_id);
+        let ty = self.typeck_results.node_type(pat_hir_id);
+        let ty::Adt(adt_def, _) = ty.kind() else {
+            self.tcx()
+                .sess
+                .delay_span_bug(span, "struct or tuple struct pattern not applied to an ADT");
+            return Err(());
+        };
+
+        match res {
+            Res::Def(DefKind::Variant, variant_id) => Ok(adt_def.variant_index_with_id(variant_id)),
+            Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_id) => {
+                Ok(adt_def.variant_index_with_ctor_id(variant_ctor_id))
+            }
+            Res::Def(DefKind::Ctor(CtorOf::Struct, ..), _)
+            | Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
+            | Res::SelfCtor(..)
+            | Res::SelfTyParam { .. }
+            | Res::SelfTyAlias { .. } => {
+                // Structs and Unions have only have one variant.
+                Ok(VariantIdx::new(0))
+            }
+            _ => bug!("expected ADT path, found={:?}", res),
+        }
+    }
+
+    /// Returns the total number of fields in an ADT variant used within a pattern.
+    /// Here `pat_hir_id` is the HirId of the pattern itself.
+    fn total_fields_in_adt_variant(
+        &self,
+        pat_hir_id: hir::HirId,
+        variant_index: VariantIdx,
+        span: Span,
+    ) -> McResult<usize> {
+        let ty = self.typeck_results.node_type(pat_hir_id);
+        match ty.kind() {
+            ty::Adt(adt_def, _) => Ok(adt_def.variant(variant_index).fields.len()),
+            _ => {
+                self.tcx()
+                    .sess
+                    .delay_span_bug(span, "struct or tuple struct pattern not applied to an ADT");
+                Err(())
+            }
+        }
+    }
+
+    /// Returns the total number of fields in a tuple used within a Tuple pattern.
+    /// Here `pat_hir_id` is the HirId of the pattern itself.
+    fn total_fields_in_tuple(&self, pat_hir_id: hir::HirId, span: Span) -> McResult<usize> {
+        let ty = self.typeck_results.node_type(pat_hir_id);
+        match ty.kind() {
+            ty::Tuple(substs) => Ok(substs.len()),
+            _ => {
+                self.tcx().sess.delay_span_bug(span, "tuple pattern not applied to a tuple");
+                Err(())
+            }
+        }
     }
 }
