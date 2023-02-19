@@ -365,6 +365,8 @@ pub mod hash;
 pub mod pattern;
 pub mod slice;
 pub mod str;
+#[allow(missing_docs)]
+pub mod str_bytes;
 pub mod time;
 
 pub mod unicode;

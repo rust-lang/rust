@@ -1972,7 +1972,7 @@ mod pattern {
         str_searcher_multibyte_haystack,
         " ",
         "├──",
-        [Reject(0, 3), Reject(3, 6), Reject(6, 9),]
+        [Reject(0, 9),]
     );
     make_test!(
         str_searcher_empty_needle_multibyte_haystack,
@@ -2008,13 +2008,13 @@ mod pattern {
         char_searcher_multibyte_haystack,
         ' ',
         "├──",
-        [Reject(0, 3), Reject(3, 6), Reject(6, 9),]
+        [Reject(0, 9),]
     );
     make_test!(
         char_searcher_short_haystack,
         '\u{1F4A9}',
         "* \t",
-        [Reject(0, 1), Reject(1, 2), Reject(2, 3),]
+        [Reject(0, 3),]
     );
 
     // See #85462
