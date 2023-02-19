@@ -40,7 +40,7 @@ error[E0308]: mismatched types
 LL |     match 'c' {
    |           --- this expression has type `char`
 LL |         S { .. } => (),
-   |         ^^^^^^^^ expected `char`, found struct `S`
+   |         ^^^^^^^^ expected `char`, found `S`
 
 error[E0308]: mismatched types
   --> $DIR/pattern-error-continue.rs:28:7

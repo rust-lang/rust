@@ -5,7 +5,7 @@ fn main() {
     match S(Either::Left(5)) {
         Either::Right(_) => {}
         //~^ ERROR mismatched types
-        //~| expected struct `S`, found enum `Either`
+        //~| expected `S`, found `Either<_, _>`
         //~| expected struct `S`
         //~| found enum `Either<_, _>`
         _ => {}

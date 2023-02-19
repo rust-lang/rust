@@ -36,6 +36,10 @@ fn syntax_error() {
 
     let raw_string_error = Regex::new(r"[...\/...]");
     let raw_string_error = Regex::new(r#"[...\/...]"#);
+
+    let escaped_string_span = Regex::new("\\b\\c");
+
+    let aux_span = Regex::new("(?ixi)");
 }
 
 fn trivial_regex() {

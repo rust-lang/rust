@@ -54,6 +54,16 @@ pub(crate) fn thir_body(
 
 pub(crate) fn thir_tree(tcx: TyCtxt<'_>, owner_def: ty::WithOptConstParam<LocalDefId>) -> String {
     match thir_body(tcx, owner_def) {
+        Ok((thir, _)) => {
+            let thir = thir.steal();
+            tcx.thir_tree_representation(&thir)
+        }
+        Err(_) => "error".into(),
+    }
+}
+
+pub(crate) fn thir_flat(tcx: TyCtxt<'_>, owner_def: ty::WithOptConstParam<LocalDefId>) -> String {
+    match thir_body(tcx, owner_def) {
         Ok((thir, _)) => format!("{:#?}", thir.steal()),
         Err(_) => "error".into(),
     }
@@ -123,14 +133,14 @@ impl<'tcx> Cx<'tcx> {
                     bug!("closure expr does not have closure type: {:?}", closure_ty);
                 };
 
-                let bound_vars = self.tcx.mk_bound_variable_kinds(std::iter::once(
-                    ty::BoundVariableKind::Region(ty::BrEnv),
-                ));
+                let bound_vars = self
+                    .tcx
+                    .intern_bound_variable_kinds(&[ty::BoundVariableKind::Region(ty::BrEnv)]);
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                     kind: ty::BrEnv,
                 };
-                let env_region = ty::ReLateBound(ty::INNERMOST, br);
+                let env_region = self.tcx.mk_re_late_bound(ty::INNERMOST, br);
                 let closure_env_ty =
                     self.tcx.closure_env_ty(closure_def_id, closure_substs, env_region).unwrap();
                 let liberated_closure_env_ty = self.tcx.erase_late_bound_regions(
@@ -183,7 +193,7 @@ impl<'tcx> Cx<'tcx> {
                 let va_list_did = self.tcx.require_lang_item(LangItem::VaList, Some(param.span));
 
                 self.tcx
-                    .bound_type_of(va_list_did)
+                    .type_of(va_list_did)
                     .subst(self.tcx, &[self.tcx.lifetimes.re_erased.into()])
             } else {
                 fn_sig.inputs()[index]

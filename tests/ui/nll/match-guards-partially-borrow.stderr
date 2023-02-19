@@ -74,9 +74,9 @@ error[E0506]: cannot assign to `t` because it is borrowed
   --> $DIR/match-guards-partially-borrow.rs:225:13
    |
 LL |         s if {
-   |         - borrow of `t` occurs here
+   |         - `t` is borrowed here
 LL |             t = !t;
-   |             ^^^^^^ assignment to borrowed `t` occurs here
+   |             ^^^^^^ `t` is assigned to here but it was already borrowed
 LL |             false
 LL |         } => (), // What value should `s` have in the arm?
    |         - borrow later used here
@@ -85,9 +85,9 @@ error[E0506]: cannot assign to `t` because it is borrowed
   --> $DIR/match-guards-partially-borrow.rs:235:13
    |
 LL |         s if let Some(()) = {
-   |         - borrow of `t` occurs here
+   |         - `t` is borrowed here
 LL |             t = !t;
-   |             ^^^^^^ assignment to borrowed `t` occurs here
+   |             ^^^^^^ `t` is assigned to here but it was already borrowed
 LL |             None
 LL |         } => (), // What value should `s` have in the arm?
    |         - borrow later used here

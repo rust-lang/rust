@@ -2,7 +2,7 @@ error[E0503]: cannot use `y.1` because it was mutably borrowed
   --> $DIR/match-cfg-fake-edges2.rs:8:5
    |
 LL |     let r = &mut y.1;
-   |             -------- borrow of `y.1` occurs here
+   |             -------- `y.1` is borrowed here
 ...
 LL |     match y {
    |     ^^^^^^^ use of borrowed `y.1`

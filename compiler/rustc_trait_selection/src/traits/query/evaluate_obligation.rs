@@ -1,7 +1,9 @@
 use rustc_middle::ty;
+use rustc_session::config::TraitSolver;
 
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
+use crate::solve::{Certainty, Goal, InferCtxtEvalExt, MaybeCause};
 use crate::traits::{EvaluationResult, OverflowError, PredicateObligation, SelectionContext};
 
 pub trait InferCtxtExt<'tcx> {
@@ -77,12 +79,38 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             _ => obligation.param_env.without_const(),
         };
 
-        let c_pred = self
-            .canonicalize_query_keep_static(param_env.and(obligation.predicate), &mut _orig_values);
-        // Run canonical query. If overflow occurs, rerun from scratch but this time
-        // in standard trait query mode so that overflow is handled appropriately
-        // within `SelectionContext`.
-        self.tcx.at(obligation.cause.span()).evaluate_obligation(c_pred)
+        if self.tcx.sess.opts.unstable_opts.trait_solver != TraitSolver::Next {
+            let c_pred = self.canonicalize_query_keep_static(
+                param_env.and(obligation.predicate),
+                &mut _orig_values,
+            );
+            self.tcx.at(obligation.cause.span()).evaluate_obligation(c_pred)
+        } else {
+            self.probe(|snapshot| {
+                if let Ok((_, certainty)) =
+                    self.evaluate_root_goal(Goal::new(self.tcx, param_env, obligation.predicate))
+                {
+                    match certainty {
+                        Certainty::Yes => {
+                            if self.opaque_types_added_in_snapshot(snapshot) {
+                                Ok(EvaluationResult::EvaluatedToOkModuloOpaqueTypes)
+                            } else if self.region_constraints_added_in_snapshot(snapshot).is_some()
+                            {
+                                Ok(EvaluationResult::EvaluatedToOkModuloRegions)
+                            } else {
+                                Ok(EvaluationResult::EvaluatedToOk)
+                            }
+                        }
+                        Certainty::Maybe(MaybeCause::Ambiguity) => {
+                            Ok(EvaluationResult::EvaluatedToAmbig)
+                        }
+                        Certainty::Maybe(MaybeCause::Overflow) => Err(OverflowError::Canonical),
+                    }
+                } else {
+                    Ok(EvaluationResult::EvaluatedToErr)
+                }
+            })
+        }
     }
 
     // Helper function that canonicalizes and runs the query. If an
@@ -92,6 +120,9 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
     ) -> EvaluationResult {
+        // Run canonical query. If overflow occurs, rerun from scratch but this time
+        // in standard trait query mode so that overflow is handled appropriately
+        // within `SelectionContext`.
         match self.evaluate_obligation(obligation) {
             Ok(result) => result,
             Err(OverflowError::Canonical) => {

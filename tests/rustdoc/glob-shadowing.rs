@@ -1,5 +1,5 @@
 // @has 'glob_shadowing/index.html'
-// @count - '//div[@class="item-left module-item"]' 6
+// @count - '//div[@class="item-left"]' 6
 // @!has - '//div[@class="item-right docblock-short"]' 'sub1::describe'
 // @has - '//div[@class="item-right docblock-short"]' 'sub2::describe'
 

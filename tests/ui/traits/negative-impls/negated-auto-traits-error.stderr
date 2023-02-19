@@ -101,10 +101,10 @@ LL | fn is_send<T: Send>(_: T) {}
    |               ^^^^ required by this bound in `is_send`
 
 error[E0277]: `main::TestType` cannot be sent between threads safely
-  --> $DIR/negated-auto-traits-error.rs:66:13
+  --> $DIR/negated-auto-traits-error.rs:66:20
    |
 LL |     is_sync(Outer2(TestType));
-   |     ------- ^^^^^^^^^^^^^^^^ `main::TestType` cannot be sent between threads safely
+   |     -------        ^^^^^^^^ `main::TestType` cannot be sent between threads safely
    |     |
    |     required by a bound introduced by this call
    |

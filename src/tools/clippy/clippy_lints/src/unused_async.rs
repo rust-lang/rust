@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
-use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId, YieldSource};
+use rustc_hir::{Body, Expr, ExprKind, FnDecl, YieldSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -66,11 +67,11 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
         fn_decl: &'tcx FnDecl<'tcx>,
         body: &Body<'tcx>,
         span: Span,
-        hir_id: HirId,
+        def_id: LocalDefId,
     ) {
         if !span.from_expansion() && fn_kind.asyncness().is_async() {
             let mut visitor = AsyncFnVisitor { cx, found_await: false };
-            walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), hir_id);
+            walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), def_id);
             if !visitor.found_await {
                 span_lint_and_help(
                     cx,

@@ -80,6 +80,10 @@ pub struct Flags {
     pub llvm_profile_generate: bool,
     pub llvm_bolt_profile_generate: bool,
     pub llvm_bolt_profile_use: Option<String>,
+
+    /// Arguments appearing after `--` to be forwarded to tools,
+    /// e.g. `--fix-broken` or test arguments.
+    pub free_args: Option<Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -124,6 +128,7 @@ pub enum Subcommand {
         fail_fast: bool,
         doc_tests: DocTests,
         rustfix_coverage: bool,
+        only_modified: bool,
     },
     Bench {
         paths: Vec<PathBuf>,
@@ -156,6 +161,12 @@ impl Default for Subcommand {
 
 impl Flags {
     pub fn parse(args: &[String]) -> Flags {
+        let (args, free_args) = if let Some(pos) = args.iter().position(|s| s == "--") {
+            let (args, free) = args.split_at(pos);
+            (args, Some(free[1..].to_vec()))
+        } else {
+            (args, None)
+        };
         let mut subcommand_help = String::from(
             "\
 Usage: x.py <subcommand> [options] [<paths>...]
@@ -301,6 +312,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                 opts.optflag("", "doc", "only run doc tests");
                 opts.optflag("", "bless", "update all stderr/stdout files of failing ui tests");
                 opts.optflag("", "force-rerun", "rerun tests even if the inputs are unchanged");
+                opts.optflag("", "only-modified", "only run tests that result has been changed");
                 opts.optopt(
                     "",
                     "compare-mode",
@@ -598,6 +610,7 @@ Arguments:
                 rustc_args: matches.opt_strs("rustc-args"),
                 fail_fast: !matches.opt_present("no-fail-fast"),
                 rustfix_coverage: matches.opt_present("rustfix-coverage"),
+                only_modified: matches.opt_present("only-modified"),
                 doc_tests: if matches.opt_present("doc") {
                     DocTests::Only
                 } else if matches.opt_present("no-doc") {
@@ -706,6 +719,7 @@ Arguments:
             llvm_profile_generate: matches.opt_present("llvm-profile-generate"),
             llvm_bolt_profile_generate: matches.opt_present("llvm-bolt-profile-generate"),
             llvm_bolt_profile_use: matches.opt_str("llvm-bolt-profile-use"),
+            free_args,
         }
     }
 }
@@ -773,6 +787,13 @@ impl Subcommand {
     pub fn bless(&self) -> bool {
         match *self {
             Subcommand::Test { bless, .. } => bless,
+            _ => false,
+        }
+    }
+
+    pub fn only_modified(&self) -> bool {
+        match *self {
+            Subcommand::Test { only_modified, .. } => only_modified,
             _ => false,
         }
     }

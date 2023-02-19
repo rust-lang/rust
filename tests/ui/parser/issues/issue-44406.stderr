@@ -21,8 +21,8 @@ LL |     foo!(true);
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: if `bar` is a struct, use braces as delimiters
    |
-LL |         bar {  }
-   |             ~
+LL |         bar { baz: $rest }
+   |             ~            ~
 help: if `bar` is a function, use the arguments directly
    |
 LL -         bar(baz: $rest)

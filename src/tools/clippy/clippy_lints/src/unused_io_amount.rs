@@ -65,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
                 }
             },
             hir::ExprKind::MethodCall(path, arg_0, ..) => match path.ident.as_str() {
-                "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" => {
+                "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" | "is_ok" | "is_err" => {
                     check_map_error(cx, arg_0, expr);
                 },
                 _ => (),

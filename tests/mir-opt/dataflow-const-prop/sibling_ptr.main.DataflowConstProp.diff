@@ -23,9 +23,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/sibling_ptr.rs:+1:9: +1:14
-          Deinit(_1);                      // scope 0 at $DIR/sibling_ptr.rs:+1:27: +1:33
-          (_1.0: u8) = const 0_u8;         // scope 0 at $DIR/sibling_ptr.rs:+1:27: +1:33
-          (_1.1: u8) = const 0_u8;         // scope 0 at $DIR/sibling_ptr.rs:+1:27: +1:33
+          _1 = (const 0_u8, const 0_u8);   // scope 0 at $DIR/sibling_ptr.rs:+1:27: +1:33
           StorageLive(_2);                 // scope 1 at $DIR/sibling_ptr.rs:+2:5: +5:6
           StorageLive(_3);                 // scope 2 at $DIR/sibling_ptr.rs:+3:13: +3:14
           _3 = &raw mut (_1.0: u8);        // scope 2 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
@@ -34,7 +32,7 @@
           _5 = _3;                         // scope 3 at $DIR/sibling_ptr.rs:+4:10: +4:11
           _4 = ptr::mut_ptr::<impl *mut u8>::add(move _5, const 1_usize) -> bb1; // scope 3 at $DIR/sibling_ptr.rs:+4:10: +4:18
                                            // mir::Constant
-                                           // + span: $DIR/sibling_ptr.rs:8:12: 8:15
+                                           // + span: $DIR/sibling_ptr.rs:15:12: 15:15
                                            // + literal: Const { ty: unsafe fn(*mut u8, usize) -> *mut u8 {ptr::mut_ptr::<impl *mut u8>::add}, val: Value(<ZST>) }
       }
   

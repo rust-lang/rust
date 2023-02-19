@@ -30,9 +30,15 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         _4 = &_2;                        // scope 0 at $DIR/inline_closure_captures.rs:+1:13: +1:24
         StorageLive(_5);                 // scope 0 at $DIR/inline_closure_captures.rs:+1:13: +1:24
         _5 = &_1;                        // scope 0 at $DIR/inline_closure_captures.rs:+1:13: +1:24
-        Deinit(_3);                      // scope 0 at $DIR/inline_closure_captures.rs:+1:13: +1:24
-        (_3.0: &i32) = move _4;          // scope 0 at $DIR/inline_closure_captures.rs:+1:13: +1:24
-        (_3.1: &T) = move _5;            // scope 0 at $DIR/inline_closure_captures.rs:+1:13: +1:24
+        _3 = [closure@foo::<T>::{closure#0}] { q: move _4, t: move _5 }; // scope 0 at $DIR/inline_closure_captures.rs:+1:13: +1:24
+                                         // closure
+                                         // + def_id: DefId(0:6 ~ inline_closure_captures[8bc0]::foo::{closure#0})
+                                         // + substs: [
+                                         //     T,
+                                         //     i8,
+                                         //     extern "rust-call" fn((i32,)) -> (i32, T),
+                                         //     (&i32, &T),
+                                         // ]
         StorageDead(_5);                 // scope 0 at $DIR/inline_closure_captures.rs:+1:16: +1:17
         StorageDead(_4);                 // scope 0 at $DIR/inline_closure_captures.rs:+1:16: +1:17
         StorageLive(_6);                 // scope 1 at $DIR/inline_closure_captures.rs:+2:5: +2:6
@@ -40,8 +46,7 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         StorageLive(_7);                 // scope 1 at $DIR/inline_closure_captures.rs:+2:5: +2:9
         StorageLive(_8);                 // scope 1 at $DIR/inline_closure_captures.rs:+2:7: +2:8
         _8 = _2;                         // scope 1 at $DIR/inline_closure_captures.rs:+2:7: +2:8
-        Deinit(_7);                      // scope 1 at $DIR/inline_closure_captures.rs:+2:5: +2:9
-        (_7.0: i32) = move _8;           // scope 1 at $DIR/inline_closure_captures.rs:+2:5: +2:9
+        _7 = (move _8,);                 // scope 1 at $DIR/inline_closure_captures.rs:+2:5: +2:9
         StorageLive(_9);                 // scope 1 at $DIR/inline_closure_captures.rs:+2:5: +2:9
         _9 = move (_7.0: i32);           // scope 1 at $DIR/inline_closure_captures.rs:+2:5: +2:9
         StorageLive(_10);                // scope 2 at $DIR/inline_closure_captures.rs:+1:19: +1:20
@@ -50,9 +55,7 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         StorageLive(_11);                // scope 2 at $DIR/inline_closure_captures.rs:+1:22: +1:23
         _13 = deref_copy ((*_6).1: &T);  // scope 2 at $DIR/inline_closure_captures.rs:+1:22: +1:23
         _11 = (*_13);                    // scope 2 at $DIR/inline_closure_captures.rs:+1:22: +1:23
-        Deinit(_0);                      // scope 2 at $DIR/inline_closure_captures.rs:+1:18: +1:24
-        (_0.0: i32) = move _10;          // scope 2 at $DIR/inline_closure_captures.rs:+1:18: +1:24
-        (_0.1: T) = move _11;            // scope 2 at $DIR/inline_closure_captures.rs:+1:18: +1:24
+        _0 = (move _10, move _11);       // scope 2 at $DIR/inline_closure_captures.rs:+1:18: +1:24
         StorageDead(_11);                // scope 2 at $DIR/inline_closure_captures.rs:+1:23: +1:24
         StorageDead(_10);                // scope 2 at $DIR/inline_closure_captures.rs:+1:23: +1:24
         StorageDead(_9);                 // scope 1 at $DIR/inline_closure_captures.rs:+2:5: +2:9

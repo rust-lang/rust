@@ -1,6 +1,9 @@
 error[E0597]: `a` does not live long enough
   --> $DIR/method-ufcs-1.rs:30:7
    |
+LL |     let a = 22;
+   |         - binding `a` declared here
+...
 LL |     x(&a, b, c);
    |     --^^-------
    |     | |
@@ -14,6 +17,8 @@ error[E0597]: `a` does not live long enough
    |
 LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
    |                                   -- lifetime `'a` defined here
+LL |     let a = 22;
+   |         - binding `a` declared here
 ...
 LL |     <&'a u32 as Bazoom<_>>::method(&a, b, c);
    |     -------------------------------^^-------

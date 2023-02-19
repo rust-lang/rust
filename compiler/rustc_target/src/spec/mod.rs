@@ -812,6 +812,7 @@ bitflags::bitflags! {
         const MEMTAG  = 1 << 6;
         const SHADOWCALLSTACK = 1 << 7;
         const KCFI    = 1 << 8;
+        const KERNELADDRESS = 1 << 9;
     }
 }
 
@@ -824,6 +825,7 @@ impl SanitizerSet {
             SanitizerSet::ADDRESS => "address",
             SanitizerSet::CFI => "cfi",
             SanitizerSet::KCFI => "kcfi",
+            SanitizerSet::KERNELADDRESS => "kernel-address",
             SanitizerSet::LEAK => "leak",
             SanitizerSet::MEMORY => "memory",
             SanitizerSet::MEMTAG => "memtag",
@@ -866,6 +868,7 @@ impl IntoIterator for SanitizerSet {
             SanitizerSet::SHADOWCALLSTACK,
             SanitizerSet::THREAD,
             SanitizerSet::HWADDRESS,
+            SanitizerSet::KERNELADDRESS,
         ]
         .iter()
         .copied()
@@ -1344,10 +1347,18 @@ impl Target {
             });
         }
 
-        dl.c_enum_min_size = match Integer::from_size(Size::from_bits(self.c_enum_min_bits)) {
-            Ok(bits) => bits,
-            Err(err) => return Err(TargetDataLayoutErrors::InvalidBitsSize { err }),
-        };
+        dl.c_enum_min_size = self
+            .c_enum_min_bits
+            .map_or_else(
+                || {
+                    self.c_int_width
+                        .parse()
+                        .map_err(|_| String::from("failed to parse c_int_width"))
+                },
+                Ok,
+            )
+            .and_then(|i| Integer::from_size(Size::from_bits(i)))
+            .map_err(|err| TargetDataLayoutErrors::InvalidBitsSize { err })?;
 
         Ok(dl)
     }
@@ -1701,8 +1712,8 @@ pub struct TargetOptions {
     /// If present it's a default value to use for adjusting the C ABI.
     pub default_adjusted_cabi: Option<Abi>,
 
-    /// Minimum number of bits in #[repr(C)] enum. Defaults to 32.
-    pub c_enum_min_bits: u64,
+    /// Minimum number of bits in #[repr(C)] enum. Defaults to the size of c_int
+    pub c_enum_min_bits: Option<u64>,
 
     /// Whether or not the DWARF `.debug_aranges` section should be generated.
     pub generate_arange_section: bool,
@@ -1718,6 +1729,9 @@ pub struct TargetOptions {
     /// The ABI of entry function.
     /// Default value is `Conv::C`, i.e. C call convention
     pub entry_abi: Conv,
+
+    /// Whether the target supports XRay instrumentation.
+    pub supports_xray: bool,
 }
 
 /// Add arguments for the given flavor and also for its "twin" flavors
@@ -1932,11 +1946,12 @@ impl Default for TargetOptions {
             supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
             supported_sanitizers: SanitizerSet::empty(),
             default_adjusted_cabi: None,
-            c_enum_min_bits: 32,
+            c_enum_min_bits: None,
             generate_arange_section: true,
             supports_stack_protector: true,
             entry_name: "main".into(),
             entry_abi: Conv::C,
+            supports_xray: false,
         }
     }
 }
@@ -2115,12 +2130,6 @@ impl Target {
             ($key_name:ident = $json_name:expr, bool) => ( {
                 let name = $json_name;
                 if let Some(s) = obj.remove(name).and_then(|b| b.as_bool()) {
-                    base.$key_name = s;
-                }
-            } );
-            ($key_name:ident, u64) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(s) = obj.remove(&name).and_then(|j| Json::as_u64(&j)) {
                     base.$key_name = s;
                 }
             } );
@@ -2335,6 +2344,7 @@ impl Target {
                                 Some("address") => SanitizerSet::ADDRESS,
                                 Some("cfi") => SanitizerSet::CFI,
                                 Some("kcfi") => SanitizerSet::KCFI,
+                                Some("kernel-address") => SanitizerSet::KERNELADDRESS,
                                 Some("leak") => SanitizerSet::LEAK,
                                 Some("memory") => SanitizerSet::MEMORY,
                                 Some("memtag") => SanitizerSet::MEMTAG,
@@ -2492,6 +2502,7 @@ impl Target {
 
         key!(is_builtin, bool);
         key!(c_int_width = "target-c-int-width");
+        key!(c_enum_min_bits, Option<u64>); // if None, matches c_int_width
         key!(os);
         key!(env);
         key!(abi);
@@ -2587,11 +2598,11 @@ impl Target {
         key!(supported_split_debuginfo, falliable_list)?;
         key!(supported_sanitizers, SanitizerSet)?;
         key!(default_adjusted_cabi, Option<Abi>)?;
-        key!(c_enum_min_bits, u64);
         key!(generate_arange_section, bool);
         key!(supports_stack_protector, bool);
         key!(entry_name);
         key!(entry_abi, Conv)?;
+        key!(supports_xray, bool);
 
         if base.is_builtin {
             // This can cause unfortunate ICEs later down the line.
@@ -2845,6 +2856,7 @@ impl ToJson for Target {
         target_option_val!(supports_stack_protector);
         target_option_val!(entry_name);
         target_option_val!(entry_abi);
+        target_option_val!(supports_xray);
 
         if let Some(abi) = self.default_adjusted_cabi {
             d.insert("default-adjusted-cabi".into(), Abi::name(abi).to_json());

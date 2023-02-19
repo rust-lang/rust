@@ -6,7 +6,7 @@ pub fn opts(endian: Endian) -> TargetOptions {
         allow_asm: true,
         endian,
         linker_flavor: LinkerFlavor::Bpf,
-        atomic_cas: true,
+        atomic_cas: false,
         dynamic_linking: true,
         no_builtins: true,
         panic_strategy: PanicStrategy::Abort,

@@ -96,7 +96,7 @@ impl Context {
 
     pub fn enter_body(&mut self, cx: &LateContext<'_>, body: &hir::Body<'_>) {
         let body_owner = cx.tcx.hir().body_owner(body.id());
-        let body_owner_def_id = cx.tcx.hir().local_def_id(body_owner);
+        let body_owner_def_id = cx.tcx.hir().body_owner_def_id(body.id());
 
         match cx.tcx.hir().body_owner_kind(body_owner_def_id) {
             hir::BodyOwnerKind::Static(_) | hir::BodyOwnerKind::Const => {

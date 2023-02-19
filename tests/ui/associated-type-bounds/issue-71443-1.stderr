@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn hello<F: for<'a> Iterator<Item: 'a>>() {
    |                                           - help: try adding a return type: `-> Incorrect`
 LL |     Incorrect
-   |     ^^^^^^^^^ expected `()`, found struct `Incorrect`
+   |     ^^^^^^^^^ expected `()`, found `Incorrect`
 
 error: aborting due to previous error
 

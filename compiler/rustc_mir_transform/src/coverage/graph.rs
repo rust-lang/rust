@@ -209,8 +209,8 @@ impl CoverageGraph {
     }
 
     #[inline(always)]
-    pub fn is_dominated_by(&self, node: BasicCoverageBlock, dom: BasicCoverageBlock) -> bool {
-        self.dominators.as_ref().unwrap().is_dominated_by(node, dom)
+    pub fn dominates(&self, dom: BasicCoverageBlock, node: BasicCoverageBlock) -> bool {
+        self.dominators.as_ref().unwrap().dominates(dom, node)
     }
 
     #[inline(always)]
@@ -312,7 +312,7 @@ rustc_index::newtype_index! {
 /// to the BCB's primary counter or expression).
 ///
 /// The BCB CFG is critical to simplifying the coverage analysis by ensuring graph path-based
-/// queries (`is_dominated_by()`, `predecessors`, `successors`, etc.) have branch (control flow)
+/// queries (`dominates()`, `predecessors`, `successors`, etc.) have branch (control flow)
 /// significance.
 #[derive(Debug, Clone)]
 pub(super) struct BasicCoverageBlockData {
@@ -594,7 +594,7 @@ impl TraverseCoverageGraphWithLoops {
                 // branching block would have given an `Expression` (or vice versa).
                 let (some_successor_to_add, some_loop_header) =
                     if let Some((_, loop_header)) = context.loop_backedges {
-                        if basic_coverage_blocks.is_dominated_by(successor, loop_header) {
+                        if basic_coverage_blocks.dominates(loop_header, successor) {
                             (Some(successor), Some(loop_header))
                         } else {
                             (None, None)
@@ -666,15 +666,15 @@ pub(super) fn find_loop_backedges(
     //
     // The overall complexity appears to be comparable to many other MIR transform algorithms, and I
     // don't expect that this function is creating a performance hot spot, but if this becomes an
-    // issue, there may be ways to optimize the `is_dominated_by` algorithm (as indicated by an
+    // issue, there may be ways to optimize the `dominates` algorithm (as indicated by an
     // existing `FIXME` comment in that code), or possibly ways to optimize it's usage here, perhaps
     // by keeping track of results for visited `BasicCoverageBlock`s if they can be used to short
-    // circuit downstream `is_dominated_by` checks.
+    // circuit downstream `dominates` checks.
     //
     // For now, that kind of optimization seems unnecessarily complicated.
     for (bcb, _) in basic_coverage_blocks.iter_enumerated() {
         for &successor in &basic_coverage_blocks.successors[bcb] {
-            if basic_coverage_blocks.is_dominated_by(bcb, successor) {
+            if basic_coverage_blocks.dominates(successor, bcb) {
                 let loop_header = successor;
                 let backedge_from_bcb = bcb;
                 debug!(

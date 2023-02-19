@@ -298,3 +298,7 @@ impl<T> const From<T> for OnceCell<T> {
         OnceCell { inner: UnsafeCell::new(Some(value)) }
     }
 }
+
+// Just like for `Cell<T>` this isn't needed, but results in nicer error messages.
+#[unstable(feature = "once_cell", issue = "74465")]
+impl<T> !Sync for OnceCell<T> {}

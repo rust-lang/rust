@@ -2,7 +2,7 @@ error[E0503]: cannot use `y` because it was mutably borrowed
   --> $DIR/borrowck-anon-fields-variant.rs:16:19
    |
 LL |       Foo::Y(ref mut a, _) => a,
-   |              --------- borrow of `y.0` occurs here
+   |              --------- `y.0` is borrowed here
 ...
 LL |     let b = match y {
    |                   ^ use of borrowed `y.0`
@@ -14,7 +14,7 @@ error[E0503]: cannot use `y` because it was mutably borrowed
   --> $DIR/borrowck-anon-fields-variant.rs:34:19
    |
 LL |       Foo::Y(ref mut a, _) => a,
-   |              --------- borrow of `y.0` occurs here
+   |              --------- `y.0` is borrowed here
 ...
 LL |     let b = match y {
    |                   ^ use of borrowed `y.0`

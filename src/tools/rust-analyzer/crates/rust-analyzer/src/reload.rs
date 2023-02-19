@@ -34,6 +34,8 @@ use crate::{
     op_queue::Cause,
 };
 
+use ::tt::token_id as tt;
+
 #[derive(Debug)]
 pub(crate) enum ProjectWorkspaceProgress {
     Begin,
@@ -148,11 +150,11 @@ impl GlobalState {
                             )
                         }
                         LinkedProject::InlineJsonProject(it) => {
-                            project_model::ProjectWorkspace::load_inline(
+                            Ok(project_model::ProjectWorkspace::load_inline(
                                 it.clone(),
                                 cargo_config.target.as_deref(),
                                 &cargo_config.extra_env,
-                            )
+                            ))
                         }
                     })
                     .collect::<Vec<_>>();
@@ -212,35 +214,11 @@ impl GlobalState {
         let workspaces =
             workspaces.iter().filter_map(|res| res.as_ref().ok().cloned()).collect::<Vec<_>>();
 
-        fn eq_ignore_build_data<'a>(
-            left: &'a ProjectWorkspace,
-            right: &'a ProjectWorkspace,
-        ) -> bool {
-            let key = |p: &'a ProjectWorkspace| match p {
-                ProjectWorkspace::Cargo {
-                    cargo,
-                    sysroot,
-                    rustc,
-                    rustc_cfg,
-                    cfg_overrides,
-
-                    build_scripts: _,
-                    toolchain: _,
-                    target_layout: _,
-                } => Some((cargo, sysroot, rustc, rustc_cfg, cfg_overrides)),
-                _ => None,
-            };
-            match (key(left), key(right)) {
-                (Some(lk), Some(rk)) => lk == rk,
-                _ => left == right,
-            }
-        }
-
         let same_workspaces = workspaces.len() == self.workspaces.len()
             && workspaces
                 .iter()
                 .zip(self.workspaces.iter())
-                .all(|(l, r)| eq_ignore_build_data(l, r));
+                .all(|(l, r)| l.eq_ignore_build_data(r));
 
         if same_workspaces {
             let (workspaces, build_scripts) = self.fetch_build_data_queue.last_op_result();
@@ -270,7 +248,8 @@ impl GlobalState {
 
             // Here, we completely changed the workspace (Cargo.toml edit), so
             // we don't care about build-script results, they are stale.
-            self.workspaces = Arc::new(workspaces)
+            // FIXME: can we abort the build scripts here?
+            self.workspaces = Arc::new(workspaces);
         }
 
         if let FilesWatcher::Client = self.config.files().watcher {
@@ -362,7 +341,7 @@ impl GlobalState {
             let loader = &mut self.loader;
             let mem_docs = &self.mem_docs;
             let mut load = move |path: &AbsPath| {
-                let _p = profile::span("GlobalState::load");
+                let _p = profile::span("switch_workspaces::load");
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 if !mem_docs.contains(&vfs_path) {
                     let contents = loader.handle.load_sync(path);
@@ -584,10 +563,10 @@ pub(crate) fn load_proc_macro(
     path: &AbsPath,
     dummy_replace: &[Box<str>],
 ) -> ProcMacroLoadResult {
+    let server = server.map_err(ToOwned::to_owned)?;
     let res: Result<Vec<_>, String> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf())
             .map_err(|io| format!("Proc-macro dylib loading failed: {io}"))?;
-        let server = server.map_err(ToOwned::to_owned)?;
         let vec = server.load_dylib(dylib).map_err(|e| format!("{e}"))?;
         if vec.is_empty() {
             return Err("proc macro library returned no proc macros".to_string());
@@ -679,7 +658,7 @@ pub(crate) fn load_proc_macro(
             _: Option<&tt::Subtree>,
             _: &Env,
         ) -> Result<tt::Subtree, ProcMacroExpansionError> {
-            Ok(tt::Subtree::default())
+            Ok(tt::Subtree::empty())
         }
     }
 }

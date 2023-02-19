@@ -2,12 +2,13 @@ error[E0308]: mismatched types
   --> $DIR/normalize-fn-sig.rs:14:22
    |
 LL |     needs_i32_ref_fn(foo::<()>);
-   |     ---------------- ^^^^^^^^^ expected `&i32`, found `i32`
+   |     ---------------- ^^^^^^^^^ expected fn pointer, found fn item
    |     |
    |     arguments to this function are incorrect
    |
    = note: expected fn pointer `fn(&'static i32, i32)`
                  found fn item `fn(i32, &'static i32) {foo::<()>}`
+   = note: when the arguments and return types match, functions can be coerced to function pointers
 note: function defined here
   --> $DIR/normalize-fn-sig.rs:11:4
    |

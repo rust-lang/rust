@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `for<'r> <L<[closure@issue-62203-hrtb-ice.rs:42:16]> as T0<'r, (&'r u8,)>>::O == <_ as Ty<'r>>::V`
+error[E0271]: type mismatch resolving `<L<[closure@issue-62203-hrtb-ice.rs:42:16]> as T0<'r, (&u8,)>>::O == <_ as Ty<'r>>::V`
   --> $DIR/issue-62203-hrtb-ice.rs:39:9
    |
 LL |       let v = Unit2.m(
@@ -10,7 +10,7 @@ LL | |             f: |x| {
 ...  |
 LL | |             },
 LL | |         },
-   | |_________^ type mismatch resolving `for<'r> <L<[closure@issue-62203-hrtb-ice.rs:42:16]> as T0<'r, (&'r u8,)>>::O == <_ as Ty<'r>>::V`
+   | |_________^ type mismatch resolving `<L<[closure@issue-62203-hrtb-ice.rs:42:16]> as T0<'r, (&u8,)>>::O == <_ as Ty<'r>>::V`
    |
 note: expected this to be `<_ as Ty<'_>>::V`
   --> $DIR/issue-62203-hrtb-ice.rs:21:14
@@ -42,7 +42,7 @@ LL | |             f: |x| {
 ...  |
 LL | |             },
 LL | |         },
-   | |_________^ expected struct `Unit3`, found struct `Unit4`
+   | |_________^ expected `Unit3`, found `Unit4`
    |
 note: required for `L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]>` to implement `for<'r> T0<'r, (&'r u8,)>`
   --> $DIR/issue-62203-hrtb-ice.rs:17:16

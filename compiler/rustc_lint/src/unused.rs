@@ -1,7 +1,7 @@
 use crate::lints::{
     PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, UnusedAllocationDiag,
-    UnusedAllocationMutDiag, UnusedClosure, UnusedDef, UnusedDelim, UnusedDelimSuggestion,
-    UnusedGenerator, UnusedImportBracesDiag, UnusedOp, UnusedResult,
+    UnusedAllocationMutDiag, UnusedClosure, UnusedDef, UnusedDefSuggestion, UnusedDelim,
+    UnusedDelimSuggestion, UnusedGenerator, UnusedImportBracesDiag, UnusedOp, UnusedResult,
 };
 use crate::Lint;
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
@@ -309,7 +309,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         None
                     }
                 }
-                ty::Array(ty, len) => match len.try_eval_usize(cx.tcx, cx.param_env) {
+                ty::Array(ty, len) => match len.try_eval_target_usize(cx.tcx, cx.param_env) {
                     // If the array is empty we don't lint, to avoid false positives
                     Some(0) | None => None,
                     // If the array is definitely non-empty, we can do `#[must_use]` checking.
@@ -418,6 +418,19 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     );
                 }
                 MustUsePath::Def(span, def_id, reason) => {
+                    let suggestion = if matches!(
+                        cx.tcx.get_diagnostic_name(*def_id),
+                        Some(sym::add)
+                            | Some(sym::sub)
+                            | Some(sym::mul)
+                            | Some(sym::div)
+                            | Some(sym::rem)
+                            | Some(sym::neg),
+                    ) {
+                        Some(UnusedDefSuggestion::Default { span: span.shrink_to_lo() })
+                    } else {
+                        None
+                    };
                     cx.emit_spanned_lint(
                         UNUSED_MUST_USE,
                         *span,
@@ -427,6 +440,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                             cx,
                             def_id: *def_id,
                             note: *reason,
+                            suggestion,
                         },
                     );
                 }
@@ -495,6 +509,7 @@ enum UnusedDelimsCtx {
     ArrayLenExpr,
     AnonConst,
     MatchArmExpr,
+    IndexExpr,
 }
 
 impl From<UnusedDelimsCtx> for &'static str {
@@ -514,6 +529,7 @@ impl From<UnusedDelimsCtx> for &'static str {
             UnusedDelimsCtx::LetScrutineeExpr => "`let` scrutinee expression",
             UnusedDelimsCtx::ArrayLenExpr | UnusedDelimsCtx::AnonConst => "const expression",
             UnusedDelimsCtx::MatchArmExpr => "match arm expression",
+            UnusedDelimsCtx::IndexExpr => "index expression",
         }
     }
 }
@@ -661,6 +677,10 @@ trait UnusedDelimLint {
         keep_space: (bool, bool),
     ) {
         let primary_span = if let Some((lo, hi)) = spans {
+            if hi.is_empty() {
+                // do not point at delims that do not exist
+                return;
+            }
             MultiSpan::from(vec![lo, hi])
         } else {
             MultiSpan::from(value_span)
@@ -732,6 +752,8 @@ trait UnusedDelimLint {
                 let left = e.span.lo() + rustc_span::BytePos(3);
                 (value, UnusedDelimsCtx::ReturnValue, false, Some(left), None)
             }
+
+            Index(_, ref value) => (value, UnusedDelimsCtx::IndexExpr, false, None, None),
 
             Assign(_, ref value, _) | AssignOp(.., ref value) => {
                 (value, UnusedDelimsCtx::AssignedValue, false, None, None)

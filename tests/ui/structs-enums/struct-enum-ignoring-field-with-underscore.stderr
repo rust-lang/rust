@@ -1,24 +1,13 @@
-error: expected identifier, found reserved identifier `_`
+error: expected field pattern, found `_`
   --> $DIR/struct-enum-ignoring-field-with-underscore.rs:9:27
    |
 LL |     if let Some(Foo::Bar {_}) = foo {}
-   |                           ^ expected identifier, found reserved identifier
+   |                           ^
+   |
+help: to omit remaining fields, use `..`
+   |
+LL |     if let Some(Foo::Bar {..}) = foo {}
+   |                           ~~
 
-error[E0027]: pattern does not mention field `bar`
-  --> $DIR/struct-enum-ignoring-field-with-underscore.rs:9:17
-   |
-LL |     if let Some(Foo::Bar {_}) = foo {}
-   |                 ^^^^^^^^^^^^ missing field `bar`
-   |
-help: include the missing field in the pattern
-   |
-LL |     if let Some(Foo::Bar {_, bar }) = foo {}
-   |                            ~~~~~~~
-help: if you don't care about this missing field, you can explicitly ignore it
-   |
-LL |     if let Some(Foo::Bar {_, .. }) = foo {}
-   |                            ~~~~~~
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0027`.

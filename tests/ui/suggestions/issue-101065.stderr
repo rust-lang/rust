@@ -7,7 +7,7 @@ LL | |         FakeResult::Ok(FakeResult::Ok(()))
    | |         ---------------------------------- expected because of this
 LL | |     } else {
 LL | |         FakeResult::Ok(())
-   | |         ^^^^^^^^^^^^^^^^^^ expected enum `FakeResult`, found `()`
+   | |         ^^^^^^^^^^^^^^^^^^ expected `FakeResult<FakeResult<()>>`, found `FakeResult<()>`
 LL | |     };
    | |_____- `if` and `else` have incompatible types
    |

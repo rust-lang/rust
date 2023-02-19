@@ -13,18 +13,12 @@
           StorageLive(_1);                 // scope 0 at $DIR/sroa.rs:+1:5: +1:32
           StorageLive(_2);                 // scope 0 at $DIR/sroa.rs:+1:5: +1:30
           StorageLive(_3);                 // scope 0 at $DIR/sroa.rs:+1:7: +1:13
-          Deinit(_3);                      // scope 0 at $DIR/sroa.rs:+1:7: +1:13
-          (_3.0: usize) = const 0_usize;   // scope 0 at $DIR/sroa.rs:+1:7: +1:13
+          _3 = Tag(const 0_usize);         // scope 0 at $DIR/sroa.rs:+1:7: +1:13
           StorageLive(_4);                 // scope 0 at $DIR/sroa.rs:+1:15: +1:21
-          Deinit(_4);                      // scope 0 at $DIR/sroa.rs:+1:15: +1:21
-          (_4.0: usize) = const 1_usize;   // scope 0 at $DIR/sroa.rs:+1:15: +1:21
+          _4 = Tag(const 1_usize);         // scope 0 at $DIR/sroa.rs:+1:15: +1:21
           StorageLive(_5);                 // scope 0 at $DIR/sroa.rs:+1:23: +1:29
-          Deinit(_5);                      // scope 0 at $DIR/sroa.rs:+1:23: +1:29
-          (_5.0: usize) = const 2_usize;   // scope 0 at $DIR/sroa.rs:+1:23: +1:29
-          Deinit(_2);                      // scope 0 at $DIR/sroa.rs:+1:5: +1:30
-          (_2.0: Tag) = move _3;           // scope 0 at $DIR/sroa.rs:+1:5: +1:30
-          (_2.1: Tag) = move _4;           // scope 0 at $DIR/sroa.rs:+1:5: +1:30
-          (_2.2: Tag) = move _5;           // scope 0 at $DIR/sroa.rs:+1:5: +1:30
+          _5 = Tag(const 2_usize);         // scope 0 at $DIR/sroa.rs:+1:23: +1:29
+          _2 = S(move _3, move _4, move _5); // scope 0 at $DIR/sroa.rs:+1:5: +1:30
           StorageDead(_5);                 // scope 0 at $DIR/sroa.rs:+1:29: +1:30
           StorageDead(_4);                 // scope 0 at $DIR/sroa.rs:+1:29: +1:30
           StorageDead(_3);                 // scope 0 at $DIR/sroa.rs:+1:29: +1:30

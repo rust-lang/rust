@@ -2,7 +2,7 @@
 //! non-64bit targets, where the packed 64 bit representation wouldn't work, and
 //! would have no benefit.
 
-use super::{Custom, ErrorData, ErrorKind, SimpleMessage};
+use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
 use alloc::boxed::Box;
 
 type Inner = ErrorData<Box<Custom>>;
@@ -18,7 +18,7 @@ impl Repr {
         Self(Inner::Custom(b))
     }
     #[inline]
-    pub(super) fn new_os(code: i32) -> Self {
+    pub(super) fn new_os(code: RawOsError) -> Self {
         Self(Inner::Os(code))
     }
     #[inline]

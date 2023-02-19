@@ -192,7 +192,7 @@ impl<'tcx> ConstToPat<'tcx> {
         let obligation: PredicateObligation<'_> = predicate_for_trait_def(
             self.tcx(),
             self.param_env,
-            ObligationCause::misc(self.span, self.id),
+            ObligationCause::misc(self.span, self.id.owner.def_id),
             partial_eq_trait_id,
             0,
             [ty, ty],

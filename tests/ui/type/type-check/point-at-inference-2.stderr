@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/point-at-inference-2.rs:5:9
    |
 LL |     bar(v);
-   |     --- ^ expected `i32`, found `&{integer}`
+   |     --- ^ expected `Vec<i32>`, found `Vec<&{integer}>`
    |     |
    |     arguments to this function are incorrect
    |
@@ -21,7 +21,7 @@ LL |     baz(&v);
    |          - here the type of `v` is inferred to be `Vec<&i32>`
 LL |     baz(&v);
 LL |     bar(v);
-   |     --- ^ expected `i32`, found `&i32`
+   |     --- ^ expected `Vec<i32>`, found `Vec<&i32>`
    |     |
    |     arguments to this function are incorrect
    |
@@ -39,7 +39,7 @@ error[E0308]: mismatched types
 LL |     baz(&v);
    |          - here the type of `v` is inferred to be `Vec<&i32>`
 LL |     bar(v);
-   |     --- ^ expected `i32`, found `&i32`
+   |     --- ^ expected `Vec<i32>`, found `Vec<&i32>`
    |     |
    |     arguments to this function are incorrect
    |

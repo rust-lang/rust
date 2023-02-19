@@ -11,7 +11,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use super::{collect_paths_for_type, ensure_trailing_slash, Context, BASIC_KEYWORDS};
+use super::{collect_paths_for_type, ensure_trailing_slash, Context};
 use crate::clean::Crate;
 use crate::config::{EmitType, RenderOptions};
 use crate::docfs::PathError;
@@ -138,7 +138,7 @@ pub(super) fn write_shared(
         Ok((ret, krates))
     }
 
-    /// Read a file and return all lines that match the <code>"{crate}":{data},\</code> format,
+    /// Read a file and return all lines that match the <code>"{crate}":{data},\ </code> format,
     /// and return a tuple `(Vec<DataString>, Vec<CrateNameString>)`.
     ///
     /// This forms the payload of files that look like this:
@@ -340,7 +340,6 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
                 root_path: "./",
                 static_root_path: shared.static_root_path.as_deref(),
                 description: "List of crates",
-                keywords: BASIC_KEYWORDS,
                 resource_suffix: &shared.resource_suffix,
             };
 

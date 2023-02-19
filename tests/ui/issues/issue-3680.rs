@@ -4,6 +4,6 @@ fn main() {
         //~^ ERROR mismatched types
         //~| expected enum `Option<_>`
         //~| found enum `Result<_, _>`
-        //~| expected enum `Option`, found enum `Result`
+        //~| expected `Option<_>`, found `Result<_, _>`
     }
 }

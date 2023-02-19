@@ -31,8 +31,8 @@ cfg_if! {
         pub auto trait Send {}
         pub auto trait Sync {}
 
-        impl<T: ?Sized> Send for T {}
-        impl<T: ?Sized> Sync for T {}
+        impl<T> Send for T {}
+        impl<T> Sync for T {}
 
         #[macro_export]
         macro_rules! rustc_erase_owner {

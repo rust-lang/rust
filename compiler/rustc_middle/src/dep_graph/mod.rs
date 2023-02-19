@@ -55,7 +55,7 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
         ty::tls::with_context(|icx| {
             let icx = ty::tls::ImplicitCtxt { task_deps, ..icx.clone() };
 
-            ty::tls::enter_context(&icx, |_| op())
+            ty::tls::enter_context(&icx, op)
         })
     }
 
@@ -74,8 +74,8 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
     type DepKind = DepKind;
 
     #[inline]
-    fn with_stable_hashing_context<R>(&self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R {
-        TyCtxt::with_stable_hashing_context(*self, f)
+    fn with_stable_hashing_context<R>(self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R {
+        TyCtxt::with_stable_hashing_context(self, f)
     }
 
     #[inline]

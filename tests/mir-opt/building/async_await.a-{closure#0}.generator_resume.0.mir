@@ -24,9 +24,7 @@ fn a::{closure#0}(_1: Pin<&mut [async fn body@$DIR/async_await.rs:11:14: 11:16]>
     bb1: {
         _4 = move _2;                    // scope 0 at $DIR/async_await.rs:+0:14: +0:16
         _3 = const ();                   // scope 0 at $DIR/async_await.rs:+0:14: +0:16
-        Deinit(_0);                      // scope 0 at $DIR/async_await.rs:+0:16: +0:16
-        ((_0 as Ready).0: ()) = move _3; // scope 0 at $DIR/async_await.rs:+0:16: +0:16
-        discriminant(_0) = 0;            // scope 0 at $DIR/async_await.rs:+0:16: +0:16
+        _0 = Poll::<()>::Ready(move _3); // scope 0 at $DIR/async_await.rs:+0:16: +0:16
         discriminant((*(_1.0: &mut [async fn body@$DIR/async_await.rs:11:14: 11:16]))) = 1; // scope 0 at $DIR/async_await.rs:+0:16: +0:16
         return;                          // scope 0 at $DIR/async_await.rs:+0:16: +0:16
     }

@@ -1516,7 +1516,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:157:8
    |
 LL |     if true..(let 0 = 0) {}
-   |        ^^^^^^^^^^^^^^^^^ expected `bool`, found struct `Range`
+   |        ^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<bool>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<bool>`
@@ -1525,7 +1525,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:161:8
    |
 LL |     if ..(let 0 = 0) {}
-   |        ^^^^^^^^^^^^^ expected `bool`, found struct `RangeTo`
+   |        ^^^^^^^^^^^^^ expected `bool`, found `RangeTo<bool>`
    |
    = note: expected type `bool`
             found struct `RangeTo<bool>`
@@ -1534,7 +1534,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:165:8
    |
 LL |     if (let 0 = 0).. {}
-   |        ^^^^^^^^^^^^^ expected `bool`, found struct `RangeFrom`
+   |        ^^^^^^^^^^^^^ expected `bool`, found `RangeFrom<bool>`
    |
    = note: expected type `bool`
             found struct `RangeFrom<bool>`
@@ -1545,7 +1545,7 @@ error[E0308]: mismatched types
 LL |     if let Range { start: _, end: _ } = true..true && false {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |            |
-   |            expected `bool`, found struct `Range`
+   |            expected `bool`, found `Range<_>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<_>`
@@ -1554,7 +1554,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:171:8
    |
 LL |     if let Range { start: _, end: _ } = true..true && false {}
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found struct `Range`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<bool>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<bool>`
@@ -1565,7 +1565,7 @@ error[E0308]: mismatched types
 LL |     if let Range { start: _, end: _ } = true..true || false {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |            |
-   |            expected `bool`, found struct `Range`
+   |            expected `bool`, found `Range<_>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<_>`
@@ -1574,7 +1574,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:175:8
    |
 LL |     if let Range { start: _, end: _ } = true..true || false {}
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found struct `Range`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<bool>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<bool>`
@@ -1585,7 +1585,7 @@ error[E0308]: mismatched types
 LL |     if let Range { start: F, end } = F..|| true {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `fn() -> bool`
    |            |
-   |            expected fn pointer, found struct `Range`
+   |            expected fn pointer, found `Range<_>`
    |
    = note: expected fn pointer `fn() -> bool`
                   found struct `std::ops::Range<_>`
@@ -1607,7 +1607,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:182:8
    |
 LL |     if let Range { start: F, end } = F..|| true {}
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found struct `Range`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<bool>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<bool>`
@@ -1618,7 +1618,7 @@ error[E0308]: mismatched types
 LL |     if let Range { start: true, end } = t..&&false {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `&&bool`
    |            |
-   |            expected `bool`, found struct `Range`
+   |            expected `bool`, found `Range<_>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<_>`
@@ -1639,7 +1639,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:190:8
    |
 LL |     if let Range { start: true, end } = t..&&false {}
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found struct `Range`
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<bool>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<bool>`
@@ -1710,7 +1710,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:249:11
    |
 LL |     while true..(let 0 = 0) {}
-   |           ^^^^^^^^^^^^^^^^^ expected `bool`, found struct `Range`
+   |           ^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<bool>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<bool>`
@@ -1719,7 +1719,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:253:11
    |
 LL |     while ..(let 0 = 0) {}
-   |           ^^^^^^^^^^^^^ expected `bool`, found struct `RangeTo`
+   |           ^^^^^^^^^^^^^ expected `bool`, found `RangeTo<bool>`
    |
    = note: expected type `bool`
             found struct `RangeTo<bool>`
@@ -1728,7 +1728,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:257:11
    |
 LL |     while (let 0 = 0).. {}
-   |           ^^^^^^^^^^^^^ expected `bool`, found struct `RangeFrom`
+   |           ^^^^^^^^^^^^^ expected `bool`, found `RangeFrom<bool>`
    |
    = note: expected type `bool`
             found struct `RangeFrom<bool>`
@@ -1739,7 +1739,7 @@ error[E0308]: mismatched types
 LL |     while let Range { start: _, end: _ } = true..true && false {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |               |
-   |               expected `bool`, found struct `Range`
+   |               expected `bool`, found `Range<_>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<_>`
@@ -1748,7 +1748,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:263:11
    |
 LL |     while let Range { start: _, end: _ } = true..true && false {}
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found struct `Range`
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<bool>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<bool>`
@@ -1759,7 +1759,7 @@ error[E0308]: mismatched types
 LL |     while let Range { start: _, end: _ } = true..true || false {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |               |
-   |               expected `bool`, found struct `Range`
+   |               expected `bool`, found `Range<_>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<_>`
@@ -1768,7 +1768,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:267:11
    |
 LL |     while let Range { start: _, end: _ } = true..true || false {}
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found struct `Range`
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<bool>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<bool>`
@@ -1779,7 +1779,7 @@ error[E0308]: mismatched types
 LL |     while let Range { start: F, end } = F..|| true {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `fn() -> bool`
    |               |
-   |               expected fn pointer, found struct `Range`
+   |               expected fn pointer, found `Range<_>`
    |
    = note: expected fn pointer `fn() -> bool`
                   found struct `std::ops::Range<_>`
@@ -1801,7 +1801,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:274:11
    |
 LL |     while let Range { start: F, end } = F..|| true {}
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found struct `Range`
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<bool>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<bool>`
@@ -1812,7 +1812,7 @@ error[E0308]: mismatched types
 LL |     while let Range { start: true, end } = t..&&false {}
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^   - this expression has type `&&bool`
    |               |
-   |               expected `bool`, found struct `Range`
+   |               expected `bool`, found `Range<_>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<_>`
@@ -1833,7 +1833,7 @@ error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:282:11
    |
 LL |     while let Range { start: true, end } = t..&&false {}
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found struct `Range`
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `Range<bool>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<bool>`
@@ -1883,7 +1883,7 @@ error[E0308]: mismatched types
 LL |     (let Range { start: _, end: _ } = true..true || false);
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^   ---- this expression has type `bool`
    |          |
-   |          expected `bool`, found struct `Range`
+   |          expected `bool`, found `Range<_>`
    |
    = note: expected type `bool`
             found struct `std::ops::Range<_>`

@@ -2,13 +2,13 @@ error[E0308]: mismatched types
   --> $DIR/type-ascription-precedence.rs:31:7
    |
 LL |     &(S: &S);
-   |       ^ expected `&S`, found struct `S`
+   |       ^ expected `&S`, found `S`
 
 error[E0308]: mismatched types
   --> $DIR/type-ascription-precedence.rs:35:7
    |
 LL |     *(S: Z);
-   |       ^ expected struct `Z`, found struct `S`
+   |       ^ expected `Z`, found `S`
 
 error[E0614]: type `Z` cannot be dereferenced
   --> $DIR/type-ascription-precedence.rs:35:5
@@ -20,7 +20,7 @@ error[E0308]: mismatched types
   --> $DIR/type-ascription-precedence.rs:40:7
    |
 LL |     -(S: Z);
-   |       ^ expected struct `Z`, found struct `S`
+   |       ^ expected `Z`, found `S`
 
 error[E0600]: cannot apply unary operator `-` to type `Z`
   --> $DIR/type-ascription-precedence.rs:40:5
@@ -40,19 +40,19 @@ error[E0308]: mismatched types
   --> $DIR/type-ascription-precedence.rs:45:5
    |
 LL |     (S + Z): Z;
-   |     ^^^^^^^ expected struct `Z`, found struct `S`
+   |     ^^^^^^^ expected `Z`, found `S`
 
 error[E0308]: mismatched types
   --> $DIR/type-ascription-precedence.rs:49:5
    |
 LL |     (S * Z): Z;
-   |     ^^^^^^^ expected struct `Z`, found struct `S`
+   |     ^^^^^^^ expected `Z`, found `S`
 
 error[E0308]: mismatched types
   --> $DIR/type-ascription-precedence.rs:53:5
    |
 LL |     (S .. S): S;
-   |     ^^^^^^^^ expected struct `S`, found struct `Range`
+   |     ^^^^^^^^ expected `S`, found `Range<S>`
    |
    = note: expected struct `S`
               found struct `std::ops::Range<S>`

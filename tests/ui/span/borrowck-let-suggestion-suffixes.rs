@@ -8,6 +8,7 @@ fn f() {
 
     {
         let young = ['y'];       // statement 3
+        //~^ NOTE binding `young` declared here
 
         v2.push(&young[0]);      // statement 4
         //~^ ERROR `young[_]` does not live long enough

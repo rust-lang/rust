@@ -1,12 +1,12 @@
-error[E0282]: type annotations needed for `(Vec<T>,)`
+error[E0282]: type annotations needed for `(Vec<_>,)`
   --> $DIR/cannot_infer_local_or_vec_in_tuples.rs:2:9
    |
 LL |     let (x, ) = (vec![], );
    |         ^^^^^   ---------- type must be known at this point
    |
-help: consider giving this pattern a type, where the type for type parameter `T` is specified
+help: consider giving this pattern a type, where the placeholders `_` are specified
    |
-LL |     let (x, ): (Vec<T>,) = (vec![], );
+LL |     let (x, ): (Vec<_>,) = (vec![], );
    |              +++++++++++
 
 error: aborting due to previous error

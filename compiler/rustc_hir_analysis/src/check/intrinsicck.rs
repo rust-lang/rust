@@ -3,6 +3,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitable, UintTy};
 use rustc_session::lint;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{Symbol, DUMMY_SP};
 use rustc_target::asm::{InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType};
 
@@ -253,10 +254,8 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         Some(asm_ty)
     }
 
-    pub fn check_asm(&self, asm: &hir::InlineAsm<'tcx>, enclosing_id: hir::HirId) {
-        let hir = self.tcx.hir();
-        let enclosing_def_id = hir.local_def_id(enclosing_id).to_def_id();
-        let target_features = self.tcx.asm_target_features(enclosing_def_id);
+    pub fn check_asm(&self, asm: &hir::InlineAsm<'tcx>, enclosing_id: LocalDefId) {
+        let target_features = self.tcx.asm_target_features(enclosing_id.to_def_id());
         let Some(asm_arch) = self.tcx.sess.asm_arch else {
             self.tcx.sess.delay_span_bug(DUMMY_SP, "target architecture does not support asm");
             return;
@@ -415,7 +414,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 // Check that sym actually points to a function. Later passes
                 // depend on this.
                 hir::InlineAsmOperand::SymFn { anon_const } => {
-                    let ty = self.tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
+                    let ty = self.tcx.type_of(anon_const.def_id).subst_identity();
                     match ty.kind() {
                         ty::Never | ty::Error(_) => {}
                         ty::FnDef(..) => {}
@@ -423,7 +422,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             let mut err =
                                 self.tcx.sess.struct_span_err(*op_sp, "invalid `sym` operand");
                             err.span_label(
-                                self.tcx.hir().span(anon_const.body.hir_id),
+                                self.tcx.def_span(anon_const.def_id),
                                 &format!("is {} `{}`", ty.kind().article(), ty),
                             );
                             err.help("`sym` operands must refer to either a function or a static");

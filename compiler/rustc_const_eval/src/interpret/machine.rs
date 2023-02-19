@@ -244,9 +244,15 @@ pub trait Machine<'mir, 'tcx>: Sized {
     }
 
     /// Called before a basic block terminator is executed.
-    /// You can use this to detect endlessly running programs.
     #[inline]
     fn before_terminator(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
+    /// Called when the interpreter encounters a `StatementKind::ConstEvalCounter` instruction.
+    /// You can use this to detect long or endlessly running programs.
+    #[inline]
+    fn increment_const_eval_counter(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
 
@@ -285,7 +291,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn adjust_alloc_base_pointer(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         ptr: Pointer,
-    ) -> Pointer<Self::Provenance>;
+    ) -> InterpResult<'tcx, Pointer<Self::Provenance>>;
 
     /// "Int-to-pointer cast"
     fn ptr_from_addr_cast(
@@ -499,8 +505,8 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     fn adjust_alloc_base_pointer(
         _ecx: &InterpCx<$mir, $tcx, Self>,
         ptr: Pointer<AllocId>,
-    ) -> Pointer<AllocId> {
-        ptr
+    ) -> InterpResult<$tcx, Pointer<AllocId>> {
+        Ok(ptr)
     }
 
     #[inline(always)]
@@ -511,7 +517,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         // Allow these casts, but make the pointer not dereferenceable.
         // (I.e., they behave like transmutation.)
         // This is correct because no pointers can ever be exposed in compile-time evaluation.
-        Ok(Pointer::from_addr(addr))
+        Ok(Pointer::from_addr_invalid(addr))
     }
 
     #[inline(always)]

@@ -1,10 +1,13 @@
 error[E0594]: cannot assign to `*foo`, which is behind a `&` reference
   --> $DIR/issue-92015.rs:6:5
    |
-LL |     let foo = Some(&0).unwrap();
-   |         --- consider changing this binding's type to be: `&mut i32`
 LL |     *foo = 1;
    |     ^^^^^^^^ `foo` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider specifying this binding's type
+   |
+LL |     let foo: &mut i32 = Some(&0).unwrap();
+   |            ++++++++++
 
 error: aborting due to previous error
 

@@ -131,10 +131,14 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    pub fn trait_bound(&self, path: ast::Path) -> ast::GenericBound {
+    pub fn trait_bound(&self, path: ast::Path, is_const: bool) -> ast::GenericBound {
         ast::GenericBound::Trait(
             self.poly_trait_ref(path.span, path),
-            ast::TraitBoundModifier::None,
+            if is_const {
+                ast::TraitBoundModifier::MaybeConst
+            } else {
+                ast::TraitBoundModifier::None
+            },
         )
     }
 
@@ -270,6 +274,10 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn expr_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Not, e))
+    }
+
+    pub fn expr_paren(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
+        self.expr(sp, ast::ExprKind::Paren(e))
     }
 
     pub fn expr_call(

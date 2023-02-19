@@ -40,6 +40,7 @@ pub enum CallKind<'tcx> {
         self_arg: Option<Ident>,
         desugaring: Option<(CallDesugaringKind, Ty<'tcx>)>,
         method_did: DefId,
+        method_substs: SubstsRef<'tcx>,
     },
     /// A call to `Fn(..)::call(..)`, desugared from `my_closure(a, b, c)`
     FnCall { fn_trait_id: DefId, self_ty: Ty<'tcx> },
@@ -131,6 +132,6 @@ pub fn call_kind<'tcx>(
         } else {
             None
         };
-        CallKind::Normal { self_arg, desugaring, method_did }
+        CallKind::Normal { self_arg, desugaring, method_did, method_substs }
     })
 }

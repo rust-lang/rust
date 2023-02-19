@@ -5,6 +5,8 @@ fn foo1(_: &dyn Drop + AsRef<str>) {} //~ ERROR ambiguous `+` in a type
 
 fn foo2(_: &dyn (Drop + AsRef<str>)) {} //~ ERROR incorrect braces around trait bounds
 
+fn foo2_no_space(_: &dyn(Drop + AsRef<str>)) {} //~ ERROR incorrect braces around trait bounds
+
 fn foo3(_: &dyn {Drop + AsRef<str>}) {} //~ ERROR expected parameter name, found `{`
 //~^ ERROR expected one of `!`, `(`, `)`, `*`, `,`, `?`, `for`, `~`, lifetime, or path, found `{`
 //~| ERROR at least one trait is required for an object type

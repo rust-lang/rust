@@ -1,6 +1,8 @@
 error[E0597]: `a` does not live long enough
   --> $DIR/regions-addr-of-arg.rs:5:30
    |
+LL | fn foo(a: isize) {
+   |        - binding `a` declared here
 LL |     let _p: &'static isize = &a;
    |             --------------   ^^ borrowed value does not live long enough
    |             |

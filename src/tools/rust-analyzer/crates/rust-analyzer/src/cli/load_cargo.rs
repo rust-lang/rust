@@ -1,6 +1,6 @@
 //! Loads a Cargo project into a static instance of analysis, without support
 //! for incorporating changes.
-use std::{path::Path, sync::Arc};
+use std::{convert::identity, path::Path, sync::Arc};
 
 use anyhow::Result;
 use crossbeam_channel::{unbounded, Receiver};
@@ -17,8 +17,15 @@ use crate::reload::{load_proc_macro, ProjectFolders, SourceRootConfig};
 // what otherwise would be `pub(crate)` has to be `pub` here instead.
 pub struct LoadCargoConfig {
     pub load_out_dirs_from_check: bool,
-    pub with_proc_macro: bool,
+    pub with_proc_macro_server: ProcMacroServerChoice,
     pub prefill_caches: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProcMacroServerChoice {
+    Sysroot,
+    Explicit(AbsPathBuf, Vec<String>),
+    None,
 }
 
 // Note: Since this function is used by external tools that use rust-analyzer as a library
@@ -59,15 +66,17 @@ pub fn load_workspace(
         Box::new(loader)
     };
 
-    let proc_macro_client = if load_config.with_proc_macro {
-        let (server_path, args): (_, &[_]) = match ws.find_sysroot_proc_macro_srv() {
-            Some(server_path) => (server_path, &[]),
-            None => (AbsPathBuf::assert(std::env::current_exe()?), &["proc-macro"]),
-        };
-
-        ProcMacroServer::spawn(server_path, args).map_err(|e| e.to_string())
-    } else {
-        Err("proc macro server disabled".to_owned())
+    let proc_macro_client = match &load_config.with_proc_macro_server {
+        ProcMacroServerChoice::Sysroot => ws
+            .find_sysroot_proc_macro_srv()
+            .ok_or_else(|| "failed to find sysroot proc-macro server".to_owned())
+            .and_then(|it| {
+                ProcMacroServer::spawn(it, identity::<&[&str]>(&[])).map_err(|e| e.to_string())
+            }),
+        ProcMacroServerChoice::Explicit(path, args) => {
+            ProcMacroServer::spawn(path.clone(), args).map_err(|e| e.to_string())
+        }
+        ProcMacroServerChoice::None => Err("proc macro server disabled".to_owned()),
     };
 
     let crate_graph = ws.to_crate_graph(
@@ -157,7 +166,7 @@ mod tests {
         let cargo_config = CargoConfig::default();
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
-            with_proc_macro: false,
+            with_proc_macro_server: ProcMacroServerChoice::None,
             prefill_caches: false,
         };
         let (host, _vfs, _proc_macro) =

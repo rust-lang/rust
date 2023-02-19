@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 bitflags = "1.2.1"
+memchr = "2.5.0"
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_index = { path = "../rustc_index" }
 rustc_lexer = { path = "../rustc_lexer" }

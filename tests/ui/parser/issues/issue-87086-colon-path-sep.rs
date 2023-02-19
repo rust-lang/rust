@@ -68,7 +68,6 @@ fn main() {
         Foo:Bar::Baz => {}
         //~^ ERROR: expected one of
         //~| HELP: maybe write a path separator here
-        //~| ERROR: failed to resolve: `Bar` is a variant, not a module
     }
     match myfoo {
         Foo::Bar => {}

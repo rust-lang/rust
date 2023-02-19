@@ -94,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingTraitMethods {
                         "implement the method",
                     );
                 }
-            })
+            });
         }
     }
 }

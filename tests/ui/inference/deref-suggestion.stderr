@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     foo(s);
    |     --- ^- help: try using a conversion method: `.to_string()`
    |     |   |
-   |     |   expected struct `String`, found `&String`
+   |     |   expected `String`, found `&String`
    |     arguments to this function are incorrect
    |
 note: function defined here
@@ -35,7 +35,7 @@ error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:30:9
    |
 LL |     foo(&"aaa".to_owned());
-   |     --- ^^^^^^^^^^^^^^^^^ expected struct `String`, found `&String`
+   |     --- ^^^^^^^^^^^^^^^^^ expected `String`, found `&String`
    |     |
    |     arguments to this function are incorrect
    |
@@ -54,7 +54,7 @@ error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:32:9
    |
 LL |     foo(&mut "aaa".to_owned());
-   |     --- ^^^^^^^^^^^^^^^^^^^^^ expected struct `String`, found `&mut String`
+   |     --- ^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `&mut String`
    |     |
    |     arguments to this function are incorrect
    |

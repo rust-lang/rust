@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn _f0(&_a: u32) {}
    |        ^^^  --- expected due to this
    |        |
-   |        expected `u32`, found reference
+   |        expected `u32`, found `&_`
    |
    = note:   expected type `u32`
            found reference `&_`
@@ -41,7 +41,7 @@ error[E0308]: mismatched types
 LL | fn _f2(&&_a: &u32) {}
    |         ^^^  ---- expected due to this
    |         |
-   |         expected `u32`, found reference
+   |         expected `u32`, found `&_`
    |
    = note:   expected type `u32`
            found reference `&_`
@@ -57,7 +57,7 @@ error[E0308]: mismatched types
 LL | fn _f3(&mut &_a: &mut u32) {}
    |             ^^^  -------- expected due to this
    |             |
-   |             expected `u32`, found reference
+   |             expected `u32`, found `&_`
    |
    = note:   expected type `u32`
            found reference `&_`
@@ -106,7 +106,7 @@ LL |     let _: fn(u32) = |&_a| ();
    |                       ^--
    |                       ||
    |                       |expected due to this
-   |                       expected `u32`, found reference
+   |                       expected `u32`, found `&_`
    |
    = note:   expected type `u32`
            found reference `&_`
@@ -145,7 +145,7 @@ LL |     let _: fn(&u32) = |&&_a| ();
    |                         ^--
    |                         ||
    |                         |expected due to this
-   |                         expected `u32`, found reference
+   |                         expected `u32`, found `&_`
    |
    = note:   expected type `u32`
            found reference `&_`
@@ -162,7 +162,7 @@ LL |     let _: fn(&mut u32) = |&mut &_a| ();
    |                                 ^--
    |                                 ||
    |                                 |expected due to this
-   |                                 expected `u32`, found reference
+   |                                 expected `u32`, found `&_`
    |
    = note:   expected type `u32`
            found reference `&_`
@@ -212,7 +212,7 @@ error[E0308]: mismatched types
 LL |     let _ = |&_a: u32| ();
    |              ^^^  --- expected due to this
    |              |
-   |              expected `u32`, found reference
+   |              expected `u32`, found `&_`
    |
    = note:   expected type `u32`
            found reference `&_`
@@ -249,7 +249,7 @@ error[E0308]: mismatched types
 LL |     let _ = |&&_a: &u32| ();
    |               ^^^  ---- expected due to this
    |               |
-   |               expected `u32`, found reference
+   |               expected `u32`, found `&_`
    |
    = note:   expected type `u32`
            found reference `&_`
@@ -265,7 +265,7 @@ error[E0308]: mismatched types
 LL |     let _ = |&mut &_a: &mut u32| ();
    |                   ^^^  -------- expected due to this
    |                   |
-   |                   expected `u32`, found reference
+   |                   expected `u32`, found `&_`
    |
    = note:   expected type `u32`
            found reference `&_`

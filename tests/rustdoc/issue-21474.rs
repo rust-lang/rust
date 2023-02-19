@@ -7,5 +7,5 @@ mod inner {
 pub trait Blah { }
 
 // @count issue_21474/struct.What.html \
-//        '//*[@id="trait-implementations-list"]//*[@class="impl has-srclink"]' 1
+//        '//*[@id="trait-implementations-list"]//*[@class="impl"]' 1
 pub struct What;

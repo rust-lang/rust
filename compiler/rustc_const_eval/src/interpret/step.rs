@@ -129,6 +129,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // FIXME(#73156): Handle source code coverage in const eval
             Coverage(..) => {}
 
+            ConstEvalCounter => {
+                M::increment_const_eval_counter(self)?;
+            }
+
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.
             Nop => {}
@@ -195,13 +199,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Aggregate(box ref kind, ref operands) => {
-                assert!(matches!(kind, mir::AggregateKind::Array(..)));
-
-                for (field_index, operand) in operands.iter().enumerate() {
-                    let op = self.eval_operand(operand, None)?;
-                    let field_dest = self.place_field(&dest, field_index)?;
-                    self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
-                }
+                self.write_aggregate(kind, operands, &dest)?;
             }
 
             Repeat(ref operand, _) => {
@@ -244,7 +242,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let src = self.eval_place(place)?;
                 let op = self.place_to_op(&src)?;
                 let len = op.len(self)?;
-                self.write_scalar(Scalar::from_machine_usize(len, self), &dest)?;
+                self.write_scalar(Scalar::from_target_usize(len, self), &dest)?;
             }
 
             Ref(_, borrow_kind, place) => {
@@ -299,7 +297,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     mir::NullOp::SizeOf => layout.size.bytes(),
                     mir::NullOp::AlignOf => layout.align.abi.bytes(),
                 };
-                self.write_scalar(Scalar::from_machine_usize(val, self), &dest)?;
+                self.write_scalar(Scalar::from_target_usize(val, self), &dest)?;
             }
 
             ShallowInitBox(ref operand, _) => {

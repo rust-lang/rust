@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |         42
    |         ^^- help: try using a conversion method: `.to_string()`
    |         |
-   |         expected struct `String`, found integer
+   |         expected `String`, found integer
 
 error: aborting due to previous error
 

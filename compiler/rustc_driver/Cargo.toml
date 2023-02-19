@@ -7,39 +7,4 @@ edition = "2021"
 crate-type = ["dylib"]
 
 [dependencies]
-tracing = { version = "0.1.35" }
-serde_json = "1.0.59"
-rustc_log = { path = "../rustc_log" }
-rustc_middle = { path = "../rustc_middle" }
-rustc_ast_pretty = { path = "../rustc_ast_pretty" }
-rustc_target = { path = "../rustc_target" }
-rustc_lint = { path = "../rustc_lint" }
-rustc_data_structures = { path = "../rustc_data_structures" }
-rustc_errors = { path = "../rustc_errors" }
-rustc_feature = { path = "../rustc_feature" }
-rustc_hir = { path = "../rustc_hir" }
-rustc_hir_pretty = { path = "../rustc_hir_pretty" }
-rustc_macros = { path = "../rustc_macros" }
-rustc_metadata = { path = "../rustc_metadata" }
-rustc_parse = { path = "../rustc_parse" }
-rustc_plugin_impl = { path = "../rustc_plugin_impl" }
-rustc_save_analysis = { path = "../rustc_save_analysis" }
-rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
-rustc_session = { path = "../rustc_session" }
-rustc_error_codes = { path = "../rustc_error_codes" }
-rustc_interface = { path = "../rustc_interface" }
-rustc_ast = { path = "../rustc_ast" }
-rustc_span = { path = "../rustc_span" }
-rustc_hir_analysis = { path = "../rustc_hir_analysis" }
-
-[target.'cfg(unix)'.dependencies]
-libc = "0.2"
-
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["consoleapi", "debugapi", "processenv"] }
-
-[features]
-llvm = ['rustc_interface/llvm']
-max_level_info = ['rustc_log/max_level_info']
-rustc_use_parallel_compiler = ['rustc_data_structures/rustc_use_parallel_compiler', 'rustc_interface/rustc_use_parallel_compiler',
-    'rustc_middle/rustc_use_parallel_compiler']
+rustc_driver_impl = { path = "../rustc_driver_impl" }

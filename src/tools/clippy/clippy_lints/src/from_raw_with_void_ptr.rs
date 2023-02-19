@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// let _ = unsafe { Box::from_raw(ptr as *mut usize) };
     /// ```
     ///
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.67.0"]
     pub FROM_RAW_WITH_VOID_PTR,
     suspicious,
     "creating a `Box` from a void raw pointer"

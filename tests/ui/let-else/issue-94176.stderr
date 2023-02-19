@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-94176.rs:5:32
    |
 LL | pub fn test(a: Option<u32>) -> Option<u32> {
-   |        ----                    ^^^^^^^^^^^ expected enum `Option`, found `()`
+   |        ----                    ^^^^^^^^^^^ expected `Option<u32>`, found `()`
    |        |
    |        implicitly returns `()` as its body has no tail or `return` expression
    |

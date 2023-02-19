@@ -30,7 +30,7 @@ error[E0308]: mismatched types
 LL |     let mut y = x.lock().unwrap();
    |                 ----------------- expected due to this value
 LL |     y = 2;
-   |         ^ expected struct `MutexGuard`, found integer
+   |         ^ expected `MutexGuard<'_, usize>`, found integer
    |
    = note: expected struct `MutexGuard<'_, usize>`
                 found type `{integer}`

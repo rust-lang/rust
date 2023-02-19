@@ -2,7 +2,7 @@ error[E0503]: cannot use `self.cx` because it was mutably borrowed
   --> $DIR/two-phase-surprise-no-conflict.rs:21:23
    |
 LL |         let _mut_borrow = &mut *self;
-   |                           ---------- borrow of `*self` occurs here
+   |                           ---------- `*self` is borrowed here
 LL |         let _access = self.cx;
    |                       ^^^^^^^ use of borrowed `*self`
 LL |

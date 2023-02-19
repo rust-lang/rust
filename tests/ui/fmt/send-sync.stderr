@@ -6,11 +6,11 @@ LL |     send(format_args!("{:?}", c));
    |     |
    |     required by a bound introduced by this call
    |
-   = help: within `[ArgumentV1<'_>]`, the trait `Sync` is not implemented for `core::fmt::Opaque`
+   = help: within `[core::fmt::ArgumentV1<'_>]`, the trait `Sync` is not implemented for `core::fmt::Opaque`
    = note: required because it appears within the type `&core::fmt::Opaque`
    = note: required because it appears within the type `ArgumentV1<'_>`
    = note: required because it appears within the type `[ArgumentV1<'_>]`
-   = note: required for `&[ArgumentV1<'_>]` to implement `Send`
+   = note: required for `&[core::fmt::ArgumentV1<'_>]` to implement `Send`
    = note: required because it appears within the type `Arguments<'_>`
 note: required by a bound in `send`
   --> $DIR/send-sync.rs:1:12

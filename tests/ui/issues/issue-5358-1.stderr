@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match S(Either::Left(5)) {
    |           ------------------ this expression has type `S`
 LL |         Either::Right(_) => {}
-   |         ^^^^^^^^^^^^^^^^ expected struct `S`, found enum `Either`
+   |         ^^^^^^^^^^^^^^^^ expected `S`, found `Either<_, _>`
    |
    = note: expected struct `S`
                 found enum `Either<_, _>`

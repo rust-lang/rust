@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-40749.rs:2:9
    |
 LL |     [0; ..10];
-   |         ^^^^ expected `usize`, found struct `RangeTo`
+   |         ^^^^ expected `usize`, found `RangeTo<{integer}>`
    |
    = note: expected type `usize`
             found struct `RangeTo<{integer}>`

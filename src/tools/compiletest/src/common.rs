@@ -123,6 +123,7 @@ pub enum FailMode {
 pub enum CompareMode {
     Polonius,
     Chalk,
+    NextSolver,
     SplitDwarf,
     SplitDwarfSingle,
 }
@@ -132,6 +133,7 @@ impl CompareMode {
         match *self {
             CompareMode::Polonius => "polonius",
             CompareMode::Chalk => "chalk",
+            CompareMode::NextSolver => "next-solver",
             CompareMode::SplitDwarf => "split-dwarf",
             CompareMode::SplitDwarfSingle => "split-dwarf-single",
         }
@@ -141,6 +143,7 @@ impl CompareMode {
         match s.as_str() {
             "polonius" => CompareMode::Polonius,
             "chalk" => CompareMode::Chalk,
+            "next-solver" => CompareMode::NextSolver,
             "split-dwarf" => CompareMode::SplitDwarf,
             "split-dwarf-single" => CompareMode::SplitDwarfSingle,
             x => panic!("unknown --compare-mode option: {}", x),
@@ -376,6 +379,9 @@ pub struct Config {
 
     /// Whether to rerun tests even if the inputs are unchanged.
     pub force_rerun: bool,
+
+    /// Only rerun the tests that result has been modified accoring to Git status
+    pub only_modified: bool,
 
     pub target_cfg: LazyCell<TargetCfg>,
 }

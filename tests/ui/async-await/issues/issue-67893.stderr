@@ -6,7 +6,7 @@ LL |     g(issue_67893::run())
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/auxiliary/issue_67893.rs:9:26
+  --> $DIR/auxiliary/issue_67893.rs:12:26
    |
 LL |     f(*x.lock().unwrap()).await;
    |        ----------------- ^^^^^^- `x.lock().unwrap()` is later dropped here

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/suggest-removing-tuple-struct-field.rs:11:13
    |
 LL |     some_fn(value.0);
-   |     ------- ^^^^^^^ expected struct `MyWrapper`, found `u32`
+   |     ------- ^^^^^^^ expected `MyWrapper`, found `u32`
    |     |
    |     arguments to this function are incorrect
    |
@@ -21,7 +21,7 @@ error[E0308]: mismatched types
   --> $DIR/suggest-removing-tuple-struct-field.rs:12:13
    |
 LL |     some_fn(my_wrapper!(123).0);
-   |     ------- ^^^^^^^^^^^^^^^^^^ expected struct `MyWrapper`, found `u32`
+   |     ------- ^^^^^^^^^^^^^^^^^^ expected `MyWrapper`, found `u32`
    |     |
    |     arguments to this function are incorrect
    |

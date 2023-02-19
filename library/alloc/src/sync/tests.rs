@@ -102,6 +102,38 @@ fn try_unwrap() {
 }
 
 #[test]
+fn into_inner() {
+    for _ in 0..100
+    // ^ Increase chances of hitting potential race conditions
+    {
+        let x = Arc::new(3);
+        let y = Arc::clone(&x);
+        let r_thread = std::thread::spawn(|| Arc::into_inner(x));
+        let s_thread = std::thread::spawn(|| Arc::into_inner(y));
+        let r = r_thread.join().expect("r_thread panicked");
+        let s = s_thread.join().expect("s_thread panicked");
+        assert!(
+            matches!((r, s), (None, Some(3)) | (Some(3), None)),
+            "assertion failed: unexpected result `{:?}`\
+            \n  expected `(None, Some(3))` or `(Some(3), None)`",
+            (r, s),
+        );
+    }
+
+    let x = Arc::new(3);
+    assert_eq!(Arc::into_inner(x), Some(3));
+
+    let x = Arc::new(4);
+    let y = Arc::clone(&x);
+    assert_eq!(Arc::into_inner(x), None);
+    assert_eq!(Arc::into_inner(y), Some(4));
+
+    let x = Arc::new(5);
+    let _w = Arc::downgrade(&x);
+    assert_eq!(Arc::into_inner(x), Some(5));
+}
+
+#[test]
 fn into_from_raw() {
     let x = Arc::new(Box::new("hello"));
     let y = x.clone();

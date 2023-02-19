@@ -1,35 +1,35 @@
 error[E0698]: type inside `async fn` body must be known in this context
-  --> $DIR/unresolved_type_param.rs:10:5
+  --> $DIR/unresolved_type_param.rs:13:5
    |
 LL |     bar().await;
    |     ^^^ cannot infer type for type parameter `T` declared on the function `bar`
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/unresolved_type_param.rs:10:10
+  --> $DIR/unresolved_type_param.rs:13:10
    |
 LL |     bar().await;
    |          ^^^^^^
 
 error[E0698]: type inside `async fn` body must be known in this context
-  --> $DIR/unresolved_type_param.rs:10:5
+  --> $DIR/unresolved_type_param.rs:13:5
    |
 LL |     bar().await;
    |     ^^^ cannot infer type for type parameter `T` declared on the function `bar`
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/unresolved_type_param.rs:10:10
+  --> $DIR/unresolved_type_param.rs:13:10
    |
 LL |     bar().await;
    |          ^^^^^^
 
 error[E0698]: type inside `async fn` body must be known in this context
-  --> $DIR/unresolved_type_param.rs:10:5
+  --> $DIR/unresolved_type_param.rs:13:5
    |
 LL |     bar().await;
    |     ^^^ cannot infer type for type parameter `T` declared on the function `bar`
    |
 note: the type is part of the `async fn` body because of this `await`
-  --> $DIR/unresolved_type_param.rs:10:10
+  --> $DIR/unresolved_type_param.rs:13:10
    |
 LL |     bar().await;
    |          ^^^^^^

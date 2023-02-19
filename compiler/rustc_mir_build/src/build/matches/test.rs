@@ -563,14 +563,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let not_contained =
                     self.values_not_contained_in_range(&*range, options).unwrap_or(false);
 
-                if not_contained {
+                not_contained.then(|| {
                     // No switch values are contained in the pattern range,
                     // so the pattern can be matched only if this test fails.
-                    let otherwise = options.len();
-                    Some(otherwise)
-                } else {
-                    None
-                }
+                    options.len()
+                })
             }
 
             (&TestKind::SwitchInt { .. }, _) => None,

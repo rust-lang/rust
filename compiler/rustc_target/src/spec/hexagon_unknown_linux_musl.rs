@@ -11,7 +11,7 @@ pub fn target() -> Target {
     base.has_rpath = true;
     base.linker_flavor = LinkerFlavor::Unix(Cc::Yes);
 
-    base.c_enum_min_bits = 8;
+    base.c_enum_min_bits = Some(8);
 
     Target {
         llvm_target: "hexagon-unknown-linux-musl".into(),

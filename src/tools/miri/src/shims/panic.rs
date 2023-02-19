@@ -172,7 +172,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         // First arg: message.
-        let msg = this.allocate_str(msg, MiriMemoryKind::Machine.into(), Mutability::Not);
+        let msg = this.allocate_str(msg, MiriMemoryKind::Machine.into(), Mutability::Not)?;
 
         // Call the lang item.
         let panic = this.tcx.lang_items().panic_fn().unwrap();

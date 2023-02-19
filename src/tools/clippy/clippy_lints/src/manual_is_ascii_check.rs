@@ -43,7 +43,7 @@ declare_clippy_lint! {
     ///     'A'.is_ascii_uppercase();
     /// }
     /// ```
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.67.0"]
     pub MANUAL_IS_ASCII_CHECK,
     style,
     "use dedicated method to check ascii range"

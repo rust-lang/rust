@@ -5,7 +5,7 @@ LL | fn foo<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, 
    |        - this type parameter                            ----------------------- expected `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>` because of return type
 LL |     // We could instead use an `async` block, but this way we have no std spans.
 LL |     x
-   |     ^ expected struct `Pin`, found type parameter `F`
+   |     ^ expected `Pin<Box<...>>`, found type parameter `F`
    |
    = note:      expected struct `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>`
            found type parameter `F`
@@ -20,7 +20,7 @@ error[E0308]: mismatched types
 LL | fn bar<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
    |                                                         ----------------------- expected `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>` because of return type
 LL |     Box::new(x)
-   |     ^^^^^^^^^^^ expected struct `Pin`, found struct `Box`
+   |     ^^^^^^^^^^^ expected `Pin<Box<...>>`, found `Box<F>`
    |
    = note: expected struct `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>`
               found struct `Box<F>`
@@ -32,7 +32,7 @@ error[E0308]: mismatched types
 LL | fn baz<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, i32> {
    |        - this type parameter
 LL |     Pin::new(x)
-   |     -------- ^ expected struct `Box`, found type parameter `F`
+   |     -------- ^ expected `Box<dyn Future<Output = ...> + Send>`, found type parameter `F`
    |     |
    |     arguments to this function are incorrect
    |     help: use `Box::pin` to pin and box this expression: `Box::pin`
@@ -74,7 +74,7 @@ LL | |         42
 LL | |     }
    | |     ^
    | |     |
-   | |_____expected struct `Pin`, found `async` block
+   | |_____expected `Pin<Box<...>>`, found `async` block
    |       arguments to this function are incorrect
    |
    = note:     expected struct `Pin<Box<dyn Future<Output = i32> + Send>>`

@@ -1,8 +1,11 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/infinite_loop.rs:6:15
+  --> $DIR/infinite_loop.rs:6:9
    |
-LL |         while n != 0 {
-   |               ^^^^^^ exceeded interpreter step limit (see `#[const_eval_limit]`)
+LL | /         while n != 0 {
+LL | |
+LL | |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
+LL | |         }
+   | |_________^ exceeded interpreter step limit (see `#[const_eval_limit]`)
 
 error: aborting due to previous error
 

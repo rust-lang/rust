@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `B<C>: Copy` is not satisfied
-  --> $DIR/deriving-copyclone.rs:31:13
+  --> $DIR/deriving-copyclone.rs:31:26
    |
 LL |     is_copy(B { a: 1, b: C });
-   |     ------- ^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `B<C>`
+   |     -------              ^ the trait `Copy` is not implemented for `B<C>`
    |     |
    |     required by a bound introduced by this call
    |
@@ -19,14 +19,14 @@ LL | fn is_copy<T: Copy>(_: T) {}
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider borrowing here
    |
-LL |     is_copy(&B { a: 1, b: C });
-   |             +
+LL |     is_copy(B { a: 1, b: &C });
+   |                          +
 
 error[E0277]: the trait bound `B<C>: Clone` is not satisfied
-  --> $DIR/deriving-copyclone.rs:32:14
+  --> $DIR/deriving-copyclone.rs:32:27
    |
 LL |     is_clone(B { a: 1, b: C });
-   |     -------- ^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `B<C>`
+   |     --------              ^ the trait `Clone` is not implemented for `B<C>`
    |     |
    |     required by a bound introduced by this call
    |
@@ -43,14 +43,14 @@ LL | fn is_clone<T: Clone>(_: T) {}
    = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider borrowing here
    |
-LL |     is_clone(&B { a: 1, b: C });
-   |              +
+LL |     is_clone(B { a: 1, b: &C });
+   |                           +
 
 error[E0277]: the trait bound `B<D>: Copy` is not satisfied
-  --> $DIR/deriving-copyclone.rs:35:13
+  --> $DIR/deriving-copyclone.rs:35:26
    |
 LL |     is_copy(B { a: 1, b: D });
-   |     ------- ^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `B<D>`
+   |     -------              ^ the trait `Copy` is not implemented for `B<D>`
    |     |
    |     required by a bound introduced by this call
    |
@@ -67,8 +67,8 @@ LL | fn is_copy<T: Copy>(_: T) {}
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider borrowing here
    |
-LL |     is_copy(&B { a: 1, b: D });
-   |             +
+LL |     is_copy(B { a: 1, b: &D });
+   |                          +
 
 error: aborting due to 3 previous errors
 

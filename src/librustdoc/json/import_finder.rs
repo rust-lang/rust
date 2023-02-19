@@ -1,5 +1,4 @@
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::DefIdSet;
 
 use crate::{
     clean::{self, Import, ImportSource, Item},
@@ -14,14 +13,15 @@ use crate::{
 /// See [#100973](https://github.com/rust-lang/rust/issues/100973) and
 /// [#101103](https://github.com/rust-lang/rust/issues/101103) for times when
 /// this information is needed.
-pub(crate) fn get_imports(krate: clean::Crate) -> (clean::Crate, FxHashSet<DefId>) {
-    let mut finder = ImportFinder { imported: FxHashSet::default() };
+pub(crate) fn get_imports(krate: clean::Crate) -> (clean::Crate, DefIdSet) {
+    let mut finder = ImportFinder::default();
     let krate = finder.fold_crate(krate);
     (krate, finder.imported)
 }
 
+#[derive(Default)]
 struct ImportFinder {
-    imported: FxHashSet<DefId>,
+    imported: DefIdSet,
 }
 
 impl DocFolder for ImportFinder {

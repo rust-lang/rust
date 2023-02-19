@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 use std::sync::Arc;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_hir::ItemId;
+use rustc_hir::{InlineAsmOperand, ItemId};
 use rustc_session::config::{OutputFilenames, OutputType};
 
 use crate::prelude::*;
@@ -23,7 +23,46 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
         for piece in asm.template {
             match *piece {
                 InlineAsmTemplatePiece::String(ref s) => global_asm.push_str(s),
-                InlineAsmTemplatePiece::Placeholder { .. } => todo!(),
+                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: op_sp } => {
+                    match asm.operands[operand_idx].0 {
+                        InlineAsmOperand::Const { ref anon_const } => {
+                            let const_value =
+                                tcx.const_eval_poly(anon_const.def_id.to_def_id()).unwrap_or_else(
+                                    |_| span_bug!(op_sp, "asm const cannot be resolved"),
+                                );
+                            let ty = tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
+                            let string = rustc_codegen_ssa::common::asm_const_to_str(
+                                tcx,
+                                op_sp,
+                                const_value,
+                                RevealAllLayoutCx(tcx).layout_of(ty),
+                            );
+                            global_asm.push_str(&string);
+                        }
+                        InlineAsmOperand::SymFn { anon_const } => {
+                            let ty = tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
+                            let instance = match ty.kind() {
+                                &ty::FnDef(def_id, substs) => Instance::new(def_id, substs),
+                                _ => span_bug!(op_sp, "asm sym is not a function"),
+                            };
+                            let symbol = tcx.symbol_name(instance);
+                            // FIXME handle the case where the function was made private to the
+                            // current codegen unit
+                            global_asm.push_str(symbol.name);
+                        }
+                        InlineAsmOperand::SymStatic { path: _, def_id } => {
+                            let instance = Instance::mono(tcx, def_id).polymorphize(tcx);
+                            let symbol = tcx.symbol_name(instance);
+                            global_asm.push_str(symbol.name);
+                        }
+                        InlineAsmOperand::In { .. }
+                        | InlineAsmOperand::Out { .. }
+                        | InlineAsmOperand::InOut { .. }
+                        | InlineAsmOperand::SplitInOut { .. } => {
+                            span_bug!(op_sp, "invalid operand type for global_asm!")
+                        }
+                    }
+                }
             }
         }
         global_asm.push_str("\n.att_syntax\n\n");

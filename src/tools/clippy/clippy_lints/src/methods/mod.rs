@@ -1818,6 +1818,7 @@ declare_clippy_lint! {
     ///  - `or_else` to `or`
     ///  - `get_or_insert_with` to `get_or_insert`
     ///  - `ok_or_else` to `ok_or`
+    ///  - `then` to `then_some` (for msrv >= 1.62.0)
     ///
     /// ### Why is this bad?
     /// Using eager evaluation is shorter and simpler in some cases.
@@ -3102,7 +3103,7 @@ declare_clippy_lint! {
     ///     Ok(())
     /// }
     /// ```
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.67.0"]
     pub SEEK_FROM_CURRENT,
     complexity,
     "use dedicated method for seek from current position"
@@ -3133,7 +3134,7 @@ declare_clippy_lint! {
     ///     t.rewind();
     /// }
     /// ```
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.67.0"]
     pub SEEK_TO_START_INSTEAD_OF_REWIND,
     complexity,
     "jumping to the start of stream using `seek` method"
@@ -3348,11 +3349,11 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let name = impl_item.ident.name.as_str();
         let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
         let item = cx.tcx.hir().expect_item(parent);
-        let self_ty = cx.tcx.type_of(item.owner_id);
+        let self_ty = cx.tcx.type_of(item.owner_id).subst_identity();
 
         let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
         if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind {
-            let method_sig = cx.tcx.fn_sig(impl_item.owner_id);
+            let method_sig = cx.tcx.fn_sig(impl_item.owner_id).subst_identity();
             let method_sig = cx.tcx.erase_late_bound_regions(method_sig);
             let first_arg_ty_opt = method_sig.inputs().iter().next().copied();
             // if this impl block implements a trait, lint in trait definition instead
@@ -3412,7 +3413,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         }
 
         if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
-            let ret_ty = return_ty(cx, impl_item.hir_id());
+            let ret_ty = return_ty(cx, impl_item.owner_id);
 
             if contains_ty_adt_constructor_opaque(cx, ret_ty, self_ty) {
                 return;
@@ -3460,7 +3461,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         if_chain! {
             if item.ident.name == sym::new;
             if let TraitItemKind::Fn(_, _) = item.kind;
-            let ret_ty = return_ty(cx, item.hir_id());
+            let ret_ty = return_ty(cx, item.owner_id);
             let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id())
                 .self_ty()
                 .skip_binder();

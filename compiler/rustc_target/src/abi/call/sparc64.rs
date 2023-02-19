@@ -20,7 +20,7 @@ where
 {
     let dl = cx.data_layout();
 
-    if !scalar.primitive().is_float() {
+    if !matches!(scalar.primitive(), abi::F32 | abi::F64) {
         return data;
     }
 
@@ -83,11 +83,11 @@ where
         (abi::F32, _) => offset += Reg::f32().size,
         (_, abi::F64) => offset += Reg::f64().size,
         (abi::Int(i, _signed), _) => offset += i.size(),
-        (abi::Pointer, _) => offset += Reg::i64().size,
+        (abi::Pointer(_), _) => offset += Reg::i64().size,
         _ => {}
     }
 
-    if (offset.bytes() % 4) != 0 && scalar2.primitive().is_float() {
+    if (offset.bytes() % 4) != 0 && matches!(scalar2.primitive(), abi::F32 | abi::F64) {
         offset += Size::from_bytes(4 - (offset.bytes() % 4));
     }
     data = arg_scalar(cx, scalar2, offset, data);

@@ -1,0 +1,15 @@
+error: unexpected `>` after inclusive range
+  --> $DIR/half-open-range-pats-inclusive-match-arrow.rs:5:14
+   |
+LL |         74..=> {},
+   |           ---^
+   |           |
+   |           this is parsed as an inclusive range `..=`
+   |
+help: add a space between the pattern and `=>`
+   |
+LL |         74.. => {},
+   |             +
+
+error: aborting due to previous error
+

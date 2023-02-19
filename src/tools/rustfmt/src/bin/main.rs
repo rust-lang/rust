@@ -136,7 +136,7 @@ fn make_opts() -> Options {
         "l",
         "files-with-diff",
         "Prints the names of mismatched files that were formatted. Prints the names of \
-         files that would be formated when used with `--check` mode. ",
+         files that would be formatted when used with `--check` mode. ",
     );
     opts.optmulti(
         "",

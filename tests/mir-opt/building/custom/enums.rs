@@ -86,6 +86,7 @@ fn switch_option_repr(option: Bool) -> bool {
 #[custom_mir(dialect = "runtime", phase = "initial")]
 fn set_discr(option: &mut Option<()>) {
     mir!({
+        Deinit(*option);
         SetDiscriminant(*option, 0);
         Return()
     })

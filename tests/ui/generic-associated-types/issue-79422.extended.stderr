@@ -14,11 +14,11 @@ help: add missing lifetime argument
 LL |         as Box<dyn MapLike<u8, u8, VRefCont<'a> = dyn RefCont<'_, u8>>>;
    |                                            ++++
 
-error[E0271]: type mismatch resolving `<BTreeMap<u8, u8> as MapLike<u8, u8>>::VRefCont<'_> == (dyn RefCont<'_, u8> + 'static)`
+error[E0271]: type mismatch resolving `<BTreeMap<u8, u8> as MapLike<u8, u8>>::VRefCont<'_> == dyn RefCont<'_, u8>`
   --> $DIR/issue-79422.rs:44:13
    |
 LL |     let m = Box::new(std::collections::BTreeMap::<u8, u8>::new())
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<BTreeMap<u8, u8> as MapLike<u8, u8>>::VRefCont<'_> == (dyn RefCont<'_, u8> + 'static)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<BTreeMap<u8, u8> as MapLike<u8, u8>>::VRefCont<'_> == dyn RefCont<'_, u8>`
    |
 note: expected this to be `(dyn RefCont<'_, u8> + 'static)`
   --> $DIR/issue-79422.rs:28:25

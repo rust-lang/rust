@@ -24,7 +24,7 @@ use rustc_span::RealFileName;
 use rustc_span::SourceFileHashAlgorithm;
 
 use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, HandlerFlags};
+use rustc_errors::{ColorConfig, DiagnosticArgValue, HandlerFlags, IntoDiagnosticArg};
 
 use std::collections::btree_map::{
     Iter as BTreeMapIter, Keys as BTreeMapKeysIter, Values as BTreeMapValuesIter,
@@ -172,6 +172,25 @@ pub enum InstrumentCoverage {
     ExceptUnusedFunctions,
     /// `-C instrument-coverage=off` (or `no`, etc.)
     Off,
+}
+
+/// Settings for `-Z instrument-xray` flag.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct InstrumentXRay {
+    /// `-Z instrument-xray=always`, force instrumentation
+    pub always: bool,
+    /// `-Z instrument-xray=never`, disable instrumentation
+    pub never: bool,
+    /// `-Z instrument-xray=ignore-loops`, ignore presence of loops,
+    /// instrument functions based only on instruction count
+    pub ignore_loops: bool,
+    /// `-Z instrument-xray=instruction-threshold=N`, explicitly set instruction threshold
+    /// for instrumentation, or `None` to use compiler's default
+    pub instruction_threshold: Option<usize>,
+    /// `-Z instrument-xray=skip-entry`, do not instrument function entry
+    pub skip_entry: bool,
+    /// `-Z instrument-xray=skip-exit`, do not instrument function exit
+    pub skip_exit: bool,
 }
 
 #[derive(Clone, PartialEq, Hash, Debug)]
@@ -398,6 +417,18 @@ pub enum TrimmedDefPaths {
     Always,
     /// `try_print_trimmed_def_path` calls the expensive query, the query calls `delay_good_path_bug`
     GoodPath,
+}
+
+#[derive(Clone, Hash)]
+pub enum ResolveDocLinks {
+    /// Do not resolve doc links.
+    None,
+    /// Resolve doc links on exported items only for crate types that have metadata.
+    ExportedMetadata,
+    /// Resolve doc links on exported items.
+    Exported,
+    /// Resolve doc links on all items.
+    All,
 }
 
 /// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
@@ -769,6 +800,7 @@ impl Default for Options {
             unstable_features: UnstableFeatures::Disallow,
             debug_assertions: true,
             actually_rustdoc: false,
+            resolve_doc_links: ResolveDocLinks::None,
             trimmed_def_paths: TrimmedDefPaths::default(),
             cli_forced_codegen_units: None,
             cli_forced_local_thinlto_off: false,
@@ -865,13 +897,10 @@ pub enum CrateType {
 }
 
 impl CrateType {
-    /// When generated, is this crate type an archive?
-    pub fn is_archive(&self) -> bool {
-        match *self {
-            CrateType::Rlib | CrateType::Staticlib => true,
-            CrateType::Executable | CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => {
-                false
-            }
+    pub fn has_metadata(self) -> bool {
+        match self {
+            CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro => true,
+            CrateType::Executable | CrateType::Cdylib | CrateType::Staticlib => false,
         }
     }
 }
@@ -957,6 +986,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     if sess.target.has_thread_local {
         ret.insert((sym::target_thread_local, None));
     }
+    let mut has_atomic = false;
     for (i, align) in [
         (8, layout.i8_align.abi),
         (16, layout.i16_align.abi),
@@ -965,6 +995,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
         (128, layout.i128_align.abi),
     ] {
         if i >= min_atomic_width && i <= max_atomic_width {
+            has_atomic = true;
             let mut insert_atomic = |s, align: Align| {
                 ret.insert((sym::target_has_atomic_load_store, Some(Symbol::intern(s))));
                 if atomic_cas {
@@ -981,11 +1012,23 @@ fn default_configuration(sess: &Session) -> CrateConfig {
             }
         }
     }
+    if sess.is_nightly_build() && has_atomic {
+        ret.insert((sym::target_has_atomic_load_store, None));
+        if atomic_cas {
+            ret.insert((sym::target_has_atomic, None));
+        }
+    }
 
     let panic_strategy = sess.panic_strategy();
     ret.insert((sym::panic, Some(panic_strategy.desc_symbol())));
 
-    for s in sess.opts.unstable_opts.sanitizer {
+    for mut s in sess.opts.unstable_opts.sanitizer {
+        // KASAN should use the same attribute name as ASAN, as it's still ASAN
+        // under the hood
+        if s == SanitizerSet::KERNELADDRESS {
+            s = SanitizerSet::ADDRESS;
+        }
+
         let symbol = Symbol::intern(&s.to_string());
         ret.insert((sym::sanitize, Some(symbol)));
     }
@@ -2507,7 +2550,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         }
 
         // Only use this directory if it has a file we can expect to always find.
-        if candidate.join("library/std/src/lib.rs").is_file() { Some(candidate) } else { None }
+        candidate.join("library/std/src/lib.rs").is_file().then_some(candidate)
     };
 
     let working_dir = std::env::current_dir().unwrap_or_else(|e| {
@@ -2547,6 +2590,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         libs,
         debug_assertions,
         actually_rustdoc: false,
+        resolve_doc_links: ResolveDocLinks::ExportedMetadata,
         trimmed_def_paths: TrimmedDefPaths::default(),
         cli_forced_codegen_units: codegen_units,
         cli_forced_local_thinlto_off: disable_local_thinlto,
@@ -2577,6 +2621,7 @@ fn parse_pretty(unstable_opts: &UnstableOptions, efmt: ErrorOutputType) -> Optio
         "hir,typed" => Hir(PpHirMode::Typed),
         "hir-tree" => HirTree,
         "thir-tree" => ThirTree,
+        "thir-flat" => ThirFlat,
         "mir" => Mir,
         "mir-cfg" => MirCFG,
         name => early_error(
@@ -2585,7 +2630,8 @@ fn parse_pretty(unstable_opts: &UnstableOptions, efmt: ErrorOutputType) -> Optio
                 "argument to `unpretty` must be one of `normal`, `identified`, \
                             `expanded`, `expanded,identified`, `expanded,hygiene`, \
                             `ast-tree`, `ast-tree,expanded`, `hir`, `hir,identified`, \
-                            `hir,typed`, `hir-tree`, `thir-tree`, `mir` or `mir-cfg`; got {name}"
+                            `hir,typed`, `hir-tree`, `thir-tree`, `thir-flat`, `mir` or \
+                            `mir-cfg`; got {name}"
             ),
         ),
     };
@@ -2696,6 +2742,12 @@ impl fmt::Display for CrateType {
     }
 }
 
+impl IntoDiagnosticArg for CrateType {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpSourceMode {
     /// `-Zunpretty=normal`
@@ -2740,6 +2792,8 @@ pub enum PpMode {
     HirTree,
     /// `-Zunpretty=thir-tree`
     ThirTree,
+    /// `-Zunpretty=`thir-flat`
+    ThirFlat,
     /// `-Zunpretty=mir`
     Mir,
     /// `-Zunpretty=mir-cfg`
@@ -2758,6 +2812,7 @@ impl PpMode {
             | Hir(_)
             | HirTree
             | ThirTree
+            | ThirFlat
             | Mir
             | MirCFG => true,
         }
@@ -2767,13 +2822,13 @@ impl PpMode {
         match *self {
             Source(_) | AstTree(_) => false,
 
-            Hir(_) | HirTree | ThirTree | Mir | MirCFG => true,
+            Hir(_) | HirTree | ThirTree | ThirFlat | Mir | MirCFG => true,
         }
     }
 
     pub fn needs_analysis(&self) -> bool {
         use PpMode::*;
-        matches!(*self, Mir | MirCFG | ThirTree)
+        matches!(*self, Mir | MirCFG | ThirTree | ThirFlat)
     }
 }
 
@@ -2798,9 +2853,10 @@ impl PpMode {
 pub(crate) mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, ErrorOutputType,
-        InstrumentCoverage, LdImpl, LinkerPluginLto, LocationDetail, LtoCli, OomStrategy, OptLevel,
-        OutputType, OutputTypes, Passes, SourceFileHashAlgorithm, SplitDwarfKind,
-        SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
+        InstrumentCoverage, InstrumentXRay, LdImpl, LinkerPluginLto, LocationDetail, LtoCli,
+        OomStrategy, OptLevel, OutputType, OutputTypes, Passes, ResolveDocLinks,
+        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
+        TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -2869,6 +2925,7 @@ pub(crate) mod dep_tracking {
         CodeModel,
         TlsModel,
         InstrumentCoverage,
+        InstrumentXRay,
         CrateType,
         MergeFunctions,
         PanicStrategy,
@@ -2886,6 +2943,7 @@ pub(crate) mod dep_tracking {
         TargetTriple,
         Edition,
         LinkerPluginLto,
+        ResolveDocLinks,
         SplitDebuginfo,
         SplitDwarfKind,
         StackProtector,

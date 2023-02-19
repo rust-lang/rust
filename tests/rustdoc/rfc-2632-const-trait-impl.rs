@@ -12,10 +12,10 @@ use std::marker::Destruct;
 
 pub struct S<T>(T);
 
-// @!has foo/trait.Tr.html '//div[@class="item-decl"]/pre[@class="rust"]/code/a[@class="trait"]' '~const'
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]/code/a[@class="trait"]' 'Clone'
-// @!has - '//div[@class="item-decl"]/pre[@class="rust"]/code/span[@class="where"]' '~const'
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]/code/span[@class="where"]' ': Clone'
+// @!has foo/trait.Tr.html '//pre[@class="rust item-decl"]/code/a[@class="trait"]' '~const'
+// @has - '//pre[@class="rust item-decl"]/code/a[@class="trait"]' 'Clone'
+// @!has - '//pre[@class="rust item-decl"]/code/span[@class="where"]' '~const'
+// @has - '//pre[@class="rust item-decl"]/code/span[@class="where"]' ': Clone'
 #[const_trait]
 pub trait Tr<T> {
     // @!has - '//section[@id="method.a"]/h4[@class="code-header"]' '~const'
@@ -45,10 +45,10 @@ where
     }
 }
 
-// @!has foo/fn.foo.html '//div[@class="item-decl"]/pre[@class="rust"]/code/a[@class="trait"]' '~const'
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]/code/a[@class="trait"]' 'Clone'
-// @!has - '//div[@class="item-decl"]/pre[@class="rust"]/code/span[@class="where fmt-newline"]' '~const'
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]/code/span[@class="where fmt-newline"]' ': Clone'
+// @!has foo/fn.foo.html '//pre[@class="rust item-decl"]/code/a[@class="trait"]' '~const'
+// @has - '//pre[@class="rust item-decl"]/code/a[@class="trait"]' 'Clone'
+// @!has - '//pre[@class="rust item-decl"]/code/span[@class="where fmt-newline"]' '~const'
+// @has - '//pre[@class="rust item-decl"]/code/span[@class="where fmt-newline"]' ': Clone'
 pub const fn foo<F: ~const Clone + ~const Destruct>()
 where
     Option<F>: ~const Clone + ~const Destruct,

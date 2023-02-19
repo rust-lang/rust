@@ -29,6 +29,7 @@ use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::fmt;
 use std::ops::Index;
 
+pub mod print;
 pub mod visit;
 
 macro_rules! thir_with_elements {

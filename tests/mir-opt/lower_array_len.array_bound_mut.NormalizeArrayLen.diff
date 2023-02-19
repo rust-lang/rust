@@ -16,7 +16,6 @@
       let _11: usize;                      // in scope 0 at $DIR/lower_array_len.rs:+4:15: +4:16
       let mut _12: usize;                  // in scope 0 at $DIR/lower_array_len.rs:+4:9: +4:17
       let mut _13: bool;                   // in scope 0 at $DIR/lower_array_len.rs:+4:9: +4:17
-+     let mut _14: &[u8; N];               // in scope 0 at $DIR/lower_array_len.rs:+1:16: +1:27
   
       bb0: {
           StorageLive(_3);                 // scope 0 at $DIR/lower_array_len.rs:+1:8: +1:27
@@ -26,13 +25,10 @@
           StorageLive(_6);                 // scope 0 at $DIR/lower_array_len.rs:+1:16: +1:27
           StorageLive(_7);                 // scope 0 at $DIR/lower_array_len.rs:+1:16: +1:27
           _7 = &(*_2);                     // scope 0 at $DIR/lower_array_len.rs:+1:16: +1:27
-+         StorageLive(_14);                // scope 0 at $DIR/lower_array_len.rs:+1:16: +1:27
-+         _14 = _7;                        // scope 0 at $DIR/lower_array_len.rs:+1:16: +1:27
           _6 = move _7 as &[u8] (Pointer(Unsize)); // scope 0 at $DIR/lower_array_len.rs:+1:16: +1:27
           StorageDead(_7);                 // scope 0 at $DIR/lower_array_len.rs:+1:20: +1:21
 -         _5 = Len((*_6));                 // scope 0 at $DIR/lower_array_len.rs:+1:16: +1:27
-+         _5 = Len((*_14));                // scope 0 at $DIR/lower_array_len.rs:+1:16: +1:27
-+         StorageDead(_14);                // scope 0 at $DIR/lower_array_len.rs:+1:16: +1:27
++         _5 = const N;                    // scope 0 at $DIR/lower_array_len.rs:+1:16: +1:27
           goto -> bb1;                     // scope 0 at $DIR/lower_array_len.rs:+1:16: +1:27
       }
   

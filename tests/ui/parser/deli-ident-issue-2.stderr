@@ -1,0 +1,19 @@
+error: unexpected closing delimiter: `}`
+  --> $DIR/deli-ident-issue-2.rs:5:1
+   |
+LL |         let _a = vec!];
+   |                      - missing open `[` for this delimiter
+LL |     }
+LL | }
+   | ^ unexpected closing delimiter
+
+error: mismatched closing delimiter: `]`
+  --> $DIR/deli-ident-issue-2.rs:2:14
+   |
+LL |     if 1 < 2 {
+   |              ^ unclosed delimiter
+LL |         let _a = vec!];
+   |                      ^ mismatched closing delimiter
+
+error: aborting due to 2 previous errors
+

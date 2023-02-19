@@ -600,32 +600,56 @@ pub struct BorrowOfMovedValue<'tcx> {
 pub struct MultipleMutBorrows {
     #[primary_span]
     pub span: Span,
-    #[label]
-    pub binding_span: Span,
     #[subdiagnostic]
-    pub occurences: Vec<MultipleMutBorrowOccurence>,
-    pub name: Ident,
+    pub occurences: Vec<Conflict>,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_already_borrowed)]
+pub struct AlreadyBorrowed {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub occurences: Vec<Conflict>,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_already_mut_borrowed)]
+pub struct AlreadyMutBorrowed {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub occurences: Vec<Conflict>,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_moved_while_borrowed)]
+pub struct MovedWhileBorrowed {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub occurences: Vec<Conflict>,
 }
 
 #[derive(Subdiagnostic)]
-pub enum MultipleMutBorrowOccurence {
-    #[label(mutable_borrow)]
-    Mutable {
+pub enum Conflict {
+    #[label(mir_build_mutable_borrow)]
+    Mut {
         #[primary_span]
         span: Span,
-        name_mut: Ident,
+        name: Ident,
     },
-    #[label(immutable_borrow)]
-    Immutable {
+    #[label(mir_build_borrow)]
+    Ref {
         #[primary_span]
         span: Span,
-        name_immut: Ident,
+        name: Ident,
     },
-    #[label(moved)]
+    #[label(mir_build_moved)]
     Moved {
         #[primary_span]
         span: Span,
-        name_moved: Ident,
+        name: Ident,
     },
 }
 

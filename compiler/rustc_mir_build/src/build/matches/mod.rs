@@ -1747,8 +1747,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 let fake_borrow_deref_ty = matched_place.ty(&self.local_decls, tcx).ty;
                 let fake_borrow_ty = tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
-                let fake_borrow_temp =
-                    self.local_decls.push(LocalDecl::new(fake_borrow_ty, temp_span));
+                let mut fake_borrow_temp = LocalDecl::new(fake_borrow_ty, temp_span);
+                fake_borrow_temp.internal = self.local_decls[matched_place.local].internal;
+                fake_borrow_temp.local_info = Some(Box::new(LocalInfo::FakeBorrow));
+                let fake_borrow_temp = self.local_decls.push(fake_borrow_temp);
 
                 (matched_place, fake_borrow_temp)
             })

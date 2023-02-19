@@ -63,7 +63,7 @@ impl<const S: Struct, St: Stage + ?Sized> Helper<S> for St {
 // this test as long as one can ensure that private fields are not leaked!
 //
 // @has hide_complex_unevaluated_const_arguments/trait.Sub.html \
-//      '//div[@class="item-decl"]/pre[@class="rust"]' \
+//      '//pre[@class="rust item-decl"]' \
 //      'pub trait Sub: Sup<{ _ }, { _ }> { }'
 pub trait Sub: Sup<{ 90 * 20 * 4 }, { Struct { private: () } }> {}
 

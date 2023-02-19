@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-32122-1.rs:16:24
    |
 LL |     let _: *const u8 = &a;
-   |            ---------   ^^ expected `u8`, found struct `Foo`
+   |            ---------   ^^ expected `*const u8`, found `&Foo`
    |            |
    |            expected due to this
    |

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/non_zero_assigned_something.rs:2:35
    |
 LL |     let _: std::num::NonZeroU64 = 1;
-   |            --------------------   ^ expected struct `NonZeroU64`, found integer
+   |            --------------------   ^ expected `NonZeroU64`, found integer
    |            |
    |            expected due to this
    |
@@ -15,7 +15,7 @@ error[E0308]: mismatched types
   --> $DIR/non_zero_assigned_something.rs:6:43
    |
 LL |     let _: Option<std::num::NonZeroU64> = 1;
-   |            ----------------------------   ^ expected enum `Option`, found integer
+   |            ----------------------------   ^ expected `Option<NonZeroU64>`, found integer
    |            |
    |            expected due to this
    |

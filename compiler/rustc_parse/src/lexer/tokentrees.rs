@@ -1,29 +1,18 @@
+use super::diagnostics::report_suspicious_mismatch_block;
+use super::diagnostics::same_identation_level;
+use super::diagnostics::TokenTreeDiagInfo;
 use super::{StringReader, UnmatchedBrace};
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::token_to_string;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{PErr, PResult};
-use rustc_span::Span;
 
 pub(super) struct TokenTreesReader<'a> {
     string_reader: StringReader<'a>,
     /// The "next" token, which has been obtained from the `StringReader` but
     /// not yet handled by the `TokenTreesReader`.
     token: Token,
-    /// Stack of open delimiters and their spans. Used for error message.
-    open_braces: Vec<(Delimiter, Span)>,
-    unmatched_braces: Vec<UnmatchedBrace>,
-    /// The type and spans for all braces
-    ///
-    /// Used only for error recovery when arriving to EOF with mismatched braces.
-    matching_delim_spans: Vec<(Delimiter, Span, Span)>,
-    last_unclosed_found_span: Option<Span>,
-    /// Collect empty block spans that might have been auto-inserted by editors.
-    last_delim_empty_block_spans: FxHashMap<Delimiter, Span>,
-    /// Collect the spans of braces (Open, Close). Used only
-    /// for detecting if blocks are empty and only braces.
-    matching_block_spans: Vec<(Span, Span)>,
+    diag_info: TokenTreeDiagInfo,
 }
 
 impl<'a> TokenTreesReader<'a> {
@@ -33,15 +22,10 @@ impl<'a> TokenTreesReader<'a> {
         let mut tt_reader = TokenTreesReader {
             string_reader,
             token: Token::dummy(),
-            open_braces: Vec::new(),
-            unmatched_braces: Vec::new(),
-            matching_delim_spans: Vec::new(),
-            last_unclosed_found_span: None,
-            last_delim_empty_block_spans: FxHashMap::default(),
-            matching_block_spans: Vec::new(),
+            diag_info: TokenTreeDiagInfo::default(),
         };
         let res = tt_reader.parse_token_trees(/* is_delimited */ false);
-        (res, tt_reader.unmatched_braces)
+        (res, tt_reader.diag_info.unmatched_braces)
     }
 
     // Parse a stream of tokens into a list of `TokenTree`s.
@@ -92,9 +76,9 @@ impl<'a> TokenTreesReader<'a> {
     fn eof_err(&mut self) -> PErr<'a> {
         let msg = "this file contains an unclosed delimiter";
         let mut err = self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, msg);
-        for &(_, sp) in &self.open_braces {
+        for &(_, sp) in &self.diag_info.open_braces {
             err.span_label(sp, "unclosed delimiter");
-            self.unmatched_braces.push(UnmatchedBrace {
+            self.diag_info.unmatched_braces.push(UnmatchedBrace {
                 expected_delim: Delimiter::Brace,
                 found_delim: None,
                 found_span: self.token.span,
@@ -103,23 +87,13 @@ impl<'a> TokenTreesReader<'a> {
             });
         }
 
-        if let Some((delim, _)) = self.open_braces.last() {
-            if let Some((_, open_sp, close_sp)) =
-                self.matching_delim_spans.iter().find(|(d, open_sp, close_sp)| {
-                    let sm = self.string_reader.sess.source_map();
-                    if let Some(close_padding) = sm.span_to_margin(*close_sp) {
-                        if let Some(open_padding) = sm.span_to_margin(*open_sp) {
-                            return delim == d && close_padding != open_padding;
-                        }
-                    }
-                    false
-                })
-            // these are in reverse order as they get inserted on close, but
-            {
-                // we want the last open/first close
-                err.span_label(*open_sp, "this delimiter might not be properly closed...");
-                err.span_label(*close_sp, "...as it matches this but it has different indentation");
-            }
+        if let Some((delim, _)) = self.diag_info.open_braces.last() {
+            report_suspicious_mismatch_block(
+                &mut err,
+                &self.diag_info,
+                &self.string_reader.sess.source_map(),
+                *delim,
+            )
         }
         err
     }
@@ -128,7 +102,7 @@ impl<'a> TokenTreesReader<'a> {
         // The span for beginning of the delimited section
         let pre_span = self.token.span;
 
-        self.open_braces.push((open_delim, self.token.span));
+        self.diag_info.open_braces.push((open_delim, self.token.span));
 
         // Parse the token trees within the delimiters.
         // We stop at any delimiter so we can try to recover if the user
@@ -137,35 +111,29 @@ impl<'a> TokenTreesReader<'a> {
 
         // Expand to cover the entire delimited token tree
         let delim_span = DelimSpan::from_pair(pre_span, self.token.span);
+        let sm = self.string_reader.sess.source_map();
 
         match self.token.kind {
             // Correct delimiter.
             token::CloseDelim(close_delim) if close_delim == open_delim => {
-                let (open_brace, open_brace_span) = self.open_braces.pop().unwrap();
+                let (open_brace, open_brace_span) = self.diag_info.open_braces.pop().unwrap();
                 let close_brace_span = self.token.span;
 
-                if tts.is_empty() {
+                if tts.is_empty() && close_delim == Delimiter::Brace {
                     let empty_block_span = open_brace_span.to(close_brace_span);
-                    let sm = self.string_reader.sess.source_map();
                     if !sm.is_multiline(empty_block_span) {
                         // Only track if the block is in the form of `{}`, otherwise it is
                         // likely that it was written on purpose.
-                        self.last_delim_empty_block_spans.insert(open_delim, empty_block_span);
+                        self.diag_info.empty_block_spans.push(empty_block_span);
                     }
                 }
 
-                //only add braces
+                // only add braces
                 if let (Delimiter::Brace, Delimiter::Brace) = (open_brace, open_delim) {
-                    self.matching_block_spans.push((open_brace_span, close_brace_span));
+                    // Add all the matching spans, we will sort by span later
+                    self.diag_info.matching_block_spans.push((open_brace_span, close_brace_span));
                 }
 
-                if self.open_braces.is_empty() {
-                    // Clear up these spans to avoid suggesting them as we've found
-                    // properly matched delimiters so far for an entire block.
-                    self.matching_delim_spans.clear();
-                } else {
-                    self.matching_delim_spans.push((open_brace, open_brace_span, close_brace_span));
-                }
                 // Move past the closing delimiter.
                 self.token = self.string_reader.next_token().0;
             }
@@ -174,28 +142,25 @@ impl<'a> TokenTreesReader<'a> {
                 let mut unclosed_delimiter = None;
                 let mut candidate = None;
 
-                if self.last_unclosed_found_span != Some(self.token.span) {
+                if self.diag_info.last_unclosed_found_span != Some(self.token.span) {
                     // do not complain about the same unclosed delimiter multiple times
-                    self.last_unclosed_found_span = Some(self.token.span);
+                    self.diag_info.last_unclosed_found_span = Some(self.token.span);
                     // This is a conservative error: only report the last unclosed
                     // delimiter. The previous unclosed delimiters could actually be
                     // closed! The parser just hasn't gotten to them yet.
-                    if let Some(&(_, sp)) = self.open_braces.last() {
+                    if let Some(&(_, sp)) = self.diag_info.open_braces.last() {
                         unclosed_delimiter = Some(sp);
                     };
-                    let sm = self.string_reader.sess.source_map();
-                    if let Some(current_padding) = sm.span_to_margin(self.token.span) {
-                        for (brace, brace_span) in &self.open_braces {
-                            if let Some(padding) = sm.span_to_margin(*brace_span) {
-                                // high likelihood of these two corresponding
-                                if current_padding == padding && brace == &close_delim {
-                                    candidate = Some(*brace_span);
-                                }
-                            }
+                    for (brace, brace_span) in &self.diag_info.open_braces {
+                        if same_identation_level(&sm, self.token.span, *brace_span)
+                            && brace == &close_delim
+                        {
+                            // high likelihood of these two corresponding
+                            candidate = Some(*brace_span);
                         }
                     }
-                    let (tok, _) = self.open_braces.pop().unwrap();
-                    self.unmatched_braces.push(UnmatchedBrace {
+                    let (tok, _) = self.diag_info.open_braces.pop().unwrap();
+                    self.diag_info.unmatched_braces.push(UnmatchedBrace {
                         expected_delim: tok,
                         found_delim: Some(close_delim),
                         found_span: self.token.span,
@@ -203,7 +168,7 @@ impl<'a> TokenTreesReader<'a> {
                         candidate_span: candidate,
                     });
                 } else {
-                    self.open_braces.pop();
+                    self.diag_info.open_braces.pop();
                 }
 
                 // If the incorrect delimiter matches an earlier opening
@@ -213,7 +178,7 @@ impl<'a> TokenTreesReader<'a> {
                 // fn foo() {
                 //     bar(baz(
                 // }  // Incorrect delimiter but matches the earlier `{`
-                if !self.open_braces.iter().any(|&(b, _)| b == close_delim) {
+                if !self.diag_info.open_braces.iter().any(|&(b, _)| b == close_delim) {
                     self.token = self.string_reader.next_token().0;
                 }
             }
@@ -236,22 +201,12 @@ impl<'a> TokenTreesReader<'a> {
         let mut err =
             self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, &msg);
 
-        // Braces are added at the end, so the last element is the biggest block
-        if let Some(parent) = self.matching_block_spans.last() {
-            if let Some(span) = self.last_delim_empty_block_spans.remove(&delim) {
-                // Check if the (empty block) is in the last properly closed block
-                if (parent.0.to(parent.1)).contains(span) {
-                    err.span_label(span, "block is empty, you might have not meant to close it");
-                } else {
-                    err.span_label(parent.0, "this opening brace...");
-                    err.span_label(parent.1, "...matches this closing brace");
-                }
-            } else {
-                err.span_label(parent.0, "this opening brace...");
-                err.span_label(parent.1, "...matches this closing brace");
-            }
-        }
-
+        report_suspicious_mismatch_block(
+            &mut err,
+            &self.diag_info,
+            &self.string_reader.sess.source_map(),
+            delim,
+        );
         err.span_label(self.token.span, "unexpected closing delimiter");
         err
     }

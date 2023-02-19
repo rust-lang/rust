@@ -1,41 +1,46 @@
-use crate::mir::graph_cyclic_cache::GraphIsCyclicCache;
-use crate::mir::predecessors::{PredecessorCache, Predecessors};
-use crate::mir::switch_sources::{SwitchSourceCache, SwitchSources};
-use crate::mir::traversal::PostorderCache;
-use crate::mir::{BasicBlock, BasicBlockData, Successors, START_BLOCK};
+use crate::mir::traversal::Postorder;
+use crate::mir::{BasicBlock, BasicBlockData, Successors, Terminator, TerminatorKind, START_BLOCK};
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::OnceCell;
 use rustc_index::vec::IndexVec;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use smallvec::SmallVec;
 
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct BasicBlocks<'tcx> {
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
-    predecessor_cache: PredecessorCache,
-    switch_source_cache: SwitchSourceCache,
-    is_cyclic: GraphIsCyclicCache,
-    postorder_cache: PostorderCache,
+    cache: Cache,
+}
+
+// Typically 95%+ of basic blocks have 4 or fewer predecessors.
+pub type Predecessors = IndexVec<BasicBlock, SmallVec<[BasicBlock; 4]>>;
+
+pub type SwitchSources = FxHashMap<(BasicBlock, BasicBlock), SmallVec<[Option<u128>; 1]>>;
+
+#[derive(Clone, Default, Debug)]
+struct Cache {
+    predecessors: OnceCell<Predecessors>,
+    switch_sources: OnceCell<SwitchSources>,
+    is_cyclic: OnceCell<bool>,
+    postorder: OnceCell<Vec<BasicBlock>>,
 }
 
 impl<'tcx> BasicBlocks<'tcx> {
     #[inline]
     pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
-        BasicBlocks {
-            basic_blocks,
-            predecessor_cache: PredecessorCache::new(),
-            switch_source_cache: SwitchSourceCache::new(),
-            is_cyclic: GraphIsCyclicCache::new(),
-            postorder_cache: PostorderCache::new(),
-        }
+        BasicBlocks { basic_blocks, cache: Cache::default() }
     }
 
     /// Returns true if control-flow graph contains a cycle reachable from the `START_BLOCK`.
     #[inline]
     pub fn is_cfg_cyclic(&self) -> bool {
-        self.is_cyclic.is_cyclic(self)
+        *self.cache.is_cyclic.get_or_init(|| graph::is_cyclic(self))
     }
 
-    #[inline]
     pub fn dominators(&self) -> Dominators<BasicBlock> {
         dominators(&self)
     }
@@ -43,20 +48,46 @@ impl<'tcx> BasicBlocks<'tcx> {
     /// Returns predecessors for each basic block.
     #[inline]
     pub fn predecessors(&self) -> &Predecessors {
-        self.predecessor_cache.compute(&self.basic_blocks)
+        self.cache.predecessors.get_or_init(|| {
+            let mut preds = IndexVec::from_elem(SmallVec::new(), &self.basic_blocks);
+            for (bb, data) in self.basic_blocks.iter_enumerated() {
+                if let Some(term) = &data.terminator {
+                    for succ in term.successors() {
+                        preds[succ].push(bb);
+                    }
+                }
+            }
+            preds
+        })
     }
 
     /// Returns basic blocks in a postorder.
     #[inline]
     pub fn postorder(&self) -> &[BasicBlock] {
-        self.postorder_cache.compute(&self.basic_blocks)
+        self.cache.postorder.get_or_init(|| {
+            Postorder::new(&self.basic_blocks, START_BLOCK).map(|(bb, _)| bb).collect()
+        })
     }
 
     /// `switch_sources()[&(target, switch)]` returns a list of switch
     /// values that lead to a `target` block from a `switch` block.
     #[inline]
     pub fn switch_sources(&self) -> &SwitchSources {
-        self.switch_source_cache.compute(&self.basic_blocks)
+        self.cache.switch_sources.get_or_init(|| {
+            let mut switch_sources: SwitchSources = FxHashMap::default();
+            for (bb, data) in self.basic_blocks.iter_enumerated() {
+                if let Some(Terminator {
+                    kind: TerminatorKind::SwitchInt { targets, .. }, ..
+                }) = &data.terminator
+                {
+                    for (value, target) in targets.iter() {
+                        switch_sources.entry((target, bb)).or_default().push(Some(value));
+                    }
+                    switch_sources.entry((targets.otherwise(), bb)).or_default().push(None);
+                }
+            }
+            switch_sources
+        })
     }
 
     /// Returns mutable reference to basic blocks. Invalidates CFG cache.
@@ -88,10 +119,7 @@ impl<'tcx> BasicBlocks<'tcx> {
     /// All other methods that allow you to mutate the basic blocks also call this method
     /// themselves, thereby avoiding any risk of accidentally cache invalidation.
     pub fn invalidate_cfg_cache(&mut self) {
-        self.predecessor_cache.invalidate();
-        self.switch_source_cache.invalidate();
-        self.is_cyclic.invalidate();
-        self.postorder_cache.invalidate();
+        self.cache = Cache::default();
     }
 }
 
@@ -144,4 +172,25 @@ impl<'tcx> graph::WithPredecessors for BasicBlocks<'tcx> {
     fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
         self.predecessors()[node].iter().copied()
     }
+}
+
+TrivialTypeTraversalAndLiftImpls! {
+    Cache,
+}
+
+impl<S: Encoder> Encodable<S> for Cache {
+    #[inline]
+    fn encode(&self, _s: &mut S) {}
+}
+
+impl<D: Decoder> Decodable<D> for Cache {
+    #[inline]
+    fn decode(_: &mut D) -> Self {
+        Default::default()
+    }
+}
+
+impl<CTX> HashStable<CTX> for Cache {
+    #[inline]
+    fn hash_stable(&self, _: &mut CTX, _: &mut StableHasher) {}
 }

@@ -4,6 +4,18 @@ error[E0724]: `#[ffi_returns_twice]` may only be used on foreign functions
 LL | #[ffi_returns_twice]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error[E0724]: `#[ffi_returns_twice]` may only be used on foreign functions
+  --> $DIR/ffi_returns_twice.rs:7:1
+   |
+LL | #[ffi_returns_twice]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error[E0724]: `#[ffi_returns_twice]` may only be used on foreign functions
+  --> $DIR/ffi_returns_twice.rs:13:5
+   |
+LL |     #[ffi_returns_twice]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0724`.

@@ -11,6 +11,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::sym;
 
@@ -312,7 +313,7 @@ impl<'tcx> LateLintPass<'tcx> for Unwrap {
         decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         span: Span,
-        fn_id: HirId,
+        fn_id: LocalDefId,
     ) {
         if span.from_expansion() {
             return;

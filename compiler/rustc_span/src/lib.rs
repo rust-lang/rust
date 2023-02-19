@@ -705,23 +705,23 @@ impl Span {
     }
 
     #[inline]
-    pub fn rust_2015(self) -> bool {
-        self.edition() == edition::Edition::Edition2015
+    pub fn is_rust_2015(self) -> bool {
+        self.edition().is_rust_2015()
     }
 
     #[inline]
     pub fn rust_2018(self) -> bool {
-        self.edition() >= edition::Edition::Edition2018
+        self.edition().rust_2018()
     }
 
     #[inline]
     pub fn rust_2021(self) -> bool {
-        self.edition() >= edition::Edition::Edition2021
+        self.edition().rust_2021()
     }
 
     #[inline]
     pub fn rust_2024(self) -> bool {
-        self.edition() >= edition::Edition::Edition2024
+        self.edition().rust_2024()
     }
 
     /// Returns the source callee.

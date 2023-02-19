@@ -7,7 +7,7 @@ LL | /     while false {
 LL | |
 LL | |         f();
 LL | |     }
-   | |_____^ expected enum `Option`, found `()`
+   | |_____^ expected `Option<()>`, found `()`
    |
    = note:   expected enum `Option<()>`
            found unit type `()`
@@ -26,7 +26,7 @@ error[E0308]: mismatched types
 LL | fn b() -> Result<(), ()> {
    |           -------------- expected `Result<(), ()>` because of return type
 LL |     f()
-   |     ^^^ expected enum `Result`, found `()`
+   |     ^^^ expected `Result<(), ()>`, found `()`
    |
    = note:   expected enum `Result<(), ()>`
            found unit type `()`
@@ -45,7 +45,7 @@ LL | /     for _ in [1, 2] {
 LL | |
 LL | |         f();
 LL | |     }
-   | |_____^ expected enum `Option`, found `()`
+   | |_____^ expected `Option<()>`, found `()`
    |
    = note:   expected enum `Option<()>`
            found unit type `()`
@@ -62,7 +62,7 @@ error[E0308]: `?` operator has incompatible types
   --> $DIR/compatible-variants.rs:35:5
    |
 LL |     c()?
-   |     ^^^^ expected enum `Option`, found `()`
+   |     ^^^^ expected `Option<()>`, found `()`
    |
    = note: `?` operator cannot convert from `()` to `Option<()>`
    = note:   expected enum `Option<()>`
@@ -85,7 +85,7 @@ error[E0308]: mismatched types
   --> $DIR/compatible-variants.rs:42:25
    |
 LL |     let _: Option<()> = while false {};
-   |            ----------   ^^^^^^^^^^^^^^ expected enum `Option`, found `()`
+   |            ----------   ^^^^^^^^^^^^^^ expected `Option<()>`, found `()`
    |            |
    |            expected due to this
    |
@@ -100,7 +100,7 @@ error[E0308]: mismatched types
   --> $DIR/compatible-variants.rs:46:9
    |
 LL |         while false {}
-   |         ^^^^^^^^^^^^^^ expected enum `Option`, found `()`
+   |         ^^^^^^^^^^^^^^ expected `Option<()>`, found `()`
    |
    = note:   expected enum `Option<()>`
            found unit type `()`
@@ -117,7 +117,7 @@ error[E0308]: mismatched types
   --> $DIR/compatible-variants.rs:50:31
    |
 LL |     let _: Result<i32, i32> = 1;
-   |            ----------------   ^ expected enum `Result`, found integer
+   |            ----------------   ^ expected `Result<i32, i32>`, found integer
    |            |
    |            expected due to this
    |
@@ -134,7 +134,7 @@ error[E0308]: mismatched types
   --> $DIR/compatible-variants.rs:53:26
    |
 LL |     let _: Option<i32> = 1;
-   |            -----------   ^ expected enum `Option`, found integer
+   |            -----------   ^ expected `Option<i32>`, found integer
    |            |
    |            expected due to this
    |
@@ -149,7 +149,7 @@ error[E0308]: mismatched types
   --> $DIR/compatible-variants.rs:56:28
    |
 LL |     let _: Hey<i32, i32> = 1;
-   |            -------------   ^ expected enum `Hey`, found integer
+   |            -------------   ^ expected `Hey<i32, i32>`, found integer
    |            |
    |            expected due to this
    |
@@ -166,7 +166,7 @@ error[E0308]: mismatched types
   --> $DIR/compatible-variants.rs:59:29
    |
 LL |     let _: Hey<i32, bool> = false;
-   |            --------------   ^^^^^ expected enum `Hey`, found `bool`
+   |            --------------   ^^^^^ expected `Hey<i32, bool>`, found `bool`
    |            |
    |            expected due to this
    |
@@ -181,7 +181,7 @@ error[E0308]: mismatched types
   --> $DIR/compatible-variants.rs:63:19
    |
 LL |     let _ = Foo { bar };
-   |                   ^^^ expected enum `Option`, found `i32`
+   |                   ^^^ expected `Option<i32>`, found `i32`
    |
    = note: expected enum `Option<i32>`
               found type `i32`
@@ -194,7 +194,7 @@ error[E0308]: mismatched types
   --> $DIR/compatible-variants.rs:80:16
    |
 LL |     let a: A = B::Fst;
-   |            -   ^^^^^^ expected enum `A`, found enum `B`
+   |            -   ^^^^^^ expected `A`, found `B`
    |            |
    |            expected due to this
    |
@@ -207,7 +207,7 @@ error[E0308]: mismatched types
   --> $DIR/compatible-variants.rs:86:17
    |
 LL |     let a: A2 = B::Fst;
-   |            --   ^^^^^^ expected struct `A2`, found enum `B`
+   |            --   ^^^^^^ expected `A2`, found `B`
    |            |
    |            expected due to this
    |

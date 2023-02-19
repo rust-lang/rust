@@ -275,19 +275,6 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_fn(
-        &mut self,
-        fk: intravisit::FnKind<'hir>,
-        fd: &'hir FnDecl<'hir>,
-        b: BodyId,
-        _: Span,
-        id: HirId,
-    ) {
-        assert_eq!(self.owner, id.owner);
-        assert_eq!(self.parent_node, id.local_id);
-        intravisit::walk_fn(self, fk, fd, b, id);
-    }
-
     fn visit_block(&mut self, block: &'hir Block<'hir>) {
         self.insert(block.span, block.hir_id, Node::Block(block));
         self.with_parent(block.hir_id, |this| {

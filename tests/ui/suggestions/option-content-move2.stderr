@@ -7,7 +7,7 @@ LL |     func(|| {
    |          -- captured by this `FnMut` closure
 LL |         // Shouldn't suggest `move ||.as_ref()` here
 LL |         move || {
-   |         ^^^^^^^ move out of `var` occurs here
+   |         ^^^^^^^ `var` is moved here
 LL |
 LL |             var = Some(NotCopyable);
    |             ---

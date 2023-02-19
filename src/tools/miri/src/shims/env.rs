@@ -323,7 +323,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.assert_target_os_is_unix("getcwd");
 
         let buf = this.read_pointer(buf_op)?;
-        let size = this.read_machine_usize(size_op)?;
+        let size = this.read_target_usize(size_op)?;
 
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
             this.reject_in_isolation("`getcwd`", reject_with)?;

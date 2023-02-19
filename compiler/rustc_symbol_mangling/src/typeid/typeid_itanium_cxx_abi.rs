@@ -299,6 +299,7 @@ fn encode_region<'tcx>(
         RegionKind::ReEarlyBound(..)
         | RegionKind::ReFree(..)
         | RegionKind::ReStatic
+        | RegionKind::ReError(_)
         | RegionKind::ReVar(..)
         | RegionKind::RePlaceholder(..) => {
             bug!("encode_region: unexpected `{:?}`", region.kind());
@@ -640,6 +641,7 @@ fn encode_ty<'tcx>(
         ty::Bound(..)
         | ty::Error(..)
         | ty::GeneratorWitness(..)
+        | ty::GeneratorWitnessMIR(..)
         | ty::Infer(..)
         | ty::Alias(..)
         | ty::Param(..)
@@ -694,13 +696,13 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 let variant = adt_def.non_enum_variant();
                 let param_env = tcx.param_env(variant.def_id);
                 let field = variant.fields.iter().find(|field| {
-                    let ty = tcx.type_of(field.did);
+                    let ty = tcx.type_of(field.did).subst_identity();
                     let is_zst =
                         tcx.layout_of(param_env.and(ty)).map_or(false, |layout| layout.is_zst());
                     !is_zst
                 });
                 if let Some(field) = field {
-                    let ty0 = tcx.bound_type_of(field.did).subst(tcx, substs);
+                    let ty0 = tcx.type_of(field.did).subst(tcx, substs);
                     // Generalize any repr(transparent) user-defined type that is either a pointer
                     // or reference, and either references itself or any other type that contains or
                     // references itself, to avoid a reference cycle.
@@ -779,8 +781,8 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 let output = transform_ty(tcx, fn_sig.skip_binder().output(), options);
                 ty = tcx.mk_fn_ptr(ty::Binder::bind_with_vars(
                     tcx.mk_fn_sig(
-                        parameters.iter(),
-                        &output,
+                        parameters,
+                        output,
                         fn_sig.c_variadic(),
                         fn_sig.unsafety(),
                         fn_sig.abi(),
@@ -793,6 +795,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         ty::Bound(..)
         | ty::Error(..)
         | ty::GeneratorWitness(..)
+        | ty::GeneratorWitnessMIR(..)
         | ty::Infer(..)
         | ty::Alias(..)
         | ty::Param(..)
@@ -810,21 +813,18 @@ fn transform_substs<'tcx>(
     substs: SubstsRef<'tcx>,
     options: TransformTyOptions,
 ) -> SubstsRef<'tcx> {
-    let substs: Vec<GenericArg<'tcx>> = substs
-        .iter()
-        .map(|subst| {
-            if let GenericArgKind::Type(ty) = subst.unpack() {
-                if is_c_void_ty(tcx, ty) {
-                    tcx.mk_unit().into()
-                } else {
-                    transform_ty(tcx, ty, options).into()
-                }
+    let substs = substs.iter().map(|subst| {
+        if let GenericArgKind::Type(ty) = subst.unpack() {
+            if is_c_void_ty(tcx, ty) {
+                tcx.mk_unit().into()
             } else {
-                subst
+                transform_ty(tcx, ty, options).into()
             }
-        })
-        .collect();
-    tcx.mk_substs(substs.iter())
+        } else {
+            subst
+        }
+    });
+    tcx.mk_substs(substs)
 }
 
 /// Returns a type metadata identifier for the specified FnAbi using the Itanium C++ ABI with vendor

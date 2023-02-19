@@ -18,24 +18,30 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 #[inline]
-pub fn associated_body(node: Node<'_>) -> Option<BodyId> {
+pub fn associated_body(node: Node<'_>) -> Option<(LocalDefId, BodyId)> {
     match node {
         Node::Item(Item {
+            owner_id,
             kind: ItemKind::Const(_, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body),
             ..
         })
         | Node::TraitItem(TraitItem {
+            owner_id,
             kind:
                 TraitItemKind::Const(_, Some(body)) | TraitItemKind::Fn(_, TraitFn::Provided(body)),
             ..
         })
         | Node::ImplItem(ImplItem {
+            owner_id,
             kind: ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body),
             ..
-        })
-        | Node::Expr(Expr { kind: ExprKind::Closure(Closure { body, .. }), .. }) => Some(*body),
+        }) => Some((owner_id.def_id, *body)),
 
-        Node::AnonConst(constant) => Some(constant.body),
+        Node::Expr(Expr { kind: ExprKind::Closure(Closure { def_id, body, .. }), .. }) => {
+            Some((*def_id, *body))
+        }
+
+        Node::AnonConst(constant) => Some((constant.def_id, constant.body)),
 
         _ => None,
     }
@@ -43,7 +49,7 @@ pub fn associated_body(node: Node<'_>) -> Option<BodyId> {
 
 fn is_body_owner(node: Node<'_>, hir_id: HirId) -> bool {
     match associated_body(node) {
-        Some(b) => b.hir_id == hir_id,
+        Some((_, b)) => b.hir_id == hir_id,
         None => false,
     }
 }
@@ -154,10 +160,6 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions_untracked().def_key(def_id)
     }
 
-    pub fn def_path_from_hir_id(self, id: HirId) -> Option<DefPath> {
-        self.opt_local_def_id(id).map(|def_id| self.def_path(def_id))
-    }
-
     pub fn def_path(self, def_id: LocalDefId) -> DefPath {
         // Accessing the DefPath is ok, since it is part of DefPathHash.
         self.tcx.definitions_untracked().def_path(def_id)
@@ -167,32 +169,6 @@ impl<'hir> Map<'hir> {
     pub fn def_path_hash(self, def_id: LocalDefId) -> DefPathHash {
         // Accessing the DefPathHash is ok, it is incr. comp. stable.
         self.tcx.definitions_untracked().def_path_hash(def_id)
-    }
-
-    #[inline]
-    #[track_caller]
-    pub fn local_def_id(self, hir_id: HirId) -> LocalDefId {
-        self.opt_local_def_id(hir_id).unwrap_or_else(|| {
-            bug!(
-                "local_def_id: no entry for `{:?}`, which has a map of `{:?}`",
-                hir_id,
-                self.find(hir_id)
-            )
-        })
-    }
-
-    #[inline]
-    pub fn opt_local_def_id(self, hir_id: HirId) -> Option<LocalDefId> {
-        if hir_id.local_id == ItemLocalId::new(0) {
-            Some(hir_id.owner.def_id)
-        } else {
-            self.tcx
-                .hir_owner_nodes(hir_id.owner)
-                .as_owner()?
-                .local_id_to_def_id
-                .get(&hir_id.local_id)
-                .copied()
-        }
     }
 
     #[inline]
@@ -227,7 +203,7 @@ impl<'hir> Map<'hir> {
                 ItemKind::Use(..) => DefKind::Use,
                 ItemKind::ForeignMod { .. } => DefKind::ForeignMod,
                 ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
-                ItemKind::Impl { .. } => DefKind::Impl,
+                ItemKind::Impl(impl_) => DefKind::Impl { of_trait: impl_.of_trait.is_some() },
             },
             Node::ForeignItem(item) => match item.kind {
                 ForeignItemKind::Fn(..) => DefKind::Fn,
@@ -314,7 +290,7 @@ impl<'hir> Map<'hir> {
     #[track_caller]
     pub fn parent_id(self, hir_id: HirId) -> HirId {
         self.opt_parent_id(hir_id)
-            .unwrap_or_else(|| bug!("No parent for node {:?}", self.node_to_string(hir_id)))
+            .unwrap_or_else(|| bug!("No parent for node {}", self.node_to_string(hir_id)))
     }
 
     pub fn get_parent(self, hir_id: HirId) -> Node<'hir> {
@@ -410,8 +386,8 @@ impl<'hir> Map<'hir> {
     #[track_caller]
     pub fn enclosing_body_owner(self, hir_id: HirId) -> LocalDefId {
         for (_, node) in self.parent_iter(hir_id) {
-            if let Some(body) = associated_body(node) {
-                return self.body_owner_def_id(body);
+            if let Some((def_id, _)) = associated_body(node) {
+                return def_id;
             }
         }
 
@@ -427,14 +403,17 @@ impl<'hir> Map<'hir> {
         parent
     }
 
-    pub fn body_owner_def_id(self, id: BodyId) -> LocalDefId {
-        self.local_def_id(self.body_owner(id))
+    pub fn body_owner_def_id(self, BodyId { hir_id }: BodyId) -> LocalDefId {
+        let parent = self.parent_id(hir_id);
+        associated_body(self.get(parent)).unwrap().0
     }
 
     /// Given a `LocalDefId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(self, id: LocalDefId) -> Option<BodyId> {
-        self.find_by_def_id(id).and_then(associated_body)
+        let node = self.find_by_def_id(id)?;
+        let (_, body_id) = associated_body(node)?;
+        Some(body_id)
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
@@ -1083,7 +1062,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn span_if_local(self, id: DefId) -> Option<Span> {
-        if id.is_local() { Some(self.tcx.def_span(id)) } else { None }
+        id.is_local().then(|| self.tcx.def_span(id))
     }
 
     pub fn res_span(self, res: Res) -> Option<Span> {
@@ -1212,12 +1191,10 @@ fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
 }
 
 fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
-    let id_str = format!(" (hir_id={})", id);
-
     let path_str = |def_id: LocalDefId| map.tcx.def_path_str(def_id.to_def_id());
 
     let span_str = || map.tcx.sess.source_map().span_to_snippet(map.span(id)).unwrap_or_default();
-    let node_str = |prefix| format!("{} {}{}", prefix, span_str(), id_str);
+    let node_str = |prefix| format!("{id} ({prefix} `{}`)", span_str());
 
     match map.find(id) {
         Some(Node::Item(item)) => {
@@ -1246,10 +1223,10 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 ItemKind::TraitAlias(..) => "trait alias",
                 ItemKind::Impl { .. } => "impl",
             };
-            format!("{} {}{}", item_str, path_str(item.owner_id.def_id), id_str)
+            format!("{id} ({item_str} {})", path_str(item.owner_id.def_id))
         }
         Some(Node::ForeignItem(item)) => {
-            format!("foreign item {}{}", path_str(item.owner_id.def_id), id_str)
+            format!("{id} (foreign item {})", path_str(item.owner_id.def_id))
         }
         Some(Node::ImplItem(ii)) => {
             let kind = match ii.kind {
@@ -1257,7 +1234,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 ImplItemKind::Fn(..) => "method",
                 ImplItemKind::Type(_) => "assoc type",
             };
-            format!("{} {} in {}{}", kind, ii.ident, path_str(ii.owner_id.def_id), id_str)
+            format!("{id} ({kind} `{}` in {})", ii.ident, path_str(ii.owner_id.def_id))
         }
         Some(Node::TraitItem(ti)) => {
             let kind = match ti.kind {
@@ -1266,13 +1243,13 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 TraitItemKind::Type(..) => "assoc type",
             };
 
-            format!("{} {} in {}{}", kind, ti.ident, path_str(ti.owner_id.def_id), id_str)
+            format!("{id} ({kind} `{}` in {})", ti.ident, path_str(ti.owner_id.def_id))
         }
         Some(Node::Variant(ref variant)) => {
-            format!("variant {} in {}{}", variant.ident, path_str(variant.def_id), id_str)
+            format!("{id} (variant `{}` in {})", variant.ident, path_str(variant.def_id))
         }
         Some(Node::Field(ref field)) => {
-            format!("field {} in {}{}", field.ident, path_str(field.def_id), id_str)
+            format!("{id} (field `{}` in {})", field.ident, path_str(field.def_id))
         }
         Some(Node::AnonConst(_)) => node_str("const"),
         Some(Node::Expr(_)) => node_str("expr"),
@@ -1290,16 +1267,15 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Some(Node::Infer(_)) => node_str("infer"),
         Some(Node::Local(_)) => node_str("local"),
         Some(Node::Ctor(ctor)) => format!(
-            "ctor {}{}",
+            "{id} (ctor {})",
             ctor.ctor_def_id().map_or("<missing path>".into(), |def_id| path_str(def_id)),
-            id_str
         ),
         Some(Node::Lifetime(_)) => node_str("lifetime"),
         Some(Node::GenericParam(ref param)) => {
-            format!("generic_param {}{}", path_str(param.def_id), id_str)
+            format!("{id} (generic_param {})", path_str(param.def_id))
         }
-        Some(Node::Crate(..)) => String::from("root_crate"),
-        None => format!("unknown node{}", id_str),
+        Some(Node::Crate(..)) => String::from("(root_crate)"),
+        None => format!("{id} (unknown node)"),
     }
 }
 

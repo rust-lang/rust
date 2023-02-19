@@ -9,7 +9,7 @@ LL |     match &f {
 LL |         FOO => {},
    |         ^^^
    |         |
-   |         expected `&Foo`, found struct `Foo`
+   |         expected `&Foo`, found `Foo`
    |         `FOO` is interpreted as a constant, not a new binding
    |         help: introduce a new binding instead: `other_foo`
 

@@ -182,6 +182,18 @@ passes_has_incoherent_inherent_impl =
     `rustc_has_incoherent_inherent_impls` attribute should be applied to types or traits.
     .label = only adts, extern types and traits are supported
 
+passes_both_ffi_const_and_pure =
+    `#[ffi_const]` function cannot be `#[ffi_pure]`
+
+passes_ffi_pure_invalid_target =
+    `#[ffi_pure]` may only be used on foreign functions
+
+passes_ffi_const_invalid_target =
+    `#[ffi_const]` may only be used on foreign functions
+
+passes_ffi_returns_twice_invalid_target =
+    `#[ffi_returns_twice]` may only be used on foreign functions
+
 passes_must_use_async =
     `must_use` attribute on `async` functions applies to the anonymous `Future` returned by the function, not the value within
     .label = this attribute does nothing, the `Future`s returned by async functions are already `must_use`
@@ -710,3 +722,26 @@ passes_ignored_derived_impls =
       [one] trait {$trait_list}, but this is
      *[other] traits {$trait_list}, but these are
     } intentionally ignored during dead code analysis
+
+passes_proc_macro_typeerror = mismatched {$kind} signature
+    .label = found {$found}, expected type `proc_macro::TokenStream`
+    .note = {$kind}s must have a signature of `{$expected_signature}`
+
+passes_proc_macro_diff_arg_count = mismatched {$kind} signature
+    .label = found unexpected {$count ->
+      [one] argument
+     *[other] arguments
+    }
+    .note = {$kind}s must have a signature of `{$expected_signature}`
+
+passes_proc_macro_missing_args = mismatched {$kind} signature
+    .label = {$kind} must have {$expected_input_count ->
+      [one] one argument
+     *[other] two arguments
+    } of type `proc_macro::TokenStream`
+
+passes_proc_macro_invalid_abi = proc macro functions may not be `extern "{$abi}"`
+
+passes_proc_macro_unsafe = proc macro functions may not be `unsafe`
+
+passes_skipping_const_checks = skipping const checks

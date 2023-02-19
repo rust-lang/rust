@@ -26,7 +26,7 @@ error[E0308]: mismatched types
 LL | fn wut(t: &Foo) -> Foo {
    |                    --- expected `Foo` because of return type
 LL |     t.clone()
-   |     ^^^^^^^^^ expected struct `Foo`, found `&Foo`
+   |     ^^^^^^^^^ expected `Foo`, found `&Foo`
    |
 note: `Foo` does not implement `Clone`, so `&Foo` was cloned instead
   --> $DIR/clone-on-unconstrained-borrowed-type-param.rs:9:5

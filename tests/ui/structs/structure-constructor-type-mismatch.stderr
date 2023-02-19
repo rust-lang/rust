@@ -104,7 +104,7 @@ error[E0308]: mismatched types
 LL |     match (Point { x: 1, y: 2 }) {
    |           ---------------------- this expression has type `Point<{integer}>`
 LL |         PointF::<u32> { .. } => {}
-   |         ^^^^^^^^^^^^^^^^^^^^ expected integer, found `f32`
+   |         ^^^^^^^^^^^^^^^^^^^^ expected `Point<{integer}>`, found `Point<f32>`
    |
    = note: expected struct `Point<{integer}>`
               found struct `Point<f32>`
@@ -115,7 +115,7 @@ error[E0308]: mismatched types
 LL |     match (Point { x: 1, y: 2 }) {
    |           ---------------------- this expression has type `Point<{integer}>`
 LL |         PointF { .. } => {}
-   |         ^^^^^^^^^^^^^ expected integer, found `f32`
+   |         ^^^^^^^^^^^^^ expected `Point<{integer}>`, found `Point<f32>`
    |
    = note: expected struct `Point<{integer}>`
               found struct `Point<f32>`
@@ -126,7 +126,7 @@ error[E0308]: mismatched types
 LL |     match (Pair { x: 1, y: 2 }) {
    |           --------------------- this expression has type `Pair<{integer}, {integer}>`
 LL |         PairF::<u32> { .. } => {}
-   |         ^^^^^^^^^^^^^^^^^^^ expected integer, found `f32`
+   |         ^^^^^^^^^^^^^^^^^^^ expected `Pair<{integer}, {integer}>`, found `Pair<f32, u32>`
    |
    = note: expected struct `Pair<{integer}, {integer}>`
               found struct `Pair<f32, u32>`

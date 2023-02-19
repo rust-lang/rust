@@ -2,7 +2,7 @@
 
 use std::ops::Add;
 
-// @has foo/struct.Simd.html '//div[@class="item-decl"]/pre[@class="rust"]' 'pub struct Simd<T, const WIDTH: usize>'
+// @has foo/struct.Simd.html '//pre[@class="rust item-decl"]' 'pub struct Simd<T, const WIDTH: usize>'
 pub struct Simd<T, const WIDTH: usize> {
     inner: T,
 }

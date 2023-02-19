@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/hidden-child.rs:9:26
    |
 LL |     let x: Option<i32> = 1i32;
-   |            -----------   ^^^^ expected enum `Option`, found `i32`
+   |            -----------   ^^^^ expected `Option<i32>`, found `i32`
    |            |
    |            expected due to this
    |

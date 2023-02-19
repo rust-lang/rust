@@ -2,7 +2,7 @@
 
 const TUP: (usize,) = 5usize << 64;
 //~^ ERROR mismatched types
-//~| expected tuple, found `usize`
+//~| expected `(usize,)`, found `usize`
 const ARR: [i32; TUP.0] = [];
 //~^ constant
 

@@ -13,5 +13,5 @@ struct AlignedUsize(usize);
 
 fn main() {
     let x = AlignedUsize(12) as dyn* Debug;
-    //[over_aligned]~^ ERROR `AlignedUsize` needs to be a pointer-sized type
+    //[over_aligned]~^ ERROR `AlignedUsize` needs to have the same alignment and size as a pointer
 }

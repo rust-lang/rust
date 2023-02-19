@@ -7,11 +7,8 @@
       let mut _2: i32;                     // in scope 0 at $DIR/mult_by_zero.rs:+1:3: +1:4
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/mult_by_zero.rs:+1:3: +1:4
-          _2 = _1;                         // scope 0 at $DIR/mult_by_zero.rs:+1:3: +1:4
--         _0 = Mul(move _2, const 0_i32);  // scope 0 at $DIR/mult_by_zero.rs:+1:3: +1:8
+-         _0 = Mul(_1, const 0_i32);       // scope 0 at $DIR/mult_by_zero.rs:+1:3: +1:8
 +         _0 = const 0_i32;                // scope 0 at $DIR/mult_by_zero.rs:+1:3: +1:8
-          StorageDead(_2);                 // scope 0 at $DIR/mult_by_zero.rs:+1:7: +1:8
           return;                          // scope 0 at $DIR/mult_by_zero.rs:+2:2: +2:2
       }
   }

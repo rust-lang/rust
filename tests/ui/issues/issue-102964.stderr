@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-102964.rs:5:41
    |
 LL | fn bar_function<T>(function: Foo<T>) -> RcFoo<T> {
-   |    ------------                         ^^^^^^^^ expected struct `Rc`, found `()`
+   |    ------------                         ^^^^^^^^ expected `Rc<&dyn Fn(&T)>`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
    |

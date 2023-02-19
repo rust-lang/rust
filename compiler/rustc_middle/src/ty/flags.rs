@@ -125,6 +125,16 @@ impl FlagComputation {
                 self.bound_computation(ts, |flags, ts| flags.add_tys(ts));
             }
 
+            ty::GeneratorWitnessMIR(_, substs) => {
+                let should_remove_further_specializable =
+                    !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
+                self.add_substs(substs);
+                if should_remove_further_specializable {
+                    self.flags -= TypeFlags::STILL_FURTHER_SPECIALIZABLE;
+                }
+                self.add_flags(TypeFlags::HAS_TY_GENERATOR);
+            }
+
             &ty::Closure(_, substs) => {
                 let substs = substs.as_closure();
                 let should_remove_further_specializable =
@@ -241,6 +251,10 @@ impl FlagComputation {
                 self.add_ty(ty);
                 self.add_region(region);
             }
+            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                self.add_const(ct);
+                self.add_ty(ty);
+            }
             ty::PredicateKind::Subtype(ty::SubtypePredicate { a_is_expected: _, a, b }) => {
                 self.add_ty(a);
                 self.add_ty(b);
@@ -254,10 +268,7 @@ impl FlagComputation {
                 term,
             })) => {
                 self.add_projection_ty(projection_ty);
-                match term.unpack() {
-                    ty::TermKind::Ty(ty) => self.add_ty(ty),
-                    ty::TermKind::Const(c) => self.add_const(c),
-                }
+                self.add_term(term);
             }
             ty::PredicateKind::WellFormed(arg) => {
                 self.add_substs(slice::from_ref(&arg));
@@ -277,6 +288,10 @@ impl FlagComputation {
                 self.add_ty(ty);
             }
             ty::PredicateKind::Ambiguous => {}
+            ty::PredicateKind::AliasEq(t1, t2) => {
+                self.add_term(t1);
+                self.add_term(t2);
+            }
         }
     }
 
@@ -368,6 +383,13 @@ impl FlagComputation {
                 GenericArgKind::Lifetime(lt) => self.add_region(lt),
                 GenericArgKind::Const(ct) => self.add_const(ct),
             }
+        }
+    }
+
+    fn add_term(&mut self, term: ty::Term<'_>) {
+        match term.unpack() {
+            ty::TermKind::Ty(ty) => self.add_ty(ty),
+            ty::TermKind::Const(ct) => self.add_const(ct),
         }
     }
 }

@@ -56,7 +56,7 @@ pub(crate) fn maybe_codegen<'tcx>(
                     Some(fx.easy_call("__multi3", &[lhs, rhs], val_ty))
                 }
             } else {
-                let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
+                let out_ty = fx.tcx.intern_tup(&[lhs.layout().ty, fx.tcx.types.bool]);
                 let oflow = CPlace::new_stack_slot(fx, fx.layout_of(fx.tcx.types.i32));
                 let lhs = lhs.load_scalar(fx);
                 let rhs = rhs.load_scalar(fx);
@@ -78,7 +78,7 @@ pub(crate) fn maybe_codegen<'tcx>(
         }
         BinOp::Add | BinOp::Sub | BinOp::Mul => {
             assert!(checked);
-            let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
+            let out_ty = fx.tcx.intern_tup(&[lhs.layout().ty, fx.tcx.types.bool]);
             let out_place = CPlace::new_stack_slot(fx, fx.layout_of(out_ty));
             let (param_types, args) = if fx.tcx.sess.target.is_like_windows {
                 let (lhs_ptr, lhs_extra) = lhs.force_stack(fx);

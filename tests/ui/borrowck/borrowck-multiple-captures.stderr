@@ -1,6 +1,8 @@
 error[E0505]: cannot move out of `x1` because it is borrowed
   --> $DIR/borrowck-multiple-captures.rs:12:19
    |
+LL |     let x1: Box<_> = Box::new(1);
+   |         -- binding `x1` declared here
 LL |     let p1 = &x1;
    |              --- borrow of `x1` occurs here
 ...
@@ -16,6 +18,8 @@ LL |     borrow(&*p1);
 error[E0505]: cannot move out of `x2` because it is borrowed
   --> $DIR/borrowck-multiple-captures.rs:12:19
    |
+LL |     let x2: Box<_> = Box::new(2);
+   |         -- binding `x2` declared here
 LL |     let p2 = &x2;
    |              --- borrow of `x2` occurs here
 LL |     thread::spawn(move|| {
@@ -77,6 +81,8 @@ LL |         drop(x);
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/borrowck-multiple-captures.rs:38:19
    |
+LL |     let x: Box<_> = Box::new(1);
+   |         - binding `x` declared here
 LL |     let p = &x;
    |             -- borrow of `x` occurs here
 LL |     thread::spawn(move|| {

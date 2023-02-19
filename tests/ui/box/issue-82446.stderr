@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-82446.rs:11:9
    |
 LL |         val
-   |         ^^^ expected struct `Box`, found reference
+   |         ^^^ expected `Box<dyn MyTrait>`, found `&Box<dyn MyTrait>`
    |
    = note: expected struct `Box<(dyn MyTrait + 'static)>`
            found reference `&Box<(dyn MyTrait + 'static)>`

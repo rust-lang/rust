@@ -28,7 +28,7 @@ with:
     -D --deny OPT       Set lint denied
     -F --forbid OPT     Set lint forbidden
 
-You can use tool lints to allow or deny lints from your code, eg.:
+You can use tool lints to allow or deny lints from your code, e.g.:
 
     #[allow(clippy::needless_lifetimes)]
 "#;

@@ -12,18 +12,12 @@
   
       bb0: {
           StorageLive(_3);                 // scope 0 at $DIR/boolean_identities.rs:+1:5: +1:15
-          StorageLive(_4);                 // scope 0 at $DIR/boolean_identities.rs:+1:6: +1:7
-          _4 = _2;                         // scope 0 at $DIR/boolean_identities.rs:+1:6: +1:7
--         _3 = BitOr(move _4, const true); // scope 0 at $DIR/boolean_identities.rs:+1:5: +1:15
+-         _3 = BitOr(_2, const true);      // scope 0 at $DIR/boolean_identities.rs:+1:5: +1:15
 +         _3 = const true;                 // scope 0 at $DIR/boolean_identities.rs:+1:5: +1:15
-          StorageDead(_4);                 // scope 0 at $DIR/boolean_identities.rs:+1:14: +1:15
           StorageLive(_5);                 // scope 0 at $DIR/boolean_identities.rs:+1:18: +1:29
-          StorageLive(_6);                 // scope 0 at $DIR/boolean_identities.rs:+1:19: +1:20
-          _6 = _1;                         // scope 0 at $DIR/boolean_identities.rs:+1:19: +1:20
--         _5 = BitAnd(move _6, const false); // scope 0 at $DIR/boolean_identities.rs:+1:18: +1:29
-+         _5 = const false;                // scope 0 at $DIR/boolean_identities.rs:+1:18: +1:29
-          StorageDead(_6);                 // scope 0 at $DIR/boolean_identities.rs:+1:28: +1:29
+-         _5 = BitAnd(_1, const false);    // scope 0 at $DIR/boolean_identities.rs:+1:18: +1:29
 -         _0 = BitAnd(move _3, move _5);   // scope 0 at $DIR/boolean_identities.rs:+1:5: +1:29
++         _5 = const false;                // scope 0 at $DIR/boolean_identities.rs:+1:18: +1:29
 +         _0 = const false;                // scope 0 at $DIR/boolean_identities.rs:+1:5: +1:29
           StorageDead(_5);                 // scope 0 at $DIR/boolean_identities.rs:+1:28: +1:29
           StorageDead(_3);                 // scope 0 at $DIR/boolean_identities.rs:+1:28: +1:29

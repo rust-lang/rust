@@ -14,7 +14,7 @@ error[E0308]: mismatched types
   --> $DIR/type_not_in_scope.rs:7:33
    |
 LL | fn getn<const N: cfg_attr>() -> [u8; N] {}
-   |    ----                         ^^^^^^^ expected array `[u8; N]`, found `()`
+   |    ----                         ^^^^^^^ expected `[u8; N]`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 

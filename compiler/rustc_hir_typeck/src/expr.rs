@@ -8,7 +8,7 @@ use crate::coercion::DynamicCoerceMany;
 use crate::errors::TypeMismatchFruTypo;
 use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use crate::errors::{
-    FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
+    FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition,
     YieldExprOutsideOfGenerator,
 };
 use crate::fatally_break_rust;
@@ -23,8 +23,8 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
-    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId,
-    ErrorGuaranteed, StashKey,
+    pluralize, struct_span_err, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder,
+    DiagnosticId, ErrorGuaranteed, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -542,7 +542,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let ty::FnDef(did, ..) = *ty.kind() {
             let fn_sig = ty.fn_sig(tcx);
-            if tcx.fn_sig(did).abi() == RustIntrinsic && tcx.item_name(did) == sym::transmute {
+            if tcx.fn_sig(did).skip_binder().abi() == RustIntrinsic
+                && tcx.item_name(did) == sym::transmute
+            {
                 let from = fn_sig.inputs().skip_binder()[0];
                 let to = fn_sig.output().skip_binder();
                 // We defer the transmute to the end of typeck, once all inference vars have
@@ -566,7 +568,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // placeholder lifetimes with probing, we just replace higher lifetimes
                     // with fresh vars.
                     let span = args.get(i).map(|a| a.span).unwrap_or(expr.span);
-                    let input = self.replace_bound_vars_with_fresh_vars(
+                    let input = self.instantiate_binder_with_fresh_vars(
                         span,
                         infer::LateBoundRegionConversionTime::FnCall,
                         fn_sig.input(i),
@@ -584,7 +586,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Also, as we just want to check sizedness, instead of introducing
             // placeholder lifetimes with probing, we just replace higher lifetimes
             // with fresh vars.
-            let output = self.replace_bound_vars_with_fresh_vars(
+            let output = self.instantiate_binder_with_fresh_vars(
                 expr.span,
                 infer::LateBoundRegionConversionTime::FnCall,
                 fn_sig.output(),
@@ -852,7 +854,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Point any obligations that were registered due to opaque type
             // inference at the return expression.
             self.select_obligations_where_possible(|errors| {
-                self.point_at_return_for_opaque_ty_error(errors, span, return_expr_ty);
+                self.point_at_return_for_opaque_ty_error(errors, span, return_expr_ty, return_expr.span);
             });
         }
     }
@@ -862,9 +864,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         errors: &mut Vec<traits::FulfillmentError<'tcx>>,
         span: Span,
         return_expr_ty: Ty<'tcx>,
+        return_span: Span,
     ) {
         // Don't point at the whole block if it's empty
-        if span == self.tcx.hir().span(self.body_id) {
+        if span == return_span {
             return;
         }
         for err in errors {
@@ -1374,7 +1377,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let body = self.tcx.hir().body(anon_const.body);
 
         // Create a new function context.
-        let fcx = FnCtxt::new(self, self.param_env.with_const(), body.value.hir_id);
+        let def_id = anon_const.def_id;
+        let fcx = FnCtxt::new(self, self.param_env.with_const(), def_id);
         crate::GatherLocalsVisitor::new(&fcx).visit_body(body);
 
         let ty = fcx.check_expr_with_expectation(&body.value, expected);
@@ -1392,7 +1396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let count = self.array_length_to_const(count);
-        if let Some(count) = count.try_eval_usize(tcx, self.param_env) {
+        if let Some(count) = count.try_eval_target_usize(tcx, self.param_env) {
             self.suggest_array_len(expr, count);
         }
 
@@ -1425,7 +1429,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.check_repeat_element_needs_copy_bound(element, count, element_ty);
 
-        tcx.mk_ty(ty::Array(t, count))
+        tcx.mk_array_with_const_len(t, count)
     }
 
     fn check_repeat_element_needs_copy_bound(
@@ -1459,7 +1463,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If the length is 0, we don't create any elements, so we don't copy any. If the length is 1, we
         // don't copy that one element, we move it. Only check for Copy if the length is larger.
-        if count.try_eval_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
+        if count.try_eval_target_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
             let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
             let code = traits::ObligationCauseCode::RepeatElementCopy { is_const_fn };
             self.require_type_meets(element_ty, element.span, code, lang_item);
@@ -2151,13 +2155,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &'tcx ty::VariantDef,
         access_span: Span,
     ) -> Vec<Symbol> {
+        let body_owner_hir_id = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
         variant
             .fields
             .iter()
             .filter(|field| {
                 let def_scope = self
                     .tcx
-                    .adjust_ident_and_get_scope(field.ident(self.tcx), variant.def_id, self.body_id)
+                    .adjust_ident_and_get_scope(
+                        field.ident(self.tcx),
+                        variant.def_id,
+                        body_owner_hir_id,
+                    )
                     .1;
                 field.vis.is_accessible_from(def_scope, self.tcx)
                     && !matches!(
@@ -2199,8 +2208,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match deref_base_ty.kind() {
                 ty::Adt(base_def, substs) if !base_def.is_enum() => {
                     debug!("struct named {:?}", deref_base_ty);
+                    let body_hir_id = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
                     let (ident, def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.body_id);
+                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), body_hir_id);
                     let fields = &base_def.non_enum_variant().fields;
                     if let Some(index) = fields
                         .iter()
@@ -2423,7 +2433,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We know by construction that `<expr>.await` is either on Rust 2015
             // or results in `ExprKind::Await`. Suggest switching the edition to 2018.
             err.note("to `.await` a `Future`, switch to Rust 2018 or later");
-            err.help_use_latest_edition();
+            HelpUseLatestEdition::new().add_to_diagnostic(&mut err);
         }
 
         err.emit();
@@ -2538,7 +2548,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn point_at_param_definition(&self, err: &mut Diagnostic, param: ty::ParamTy) {
-        let generics = self.tcx.generics_of(self.body_id.owner.to_def_id());
+        let generics = self.tcx.generics_of(self.body_id);
         let generic_param = generics.type_param(&param, self.tcx);
         if let ty::GenericParamDefKind::Type { synthetic: true, .. } = generic_param.kind {
             return;
@@ -2592,7 +2602,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         len: ty::Const<'tcx>,
     ) {
         if let (Some(len), Ok(user_index)) =
-            (len.try_eval_usize(self.tcx, self.param_env), field.as_str().parse::<u64>())
+            (len.try_eval_target_usize(self.tcx, self.param_env), field.as_str().parse::<u64>())
             && let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span)
         {
             let help = "instead of using tuple indexing, use array indexing";

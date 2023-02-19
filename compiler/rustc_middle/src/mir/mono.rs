@@ -318,16 +318,19 @@ impl<'tcx> CodegenUnit<'tcx> {
         base_n::encode(hash, base_n::CASE_INSENSITIVE)
     }
 
-    pub fn estimate_size(&mut self, tcx: TyCtxt<'tcx>) {
+    pub fn create_size_estimate(&mut self, tcx: TyCtxt<'tcx>) {
         // Estimate the size of a codegen unit as (approximately) the number of MIR
         // statements it corresponds to.
         self.size_estimate = Some(self.items.keys().map(|mi| mi.size_estimate(tcx)).sum());
     }
 
     #[inline]
+    /// Should only be called if [`create_size_estimate`] has previously been called.
+    ///
+    /// [`create_size_estimate`]: Self::create_size_estimate
     pub fn size_estimate(&self) -> usize {
-        // Should only be called if `estimate_size` has previously been called.
-        self.size_estimate.expect("estimate_size must be called before getting a size_estimate")
+        self.size_estimate
+            .expect("create_size_estimate must be called before getting a size_estimate")
     }
 
     pub fn modify_size_estimate(&mut self, delta: usize) {

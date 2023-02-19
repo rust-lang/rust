@@ -171,7 +171,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => {}
         }
         // And we need to get the provenance.
-        Ok(M::adjust_alloc_base_pointer(self, ptr))
+        M::adjust_alloc_base_pointer(self, ptr)
     }
 
     pub fn create_fn_alloc_ptr(
@@ -200,8 +200,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let alloc = Allocation::uninit(size, align, M::PANIC_ON_ALLOC_FAIL)?;
-        // We can `unwrap` since `alloc` contains no pointers.
-        Ok(self.allocate_raw_ptr(alloc, kind).unwrap())
+        self.allocate_raw_ptr(alloc, kind)
     }
 
     pub fn allocate_bytes_ptr(
@@ -210,10 +209,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         align: Align,
         kind: MemoryKind<M::MemoryKind>,
         mutability: Mutability,
-    ) -> Pointer<M::Provenance> {
+    ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let alloc = Allocation::from_bytes(bytes, align, mutability);
-        // We can `unwrap` since `alloc` contains no pointers.
-        self.allocate_raw_ptr(alloc, kind).unwrap()
+        self.allocate_raw_ptr(alloc, kind)
     }
 
     /// This can fail only of `alloc` contains provenance.
@@ -230,7 +228,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         );
         let alloc = M::adjust_allocation(self, id, Cow::Owned(alloc), Some(kind))?;
         self.memory.alloc_map.insert(id, (kind, alloc.into_owned()));
-        Ok(M::adjust_alloc_base_pointer(self, Pointer::from(id)))
+        M::adjust_alloc_base_pointer(self, Pointer::from(id))
     }
 
     pub fn reallocate_ptr(
@@ -304,7 +302,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .into());
         };
 
-        if alloc.mutability == Mutability::Not {
+        if alloc.mutability.is_not() {
             throw_ub_format!("deallocating immutable allocation {alloc_id:?}");
         }
         if alloc_kind != kind {
@@ -427,7 +425,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     throw_ub!(PointerOutOfBounds {
                         alloc_id,
                         alloc_size,
-                        ptr_offset: self.machine_usize_to_isize(offset.bytes()),
+                        ptr_offset: self.target_usize_to_isize(offset.bytes()),
                         ptr_size: size,
                         msg,
                     })
@@ -631,7 +629,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         let (_kind, alloc) = self.memory.alloc_map.get_mut(id).unwrap();
-        if alloc.mutability == Mutability::Not {
+        if alloc.mutability.is_not() {
             throw_ub!(WriteToReadOnly(id))
         }
         Ok((alloc, &mut self.machine))
@@ -692,7 +690,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(self.tcx.is_static(def_id));
                 assert!(!self.tcx.is_thread_local_static(def_id));
                 // Use size and align of the type.
-                let ty = self.tcx.type_of(def_id);
+                let ty = self
+                    .tcx
+                    .type_of(def_id)
+                    .no_bound_vars()
+                    .expect("statics should not have generic parameters");
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
                 assert!(layout.is_sized());
                 (layout.size, layout.align.abi, AllocKind::LiveData)

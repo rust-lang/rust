@@ -33,8 +33,8 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
                 // cast float to int
                 let a_lane = match lane_ty {
-                    types::F32 => fx.bcx.ins().bitcast(types::I32, a_lane),
-                    types::F64 => fx.bcx.ins().bitcast(types::I64, a_lane),
+                    types::F32 => codegen_bitcast(fx, types::I32, a_lane),
+                    types::F64 => codegen_bitcast(fx, types::I64, a_lane),
                     _ => a_lane,
                 };
 
@@ -191,7 +191,7 @@ fn llvm_add_sub<'tcx>(
     // carry0 | carry1 -> carry or borrow respectively
     let cb_out = fx.bcx.ins().bor(cb0, cb1);
 
-    let layout = fx.layout_of(fx.tcx.mk_tup([fx.tcx.types.u8, fx.tcx.types.u64].iter()));
+    let layout = fx.layout_of(fx.tcx.intern_tup(&[fx.tcx.types.u8, fx.tcx.types.u64]));
     let val = CValue::by_val_pair(cb_out, c, layout);
     ret.write_cvalue(fx, val);
 }

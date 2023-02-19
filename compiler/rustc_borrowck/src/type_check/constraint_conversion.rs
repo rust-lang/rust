@@ -83,16 +83,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         }
         self.constraints.member_constraints = tmp;
 
-        for (predicate, constraint_category) in outlives {
-            // At the moment, we never generate any "higher-ranked"
-            // region constraints like `for<'a> 'a: 'b`. At some point
-            // when we move to universes, we will, and this assertion
-            // will start to fail.
-            let predicate = predicate.no_bound_vars().unwrap_or_else(|| {
-                bug!("query_constraint {:?} contained bound vars", predicate,);
-            });
-
-            self.convert(predicate, *constraint_category);
+        for &(predicate, constraint_category) in outlives {
+            self.convert(predicate, constraint_category);
         }
     }
 

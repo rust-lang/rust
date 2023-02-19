@@ -14,13 +14,13 @@ use std::fmt::Debug;
 // @has foo/index.html '//a[@class="traitalias"]' 'Foo'
 
 // @has foo/traitalias.CopyAlias.html
-// @has - '//section[@id="main-content"]/div[@class="item-decl"]/pre' 'trait CopyAlias = Copy;'
+// @has - '//section[@id="main-content"]/pre[@class="rust item-decl"]' 'trait CopyAlias = Copy;'
 pub trait CopyAlias = Copy;
 // @has foo/traitalias.Alias2.html
-// @has - '//section[@id="main-content"]/div[@class="item-decl"]/pre' 'trait Alias2 = Copy + Debug;'
+// @has - '//section[@id="main-content"]/pre[@class="rust item-decl"]' 'trait Alias2 = Copy + Debug;'
 pub trait Alias2 = Copy + Debug;
 // @has foo/traitalias.Foo.html
-// @has - '//section[@id="main-content"]/div[@class="item-decl"]/pre' 'trait Foo<T> = Into<T> + Debug;'
+// @has - '//section[@id="main-content"]/pre[@class="rust item-decl"]' 'trait Foo<T> = Into<T> + Debug;'
 pub trait Foo<T> = Into<T> + Debug;
 // @has foo/fn.bar.html '//a[@href="traitalias.Alias2.html"]' 'Alias2'
 pub fn bar<T>() where T: Alias2 {}

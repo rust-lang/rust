@@ -23,6 +23,7 @@ pub fn expand_deriving_debug(
         span,
         path: path_std!(fmt::Debug),
         skip_path_as_bound: false,
+        needs_copy_as_bound_if_packed: true,
         additional_bounds: Vec::new(),
         supports_unions: false,
         methods: vec![MethodDef {
@@ -75,6 +76,21 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     // The number of fields that can be handled without an array.
     const CUTOFF: usize = 5;
 
+    fn expr_for_field(
+        cx: &ExtCtxt<'_>,
+        field: &FieldInfo,
+        index: usize,
+        len: usize,
+    ) -> ast::ptr::P<ast::Expr> {
+        if index < len - 1 {
+            field.self_expr.clone()
+        } else {
+            // Unsized types need an extra indirection, but only the last field
+            // may be unsized.
+            cx.expr_addr_of(field.span, field.self_expr.clone())
+        }
+    }
+
     if fields.is_empty() {
         // Special case for no fields.
         let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
@@ -97,8 +113,8 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
                 let name = cx.expr_str(field.span, field.name.unwrap().name);
                 args.push(name);
             }
-            // Use an extra indirection to make sure this works for unsized types.
-            let field = cx.expr_addr_of(field.span, field.self_expr.clone());
+
+            let field = expr_for_field(cx, field, i, fields.len());
             args.push(field);
         }
         let expr = cx.expr_call_global(span, fn_path_debug, args);
@@ -108,36 +124,37 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         let mut name_exprs = Vec::with_capacity(fields.len());
         let mut value_exprs = Vec::with_capacity(fields.len());
 
-        for field in fields {
+        for i in 0..fields.len() {
+            let field = &fields[i];
             if is_struct {
                 name_exprs.push(cx.expr_str(field.span, field.name.unwrap().name));
             }
 
-            // Use an extra indirection to make sure this works for unsized types.
-            let field = cx.expr_addr_of(field.span, field.self_expr.clone());
+            let field = expr_for_field(cx, field, i, fields.len());
             value_exprs.push(field);
         }
 
         // `let names: &'static _ = &["field1", "field2"];`
-        let names_let = if is_struct {
+        let names_let = is_struct.then(|| {
             let lt_static = Some(cx.lifetime_static(span));
             let ty_static_ref = cx.ty_ref(span, cx.ty_infer(span), lt_static, ast::Mutability::Not);
-            Some(cx.stmt_let_ty(
+            cx.stmt_let_ty(
                 span,
                 false,
                 Ident::new(sym::names, span),
                 Some(ty_static_ref),
                 cx.expr_array_ref(span, name_exprs),
-            ))
-        } else {
-            None
-        };
+            )
+        });
 
         // `let values: &[&dyn Debug] = &[&&self.field1, &&self.field2];`
         let path_debug = cx.path_global(span, cx.std_path(&[sym::fmt, sym::Debug]));
         let ty_dyn_debug = cx.ty(
             span,
-            ast::TyKind::TraitObject(vec![cx.trait_bound(path_debug)], ast::TraitObjectSyntax::Dyn),
+            ast::TyKind::TraitObject(
+                vec![cx.trait_bound(path_debug, false)],
+                ast::TraitObjectSyntax::Dyn,
+            ),
         );
         let ty_slice = cx.ty(
             span,

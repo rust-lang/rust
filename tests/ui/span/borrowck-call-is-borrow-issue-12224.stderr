@@ -47,6 +47,9 @@ LL |         foo(f);
 error[E0505]: cannot move out of `f` because it is borrowed
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:55:16
    |
+LL |     let mut f = move |g: Box<dyn FnMut(isize)>, b: isize| {
+   |         ----- binding `f` declared here
+...
 LL |     f(Box::new(|a| {
    |     -          ^^^ move out of `f` occurs here
    |     |

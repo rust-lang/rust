@@ -14,7 +14,7 @@ fn test1() {
     //~^ ERROR mismatched types
     //~| expected struct `Foo<_>`
     //~| found struct `Bar<usize>`
-    //~| expected struct `Foo`, found struct `Bar`
+    //~| expected `Foo<_>`, found `Bar<usize>`
     let y: Foo<usize> = x;
 }
 
@@ -23,5 +23,5 @@ fn test2() {
     //~^ ERROR mismatched types
     //~| expected struct `Foo<_>`
     //~| found struct `Bar<usize>`
-    //~| expected struct `Foo`, found struct `Bar`
+    //~| expected `Foo<_>`, found `Bar<usize>`
 }

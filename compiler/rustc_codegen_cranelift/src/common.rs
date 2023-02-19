@@ -35,7 +35,8 @@ pub(crate) fn scalar_to_clif_type(tcx: TyCtxt<'_>, scalar: Scalar) -> Type {
         },
         Primitive::F32 => types::F32,
         Primitive::F64 => types::F64,
-        Primitive::Pointer => pointer_ty(tcx),
+        // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
+        Primitive::Pointer(_) => pointer_ty(tcx),
     }
 }
 
@@ -167,6 +168,15 @@ pub(crate) fn codegen_icmp_imm(
     }
 }
 
+pub(crate) fn codegen_bitcast(fx: &mut FunctionCx<'_, '_, '_>, dst_ty: Type, val: Value) -> Value {
+    let mut flags = MemFlags::new();
+    flags.set_endianness(match fx.tcx.data_layout.endian {
+        rustc_target::abi::Endian::Big => cranelift_codegen::ir::Endianness::Big,
+        rustc_target::abi::Endian::Little => cranelift_codegen::ir::Endianness::Little,
+    });
+    fx.bcx.ins().bitcast(dst_ty, flags, val)
+}
+
 pub(crate) fn type_zero_value(bcx: &mut FunctionBuilder<'_>, ty: Type) -> Value {
     if ty == types::I128 {
         let zero = bcx.ins().iconst(types::I64, 0);
@@ -242,6 +252,44 @@ pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
         ty::Float(..) => false, // `signed` is unused for floats
         _ => panic!("{}", ty),
     }
+}
+
+pub(crate) fn create_wrapper_function(
+    module: &mut dyn Module,
+    unwind_context: &mut UnwindContext,
+    sig: Signature,
+    wrapper_name: &str,
+    callee_name: &str,
+) {
+    let wrapper_func_id = module.declare_function(wrapper_name, Linkage::Export, &sig).unwrap();
+    let callee_func_id = module.declare_function(callee_name, Linkage::Import, &sig).unwrap();
+
+    let mut ctx = Context::new();
+    ctx.func.signature = sig;
+    {
+        let mut func_ctx = FunctionBuilderContext::new();
+        let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
+
+        let block = bcx.create_block();
+        bcx.switch_to_block(block);
+        let func = &mut bcx.func.stencil;
+        let args = func
+            .signature
+            .params
+            .iter()
+            .map(|param| func.dfg.append_block_param(block, param.value_type))
+            .collect::<Vec<Value>>();
+
+        let callee_func_ref = module.declare_func_in_func(callee_func_id, &mut bcx.func);
+        let call_inst = bcx.ins().call(callee_func_ref, &args);
+        let results = bcx.inst_results(call_inst).to_vec(); // Clone to prevent borrow error
+
+        bcx.ins().return_(&results);
+        bcx.seal_all_blocks();
+        bcx.finalize();
+    }
+    module.define_function(wrapper_func_id, &mut ctx).unwrap();
+    unwind_context.add_function(wrapper_func_id, &ctx, module.isa());
 }
 
 pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {

@@ -4,7 +4,7 @@ struct BodyId {
     hir_id: usize,
 }
 
-// @has 'foo/fn.body_owner.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub fn body_owner(_: BodyId)'
+// @has 'foo/fn.body_owner.html' '//pre[@class="rust item-decl"]' 'pub fn body_owner(_: BodyId)'
 pub fn body_owner(BodyId { hir_id }: BodyId) {
     // ...
 }

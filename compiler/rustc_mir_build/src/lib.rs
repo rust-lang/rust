@@ -34,4 +34,5 @@ pub fn provide(providers: &mut Providers) {
     providers.thir_check_unsafety_for_const_arg = check_unsafety::thir_check_unsafety_for_const_arg;
     providers.thir_body = thir::cx::thir_body;
     providers.thir_tree = thir::cx::thir_tree;
+    providers.thir_flat = thir::cx::thir_flat;
 }

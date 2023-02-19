@@ -5,7 +5,7 @@ LL |         $this.width.unwrap()
    |         ^^^^^^^^^^^ use of borrowed `*self`
 ...
 LL |         let r = &mut *self;
-   |                 ---------- borrow of `*self` occurs here
+   |                 ---------- `*self` is borrowed here
 LL |         r.get_size(width!(self))
    |           -------- ------------ in this macro invocation
    |           |

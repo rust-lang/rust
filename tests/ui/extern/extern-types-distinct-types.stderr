@@ -9,7 +9,7 @@ LL |     type B;
 LL | fn foo(r: &A) -> &B {
    |                  -- expected `&B` because of return type
 LL |     r
-   |     ^ expected extern type `B`, found extern type `A`
+   |     ^ expected `&B`, found `&A`
    |
    = note: expected reference `&B`
               found reference `&A`

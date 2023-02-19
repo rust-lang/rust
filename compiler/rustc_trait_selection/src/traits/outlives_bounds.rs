@@ -3,9 +3,8 @@ use crate::traits::query::type_op::{self, TypeOp, TypeOpOutput};
 use crate::traits::query::NoSolution;
 use crate::traits::ObligationCause;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_hir as hir;
-use rustc_hir::HirId;
 use rustc_middle::ty::{self, ParamEnv, Ty};
+use rustc_span::def_id::LocalDefId;
 
 pub use rustc_middle::traits::query::OutlivesBound;
 
@@ -14,14 +13,14 @@ pub trait InferCtxtExt<'a, 'tcx> {
     fn implied_outlives_bounds(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: hir::HirId,
+        body_id: LocalDefId,
         ty: Ty<'tcx>,
     ) -> Vec<OutlivesBound<'tcx>>;
 
     fn implied_bounds_tys(
         &'a self,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: hir::HirId,
+        body_id: LocalDefId,
         tys: FxIndexSet<Ty<'tcx>>,
     ) -> Bounds<'a, 'tcx>;
 }
@@ -50,10 +49,10 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
     fn implied_outlives_bounds(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: hir::HirId,
+        body_id: LocalDefId,
         ty: Ty<'tcx>,
     ) -> Vec<OutlivesBound<'tcx>> {
-        let span = self.tcx.hir().span(body_id);
+        let span = self.tcx.def_span(body_id);
         let result = param_env
             .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
             .fully_perform(self);
@@ -102,7 +101,7 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
     fn implied_bounds_tys(
         &'a self,
         param_env: ParamEnv<'tcx>,
-        body_id: HirId,
+        body_id: LocalDefId,
         tys: FxIndexSet<Ty<'tcx>>,
     ) -> Bounds<'a, 'tcx> {
         tys.into_iter()

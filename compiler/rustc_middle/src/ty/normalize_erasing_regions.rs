@@ -9,7 +9,10 @@
 
 use crate::mir;
 use crate::traits::query::NoSolution;
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
+use crate::ty::fold::{
+    ir::{FallibleTypeFolder, TypeFolder},
+    TypeFoldable,
+};
 use crate::ty::{self, EarlyBinder, SubstsRef, Ty, TyCtxt};
 
 #[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]
@@ -202,8 +205,8 @@ impl<'tcx> NormalizeAfterErasingRegionsFolder<'tcx> {
     }
 }
 
-impl<'tcx> TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for NormalizeAfterErasingRegionsFolder<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -238,10 +241,10 @@ impl<'tcx> TryNormalizeAfterErasingRegionsFolder<'tcx> {
     }
 }
 
-impl<'tcx> FallibleTypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
+impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
     type Error = NormalizationError<'tcx>;
 
-    fn tcx(&self) -> TyCtxt<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

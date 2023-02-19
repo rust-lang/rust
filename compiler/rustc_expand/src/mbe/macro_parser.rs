@@ -503,7 +503,7 @@ impl TtParser {
                         mp.push_match(metavar_idx, seq_depth, MatchedSeq(vec![]));
                     }
 
-                    if op == KleeneOp::ZeroOrMore || op == KleeneOp::ZeroOrOne {
+                    if matches!(op, KleeneOp::ZeroOrMore | KleeneOp::ZeroOrOne) {
                         // Try zero matches of this sequence, by skipping over it.
                         self.cur_mps.push(MatcherPos {
                             idx: idx_first_after,

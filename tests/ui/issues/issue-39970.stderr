@@ -1,8 +1,8 @@
-error[E0271]: type mismatch resolving `for<'a> <() as Array<'a>>::Element == ()`
+error[E0271]: type mismatch resolving `<() as Array<'a>>::Element == ()`
   --> $DIR/issue-39970.rs:19:5
    |
 LL |     <() as Visit>::visit();
-   |     ^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `for<'a> <() as Array<'a>>::Element == ()`
+   |     ^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<() as Array<'a>>::Element == ()`
    |
 note: expected this to be `()`
   --> $DIR/issue-39970.rs:10:20

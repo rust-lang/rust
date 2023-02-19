@@ -24,12 +24,7 @@ pub type pthread_t = c_ulong;
 #[stable(feature = "raw_ext", since = "1.1.0")]
 pub use self::arch::{blkcnt_t, blksize_t, ino_t, nlink_t, off_t, stat, time_t};
 
-#[cfg(any(
-    target_arch = "x86",
-    target_arch = "le32",
-    target_arch = "powerpc",
-    target_arch = "arm"
-))]
+#[cfg(any(target_arch = "x86", target_arch = "powerpc", target_arch = "arm"))]
 mod arch {
     use crate::os::raw::{c_long, c_short, c_uint};
 

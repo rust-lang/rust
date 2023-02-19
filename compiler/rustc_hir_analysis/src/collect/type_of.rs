@@ -8,7 +8,9 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable};
+use rustc_middle::ty::{
+    self, ir::TypeFolder, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeSuperFoldable, TypeVisitable,
+};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -54,15 +56,14 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // ty which is a fully resolved projection.
             // For the code example above, this would mean converting Self::Assoc<3>
             // into a ty::Alias(ty::Projection, <Self as Foo>::Assoc<3>)
-            let item_hir_id = tcx
+            let item_def_id = tcx
                 .hir()
-                .parent_iter(hir_id)
-                .filter(|(_, node)| matches!(node, Node::Item(_)))
-                .map(|(id, _)| id)
-                .next()
-                .unwrap();
-            let item_did = tcx.hir().local_def_id(item_hir_id).to_def_id();
-            let item_ctxt = &ItemCtxt::new(tcx, item_did) as &dyn crate::astconv::AstConv<'_>;
+                .parent_owner_iter(hir_id)
+                .find(|(_, node)| matches!(node, OwnerNode::Item(_)))
+                .unwrap()
+                .0
+                .to_def_id();
+            let item_ctxt = &ItemCtxt::new(tcx, item_def_id) as &dyn crate::astconv::AstConv<'_>;
             let ty = item_ctxt.ast_ty_to_ty(hir_ty);
 
             // Iterate through the generics of the projection to find the one that corresponds to
@@ -242,7 +243,7 @@ fn get_path_containing_arg_in_pat<'hir>(
     arg_path
 }
 
-pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
+pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>> {
     let def_id = def_id.expect_local();
     use rustc_hir::*;
 
@@ -250,7 +251,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
     let icx = ItemCtxt::new(tcx, def_id.to_def_id());
 
-    match tcx.hir().get(hir_id) {
+    let output = match tcx.hir().get(hir_id) {
         Node::TraitItem(item) => match item.kind {
             TraitItemKind::Fn(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
@@ -258,13 +259,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
             TraitItemKind::Const(ty, body_id) => body_id
                 .and_then(|body_id| {
-                    if is_suggestable_infer_ty(ty) {
-                        Some(infer_placeholder_type(
-                            tcx, def_id, body_id, ty.span, item.ident, "constant",
-                        ))
-                    } else {
-                        None
-                    }
+                    is_suggestable_infer_ty(ty)
+                        .then(|| infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident, "constant",))
                 })
                 .unwrap_or_else(|| icx.to_ty(ty)),
             TraitItemKind::Type(_, Some(ty)) => icx.to_ty(ty),
@@ -381,7 +377,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         Node::Ctor(def) | Node::Variant(Variant { data: def, .. }) => match def {
             VariantData::Unit(..) | VariantData::Struct(..) => {
-                tcx.type_of(tcx.hir().get_parent_item(hir_id))
+                tcx.type_of(tcx.hir().get_parent_item(hir_id)).subst_identity()
             }
             VariantData::Tuple(..) => {
                 let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
@@ -398,7 +394,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         Node::AnonConst(_) if let Some(param) = tcx.opt_const_param_of(def_id) => {
             // We defer to `type_of` of the corresponding parameter
             // for generic arguments.
-            tcx.type_of(param)
+            tcx.type_of(param).subst_identity()
         }
 
         Node::AnonConst(_) => {
@@ -450,7 +446,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     && e.hir_id == hir_id =>
                 {
                     let Some(trait_def_id) = trait_ref.trait_def_id() else {
-                        return tcx.ty_error_with_message(DUMMY_SP, "Could not find trait");
+                        return ty::EarlyBinder(tcx.ty_error_with_message(DUMMY_SP, "Could not find trait"));
                     };
                     let assoc_items = tcx.associated_items(trait_def_id);
                     let assoc_item = assoc_items.find_by_name_and_kind(
@@ -460,7 +456,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         def_id.to_def_id(),
                     );
                     if let Some(assoc_item) = assoc_item {
-                        tcx.type_of(assoc_item.def_id)
+                        tcx.type_of(assoc_item.def_id).subst_identity()
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
@@ -484,7 +480,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         }) =>
                 {
                     let Some(trait_def_id) = trait_ref.trait_def_id() else {
-                        return tcx.ty_error_with_message(DUMMY_SP, "Could not find trait");
+                        return ty::EarlyBinder(tcx.ty_error_with_message(DUMMY_SP, "Could not find trait"));
                     };
                     let assoc_items = tcx.associated_items(trait_def_id);
                     let assoc_item = assoc_items.find_by_name_and_kind(
@@ -505,7 +501,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     if let Some(param)
                         = assoc_item.map(|item| &tcx.generics_of(item.def_id).params[idx]).filter(|param| param.kind.is_ty_or_const())
                     {
-                        tcx.type_of(param.def_id)
+                        tcx.type_of(param.def_id).subst_identity()
                     } else {
                         // FIXME(associated_const_equality): add a useful error message here.
                         tcx.ty_error_with_message(
@@ -519,7 +515,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     def_id: param_def_id,
                     kind: GenericParamKind::Const { default: Some(ct), .. },
                     ..
-                }) if ct.hir_id == hir_id => tcx.type_of(param_def_id),
+                }) if ct.hir_id == hir_id => tcx.type_of(param_def_id).subst_identity(),
 
                 x => tcx.ty_error_with_message(
                     DUMMY_SP,
@@ -537,7 +533,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         x => {
             bug!("unexpected sort of node in type_of(): {:?}", x);
         }
-    }
+    };
+    ty::EarlyBinder(output)
 }
 
 #[instrument(skip(tcx), level = "debug")]
@@ -846,35 +843,23 @@ fn infer_placeholder_type<'a>(
 ) -> Ty<'a> {
     // Attempts to make the type nameable by turning FnDefs into FnPtrs.
     struct MakeNameable<'tcx> {
-        success: bool,
         tcx: TyCtxt<'tcx>,
     }
 
-    impl<'tcx> MakeNameable<'tcx> {
-        fn new(tcx: TyCtxt<'tcx>) -> Self {
-            MakeNameable { success: true, tcx }
-        }
-    }
-
-    impl<'tcx> TypeFolder<'tcx> for MakeNameable<'tcx> {
-        fn tcx(&self) -> TyCtxt<'tcx> {
+    impl<'tcx> TypeFolder<TyCtxt<'tcx>> for MakeNameable<'tcx> {
+        fn interner(&self) -> TyCtxt<'tcx> {
             self.tcx
         }
 
         fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-            if !self.success {
-                return ty;
-            }
-
-            match ty.kind() {
-                ty::FnDef(def_id, _) => self.tcx.mk_fn_ptr(self.tcx.fn_sig(*def_id)),
-                // FIXME: non-capturing closures should also suggest a function pointer
-                ty::Closure(..) | ty::Generator(..) => {
-                    self.success = false;
-                    ty
+            let ty = match *ty.kind() {
+                ty::FnDef(def_id, substs) => {
+                    self.tcx.mk_fn_ptr(self.tcx.fn_sig(def_id).subst(self.tcx, substs))
                 }
-                _ => ty.super_fold_with(self),
-            }
+                _ => ty,
+            };
+
+            ty.super_fold_with(self)
         }
     }
 
@@ -897,15 +882,11 @@ fn infer_placeholder_type<'a>(
                     suggestions.clear();
                 }
 
-                // Suggesting unnameable types won't help.
-                let mut mk_nameable = MakeNameable::new(tcx);
-                let ty = mk_nameable.fold_ty(ty);
-                let sugg_ty = if mk_nameable.success { Some(ty) } else { None };
-                if let Some(sugg_ty) = sugg_ty {
+                if let Some(ty) = ty.make_suggestable(tcx, false) {
                     err.span_suggestion(
                         span,
                         &format!("provide a type for the {item}", item = kind),
-                        format!("{colon} {sugg_ty}"),
+                        format!("{colon} {ty}"),
                         Applicability::MachineApplicable,
                     );
                 } else {
@@ -922,15 +903,12 @@ fn infer_placeholder_type<'a>(
             let mut diag = bad_placeholder(tcx, vec![span], kind);
 
             if !ty.references_error() {
-                let mut mk_nameable = MakeNameable::new(tcx);
-                let ty = mk_nameable.fold_ty(ty);
-                let sugg_ty = if mk_nameable.success { Some(ty) } else { None };
-                if let Some(sugg_ty) = sugg_ty {
+                if let Some(ty) = ty.make_suggestable(tcx, false) {
                     diag.span_suggestion(
                         span,
                         "replace with the correct type",
-                        sugg_ty,
-                        Applicability::MaybeIncorrect,
+                        ty,
+                        Applicability::MachineApplicable,
                     );
                 } else {
                     with_forced_trimmed_paths!(diag.span_note(

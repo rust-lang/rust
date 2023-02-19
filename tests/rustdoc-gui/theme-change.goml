@@ -43,7 +43,7 @@ assert-local-storage: { "rustdoc-theme": "ayu" }
 
 assert-local-storage-false: { "rustdoc-use-system-theme": "true" }
 click: "#theme-system-preference"
-wait-for: ".setting-line:not(.hidden) #preferred-light-theme"
+wait-for: "#preferred-light-theme.setting-line:not(.hidden)"
 assert-local-storage: { "rustdoc-use-system-theme": "true" }
 // We click on both preferred light and dark themes to be sure that there is a change.
 click: "#preferred-light-theme-dark"
@@ -52,16 +52,16 @@ wait-for-css: ("body", { "background-color": |background_dark| })
 
 reload:
 // Ensure that the "preferred themes" are still displayed.
-wait-for: ".setting-line:not(.hidden) #preferred-light-theme"
+wait-for: "#preferred-light-theme.setting-line:not(.hidden)"
 click: "#theme-light"
 wait-for-css: ("body", { "background-color": |background_light| })
 assert-local-storage: { "rustdoc-theme": "light" }
 // Ensure it's now hidden again
-wait-for: ".setting-line.hidden #preferred-light-theme"
+wait-for: "#preferred-light-theme.setting-line.hidden"
 // And ensure the theme was rightly set.
 wait-for-css: ("body", { "background-color": |background_light| })
 assert-local-storage: { "rustdoc-theme": "light" }
 
 reload:
 wait-for: "#settings"
-assert: ".setting-line.hidden #preferred-light-theme"
+assert: "#preferred-light-theme.setting-line.hidden"

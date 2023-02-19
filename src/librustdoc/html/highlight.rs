@@ -58,11 +58,11 @@ pub(crate) fn render_example_with_highlighting(
     write_footer(out, playground_button);
 }
 
-/// Highlights `src` as a macro, returning the HTML output.
-pub(crate) fn render_macro_with_highlighting(src: &str, out: &mut Buffer) {
-    write_header(out, "macro", None, Tooltip::None);
+/// Highlights `src` as an item-decl, returning the HTML output.
+pub(crate) fn render_item_decl_with_highlighting(src: &str, out: &mut Buffer) {
+    write!(out, "<pre class=\"rust item-decl\">");
     write_code(out, src, None, None);
-    write_footer(out, None);
+    write!(out, "</pre>");
 }
 
 /// Highlights `src` as a source code page, returning the HTML output.
@@ -96,13 +96,19 @@ fn write_header(out: &mut Buffer, class: &str, extra_content: Option<Buffer>, to
     );
 
     if tooltip != Tooltip::None {
+        let edition_code;
         write!(
             out,
-            "<div class='tooltip'{}>ⓘ</div>",
-            if let Tooltip::Edition(edition_info) = tooltip {
-                format!(" data-edition=\"{}\"", edition_info)
-            } else {
-                String::new()
+            "<a href=\"#\" class=\"tooltip\" title=\"{}\">ⓘ</a>",
+            match tooltip {
+                Tooltip::Ignore => "This example is not tested",
+                Tooltip::CompileFail => "This example deliberately fails to compile",
+                Tooltip::ShouldPanic => "This example panics",
+                Tooltip::Edition(edition) => {
+                    edition_code = format!("This example runs with edition {edition}");
+                    &edition_code
+                }
+                Tooltip::None => unreachable!(),
             },
         );
     }
@@ -460,10 +466,8 @@ impl<'a> PeekIter<'a> {
     }
     /// Returns the next item after the current one. It doesn't interfere with `peek_next` output.
     fn peek(&mut self) -> Option<&(TokenKind, &'a str)> {
-        if self.stored.is_empty() {
-            if let Some(next) = self.iter.next() {
-                self.stored.push_back(next);
-            }
+        if self.stored.is_empty() && let Some(next) = self.iter.next() {
+            self.stored.push_back(next);
         }
         self.stored.front()
     }

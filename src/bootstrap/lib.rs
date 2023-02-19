@@ -11,93 +11,6 @@
 //!   crates.io and Cargo.
 //! * A standard interface to build across all platforms, including MSVC
 //!
-//! ## Architecture
-//!
-//! The build system defers most of the complicated logic managing invocations
-//! of rustc and rustdoc to Cargo itself. However, moving through various stages
-//! and copying artifacts is still necessary for it to do. Each time rustbuild
-//! is invoked, it will iterate through the list of predefined steps and execute
-//! each serially in turn if it matches the paths passed or is a default rule.
-//! For each step rustbuild relies on the step internally being incremental and
-//! parallel. Note, though, that the `-j` parameter to rustbuild gets forwarded
-//! to appropriate test harnesses and such.
-//!
-//! Most of the "meaty" steps that matter are backed by Cargo, which does indeed
-//! have its own parallelism and incremental management. Later steps, like
-//! tests, aren't incremental and simply run the entire suite currently.
-//! However, compiletest itself tries to avoid running tests when the artifacts
-//! that are involved (mainly the compiler) haven't changed.
-//!
-//! When you execute `x.py build`, the steps executed are:
-//!
-//! * First, the python script is run. This will automatically download the
-//!   stage0 rustc and cargo according to `src/stage0.json`, or use the cached
-//!   versions if they're available. These are then used to compile rustbuild
-//!   itself (using Cargo). Finally, control is then transferred to rustbuild.
-//!
-//! * Rustbuild takes over, performs sanity checks, probes the environment,
-//!   reads configuration, and starts executing steps as it reads the command
-//!   line arguments (paths) or going through the default rules.
-//!
-//!   The build output will be something like the following:
-//!
-//!   Building stage0 std artifacts
-//!   Copying stage0 std
-//!   Building stage0 test artifacts
-//!   Copying stage0 test
-//!   Building stage0 compiler artifacts
-//!   Copying stage0 rustc
-//!   Assembling stage1 compiler
-//!   Building stage1 std artifacts
-//!   Copying stage1 std
-//!   Building stage1 test artifacts
-//!   Copying stage1 test
-//!   Building stage1 compiler artifacts
-//!   Copying stage1 rustc
-//!   Assembling stage2 compiler
-//!   Uplifting stage1 std
-//!   Uplifting stage1 test
-//!   Uplifting stage1 rustc
-//!
-//! Let's disect that a little:
-//!
-//! ## Building stage0 {std,test,compiler} artifacts
-//!
-//! These steps use the provided (downloaded, usually) compiler to compile the
-//! local Rust source into libraries we can use.
-//!
-//! ## Copying stage0 {std,test,rustc}
-//!
-//! This copies the build output from Cargo into
-//! `build/$HOST/stage0-sysroot/lib/rustlib/$ARCH/lib`. FIXME: this step's
-//! documentation should be expanded -- the information already here may be
-//! incorrect.
-//!
-//! ## Assembling stage1 compiler
-//!
-//! This copies the libraries we built in "building stage0 ... artifacts" into
-//! the stage1 compiler's lib directory. These are the host libraries that the
-//! compiler itself uses to run. These aren't actually used by artifacts the new
-//! compiler generates. This step also copies the rustc and rustdoc binaries we
-//! generated into build/$HOST/stage/bin.
-//!
-//! The stage1/bin/rustc is a fully functional compiler, but it doesn't yet have
-//! any libraries to link built binaries or libraries to. The next 3 steps will
-//! provide those libraries for it; they are mostly equivalent to constructing
-//! the stage1/bin compiler so we don't go through them individually.
-//!
-//! ## Uplifting stage1 {std,test,rustc}
-//!
-//! This step copies the libraries from the stage1 compiler sysroot into the
-//! stage2 compiler. This is done to avoid rebuilding the compiler; libraries
-//! we'd build in this step should be identical (in function, if not necessarily
-//! identical on disk) so there's no need to recompile the compiler again. Note
-//! that if you want to, you can enable the full-bootstrap option to change this
-//! behavior.
-//!
-//! Each step is driven by a separate Cargo project and rustbuild orchestrates
-//! copying files between steps and otherwise preparing for Cargo to run.
-//!
 //! ## Further information
 //!
 //! More documentation can be found in each respective module below, and you can
@@ -107,10 +20,9 @@ use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, File};
-use std::io;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::str;
 
 use build_helper::ci::CiEnv;
@@ -203,7 +115,6 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (None, "bootstrap", None),
     (Some(Mode::Rustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "parallel_compiler", None),
-    (Some(Mode::ToolRustc), "emulate_second_only_system", None),
     (Some(Mode::Codegen), "parallel_compiler", None),
     (Some(Mode::Std), "stdarch_intel_sde", None),
     (Some(Mode::Std), "no_fp_fmt_parse", None),
@@ -214,18 +125,9 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (Some(Mode::Std), "backtrace_in_libstd", None),
     /* Extra values not defined in the built-in targets yet, but used in std */
     (Some(Mode::Std), "target_env", Some(&["libnx"])),
-    (Some(Mode::Std), "target_os", Some(&["watchos"])),
-    (
-        Some(Mode::Std),
-        "target_arch",
-        Some(&["asmjs", "spirv", "nvptx", "nvptx64", "le32", "xtensa"]),
-    ),
+    // (Some(Mode::Std), "target_os", Some(&[])),
+    (Some(Mode::Std), "target_arch", Some(&["asmjs", "spirv", "nvptx", "xtensa"])),
     /* Extra names used by dependencies */
-    // FIXME: Used by rustfmt is their test but is invalid (neither cargo nor bootstrap ever set
-    // this config) should probably by removed or use a allow attribute.
-    (Some(Mode::ToolRustc), "release", None),
-    // FIXME: Used by stdarch in their test, should use a allow attribute instead.
-    (Some(Mode::Std), "dont_compile_me", None),
     // FIXME: Used by serde_json, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "no_btreemap_remove_entry", None),
     (Some(Mode::ToolRustc), "no_btreemap_remove_entry", None),
@@ -235,8 +137,12 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     // FIXME: Used by proc-macro2, but we should not be triggering on external dependencies.
     (Some(Mode::Rustc), "span_locations", None),
     (Some(Mode::ToolRustc), "span_locations", None),
-    // Can be passed in RUSTFLAGS to prevent direct syscalls in rustix.
-    (None, "rustix_use_libc", None),
+    // FIXME: Used by rustix, but we should not be triggering on external dependencies.
+    (Some(Mode::Rustc), "rustix_use_libc", None),
+    (Some(Mode::ToolRustc), "rustix_use_libc", None),
+    // FIXME: Used by filetime, but we should not be triggering on external dependencies.
+    (Some(Mode::Rustc), "emulate_second_only_system", None),
+    (Some(Mode::ToolRustc), "emulate_second_only_system", None),
 ];
 
 /// A structure representing a Rust compiler.
@@ -662,12 +568,32 @@ impl Build {
 
         // Try passing `--progress` to start, then run git again without if that fails.
         let update = |progress: bool| {
-            let mut git = Command::new("git");
+            // Git is buggy and will try to fetch submodules from the tracking branch for *this* repository,
+            // even though that has no relation to the upstream for the submodule.
+            let current_branch = {
+                let output = self
+                    .config
+                    .git()
+                    .args(["symbolic-ref", "--short", "HEAD"])
+                    .stderr(Stdio::inherit())
+                    .output();
+                let output = t!(output);
+                if output.status.success() {
+                    Some(String::from_utf8(output.stdout).unwrap().trim().to_owned())
+                } else {
+                    None
+                }
+            };
+
+            let mut git = self.config.git();
+            if let Some(branch) = current_branch {
+                git.arg("-c").arg(format!("branch.{branch}.remote=origin"));
+            }
             git.args(&["submodule", "update", "--init", "--recursive", "--depth=1"]);
             if progress {
                 git.arg("--progress");
             }
-            git.arg(relative_path).current_dir(&self.config.src);
+            git.arg(relative_path);
             git
         };
         // NOTE: doesn't use `try_run` because this shouldn't print an error if it fails.
@@ -1431,6 +1357,14 @@ impl Build {
             return Vec::new();
         }
 
+        if !stamp.exists() {
+            eprintln!(
+                "Error: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
+                stamp.display()
+            );
+            crate::detail_exit(1);
+        }
+
         let mut paths = Vec::new();
         let contents = t!(fs::read(stamp), &stamp);
         // This is the method we use for extracting paths from the stamp file passed to us. See
@@ -1472,7 +1406,7 @@ impl Build {
                 src = t!(fs::canonicalize(src));
             } else {
                 let link = t!(fs::read_link(src));
-                t!(self.symlink_file(link, dst));
+                t!(self.config.symlink_file(link, dst));
                 return;
             }
         }
@@ -1588,14 +1522,6 @@ impl Build {
             Err(err) => panic!("could not read dir {:?}: {:?}", dir, err),
         };
         iter.map(|e| t!(e)).collect::<Vec<_>>().into_iter()
-    }
-
-    fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(&self, src: P, link: Q) -> io::Result<()> {
-        #[cfg(unix)]
-        use std::os::unix::fs::symlink as symlink_file;
-        #[cfg(windows)]
-        use std::os::windows::fs::symlink_file;
-        if !self.config.dry_run() { symlink_file(src.as_ref(), link.as_ref()) } else { Ok(()) }
     }
 
     /// Returns if config.ninja is enabled, and checks for ninja existence,

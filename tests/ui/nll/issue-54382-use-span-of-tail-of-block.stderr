@@ -1,6 +1,9 @@
 error[E0597]: `_thing1` does not live long enough
   --> $DIR/issue-54382-use-span-of-tail-of-block.rs:7:29
    |
+LL |         let mut _thing1 = D(Box::new("thing1"));
+   |             ----------- binding `_thing1` declared here
+...
 LL |             D("other").next(&_thing1)
    |             ----------------^^^^^^^^-
    |             |               |

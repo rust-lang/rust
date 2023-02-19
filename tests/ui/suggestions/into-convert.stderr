@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/into-convert.rs:6:16
    |
 LL |     let x: A = B;
-   |            -   ^ expected struct `A`, found struct `B`
+   |            -   ^ expected `A`, found `B`
    |            |
    |            expected due to this
    |
@@ -15,7 +15,7 @@ error[E0308]: mismatched types
   --> $DIR/into-convert.rs:10:24
    |
 LL |     let y: Arc<Path> = PathBuf::new();
-   |            ---------   ^^^^^^^^^^^^^^ expected struct `Arc`, found struct `PathBuf`
+   |            ---------   ^^^^^^^^^^^^^^ expected `Arc<Path>`, found `PathBuf`
    |            |
    |            expected due to this
    |
@@ -30,7 +30,7 @@ error[E0308]: mismatched types
   --> $DIR/into-convert.rs:14:24
    |
 LL |     let z: AtomicU32 = 1;
-   |            ---------   ^ expected struct `AtomicU32`, found integer
+   |            ---------   ^ expected `AtomicU32`, found integer
    |            |
    |            expected due to this
    |

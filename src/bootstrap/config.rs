@@ -65,6 +65,7 @@ pub struct Config {
     pub verbose: usize,
     pub submodules: Option<bool>,
     pub compiler_docs: bool,
+    pub library_docs_private_items: bool,
     pub docs_minification: bool,
     pub docs: bool,
     pub locked_deps: bool,
@@ -96,6 +97,10 @@ pub struct Config {
     pub cmd: Subcommand,
     pub incremental: bool,
     pub dry_run: DryRun,
+    /// Arguments appearing after `--` to be forwarded to tools,
+    /// e.g. `--fix-broken` or test arguments.
+    pub free_args: Vec<String>,
+
     /// `None` if we shouldn't download CI compiler artifacts, or the commit to download if we should.
     #[cfg(not(test))]
     download_rustc_commit: Option<String>,
@@ -332,8 +337,9 @@ impl SplitDebuginfo {
 }
 
 /// LTO mode used for compiling rustc itself.
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq)]
 pub enum RustcLto {
+    Off,
     #[default]
     ThinLocal,
     Thin,
@@ -348,6 +354,7 @@ impl std::str::FromStr for RustcLto {
             "thin-local" => Ok(RustcLto::ThinLocal),
             "thin" => Ok(RustcLto::Thin),
             "fat" => Ok(RustcLto::Fat),
+            "off" => Ok(RustcLto::Off),
             _ => Err(format!("Invalid value for rustc LTO: {}", s)),
         }
     }
@@ -606,6 +613,7 @@ define_config! {
         rustfmt: Option<PathBuf> = "rustfmt",
         docs: Option<bool> = "docs",
         compiler_docs: Option<bool> = "compiler-docs",
+        library_docs_private_items: Option<bool> = "library-docs-private-items",
         docs_minification: Option<bool> = "docs-minification",
         submodules: Option<bool> = "submodules",
         gdb: Option<String> = "gdb",
@@ -862,6 +870,7 @@ impl Config {
         config.keep_stage = flags.keep_stage;
         config.keep_stage_std = flags.keep_stage_std;
         config.color = flags.color;
+        config.free_args = flags.free_args.clone().unwrap_or_default();
         if let Some(value) = flags.deny_warnings {
             config.deny_warnings = value;
         }
@@ -965,6 +974,9 @@ impl Config {
         config.changelog_seen = toml.changelog_seen;
 
         let build = toml.build.unwrap_or_default();
+        if let Some(file_build) = build.build {
+            config.build = TargetSelection::from_user(&file_build);
+        };
 
         set(&mut config.out, flags.build_dir.or_else(|| build.build_dir.map(PathBuf::from)));
         // NOTE: Bootstrap spawns various commands with different working directories.
@@ -1015,6 +1027,7 @@ impl Config {
         config.submodules = build.submodules;
         set(&mut config.low_priority, build.low_priority);
         set(&mut config.compiler_docs, build.compiler_docs);
+        set(&mut config.library_docs_private_items, build.library_docs_private_items);
         set(&mut config.docs_minification, build.docs_minification);
         set(&mut config.docs, build.docs);
         set(&mut config.locked_deps, build.locked_deps);

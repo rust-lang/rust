@@ -4,6 +4,7 @@ error[E0597]: `v` does not live long enough
 LL | fn foo<'a>() {
    |        -- lifetime `'a` defined here
 LL |     let v = 22;
+   |         - binding `v` declared here
 LL |     let x = <A<'a>>::new(&v, 22);
    |             -------------^^-----
    |             |            |

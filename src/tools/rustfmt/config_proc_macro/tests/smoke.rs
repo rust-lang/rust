@@ -1,6 +1,7 @@
 pub mod config {
     pub trait ConfigType: Sized {
         fn doc_hint() -> String;
+        fn stable_variant(&self) -> bool;
     }
 }
 

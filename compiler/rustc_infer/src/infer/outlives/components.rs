@@ -112,7 +112,7 @@ fn compute_components<'tcx>(
             }
 
             // All regions are bound inside a witness
-            ty::GeneratorWitness(..) => (),
+            ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) => (),
 
             // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
             // is implied by the environment is done in regionck.

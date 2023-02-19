@@ -119,6 +119,12 @@ impl DefPathHash {
     }
 }
 
+impl Default for DefPathHash {
+    fn default() -> Self {
+        DefPathHash(Fingerprint::ZERO)
+    }
+}
+
 impl Borrow<Fingerprint> for DefPathHash {
     #[inline]
     fn borrow(&self) -> &Fingerprint {
@@ -293,7 +299,7 @@ impl DefId {
 
     #[inline]
     pub fn as_local(self) -> Option<LocalDefId> {
-        if self.is_local() { Some(LocalDefId { local_def_index: self.index }) } else { None }
+        self.is_local().then(|| LocalDefId { local_def_index: self.index })
     }
 
     #[inline]
@@ -314,7 +320,7 @@ impl DefId {
 
     #[inline]
     pub fn as_crate_root(self) -> Option<CrateNum> {
-        if self.is_crate_root() { Some(self.krate) } else { None }
+        self.is_crate_root().then_some(self.krate)
     }
 
     #[inline]

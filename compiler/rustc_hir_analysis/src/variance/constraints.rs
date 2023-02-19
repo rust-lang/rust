@@ -101,7 +101,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         let inferred_start = self.terms_cx.inferred_starts[&def_id];
         let current_item = &CurrentItem { inferred_start };
-        match tcx.type_of(def_id).kind() {
+        match tcx.type_of(def_id).subst_identity().kind() {
             ty::Adt(def, _) => {
                 // Not entirely obvious: constraints on structs/enums do not
                 // affect the variance of their type parameters. See discussion
@@ -112,14 +112,18 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 for field in def.all_fields() {
                     self.add_constraints_from_ty(
                         current_item,
-                        tcx.type_of(field.did),
+                        tcx.type_of(field.did).subst_identity(),
                         self.covariant,
                     );
                 }
             }
 
             ty::FnDef(..) => {
-                self.add_constraints_from_sig(current_item, tcx.fn_sig(def_id), self.covariant);
+                self.add_constraints_from_sig(
+                    current_item,
+                    tcx.fn_sig(def_id).subst_identity(),
+                    self.covariant,
+                );
             }
 
             ty::Error(_) => {}
@@ -221,8 +225,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::Ref(region, ty, mutbl) => {
-                let contra = self.contravariant(variance);
-                self.add_constraints_from_region(current, region, contra);
+                self.add_constraints_from_region(current, region, variance);
                 self.add_constraints_from_mt(current, &ty::TypeAndMut { ty, mutbl }, variance);
             }
 
@@ -254,9 +257,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::Dynamic(data, r, _) => {
-                // The type `Foo<T+'a>` is contravariant w/r/t `'a`:
-                let contra = self.contravariant(variance);
-                self.add_constraints_from_region(current, r, contra);
+                // The type `dyn Trait<T> +'a` is covariant w/r/t `'a`:
+                self.add_constraints_from_region(current, r, variance);
 
                 if let Some(poly_trait_ref) = data.principal() {
                     self.add_constraints_from_invariant_substs(
@@ -291,12 +293,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // types, where we use Error as the Self type
             }
 
-            ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Bound(..) | ty::Infer(..) => {
-                bug!(
-                    "unexpected type encountered in \
-                      variance inference: {}",
-                    ty
-                );
+            ty::Placeholder(..)
+            | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
+            | ty::Bound(..)
+            | ty::Infer(..) => {
+                bug!("unexpected type encountered in variance inference: {}", ty);
             }
         }
     }
@@ -406,6 +408,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // Late-bound regions do not get substituted the same
                 // way early-bound regions do, so we skip them here.
             }
+
+            ty::ReError(_) => {}
 
             ty::ReFree(..) | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReErased => {
                 // We don't expect to see anything but 'static or bound

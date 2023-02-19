@@ -75,6 +75,8 @@ LL |     fn use_pin_box_self(self: Pin<Box<Self>>) {}
 error[E0505]: cannot move out of `mut_foo` because it is borrowed
   --> $DIR/move-fn-self-receiver.rs:50:5
    |
+LL |     let mut mut_foo = Foo;
+   |         ----------- binding `mut_foo` declared here
 LL |     let ret = mut_foo.use_mut_self();
    |               ---------------------- borrow of `mut_foo` occurs here
 LL |     mut_foo;

@@ -3,6 +3,7 @@
 #![crate_type = "lib"]
 
 extern crate core;
+use core::cmp::Ordering;
 use core::num::{NonZeroU32, NonZeroI64};
 use core::ptr::NonNull;
 
@@ -29,6 +30,15 @@ pub fn non_zero_signed_eq(l: Option<NonZeroI64>, r: Option<NonZeroI64>) -> bool 
 pub fn non_null_eq(l: Option<NonNull<u8>>, r: Option<NonNull<u8>>) -> bool {
     // CHECK: start:
     // CHECK-NEXT: icmp eq {{(i8\*|ptr)}}
+    // CHECK-NEXT: ret i1
+    l == r
+}
+
+// CHECK-lABEL: @ordering_eq
+#[no_mangle]
+pub fn ordering_eq(l: Option<Ordering>, r: Option<Ordering>) -> bool {
+    // CHECK: start:
+    // CHECK-NEXT: icmp eq i8
     // CHECK-NEXT: ret i1
     l == r
 }

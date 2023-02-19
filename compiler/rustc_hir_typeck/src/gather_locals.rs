@@ -5,6 +5,7 @@ use rustc_hir::PatKind;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::UserType;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 
@@ -156,7 +157,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         _: &'tcx hir::FnDecl<'tcx>,
         _: hir::BodyId,
         _: Span,
-        _: hir::HirId,
+        _: LocalDefId,
     ) {
     }
 }

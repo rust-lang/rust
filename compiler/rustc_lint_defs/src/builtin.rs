@@ -1188,51 +1188,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unaligned_references` lint detects unaligned references to fields
-    /// of [packed] structs.
-    ///
-    /// [packed]: https://doc.rust-lang.org/reference/type-layout.html#the-alignment-modifiers
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #[repr(packed)]
-    /// pub struct Foo {
-    ///     field1: u64,
-    ///     field2: u8,
-    /// }
-    ///
-    /// fn main() {
-    ///     unsafe {
-    ///         let foo = Foo { field1: 0, field2: 0 };
-    ///         let _ = &foo.field1;
-    ///         println!("{}", foo.field1); // An implicit `&` is added here, triggering the lint.
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Creating a reference to an insufficiently aligned packed field is [undefined behavior] and
-    /// should be disallowed. Using an `unsafe` block does not change anything about this. Instead,
-    /// the code should do a copy of the data in the packed field or use raw pointers and unaligned
-    /// accesses. See [issue #82523] for more information.
-    ///
-    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    /// [issue #82523]: https://github.com/rust-lang/rust/issues/82523
-    pub UNALIGNED_REFERENCES,
-    Deny,
-    "detects unaligned references to fields of packed structs",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #82523 <https://github.com/rust-lang/rust/issues/82523>",
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
-    };
-    report_in_external_macro
-}
-
-declare_lint! {
     /// The `const_item_mutation` lint detects attempts to mutate a `const`
     /// item.
     ///
@@ -3342,7 +3297,6 @@ declare_lint_pass! {
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         INVALID_TYPE_PARAM_DEFAULT,
         RENAMED_AND_REMOVED_LINTS,
-        UNALIGNED_REFERENCES,
         CONST_ITEM_MUTATION,
         PATTERNS_IN_FNS_WITHOUT_BODY,
         MISSING_FRAGMENT_SPECIFIER,
@@ -3416,6 +3370,7 @@ declare_lint_pass! {
         REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
         IMPLIED_BOUNDS_ENTAILMENT,
+        BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
     ]
 }
 
@@ -3566,9 +3521,15 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Previously, there were very like checks being performed on `#[doc(..)]`
-    /// unlike the other attributes. It'll now catch all the issues that it
-    /// silently ignored previously.
+    /// Previously, incorrect usage of the `#[doc(..)]` attribute was not
+    /// being validated. Usually these should be rejected as a hard error,
+    /// but this lint was introduced to avoid breaking any existing
+    /// crates which included them.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard
+    /// error in the future. See [issue #82730] for more details.
+    ///
+    /// [issue #82730]: https://github.com/rust-lang/rust/issues/82730
     pub INVALID_DOC_ATTRIBUTES,
     Warn,
     "detects invalid `#[doc(...)]` attributes",
@@ -4143,4 +4104,37 @@ declare_lint! {
         reference: "issue #105572 <https://github.com/rust-lang/rust/issues/105572>",
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
+}
+
+declare_lint! {
+    /// The `byte_slice_in_packed_struct_with_derive` lint detects cases where a byte slice field
+    /// (`[u8]`) or string slice field (`str`) is used in a `packed` struct that derives one or
+    /// more built-in traits.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[repr(packed)]
+    /// #[derive(Hash)]
+    /// struct FlexZeroSlice {
+    ///     width: u8,
+    ///     data: [u8],
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This was previously accepted but is being phased out, because fields in packed structs are
+    /// now required to implement `Copy` for `derive` to work. Byte slices and string slices are a
+    /// temporary exception because certain crates depended on them.
+    pub BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE,
+    Warn,
+    "`[u8]` or `str` used in a packed struct with `derive`",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #107457 <https://github.com/rust-lang/rust/issues/107457>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
+    };
+    report_in_external_macro
 }

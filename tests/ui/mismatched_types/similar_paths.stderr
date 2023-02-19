@@ -4,12 +4,12 @@ error[E0308]: mismatched types
 LL | pub fn foo() -> Option<u8> {
    |                 ---------- expected `Option<u8>` because of return type
 LL |     Some(42_u8)
-   |     ^^^^^^^^^^^ expected enum `Option`, found enum `std::option::Option`
+   |     ^^^^^^^^^^^ expected `Option<u8>`, found `std::option::Option<u8>`
    |
-   = note: enum `std::option::Option` and enum `Option` have similar names, but are actually distinct types
-note: enum `std::option::Option` is defined in crate `core`
+   = note: `std::option::Option<u8>` and `Option<u8>` have similar names, but are actually distinct types
+note: `std::option::Option<u8>` is defined in crate `core`
   --> $SRC_DIR/core/src/option.rs:LL:COL
-note: enum `Option` is defined in the current crate
+note: `Option<u8>` is defined in the current crate
   --> $DIR/similar_paths.rs:1:1
    |
 LL | enum Option<T> {

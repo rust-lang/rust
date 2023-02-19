@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/dst-bad-assign-3.rs:33:12
    |
 LL |     f5.2 = Bar1 {f: 36};
-   |     ----   ^^^^^^^^^^^^ expected trait object `dyn ToBar`, found struct `Bar1`
+   |     ----   ^^^^^^^^^^^^ expected `dyn ToBar`, found `Bar1`
    |     |
    |     expected due to the type of this binding
    |

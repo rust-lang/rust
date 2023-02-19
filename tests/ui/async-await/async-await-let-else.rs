@@ -1,7 +1,7 @@
 // edition:2021
-// revisions: drop-tracking no-drop-tracking
-// [drop-tracking] compile-flags: -Zdrop-tracking=yes
-// [no-drop-tracking] compile-flags: -Zdrop-tracking=no
+// revisions: no_drop_tracking drop_tracking drop_tracking_mir
+// [drop_tracking] compile-flags: -Zdrop-tracking
+// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
 
 use std::rc::Rc;
 

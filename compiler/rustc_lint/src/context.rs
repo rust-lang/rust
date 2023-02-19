@@ -487,7 +487,7 @@ impl LintStore {
         let mut groups: Vec<_> = self
             .lint_groups
             .iter()
-            .filter_map(|(k, LintGroup { depr, .. })| if depr.is_none() { Some(k) } else { None })
+            .filter_map(|(k, LintGroup { depr, .. })| depr.is_none().then_some(k))
             .collect();
         groups.sort();
         let groups = groups.iter().map(|k| Symbol::intern(k));
@@ -837,9 +837,17 @@ pub trait LintContext: Sized {
                             (use_span, "'_".to_owned())
                         };
                         debug!(?deletion_span, ?use_span);
+
+                        // issue 107998 for the case such as a wrong function pointer type
+                        // `deletion_span` is empty and there is no need to report lifetime uses here
+                        let suggestions = if deletion_span.is_empty() {
+                            vec![(use_span, replace_lt)]
+                        } else {
+                            vec![(deletion_span, String::new()), (use_span, replace_lt)]
+                        };
                         db.multipart_suggestion(
                             msg,
-                            vec![(deletion_span, String::new()), (use_span, replace_lt)],
+                            suggestions,
                             Applicability::MachineApplicable,
                         );
                     }
@@ -881,6 +889,9 @@ pub trait LintContext: Sized {
                             Applicability::MaybeIncorrect,
                         );
                     }
+                }
+                BuiltinLintDiagnostics::ByteSliceInPackedStructWithDerive => {
+                    db.help("consider implementing the trait by hand, or remove the `packed` attribute");
                 }
             }
             // Rewrap `db`, and pass control to the user.
@@ -1101,11 +1112,9 @@ impl<'tcx> LateContext<'tcx> {
                 .maybe_typeck_results()
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)
                 .or_else(|| {
-                    if self.tcx.has_typeck_results(id.owner.to_def_id()) {
-                        Some(self.tcx.typeck(id.owner.def_id))
-                    } else {
-                        None
-                    }
+                    self.tcx
+                        .has_typeck_results(id.owner.to_def_id())
+                        .then(|| self.tcx.typeck(id.owner.def_id))
                 })
                 .and_then(|typeck_results| typeck_results.type_dependent_def(id))
                 .map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),

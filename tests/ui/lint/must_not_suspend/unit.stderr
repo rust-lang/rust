@@ -1,5 +1,5 @@
 error: `Umm` held across a suspend point, but should not be
-  --> $DIR/unit.rs:20:9
+  --> $DIR/unit.rs:23:9
    |
 LL |     let _guard = bar();
    |         ^^^^^^
@@ -7,17 +7,17 @@ LL |     other().await;
    |            ------ the value is held across this suspend point
    |
 note: You gotta use Umm's, ya know?
-  --> $DIR/unit.rs:20:9
+  --> $DIR/unit.rs:23:9
    |
 LL |     let _guard = bar();
    |         ^^^^^^
 help: consider using a block (`{ ... }`) to shrink the value's scope, ending before the suspend point
-  --> $DIR/unit.rs:20:9
+  --> $DIR/unit.rs:23:9
    |
 LL |     let _guard = bar();
    |         ^^^^^^
 note: the lint level is defined here
-  --> $DIR/unit.rs:3:9
+  --> $DIR/unit.rs:6:9
    |
 LL | #![deny(must_not_suspend)]
    |         ^^^^^^^^^^^^^^^^

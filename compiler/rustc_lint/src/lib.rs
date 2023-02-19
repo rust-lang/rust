@@ -64,6 +64,7 @@ mod let_underscore;
 mod levels;
 mod lints;
 mod methods;
+mod multiple_supertrait_upcastable;
 mod non_ascii_idents;
 mod non_fmt_panic;
 mod nonstandard_style;
@@ -98,6 +99,7 @@ use hidden_unicode_codepoints::*;
 use internal::*;
 use let_underscore::*;
 use methods::*;
+use multiple_supertrait_upcastable::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
 use nonstandard_style::*;
@@ -232,6 +234,7 @@ late_lint_methods!(
             InvalidAtomicOrdering: InvalidAtomicOrdering,
             NamedAsmLabels: NamedAsmLabels,
             OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
+            MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
         ]
     ]
 );
@@ -321,7 +324,6 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("exceeding_bitshifts", "arithmetic_overflow");
     store.register_renamed("redundant_semicolon", "redundant_semicolons");
     store.register_renamed("overlapping_patterns", "overlapping_range_endpoints");
-    store.register_renamed("safe_packed_borrows", "unaligned_references");
     store.register_renamed("disjoint_capture_migration", "rust_2021_incompatible_closure_captures");
     store.register_renamed("or_patterns_back_compat", "rust_2021_incompatible_or_patterns");
     store.register_renamed("non_fmt_panic", "non_fmt_panics");
@@ -483,6 +485,16 @@ fn register_builtins(store: &mut LintStore) {
         "const_err",
         "converted into hard error, see issue #71800 \
          <https://github.com/rust-lang/rust/issues/71800> for more information",
+    );
+    store.register_removed(
+        "safe_packed_borrows",
+        "converted into hard error, see issue #82523 \
+         <https://github.com/rust-lang/rust/issues/82523> for more information",
+    );
+    store.register_removed(
+        "unaligned_references",
+        "converted into hard error, see issue #82523 \
+         <https://github.com/rust-lang/rust/issues/82523> for more information",
     );
 }
 

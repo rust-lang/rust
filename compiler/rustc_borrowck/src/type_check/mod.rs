@@ -137,7 +137,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     upvars: &[Upvar<'tcx>],
     use_polonius: bool,
 ) -> MirTypeckResults<'tcx> {
-    let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
+    let implicit_region_bound = infcx.tcx.mk_re_var(universal_regions.fr_fn_body);
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
         placeholder_index_to_region: IndexVec::default(),
@@ -402,7 +402,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     );
                 }
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
-                let unnormalized_ty = tcx.type_of(static_def_id);
+                let unnormalized_ty = tcx.type_of(static_def_id).subst_identity();
                 let normalized_ty = self.cx.normalize(unnormalized_ty, locations);
                 let literal_ty = constant.literal.ty().builtin_deref(true).unwrap().ty;
 
@@ -910,6 +910,8 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
 }
 
 impl<'tcx> MirTypeckRegionConstraints<'tcx> {
+    /// Creates a `Region` for a given `PlaceholderRegion`, or returns the
+    /// region that corresponds to a previously created one.
     fn placeholder_region(
         &mut self,
         infcx: &InferCtxt<'tcx>,
@@ -1258,6 +1260,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | StatementKind::StorageDead(..)
             | StatementKind::Retag { .. }
             | StatementKind::Coverage(..)
+            | StatementKind::ConstEvalCounter
             | StatementKind::Nop => {}
             StatementKind::Deinit(..) | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
@@ -1483,7 +1486,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             None => {
-                if !sig.output().is_privately_uninhabited(self.tcx(), self.param_env) {
+                // The signature in this call can reference region variables,
+                // so erase them before calling a query.
+                let output_ty = self.tcx().erase_regions(sig.output());
+                if !output_ty.is_privately_uninhabited(self.tcx(), self.param_env) {
                     span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
                 }
             }
@@ -1776,7 +1782,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // than 1.
                 // If the length is larger than 1, the repeat expression will need to copy the
                 // element, so we require the `Copy` trait.
-                if len.try_eval_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
+                if len.try_eval_target_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
                     match operand {
                         Operand::Copy(..) | Operand::Constant(..) => {
                             // These are always okay: direct use of a const, or a value that can evidently be copied.
@@ -2027,7 +2033,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             }
                         };
 
-                        if ty_to_mut == Mutability::Mut && ty_mut == Mutability::Not {
+                        if ty_to_mut.is_mut() && ty_mut.is_not() {
                             span_mirbug!(
                                 self,
                                 rvalue,
@@ -2532,7 +2538,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // clauses on the struct.
             AggregateKind::Closure(def_id, substs)
             | AggregateKind::Generator(def_id, substs, _) => {
-                (def_id.to_def_id(), self.prove_closure_bounds(tcx, def_id, substs, location))
+                (def_id, self.prove_closure_bounds(tcx, def_id.expect_local(), substs, location))
             }
 
             AggregateKind::Array(_) | AggregateKind::Tuple => {
@@ -2583,7 +2589,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             DefKind::InlineConst => substs.as_inline_const().parent_substs(),
             other => bug!("unexpected item {:?}", other),
         };
-        let parent_substs = tcx.mk_substs(parent_substs.iter());
+        let parent_substs = tcx.intern_substs(parent_substs);
 
         assert_eq!(typeck_root_substs.len(), parent_substs.len());
         if let Err(_) = self.eq_substs(

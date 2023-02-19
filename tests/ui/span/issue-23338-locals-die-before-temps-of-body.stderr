@@ -1,6 +1,8 @@
 error[E0597]: `y` does not live long enough
   --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:10:5
    |
+LL |     let y = x;
+   |         - binding `y` declared here
 LL |     y.borrow().clone()
    |     ^^^^^^^^^^
    |     |
@@ -22,6 +24,8 @@ LL |     let x = y.borrow().clone(); x
 error[E0597]: `y` does not live long enough
   --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:17:9
    |
+LL |         let y = x;
+   |             - binding `y` declared here
 LL |         y.borrow().clone()
    |         ^^^^^^^^^^
    |         |

@@ -5,7 +5,7 @@ LL | struct Foo(u32);
    | ---------- `Foo` defines a struct constructor here, which should be called
 LL |
 LL | fn test() -> Foo { Foo }
-   |              ---   ^^^ expected struct `Foo`, found struct constructor
+   |              ---   ^^^ expected `Foo`, found struct constructor
    |              |
    |              expected `Foo` because of return type
    |

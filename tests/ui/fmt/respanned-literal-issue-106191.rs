@@ -3,7 +3,7 @@
 // known-bug: #106191
 // unset-rustc-env:RUST_BACKTRACE
 // had to be reverted
-// error-pattern:internal compiler error
+// error-pattern:unexpectedly panicked
 // failure-status:101
 // dont-check-compiler-stderr
 

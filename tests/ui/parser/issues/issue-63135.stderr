@@ -20,7 +20,12 @@ error: expected field pattern, found `...`
   --> $DIR/issue-63135.rs:3:8
    |
 LL | fn i(n{...,f #
-   |        ^^^ help: to omit remaining fields, use one fewer `.`: `..`
+   |        ^^^
+   |
+help: to omit remaining fields, use `..`
+   |
+LL | fn i(n{..,f #
+   |        ~~
 
 error: expected `}`, found `,`
   --> $DIR/issue-63135.rs:3:11

@@ -4,7 +4,7 @@ use crate::cgu_reuse_tracker::CguReuse;
 use crate::parse::ParseSess;
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
-use rustc_errors::MultiSpan;
+use rustc_errors::{error_code, DiagnosticMessage, EmissionGuarantee, IntoDiagnostic, MultiSpan};
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
@@ -27,12 +27,22 @@ pub struct CguNotRecorded<'a> {
     pub cgu_name: &'a str,
 }
 
-#[derive(Diagnostic)]
-#[diag(session_feature_gate_error, code = "E0658")]
-pub struct FeatureGateError<'a> {
-    #[primary_span]
+pub struct FeatureGateError {
     pub span: MultiSpan,
-    pub explain: &'a str,
+    pub explain: DiagnosticMessage,
+}
+
+impl<'a, T: EmissionGuarantee> IntoDiagnostic<'a, T> for FeatureGateError {
+    #[track_caller]
+    fn into_diagnostic(
+        self,
+        handler: &'a rustc_errors::Handler,
+    ) -> rustc_errors::DiagnosticBuilder<'a, T> {
+        let mut diag = handler.struct_diagnostic(self.explain);
+        diag.set_span(self.span);
+        diag.code(error_code!(E0658));
+        diag
+    }
 }
 
 #[derive(Subdiagnostic)]
@@ -70,6 +80,12 @@ pub struct ProfileSampleUseFileDoesNotExist<'a> {
 #[derive(Diagnostic)]
 #[diag(session_target_requires_unwind_tables)]
 pub struct TargetRequiresUnwindTables;
+
+#[derive(Diagnostic)]
+#[diag(session_instrumentation_not_supported)]
+pub struct InstrumentationNotSupported {
+    pub us: String,
+}
 
 #[derive(Diagnostic)]
 #[diag(session_sanitizer_not_supported)]
@@ -316,11 +332,7 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
                 .take_while(|c| *c != 'i' && *c != 'u')
                 .all(|c| c.to_digit(base).is_some());
 
-        if valid {
-            Some(format!("0{}{}", base_char.to_ascii_lowercase(), &suffix[1..]))
-        } else {
-            None
-        }
+        valid.then(|| format!("0{}{}", base_char.to_ascii_lowercase(), &suffix[1..]))
     }
 
     let token::Lit { kind, symbol, suffix, .. } = lit;
@@ -374,4 +386,10 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
             sess.emit_err(IntLiteralTooLarge { span, limit });
         }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(session_optimization_fuel_exhausted)]
+pub struct OptimisationFuelExhausted {
+    pub msg: String,
 }

@@ -1,7 +1,10 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
 use super::infcx_ext::InferCtxtExt;
+#[cfg(doc)]
+use super::trait_goals::structural_traits::*;
 use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
+use itertools::Itertools;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::elaborate_predicates;
@@ -76,9 +79,10 @@ pub(super) enum CandidateSource {
     ///     let _y = x.clone();
     /// }
     /// ```
-    AliasBound(usize),
+    AliasBound,
 }
 
+/// Methods used to assemble candidates for either trait or projection goals.
 pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
     fn self_ty(self) -> Ty<'tcx>;
 
@@ -86,50 +90,112 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
 
     fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId;
 
+    // Consider a clause, which consists of a "assumption" and some "requirements",
+    // to satisfy a goal. If the requirements hold, then attempt to satisfy our
+    // goal by equating it with the assumption.
+    fn consider_implied_clause(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        assumption: ty::Predicate<'tcx>,
+        requirements: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) -> QueryResult<'tcx>;
+
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         impl_def_id: DefId,
     ) -> QueryResult<'tcx>;
 
-    fn consider_assumption(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-        assumption: ty::Predicate<'tcx>,
-    ) -> QueryResult<'tcx>;
-
+    // A type implements an `auto trait` if its components do as well. These components
+    // are given by built-in rules from [`instantiate_constituent_tys_for_auto_trait`].
     fn consider_auto_trait_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A trait alias holds if the RHS traits and `where` clauses hold.
     fn consider_trait_alias_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A type is `Copy` or `Clone` if its components are `Sized`. These components
+    // are given by built-in rules from [`instantiate_constituent_tys_for_sized_trait`].
     fn consider_builtin_sized_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A type is `Copy` or `Clone` if its components are `Copy` or `Clone`. These
+    // components are given by built-in rules from [`instantiate_constituent_tys_for_copy_clone_trait`].
     fn consider_builtin_copy_clone_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    fn consider_builtin_pointer_sized_candidate(
+    // A type is `PointerLike` if we can compute its layout, and that layout
+    // matches the layout of `usize`.
+    fn consider_builtin_pointer_like_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    // A callable type (a closure, fn def, or fn ptr) is known to implement the `Fn<A>`
+    // family of traits where `A` is given by the signature of the type.
     fn consider_builtin_fn_trait_candidates(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         kind: ty::ClosureKind,
     ) -> QueryResult<'tcx>;
 
+    // `Tuple` is implemented if the `Self` type is a tuple.
     fn consider_builtin_tuple_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    // `Pointee` is always implemented.
+    //
+    // See the projection implementation for the `Metadata` types for all of
+    // the built-in types. For structs, the metadata type is given by the struct
+    // tail.
+    fn consider_builtin_pointee_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    // A generator (that comes from an `async` desugaring) is known to implement
+    // `Future<Output = O>`, where `O` is given by the generator's return type
+    // that was computed during type-checking.
+    fn consider_builtin_future_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    // A generator (that doesn't come from an `async` desugaring) is known to
+    // implement `Generator<R, Yield = Y, Return = O>`, given the resume, yield,
+    // and return types of the generator computed during type-checking.
+    fn consider_builtin_generator_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    // The most common forms of unsizing are array to slice, and concrete (Sized)
+    // type into a `dyn Trait`. ADTs and Tuples can also have their final field
+    // unsized if it's generic.
+    fn consider_builtin_unsize_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    // `dyn Trait1` can be unsized to `dyn Trait2` if they are the same trait, or
+    // if `Trait2` is a (transitive) supertrait of `Trait2`.
+    fn consider_builtin_dyn_upcast_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> Vec<CanonicalResponse<'tcx>>;
+
+    fn consider_builtin_discriminant_kind_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
@@ -148,9 +214,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         if goal.predicate.self_ty().is_ty_var() {
             return vec![Candidate {
                 source: CandidateSource::BuiltinImpl,
-                result: self
-                    .make_canonical_response(Certainty::Maybe(MaybeCause::Ambiguity))
-                    .unwrap(),
+                result: self.make_canonical_response(Certainty::AMBIGUOUS).unwrap(),
             }];
         }
 
@@ -204,8 +268,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             // NOTE: Alternatively we could call `evaluate_goal` here and only have a `Normalized` candidate.
             // This doesn't work as long as we use `CandidateSource` in winnowing.
             let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
-            // FIXME: This is broken if we care about the `usize` of `AliasBound` because the self type
-            // could be normalized to yet another projection with different item bounds.
             let normalized_candidates = self.assemble_and_evaluate_candidates(goal);
             for mut normalized_candidate in normalized_candidates {
                 normalized_candidate.result =
@@ -255,12 +317,22 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             || lang_items.clone_trait() == Some(trait_def_id)
         {
             G::consider_builtin_copy_clone_candidate(self, goal)
-        } else if lang_items.pointer_sized() == Some(trait_def_id) {
-            G::consider_builtin_pointer_sized_candidate(self, goal)
+        } else if lang_items.pointer_like() == Some(trait_def_id) {
+            G::consider_builtin_pointer_like_candidate(self, goal)
         } else if let Some(kind) = self.tcx().fn_trait_kind_from_def_id(trait_def_id) {
             G::consider_builtin_fn_trait_candidates(self, goal, kind)
         } else if lang_items.tuple_trait() == Some(trait_def_id) {
             G::consider_builtin_tuple_candidate(self, goal)
+        } else if lang_items.pointee_trait() == Some(trait_def_id) {
+            G::consider_builtin_pointee_candidate(self, goal)
+        } else if lang_items.future_trait() == Some(trait_def_id) {
+            G::consider_builtin_future_candidate(self, goal)
+        } else if lang_items.gen_trait() == Some(trait_def_id) {
+            G::consider_builtin_generator_candidate(self, goal)
+        } else if lang_items.unsize_trait() == Some(trait_def_id) {
+            G::consider_builtin_unsize_candidate(self, goal)
+        } else if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
+            G::consider_builtin_discriminant_kind_candidate(self, goal)
         } else {
             Err(NoSolution)
         };
@@ -271,6 +343,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
             Err(NoSolution) => (),
         }
+
+        // There may be multiple unsize candidates for a trait with several supertraits:
+        // `trait Foo: Bar<A> + Bar<B>` and `dyn Foo: Unsize<dyn Bar<_>>`
+        if lang_items.unsize_trait() == Some(trait_def_id) {
+            for result in G::consider_builtin_dyn_upcast_candidates(self, goal) {
+                candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result });
+            }
+        }
     }
 
     fn assemble_param_env_candidates<G: GoalKind<'tcx>>(
@@ -279,7 +359,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         for (i, assumption) in goal.param_env.caller_bounds().iter().enumerate() {
-            match G::consider_assumption(self, goal, assumption) {
+            match G::consider_implied_clause(self, goal, assumption, []) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::ParamEnv(i), result })
                 }
@@ -312,25 +392,23 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Param(_)
             | ty::Placeholder(..)
-            | ty::Infer(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Error(_) => return,
-            ty::Bound(..) => bug!("unexpected bound type: {goal:?}"),
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
             ty::Alias(_, alias_ty) => alias_ty,
         };
 
-        for (i, (assumption, _)) in self
-            .tcx()
-            .bound_explicit_item_bounds(alias_ty.def_id)
-            .subst_iter_copied(self.tcx(), alias_ty.substs)
-            .enumerate()
+        for assumption in self.tcx().item_bounds(alias_ty.def_id).subst(self.tcx(), alias_ty.substs)
         {
-            match G::consider_assumption(self, goal, assumption) {
+            match G::consider_implied_clause(self, goal, assumption, []) {
                 Ok(result) => {
-                    candidates.push(Candidate { source: CandidateSource::AliasBound(i), result })
+                    candidates.push(Candidate { source: CandidateSource::AliasBound, result })
                 }
                 Err(NoSolution) => (),
             }
@@ -362,13 +440,15 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Param(_)
             | ty::Placeholder(..)
-            | ty::Infer(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Error(_) => return,
-            ty::Bound(..) => bug!("unexpected bound type: {goal:?}"),
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            | ty::Bound(..) => bug!("unexpected self type for `{goal:?}`"),
             ty::Dynamic(bounds, ..) => bounds,
         };
 
@@ -376,12 +456,87 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         for assumption in
             elaborate_predicates(tcx, bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)))
         {
-            match G::consider_assumption(self, goal, assumption.predicate) {
+            match G::consider_implied_clause(self, goal, assumption.predicate, []) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
                 }
                 Err(NoSolution) => (),
             }
         }
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    pub(super) fn merge_candidates_and_discard_reservation_impls(
+        &mut self,
+        mut candidates: Vec<Candidate<'tcx>>,
+    ) -> QueryResult<'tcx> {
+        match candidates.len() {
+            0 => return Err(NoSolution),
+            1 => return Ok(self.discard_reservation_impl(candidates.pop().unwrap()).result),
+            _ => {}
+        }
+
+        if candidates.len() > 1 {
+            let mut i = 0;
+            'outer: while i < candidates.len() {
+                for j in (0..candidates.len()).filter(|&j| i != j) {
+                    if self.trait_candidate_should_be_dropped_in_favor_of(
+                        &candidates[i],
+                        &candidates[j],
+                    ) {
+                        debug!(candidate = ?candidates[i], "Dropping candidate #{}/{}", i, candidates.len());
+                        candidates.swap_remove(i);
+                        continue 'outer;
+                    }
+                }
+
+                debug!(candidate = ?candidates[i], "Retaining candidate #{}/{}", i, candidates.len());
+                i += 1;
+            }
+
+            // If there are *STILL* multiple candidates that have *different* response
+            // results, give up and report ambiguity.
+            if candidates.len() > 1 && !candidates.iter().map(|cand| cand.result).all_equal() {
+                let certainty = if candidates.iter().all(|x| {
+                    matches!(x.result.value.certainty, Certainty::Maybe(MaybeCause::Overflow))
+                }) {
+                    Certainty::Maybe(MaybeCause::Overflow)
+                } else {
+                    Certainty::AMBIGUOUS
+                };
+                return self.make_canonical_response(certainty);
+            }
+        }
+
+        // FIXME: What if there are >1 candidates left with the same response, and one is a reservation impl?
+        Ok(self.discard_reservation_impl(candidates.pop().unwrap()).result)
+    }
+
+    fn trait_candidate_should_be_dropped_in_favor_of(
+        &self,
+        candidate: &Candidate<'tcx>,
+        other: &Candidate<'tcx>,
+    ) -> bool {
+        // FIXME: implement this
+        match (candidate.source, other.source) {
+            (CandidateSource::Impl(_), _)
+            | (CandidateSource::ParamEnv(_), _)
+            | (CandidateSource::AliasBound, _)
+            | (CandidateSource::BuiltinImpl, _) => false,
+        }
+    }
+
+    fn discard_reservation_impl(&self, mut candidate: Candidate<'tcx>) -> Candidate<'tcx> {
+        if let CandidateSource::Impl(def_id) = candidate.source {
+            if let ty::ImplPolarity::Reservation = self.tcx().impl_polarity(def_id) {
+                debug!("Selected reservation impl");
+                // We assemble all candidates inside of a probe so by
+                // making a new canonical response here our result will
+                // have no constraints.
+                candidate.result = self.make_canonical_response(Certainty::AMBIGUOUS).unwrap();
+            }
+        }
+
+        candidate
     }
 }

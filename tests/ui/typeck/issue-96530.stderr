@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-96530.rs:9:11
    |
 LL |         ..man.clone()
-   |           ^^^^^^^^^^^ expected struct `Person`, found `&Person`
+   |           ^^^^^^^^^^^ expected `Person`, found `&Person`
 
 error: aborting due to previous error
 

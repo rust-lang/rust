@@ -1,5 +1,5 @@
 use std::fmt::Debug;
 
-// @has 'wrapping/fn.foo.html' '//div[@class="item-decl"]/pre[@class="rust"]' 'pub fn foo() -> impl Debug'
-// @count - '//div[@class="item-decl"]/pre[@class="rust"]/br' 0
+// @has 'wrapping/fn.foo.html' '//pre[@class="rust item-decl"]' 'pub fn foo() -> impl Debug'
+// @count - '//pre[@class="rust item-decl"]/br' 0
 pub fn foo() -> impl Debug {}

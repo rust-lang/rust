@@ -23,7 +23,7 @@ LL | struct S(usize, usize);
    | -------- `S` defines a struct constructor here, which should be called
 ...
 LL |     let _: S = S;
-   |            -   ^ expected struct `S`, found struct constructor
+   |            -   ^ expected `S`, found struct constructor
    |            |
    |            expected due to this
    |
@@ -59,7 +59,7 @@ LL | struct V();
    | -------- `V` defines a struct constructor here, which should be called
 ...
 LL |     let _: V = V;
-   |            -   ^ expected struct `V`, found struct constructor
+   |            -   ^ expected `V`, found struct constructor
    |            |
    |            expected due to this
    |
@@ -113,7 +113,7 @@ LL |     A(usize),
    |     - `A` defines an enum variant constructor here, which should be called
 ...
 LL |     let _: E = E::A;
-   |            -   ^^^^ expected enum `E`, found enum constructor
+   |            -   ^^^^ expected `E`, found enum constructor
    |            |
    |            expected due to this
    |

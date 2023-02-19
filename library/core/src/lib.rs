@@ -95,6 +95,7 @@
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
+#![cfg_attr(not(bootstrap), warn(multiple_supertrait_upcastable))]
 //
 // Library features:
 #![feature(const_align_offset)]
@@ -191,7 +192,7 @@
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
-#![cfg_attr(not(bootstrap), feature(const_closures))]
+#![feature(const_closures)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
@@ -235,6 +236,7 @@
 #![feature(unsized_fn_params)]
 #![feature(asm_const)]
 #![feature(const_transmute_copy)]
+#![cfg_attr(not(bootstrap), feature(multiple_supertrait_upcastable))]
 //
 // Target features:
 #![feature(arm_target_feature)]
@@ -248,7 +250,6 @@
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(wasm_target_feature)]
-#![cfg_attr(bootstrap, feature(f16c_target_feature))]
 
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]
@@ -374,8 +375,6 @@ pub mod alloc;
 mod bool;
 mod tuple;
 mod unit;
-
-mod const_closure;
 
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub mod primitive;

@@ -20,14 +20,20 @@ fn main() -> () {
 
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+1:9: +1:10
-        Deinit(_1);                      // scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+1:13: +1:33
+        _1 = [closure@$DIR/issue_76997_inline_scopes_parenting.rs:5:13: 5:16]; // scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+1:13: +1:33
+                                         // closure
+                                         // + def_id: DefId(0:4 ~ issue_76997_inline_scopes_parenting[bc59]::main::{closure#0})
+                                         // + substs: [
+                                         //     i8,
+                                         //     extern "rust-call" fn(((),)),
+                                         //     (),
+                                         // ]
         StorageLive(_2);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:6
         _2 = &_1;                        // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:6
         StorageLive(_3);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
         StorageLive(_4);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:7: +2:9
-        Deinit(_4);                      // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:7: +2:9
-        Deinit(_3);                      // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
-        (_3.0: ()) = move _4;            // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
+        _4 = ();                         // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:7: +2:9
+        _3 = (move _4,);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
         StorageLive(_5);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
         _5 = move (_3.0: ());            // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
         StorageLive(_6);                 // scope 2 at $DIR/issue_76997_inline_scopes_parenting.rs:+1:23: +1:24

@@ -3,7 +3,7 @@ error: missing `struct` for struct definition
    |
 LL | pub onion {
    |    ^
--Ztrack-diagnostics: created at compiler/rustc_parse/src/parser/diagnostics.rs:LL:CC
+-Ztrack-diagnostics: created at compiler/rustc_parse/src/parser/item.rs:LL:CC
    |
 help: add `struct` here to parse `onion` as a public struct
    |

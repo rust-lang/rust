@@ -1,8 +1,10 @@
 // edition:2018
-// revisions: no_drop_tracking drop_tracking
+// revisions: no_drop_tracking drop_tracking drop_tracking_mir
+// [drop_tracking] compile-flags: -Zdrop-tracking
+// [drop_tracking_mir] compile-flags: -Zdrop-tracking-mir
+// [drop_tracking_mir] check-pass
 // [drop_tracking] check-pass
-// [drop_tracking] compile-flags: -Zdrop-tracking=yes
-// [no_drop_tracking] compile-flags: -Zdrop-tracking=no
+
 use std::any::Any;
 use std::future::Future;
 

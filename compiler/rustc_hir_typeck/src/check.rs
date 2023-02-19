@@ -43,7 +43,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     let ret_ty =
         fcx.register_infer_ok_obligations(fcx.infcx.replace_opaque_types_with_inference_vars(
             declared_ret_ty,
-            body.value.hir_id,
+            fn_def_id,
             decl.output.span(),
             fcx.param_env,
         ));
@@ -74,15 +74,13 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
-    let maybe_va_list = if fn_sig.c_variadic {
+    let maybe_va_list = fn_sig.c_variadic.then(|| {
         let span = body.params.last().unwrap().span;
         let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(span));
         let region = fcx.next_region_var(RegionVariableOrigin::MiscVariable(span));
 
-        Some(tcx.bound_type_of(va_list_did).subst(tcx, &[region.into()]))
-    } else {
-        None
-    };
+        tcx.type_of(va_list_did).subst(tcx, &[region.into()])
+    });
 
     // Add formal parameters.
     let inputs_hir = hir.fn_decl_by_hir_id(fn_id).map(|decl| &decl.inputs);
@@ -90,7 +88,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // Check the pattern.
         let ty_span = try { inputs_hir?.get(idx)?.span };
-        fcx.check_pat_top(&param.pat, param_ty, ty_span, false);
+        fcx.check_pat_top(&param.pat, param_ty, ty_span, None);
 
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
@@ -130,7 +128,12 @@ pub(super) fn check_fn<'a, 'tcx>(
     let gen_ty = if let (Some(_), Some(gen_kind)) = (can_be_generator, body.generator_kind) {
         let interior = fcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span });
-        fcx.deferred_generator_interiors.borrow_mut().push((body.id(), interior, gen_kind));
+        fcx.deferred_generator_interiors.borrow_mut().push((
+            fn_def_id,
+            body.id(),
+            interior,
+            gen_kind,
+        ));
 
         let (resume_ty, yield_ty) = fcx.resume_yield_tys.unwrap();
         Some(GeneratorTypes {
@@ -167,12 +170,12 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     // Check that a function marked as `#[panic_handler]` has signature `fn(&PanicInfo) -> !`
     if let Some(panic_impl_did) = tcx.lang_items().panic_impl()
-        && panic_impl_did == hir.local_def_id(fn_id).to_def_id()
+        && panic_impl_did == fn_def_id.to_def_id()
     {
         check_panic_info_fn(tcx, panic_impl_did.expect_local(), fn_sig, decl, declared_ret_ty);
     }
 
-    if let Some(lang_start_defid) = tcx.lang_items().start_fn() && lang_start_defid == hir.local_def_id(fn_id).to_def_id() {
+    if let Some(lang_start_defid) = tcx.lang_items().start_fn() && lang_start_defid == fn_def_id.to_def_id() {
         check_lang_start_fn(tcx, fn_sig, decl, fn_def_id);
     }
 
@@ -259,11 +262,9 @@ fn check_lang_start_fn<'tcx>(
         // for example `start`'s generic should be a type parameter
         let generics = tcx.generics_of(def_id);
         let fn_generic = generics.param_at(0, tcx);
-        let generic_tykind =
-            ty::Param(ty::ParamTy { index: fn_generic.index, name: fn_generic.name });
-        let generic_ty = tcx.mk_ty(generic_tykind);
+        let generic_ty = tcx.mk_ty_param(fn_generic.index, fn_generic.name);
         let expected_fn_sig =
-            tcx.mk_fn_sig([].iter(), &generic_ty, false, hir::Unsafety::Normal, Abi::Rust);
+            tcx.mk_fn_sig([], generic_ty, false, hir::Unsafety::Normal, Abi::Rust);
         let expected_ty = tcx.mk_fn_ptr(Binder::dummy(expected_fn_sig));
 
         // we emit the same error to suggest changing the arg no matter what's wrong with the arg

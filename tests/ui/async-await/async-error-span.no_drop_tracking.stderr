@@ -1,0 +1,25 @@
+error[E0277]: `()` is not a future
+  --> $DIR/async-error-span.rs:10:20
+   |
+LL | fn get_future() -> impl Future<Output = ()> {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not a future
+   |
+   = help: the trait `Future` is not implemented for `()`
+   = note: () must be a future or must implement `IntoFuture` to be awaited
+
+error[E0698]: type inside `async fn` body must be known in this context
+  --> $DIR/async-error-span.rs:16:9
+   |
+LL |     let a;
+   |         ^ cannot infer type
+   |
+note: the type is part of the `async fn` body because of this `await`
+  --> $DIR/async-error-span.rs:19:17
+   |
+LL |     get_future().await;
+   |                 ^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0698.
+For more information about an error, try `rustc --explain E0277`.

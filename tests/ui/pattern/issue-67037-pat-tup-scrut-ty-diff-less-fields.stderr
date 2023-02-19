@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     let P() = U {};
    |         ^^^   ---- this expression has type `U`
    |         |
-   |         expected struct `U`, found struct `P`
+   |         expected `U`, found `P<_>`
    |
    = note: expected struct `U`
               found struct `P<_>`

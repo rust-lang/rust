@@ -1,0 +1,28 @@
+- // MIR for `foo` before CopyProp
++ // MIR for `foo` after CopyProp
+  
+  fn foo(_1: u8) -> () {
+      debug x => _1;                       // in scope 0 at $DIR/copy_propagation_arg.rs:+0:8: +0:13
+      let mut _0: ();                      // return place in scope 0 at $DIR/copy_propagation_arg.rs:+0:19: +0:19
+      let mut _2: u8;                      // in scope 0 at $DIR/copy_propagation_arg.rs:+2:9: +2:17
+      let mut _3: u8;                      // in scope 0 at $DIR/copy_propagation_arg.rs:+2:15: +2:16
+  
+      bb0: {
+          StorageLive(_2);                 // scope 0 at $DIR/copy_propagation_arg.rs:+2:9: +2:17
+          StorageLive(_3);                 // scope 0 at $DIR/copy_propagation_arg.rs:+2:15: +2:16
+          _3 = _1;                         // scope 0 at $DIR/copy_propagation_arg.rs:+2:15: +2:16
+          _2 = dummy(move _3) -> bb1;      // scope 0 at $DIR/copy_propagation_arg.rs:+2:9: +2:17
+                                           // mir::Constant
+                                           // + span: $DIR/copy_propagation_arg.rs:11:9: 11:14
+                                           // + literal: Const { ty: fn(u8) -> u8 {dummy}, val: Value(<ZST>) }
+      }
+  
+      bb1: {
+          StorageDead(_3);                 // scope 0 at $DIR/copy_propagation_arg.rs:+2:16: +2:17
+          _1 = move _2;                    // scope 0 at $DIR/copy_propagation_arg.rs:+2:5: +2:17
+          StorageDead(_2);                 // scope 0 at $DIR/copy_propagation_arg.rs:+2:16: +2:17
+          _0 = const ();                   // scope 0 at $DIR/copy_propagation_arg.rs:+0:19: +3:2
+          return;                          // scope 0 at $DIR/copy_propagation_arg.rs:+3:2: +3:2
+      }
+  }
+  

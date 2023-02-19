@@ -1,12 +1,19 @@
+// run-rustfix
+// aux-build:macro_rules.rs
+
 #![warn(clippy::needless_lifetimes)]
 #![allow(
-    dead_code,
+    unused,
     clippy::boxed_local,
+    clippy::extra_unused_type_parameters,
     clippy::needless_pass_by_value,
     clippy::unnecessary_wraps,
     dyn_drop,
     clippy::get_first
 )]
+
+#[macro_use]
+extern crate macro_rules;
 
 fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) {}
 
@@ -492,6 +499,39 @@ mod pr_9743_output_lifetime_checks {
     // don't lint: multiple inputs, output would be elided (which would create an ambiguity)
     fn multiple_inputs_output_would_be_elided<'a, 'b>(x: &'a u8, y: &'b u8, z: &'b u8) -> &'a u8 {
         unimplemented!()
+    }
+}
+
+mod in_macro {
+    macro_rules! local_one_input_macro {
+        () => {
+            fn one_input<'a>(x: &'a u8) -> &'a u8 {
+                unimplemented!()
+            }
+        };
+    }
+
+    // lint local macro expands to function with needless lifetimes
+    local_one_input_macro!();
+
+    // no lint on external macro
+    macro_rules::needless_lifetime!();
+}
+
+mod issue5787 {
+    use std::sync::MutexGuard;
+
+    struct Foo;
+
+    impl Foo {
+        // doesn't get linted without async
+        pub async fn wait<'a, T>(&self, guard: MutexGuard<'a, T>) -> MutexGuard<'a, T> {
+            guard
+        }
+    }
+
+    async fn foo<'a>(_x: &i32, y: &'a str) -> &'a str {
+        y
     }
 }
 

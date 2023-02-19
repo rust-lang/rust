@@ -454,8 +454,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None if let Some(e) = self.tainted_by_errors() => self.tcx.ty_error_with_guaranteed(e),
             None => {
                 bug!(
-                    "no type for node {}: {} in fcx {}",
-                    id,
+                    "no type for node {} in fcx {}",
                     self.tcx.hir().node_to_string(id),
                     self.tag()
                 );
@@ -517,16 +516,72 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub(in super::super) fn resolve_generator_interiors(&self, def_id: DefId) {
+        if self.tcx.sess.opts.unstable_opts.drop_tracking_mir {
+            self.save_generator_interior_predicates(def_id);
+            return;
+        }
+
+        self.select_obligations_where_possible(|_| {});
+
         let mut generators = self.deferred_generator_interiors.borrow_mut();
-        for (body_id, interior, kind) in generators.drain(..) {
-            self.select_obligations_where_possible(|_| {});
+        for (_, body_id, interior, kind) in generators.drain(..) {
             crate::generator_interior::resolve_interior(self, def_id, body_id, interior, kind);
+            self.select_obligations_where_possible(|_| {});
+        }
+    }
+
+    /// Unify the inference variables corresponding to generator witnesses, and save all the
+    /// predicates that were stalled on those inference variables.
+    ///
+    /// This process allows to conservatively save all predicates that do depend on the generator
+    /// interior types, for later processing by `check_generator_obligations`.
+    ///
+    /// We must not attempt to select obligations after this method has run, or risk query cycle
+    /// ICE.
+    #[instrument(level = "debug", skip(self))]
+    fn save_generator_interior_predicates(&self, def_id: DefId) {
+        // Try selecting all obligations that are not blocked on inference variables.
+        // Once we start unifying generator witnesses, trying to select obligations on them will
+        // trigger query cycle ICEs, as doing so requires MIR.
+        self.select_obligations_where_possible(|_| {});
+
+        let generators = std::mem::take(&mut *self.deferred_generator_interiors.borrow_mut());
+        debug!(?generators);
+
+        for &(expr_def_id, body_id, interior, _) in generators.iter() {
+            debug!(?expr_def_id);
+
+            // Create the `GeneratorWitness` type that we will unify with `interior`.
+            let substs = ty::InternalSubsts::identity_for_item(
+                self.tcx,
+                self.tcx.typeck_root_def_id(expr_def_id.to_def_id()),
+            );
+            let witness = self.tcx.mk_generator_witness_mir(expr_def_id.to_def_id(), substs);
+
+            // Unify `interior` with `witness` and collect all the resulting obligations.
+            let span = self.tcx.hir().body(body_id).value.span;
+            let ok = self
+                .at(&self.misc(span), self.param_env)
+                .eq(interior, witness)
+                .expect("Failed to unify generator interior type");
+            let mut obligations = ok.obligations;
+
+            // Also collect the obligations that were unstalled by this unification.
+            obligations
+                .extend(self.fulfillment_cx.borrow_mut().drain_unstalled_obligations(&self.infcx));
+
+            let obligations = obligations.into_iter().map(|o| (o.predicate, o.cause)).collect();
+            debug!(?obligations);
+            self.typeck_results
+                .borrow_mut()
+                .generator_interior_predicates
+                .insert(expr_def_id, obligations);
         }
     }
 
     #[instrument(skip(self), level = "debug")]
-    pub(in super::super) fn select_all_obligations_or_error(&self) {
-        let mut errors = self.fulfillment_cx.borrow_mut().select_all_or_error(&self);
+    pub(in super::super) fn report_ambiguity_errors(&self) {
+        let mut errors = self.fulfillment_cx.borrow_mut().collect_remaining_errors();
 
         if !errors.is_empty() {
             self.adjust_fulfillment_errors_for_expr_obligation(&mut errors);
@@ -608,12 +663,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 ty::PredicateKind::Clause(ty::Clause::Trait(..))
                 | ty::PredicateKind::Clause(ty::Clause::Projection(..))
+                | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
                 | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
                 | ty::PredicateKind::WellFormed(..)
                 | ty::PredicateKind::ObjectSafe(..)
+                | ty::PredicateKind::AliasEq(..)
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 // N.B., this predicate is created by breaking down a
@@ -720,9 +777,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let def_kind = self.tcx.def_kind(def_id);
 
         let item_ty = if let DefKind::Variant = def_kind {
-            self.tcx.bound_type_of(self.tcx.parent(def_id))
+            self.tcx.type_of(self.tcx.parent(def_id))
         } else {
-            self.tcx.bound_type_of(def_id)
+            self.tcx.type_of(def_id)
         };
         let substs = self.fresh_substs_for_item(span, def_id);
         let ty = item_ty.subst(self.tcx, substs);
@@ -866,6 +923,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 kind: hir::ImplItemKind::Fn(ref sig, ..),
                 ..
             }) => Some((&sig.decl, ident, false)),
+            Node::Expr(&hir::Expr {
+                hir_id,
+                kind: hir::ExprKind::Closure(..),
+                ..
+            }) if let Some(Node::Expr(&hir::Expr {
+                hir_id,
+                kind: hir::ExprKind::Call(..),
+                ..
+            })) = self.tcx.hir().find_parent(hir_id) &&
+            let Some(Node::Item(&hir::Item {
+                ident,
+                kind: hir::ItemKind::Fn(ref sig, ..),
+                ..
+            })) = self.tcx.hir().find_parent(hir_id) => {
+                Some((&sig.decl, ident, ident.name != sym::main))
+            },
             _ => None,
         }
     }
@@ -924,43 +997,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             err.note(&format!("...instead of the `()` output of method `{}`", path_segment.ident));
         }
-    }
-
-    pub(in super::super) fn note_need_for_fn_pointer(
-        &self,
-        err: &mut Diagnostic,
-        expected: Ty<'tcx>,
-        found: Ty<'tcx>,
-    ) {
-        let (sig, did, substs) = match (&expected.kind(), &found.kind()) {
-            (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
-                let sig1 = self.tcx.bound_fn_sig(*did1).subst(self.tcx, substs1);
-                let sig2 = self.tcx.bound_fn_sig(*did2).subst(self.tcx, substs2);
-                if sig1 != sig2 {
-                    return;
-                }
-                err.note(
-                    "different `fn` items always have unique types, even if their signatures are \
-                     the same",
-                );
-                (sig1, *did1, substs1)
-            }
-            (ty::FnDef(did, substs), ty::FnPtr(sig2)) => {
-                let sig1 = self.tcx.bound_fn_sig(*did).subst(self.tcx, substs);
-                if sig1 != *sig2 {
-                    return;
-                }
-                (sig1, *did, substs)
-            }
-            _ => return,
-        };
-        err.help(&format!("change the expected type to be function pointer `{}`", sig));
-        err.help(&format!(
-            "if the expected type is due to type inference, cast the expected `fn` to a function \
-             pointer: `{} as {}`",
-            self.tcx.def_path_str_with_substs(did, substs),
-            sig
-        ));
     }
 
     // Instantiates the given path, which must refer to an item with the given
@@ -1095,7 +1131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .unwrap_or(false);
 
         let (res, self_ctor_substs) = if let Res::SelfCtor(impl_def_id) = res {
-            let ty = self.handle_raw_ty(span, tcx.at(span).type_of(impl_def_id));
+            let ty = self.handle_raw_ty(span, tcx.at(span).type_of(impl_def_id).subst_identity());
             match ty.normalized.ty_adt_def() {
                 Some(adt_def) if adt_def.has_ctor() => {
                     let (ctor_kind, ctor_def_id) = adt_def.non_enum_variant().ctor.unwrap();
@@ -1191,7 +1227,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         let tcx = self.fcx.tcx();
-                        self.fcx.ct_infer(tcx.type_of(param.def_id), Some(param), inf.span).into()
+                        self.fcx
+                            .ct_infer(
+                                tcx.type_of(param.def_id)
+                                    .no_bound_vars()
+                                    .expect("const parameter types cannot be generic"),
+                                Some(param),
+                                inf.span,
+                            )
+                            .into()
                     }
                     _ => unreachable!(),
                 }
@@ -1213,7 +1257,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // If we have a default, then we it doesn't matter that we're not
                             // inferring the type arguments: we provide the default where any
                             // is missing.
-                            tcx.bound_type_of(param.def_id).subst(tcx, substs.unwrap()).into()
+                            tcx.type_of(param.def_id).subst(tcx, substs.unwrap()).into()
                         } else {
                             // If no type arguments were provided, we have to infer them.
                             // This case also occurs as a result of some malformed input, e.g.
@@ -1261,7 +1305,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.
-        let ty = tcx.bound_type_of(def_id);
+        let ty = tcx.type_of(def_id);
         assert!(!substs.has_escaping_bound_vars());
         assert!(!ty.0.has_escaping_bound_vars());
         let ty_substituted = self.normalize(span, ty.subst(tcx, substs));
@@ -1272,7 +1316,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // type parameters, which we can infer by unifying the provided `Self`
             // with the substituted impl type.
             // This also occurs for an enum variant on a type alias.
-            let impl_ty = self.normalize(span, tcx.bound_type_of(impl_def_id).subst(tcx, substs));
+            let impl_ty = self.normalize(span, tcx.type_of(impl_def_id).subst(tcx, substs));
             let self_ty = self.normalize(span, self_ty);
             match self.at(&self.misc(span), self.param_env).eq(impl_ty, self_ty) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),

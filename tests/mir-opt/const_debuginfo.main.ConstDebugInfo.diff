@@ -56,25 +56,13 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/const_debuginfo.rs:+1:9: +1:10
           _1 = const 1_u8;                 // scope 0 at $DIR/const_debuginfo.rs:+1:13: +1:16
-          StorageLive(_2);                 // scope 1 at $DIR/const_debuginfo.rs:+2:9: +2:10
           _2 = const 2_u8;                 // scope 1 at $DIR/const_debuginfo.rs:+2:13: +2:16
-          StorageLive(_3);                 // scope 2 at $DIR/const_debuginfo.rs:+3:9: +3:10
           _3 = const 3_u8;                 // scope 2 at $DIR/const_debuginfo.rs:+3:13: +3:16
           StorageLive(_4);                 // scope 3 at $DIR/const_debuginfo.rs:+4:9: +4:12
           StorageLive(_5);                 // scope 3 at $DIR/const_debuginfo.rs:+4:15: +4:20
-          StorageLive(_6);                 // scope 3 at $DIR/const_debuginfo.rs:+4:15: +4:16
-          _6 = const 1_u8;                 // scope 3 at $DIR/const_debuginfo.rs:+4:15: +4:16
-          StorageLive(_7);                 // scope 3 at $DIR/const_debuginfo.rs:+4:19: +4:20
-          _7 = const 2_u8;                 // scope 3 at $DIR/const_debuginfo.rs:+4:19: +4:20
           _5 = const 3_u8;                 // scope 3 at $DIR/const_debuginfo.rs:+4:15: +4:20
-          StorageDead(_7);                 // scope 3 at $DIR/const_debuginfo.rs:+4:19: +4:20
-          StorageDead(_6);                 // scope 3 at $DIR/const_debuginfo.rs:+4:19: +4:20
-          StorageLive(_8);                 // scope 3 at $DIR/const_debuginfo.rs:+4:23: +4:24
-          _8 = const 3_u8;                 // scope 3 at $DIR/const_debuginfo.rs:+4:23: +4:24
           _4 = const 6_u8;                 // scope 3 at $DIR/const_debuginfo.rs:+4:15: +4:24
-          StorageDead(_8);                 // scope 3 at $DIR/const_debuginfo.rs:+4:23: +4:24
           StorageDead(_5);                 // scope 3 at $DIR/const_debuginfo.rs:+4:23: +4:24
           StorageLive(_9);                 // scope 4 at $DIR/const_debuginfo.rs:+6:9: +6:10
           _9 = const "hello, world!";      // scope 4 at $DIR/const_debuginfo.rs:+6:13: +6:28
@@ -84,42 +72,22 @@
           StorageLive(_14);                // scope 5 at $DIR/const_debuginfo.rs:+8:9: +8:10
           StorageLive(_15);                // scope 5 at $DIR/const_debuginfo.rs:+8:9: +8:10
           StorageLive(_16);                // scope 5 at $DIR/const_debuginfo.rs:+8:9: +8:10
-          Deinit(_14);                     // scope 5 at $DIR/const_debuginfo.rs:+8:13: +8:34
-          Deinit(_15);                     // scope 5 at $DIR/const_debuginfo.rs:+8:13: +8:34
-          Deinit(_16);                     // scope 5 at $DIR/const_debuginfo.rs:+8:13: +8:34
           _14 = const true;                // scope 5 at $DIR/const_debuginfo.rs:+8:13: +8:34
           _15 = const false;               // scope 5 at $DIR/const_debuginfo.rs:+8:13: +8:34
           _16 = const 123_u32;             // scope 5 at $DIR/const_debuginfo.rs:+8:13: +8:34
           StorageLive(_10);                // scope 6 at $DIR/const_debuginfo.rs:+10:9: +10:10
-          Deinit(_10);                     // scope 6 at $DIR/const_debuginfo.rs:+10:13: +10:24
-          ((_10 as Some).0: u16) = const 99_u16; // scope 6 at $DIR/const_debuginfo.rs:+10:13: +10:24
-          discriminant(_10) = 1;           // scope 6 at $DIR/const_debuginfo.rs:+10:13: +10:24
-          StorageLive(_17);                // scope 7 at $DIR/const_debuginfo.rs:+12:9: +12:10
-          StorageLive(_18);                // scope 7 at $DIR/const_debuginfo.rs:+12:9: +12:10
-          Deinit(_17);                     // scope 7 at $DIR/const_debuginfo.rs:+12:13: +12:35
-          Deinit(_18);                     // scope 7 at $DIR/const_debuginfo.rs:+12:13: +12:35
+          _10 = Option::<u16>::Some(const 99_u16); // scope 6 at $DIR/const_debuginfo.rs:+10:13: +10:24
           _17 = const 32_u32;              // scope 7 at $DIR/const_debuginfo.rs:+12:13: +12:35
           _18 = const 32_u32;              // scope 7 at $DIR/const_debuginfo.rs:+12:13: +12:35
           StorageLive(_11);                // scope 8 at $DIR/const_debuginfo.rs:+13:9: +13:10
-          StorageLive(_12);                // scope 8 at $DIR/const_debuginfo.rs:+13:13: +13:16
-          _12 = const 32_u32;              // scope 8 at $DIR/const_debuginfo.rs:+13:13: +13:16
-          StorageLive(_13);                // scope 8 at $DIR/const_debuginfo.rs:+13:19: +13:22
-          _13 = const 32_u32;              // scope 8 at $DIR/const_debuginfo.rs:+13:19: +13:22
           _11 = const 64_u32;              // scope 8 at $DIR/const_debuginfo.rs:+13:13: +13:22
-          StorageDead(_13);                // scope 8 at $DIR/const_debuginfo.rs:+13:21: +13:22
-          StorageDead(_12);                // scope 8 at $DIR/const_debuginfo.rs:+13:21: +13:22
           StorageDead(_11);                // scope 8 at $DIR/const_debuginfo.rs:+14:1: +14:2
-          StorageDead(_17);                // scope 7 at $DIR/const_debuginfo.rs:+14:1: +14:2
-          StorageDead(_18);                // scope 7 at $DIR/const_debuginfo.rs:+14:1: +14:2
           StorageDead(_10);                // scope 6 at $DIR/const_debuginfo.rs:+14:1: +14:2
           StorageDead(_14);                // scope 5 at $DIR/const_debuginfo.rs:+14:1: +14:2
           StorageDead(_15);                // scope 5 at $DIR/const_debuginfo.rs:+14:1: +14:2
           StorageDead(_16);                // scope 5 at $DIR/const_debuginfo.rs:+14:1: +14:2
           StorageDead(_9);                 // scope 4 at $DIR/const_debuginfo.rs:+14:1: +14:2
           StorageDead(_4);                 // scope 3 at $DIR/const_debuginfo.rs:+14:1: +14:2
-          StorageDead(_3);                 // scope 2 at $DIR/const_debuginfo.rs:+14:1: +14:2
-          StorageDead(_2);                 // scope 1 at $DIR/const_debuginfo.rs:+14:1: +14:2
-          StorageDead(_1);                 // scope 0 at $DIR/const_debuginfo.rs:+14:1: +14:2
           return;                          // scope 0 at $DIR/const_debuginfo.rs:+14:2: +14:2
       }
   }

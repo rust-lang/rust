@@ -24,7 +24,7 @@
       bb1: {
           _3 = &_4;                        // scope 0 at $DIR/issue_78442.rs:+4:5: +4:15
           StorageLive(_5);                 // scope 0 at $DIR/issue_78442.rs:+4:5: +4:17
-          Deinit(_5);                      // scope 0 at $DIR/issue_78442.rs:+4:5: +4:17
+          _5 = ();                         // scope 0 at $DIR/issue_78442.rs:+4:5: +4:17
 -         _2 = <impl Fn() as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue_78442.rs:+4:5: +4:17
 +         _2 = <fn() {foo} as Fn<()>>::call(move _3, move _5) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue_78442.rs:+4:5: +4:17
                                            // mir::Constant

@@ -113,7 +113,7 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
                     // Only report the `Self` type if it has at least
                     // some outer concrete shell; otherwise, it's
                     // not adding much information.
-                    self_ty: if self_ty.has_concrete_skeleton() { Some(self_ty) } else { None },
+                    self_ty: self_ty.has_concrete_skeleton().then_some(self_ty),
                     intercrate_ambiguity_causes: overlap.intercrate_ambiguity_causes,
                     involves_placeholder: overlap.involves_placeholder,
                 }
@@ -399,7 +399,7 @@ pub(crate) fn assoc_def(
     // If there is no such item in that impl, this function will fail with a
     // cycle error if the specialization graph is currently being built.
     if let Some(&impl_item_id) = tcx.impl_item_implementor_ids(impl_def_id).get(&assoc_def_id) {
-        let &item = tcx.associated_item(impl_item_id);
+        let item = tcx.associated_item(impl_item_id);
         let impl_node = Node::Impl(impl_def_id);
         return Ok(LeafDef {
             item,

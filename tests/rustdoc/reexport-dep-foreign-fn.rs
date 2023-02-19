@@ -8,5 +8,5 @@
 extern crate all_item_types;
 
 // @has 'foo/fn.foo_ffn.html'
-// @has - '//*[@class="item-decl"]//code' 'pub unsafe extern "C" fn foo_ffn()'
+// @has - '//*[@class="rust item-decl"]//code' 'pub unsafe extern "C" fn foo_ffn()'
 pub use all_item_types::foo_ffn;

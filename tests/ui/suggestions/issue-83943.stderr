@@ -8,7 +8,7 @@ LL | |     } else {
 LL | |         "B"
    | |         ^^^- help: try using a conversion method: `.to_string()`
    | |         |
-   | |         expected struct `String`, found `&str`
+   | |         expected `String`, found `&str`
 LL | |     };
    | |_____- `if` and `else` have incompatible types
 

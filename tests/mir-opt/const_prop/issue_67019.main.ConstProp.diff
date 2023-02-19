@@ -11,12 +11,9 @@
           StorageLive(_1);                 // scope 0 at $DIR/issue_67019.rs:+1:5: +1:20
           StorageLive(_2);                 // scope 0 at $DIR/issue_67019.rs:+1:10: +1:19
           StorageLive(_3);                 // scope 0 at $DIR/issue_67019.rs:+1:11: +1:17
-          Deinit(_3);                      // scope 0 at $DIR/issue_67019.rs:+1:11: +1:17
-          (_3.0: u8) = const 1_u8;         // scope 0 at $DIR/issue_67019.rs:+1:11: +1:17
-          (_3.1: u8) = const 2_u8;         // scope 0 at $DIR/issue_67019.rs:+1:11: +1:17
-          Deinit(_2);                      // scope 0 at $DIR/issue_67019.rs:+1:10: +1:19
--         (_2.0: (u8, u8)) = move _3;      // scope 0 at $DIR/issue_67019.rs:+1:10: +1:19
-+         (_2.0: (u8, u8)) = const (1_u8, 2_u8); // scope 0 at $DIR/issue_67019.rs:+1:10: +1:19
+-         _3 = (const 1_u8, const 2_u8);   // scope 0 at $DIR/issue_67019.rs:+1:11: +1:17
++         _3 = const (1_u8, 2_u8);         // scope 0 at $DIR/issue_67019.rs:+1:11: +1:17
+          _2 = (move _3,);                 // scope 0 at $DIR/issue_67019.rs:+1:10: +1:19
           StorageDead(_3);                 // scope 0 at $DIR/issue_67019.rs:+1:18: +1:19
           _1 = test(move _2) -> bb1;       // scope 0 at $DIR/issue_67019.rs:+1:5: +1:20
                                            // mir::Constant

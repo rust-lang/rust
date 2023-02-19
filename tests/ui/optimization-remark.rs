@@ -1,6 +1,5 @@
 // build-pass
 // ignore-pass
-// min-llvm-version: 14.0.0
 // revisions: all inline merge1 merge2
 // compile-flags: --crate-type=lib -Cdebuginfo=1 -Copt-level=2
 //

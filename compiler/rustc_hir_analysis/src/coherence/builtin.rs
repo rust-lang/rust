@@ -50,13 +50,13 @@ impl<'tcx> Checker<'tcx> {
 
 fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     // Destructors only work on local ADT types.
-    match tcx.type_of(impl_did).kind() {
+    match tcx.type_of(impl_did).subst_identity().kind() {
         ty::Adt(def, _) if def.did().is_local() => return,
         ty::Error(_) => return,
         _ => {}
     }
 
-    let ItemKind::Impl(impl_) = tcx.hir().expect_item(impl_did).kind else { bug!("expected Drop impl item") };
+    let impl_ = tcx.hir().expect_item(impl_did).expect_impl();
 
     tcx.sess.emit_err(DropImplOnWrongItem { span: impl_.self_ty.span });
 }
@@ -64,9 +64,7 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
 fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
-    let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_did);
-
-    let self_type = tcx.type_of(impl_did);
+    let self_type = tcx.type_of(impl_did).subst_identity();
     debug!("visit_implementation_of_copy: self_type={:?} (bound)", self_type);
 
     let param_env = tcx.param_env(impl_did);
@@ -80,7 +78,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
         _ => bug!("expected Copy impl item"),
     };
 
-    let cause = traits::ObligationCause::misc(span, impl_hir_id);
+    let cause = traits::ObligationCause::misc(span, impl_did);
     match type_allowed_to_implement_copy(tcx, param_env, self_type, cause) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
@@ -178,6 +176,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                 bounds.iter().map(|(param, constraint, def_id)| {
                     (param.as_str(), constraint.as_str(), *def_id)
                 }),
+                None,
             );
             err.emit();
         }
@@ -203,12 +202,11 @@ fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'_>, impl_did: LocalDefId)
 fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}", impl_did);
 
-    let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_did);
-    let span = tcx.hir().span(impl_hir_id);
+    let span = tcx.def_span(impl_did);
 
     let dispatch_from_dyn_trait = tcx.require_lang_item(LangItem::DispatchFromDyn, Some(span));
 
-    let source = tcx.type_of(impl_did);
+    let source = tcx.type_of(impl_did).subst_identity();
     assert!(!source.has_escaping_bound_vars());
     let target = {
         let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().subst_identity();
@@ -224,7 +222,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
     let create_err = |msg: &str| struct_span_err!(tcx.sess, span, E0378, "{}", msg);
 
     let infcx = tcx.infer_ctxt().build();
-    let cause = ObligationCause::misc(span, impl_hir_id);
+    let cause = ObligationCause::misc(span, impl_did);
 
     use rustc_type_ir::sty::TyKind::*;
     match (source.kind(), target.kind()) {
@@ -372,7 +370,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
         tcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err.to_string()));
     });
 
-    let source = tcx.type_of(impl_did);
+    let source = tcx.type_of(impl_did).subst_identity();
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().subst_identity();
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
     let target = trait_ref.substs.type_at(1);
@@ -386,8 +384,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
     debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (free)", source, target);
 
     let infcx = tcx.infer_ctxt().build();
-    let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_did);
-    let cause = ObligationCause::misc(span, impl_hir_id);
+    let cause = ObligationCause::misc(span, impl_did);
     let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>,
                        mt_b: ty::TypeAndMut<'tcx>,
                        mk_ptr: &dyn Fn(Ty<'tcx>) -> Ty<'tcx>| {
@@ -485,7 +482,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                 .filter_map(|(i, f)| {
                     let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));
 
-                    if tcx.type_of(f.did).is_phantom_data() {
+                    if tcx.type_of(f.did).subst_identity().is_phantom_data() {
                         // Ignore PhantomData fields
                         return None;
                     }
@@ -575,7 +572,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
     };
 
     // Register an obligation for `A: Trait<B>`.
-    let cause = traits::ObligationCause::misc(span, impl_hir_id);
+    let cause = traits::ObligationCause::misc(span, impl_did);
     let predicate =
         predicate_for_trait_def(tcx, param_env, cause, trait_def_id, 0, [source, target]);
     let errors = traits::fully_solve_obligation(&infcx, predicate);

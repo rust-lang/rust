@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/shadowed-lplace-method.rs:9:24
    |
 LL |     *rc.borrow_mut() = false;
-   |     ----------------   ^^^^^ expected struct `Rc`, found `bool`
+   |     ----------------   ^^^^^ expected `Rc<RefCell<bool>>`, found `bool`
    |     |
    |     expected due to the type of this binding
    |

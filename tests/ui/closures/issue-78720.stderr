@@ -26,7 +26,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-78720.rs:7:39
    |
 LL |     fn map2<F>(self, f: F) -> Map2<F> {}
-   |                                       ^^ expected struct `Map2`, found `()`
+   |                                       ^^ expected `Map2<F>`, found `()`
    |
    = note: expected struct `Map2<F>`
            found unit type `()`

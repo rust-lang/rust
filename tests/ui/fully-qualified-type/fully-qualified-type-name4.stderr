@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn bar(x: usize) -> Option<usize> {
    |                     ------------- expected `Option<usize>` because of return type
 LL |     return x;
-   |            ^ expected enum `Option`, found `usize`
+   |            ^ expected `Option<usize>`, found `usize`
    |
    = note: expected enum `Option<usize>`
               found type `usize`

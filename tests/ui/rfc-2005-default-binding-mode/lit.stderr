@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match &s {
    |           -- this expression has type `&&str`
 LL |             "abc" => true,
-   |             ^^^^^ expected `&str`, found `str`
+   |             ^^^^^ expected `&&str`, found `&str`
    |
    = note: expected reference `&&str`
               found reference `&'static str`
@@ -15,7 +15,7 @@ error[E0308]: mismatched types
 LL |     match &s {
    |           -- this expression has type `&&[u8]`
 LL |         b"abc" => true,
-   |         ^^^^^^ expected `&[u8]`, found array `[u8; 3]`
+   |         ^^^^^^ expected `&&[u8]`, found `&[u8; 3]`
    |
    = note: expected reference `&&[u8]`
               found reference `&'static [u8; 3]`

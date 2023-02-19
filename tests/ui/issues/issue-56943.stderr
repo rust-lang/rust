@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-56943.rs:6:29
    |
 LL |     let _: issue_56943::S = issue_56943::S2;
-   |            --------------   ^^^^^^^^^^^^^^^ expected struct `S`, found struct `S2`
+   |            --------------   ^^^^^^^^^^^^^^^ expected `S`, found `S2`
    |            |
    |            expected due to this
 

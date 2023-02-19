@@ -102,7 +102,7 @@
 //! to use a pointer type to store something that may hold an integer, some of
 //! the time.
 
-use super::{Custom, ErrorData, ErrorKind, SimpleMessage};
+use super::{Custom, ErrorData, ErrorKind, RawOsError, SimpleMessage};
 use alloc::boxed::Box;
 use core::marker::PhantomData;
 use core::mem::{align_of, size_of};
@@ -172,7 +172,7 @@ impl Repr {
     }
 
     #[inline]
-    pub(super) fn new_os(code: i32) -> Self {
+    pub(super) fn new_os(code: RawOsError) -> Self {
         let utagged = ((code as usize) << 32) | TAG_OS;
         // Safety: `TAG_OS` is not zero, so the result of the `|` is not 0.
         let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
@@ -250,7 +250,7 @@ where
     let bits = ptr.as_ptr().addr();
     match bits & TAG_MASK {
         TAG_OS => {
-            let code = ((bits as i64) >> 32) as i32;
+            let code = ((bits as i64) >> 32) as RawOsError;
             ErrorData::Os(code)
         }
         TAG_SIMPLE => {
@@ -373,6 +373,9 @@ static_assert!((TAG_MASK + 1).is_power_of_two());
 // And they must have sufficient alignment.
 static_assert!(align_of::<SimpleMessage>() >= TAG_MASK + 1);
 static_assert!(align_of::<Custom>() >= TAG_MASK + 1);
+
+// `RawOsError` must be an alias for `i32`.
+const _: fn(RawOsError) -> i32 = |os| os;
 
 static_assert!(@usize_eq: TAG_MASK & TAG_SIMPLE_MESSAGE, TAG_SIMPLE_MESSAGE);
 static_assert!(@usize_eq: TAG_MASK & TAG_CUSTOM, TAG_CUSTOM);

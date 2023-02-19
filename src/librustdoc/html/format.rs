@@ -34,6 +34,7 @@ use crate::clean::{
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::render::Context;
+use crate::passes::collect_intra_doc_links::UrlFragment;
 
 use super::url_parts_builder::estimate_item_path_byte_length;
 use super::url_parts_builder::UrlPartsBuilder;
@@ -208,7 +209,7 @@ impl clean::GenericParamDef {
                     if f.alternate() {
                         write!(f, ": {:#}", print_generic_bounds(bounds, cx))?;
                     } else {
-                        write!(f, ":&nbsp;{}", print_generic_bounds(bounds, cx))?;
+                        write!(f, ": {}", print_generic_bounds(bounds, cx))?;
                     }
                 }
 
@@ -216,7 +217,7 @@ impl clean::GenericParamDef {
                     if f.alternate() {
                         write!(f, " = {:#}", ty.print(cx))?;
                     } else {
-                        write!(f, "&nbsp;=&nbsp;{}", ty.print(cx))?;
+                        write!(f, " = {}", ty.print(cx))?;
                     }
                 }
 
@@ -226,14 +227,14 @@ impl clean::GenericParamDef {
                 if f.alternate() {
                     write!(f, "const {}: {:#}", self.name, ty.print(cx))?;
                 } else {
-                    write!(f, "const {}:&nbsp;{}", self.name, ty.print(cx))?;
+                    write!(f, "const {}: {}", self.name, ty.print(cx))?;
                 }
 
                 if let Some(default) = default {
                     if f.alternate() {
                         write!(f, " = {:#}", default)?;
                     } else {
-                        write!(f, "&nbsp;=&nbsp;{}", default)?;
+                        write!(f, " = {}", default)?;
                     }
                 }
 
@@ -289,7 +290,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                 if f.alternate() {
                     f.write_str(" ")?;
                 } else {
-                    f.write_str("<br>")?;
+                    f.write_str("\n")?;
                 }
 
                 match pred {
@@ -352,23 +353,31 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             }
         } else {
             let mut br_with_padding = String::with_capacity(6 * indent + 28);
-            br_with_padding.push_str("<br>");
-            for _ in 0..indent + 4 {
-                br_with_padding.push_str("&nbsp;");
+            br_with_padding.push_str("\n");
+
+            let padding_amout =
+                if ending == Ending::Newline { indent + 4 } else { indent + "fn where ".len() };
+
+            for _ in 0..padding_amout {
+                br_with_padding.push_str(" ");
             }
-            let where_preds = where_preds.to_string().replace("<br>", &br_with_padding);
+            let where_preds = where_preds.to_string().replace('\n', &br_with_padding);
 
             if ending == Ending::Newline {
-                let mut clause = "&nbsp;".repeat(indent.saturating_sub(1));
+                let mut clause = " ".repeat(indent.saturating_sub(1));
                 write!(clause, "<span class=\"where fmt-newline\">where{where_preds},</span>")?;
                 clause
             } else {
-                // insert a <br> tag after a single space but before multiple spaces at the start
+                // insert a newline after a single space but before multiple spaces at the start
                 if indent == 0 {
-                    format!("<br><span class=\"where\">where{where_preds}</span>")
+                    format!("\n<span class=\"where\">where{where_preds}</span>")
                 } else {
+                    // put the first one on the same line as the 'where' keyword
+                    let where_preds = where_preds.replacen(&br_with_padding, " ", 1);
+
                     let mut clause = br_with_padding;
-                    clause.truncate(clause.len() - 4 * "&nbsp;".len());
+                    clause.truncate(clause.len() - "where ".len());
+
                     write!(clause, "<span class=\"where\">where{where_preds}</span>")?;
                     clause
                 }
@@ -701,11 +710,9 @@ pub(crate) fn href_with_root_path(
             }
         }
     };
-    if !is_remote {
-        if let Some(root_path) = root_path {
-            let root = root_path.trim_end_matches('/');
-            url_parts.push_front(root);
-        }
+    if !is_remote && let Some(root_path) = root_path {
+        let root = root_path.trim_end_matches('/');
+        url_parts.push_front(root);
     }
     debug!(?url_parts);
     match shortty {
@@ -757,6 +764,21 @@ pub(crate) fn href_relative_parts<'fqp>(
     // linking to the same module
     } else {
         Box::new(iter::empty())
+    }
+}
+
+pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Context<'_>) -> String {
+    let cache = cx.cache();
+    let Some((fqp, shortty)) = cache.paths.get(&did)
+        .or_else(|| cache.external_paths.get(&did))
+        else { return String::new() };
+    let fqp = fqp.iter().map(|sym| sym.as_str()).join("::");
+    if let &Some(UrlFragment::Item(id)) = fragment {
+        let name = cx.tcx().item_name(id);
+        let descr = cx.tcx().def_kind(id).descr(id);
+        format!("{descr} {fqp}::{name}")
+    } else {
+        format!("{shortty} {fqp}")
     }
 }
 
@@ -1064,14 +1086,8 @@ fn fmt_type<'cx>(
                     fmt_type(ty, f, use_absolute, cx)?;
                     write!(f, ")")
                 }
-                clean::Generic(..) => {
-                    primitive_link(
-                        f,
-                        PrimitiveType::Reference,
-                        &format!("{}{}{}", amp, lt, m),
-                        cx,
-                    )?;
-                    fmt_type(ty, f, use_absolute, cx)
+                clean::Generic(name) => {
+                    primitive_link(f, PrimitiveType::Reference, &format!("{amp}{lt}{m}{name}"), cx)
                 }
                 _ => {
                     write!(f, "{}{}{}", amp, lt, m)?;
@@ -1313,7 +1329,8 @@ impl clean::FnDecl {
 
     /// * `header_len`: The length of the function header and name. In other words, the number of
     ///   characters in the function declaration up to but not including the parentheses.
-    ///   <br>Used to determine line-wrapping.
+    ///   This is expected to go into a `<pre>`/`code-header` block, so indentation and newlines
+    ///   are preserved.
     /// * `indent`: The number of spaces to indent each successive line with, if line-wrapping is
     ///   necessary.
     pub(crate) fn full_print<'a, 'tcx: 'a>(
@@ -1361,7 +1378,7 @@ impl clean::FnDecl {
                 }
             } else {
                 if i > 0 {
-                    args.push_str("<br>");
+                    args.push_str("\n");
                 }
                 if input.is_const {
                     args.push_str("const ");
@@ -1387,7 +1404,7 @@ impl clean::FnDecl {
         let mut args = args.into_inner();
 
         if self.c_variadic {
-            args.push_str(",<br> ...");
+            args.push_str(",\n ...");
             args_plain.push_str(", ...");
         }
 
@@ -1397,24 +1414,20 @@ impl clean::FnDecl {
 
         let declaration_len = header_len + args_plain.len() + arrow_plain.len();
         let output = if declaration_len > 80 {
-            let full_pad = format!("<br>{}", "&nbsp;".repeat(indent + 4));
-            let close_pad = format!("<br>{}", "&nbsp;".repeat(indent));
+            let full_pad = format!("\n{}", " ".repeat(indent + 4));
+            let close_pad = format!("\n{}", " ".repeat(indent));
             format!(
                 "({pad}{args}{close}){arrow}",
                 pad = if self.inputs.values.is_empty() { "" } else { &full_pad },
-                args = args.replace("<br>", &full_pad),
+                args = args.replace('\n', &full_pad),
                 close = close_pad,
                 arrow = arrow
             )
         } else {
-            format!("({args}){arrow}", args = args.replace("<br>", " "), arrow = arrow)
+            format!("({args}){arrow}", args = args.replace('\n', " "), arrow = arrow)
         };
 
-        if f.alternate() {
-            write!(f, "{}", output.replace("<br>", "\n"))
-        } else {
-            write!(f, "{}", output)
-        }
+        write!(f, "{}", output)
     }
 }
 
@@ -1617,7 +1630,7 @@ impl clean::TypeBinding {
                         if f.alternate() {
                             write!(f, ": {:#}", print_generic_bounds(bounds, cx))?;
                         } else {
-                            write!(f, ":&nbsp;{}", print_generic_bounds(bounds, cx))?;
+                            write!(f, ": {}", print_generic_bounds(bounds, cx))?;
                         }
                     }
                 }

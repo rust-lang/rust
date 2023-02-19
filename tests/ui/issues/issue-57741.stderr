@@ -7,7 +7,7 @@ LL |     let y = match x {
    |                   this expression has type `Box<T>`
    |                   help: consider dereferencing the boxed value: `*x`
 LL |         T::A(a) | T::B(a) => a,
-   |         ^^^^^^^ expected struct `Box`, found enum `T`
+   |         ^^^^^^^ expected `Box<T>`, found `T`
    |
    = note: expected struct `Box<T>`
                 found enum `T`
@@ -21,7 +21,7 @@ LL |     let y = match x {
    |                   this expression has type `Box<T>`
    |                   help: consider dereferencing the boxed value: `*x`
 LL |         T::A(a) | T::B(a) => a,
-   |                   ^^^^^^^ expected struct `Box`, found enum `T`
+   |                   ^^^^^^^ expected `Box<T>`, found `T`
    |
    = note: expected struct `Box<T>`
                 found enum `T`
@@ -35,7 +35,7 @@ LL |     let y = match x {
    |                   this expression has type `Box<S>`
    |                   help: consider dereferencing the boxed value: `*x`
 LL |         S::A { a } | S::B { b: a } => a,
-   |         ^^^^^^^^^^ expected struct `Box`, found enum `S`
+   |         ^^^^^^^^^^ expected `Box<S>`, found `S`
    |
    = note: expected struct `Box<S>`
                 found enum `S`
@@ -49,7 +49,7 @@ LL |     let y = match x {
    |                   this expression has type `Box<S>`
    |                   help: consider dereferencing the boxed value: `*x`
 LL |         S::A { a } | S::B { b: a } => a,
-   |                      ^^^^^^^^^^^^^ expected struct `Box`, found enum `S`
+   |                      ^^^^^^^^^^^^^ expected `Box<S>`, found `S`
    |
    = note: expected struct `Box<S>`
                 found enum `S`

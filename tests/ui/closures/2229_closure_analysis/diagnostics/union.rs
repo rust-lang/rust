@@ -11,7 +11,7 @@ union A {
 fn main() {
     let mut a = A { y: 1 };
     let mut c = || {
-    //~^ borrow of `a.y` occurs here
+    //~^ `a.y` is borrowed here
         let _ = unsafe { &a.y };
         let _ = &mut a;
         //~^ borrow occurs due to use in closure
@@ -19,7 +19,7 @@ fn main() {
     };
     a.y = 1;
     //~^ cannot assign to `a.y` because it is borrowed [E0506]
-    //~| assignment to borrowed `a.y` occurs here
+    //~| `a.y` is assigned to here
     c();
     //~^ borrow later used here
 }

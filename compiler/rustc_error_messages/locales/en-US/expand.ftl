@@ -127,3 +127,5 @@ expand_module_file_not_found =
 expand_module_multiple_candidates =
     file for module `{$name}` found at both "{$default_path}" and "{$secondary_path}"
     .help = delete or rename one of them to remove the ambiguity
+
+expand_trace_macro = trace_macro

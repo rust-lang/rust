@@ -267,7 +267,7 @@ LL |             Fn(u8),
    |             -- `Fn` defines an enum variant constructor here, which should be called
 ...
 LL |         let _: Z = Z::Fn;
-   |                -   ^^^^^ expected enum `Z`, found enum constructor
+   |                -   ^^^^^ expected `Z`, found enum constructor
    |                |
    |                expected due to this
    |
@@ -308,7 +308,7 @@ LL |         Fn(u8),
    |         -- `Fn` defines an enum variant constructor here, which should be called
 ...
 LL |     let _: E = m::E::Fn;
-   |            -   ^^^^^^^^ expected enum `E`, found enum constructor
+   |            -   ^^^^^^^^ expected `E`, found enum constructor
    |            |
    |            expected due to this
    |
@@ -349,7 +349,7 @@ LL |         Fn(u8),
    |         -- `Fn` defines an enum variant constructor here, which should be called
 ...
 LL |     let _: E = E::Fn;
-   |            -   ^^^^^ expected enum `E`, found enum constructor
+   |            -   ^^^^^ expected `E`, found enum constructor
    |            |
    |            expected due to this
    |

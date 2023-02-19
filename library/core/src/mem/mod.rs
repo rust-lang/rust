@@ -682,7 +682,6 @@ pub unsafe fn zeroed<T>() -> T {
 pub unsafe fn uninitialized<T>() -> T {
     // SAFETY: the caller must guarantee that an uninitialized value is valid for `T`.
     unsafe {
-        #[cfg(not(bootstrap))] // If the compiler hits this itself then it deserves the UB.
         intrinsics::assert_mem_uninitialized_valid::<T>();
         let mut val = MaybeUninit::<T>::uninit();
 

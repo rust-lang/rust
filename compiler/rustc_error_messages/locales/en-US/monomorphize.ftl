@@ -24,3 +24,9 @@ monomorphize_large_assignments =
 
 monomorphize_couldnt_dump_mono_stats =
     unexpected error occurred while dumping monomorphization stats: {$error}
+
+monomorphize_encountered_error_while_instantiating =
+    the above error was encountered while instantiating `{$formatted_item}`
+
+monomorphize_unknown_cgu_collection_mode =
+    unknown codegen-item collection mode '{$mode}', falling back to 'lazy' mode

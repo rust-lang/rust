@@ -4,6 +4,7 @@ error[E0597]: `x` does not live long enough
 LL |     let lock = {
    |         ---- borrow later stored here
 LL |         let x = 1;
+   |             - binding `x` declared here
 LL |         Mutex::new(&x)
    |                    ^^ borrowed value does not live long enough
 LL |     };
@@ -15,6 +16,7 @@ error[E0597]: `x` does not live long enough
 LL |     let lock = {
    |         ---- borrow later stored here
 LL |         let x = 1;
+   |             - binding `x` declared here
 LL |         RwLock::new(&x)
    |                     ^^ borrowed value does not live long enough
 LL |     };
@@ -25,7 +27,9 @@ error[E0597]: `x` does not live long enough
    |
 LL |     let (_tx, rx) = {
    |          --- borrow later used here
-...
+LL |         let x = 1;
+   |             - binding `x` declared here
+LL |         let (tx, rx) = mpsc::channel();
 LL |         let _ = tx.send(&x);
    |                         ^^ borrowed value does not live long enough
 LL |         (tx, rx)

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-106443-sugg-clone-for-arg.rs:11:9
    |
 LL |     foo(s);
-   |     --- ^ expected struct `S`, found `&S`
+   |     --- ^ expected `S`, found `&S`
    |     |
    |     arguments to this function are incorrect
    |
@@ -20,7 +20,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-106443-sugg-clone-for-arg.rs:17:9
    |
 LL |     bar(t);
-   |     --- ^ expected struct `T`, found `&T`
+   |     --- ^ expected `T`, found `&T`
    |     |
    |     arguments to this function are incorrect
    |

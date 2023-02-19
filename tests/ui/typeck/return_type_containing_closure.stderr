@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/return_type_containing_closure.rs:3:5
    |
 LL |     vec!['a'].iter().map(|c| c)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found struct `Map`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `Map<Iter<'_, char>, ...>`
    |
    = note: expected unit type `()`
                  found struct `Map<std::slice::Iter<'_, char>, [closure@$DIR/return_type_containing_closure.rs:3:26: 3:29]>`

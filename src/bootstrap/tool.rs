@@ -765,9 +765,15 @@ impl Step for RustAnalyzerProcMacroSrv {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let builder = run.builder;
         // Allow building `rust-analyzer-proc-macro-srv` both as part of the `rust-analyzer` and as a stand-alone tool.
         run.path("src/tools/rust-analyzer")
             .path("src/tools/rust-analyzer/crates/proc-macro-srv-cli")
+            .default_condition(builder.config.tools.as_ref().map_or(true, |tools| {
+                tools
+                    .iter()
+                    .any(|tool| tool == "rust-analyzer" || tool == "rust-analyzer-proc-macro-srv")
+            }))
     }
 
     fn make_run(run: RunConfig<'_>) {

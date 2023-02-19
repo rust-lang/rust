@@ -12,6 +12,7 @@ use std::collections::HashSet;
 use std::env;
 use std::ffi::OsStr;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -392,19 +393,29 @@ impl Step for Rustc {
             t!(fs::create_dir_all(image.join("bin")));
             builder.cp_r(&src.join("bin"), &image.join("bin"));
 
-            builder.install(&builder.rustdoc(compiler), &image.join("bin"), 0o755);
+            if builder
+                .config
+                .tools
+                .as_ref()
+                .map_or(true, |tools| tools.iter().any(|tool| tool == "rustdoc"))
+            {
+                let rustdoc = builder.rustdoc(compiler);
+                builder.install(&rustdoc, &image.join("bin"), 0o755);
+            }
 
-            let ra_proc_macro_srv = builder
-                .ensure(tool::RustAnalyzerProcMacroSrv {
+            if let Some(ra_proc_macro_srv) = builder.ensure_if_default(
+                tool::RustAnalyzerProcMacroSrv {
                     compiler: builder.compiler_for(
                         compiler.stage,
                         builder.config.build,
                         compiler.host,
                     ),
                     target: compiler.host,
-                })
-                .expect("rust-analyzer-proc-macro-server always builds");
-            builder.install(&ra_proc_macro_srv, &image.join("libexec"), 0o755);
+                },
+                builder.kind,
+            ) {
+                builder.install(&ra_proc_macro_srv, &image.join("libexec"), 0o755);
+            }
 
             let libdir_relative = builder.libdir_relative(compiler);
 
@@ -743,7 +754,7 @@ impl Step for Analysis {
         });
     }
 
-    /// Creates a tarball of save-analysis metadata, if available.
+    /// Creates a tarball of (degenerate) save-analysis metadata, if available.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
@@ -751,13 +762,19 @@ impl Step for Analysis {
             return None;
         }
 
-        builder.ensure(compile::Std::new(compiler, target));
         let src = builder
             .stage_out(compiler, Mode::Std)
             .join(target.triple)
             .join(builder.cargo_dir())
             .join("deps")
             .join("save-analysis");
+
+        // Write a file indicating that this component has been removed.
+        t!(std::fs::create_dir_all(&src));
+        let mut removed = src.clone();
+        removed.push("removed.json");
+        let mut f = t!(std::fs::File::create(removed));
+        t!(write!(f, r#"{{ "warning": "The `rust-analysis` component has been removed." }}"#));
 
         let mut tarball = Tarball::new(builder, "rust-analysis", &target.triple);
         tarball.include_target_in_component_name(true);
@@ -952,7 +969,7 @@ impl Step for PlainSourceTarball {
             "Cargo.toml",
             "Cargo.lock",
         ];
-        let src_dirs = ["src", "compiler", "library"];
+        let src_dirs = ["src", "compiler", "library", "tests"];
 
         copy_src_dirs(builder, &builder.src, &src_dirs, &[], &plain_dst_src);
 

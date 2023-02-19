@@ -11,5 +11,5 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected type `isize`
     //~| found enum `Option<isize>`
-    //~| expected `isize`, found enum `Option`
+    //~| expected `isize`, found `Option<isize>`
 }

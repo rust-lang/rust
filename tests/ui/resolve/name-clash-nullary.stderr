@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |   let None: isize = 42;
    |       ^^^^  ----- expected due to this
    |       |
-   |       expected `isize`, found enum `Option`
+   |       expected `isize`, found `Option<_>`
    |
    = note: expected type `isize`
               found enum `Option<_>`

@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::{StackProbeType, Target};
+use crate::spec::{SanitizerSet, StackProbeType, Target};
 
 pub fn target() -> Target {
     let mut base = super::linux_musl_base::opts();
@@ -14,6 +14,8 @@ pub fn target() -> Target {
     base.min_global_align = Some(16);
     base.static_position_independent_executables = true;
     base.stack_probes = StackProbeType::Inline;
+    base.supported_sanitizers =
+        SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::MEMORY | SanitizerSet::THREAD;
 
     Target {
         llvm_target: "s390x-unknown-linux-musl".into(),

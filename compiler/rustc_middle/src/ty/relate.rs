@@ -9,7 +9,6 @@ use crate::ty::{self, Expr, ImplSubject, Term, TermKind, Ty, TyCtxt, TypeFoldabl
 use crate::ty::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
-use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi;
 use std::iter;
 
@@ -164,8 +163,7 @@ pub fn relate_substs_with_variances<'tcx, R: TypeRelation<'tcx>>(
     let params = iter::zip(a_subst, b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances[i];
         let variance_info = if variance == ty::Invariant && fetch_ty_for_diag {
-            let ty =
-                *cached_ty.get_or_insert_with(|| tcx.bound_type_of(ty_def_id).subst(tcx, a_subst));
+            let ty = *cached_ty.get_or_insert_with(|| tcx.type_of(ty_def_id).subst(tcx, a_subst));
             ty::VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
         } else {
             ty::VarianceDiagInfo::default()
@@ -443,12 +441,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             if a_repr == b_repr =>
         {
             let region_bound = relation.with_cause(Cause::ExistentialRegionBound, |relation| {
-                relation.relate_with_variance(
-                    ty::Contravariant,
-                    ty::VarianceDiagInfo::default(),
-                    a_region,
-                    b_region,
-                )
+                relation.relate(a_region, b_region)
             })?;
             Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound, a_repr))
         }
@@ -473,6 +466,16 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(tcx.mk_generator_witness(types))
         }
 
+        (&ty::GeneratorWitnessMIR(a_id, a_substs), &ty::GeneratorWitnessMIR(b_id, b_substs))
+            if a_id == b_id =>
+        {
+            // All GeneratorWitness types with the same id represent
+            // the (anonymous) type of the same generator expression. So
+            // all of their regions should be equated.
+            let substs = relation.relate(a_substs, b_substs)?;
+            Ok(tcx.mk_generator_witness_mir(a_id, substs))
+        }
+
         (&ty::Closure(a_id, a_substs), &ty::Closure(b_id, b_substs)) if a_id == b_id => {
             // All Closure types with the same id represent
             // the (anonymous) type of the same closure expression. So
@@ -487,12 +490,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         }
 
         (&ty::Ref(a_r, a_ty, a_mutbl), &ty::Ref(b_r, b_ty, b_mutbl)) => {
-            let r = relation.relate_with_variance(
-                ty::Contravariant,
-                ty::VarianceDiagInfo::default(),
-                a_r,
-                b_r,
-            )?;
+            let r = relation.relate(a_r, b_r)?;
             let a_mt = ty::TypeAndMut { ty: a_ty, mutbl: a_mutbl };
             let b_mt = ty::TypeAndMut { ty: b_ty, mutbl: b_mutbl };
             let mt = relate_type_and_mut(relation, a_mt, b_mt, a)?;
@@ -502,7 +500,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) => {
             let t = relation.relate(a_t, b_t)?;
             match relation.relate(sz_a, sz_b) {
-                Ok(sz) => Ok(tcx.mk_ty(ty::Array(t, sz))),
+                Ok(sz) => Ok(tcx.mk_array_with_const_len(t, sz)),
                 Err(err) => {
                     // Check whether the lengths are both concrete/known values,
                     // but are unequal, for better diagnostics.
@@ -511,8 +509,8 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
                     // we however cannot end up with errors in `Relate` during both
                     // `type_of` and `predicates_of`. This means that evaluating the
                     // constants should not cause cycle errors here.
-                    let sz_a = sz_a.try_eval_usize(tcx, relation.param_env());
-                    let sz_b = sz_b.try_eval_usize(tcx, relation.param_env());
+                    let sz_a = sz_a.try_eval_target_usize(tcx, relation.param_env());
+                    let sz_b = sz_b.try_eval_target_usize(tcx, relation.param_env());
                     match (sz_a, sz_b) {
                         (Some(sz_a_val), Some(sz_b_val)) if sz_a_val != sz_b_val => Err(
                             TypeError::FixedArraySize(expected_found(relation, sz_a_val, sz_b_val)),
@@ -594,25 +592,6 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     debug!("{}.super_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
 
-    let a_ty;
-    let b_ty;
-    if relation.tcx().features().adt_const_params {
-        a_ty = tcx.normalize_erasing_regions(relation.param_env(), a.ty());
-        b_ty = tcx.normalize_erasing_regions(relation.param_env(), b.ty());
-    } else {
-        a_ty = tcx.erase_regions(a.ty());
-        b_ty = tcx.erase_regions(b.ty());
-    }
-    if a_ty != b_ty {
-        relation.tcx().sess.delay_span_bug(
-            DUMMY_SP,
-            &format!(
-                "cannot relate constants ({:?}, {:?}) of different types: {} != {}",
-                a, b, a_ty, b_ty
-            ),
-        );
-    }
-
     // HACK(const_generics): We still need to eagerly evaluate consts when
     // relating them because during `normalize_param_env_or_error`,
     // we may relate an evaluated constant in a obligation against
@@ -628,6 +607,8 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         a = tcx.expand_abstract_consts(a);
         b = tcx.expand_abstract_consts(b);
     }
+
+    debug!("{}.super_relate_consts(normed_a = {:?}, normed_b = {:?})", relation.tag(), a, b);
 
     // Currently, the values that can be unified are primitive types,
     // and those that derive both `PartialEq` and `Eq`, corresponding
@@ -665,36 +646,34 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
 
             // FIXME(generic_const_exprs): is it possible to relate two consts which are not identical
             // exprs? Should we care about that?
+            // FIXME(generic_const_exprs): relating the `ty()`s is a little weird since it is supposed to
+            // ICE If they mismatch. Unfortunately `ConstKind::Expr` is a little special and can be thought
+            // of as being generic over the argument types, however this is implicit so these types don't get
+            // related when we relate the substs of the item this const arg is for.
             let expr = match (ae, be) {
-                (Expr::Binop(a_op, al, ar), Expr::Binop(b_op, bl, br))
-                    if a_op == b_op && al.ty() == bl.ty() && ar.ty() == br.ty() =>
-                {
+                (Expr::Binop(a_op, al, ar), Expr::Binop(b_op, bl, br)) if a_op == b_op => {
+                    r.relate(al.ty(), bl.ty())?;
+                    r.relate(ar.ty(), br.ty())?;
                     Expr::Binop(a_op, r.consts(al, bl)?, r.consts(ar, br)?)
                 }
-                (Expr::UnOp(a_op, av), Expr::UnOp(b_op, bv))
-                    if a_op == b_op && av.ty() == bv.ty() =>
-                {
+                (Expr::UnOp(a_op, av), Expr::UnOp(b_op, bv)) if a_op == b_op => {
+                    r.relate(av.ty(), bv.ty())?;
                     Expr::UnOp(a_op, r.consts(av, bv)?)
                 }
-                (Expr::Cast(ak, av, at), Expr::Cast(bk, bv, bt))
-                    if ak == bk && av.ty() == bv.ty() =>
-                {
+                (Expr::Cast(ak, av, at), Expr::Cast(bk, bv, bt)) if ak == bk => {
+                    r.relate(av.ty(), bv.ty())?;
                     Expr::Cast(ak, r.consts(av, bv)?, r.tys(at, bt)?)
                 }
                 (Expr::FunctionCall(af, aa), Expr::FunctionCall(bf, ba))
-                    if aa.len() == ba.len()
-                        && af.ty() == bf.ty()
-                        && aa
-                            .iter()
-                            .zip(ba.iter())
-                            .all(|(a_arg, b_arg)| a_arg.ty() == b_arg.ty()) =>
+                    if aa.len() == ba.len() =>
                 {
+                    r.relate(af.ty(), bf.ty())?;
                     let func = r.consts(af, bf)?;
                     let mut related_args = Vec::with_capacity(aa.len());
                     for (a_arg, b_arg) in aa.iter().zip(ba.iter()) {
                         related_args.push(r.consts(a_arg, b_arg)?);
                     }
-                    let related_args = tcx.mk_const_list(related_args.iter());
+                    let related_args = tcx.intern_const_list(&related_args);
                     Expr::FunctionCall(func, related_args)
                 }
                 _ => return Err(TypeError::ConstMismatch(expected_found(r, a, b))),

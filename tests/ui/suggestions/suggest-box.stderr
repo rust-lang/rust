@@ -8,7 +8,7 @@ LL |       let _x: Box<dyn Fn() -> Result<(), ()>> = || {
 LL | |         Err(())?;
 LL | |         Ok(())
 LL | |     };
-   | |_____^ expected struct `Box`, found closure
+   | |_____^ expected `Box<dyn Fn() -> Result<(), ()>>`, found closure
    |
    = note: expected struct `Box<dyn Fn() -> Result<(), ()>>`
              found closure `[closure@$DIR/suggest-box.rs:4:47: 4:49]`

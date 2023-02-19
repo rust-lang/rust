@@ -1,3 +1,4 @@
+// compile-flags: -Zmir-enable-passes=-NormalizeArrayLen
 // Check that we do not insert StorageDead at each target if StorageDead was never seen
 
 // EMIT_MIR issue_76432.test.SimplifyComparisonIntegral.diff

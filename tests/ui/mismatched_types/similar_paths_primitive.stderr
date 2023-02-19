@@ -2,13 +2,13 @@ error[E0308]: mismatched types
   --> $DIR/similar_paths_primitive.rs:8:9
    |
 LL |     foo(true);
-   |     --- ^^^^ expected struct `bool`, found `bool`
+   |     --- ^^^^ expected `bool`, found a different `bool`
    |     |
    |     arguments to this function are incorrect
    |
-   = note: bool and struct `bool` have similar names, but are actually distinct types
+   = note: bool and `bool` have similar names, but are actually distinct types
    = note: bool is a primitive defined by the language
-note: struct `bool` is defined in the current crate
+note: `bool` is defined in the current crate
   --> $DIR/similar_paths_primitive.rs:3:1
    |
 LL | struct bool;

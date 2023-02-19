@@ -1,5 +1,4 @@
 //@ignore-target-windows: No libc on Windows
-#![feature(cstr_from_bytes_until_nul)]
 use std::ffi::{CStr, CString};
 use std::thread;
 

@@ -6,7 +6,7 @@ LL |     let x:
 LL |         Option<usize>;
    |         ------------- expected due to this type
 LL |     x = 5;
-   |         ^ expected enum `Option`, found integer
+   |         ^ expected `Option<usize>`, found integer
    |
    = note: expected enum `Option<usize>`
               found type `{integer}`

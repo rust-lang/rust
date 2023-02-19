@@ -187,6 +187,12 @@ impl Display for RegionName {
     }
 }
 
+impl rustc_errors::IntoDiagnosticArg for RegionName {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
 impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     pub(crate) fn mir_def_id(&self) -> hir::def_id::LocalDefId {
         self.body.source.def_id().expect_local()
@@ -274,17 +280,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         debug!("give_region_a_name: error_region = {:?}", error_region);
         match *error_region {
-            ty::ReEarlyBound(ebr) => {
-                if ebr.has_name() {
-                    let span = tcx.hir().span_if_local(ebr.def_id).unwrap_or(DUMMY_SP);
-                    Some(RegionName {
-                        name: ebr.name,
-                        source: RegionNameSource::NamedEarlyBoundRegion(span),
-                    })
-                } else {
-                    None
-                }
-            }
+            ty::ReEarlyBound(ebr) => ebr.has_name().then(|| {
+                let span = tcx.hir().span_if_local(ebr.def_id).unwrap_or(DUMMY_SP);
+                RegionName { name: ebr.name, source: RegionNameSource::NamedEarlyBoundRegion(span) }
+            }),
 
             ty::ReStatic => {
                 Some(RegionName { name: kw::StaticLifetime, source: RegionNameSource::Static })
@@ -337,11 +336,11 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     let note = match closure_kind_ty.to_opt_closure_kind() {
                         Some(ty::ClosureKind::Fn) => {
                             "closure implements `Fn`, so references to captured variables \
-                                can't escape the closure"
+                             can't escape the closure"
                         }
                         Some(ty::ClosureKind::FnMut) => {
                             "closure implements `FnMut`, so references to captured variables \
-                                can't escape the closure"
+                             can't escape the closure"
                         }
                         Some(ty::ClosureKind::FnOnce) => {
                             bug!("BrEnv in a `FnOnce` closure");
@@ -358,7 +357,11 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 ty::BoundRegionKind::BrAnon(..) => None,
             },
 
-            ty::ReLateBound(..) | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReErased => None,
+            ty::ReLateBound(..)
+            | ty::ReVar(..)
+            | ty::RePlaceholder(..)
+            | ty::ReErased
+            | ty::ReError(_) => None,
         }
     }
 
@@ -842,12 +845,13 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let tcx = self.infcx.tcx;
         let region_parent = tcx.parent(region.def_id);
-        if tcx.def_kind(region_parent) != DefKind::Impl {
+        let DefKind::Impl { .. } = tcx.def_kind(region_parent) else {
             return None;
-        }
+        };
 
-        let found = tcx
-            .any_free_region_meets(&tcx.type_of(region_parent), |r| *r == ty::ReEarlyBound(region));
+        let found = tcx.any_free_region_meets(&tcx.type_of(region_parent).subst_identity(), |r| {
+            *r == ty::ReEarlyBound(region)
+        });
 
         Some(RegionName {
             name: self.synthesize_region_name(),

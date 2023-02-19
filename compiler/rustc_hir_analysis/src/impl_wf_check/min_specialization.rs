@@ -164,7 +164,6 @@ fn get_impl_substs(
     let infcx = &tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(infcx);
     let param_env = tcx.param_env(impl1_def_id);
-    let impl1_hir_id = tcx.hir().local_def_id_to_hir_id(impl1_def_id);
 
     let assumed_wf_types =
         ocx.assumed_wf_types(param_env, tcx.def_span(impl1_def_id), impl1_def_id);
@@ -179,7 +178,7 @@ fn get_impl_substs(
         return None;
     }
 
-    let implied_bounds = infcx.implied_bounds_tys(param_env, impl1_hir_id, assumed_wf_types);
+    let implied_bounds = infcx.implied_bounds_tys(param_env, impl1_def_id, assumed_wf_types);
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
     let _ =
         infcx.err_ctxt().check_region_obligations_and_report_errors(impl1_def_id, &outlives_env);
@@ -372,15 +371,9 @@ fn check_predicates<'tcx>(
     // Include the well-formed predicates of the type parameters of the impl.
     for arg in tcx.impl_trait_ref(impl1_def_id).unwrap().subst_identity().substs {
         let infcx = &tcx.infer_ctxt().build();
-        let obligations = wf::obligations(
-            infcx,
-            tcx.param_env(impl1_def_id),
-            tcx.hir().local_def_id_to_hir_id(impl1_def_id),
-            0,
-            arg,
-            span,
-        )
-        .unwrap();
+        let obligations =
+            wf::obligations(infcx, tcx.param_env(impl1_def_id), impl1_def_id, 0, arg, span)
+                .unwrap();
 
         assert!(!obligations.needs_infer());
         impl2_predicates.extend(
@@ -503,6 +496,16 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
                 )
                 .emit();
         }
+        ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => {
+            // FIXME(min_specialization), FIXME(const_generics):
+            // It probably isn't right to allow _every_ `ConstArgHasType` but I am somewhat unsure
+            // about the actual rules that would be sound. Can't just always error here because otherwise
+            // std/core doesn't even compile as they have `const N: usize` in some specializing impls.
+            //
+            // While we do not support constructs like `<T, const N: T>` there is probably no risk of
+            // soundness bugs, but when we support generic const parameter types this will need to be
+            // revisited.
+        }
         _ => {
             tcx.sess
                 .struct_span_err(span, &format!("cannot specialize on predicate `{}`", predicate))
@@ -524,6 +527,8 @@ fn trait_predicate_kind<'tcx>(
         ty::PredicateKind::Clause(ty::Clause::RegionOutlives(_))
         | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(_))
         | ty::PredicateKind::Clause(ty::Clause::Projection(_))
+        | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
+        | ty::PredicateKind::AliasEq(..)
         | ty::PredicateKind::WellFormed(_)
         | ty::PredicateKind::Subtype(_)
         | ty::PredicateKind::Coerce(_)

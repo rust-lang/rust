@@ -180,43 +180,40 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
     // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
     let supported_platforms = [
         // tier 1
-        "aarch64-unknown-linux-gnu",
-        "i686-pc-windows-gnu",
-        "i686-pc-windows-msvc",
-        "i686-unknown-linux-gnu",
-        "x86_64-unknown-linux-gnu",
-        "x86_64-apple-darwin",
-        "x86_64-pc-windows-gnu",
-        "x86_64-pc-windows-msvc",
+        ("aarch64-unknown-linux-gnu", false),
+        ("i686-pc-windows-gnu", false),
+        ("i686-pc-windows-msvc", false),
+        ("i686-unknown-linux-gnu", false),
+        ("x86_64-unknown-linux-gnu", true),
+        ("x86_64-apple-darwin", true),
+        ("x86_64-pc-windows-gnu", true),
+        ("x86_64-pc-windows-msvc", true),
         // tier 2 with host tools
-        "aarch64-apple-darwin",
-        "aarch64-pc-windows-msvc",
-        "aarch64-unknown-linux-musl",
-        "arm-unknown-linux-gnueabi",
-        "arm-unknown-linux-gnueabihf",
-        "armv7-unknown-linux-gnueabihf",
-        "mips-unknown-linux-gnu",
-        "mips64-unknown-linux-gnuabi64",
-        "mips64el-unknown-linux-gnuabi64",
-        "mipsel-unknown-linux-gnu",
-        "powerpc-unknown-linux-gnu",
-        "powerpc64-unknown-linux-gnu",
-        "powerpc64le-unknown-linux-gnu",
-        "riscv64gc-unknown-linux-gnu",
-        "s390x-unknown-linux-gnu",
-        "x86_64-unknown-freebsd",
-        "x86_64-unknown-illumos",
-        "x86_64-unknown-linux-musl",
-        "x86_64-unknown-netbsd",
+        ("aarch64-apple-darwin", false),
+        ("aarch64-pc-windows-msvc", false),
+        ("aarch64-unknown-linux-musl", false),
+        ("arm-unknown-linux-gnueabi", false),
+        ("arm-unknown-linux-gnueabihf", false),
+        ("armv7-unknown-linux-gnueabihf", false),
+        ("mips-unknown-linux-gnu", false),
+        ("mips64-unknown-linux-gnuabi64", false),
+        ("mips64el-unknown-linux-gnuabi64", false),
+        ("mipsel-unknown-linux-gnu", false),
+        ("powerpc-unknown-linux-gnu", false),
+        ("powerpc64-unknown-linux-gnu", false),
+        ("powerpc64le-unknown-linux-gnu", false),
+        ("riscv64gc-unknown-linux-gnu", false),
+        ("s390x-unknown-linux-gnu", false),
+        ("x86_64-unknown-freebsd", false),
+        ("x86_64-unknown-illumos", false),
+        ("x86_64-unknown-linux-musl", false),
+        ("x86_64-unknown-netbsd", false),
     ];
-    if !supported_platforms.contains(&&*config.build.triple) {
-        return false;
-    }
 
-    let triple = &*config.build.triple;
-    if (triple == "aarch64-unknown-linux-gnu" || triple.contains("i686")) && asserts {
-        // No alt builder for aarch64-unknown-linux-gnu today.
-        return false;
+    if !supported_platforms.contains(&(&*config.build.triple, asserts)) {
+        if asserts == true || !supported_platforms.contains(&(&*config.build.triple, true)) {
+            return false;
+        }
     }
 
     if CiEnv::is_ci() {
@@ -486,7 +483,7 @@ impl Step for Llvm {
             cfg.define("LLVM_VERSION_SUFFIX", suffix);
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags);
+        configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
         configure_llvm(builder, target, &mut cfg);
 
         for (key, val) in &builder.config.llvm_build_config {
@@ -519,7 +516,7 @@ impl Step for Llvm {
 
             let lib_llvm = out_dir.join("build").join("lib").join(lib_name);
             if !lib_llvm.exists() {
-                t!(builder.symlink_file("libLLVM.dylib", &lib_llvm));
+                t!(builder.build.config.symlink_file("libLLVM.dylib", &lib_llvm));
             }
         }
 
@@ -564,11 +561,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = output(cmd.arg("--version"));
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 13 {
+        if major >= 14 {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=13.0\n\n", version)
+    panic!("\n\nbad LLVM version: {}, need >=14.0\n\n", version)
 }
 
 fn configure_cmake(
@@ -577,6 +574,7 @@ fn configure_cmake(
     cfg: &mut cmake::Config,
     use_compiler_launcher: bool,
     mut ldflags: LdFlags,
+    extra_compiler_flags: &[&str],
 ) {
     // Do not print installation messages for up-to-date files.
     // LLVM and LLD builds can produce a lot of those and hit CI limits on log size.
@@ -717,6 +715,9 @@ fn configure_cmake(
     if builder.config.llvm_clang_cl.is_some() {
         cflags.push(&format!(" --target={}", target));
     }
+    for flag in extra_compiler_flags {
+        cflags.push(&format!(" {}", flag));
+    }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::Cxx).join(" ").into();
     if let Some(ref s) = builder.config.llvm_cxxflags {
@@ -725,6 +726,9 @@ fn configure_cmake(
     }
     if builder.config.llvm_clang_cl.is_some() {
         cxxflags.push(&format!(" --target={}", target));
+    }
+    for flag in extra_compiler_flags {
+        cxxflags.push(&format!(" {}", flag));
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
@@ -867,7 +871,7 @@ impl Step for Lld {
             }
         }
 
-        configure_cmake(builder, target, &mut cfg, true, ldflags);
+        configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
         configure_llvm(builder, target, &mut cfg);
 
         // Re-use the same flags as llvm to control the level of debug information
@@ -1031,7 +1035,16 @@ impl Step for Sanitizers {
         // Unfortunately sccache currently lacks support to build them successfully.
         // Disable compiler launcher on Darwin targets to avoid potential issues.
         let use_compiler_launcher = !self.target.contains("apple-darwin");
-        configure_cmake(builder, self.target, &mut cfg, use_compiler_launcher, LdFlags::default());
+        let extra_compiler_flags: &[&str] =
+            if self.target.contains("apple") { &["-fembed-bitcode=off"] } else { &[] };
+        configure_cmake(
+            builder,
+            self.target,
+            &mut cfg,
+            use_compiler_launcher,
+            LdFlags::default(),
+            extra_compiler_flags,
+        );
 
         t!(fs::create_dir_all(&out_dir));
         cfg.out_dir(out_dir);
@@ -1087,12 +1100,15 @@ fn supported_sanitizers(
 
     match &*target.triple {
         "aarch64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
+        "aarch64-apple-ios" => darwin_libs("ios", &["asan", "tsan"]),
+        "aarch64-apple-ios-sim" => darwin_libs("iossim", &["asan", "tsan"]),
         "aarch64-unknown-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
         "aarch64-unknown-linux-gnu" => {
             common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan"])
         }
         "x86_64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "x86_64-unknown-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),
+        "x86_64-apple-ios" => darwin_libs("iossim", &["asan", "tsan"]),
         "x86_64-unknown-freebsd" => common_libs("freebsd", "x86_64", &["asan", "msan", "tsan"]),
         "x86_64-unknown-netbsd" => {
             common_libs("netbsd", "x86_64", &["asan", "lsan", "msan", "tsan"])
@@ -1104,6 +1120,12 @@ fn supported_sanitizers(
         }
         "x86_64-unknown-linux-musl" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
+        }
+        "s390x-unknown-linux-gnu" => {
+            common_libs("linux", "s390x", &["asan", "lsan", "msan", "tsan"])
+        }
+        "s390x-unknown-linux-musl" => {
+            common_libs("linux", "s390x", &["asan", "lsan", "msan", "tsan"])
         }
         _ => Vec::new(),
     }

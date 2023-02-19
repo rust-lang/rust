@@ -18,6 +18,8 @@ error[E0597]: `y` does not live long enough
 LL | fn call1<'a>(x: &'a usize) {
    |          -- lifetime `'a` defined here
 ...
+LL |     let y: usize = 3;
+   |         - binding `y` declared here
 LL |     let z: &'a & usize = &(&y);
    |            -----------    ^^^^ borrowed value does not live long enough
    |            |

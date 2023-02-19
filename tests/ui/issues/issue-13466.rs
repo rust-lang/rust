@@ -9,12 +9,12 @@ pub fn main() {
         //~^ ERROR mismatched types
         //~| expected enum `Option<{integer}>`
         //~| found enum `Result<_, _>`
-        //~| expected enum `Option`, found enum `Result`
+        //~| expected `Option<{integer}>`, found `Result<_, _>`
 
         Err(e) => panic!(e)
         //~^ ERROR mismatched types
         //~| expected enum `Option<{integer}>`
         //~| found enum `Result<_, _>`
-        //~| expected enum `Option`, found enum `Result`
+        //~| expected `Option<{integer}>`, found `Result<_, _>`
     };
 }

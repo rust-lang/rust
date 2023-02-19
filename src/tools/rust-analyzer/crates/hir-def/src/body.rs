@@ -12,7 +12,9 @@ use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use drop_bomb::DropBomb;
 use either::Either;
-use hir_expand::{hygiene::Hygiene, ExpandError, ExpandResult, HirFileId, InFile, MacroCallId};
+use hir_expand::{
+    attrs::RawAttrs, hygiene::Hygiene, ExpandError, ExpandResult, HirFileId, InFile, MacroCallId,
+};
 use la_arena::{Arena, ArenaMap};
 use limit::Limit;
 use profile::Count;
@@ -20,7 +22,7 @@ use rustc_hash::FxHashMap;
 use syntax::{ast, AstPtr, SyntaxNodePtr};
 
 use crate::{
-    attr::{Attrs, RawAttrs},
+    attr::Attrs,
     db::DefDatabase,
     expr::{dummy_expr_id, Expr, ExprId, Label, LabelId, Pat, PatId},
     item_scope::BuiltinShadowMode,
@@ -64,7 +66,7 @@ impl CfgExpander {
     }
 
     pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> Attrs {
-        RawAttrs::new(db, owner, &self.hygiene).filter(db, self.krate)
+        Attrs::filter(db, self.krate, RawAttrs::new(db.upcast(), owner, &self.hygiene))
     }
 
     pub(crate) fn is_cfg_enabled(&self, db: &dyn DefDatabase, owner: &dyn ast::HasAttrs) -> bool {

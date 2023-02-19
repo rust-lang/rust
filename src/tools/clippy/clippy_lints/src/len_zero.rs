@@ -135,6 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             if item.ident.name == sym::len;
             if let ImplItemKind::Fn(sig, _) = &item.kind;
             if sig.decl.implicit_self.has_implicit_self();
+            if sig.decl.inputs.len() == 1;
             if cx.effective_visibilities.is_exported(item.owner_id.def_id);
             if matches!(sig.decl.output, FnRetTy::Return(_));
             if let Some(imp) = get_parent_as_impl(cx.tcx, item.hir_id());
@@ -144,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             if let Some(local_id) = ty_id.as_local();
             let ty_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_id);
             if !is_lint_allowed(cx, LEN_WITHOUT_IS_EMPTY, ty_hir_id);
-            if let Some(output) = parse_len_output(cx, cx.tcx.fn_sig(item.owner_id).skip_binder());
+            if let Some(output) = parse_len_output(cx, cx.tcx.fn_sig(item.owner_id).subst_identity().skip_binder());
             then {
                 let (name, kind) = match cx.tcx.hir().find(ty_hir_id) {
                     Some(Node::ForeignItem(x)) => (x.ident.name, "extern type"),
@@ -196,7 +197,15 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
     fn is_named_self(cx: &LateContext<'_>, item: &TraitItemRef, name: Symbol) -> bool {
         item.ident.name == name
             && if let AssocItemKind::Fn { has_self } = item.kind {
-                has_self && { cx.tcx.fn_sig(item.id.owner_id).inputs().skip_binder().len() == 1 }
+                has_self && {
+                    cx.tcx
+                        .fn_sig(item.id.owner_id)
+                        .skip_binder()
+                        .inputs()
+                        .skip_binder()
+                        .len()
+                        == 1
+                }
             } else {
                 false
             }
@@ -224,7 +233,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
             .any(|i| {
                 i.kind == ty::AssocKind::Fn
                     && i.fn_has_self_parameter
-                    && cx.tcx.fn_sig(i.def_id).inputs().skip_binder().len() == 1
+                    && cx.tcx.fn_sig(i.def_id).skip_binder().inputs().skip_binder().len() == 1
             });
 
         if !is_empty_method_found {
@@ -342,7 +351,11 @@ fn check_for_is_empty<'tcx>(
         ),
         Some(is_empty)
             if !(is_empty.fn_has_self_parameter
-                && check_is_empty_sig(cx.tcx.fn_sig(is_empty.def_id).skip_binder(), self_kind, output)) =>
+                && check_is_empty_sig(
+                    cx.tcx.fn_sig(is_empty.def_id).subst_identity().skip_binder(),
+                    self_kind,
+                    output,
+                )) =>
         {
             (
                 format!(
@@ -473,7 +486,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     /// Gets an `AssocItem` and return true if it matches `is_empty(self)`.
     fn is_is_empty(cx: &LateContext<'_>, item: &ty::AssocItem) -> bool {
         if item.kind == ty::AssocKind::Fn {
-            let sig = cx.tcx.fn_sig(item.def_id);
+            let sig = cx.tcx.fn_sig(item.def_id).skip_binder();
             let ty = sig.skip_binder();
             ty.inputs().len() == 1
         } else {

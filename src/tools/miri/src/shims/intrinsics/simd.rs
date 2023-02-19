@@ -202,7 +202,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         }
                         Op::WrappingOffset => {
                             let ptr = left.to_scalar().to_pointer(this)?;
-                            let offset_count = right.to_scalar().to_machine_isize(this)?;
+                            let offset_count = right.to_scalar().to_target_isize(this)?;
                             let pointee_ty = left.layout.ty.builtin_deref(true).unwrap().ty;
 
                             let pointee_size = i64::try_from(this.layout_of(pointee_ty)?.size.bytes()).unwrap();
@@ -469,7 +469,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let ty::Array(_, index_len) = index.layout.ty.kind() else {
                     span_bug!(this.cur_span(), "simd_shuffle index argument has non-array type {}", index.layout.ty)
                 };
-                let index_len = index_len.eval_usize(*this.tcx, this.param_env());
+                let index_len = index_len.eval_target_usize(*this.tcx, this.param_env());
 
                 assert_eq!(left_len, right_len);
                 assert_eq!(index_len, dest_len);

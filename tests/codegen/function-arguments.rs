@@ -85,6 +85,12 @@ pub fn option_nonzero_int(x: Option<NonZeroU64>) -> Option<NonZeroU64> {
 pub fn readonly_borrow(_: &i32) {
 }
 
+// CHECK: noundef align 4 dereferenceable(4) {{i32\*|ptr}} @readonly_borrow_ret()
+#[no_mangle]
+pub fn readonly_borrow_ret() -> &'static i32 {
+  loop {}
+}
+
 // CHECK: @static_borrow({{i32\*|ptr}} noalias noundef readonly align 4 dereferenceable(4) %_1)
 // static borrow may be captured
 #[no_mangle]
@@ -115,9 +121,17 @@ pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {
 pub fn mutable_borrow(_: &mut i32) {
 }
 
+// CHECK: noundef align 4 dereferenceable(4) {{i32\*|ptr}} @mutable_borrow_ret()
 #[no_mangle]
-// CHECK: @mutable_notunpin_borrow({{i32\*|ptr}} noundef align 4 dereferenceable(4) %_1)
+pub fn mutable_borrow_ret() -> &'static mut i32 {
+  loop {}
+}
+
+#[no_mangle]
+// CHECK: @mutable_notunpin_borrow({{i32\*|ptr}} noundef nonnull align 4 %_1)
 // This one is *not* `noalias` because it might be self-referential.
+// It is also not `dereferenceable` due to
+// <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>.
 pub fn mutable_notunpin_borrow(_: &mut NotUnpin) {
 }
 
@@ -164,6 +178,12 @@ pub fn raw_option_nonnull_struct(_: Option<NonNull<S>>) {
 // CHECK: noundef nonnull align 4 {{i32\*|ptr}} @_box({{i32\*|ptr}} noalias noundef nonnull align 4 %x)
 #[no_mangle]
 pub fn _box(x: Box<i32>) -> Box<i32> {
+  x
+}
+
+// CHECK: noundef nonnull align 4 {{i32\*|ptr}} @notunpin_box({{i32\*|ptr}} noundef nonnull align 4 %x)
+#[no_mangle]
+pub fn notunpin_box(x: Box<NotUnpin>) -> Box<NotUnpin> {
   x
 }
 
@@ -233,12 +253,12 @@ pub fn trait_raw(_: *const dyn Drop) {
 
 // CHECK: @trait_box({{\{\}\*|ptr}} noalias noundef nonnull align 1{{( %0)?}}, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}){{( %1)?}})
 #[no_mangle]
-pub fn trait_box(_: Box<dyn Drop>) {
+pub fn trait_box(_: Box<dyn Drop + Unpin>) {
 }
 
 // CHECK: { {{i8\*|ptr}}, {{i8\*|ptr}} } @trait_option({{i8\*|ptr}} noalias noundef align 1 %x.0, {{i8\*|ptr}} %x.1)
 #[no_mangle]
-pub fn trait_option(x: Option<Box<dyn Drop>>) -> Option<Box<dyn Drop>> {
+pub fn trait_option(x: Option<Box<dyn Drop + Unpin>>) -> Option<Box<dyn Drop + Unpin>> {
   x
 }
 

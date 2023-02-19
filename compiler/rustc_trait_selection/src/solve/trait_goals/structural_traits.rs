@@ -24,15 +24,16 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::Never
         | ty::Char => Ok(vec![]),
 
-        ty::Placeholder(..)
-        | ty::Dynamic(..)
+        ty::Dynamic(..)
         | ty::Param(..)
         | ty::Foreign(..)
         | ty::Alias(ty::Projection, ..)
-        | ty::Bound(..)
-        | ty::Infer(ty::TyVar(_)) => Err(NoSolution),
+        | ty::Placeholder(..) => Err(NoSolution),
 
-        ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            bug!("unexpected type `{ty}`")
+        }
 
         ty::RawPtr(ty::TypeAndMut { ty: element_ty, .. }) | ty::Ref(_, element_ty, _) => {
             Ok(vec![element_ty])
@@ -53,8 +54,10 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         }
 
         ty::GeneratorWitness(types) => {
-            Ok(infcx.replace_bound_vars_with_placeholders(types).to_vec())
+            Ok(infcx.instantiate_binder_with_placeholders(types).to_vec())
         }
+
+        ty::GeneratorWitnessMIR(..) => todo!(),
 
         // For `PhantomData<T>`, we pass `T`.
         ty::Adt(def, substs) if def.is_phantom_data() => Ok(vec![substs.type_at(0)]),
@@ -65,7 +68,7 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
             // We can resolve the `impl Trait` to its concrete type,
             // which enforces a DAG between the functions requiring
             // the auto trait bounds in question.
-            Ok(vec![tcx.bound_type_of(def_id).subst(tcx, substs)])
+            Ok(vec![tcx.type_of(def_id).subst(tcx, substs)])
         }
     }
 }
@@ -87,6 +90,7 @@ pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         | ty::Ref(..)
         | ty::Generator(..)
         | ty::GeneratorWitness(..)
+        | ty::GeneratorWitnessMIR(..)
         | ty::Array(..)
         | ty::Closure(..)
         | ty::Never
@@ -99,11 +103,12 @@ pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         | ty::Foreign(..)
         | ty::Alias(..)
         | ty::Param(_)
-        | ty::Infer(ty::TyVar(_)) => Err(NoSolution),
+        | ty::Placeholder(..) => Err(NoSolution),
 
-        ty::Placeholder(..)
-        | ty::Bound(..)
-        | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            bug!("unexpected type `{ty}`")
+        }
 
         ty::Tuple(tys) => Ok(tys.to_vec()),
 
@@ -148,11 +153,12 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         | ty::Adt(_, _)
         | ty::Alias(_, _)
         | ty::Param(_)
-        | ty::Infer(ty::TyVar(_)) => Err(NoSolution),
+        | ty::Placeholder(..) => Err(NoSolution),
 
-        ty::Placeholder(..)
-        | ty::Bound(..)
-        | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(),
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            bug!("unexpected type `{ty}`")
+        }
 
         ty::Tuple(tys) => Ok(tys.to_vec()),
 
@@ -168,11 +174,14 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         }
 
         ty::GeneratorWitness(types) => {
-            Ok(infcx.replace_bound_vars_with_placeholders(types).to_vec())
+            Ok(infcx.instantiate_binder_with_placeholders(types).to_vec())
         }
+
+        ty::GeneratorWitnessMIR(..) => todo!(),
     }
 }
 
+// Returns a binder of the tupled inputs types and output type from a builtin callable type.
 pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
     tcx: TyCtxt<'tcx>,
     self_ty: Ty<'tcx>,
@@ -180,12 +189,12 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
 ) -> Result<Option<ty::Binder<'tcx, (Ty<'tcx>, Ty<'tcx>)>>, NoSolution> {
     match *self_ty.kind() {
         ty::FnDef(def_id, substs) => Ok(Some(
-            tcx.bound_fn_sig(def_id)
+            tcx.fn_sig(def_id)
                 .subst(tcx, substs)
-                .map_bound(|sig| (tcx.mk_tup(sig.inputs().iter()), sig.output())),
+                .map_bound(|sig| (tcx.intern_tup(sig.inputs()), sig.output())),
         )),
         ty::FnPtr(sig) => {
-            Ok(Some(sig.map_bound(|sig| (tcx.mk_tup(sig.inputs().iter()), sig.output()))))
+            Ok(Some(sig.map_bound(|sig| (tcx.intern_tup(sig.inputs()), sig.output()))))
         }
         ty::Closure(_, substs) => {
             let closure_substs = substs.as_closure();
@@ -211,13 +220,18 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         | ty::Dynamic(_, _, _)
         | ty::Generator(_, _, _)
         | ty::GeneratorWitness(_)
+        | ty::GeneratorWitnessMIR(..)
         | ty::Never
         | ty::Tuple(_)
         | ty::Alias(_, _)
         | ty::Param(_)
-        | ty::Placeholder(_)
-        | ty::Bound(_, _)
-        | ty::Infer(_)
+        | ty::Placeholder(..)
+        | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Error(_) => Err(NoSolution),
+
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            bug!("unexpected type `{self_ty}`")
+        }
     }
 }

@@ -24,7 +24,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let frame_count = this.active_thread_stack().len();
 
-        this.write_scalar(Scalar::from_machine_usize(frame_count.try_into().unwrap(), this), dest)
+        this.write_scalar(Scalar::from_target_usize(frame_count.try_into().unwrap(), this), dest)
     }
 
     fn handle_miri_get_backtrace(
@@ -190,9 +190,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             0 => {
                 // These are "mutable" allocations as we consider them to be owned by the callee.
                 let name_alloc =
-                    this.allocate_str(&name, MiriMemoryKind::Rust.into(), Mutability::Mut);
+                    this.allocate_str(&name, MiriMemoryKind::Rust.into(), Mutability::Mut)?;
                 let filename_alloc =
-                    this.allocate_str(&filename, MiriMemoryKind::Rust.into(), Mutability::Mut);
+                    this.allocate_str(&filename, MiriMemoryKind::Rust.into(), Mutability::Mut)?;
 
                 this.write_immediate(
                     name_alloc.to_ref(this),
@@ -205,11 +205,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             1 => {
                 this.write_scalar(
-                    Scalar::from_machine_usize(name.len().try_into().unwrap(), this),
+                    Scalar::from_target_usize(name.len().try_into().unwrap(), this),
                     &this.mplace_field(&dest, 0)?.into(),
                 )?;
                 this.write_scalar(
-                    Scalar::from_machine_usize(filename.len().try_into().unwrap(), this),
+                    Scalar::from_target_usize(filename.len().try_into().unwrap(), this),
                     &this.mplace_field(&dest, 1)?.into(),
                 )?;
             }

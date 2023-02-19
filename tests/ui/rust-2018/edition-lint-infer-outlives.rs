@@ -791,5 +791,14 @@ struct StaticRef<T: 'static> {
     field: &'static T
 }
 
+struct TrailingCommaInWhereClause<'a, T, U>
+where
+    T: 'a,
+    U: 'a,
+    //~^ ERROR outlives requirements can be inferred
+{
+    tee: T,
+    yoo: &'a U
+}
 
 fn main() {}

@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(
     if_chain! {
         if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let Some(impl_id) = cx.tcx.impl_of_method(method_id);
-        if cx.tcx.type_of(impl_id).is_slice();
+        if cx.tcx.type_of(impl_id).subst_identity().is_slice();
         if let Some(_) = is_slice_of_primitives(cx, recv);
         if let hir::ExprKind::Lit(Spanned { node: LitKind::Int(0, _), .. }) = arg.kind;
         then {

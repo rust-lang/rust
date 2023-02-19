@@ -164,7 +164,8 @@ fn dtorck_constraint_for_ty<'tcx>(
         | ty::Ref(..)
         | ty::FnDef(..)
         | ty::FnPtr(_)
-        | ty::GeneratorWitness(..) => {
+        | ty::GeneratorWitness(..)
+        | ty::GeneratorWitnessMIR(..) => {
             // these types never have a destructor
         }
 
@@ -307,7 +308,7 @@ pub(crate) fn adt_dtorck_constraint(
 
     let mut result = DropckConstraint::empty();
     for field in def.all_fields() {
-        let fty = tcx.type_of(field.did);
+        let fty = tcx.type_of(field.did).subst_identity();
         dtorck_constraint_for_ty(tcx, span, fty, 0, fty, &mut result)?;
     }
     result.outlives.extend(tcx.destructor_constraints(def));

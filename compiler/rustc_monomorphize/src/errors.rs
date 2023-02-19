@@ -83,3 +83,17 @@ pub struct SymbolAlreadyDefined {
 pub struct CouldntDumpMonoStats {
     pub error: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(monomorphize_encountered_error_while_instantiating)]
+pub struct EncounteredErrorWhileInstantiating {
+    #[primary_span]
+    pub span: Span,
+    pub formatted_item: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(monomorphize_unknown_cgu_collection_mode)]
+pub struct UnknownCguCollectionMode<'a> {
+    pub mode: &'a str,
+}

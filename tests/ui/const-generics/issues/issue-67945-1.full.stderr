@@ -5,7 +5,7 @@ LL | struct Bug<S> {
    |            - this type parameter
 ...
 LL |         let x: S = MaybeUninit::uninit();
-   |                -   ^^^^^^^^^^^^^^^^^^^^^ expected type parameter `S`, found union `MaybeUninit`
+   |                -   ^^^^^^^^^^^^^^^^^^^^^ expected type parameter `S`, found `MaybeUninit<_>`
    |                |
    |                expected due to this
    |

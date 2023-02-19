@@ -15,7 +15,7 @@ fn test2(_1: &dyn X) -> bool {
         _3 = &(*_1);                     // scope 0 at $DIR/inline_trait_method_2.rs:+1:10: +1:11
         _2 = move _3 as &dyn X (Pointer(Unsize)); // scope 0 at $DIR/inline_trait_method_2.rs:+1:10: +1:11
         StorageDead(_3);                 // scope 0 at $DIR/inline_trait_method_2.rs:+1:10: +1:11
-        _0 = <dyn X as X>::y(move _2) -> bb1; // scope 1 at $DIR/inline_trait_method_2.rs:10:5: 10:10
+        _0 = <dyn X as X>::y(_2) -> bb1; // scope 1 at $DIR/inline_trait_method_2.rs:10:5: 10:10
                                          // mir::Constant
                                          // + span: $DIR/inline_trait_method_2.rs:10:7: 10:8
                                          // + literal: Const { ty: for<'a> fn(&'a dyn X) -> bool {<dyn X as X>::y}, val: Value(<ZST>) }

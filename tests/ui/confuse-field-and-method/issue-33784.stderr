@@ -1,4 +1,4 @@
-error[E0599]: no method named `closure` found for reference `&Obj<[closure@issue-33784.rs:25:43]>` in the current scope
+error[E0599]: no method named `closure` found for reference `&Obj<[closure@$DIR/issue-33784.rs:25:43: 25:45]>` in the current scope
   --> $DIR/issue-33784.rs:27:7
    |
 LL |     p.closure();
@@ -9,7 +9,7 @@ help: to call the function stored in `closure`, surround the field access with p
 LL |     (p.closure)();
    |     +         +
 
-error[E0599]: no method named `fn_ptr` found for reference `&&Obj<[closure@issue-33784.rs:25:43]>` in the current scope
+error[E0599]: no method named `fn_ptr` found for reference `&&Obj<[closure@$DIR/issue-33784.rs:25:43: 25:45]>` in the current scope
   --> $DIR/issue-33784.rs:29:7
    |
 LL |     q.fn_ptr();

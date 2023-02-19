@@ -16,7 +16,7 @@ error[E0053]: method `mul` has an incompatible type for trait
 LL |     fn mul(self, s: f64) -> Vec2 {
    |                     ^^^
    |                     |
-   |                     expected struct `Vec2`, found `f64`
+   |                     expected `Vec2`, found `f64`
    |                     help: change the parameter type to match the trait: `Vec2`
    |
    = note: expected signature `fn(Vec2, Vec2) -> f64`
@@ -38,7 +38,7 @@ error[E0308]: mismatched types
   --> $DIR/wrong-mul-method-signature.rs:63:45
    |
 LL |     let x: Vec2 = Vec2 { x: 1.0, y: 2.0 } * 2.0; // trait had reversed order
-   |                   -----------------------   ^^^ expected struct `Vec2`, found floating-point number
+   |                   -----------------------   ^^^ expected `Vec2`, found floating-point number
    |                   |
    |                   expected because this is `Vec2`
 
@@ -46,7 +46,7 @@ error[E0308]: mismatched types
   --> $DIR/wrong-mul-method-signature.rs:63:19
    |
 LL |     let x: Vec2 = Vec2 { x: 1.0, y: 2.0 } * 2.0; // trait had reversed order
-   |            ----   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Vec2`, found `f64`
+   |            ----   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Vec2`, found `f64`
    |            |
    |            expected due to this
 

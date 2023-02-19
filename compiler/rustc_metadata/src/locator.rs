@@ -213,12 +213,7 @@
 //! metadata::locator or metadata::creader for all the juicy details!
 
 use crate::creader::Library;
-use crate::errors::{
-    CannotFindCrate, CrateLocationUnknownType, DlError, ExternLocationNotExist,
-    ExternLocationNotFile, FoundStaticlib, IncompatibleRustc, InvalidMetadataFiles,
-    LibFilenameForm, MultipleCandidates, NewerCrateVersion, NoCrateWithTriple, NoDylibPlugin,
-    NonAsciiName, StableCrateIdCollision, SymbolConflictsCurrent, SymbolConflictsOthers,
-};
+use crate::errors;
 use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -950,7 +945,6 @@ pub(crate) enum CrateError {
     ExternLocationNotFile(Symbol, PathBuf),
     MultipleCandidates(Symbol, CrateFlavor, Vec<PathBuf>),
     SymbolConflictsCurrent(Symbol),
-    SymbolConflictsOthers(Symbol),
     StableCrateIdCollision(Symbol, Symbol),
     DlOpen(String),
     DlSym(String),
@@ -980,28 +974,25 @@ impl CrateError {
     pub(crate) fn report(self, sess: &Session, span: Span, missing_core: bool) {
         match self {
             CrateError::NonAsciiName(crate_name) => {
-                sess.emit_err(NonAsciiName { span, crate_name });
+                sess.emit_err(errors::NonAsciiName { span, crate_name });
             }
             CrateError::ExternLocationNotExist(crate_name, loc) => {
-                sess.emit_err(ExternLocationNotExist { span, crate_name, location: &loc });
+                sess.emit_err(errors::ExternLocationNotExist { span, crate_name, location: &loc });
             }
             CrateError::ExternLocationNotFile(crate_name, loc) => {
-                sess.emit_err(ExternLocationNotFile { span, crate_name, location: &loc });
+                sess.emit_err(errors::ExternLocationNotFile { span, crate_name, location: &loc });
             }
             CrateError::MultipleCandidates(crate_name, flavor, candidates) => {
-                sess.emit_err(MultipleCandidates { span, crate_name, flavor, candidates });
+                sess.emit_err(errors::MultipleCandidates { span, crate_name, flavor, candidates });
             }
             CrateError::SymbolConflictsCurrent(root_name) => {
-                sess.emit_err(SymbolConflictsCurrent { span, crate_name: root_name });
-            }
-            CrateError::SymbolConflictsOthers(root_name) => {
-                sess.emit_err(SymbolConflictsOthers { span, crate_name: root_name });
+                sess.emit_err(errors::SymbolConflictsCurrent { span, crate_name: root_name });
             }
             CrateError::StableCrateIdCollision(crate_name0, crate_name1) => {
-                sess.emit_err(StableCrateIdCollision { span, crate_name0, crate_name1 });
+                sess.emit_err(errors::StableCrateIdCollision { span, crate_name0, crate_name1 });
             }
             CrateError::DlOpen(s) | CrateError::DlSym(s) => {
-                sess.emit_err(DlError { span, err: s });
+                sess.emit_err(errors::DlError { span, err: s });
             }
             CrateError::LocatorCombined(locator) => {
                 let crate_name = locator.crate_name;
@@ -1012,8 +1003,12 @@ impl CrateError {
                 if !locator.crate_rejections.via_filename.is_empty() {
                     let mismatches = locator.crate_rejections.via_filename.iter();
                     for CrateMismatch { path, .. } in mismatches {
-                        sess.emit_err(CrateLocationUnknownType { span, path: &path, crate_name });
-                        sess.emit_err(LibFilenameForm {
+                        sess.emit_err(errors::CrateLocationUnknownType {
+                            span,
+                            path: &path,
+                            crate_name,
+                        });
+                        sess.emit_err(errors::LibFilenameForm {
                             span,
                             dll_prefix: &locator.dll_prefix,
                             dll_suffix: &locator.dll_suffix,
@@ -1039,7 +1034,7 @@ impl CrateError {
                             ));
                         }
                     }
-                    sess.emit_err(NewerCrateVersion {
+                    sess.emit_err(errors::NewerCrateVersion {
                         span,
                         crate_name: crate_name,
                         add_info,
@@ -1055,7 +1050,7 @@ impl CrateError {
                             path.display(),
                         ));
                     }
-                    sess.emit_err(NoCrateWithTriple {
+                    sess.emit_err(errors::NoCrateWithTriple {
                         span,
                         crate_name,
                         locator_triple: locator.triple.triple(),
@@ -1071,7 +1066,12 @@ impl CrateError {
                             path.display()
                         ));
                     }
-                    sess.emit_err(FoundStaticlib { span, crate_name, add_info, found_crates });
+                    sess.emit_err(errors::FoundStaticlib {
+                        span,
+                        crate_name,
+                        add_info,
+                        found_crates,
+                    });
                 } else if !locator.crate_rejections.via_version.is_empty() {
                     let mismatches = locator.crate_rejections.via_version.iter();
                     for CrateMismatch { path, got } in mismatches {
@@ -1082,7 +1082,7 @@ impl CrateError {
                             path.display(),
                         ));
                     }
-                    sess.emit_err(IncompatibleRustc {
+                    sess.emit_err(errors::IncompatibleRustc {
                         span,
                         crate_name,
                         add_info,
@@ -1094,14 +1094,14 @@ impl CrateError {
                     for CrateMismatch { path: _, got } in locator.crate_rejections.via_invalid {
                         crate_rejections.push(got);
                     }
-                    sess.emit_err(InvalidMetadataFiles {
+                    sess.emit_err(errors::InvalidMetadataFiles {
                         span,
                         crate_name,
                         add_info,
                         crate_rejections,
                     });
                 } else {
-                    sess.emit_err(CannotFindCrate {
+                    sess.emit_err(errors::CannotFindCrate {
                         span,
                         crate_name,
                         add_info,
@@ -1118,7 +1118,7 @@ impl CrateError {
                 }
             }
             CrateError::NonDylibPlugin(crate_name) => {
-                sess.emit_err(NoDylibPlugin { span, crate_name });
+                sess.emit_err(errors::NoDylibPlugin { span, crate_name });
             }
         }
     }

@@ -297,6 +297,10 @@ pub trait MutVisitor: Sized {
     fn visit_inline_asm_sym(&mut self, sym: &mut InlineAsmSym) {
         noop_visit_inline_asm_sym(sym, self)
     }
+
+    fn visit_format_args(&mut self, fmt: &mut FormatArgs) {
+        noop_visit_format_args(fmt, self)
+    }
 }
 
 /// Use a map-style function (`FnOnce(T) -> T`) to overwrite a `&mut T`. Useful
@@ -1284,6 +1288,15 @@ pub fn noop_visit_inline_asm_sym<T: MutVisitor>(
     vis.visit_path(path);
 }
 
+pub fn noop_visit_format_args<T: MutVisitor>(fmt: &mut FormatArgs, vis: &mut T) {
+    for arg in fmt.arguments.all_args_mut() {
+        if let FormatArgumentKind::Named(name) = &mut arg.kind {
+            vis.visit_ident(name);
+        }
+        vis.visit_expr(&mut arg.expr);
+    }
+}
+
 pub fn noop_visit_expr<T: MutVisitor>(
     Expr { kind, id, span, attrs, tokens }: &mut Expr,
     vis: &mut T,
@@ -1425,6 +1438,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
         ExprKind::InlineAsm(asm) => vis.visit_inline_asm(asm),
+        ExprKind::FormatArgs(fmt) => vis.visit_format_args(fmt),
         ExprKind::MacCall(mac) => vis.visit_mac_call(mac),
         ExprKind::Struct(se) => {
             let StructExpr { qself, path, fields, rest } = se.deref_mut();

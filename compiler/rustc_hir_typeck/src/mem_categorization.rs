@@ -51,7 +51,6 @@
 use rustc_middle::hir::place::*;
 use rustc_middle::ty::adjustment;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxIndexMap;
@@ -155,8 +154,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             None if self.is_tainted_by_errors() => Err(()),
             None => {
                 bug!(
-                    "no type for node {}: {} in mem_categorization",
-                    id,
+                    "no type for node {} in mem_categorization",
                     self.tcx().hir().node_to_string(id)
                 );
             }

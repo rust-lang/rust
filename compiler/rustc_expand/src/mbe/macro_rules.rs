@@ -10,7 +10,7 @@ use crate::mbe::transcribe::transcribe;
 
 use rustc_ast as ast;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind, TokenKind::*};
-use rustc_ast::tokenstream::{DelimSpan, TokenStream};
+use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
@@ -212,7 +212,6 @@ fn expand_macro<'cx>(
             };
             let arm_span = rhses[i].span();
 
-            let rhs_spans = rhs.tts.iter().map(|t| t.span()).collect::<Vec<_>>();
             // rhs has holes ( `$id` and `$(...)` that need filled)
             let mut tts = match transcribe(cx, &named_matches, &rhs, rhs_span, transparency) {
                 Ok(tts) => tts,
@@ -224,12 +223,25 @@ fn expand_macro<'cx>(
 
             // Replace all the tokens for the corresponding positions in the macro, to maintain
             // proper positions in error reporting, while maintaining the macro_backtrace.
-            if rhs_spans.len() == tts.len() {
+            if tts.len() == rhs.tts.len() {
                 tts = tts.map_enumerated(|i, tt| {
                     let mut tt = tt.clone();
-                    let mut sp = rhs_spans[i];
-                    sp = sp.with_ctxt(tt.span().ctxt());
-                    tt.set_span(sp);
+                    let rhs_tt = &rhs.tts[i];
+                    let ctxt = tt.span().ctxt();
+                    match (&mut tt, rhs_tt) {
+                        // preserve the delim spans if able
+                        (
+                            TokenTree::Delimited(target_sp, ..),
+                            mbe::TokenTree::Delimited(source_sp, ..),
+                        ) => {
+                            target_sp.open = source_sp.open.with_ctxt(ctxt);
+                            target_sp.close = source_sp.close.with_ctxt(ctxt);
+                        }
+                        _ => {
+                            let sp = rhs_tt.span().with_ctxt(ctxt);
+                            tt.set_span(sp);
+                        }
+                    }
                     tt
                 });
             }

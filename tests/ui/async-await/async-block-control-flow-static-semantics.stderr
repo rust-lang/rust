@@ -57,7 +57,7 @@ error[E0308]: mismatched types
   --> $DIR/async-block-control-flow-static-semantics.rs:49:44
    |
 LL | fn rethrow_targets_async_block_not_fn() -> Result<u8, MyErr> {
-   |    ----------------------------------      ^^^^^^^^^^^^^^^^^ expected enum `Result`, found `()`
+   |    ----------------------------------      ^^^^^^^^^^^^^^^^^ expected `Result<u8, MyErr>`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
    |
@@ -68,7 +68,7 @@ error[E0308]: mismatched types
   --> $DIR/async-block-control-flow-static-semantics.rs:58:50
    |
 LL | fn rethrow_targets_async_block_not_async_fn() -> Result<u8, MyErr> {
-   |    ----------------------------------------      ^^^^^^^^^^^^^^^^^ expected enum `Result`, found `()`
+   |    ----------------------------------------      ^^^^^^^^^^^^^^^^^ expected `Result<u8, MyErr>`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
    |

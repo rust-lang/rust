@@ -250,7 +250,8 @@ new_pr = true
 
 [autolabel."WG-trait-system-refactor"]
 trigger_files = [
-    "compiler/rustc_trait_selection/src/solve"
+    "compiler/rustc_trait_selection/src/solve",
+    "compiler/rustc_middle/src/traits/solve.rs"
 ]
 
 [notify-zulip."I-prioritize"]
@@ -440,21 +441,35 @@ cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@celinval", "@vakar
 
 [mentions."compiler/rustc_error_messages"]
 message = "`rustc_error_messages` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_errors/src/translation.rs"]
 message = "`rustc_errors::translation` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_macros/src/diagnostics"]
 message = "`rustc_macros::diagnostics` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_target/src/spec"]
 message = """
 These commits modify **compiler targets**.
 (See the [Target Tier Policy](https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html).)
 """
+
+[mentions."src/doc/style-guide"]
+cc = ["@rust-lang/style"]
+
+[mentions."Cargo.lock"]
+message = """
+These commits modify the `Cargo.lock` file. Random changes to `Cargo.lock` can be introduced when switching branches and rebasing PRs. 
+This was probably unintentional and should be reverted before this PR is merged. 
+
+If this was intentional then you can ignore this comment.
+"""
+
+[mentions."src/tools/x"]
+message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x` so tidy will suggest installing the new version."
 
 [assign]
 warn_non_default_branch = true
@@ -463,7 +478,6 @@ contributing_url = "https://rustc-dev-guide.rust-lang.org/contributing.html"
 [assign.adhoc_groups]
 compiler-team = [
     "@cjgillot",
-    "@estebank",
     "@petrochenkov",
     "@davidtwco",
     "@oli-obk",
@@ -520,13 +534,12 @@ incremental = [
 diagnostics = [
     "@compiler-errors",
     "@davidtwco",
-    "@estebank",
     "@oli-obk",
     "@TaKO8Ki",
 ]
 parser = [
+    "@compiler-errors",
     "@davidtwco",
-    "@estebank",
     "@nnethercote",
     "@petrochenkov",
 ]
@@ -555,10 +568,17 @@ borrowck = [
     "@pnkfelix",
 ]
 ast_lowering = [
+    "@compiler-errors",
     "@spastorino",
 ]
 fallback = [
     "@Mark-Simulacrum"
+]
+style-team = [
+    "@calebcartwright",
+    "@compiler-errors",
+    "@joshtriplett",
+    "@yaahc",
 ]
 
 [assign.owners]
@@ -604,6 +624,7 @@ fallback = [
 "/src/doc/rust-by-example" =                 ["@ehuss"]
 "/src/doc/rustc-dev-guide" =                 ["@ehuss"]
 "/src/doc/rustdoc" =                         ["rustdoc"]
+"/src/doc/style-guide" =                     ["style-team"]
 "/src/etc" =                                 ["@Mark-Simulacrum"]
 "/src/librustdoc" =                          ["rustdoc"]
 "/src/llvm-project" =                        ["@cuviper"]
@@ -611,7 +632,7 @@ fallback = [
 "/src/stage0.json" =                         ["bootstrap"]
 "/tests/ui" =                                ["compiler"]
 "/src/tools/cargo" =                         ["@ehuss", "@joshtriplett"]
-"/src/tools/compiletest" =                   ["bootstrap"]
+"/src/tools/compiletest" =                   ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors"]
 "/src/tools/linkchecker" =                   ["@ehuss"]
 "/src/tools/rust-installer" =                ["bootstrap"]
 "/src/tools/rustbook" =                      ["@ehuss"]

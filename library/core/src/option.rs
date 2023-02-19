@@ -551,7 +551,7 @@ use crate::marker::Destruct;
 use crate::panicking::{panic, panic_str};
 use crate::pin::Pin;
 use crate::{
-    convert, hint, mem,
+    cmp, convert, hint, mem,
     ops::{self, ControlFlow, Deref, DerefMut},
 };
 
@@ -943,7 +943,7 @@ impl<T> Option<T> {
     // Transforming contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Maps an `Option<T>` to `Option<U>` by applying a function to a contained value.
+    /// Maps an `Option<T>` to `Option<U>` by applying a function to a contained value (if `Some`) or returns `None` (if `None`).
     ///
     /// # Examples
     ///
@@ -955,8 +955,10 @@ impl<T> Option<T> {
     /// let maybe_some_string = Some(String::from("Hello, World!"));
     /// // `Option::map` takes self *by value*, consuming `maybe_some_string`
     /// let maybe_some_len = maybe_some_string.map(|s| s.len());
-    ///
     /// assert_eq!(maybe_some_len, Some(13));
+    ///
+    /// let x: Option<&str> = None;
+    /// assert_eq!(x.map(|s| s.len()), None);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -2090,6 +2092,12 @@ impl<T: PartialEq> PartialEq for Option<T> {
     }
 }
 
+/// This specialization trait is a workaround for LLVM not currently (2023-01)
+/// being able to optimize this itself, even though Alive confirms that it would
+/// be legal to do so: <https://github.com/llvm/llvm-project/issues/52622>
+///
+/// Once that's fixed, `Option` should go back to deriving `PartialEq`, as
+/// it used to do before <https://github.com/rust-lang/rust/pull/103556>.
 #[unstable(feature = "spec_option_partial_eq", issue = "none", reason = "exposed only for rustc")]
 #[doc(hidden)]
 pub trait SpecOptionPartialEq: Sized {
@@ -2143,6 +2151,14 @@ impl<T> SpecOptionPartialEq for crate::ptr::NonNull<T> {
     fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
         l.map(Self::as_ptr).unwrap_or_else(|| crate::ptr::null_mut())
             == r.map(Self::as_ptr).unwrap_or_else(|| crate::ptr::null_mut())
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl SpecOptionPartialEq for cmp::Ordering {
+    #[inline]
+    fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
+        l.map_or(2, |x| x as i8) == r.map_or(2, |x| x as i8)
     }
 }
 

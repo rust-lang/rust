@@ -125,8 +125,8 @@ fn ipv4_addr_to_string() {
     assert_eq!(Ipv4Addr::new(127, 127, 127, 127).to_string(), "127.127.127.127");
 
     // Test padding
-    assert_eq!(&format!("{:16}", Ipv4Addr::new(1, 1, 1, 1)), "1.1.1.1         ");
-    assert_eq!(&format!("{:>16}", Ipv4Addr::new(1, 1, 1, 1)), "         1.1.1.1");
+    assert_eq!(format!("{:16}", Ipv4Addr::new(1, 1, 1, 1)), "1.1.1.1         ");
+    assert_eq!(format!("{:>16}", Ipv4Addr::new(1, 1, 1, 1)), "         1.1.1.1");
 }
 
 #[test]
@@ -148,8 +148,8 @@ fn ipv6_addr_to_string() {
         "1111:2222:3333:4444:5555:6666:7777:8888"
     );
     // padding
-    assert_eq!(&format!("{:20}", Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8)), "1:2:3:4:5:6:7:8     ");
-    assert_eq!(&format!("{:>20}", Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8)), "     1:2:3:4:5:6:7:8");
+    assert_eq!(format!("{:20}", Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8)), "1:2:3:4:5:6:7:8     ");
+    assert_eq!(format!("{:>20}", Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8)), "     1:2:3:4:5:6:7:8");
 
     // reduce a single run of zeros
     assert_eq!(

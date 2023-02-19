@@ -1,4 +1,4 @@
-error: [-, o, o]
+error: [+, o, o]
   --> $DIR/variance-types.rs:10:1
    |
 LL | struct InvariantMut<'a,A:'a,B:'a> {

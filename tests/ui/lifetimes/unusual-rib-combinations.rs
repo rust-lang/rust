@@ -23,6 +23,6 @@ fn c<T = u8()>() {}
 // Elided lifetime in path in ConstGeneric
 fn d<const C: S>() {}
 //~^ ERROR missing lifetime specifier
-//~| ERROR `S<'static>` is forbidden as the type of a const generic parameter
+//~| ERROR `S<'_>` is forbidden as the type of a const generic parameter
 
 fn main() {}

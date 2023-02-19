@@ -2,7 +2,7 @@ error[E0503]: cannot use `x` because it was mutably borrowed
   --> $DIR/reference-carried-through-struct-field.rs:6:5
    |
 LL |     let wrapper = Wrap { w: &mut x };
-   |                             ------ borrow of `x` occurs here
+   |                             ------ `x` is borrowed here
 LL |     x += 1;
    |     ^^^^^^ use of borrowed `x`
 LL |     *wrapper.w += 1;

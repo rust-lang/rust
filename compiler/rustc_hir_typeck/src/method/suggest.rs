@@ -259,10 +259,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mode = no_match_data.mode;
         let tcx = self.tcx;
         let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
-        let ty_str = with_forced_trimmed_paths!(self.ty_to_string(rcvr_ty));
+        let (ty_str, ty_file) = tcx.short_ty_string(rcvr_ty);
+        let short_ty_str = with_forced_trimmed_paths!(rcvr_ty.to_string());
         let is_method = mode == Mode::MethodCall;
         let unsatisfied_predicates = &no_match_data.unsatisfied_predicates;
-        let lev_candidate = no_match_data.lev_candidate;
+        let similar_candidate = no_match_data.similar_candidate;
         let item_kind = if is_method {
             "method"
         } else if rcvr_ty.is_enum() {
@@ -276,11 +277,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        if self.suggest_wrapping_range_with_parens(tcx, rcvr_ty, source, span, item_name, &ty_str)
-            || self.suggest_constraining_numerical_ty(
-                tcx, rcvr_ty, source, span, item_kind, item_name, &ty_str,
-            )
-        {
+        // We could pass the file for long types into these two, but it isn't strictly necessary
+        // given how targetted they are.
+        if self.suggest_wrapping_range_with_parens(
+            tcx,
+            rcvr_ty,
+            source,
+            span,
+            item_name,
+            &short_ty_str,
+        ) || self.suggest_constraining_numerical_ty(
+            tcx,
+            rcvr_ty,
+            source,
+            span,
+            item_kind,
+            item_name,
+            &short_ty_str,
+        ) {
             return None;
         }
         span = item_name.span;
@@ -319,6 +333,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rcvr_ty.prefix_string(self.tcx),
             ty_str_reported,
         );
+        let ty_str = if short_ty_str.len() < ty_str.len() && ty_str.len() > 10 {
+            short_ty_str
+        } else {
+            ty_str
+        };
+        if let Some(file) = ty_file {
+            err.note(&format!("the full type name has been written to '{}'", file.display(),));
+        }
         if rcvr_ty.references_error() {
             err.downgrade_to_delayed_bug();
         }
@@ -352,7 +374,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty_span = match rcvr_ty.kind() {
             ty::Param(param_type) => {
-                Some(param_type.span_from_generics(self.tcx, self.body_id.owner.to_def_id()))
+                Some(param_type.span_from_generics(self.tcx, self.body_id.to_def_id()))
             }
             ty::Adt(def, _) if def.did().is_local() => Some(tcx.def_span(def.did())),
             _ => None,
@@ -403,7 +425,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 args,
                 sugg_span,
             );
-
             self.note_candidates_on_method_error(
                 rcvr_ty,
                 item_name,
@@ -496,9 +517,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ty::Param(_) => {
                                 // Account for `fn` items like in `issue-35677.rs` to
                                 // suggest restricting its type params.
-                                let parent_body =
-                                    hir.body_owner(hir::BodyId { hir_id: self.body_id });
-                                Some(hir.get(parent_body))
+                                Some(hir.get_by_def_id(self.body_id))
                             }
                             ty::Adt(def, _) => {
                                 def.did().as_local().map(|def_id| hir.get_by_def_id(def_id))
@@ -597,7 +616,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ObligationCauseCode::ImplDerivedObligation(data)
                         if matches!(p.kind().skip_binder(), ty::PredicateKind::Clause(_)) =>
                     {
-                        Some((p, parent, data.impl_def_id, data))
+                        Some((p, parent, data.impl_or_alias_def_id, data))
                     }
                     _ => None,
                 })
@@ -695,7 +714,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                     }
                     Some(Node::Item(hir::Item {
-                        ident, kind: hir::ItemKind::Trait(..), ..
+                        ident,
+                        kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
+                        ..
                     })) => {
                         skip_list.insert(p);
                         let entry = spanned_predicates.entry(ident.span);
@@ -829,7 +850,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let primary_message = primary_message.unwrap_or_else(|| {
                     format!(
                         "the {item_kind} `{item_name}` exists for {actual_prefix} `{ty_str}`, \
-                    but its trait bounds were not satisfied"
+                         but its trait bounds were not satisfied"
                     )
                 });
                 err.set_primary_message(&primary_message);
@@ -887,8 +908,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         // different from the received one
                                         // So we avoid suggestion method with Box<Self>
                                         // for instance
-                                        self.tcx.at(span).type_of(*def_id) != rcvr_ty
-                                            && self.tcx.at(span).type_of(*def_id) != rcvr_ty
+                                        self.tcx.at(span).type_of(*def_id).subst_identity()
+                                            != rcvr_ty
+                                            && self.tcx.at(span).type_of(*def_id).subst_identity()
+                                                != rcvr_ty
                                     }
                                     (Mode::Path, false, _) => true,
                                     _ => false,
@@ -908,7 +931,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .iter()
                             .take(limit)
                             .map(|impl_item| {
-                                format!("- `{}`", self.tcx.at(span).type_of(*impl_item))
+                                format!(
+                                    "- `{}`",
+                                    self.tcx.at(span).type_of(*impl_item).subst_identity()
+                                )
                             })
                             .collect::<Vec<_>>()
                             .join("\n");
@@ -937,7 +963,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // give a helping note that it has to be called as `(x.f)(...)`.
         if let SelfSource::MethodCall(expr) = source {
             if !self.suggest_calling_field_as_fn(span, rcvr_ty, expr, item_name, &mut err)
-                && lev_candidate.is_none()
+                && similar_candidate.is_none()
                 && !custom_span_label
             {
                 label_span_not_found(&mut err);
@@ -1015,20 +1041,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if fallback_span {
                 err.span_label(span, msg);
             }
-        } else if let Some(lev_candidate) = lev_candidate {
+        } else if let Some(similar_candidate) = similar_candidate {
             // Don't emit a suggestion if we found an actual method
             // that had unsatisfied trait bounds
             if unsatisfied_predicates.is_empty() {
-                let def_kind = lev_candidate.kind.as_def_kind();
+                let def_kind = similar_candidate.kind.as_def_kind();
                 // Methods are defined within the context of a struct and their first parameter is always self,
                 // which represents the instance of the struct the method is being called on
                 // Associated functions don’t take self as a parameter and
                 // they are not methods because they don’t have an instance of the struct to work with.
-                if def_kind == DefKind::AssocFn && lev_candidate.fn_has_self_parameter {
+                if def_kind == DefKind::AssocFn && similar_candidate.fn_has_self_parameter {
                     err.span_suggestion(
                         span,
                         "there is a method with a similar name",
-                        lev_candidate.name,
+                        similar_candidate.name,
                         Applicability::MaybeIncorrect,
                     );
                 } else {
@@ -1037,9 +1063,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &format!(
                             "there is {} {} with a similar name",
                             def_kind.article(),
-                            def_kind.descr(lev_candidate.def_id),
+                            def_kind.descr(similar_candidate.def_id),
                         ),
-                        lev_candidate.name,
+                        similar_candidate.name,
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -1085,7 +1111,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None
                     };
 
-                    let impl_ty = self.tcx.at(span).type_of(impl_did);
+                    let impl_ty = self.tcx.at(span).type_of(impl_did).subst_identity();
 
                     let insertion = match self.tcx.impl_trait_ref(impl_did) {
                         None => String::new(),
@@ -1131,6 +1157,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ty::AssocKind::Fn => self
                                 .tcx
                                 .fn_sig(item.def_id)
+                                .subst_identity()
                                 .inputs()
                                 .skip_binder()
                                 .get(0)
@@ -1213,7 +1240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // When the "method" is resolved through dereferencing, we really want the
             // original type that has the associated function for accurate suggestions.
             // (#61411)
-            let impl_ty = self.tcx.type_of(*impl_did);
+            let impl_ty = self.tcx.type_of(*impl_did).subst_identity();
             let target_ty = self
                 .autoderef(sugg_span, rcvr_ty)
                 .find(|(rcvr_ty, _)| {
@@ -1267,7 +1294,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && let Some(assoc) = self.associated_value(*impl_did, item_name)
                 && assoc.kind == ty::AssocKind::Fn
             {
-                let sig = self.tcx.fn_sig(assoc.def_id);
+                let sig = self.tcx.fn_sig(assoc.def_id).subst_identity();
                 sig.inputs().skip_binder().get(0).and_then(|first| if first.peel_refs() == rcvr_ty.peel_refs() {
                     None
                 } else {
@@ -1343,7 +1370,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         });
         if let Some((field, field_ty)) = field_receiver {
-            let scope = tcx.parent_module(self.body_id);
+            let scope = tcx.parent_module_from_def_id(self.body_id);
             let is_accessible = field.vis.is_accessible_from(scope, tcx);
 
             if is_accessible {
@@ -1433,8 +1460,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let range_def_id = self.tcx.require_lang_item(lang_item.unwrap(), None);
-                    let range_ty =
-                        self.tcx.bound_type_of(range_def_id).subst(self.tcx, &[actual.into()]);
+                    let range_ty = self.tcx.type_of(range_def_id).subst(self.tcx, &[actual.into()]);
 
                     let pick = self.lookup_probe_for_diagnostic(
                         item_name,
@@ -1593,7 +1619,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 else { return };
 
         let map = self.infcx.tcx.hir();
-        let body = map.body(rustc_hir::BodyId { hir_id: self.body_id });
+        let body_id = self.tcx.hir().body_owned_by(self.body_id);
+        let body = map.body(body_id);
         struct LetVisitor<'a> {
             result: Option<&'a hir::Expr<'a>>,
             ident_name: Symbol,
@@ -2100,7 +2127,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // just changing the path.
                     && pick.item.fn_has_self_parameter
                     && let Some(self_ty) =
-                        self.tcx.fn_sig(pick.item.def_id).inputs().skip_binder().get(0)
+                        self.tcx.fn_sig(pick.item.def_id).subst_identity().inputs().skip_binder().get(0)
                     && self_ty.is_ref()
                 {
                     let suggested_path = match deref_ty.kind() {
@@ -2195,7 +2222,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             true
         });
 
-        let module_did = self.tcx.parent_module(self.body_id);
+        let module_did = self.tcx.parent_module_from_def_id(self.body_id);
         let (module, _, _) = self.tcx.hir().get_module(module_did);
         let span = module.spans.inject_use_span;
 
@@ -2353,7 +2380,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // implement the `AsRef` trait.
                         let skip = skippable.contains(&did)
                             || (("Pin::new" == *pre) && (sym::as_ref == item_name.name))
-                            || inputs_len.map_or(false, |inputs_len| pick.item.kind == ty::AssocKind::Fn && self.tcx.fn_sig(pick.item.def_id).skip_binder().inputs().len() != inputs_len);
+                            || inputs_len.map_or(false, |inputs_len| pick.item.kind == ty::AssocKind::Fn && self.tcx.fn_sig(pick.item.def_id).skip_binder().skip_binder().inputs().len() != inputs_len);
                         // Make sure the method is defined for the *actual* receiver: we don't
                         // want to treat `Box<Self>` as a receiver if it only works because of
                         // an autoderef to `&self`
@@ -2517,7 +2544,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             // Obtain the span for `param` and use it for a structured suggestion.
             if let Some(param) = param_type {
-                let generics = self.tcx.generics_of(self.body_id.owner.to_def_id());
+                let generics = self.tcx.generics_of(self.body_id.to_def_id());
                 let type_param = generics.type_param(param, self.tcx);
                 let hir = self.tcx.hir();
                 if let Some(def_id) = type_param.def_id.as_local() {
@@ -2733,7 +2760,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // check the method arguments number
             if let Ok(pick) = probe &&
                 let fn_sig = self.tcx.fn_sig(pick.item.def_id) &&
-                let fn_args = fn_sig.skip_binder().inputs() &&
+                let fn_args = fn_sig.skip_binder().skip_binder().inputs() &&
                 fn_args.len() == args.len() + 1 {
                 err.span_suggestion_verbose(
                     method_name.span.shrink_to_hi(),

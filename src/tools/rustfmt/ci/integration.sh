@@ -91,14 +91,28 @@ case ${INTEGRATION} in
         cd -
         ;;
     crater)
-        git clone --depth=1 https://github.com/rust-lang-nursery/${INTEGRATION}.git
+        git clone --depth=1 https://github.com/rust-lang/${INTEGRATION}.git
         cd ${INTEGRATION}
         show_head
         check_fmt_with_lib_tests
         cd -
         ;;
+    bitflags)
+        git clone --depth=1 https://github.com/bitflags/${INTEGRATION}.git
+        cd ${INTEGRATION}
+        show_head
+        check_fmt_with_all_tests
+        cd -
+        ;;
+    error-chain | tempdir)
+        git clone --depth=1 https://github.com/rust-lang-deprecated/${INTEGRATION}.git
+        cd ${INTEGRATION}
+        show_head
+        check_fmt_with_all_tests
+        cd -
+        ;;
     *)
-        git clone --depth=1 https://github.com/rust-lang-nursery/${INTEGRATION}.git
+        git clone --depth=1 https://github.com/rust-lang/${INTEGRATION}.git
         cd ${INTEGRATION}
         show_head
         check_fmt_with_all_tests

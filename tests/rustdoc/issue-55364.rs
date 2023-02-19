@@ -29,8 +29,8 @@ pub mod subone {
 // @has - '//section[@id="main-content"]/details/div[@class="docblock"]//a[@href="../fn.foo.html"]' 'foo'
 // @has - '//section[@id="main-content"]/details/div[@class="docblock"]//a[@href="../fn.bar.html"]' 'bar'
 // Though there should be such links later
-// @has - '//section[@id="main-content"]/div[@class="item-table"]//div[@class="item-left module-item"]/a[@class="fn"][@href="fn.foo.html"]' 'foo'
-// @has - '//section[@id="main-content"]/div[@class="item-table"]//div[@class="item-left module-item"]/a[@class="fn"][@href="fn.bar.html"]' 'bar'
+// @has - '//section[@id="main-content"]/div[@class="item-table"]//div[@class="item-left"]/a[@class="fn"][@href="fn.foo.html"]' 'foo'
+// @has - '//section[@id="main-content"]/div[@class="item-table"]//div[@class="item-left"]/a[@class="fn"][@href="fn.bar.html"]' 'bar'
 /// See either [foo] or [bar].
 pub mod subtwo {
 

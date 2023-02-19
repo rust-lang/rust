@@ -17,13 +17,12 @@ use crate::traits::{
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::CRATE_HIR_ID;
 use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitor};
+use rustc_middle::ty::{self, ir::TypeVisitor, ImplSubject, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
@@ -83,8 +82,8 @@ pub fn overlapping_impls(
         (Some(a), Some(b)) => iter::zip(a.skip_binder().substs, b.skip_binder().substs)
             .all(|(arg1, arg2)| drcx.generic_args_may_unify(arg1, arg2)),
         (None, None) => {
-            let self_ty1 = tcx.type_of(impl1_def_id);
-            let self_ty2 = tcx.type_of(impl2_def_id);
+            let self_ty1 = tcx.type_of(impl1_def_id).skip_binder();
+            let self_ty2 = tcx.type_of(impl2_def_id).skip_binder();
             drcx.types_may_unify(self_ty1, self_ty2)
         }
         _ => bug!("unexpected impls: {impl1_def_id:?} {impl2_def_id:?}"),
@@ -125,7 +124,7 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
 
     let header = ty::ImplHeader {
         impl_def_id,
-        self_ty: tcx.bound_type_of(impl_def_id).subst(tcx, impl_substs),
+        self_ty: tcx.type_of(impl_def_id).subst(tcx, impl_substs),
         trait_ref: tcx.impl_trait_ref(impl_def_id).map(|i| i.subst(tcx, impl_substs)),
         predicates: tcx.predicates_of(impl_def_id).instantiate(tcx, impl_substs).predicates,
     };
@@ -382,18 +381,14 @@ fn resolve_negative_obligation<'tcx>(
         return false;
     }
 
-    let (body_id, body_def_id) = if let Some(body_def_id) = body_def_id.as_local() {
-        (tcx.hir().local_def_id_to_hir_id(body_def_id), body_def_id)
-    } else {
-        (CRATE_HIR_ID, CRATE_DEF_ID)
-    };
+    let body_def_id = body_def_id.as_local().unwrap_or(CRATE_DEF_ID);
 
     let ocx = ObligationCtxt::new(&infcx);
     let wf_tys = ocx.assumed_wf_types(param_env, DUMMY_SP, body_def_id);
     let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
         Some(&infcx),
-        infcx.implied_bounds_tys(param_env, body_id, wf_tys),
+        infcx.implied_bounds_tys(param_env, body_def_id, wf_tys),
     );
 
     infcx.process_registered_region_obligations(outlives_env.region_bound_pairs(), param_env);
@@ -632,7 +627,7 @@ enum OrphanCheckEarlyExit<'tcx> {
     LocalTy(Ty<'tcx>),
 }
 
-impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OrphanChecker<'tcx> {
     type BreakTy = OrphanCheckEarlyExit<'tcx>;
     fn visit_region(&mut self, _r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         ControlFlow::Continue(())
@@ -701,7 +696,9 @@ impl<'tcx> TypeVisitor<'tcx> for OrphanChecker<'tcx> {
             // This should only be created when checking whether we have to check whether some
             // auto trait impl applies. There will never be multiple impls, so we can just
             // act as if it were a local type here.
-            ty::GeneratorWitness(_) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
+            ty::GeneratorWitness(_) | ty::GeneratorWitnessMIR(..) => {
+                ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
+            }
             ty::Alias(ty::Opaque, ..) => {
                 // This merits some explanation.
                 // Normally, opaque types are not involved when performing

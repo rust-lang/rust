@@ -166,7 +166,7 @@ impl TypoCandidate {
     }
 }
 
-impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
+impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     fn def_span(&self, def_id: DefId) -> Option<Span> {
         match def_id.krate {
             LOCAL_CRATE => self.r.opt_span(def_id),
@@ -227,20 +227,27 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     && let Some(FnCtxt::Assoc(_)) = fn_kind.ctxt()
                     && let Some(items) = self.diagnostic_metadata.current_impl_items
                     && let Some(item) = items.iter().find(|i| {
-                        if let AssocItemKind::Fn(_) = &i.kind && i.ident.name == item_str.name
+                        if let AssocItemKind::Fn(..) | AssocItemKind::Const(..) = &i.kind
+                            && i.ident.name == item_str.name
                         {
                             debug!(?item_str.name);
                             return true
                         }
                         false
                     })
-                    && let AssocItemKind::Fn(fn_) = &item.kind
                 {
-                    debug!(?fn_);
-                    let self_sugg = if fn_.sig.decl.has_self() { "self." } else { "Self::" };
+                    let self_sugg = match &item.kind {
+                        AssocItemKind::Fn(fn_) if fn_.sig.decl.has_self() => "self.",
+                        _ => "Self::",
+                    };
+
                     Some((
                         item_span.shrink_to_lo(),
-                        "consider using the associated function",
+                        match &item.kind {
+                            AssocItemKind::Fn(..) => "consider using the associated function",
+                            AssocItemKind::Const(..) => "consider using the associated constant",
+                            _ => unreachable!("item kind was filtered above"),
+                        },
                         self_sugg.to_string()
                     ))
                 } else {
@@ -311,7 +318,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         span: Span,
         source: PathSource<'_>,
         res: Option<Res>,
-    ) -> (DiagnosticBuilder<'a, ErrorGuaranteed>, Vec<ImportSuggestion>) {
+    ) -> (DiagnosticBuilder<'tcx, ErrorGuaranteed>, Vec<ImportSuggestion>) {
         debug!(?res, ?source);
         let base_error = self.make_base_error(path, span, source, res);
         let code = source.error_code(res.is_some());
@@ -1336,7 +1343,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     "!",
                     Applicability::MaybeIncorrect,
                 );
-                if path_str == "try" && span.rust_2015() {
+                if path_str == "try" && span.is_rust_2015() {
                     err.note("if you want the `try` keyword, you need Rust 2018 or later");
                 }
             }
@@ -1693,11 +1700,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                                         let crate_mod =
                                             Res::Def(DefKind::Mod, crate_id.as_def_id());
 
-                                        if filter_fn(crate_mod) {
-                                            Some(TypoSuggestion::typo_from_ident(*ident, crate_mod))
-                                        } else {
-                                            None
-                                        }
+                                        filter_fn(crate_mod).then(|| {
+                                            TypoSuggestion::typo_from_ident(*ident, crate_mod)
+                                        })
                                     })
                             }));
 
@@ -2237,19 +2242,23 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 }
                 None => {
                     debug!(?param.ident, ?param.ident.span);
-
                     let deletion_span = deletion_span();
-                    self.r.lint_buffer.buffer_lint_with_diagnostic(
-                        lint::builtin::UNUSED_LIFETIMES,
-                        param.id,
-                        param.ident.span,
-                        &format!("lifetime parameter `{}` never used", param.ident),
-                        lint::BuiltinLintDiagnostics::SingleUseLifetime {
-                            param_span: param.ident.span,
-                            use_span: None,
-                            deletion_span,
-                        },
-                    );
+                    // the give lifetime originates from expanded code so we won't be able to remove it #104432
+                    let lifetime_only_in_expanded_code =
+                        deletion_span.map(|sp| sp.in_derive_expansion()).unwrap_or(true);
+                    if !lifetime_only_in_expanded_code {
+                        self.r.lint_buffer.buffer_lint_with_diagnostic(
+                            lint::builtin::UNUSED_LIFETIMES,
+                            param.id,
+                            param.ident.span,
+                            &format!("lifetime parameter `{}` never used", param.ident),
+                            lint::BuiltinLintDiagnostics::SingleUseLifetime {
+                                param_span: param.ident.span,
+                                use_span: None,
+                                deletion_span,
+                            },
+                        );
+                    }
                 }
             }
         }
@@ -2615,7 +2624,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 }
 
 /// Report lifetime/lifetime shadowing as an error.
-pub fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
+pub(super) fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
     let mut err = struct_span_err!(
         sess,
         shadower.span,
@@ -2630,7 +2639,7 @@ pub fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
 
 /// Shadowing involving a label is only a warning for historical reasons.
 //FIXME: make this a proper lint.
-pub fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident) {
+pub(super) fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident) {
     let name = shadower.name;
     let shadower = shadower.span;
     let mut err = sess.struct_span_warn(

@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match &x[..] {
    |           ------ this expression has type `&[i32]`
 LL |         [&v] => {},
-   |          ^^ expected `i32`, found reference
+   |          ^^ expected `i32`, found `&_`
    |
    = note:   expected type `i32`
            found reference `&_`
@@ -36,7 +36,7 @@ error[E0308]: mismatched types
 LL |     match y {
    |           - this expression has type `i32`
 LL |         &v => {},
-   |         ^^ expected `i32`, found reference
+   |         ^^ expected `i32`, found `&_`
    |
    = note:   expected type `i32`
            found reference `&_`
@@ -52,7 +52,7 @@ error[E0308]: mismatched types
 LL |     if let [&v] = &x[..] {}
    |             ^^    ------ this expression has type `&[i32]`
    |             |
-   |             expected `i32`, found reference
+   |             expected `i32`, found `&_`
    |
    = note:   expected type `i32`
            found reference `&_`

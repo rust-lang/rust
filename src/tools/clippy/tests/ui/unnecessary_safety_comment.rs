@@ -48,4 +48,21 @@ fn unnecessary_on_stmt_and_expr() -> u32 {
     24
 }
 
+mod issue_10084 {
+    unsafe fn bar() -> i32 {
+        42
+    }
+
+    macro_rules! foo {
+        () => {
+            // SAFETY: This is necessary
+            unsafe { bar() }
+        };
+    }
+
+    fn main() {
+        foo!();
+    }
+}
+
 fn main() {}

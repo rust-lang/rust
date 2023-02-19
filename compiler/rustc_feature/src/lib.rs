@@ -83,7 +83,8 @@ impl UnstableFeatures {
     /// Otherwise, only `RUSTC_BOOTSTRAP=1` will work.
     pub fn from_environment(krate: Option<&str>) -> Self {
         // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
-        let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
+        let disable_unstable_features =
+            option_env!("CFG_DISABLE_UNSTABLE_FEATURES").map(|s| s != "0").unwrap_or(false);
         // Returns whether `krate` should be counted as unstable
         let is_unstable_crate = |var: &str| {
             krate.map_or(false, |name| var.split(',').any(|new_krate| new_krate == name))

@@ -4,7 +4,7 @@ error[E0053]: method `next` has an incompatible type for trait
 LL |     fn next(&mut self) -> Result<i32, i32> { Ok(7) }
    |                           ^^^^^^^^^^^^^^^^
    |                           |
-   |                           expected enum `Option`, found enum `Result`
+   |                           expected `Option<i32>`, found `Result<i32, i32>`
    |                           help: change the output type to match the trait: `Option<i32>`
    |
    = note: expected signature `fn(&mut S) -> Option<i32>`

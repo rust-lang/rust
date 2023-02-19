@@ -365,4 +365,24 @@ mod unions {
     }
 }
 
+// https://github.com/rust-lang/rust/issues/106870
+mod multiple_predicates_with_same_span {
+    macro_rules! m {
+        ($($name:ident)+) => {
+            struct Inline<'a, $($name: 'a,)+>(&'a ($($name,)+));
+            //~^ ERROR: outlives requirements can be inferred
+            struct FullWhere<'a, $($name,)+>(&'a ($($name,)+)) where $($name: 'a,)+;
+            //~^ ERROR: outlives requirements can be inferred
+            struct PartialWhere<'a, $($name,)+>(&'a ($($name,)+)) where (): Sized, $($name: 'a,)+;
+            //~^ ERROR: outlives requirements can be inferred
+            struct Interleaved<'a, $($name,)+>(&'a ($($name,)+))
+            where
+                (): Sized,
+                $($name: 'a, $name: 'a, )+ //~ ERROR: outlives requirements can be inferred
+                $($name: 'a, $name: 'a, )+;
+        }
+    }
+    m!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15);
+}
+
 fn main() {}

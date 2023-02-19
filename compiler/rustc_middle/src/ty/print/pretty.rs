@@ -22,7 +22,6 @@ use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
 
 use std::cell::Cell;
-use std::char;
 use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
 use std::iter;
@@ -183,7 +182,7 @@ impl<'tcx> RegionHighlightMode<'tcx> {
 
     /// Convenience wrapper for `highlighting_region`.
     pub fn highlighting_region_vid(&mut self, vid: ty::RegionVid, number: usize) {
-        self.highlighting_region(self.tcx.mk_region(ty::ReVar(vid)), number)
+        self.highlighting_region(self.tcx.mk_re_var(vid), number)
     }
 
     /// Returns `Some(n)` with the number to use for the given region, if any.
@@ -675,8 +674,12 @@ pub trait PrettyPrinter<'tcx>:
                 p!(")")
             }
             ty::FnDef(def_id, substs) => {
-                let sig = self.tcx().bound_fn_sig(def_id).subst(self.tcx(), substs);
-                p!(print(sig), " {{", print_value_path(def_id, substs), "}}");
+                if NO_QUERIES.with(|q| q.get()) {
+                    p!(print_def_path(def_id, substs));
+                } else {
+                    let sig = self.tcx().fn_sig(def_id).subst(self.tcx(), substs);
+                    p!(print(sig), " {{", print_value_path(def_id, substs), "}}");
+                }
             }
             ty::FnPtr(ref bare_fn) => p!(print(bare_fn)),
             ty::Infer(infer_ty) => {
@@ -698,8 +701,10 @@ pub trait PrettyPrinter<'tcx>:
             ty::Error(_) => p!("[type error]"),
             ty::Param(ref param_ty) => p!(print(param_ty)),
             ty::Bound(debruijn, bound_ty) => match bound_ty.kind {
-                ty::BoundTyKind::Anon => self.pretty_print_bound_var(debruijn, bound_ty.var)?,
-                ty::BoundTyKind::Param(p) => p!(write("{}", p)),
+                ty::BoundTyKind::Anon(bv) => {
+                    self.pretty_print_bound_var(debruijn, ty::BoundVar::from_u32(bv))?
+                }
+                ty::BoundTyKind::Param(_, s) => p!(write("{}", s)),
             },
             ty::Adt(def, substs) => {
                 p!(print_def_path(def.did(), substs));
@@ -732,13 +737,13 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                // FIXME(eddyb) print this with `print_def_path`.
                 // We use verbose printing in 'NO_QUERIES' mode, to
                 // avoid needing to call `predicates_of`. This should
                 // only affect certain debug messages (e.g. messages printed
                 // from `rustc_middle::ty` during the computation of `tcx.predicates_of`),
                 // and should have no effect on any compiler output.
-                if self.should_print_verbose() || NO_QUERIES.with(|q| q.get()) {
+                if self.should_print_verbose() {
+                    // FIXME(eddyb) print this with `print_def_path`.
                     p!(write("Opaque({:?}, {:?})", def_id, substs));
                     return Ok(self);
                 }
@@ -746,8 +751,10 @@ pub trait PrettyPrinter<'tcx>:
                 let parent = self.tcx().parent(def_id);
                 match self.tcx().def_kind(parent) {
                     DefKind::TyAlias | DefKind::AssocTy => {
+                        // NOTE: I know we should check for NO_QUERIES here, but it's alright.
+                        // `type_of` on a type alias or assoc type should never cause a cycle.
                         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: d, .. }) =
-                            *self.tcx().type_of(parent).kind()
+                            *self.tcx().type_of(parent).subst_identity().kind()
                         {
                             if d == def_id {
                                 // If the type alias directly starts with the `impl` of the
@@ -760,7 +767,14 @@ pub trait PrettyPrinter<'tcx>:
                         p!(print_def_path(def_id, substs));
                         return Ok(self);
                     }
-                    _ => return self.pretty_print_opaque_impl_type(def_id, substs),
+                    _ => {
+                        if NO_QUERIES.with(|q| q.get()) {
+                            p!(print_def_path(def_id, &[]));
+                            return Ok(self);
+                        } else {
+                            return self.pretty_print_opaque_impl_type(def_id, substs);
+                        }
+                    }
                 }
             }
             ty::Str => p!("str"),
@@ -810,6 +824,28 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::GeneratorWitness(types) => {
                 p!(in_binder(&types));
+            }
+            ty::GeneratorWitnessMIR(did, substs) => {
+                p!(write("["));
+                if !self.tcx().sess.verbose() {
+                    p!("generator witness");
+                    // FIXME(eddyb) should use `def_span`.
+                    if let Some(did) = did.as_local() {
+                        let span = self.tcx().def_span(did);
+                        p!(write(
+                            "@{}",
+                            // This may end up in stderr diagnostics but it may also be emitted
+                            // into MIR. Hence we use the remapped path if available
+                            self.tcx().sess.source_map().span_to_embeddable_string(span)
+                        ));
+                    } else {
+                        p!(write("@"), print_def_path(did, substs));
+                    }
+                } else {
+                    p!(print_def_path(did, substs));
+                }
+
+                p!("]")
             }
             ty::Closure(did, substs) => {
                 p!(write("["));
@@ -1062,9 +1098,11 @@ pub trait PrettyPrinter<'tcx>:
             write!(self, "Sized")?;
         }
 
-        for re in lifetimes {
-            write!(self, " + ")?;
-            self = self.print_region(re)?;
+        if !FORCE_TRIMMED_PATH.with(|flag| flag.get()) {
+            for re in lifetimes {
+                write!(self, " + ")?;
+                self = self.print_region(re)?;
+            }
         }
 
         Ok(self)
@@ -1171,7 +1209,7 @@ pub trait PrettyPrinter<'tcx>:
                 // in order to place the projections inside the `<...>`.
                 if !resugared {
                     // Use a type that can't appear in defaults of type parameters.
-                    let dummy_cx = cx.tcx().mk_ty_infer(ty::FreshTy(0));
+                    let dummy_cx = cx.tcx().mk_fresh_ty(0);
                     let principal = principal.with_self_ty(cx.tcx(), dummy_cx);
 
                     let args = cx
@@ -2048,6 +2086,10 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
             return true;
         }
 
+        if FORCE_TRIMMED_PATH.with(|flag| flag.get()) {
+            return false;
+        }
+
         let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
         match *region {
@@ -2071,7 +2113,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
 
             ty::ReVar(_) if identify_regions => true,
 
-            ty::ReVar(_) | ty::ReErased => false,
+            ty::ReVar(_) | ty::ReErased | ty::ReError(_) => false,
 
             ty::ReStatic => true,
         }
@@ -2151,6 +2193,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             }
             ty::ReVar(_) => {}
             ty::ReErased => {}
+            ty::ReError(_) => {}
             ty::ReStatic => {
                 p!("'static");
                 return Ok(self);
@@ -2178,8 +2221,8 @@ struct RegionFolder<'a, 'tcx> {
             ),
 }
 
-impl<'a, 'tcx> ty::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'a, 'tcx> ty::ir::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -2228,7 +2271,7 @@ impl<'a, 'tcx> ty::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
         };
         if let ty::ReLateBound(debruijn1, br) = *region {
             assert_eq!(debruijn1, ty::INNERMOST);
-            self.tcx.mk_region(ty::ReLateBound(self.current_index, br))
+            self.tcx.mk_re_late_bound(self.current_index, br)
         } else {
             region
         }
@@ -2324,6 +2367,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         } else {
             let tcx = self.tcx;
 
+            let trim_path = FORCE_TRIMMED_PATH.with(|flag| flag.get());
             // Closure used in `RegionFolder` to create names for anonymous late-bound
             // regions. We use two `DebruijnIndex`es (one for the currently folded
             // late-bound region and the other for the binder level) to determine
@@ -2339,10 +2383,10 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = ty::BrNamed(CRATE_DEF_ID.to_def_id(), name);
-                                return tcx.mk_region(ty::ReLateBound(
+                                return tcx.mk_re_late_bound(
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
-                                ));
+                                );
                             }
                         }
 
@@ -2354,10 +2398,10 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = ty::BrNamed(def_id, name);
-                                return tcx.mk_region(ty::ReLateBound(
+                                return tcx.mk_re_late_bound(
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
-                                ));
+                                );
                             }
                         }
 
@@ -2367,10 +2411,10 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = br.kind;
-                                return tcx.mk_region(ty::ReLateBound(
+                                return tcx.mk_re_late_bound(
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
-                                ));
+                                );
                             }
                         }
 
@@ -2378,9 +2422,11 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     }
                 };
 
-                start_or_continue(&mut self, "for<", ", ");
-                do_continue(&mut self, name);
-                tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion { var: br.var, kind }))
+                if !trim_path {
+                    start_or_continue(&mut self, "for<", ", ");
+                    do_continue(&mut self, name);
+                }
+                tcx.mk_re_late_bound(ty::INNERMOST, ty::BoundRegion { var: br.var, kind })
             };
             let mut folder = RegionFolder {
                 tcx,
@@ -2390,7 +2436,9 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             };
             let new_value = value.clone().skip_binder().fold_with(&mut folder);
             let region_map = folder.region_map;
-            start_or_continue(&mut self, "", "> ");
+            if !trim_path {
+                start_or_continue(&mut self, "", "> ");
+            }
             (new_value, region_map)
         };
 
@@ -2445,7 +2493,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::visit::TypeVisitor<'tcx> for RegionNameCollector<'tcx> {
+        impl<'tcx> ty::visit::ir::TypeVisitor<TyCtxt<'tcx>> for RegionNameCollector<'tcx> {
             type BreakTy = ();
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -2648,7 +2696,7 @@ define_print_and_forward_display! {
 
     ty::ExistentialTraitRef<'tcx> {
         // Use a type that can't appear in defaults of type parameters.
-        let dummy_self = cx.tcx().mk_ty_infer(ty::FreshTy(0));
+        let dummy_self = cx.tcx().mk_fresh_ty(0);
         let trait_ref = self.with_self_ty(cx.tcx(), dummy_self);
         p!(print(trait_ref.print_only_trait_path()))
     }
@@ -2774,15 +2822,18 @@ define_print_and_forward_display! {
             ty::PredicateKind::Clause(ty::Clause::RegionOutlives(predicate)) => p!(print(predicate)),
             ty::PredicateKind::Clause(ty::Clause::TypeOutlives(predicate)) => p!(print(predicate)),
             ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) => p!(print(predicate)),
+            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                p!("the constant `", print(ct), "` has type `", print(ty), "`")
+            },
             ty::PredicateKind::WellFormed(arg) => p!(print(arg), " well-formed"),
             ty::PredicateKind::ObjectSafe(trait_def_id) => {
                 p!("the trait `", print_def_path(trait_def_id, &[]), "` is object-safe")
             }
-            ty::PredicateKind::ClosureKind(closure_def_id, _closure_substs, kind) => {
-                p!("the closure `",
+            ty::PredicateKind::ClosureKind(closure_def_id, _closure_substs, kind) => p!(
+                "the closure `",
                 print_value_path(closure_def_id, &[]),
-                write("` implements the trait `{}`", kind))
-            }
+                write("` implements the trait `{}`", kind)
+            ),
             ty::PredicateKind::ConstEvaluatable(ct) => {
                 p!("the constant `", print(ct), "` can be evaluated")
             }
@@ -2793,6 +2844,7 @@ define_print_and_forward_display! {
                 p!("the type `", print(ty), "` is found in the environment")
             }
             ty::PredicateKind::Ambiguous => p!("ambiguous"),
+            ty::PredicateKind::AliasEq(t1, t2) => p!(print(t1), " == ", print(t2)),
         }
     }
 

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
-use rustc_hir::{intravisit::FnKind, Body, ExprKind, FnDecl, HirId, ImplicitSelfKind, Unsafety};
+use rustc_hir::{intravisit::FnKind, Body, ExprKind, FnDecl, ImplicitSelfKind, Unsafety};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Span;
@@ -10,14 +10,7 @@ use std::iter;
 
 use super::MISNAMED_GETTERS;
 
-pub fn check_fn(
-    cx: &LateContext<'_>,
-    kind: FnKind<'_>,
-    decl: &FnDecl<'_>,
-    body: &Body<'_>,
-    span: Span,
-    _hir_id: HirId,
-) {
+pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body: &Body<'_>, span: Span) {
     let FnKind::Method(ref ident, sig) = kind else {
             return;
         };

@@ -5,7 +5,7 @@ LL | /     match true {
 LL | |         true => B,
    | |                 - this is found to be of type `B`
 LL | |         false => C,
-   | |                  ^ expected struct `B`, found struct `C`
+   | |                  ^ expected `B`, found `C`
 LL | |
 LL | |     }
    | |_____- `match` arms have incompatible types

@@ -1,8 +1,8 @@
-error[E0599]: the function or associated item `make_g` exists for fn pointer `for<'a> fn(&'a ())`, but its trait bounds were not satisfied
+error[E0599]: the function or associated item `make_g` exists for fn pointer `fn(&())`, but its trait bounds were not satisfied
   --> $DIR/issue-57362-2.rs:22:25
    |
 LL |     let x = <fn (&())>::make_g();
-   |                         ^^^^^^ function or associated item cannot be called on `for<'a> fn(&'a ())` due to unsatisfied trait bounds
+   |                         ^^^^^^ function or associated item cannot be called on `fn(&())` due to unsatisfied trait bounds
    |
    = note: the following trait bounds were not satisfied:
            `for<'a> fn(&'a ()): X`

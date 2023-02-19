@@ -6,7 +6,7 @@ LL | fn foo(x: impl Debug) -> String {
    |           |
    |           this type parameter
 LL |     x
-   |     ^ expected struct `String`, found type parameter `impl Debug`
+   |     ^ expected `String`, found type parameter `impl Debug`
    |
    = note:      expected struct `String`
            found type parameter `impl Debug`

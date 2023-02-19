@@ -1,0 +1,19 @@
+error: unexpected closing delimiter: `}`
+  --> $DIR/issue-68987-unmatch-issue-3.rs:8:1
+   |
+LL |         write!&mut res, " ");
+   |                            - missing open `(` for this delimiter
+LL |     }
+LL | }
+   | ^ unexpected closing delimiter
+
+error: mismatched closing delimiter: `)`
+  --> $DIR/issue-68987-unmatch-issue-3.rs:5:19
+   |
+LL |     while cnt < j {
+   |                   ^ unclosed delimiter
+LL |         write!&mut res, " ");
+   |                            ^ mismatched closing delimiter
+
+error: aborting due to 2 previous errors
+

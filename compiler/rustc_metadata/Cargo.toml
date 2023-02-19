@@ -6,6 +6,7 @@ edition = "2021"
 [lib]
 
 [dependencies]
+bitflags = "1.2.1"
 libloading = "0.7.1"
 odht = { version = "0.3.1", features = ["nightly"] }
 snap = "1"

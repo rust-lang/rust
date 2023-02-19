@@ -95,7 +95,7 @@ impl<'tcx> ProvisionalCache<'tcx> {
     }
 
     pub(super) fn provisional_result(&self, entry_index: EntryIndex) -> QueryResult<'tcx> {
-        self.entries[entry_index].response.clone()
+        self.entries[entry_index].response
     }
 }
 

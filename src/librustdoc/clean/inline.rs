@@ -9,7 +9,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId};
 use rustc_hir::Mutability;
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::{self, TyCtxt};
@@ -45,7 +45,7 @@ pub(crate) fn try_inline(
     res: Res,
     name: Symbol,
     attrs: Option<&[ast::Attribute]>,
-    visited: &mut FxHashSet<DefId>,
+    visited: &mut DefIdSet,
 ) -> Option<Vec<clean::Item>> {
     let did = res.opt_def_id()?;
     if did.is_local() {
@@ -163,7 +163,7 @@ pub(crate) fn try_inline_glob(
     cx: &mut DocContext<'_>,
     res: Res,
     current_mod: LocalDefId,
-    visited: &mut FxHashSet<DefId>,
+    visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
 ) -> Option<Vec<clean::Item>> {
     let did = res.opt_def_id()?;
@@ -251,7 +251,7 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
 }
 
 fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> Box<clean::Function> {
-    let sig = cx.tcx.fn_sig(did);
+    let sig = cx.tcx.fn_sig(did).subst_identity();
 
     let late_bound_regions = sig.bound_vars().into_iter().filter_map(|var| match var {
         ty::BoundVariableKind::Region(ty::BrNamed(_, name)) if name != kw::UnderscoreLifetime => {
@@ -303,7 +303,8 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
 
 fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> Box<clean::Typedef> {
     let predicates = cx.tcx.explicit_predicates_of(did);
-    let type_ = clean_middle_ty(ty::Binder::dummy(cx.tcx.type_of(did)), cx, Some(did));
+    let type_ =
+        clean_middle_ty(ty::Binder::dummy(cx.tcx.type_of(did).subst_identity()), cx, Some(did));
 
     Box::new(clean::Typedef {
         type_,
@@ -390,18 +391,17 @@ pub(crate) fn build_impl(
 
     // Only inline impl if the implemented trait is
     // reachable in rustdoc generated documentation
-    if !did.is_local() {
-        if let Some(traitref) = associated_trait {
-            let did = traitref.def_id;
-            if !cx.cache.effective_visibilities.is_directly_public(tcx, did) {
-                return;
-            }
+    if !did.is_local() && let Some(traitref) = associated_trait {
+        let did = traitref.def_id;
+        if !cx.cache.effective_visibilities.is_directly_public(tcx, did) {
+            return;
+        }
 
-            if let Some(stab) = tcx.lookup_stability(did) {
-                if stab.is_unstable() && stab.feature == sym::rustc_private {
-                    return;
-                }
-            }
+        if let Some(stab) = tcx.lookup_stability(did) &&
+            stab.is_unstable() &&
+            stab.feature == sym::rustc_private
+        {
+            return;
         }
     }
 
@@ -415,7 +415,9 @@ pub(crate) fn build_impl(
 
     let for_ = match &impl_item {
         Some(impl_) => clean_ty(impl_.self_ty, cx),
-        None => clean_middle_ty(ty::Binder::dummy(tcx.type_of(did)), cx, Some(did)),
+        None => {
+            clean_middle_ty(ty::Binder::dummy(tcx.type_of(did).subst_identity()), cx, Some(did))
+        }
     };
 
     // Only inline impl if the implementing type is
@@ -525,10 +527,8 @@ pub(crate) fn build_impl(
     }
 
     while let Some(ty) = stack.pop() {
-        if let Some(did) = ty.def_id(&cx.cache) {
-            if tcx.is_doc_hidden(did) {
-                return;
-            }
+        if let Some(did) = ty.def_id(&cx.cache) && tcx.is_doc_hidden(did) {
+            return;
         }
         if let Some(generics) = ty.generics() {
             stack.extend(generics);
@@ -568,11 +568,7 @@ pub(crate) fn build_impl(
     ));
 }
 
-fn build_module(
-    cx: &mut DocContext<'_>,
-    did: DefId,
-    visited: &mut FxHashSet<DefId>,
-) -> clean::Module {
+fn build_module(cx: &mut DocContext<'_>, did: DefId, visited: &mut DefIdSet) -> clean::Module {
     let items = build_module_items(cx, did, visited, &mut FxHashSet::default(), None);
 
     let span = clean::Span::new(cx.tcx.def_span(did));
@@ -582,9 +578,9 @@ fn build_module(
 fn build_module_items(
     cx: &mut DocContext<'_>,
     did: DefId,
-    visited: &mut FxHashSet<DefId>,
+    visited: &mut DefIdSet,
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
-    allowed_def_ids: Option<&FxHashSet<DefId>>,
+    allowed_def_ids: Option<&DefIdSet>,
 ) -> Vec<clean::Item> {
     let mut items = Vec::new();
 
@@ -659,14 +655,22 @@ pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
 
 fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     clean::Constant {
-        type_: clean_middle_ty(ty::Binder::dummy(cx.tcx.type_of(def_id)), cx, Some(def_id)),
+        type_: clean_middle_ty(
+            ty::Binder::dummy(cx.tcx.type_of(def_id).subst_identity()),
+            cx,
+            Some(def_id),
+        ),
         kind: clean::ConstantKind::Extern { def_id },
     }
 }
 
 fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
     clean::Static {
-        type_: clean_middle_ty(ty::Binder::dummy(cx.tcx.type_of(did)), cx, Some(did)),
+        type_: clean_middle_ty(
+            ty::Binder::dummy(cx.tcx.type_of(did).subst_identity()),
+            cx,
+            Some(did),
+        ),
         mutability: if mutable { Mutability::Mut } else { Mutability::Not },
         expr: None,
     }

@@ -13,7 +13,7 @@ pub trait Trait {
 }
 
 // @has issue_20646/fn.fun.html \
-//      '//div[@class="item-decl"]/pre[@class="rust"]' 'where T: Trait<Output = i32>'
+//      '//pre[@class="rust item-decl"]' 'where T: Trait<Output = i32>'
 pub fn fun<T>(_: T) where T: Trait<Output=i32> {}
 
 pub mod reexport {
@@ -21,6 +21,6 @@ pub mod reexport {
     //      '//*[@id="associatedtype.Output"]' \
     //      'type Output'
     // @has issue_20646/reexport/fn.fun.html \
-    //      '//div[@class="item-decl"]/pre[@class="rust"]' 'where T: Trait<Output = i32>'
+    //      '//pre[@class="rust item-decl"]' 'where T: Trait<Output = i32>'
     pub use issue_20646::{Trait, fun};
 }

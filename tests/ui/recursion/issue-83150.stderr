@@ -9,9 +9,11 @@ LL |     func(&mut iter.map(|x| x + 1))
    = help: a `loop` may express intention better if this is on purpose
    = note: `#[warn(unconditional_recursion)]` on by default
 
-error[E0275]: overflow evaluating the requirement `Map<&mut Map<&mut Map<&mut Map<..., ...>, ...>, ...>, ...>: Iterator`
+error[E0275]: overflow evaluating the requirement `Map<&mut std::ops::Range<u8>, [closure@$DIR/issue-83150.rs:12:24: 12:27]>: Iterator`
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_83150`)
+   = note: required for `&mut Map<&mut std::ops::Range<u8>, [closure@$DIR/issue-83150.rs:12:24: 12:27]>` to implement `Iterator`
+   = note: 65 redundant requirements hidden
    = note: required for `&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<&mut Map<..., ...>, ...>, ...>, ...>, ...>, ...>, ...>` to implement `Iterator`
    = note: the full type name has been written to '$TEST_BUILD_DIR/recursion/issue-83150/issue-83150.long-type-hash.txt'
 

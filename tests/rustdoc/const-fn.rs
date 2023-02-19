@@ -1,14 +1,14 @@
 #![crate_name = "foo"]
 
 // @has foo/fn.bar.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'pub const fn bar() -> '
+// @has - '//pre[@class="rust item-decl"]' 'pub const fn bar() -> '
 /// foo
 pub const fn bar() -> usize {
     2
 }
 
 // @has foo/struct.Foo.html
-// @has - '//*[@class="method has-srclink"]' 'const fn new()'
+// @has - '//*[@class="method"]' 'const fn new()'
 pub struct Foo(usize);
 
 impl Foo {

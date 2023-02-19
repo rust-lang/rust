@@ -9,9 +9,6 @@ use crate::mem;
 use crate::ops::{Add, Mul, Sub};
 use crate::str::FromStr;
 
-#[cfg(not(no_fp_fmt_parse))]
-use crate::error::Error;
-
 // Used because the `?` operator is not allowed in a const context.
 macro_rules! try_opt {
     ($e:expr) => {
@@ -60,15 +57,6 @@ pub use wrapping::Wrapping;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(no_fp_fmt_parse))]
 pub use dec2flt::ParseFloatError;
-
-#[cfg(not(no_fp_fmt_parse))]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for ParseFloatError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        self.__description()
-    }
-}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use error::ParseIntError;

@@ -423,7 +423,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
     fn get_unbound_associated_types(&self) -> Vec<String> {
         if self.tcx.is_trait(self.def_id) {
-            let items: &AssocItems<'_> = self.tcx.associated_items(self.def_id);
+            let items: &AssocItems = self.tcx.associated_items(self.def_id);
             items
                 .in_definition_order()
                 .filter(|item| item.kind == AssocKind::Type)

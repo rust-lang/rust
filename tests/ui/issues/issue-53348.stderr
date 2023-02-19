@@ -5,7 +5,7 @@ LL |     let mut a = String::new();
    |                 ------------- expected due to this value
 LL |     for i in v {
 LL |         a = *i.to_string();
-   |             ^^^^^^^^^^^^^^ expected struct `String`, found `str`
+   |             ^^^^^^^^^^^^^^ expected `String`, found `str`
 
 error: aborting due to previous error
 

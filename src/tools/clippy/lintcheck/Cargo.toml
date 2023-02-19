@@ -10,8 +10,8 @@ edition = "2021"
 publish = false
 
 [dependencies]
-cargo_metadata = "0.14"
-clap = "3.2"
+cargo_metadata = "0.15.3"
+clap = "4.1.4"
 crossbeam-channel = "0.5.6"
 flate2 = "1.0"
 rayon = "1.5.1"

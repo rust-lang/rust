@@ -1,6 +1,8 @@
 error[E0597]: `mutex` does not live long enough
   --> $DIR/format-args-temporaries-in-write.rs:41:27
    |
+LL |         let mutex = Mutex;
+   |             ----- binding `mutex` declared here
 LL |         write!(Out, "{}", mutex.lock()) /* no semicolon */
    |                           ^^^^^^^^^^^^
    |                           |
@@ -16,6 +18,8 @@ LL |     };
 error[E0597]: `mutex` does not live long enough
   --> $DIR/format-args-temporaries-in-write.rs:47:29
    |
+LL |         let mutex = Mutex;
+   |             ----- binding `mutex` declared here
 LL |         writeln!(Out, "{}", mutex.lock()) /* no semicolon */
    |                             ^^^^^^^^^^^^
    |                             |

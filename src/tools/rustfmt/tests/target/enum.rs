@@ -43,7 +43,7 @@ enum StructLikeVariants {
         x: i32, // Test comment
         // Pre-comment
         #[Attr50]
-        y: SomeType, // Aanother Comment
+        y: SomeType, // Another Comment
     },
     SL {
         a: A,

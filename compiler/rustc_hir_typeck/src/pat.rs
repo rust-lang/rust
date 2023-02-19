@@ -46,7 +46,7 @@ struct TopInfo<'tcx> {
     /// Was the origin of the `span` from a scrutinee expression?
     ///
     /// Otherwise there is no scrutinee and it could be e.g. from the type of a formal parameter.
-    origin_expr: bool,
+    origin_expr: Option<&'tcx hir::Expr<'tcx>>,
     /// The span giving rise to the `expected` type, if one could be provided.
     ///
     /// If `origin_expr` is `true`, then this is the span of the scrutinee as in:
@@ -74,7 +74,8 @@ struct TopInfo<'tcx> {
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
     fn pattern_cause(&self, ti: TopInfo<'tcx>, cause_span: Span) -> ObligationCause<'tcx> {
-        let code = Pattern { span: ti.span, root_ty: ti.expected, origin_expr: ti.origin_expr };
+        let code =
+            Pattern { span: ti.span, root_ty: ti.expected, origin_expr: ti.origin_expr.is_some() };
         self.cause(cause_span, code)
     }
 
@@ -85,7 +86,14 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         actual: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-        self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)
+        let mut diag =
+            self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)?;
+        if let Some(expr) = ti.origin_expr {
+            self.suggest_fn_call(&mut diag, expr, expected, |output| {
+                self.can_eq(self.param_env, output, actual)
+            });
+        }
+        Some(diag)
     }
 
     fn demand_eqtype_pat(
@@ -127,7 +135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
         span: Option<Span>,
-        origin_expr: bool,
+        origin_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) {
         let info = TopInfo { expected, origin_expr, span };
         self.check_pat(pat, expected, INITIAL_BM, info);
@@ -667,7 +675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         match (expected.kind(), actual.kind(), ba) {
             (ty::Ref(_, inner_ty, _), _, hir::BindingAnnotation::NONE)
-                if self.can_eq(self.param_env, *inner_ty, actual).is_ok() =>
+                if self.can_eq(self.param_env, *inner_ty, actual) =>
             {
                 err.span_suggestion_verbose(
                     span.shrink_to_lo(),
@@ -677,7 +685,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
             (_, ty::Ref(_, inner_ty, _), hir::BindingAnnotation::REF)
-                if self.can_eq(self.param_env, expected, *inner_ty).is_ok() =>
+                if self.can_eq(self.param_env, expected, *inner_ty) =>
             {
                 err.span_suggestion_verbose(
                     span.with_hi(span.lo() + BytePos(4)),
@@ -1288,7 +1296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
         });
         let element_tys = tcx.mk_type_list(element_tys_iter);
-        let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
+        let pat_ty = tcx.intern_tup(element_tys);
         if let Some(mut err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, ti) {
             let reported = err.emit();
             // Walk subpatterns with an expected type of `err` in this case to silence
@@ -2055,7 +2063,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         len: ty::Const<'tcx>,
         min_len: u64,
     ) -> (Option<Ty<'tcx>>, Ty<'tcx>) {
-        if let Some(len) = len.try_eval_usize(self.tcx, self.param_env) {
+        if let Some(len) = len.try_eval_target_usize(self.tcx, self.param_env) {
             // Now we know the length...
             if slice.is_none() {
                 // ...and since there is no variable-length pattern,
@@ -2146,7 +2154,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.help("the semantics of slice patterns changed recently; see issue #62254");
         } else if self.autoderef(span, expected_ty)
             .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
-            && let (Some(span), true) = (ti.span, ti.origin_expr)
+            && let Some(span) = ti.span
+            && let Some(_) = ti.origin_expr
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
         {
             let ty = self.resolve_vars_if_possible(ti.expected);

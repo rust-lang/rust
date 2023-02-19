@@ -2,7 +2,7 @@ error[E0308]: `?` operator has incompatible types
   --> $DIR/issue-100246.rs:28:24
    |
 LL |     let other: Other = downcast()?;
-   |                        ^^^^^^^^^^^ expected struct `Other`, found reference
+   |                        ^^^^^^^^^^^ expected `Other`, found `&_`
    |
    = note: `?` operator cannot convert from `&_` to `Other`
    = note: expected struct `Other`

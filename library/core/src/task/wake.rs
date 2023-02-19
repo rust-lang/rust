@@ -174,7 +174,7 @@ impl RawWakerVTable {
 /// Currently, `Context` only serves to provide access to a [`&Waker`](Waker)
 /// which can be used to wake the current task.
 #[stable(feature = "futures_api", since = "1.36.0")]
-#[cfg_attr(not(bootstrap), lang = "Context")]
+#[lang = "Context"]
 pub struct Context<'a> {
     waker: &'a Waker,
     // Ensure we future-proof against variance changes by forcing

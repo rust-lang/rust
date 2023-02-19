@@ -4,6 +4,7 @@ error[E0597]: `a` does not live long enough
 LL | fn bug<'a, T: ?Sized + Fun<F<'a> = [u8]>>(_ : Box<T>) -> &'static T::F<'a> {
    |        -- lifetime `'a` defined here
 LL |     let a = [0; 1];
+   |         - binding `a` declared here
 LL |     let _x = T::identity(&a);
    |              ------------^^-
    |              |           |

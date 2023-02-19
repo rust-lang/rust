@@ -439,6 +439,10 @@ fn construct_fn<'tcx>(
     let fn_id = tcx.hir().local_def_id_to_hir_id(fn_def.did);
     let generator_kind = tcx.generator_kind(fn_def.did);
 
+    // The representation of thir for `-Zunpretty=thir-tree` relies on
+    // the entry expression being the last element of `thir.exprs`.
+    assert_eq!(expr.as_usize(), thir.exprs.len() - 1);
+
     // Figure out what primary body this item has.
     let body_id = tcx.hir().body_owned_by(fn_def.did);
     let span_with_body = tcx.hir().span_with_body(fn_id);
@@ -637,9 +641,9 @@ fn construct_error(
 
     let ty = tcx.ty_error();
     let num_params = match body_owner_kind {
-        hir::BodyOwnerKind::Fn => tcx.fn_sig(def).inputs().skip_binder().len(),
+        hir::BodyOwnerKind::Fn => tcx.fn_sig(def).skip_binder().inputs().skip_binder().len(),
         hir::BodyOwnerKind::Closure => {
-            let ty = tcx.type_of(def);
+            let ty = tcx.type_of(def).subst_identity();
             match ty.kind() {
                 ty::Closure(_, substs) => {
                     1 + substs.as_closure().sig().inputs().skip_binder().len()

@@ -19,7 +19,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
 use rustc_middle::ty::{
-    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    self, ir::TypeVisitor, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
 };
 use rustc_middle::ty::{Predicate, ToPredicate};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
@@ -62,11 +62,42 @@ fn object_safety_violations(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &'_ [Object
     )
 }
 
+fn check_is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
+    let violations = tcx.object_safety_violations(trait_def_id);
+
+    if violations.is_empty() {
+        return true;
+    }
+
+    // If the trait contains any other violations, then let the error reporting path
+    // report it instead of emitting a warning here.
+    if violations.iter().all(|violation| {
+        matches!(
+            violation,
+            ObjectSafetyViolation::Method(_, MethodViolationCode::WhereClauseReferencesSelf, _)
+        )
+    }) {
+        for violation in violations {
+            if let ObjectSafetyViolation::Method(
+                _,
+                MethodViolationCode::WhereClauseReferencesSelf,
+                span,
+            ) = violation
+            {
+                lint_object_unsafe_trait(tcx, *span, trait_def_id, &violation);
+            }
+        }
+        return true;
+    }
+
+    false
+}
+
 /// We say a method is *vtable safe* if it can be invoked on a trait
 /// object. Note that object-safe traits can have some
 /// non-vtable-safe methods, so long as they require `Self: Sized` or
 /// otherwise ensure that they cannot be used when `Self = Trait`.
-pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: &ty::AssocItem) -> bool {
+pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: ty::AssocItem) -> bool {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
     // Any method that has a `Self: Sized` bound cannot be called.
@@ -89,22 +120,9 @@ fn object_safety_violations_for_trait(
         .associated_items(trait_def_id)
         .in_definition_order()
         .filter(|item| item.kind == ty::AssocKind::Fn)
-        .filter_map(|item| {
-            object_safety_violation_for_method(tcx, trait_def_id, &item)
+        .filter_map(|&item| {
+            object_safety_violation_for_method(tcx, trait_def_id, item)
                 .map(|(code, span)| ObjectSafetyViolation::Method(item.name, code, span))
-        })
-        .filter(|violation| {
-            if let ObjectSafetyViolation::Method(
-                _,
-                MethodViolationCode::WhereClauseReferencesSelf,
-                span,
-            ) = violation
-            {
-                lint_object_unsafe_trait(tcx, *span, trait_def_id, &violation);
-                false
-            } else {
-                true
-            }
         })
         .collect();
 
@@ -289,7 +307,7 @@ fn predicate_references_self<'tcx>(
     match predicate.kind().skip_binder() {
         ty::PredicateKind::Clause(ty::Clause::Trait(ref data)) => {
             // In the case of a trait predicate, we can skip the "self" type.
-            if data.trait_ref.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
+            data.trait_ref.substs[1..].iter().any(has_self_ty).then_some(sp)
         }
         ty::PredicateKind::Clause(ty::Clause::Projection(ref data)) => {
             // And similarly for projections. This should be redundant with
@@ -307,8 +325,14 @@ fn predicate_references_self<'tcx>(
             //
             // This is ALT2 in issue #56288, see that for discussion of the
             // possible alternatives.
-            if data.projection_ty.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
+            data.projection_ty.substs[1..].iter().any(has_self_ty).then_some(sp)
         }
+        ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(_ct, ty)) => {
+            has_self_ty(&ty.into()).then_some(sp)
+        }
+
+        ty::PredicateKind::AliasEq(..) => bug!("`AliasEq` not allowed as assumption"),
+
         ty::PredicateKind::WellFormed(..)
         | ty::PredicateKind::ObjectSafe(..)
         | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
@@ -316,6 +340,7 @@ fn predicate_references_self<'tcx>(
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::Subtype(..)
         | ty::PredicateKind::Coerce(..)
+        // FIXME(generic_const_exprs): this can mention `Self`
         | ty::PredicateKind::ConstEvaluatable(..)
         | ty::PredicateKind::ConstEquate(..)
         | ty::PredicateKind::Ambiguous
@@ -341,6 +366,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
                 trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
             }
             ty::PredicateKind::Clause(ty::Clause::Projection(..))
+            | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
             | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..))
@@ -350,6 +376,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             | ty::PredicateKind::Clause(ty::Clause::TypeOutlives(..))
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::AliasEq(..)
             | ty::PredicateKind::Ambiguous
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => false,
         }
@@ -360,7 +387,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 fn object_safety_violation_for_method(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
-    method: &ty::AssocItem,
+    method: ty::AssocItem,
 ) -> Option<(MethodViolationCode, Span)> {
     debug!("object_safety_violation_for_method({:?}, {:?})", trait_def_id, method);
     // Any method that has a `Self : Sized` requisite is otherwise
@@ -393,9 +420,9 @@ fn object_safety_violation_for_method(
 fn virtual_call_violation_for_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
-    method: &ty::AssocItem,
+    method: ty::AssocItem,
 ) -> Option<MethodViolationCode> {
-    let sig = tcx.fn_sig(method.def_id);
+    let sig = tcx.fn_sig(method.def_id).subst_identity();
 
     // The method's first parameter must be named `self`
     if !method.fn_has_self_parameter {
@@ -505,8 +532,7 @@ fn virtual_call_violation_for_method<'tcx>(
                 }
             }
 
-            let trait_object_ty =
-                object_ty_for_trait(tcx, trait_def_id, tcx.mk_region(ty::ReStatic));
+            let trait_object_ty = object_ty_for_trait(tcx, trait_def_id, tcx.lifetimes.re_static);
 
             // e.g., `Rc<dyn Trait>`
             let trait_object_receiver =
@@ -529,16 +555,56 @@ fn virtual_call_violation_for_method<'tcx>(
 
     // NOTE: This check happens last, because it results in a lint, and not a
     // hard error.
-    if tcx
-        .predicates_of(method.def_id)
-        .predicates
-        .iter()
-        // A trait object can't claim to live more than the concrete type,
-        // so outlives predicates will always hold.
-        .cloned()
-        .filter(|(p, _)| p.to_opt_type_outlives().is_none())
-        .any(|pred| contains_illegal_self_type_reference(tcx, trait_def_id, pred))
-    {
+    if tcx.predicates_of(method.def_id).predicates.iter().any(|&(pred, span)| {
+        // dyn Trait is okay:
+        //
+        //     trait Trait {
+        //         fn f(&self) where Self: 'static;
+        //     }
+        //
+        // because a trait object can't claim to live longer than the concrete
+        // type. If the lifetime bound holds on dyn Trait then it's guaranteed
+        // to hold as well on the concrete type.
+        if pred.to_opt_type_outlives().is_some() {
+            return false;
+        }
+
+        // dyn Trait is okay:
+        //
+        //     auto trait AutoTrait {}
+        //
+        //     trait Trait {
+        //         fn f(&self) where Self: AutoTrait;
+        //     }
+        //
+        // because `impl AutoTrait for dyn Trait` is disallowed by coherence.
+        // Traits with a default impl are implemented for a trait object if and
+        // only if the autotrait is one of the trait object's trait bounds, like
+        // in `dyn Trait + AutoTrait`. This guarantees that trait objects only
+        // implement auto traits if the underlying type does as well.
+        if let ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
+            trait_ref: pred_trait_ref,
+            constness: ty::BoundConstness::NotConst,
+            polarity: ty::ImplPolarity::Positive,
+        })) = pred.kind().skip_binder()
+            && pred_trait_ref.self_ty() == tcx.types.self_param
+            && tcx.trait_is_auto(pred_trait_ref.def_id)
+        {
+            // Consider bounds like `Self: Bound<Self>`. Auto traits are not
+            // allowed to have generic parameters so `auto trait Bound<T> {}`
+            // would already have reported an error at the definition of the
+            // auto trait.
+            if pred_trait_ref.substs.len() != 1 {
+                tcx.sess.diagnostic().delay_span_bug(
+                    span,
+                    "auto traits cannot have generic parameters",
+                );
+            }
+            return false;
+        }
+
+        contains_illegal_self_type_reference(tcx, trait_def_id, pred)
+    }) {
         return Some(MethodViolationCode::WhereClauseReferencesSelf);
     }
 
@@ -588,11 +654,9 @@ fn object_ty_for_trait<'tcx>(
             debug!(?obligation);
             let pred = obligation.predicate.to_opt_poly_projection_pred()?;
             Some(pred.map_bound(|p| {
-                ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
-                    def_id: p.projection_ty.def_id,
-                    substs: p.projection_ty.substs,
-                    term: p.term,
-                })
+                ty::ExistentialPredicate::Projection(ty::ExistentialProjection::erase_self_ty(
+                    tcx, p,
+                ))
             }))
         })
         .collect();
@@ -658,7 +722,7 @@ fn object_ty_for_trait<'tcx>(
 #[allow(dead_code)]
 fn receiver_is_dispatchable<'tcx>(
     tcx: TyCtxt<'tcx>,
-    method: &ty::AssocItem,
+    method: ty::AssocItem,
     receiver_ty: Ty<'tcx>,
 ) -> bool {
     debug!("receiver_is_dispatchable: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
@@ -776,7 +840,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
         supertraits: Option<Vec<DefId>>,
     }
 
-    impl<'tcx> TypeVisitor<'tcx> for IllegalSelfTypeVisitor<'tcx> {
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
         type BreakTy = ();
 
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -866,5 +930,6 @@ pub fn contains_illegal_impl_trait_in_trait<'tcx>(
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { object_safety_violations, ..*providers };
+    *providers =
+        ty::query::Providers { object_safety_violations, check_is_object_safe, ..*providers };
 }

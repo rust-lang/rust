@@ -38,7 +38,7 @@ pub(crate) use self::span_map::{collect_spans_and_sources, LinkFromSrc};
 
 use std::collections::VecDeque;
 use std::default::Default;
-use std::fmt;
+use std::fmt::{self, Write};
 use std::fs;
 use std::iter::Peekable;
 use std::path::PathBuf;
@@ -50,7 +50,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::{ConstStability, Deprecation, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
 use rustc_middle::ty;
@@ -82,9 +82,6 @@ use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
 use crate::scrape_examples::{CallData, CallLocation};
 use crate::try_none;
 use crate::DOC_RUST_LANG_ORG_CHANNEL;
-
-/// A pair of name and its optional document.
-pub(crate) type NameDoc = (String, Option<String>);
 
 pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
@@ -1115,7 +1112,7 @@ fn render_assoc_items(
     it: DefId,
     what: AssocItemRender<'_>,
 ) {
-    let mut derefs = FxHashSet::default();
+    let mut derefs = DefIdSet::default();
     derefs.insert(it);
     render_assoc_items_inner(w, cx, containing_item, it, what, &mut derefs)
 }
@@ -1126,7 +1123,7 @@ fn render_assoc_items_inner(
     containing_item: &clean::Item,
     it: DefId,
     what: AssocItemRender<'_>,
-    derefs: &mut FxHashSet<DefId>,
+    derefs: &mut DefIdSet,
 ) {
     info!("Documenting associated items of {:?}", containing_item.name);
     let shared = Rc::clone(&cx.shared);
@@ -1215,7 +1212,7 @@ fn render_deref_methods(
     impl_: &Impl,
     container_item: &clean::Item,
     deref_mut: bool,
-    derefs: &mut FxHashSet<DefId>,
+    derefs: &mut DefIdSet,
 ) {
     let cache = cx.cache();
     let deref_type = impl_.inner_impl().trait_.as_ref().unwrap();
@@ -1313,7 +1310,7 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
     if has_notable_trait {
         cx.types_with_notable_traits.insert(ty.clone());
         Some(format!(
-            " <a href=\"#\" class=\"notable-traits\" data-ty=\"{ty}\">ⓘ</a>",
+            " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
             ty = Escape(&format!("{:#}", ty.print(cx))),
         ))
     } else {
@@ -1528,11 +1525,7 @@ fn render_impl(
                             })
                         })
                         .map(|item| format!("{}.{}", item.type_(), name));
-                    write!(
-                        w,
-                        "<section id=\"{}\" class=\"{}{} has-srclink\">",
-                        id, item_type, in_trait_class,
-                    );
+                    write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class,);
                     render_rightside(w, cx, item, containing_item, render_mode);
                     if trait_.is_some() {
                         // Anchors are only used on trait impls.
@@ -1554,11 +1547,7 @@ fn render_impl(
             kind @ (clean::TyAssocConstItem(ty) | clean::AssocConstItem(ty, _)) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
-                write!(
-                    w,
-                    "<section id=\"{}\" class=\"{}{} has-srclink\">",
-                    id, item_type, in_trait_class
-                );
+                write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class);
                 render_rightside(w, cx, item, containing_item, render_mode);
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
@@ -1606,11 +1595,7 @@ fn render_impl(
             clean::AssocTypeItem(tydef, _bounds) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
-                write!(
-                    w,
-                    "<section id=\"{}\" class=\"{}{} has-srclink\">",
-                    id, item_type, in_trait_class
-                );
+                write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class);
                 if trait_.is_some() {
                     // Anchors are only used on trait impls.
                     write!(w, "<a href=\"#{}\" class=\"anchor\">§</a>", id);
@@ -1844,7 +1829,7 @@ pub(crate) fn render_impl_summary(
     } else {
         format!(" data-aliases=\"{}\"", aliases.join(","))
     };
-    write!(w, "<section id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
+    write!(w, "<section id=\"{}\" class=\"impl\"{}>", id, aliases);
     render_rightside(w, cx, &i.impl_item, containing_item, RenderMode::Normal);
     write!(w, "<a href=\"#{}\" class=\"anchor\">§</a>", id);
     write!(w, "<h3 class=\"code-header\">");
@@ -2032,31 +2017,60 @@ fn get_associated_constants(
         .collect::<Vec<_>>()
 }
 
-// The point is to url encode any potential character from a type with genericity.
-fn small_url_encode(s: String) -> String {
+pub(crate) fn small_url_encode(s: String) -> String {
+    // These characters don't need to be escaped in a URI.
+    // See https://url.spec.whatwg.org/#query-percent-encode-set
+    // and https://url.spec.whatwg.org/#urlencoded-parsing
+    // and https://url.spec.whatwg.org/#url-code-points
+    fn dont_escape(c: u8) -> bool {
+        (b'a' <= c && c <= b'z')
+            || (b'A' <= c && c <= b'Z')
+            || (b'0' <= c && c <= b'9')
+            || c == b'-'
+            || c == b'_'
+            || c == b'.'
+            || c == b','
+            || c == b'~'
+            || c == b'!'
+            || c == b'\''
+            || c == b'('
+            || c == b')'
+            || c == b'*'
+            || c == b'/'
+            || c == b';'
+            || c == b':'
+            || c == b'?'
+            // As described in urlencoded-parsing, the
+            // first `=` is the one that separates key from
+            // value. Following `=`s are part of the value.
+            || c == b'='
+    }
     let mut st = String::new();
     let mut last_match = 0;
-    for (idx, c) in s.char_indices() {
-        let escaped = match c {
-            '<' => "%3C",
-            '>' => "%3E",
-            ' ' => "%20",
-            '?' => "%3F",
-            '\'' => "%27",
-            '&' => "%26",
-            ',' => "%2C",
-            ':' => "%3A",
-            ';' => "%3B",
-            '[' => "%5B",
-            ']' => "%5D",
-            '"' => "%22",
-            _ => continue,
-        };
+    for (idx, b) in s.bytes().enumerate() {
+        if dont_escape(b) {
+            continue;
+        }
 
-        st += &s[last_match..idx];
-        st += escaped;
-        // NOTE: we only expect single byte characters here - which is fine as long as we
-        // only match single byte characters
+        if last_match != idx {
+            // Invariant: `idx` must be the first byte in a character at this point.
+            st += &s[last_match..idx];
+        }
+        if b == b' ' {
+            // URL queries are decoded with + replaced with SP.
+            // While the same is not true for hashes, rustdoc only needs to be
+            // consistent with itself when encoding them.
+            st += "+";
+        } else if b == b'%' {
+            st += "%%";
+        } else {
+            write!(st, "%{:02X}", b).unwrap();
+        }
+        // Invariant: if the current byte is not at the start of a multi-byte character,
+        // we need to get down here so that when the next turn of the loop comes around,
+        // last_match winds up equalling idx.
+        //
+        // In other words, dont_escape must always return `false` in multi-byte character.
         last_match = idx + 1;
     }
 
@@ -2175,7 +2189,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
             if let Some(impl_) =
                 v.iter().find(|i| i.trait_did() == cx.tcx().lang_items().deref_trait())
             {
-                let mut derefs = FxHashSet::default();
+                let mut derefs = DefIdSet::default();
                 derefs.insert(did);
                 sidebar_deref_methods(cx, out, impl_, v, &mut derefs, &mut used_links);
             }
@@ -2195,7 +2209,7 @@ fn sidebar_deref_methods(
     out: &mut Buffer,
     impl_: &Impl,
     v: &[Impl],
-    derefs: &mut FxHashSet<DefId>,
+    derefs: &mut DefIdSet,
     used_links: &mut FxHashSet<String>,
 ) {
     let c = cx.cache();
@@ -2211,14 +2225,13 @@ fn sidebar_deref_methods(
         })
     {
         debug!("found target, real_target: {:?} {:?}", target, real_target);
-        if let Some(did) = target.def_id(c) {
-            if let Some(type_did) = impl_.inner_impl().for_.def_id(c) {
-                // `impl Deref<Target = S> for S`
-                if did == type_did || !derefs.insert(did) {
-                    // Avoid infinite cycles
-                    return;
-                }
-            }
+        if let Some(did) = target.def_id(c) &&
+            let Some(type_did) = impl_.inner_impl().for_.def_id(c) &&
+            // `impl Deref<Target = S> for S`
+            (did == type_did || !derefs.insert(did))
+        {
+            // Avoid infinite cycles
+            return;
         }
         let deref_mut = v.iter().any(|i| i.trait_did() == cx.tcx().lang_items().deref_mut_trait());
         let inner_impl = target
@@ -2252,25 +2265,24 @@ fn sidebar_deref_methods(
         }
 
         // Recurse into any further impls that might exist for `target`
-        if let Some(target_did) = target.def_id(c) {
-            if let Some(target_impls) = c.impls.get(&target_did) {
-                if let Some(target_deref_impl) = target_impls.iter().find(|i| {
-                    i.inner_impl()
-                        .trait_
-                        .as_ref()
-                        .map(|t| Some(t.def_id()) == cx.tcx().lang_items().deref_trait())
-                        .unwrap_or(false)
-                }) {
-                    sidebar_deref_methods(
-                        cx,
-                        out,
-                        target_deref_impl,
-                        target_impls,
-                        derefs,
-                        used_links,
-                    );
-                }
-            }
+        if let Some(target_did) = target.def_id(c) &&
+            let Some(target_impls) = c.impls.get(&target_did) &&
+            let Some(target_deref_impl) = target_impls.iter().find(|i| {
+                i.inner_impl()
+                    .trait_
+                    .as_ref()
+                    .map(|t| Some(t.def_id()) == cx.tcx().lang_items().deref_trait())
+                    .unwrap_or(false)
+            })
+        {
+            sidebar_deref_methods(
+                cx,
+                out,
+                target_deref_impl,
+                target_impls,
+                derefs,
+                used_links,
+            );
         }
     }
 }
@@ -2754,8 +2766,6 @@ fn sidebar_foreign_type(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {
         write!(buf, "<section>{}</section>", sidebar.into_inner());
     }
 }
-
-pub(crate) const BASIC_KEYWORDS: &str = "rust, rustlang, rust-lang";
 
 /// Returns a list of all paths used in the type.
 /// This is used to help deduplicate imported impls

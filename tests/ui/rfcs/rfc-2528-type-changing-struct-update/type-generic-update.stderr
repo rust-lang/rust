@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/type-generic-update.rs:46:11
    |
 LL |         ..m1
-   |           ^^ expected `i32`, found `f64`
+   |           ^^ expected `Machine<'_, i32, f64>`, found `Machine<'_, f64, f64>`
    |
    = note: expected struct `Machine<'_, i32, _>`
               found struct `Machine<'_, f64, _>`
@@ -11,7 +11,7 @@ error[E0308]: mismatched types
   --> $DIR/type-generic-update.rs:51:11
    |
 LL |         ..m1
-   |           ^^ expected `i32`, found `f64`
+   |           ^^ expected `Machine<'_, i32, i32>`, found `Machine<'_, f64, f64>`
    |
    = note: expected struct `Machine<'_, i32, i32>`
               found struct `Machine<'_, f64, f64>`

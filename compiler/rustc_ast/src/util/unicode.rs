@@ -17,7 +17,7 @@ pub fn contains_text_flow_control_chars(s: &str) -> bool {
     // U+2069 - E2 81 A9
     let mut bytes = s.as_bytes();
     loop {
-        match core::slice::memchr::memchr(0xE2, bytes) {
+        match memchr::memchr(0xE2, bytes) {
             Some(idx) => {
                 // bytes are valid UTF-8 -> E2 must be followed by two bytes
                 let ch = &bytes[idx..idx + 3];

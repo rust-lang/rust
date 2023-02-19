@@ -25,11 +25,11 @@ declare_clippy_lint! {
     /// Using the dedicated functions of the `Option` type is clearer and
     /// more concise than an `if let` expression.
     ///
-    /// ### Known problems
-    /// This lint uses a deliberately conservative metric for checking
-    /// if the inside of either body contains breaks or continues which will
-    /// cause it to not suggest a fix if either block contains a loop with
-    /// continues or breaks contained within the loop.
+    /// ### Notes
+    /// This lint uses a deliberately conservative metric for checking if the
+    /// inside of either body contains loop control expressions `break` or
+    /// `continue` (which cannot be used within closures). If these are found,
+    /// this lint will not be raised.
     ///
     /// ### Example
     /// ```rust

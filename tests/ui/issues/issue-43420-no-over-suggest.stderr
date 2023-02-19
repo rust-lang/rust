@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-43420-no-over-suggest.rs:8:9
    |
 LL |     foo(&a);
-   |     --- ^^ expected slice `[u16]`, found struct `Vec`
+   |     --- ^^ expected `&[u16]`, found `&Vec<u8>`
    |     |
    |     arguments to this function are incorrect
    |

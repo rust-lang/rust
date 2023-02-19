@@ -1,6 +1,8 @@
 error[E0597]: `v` does not live long enough
   --> $DIR/dropck-union.rs:37:18
    |
+LL |     let v : Wrap<C> = Wrap::new(C(Cell::new(None)));
+   |         - binding `v` declared here
 LL |     v.0.set(Some(&v));
    |                  ^^ borrowed value does not live long enough
 LL | }

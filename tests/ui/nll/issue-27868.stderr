@@ -4,10 +4,10 @@ error[E0506]: cannot assign to `vecvec` because it is borrowed
 LL |       vecvec[0] += {
    |       ------
    |       |
-   |  _____borrow of `vecvec` occurs here
+   |  _____`vecvec` is borrowed here
    | |
 LL | |         vecvec = vec![];
-   | |         ^^^^^^ assignment to borrowed `vecvec` occurs here
+   | |         ^^^^^^ `vecvec` is assigned to here but it was already borrowed
 LL | |
 LL | |         0
 LL | |     };

@@ -143,24 +143,15 @@ pub unsafe fn create_module<'ll>(
 
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
-    if llvm_version < (14, 0, 0) {
-        if sess.target.llvm_target == "i686-pc-windows-msvc"
-            || sess.target.llvm_target == "i586-pc-windows-msvc"
-        {
-            target_data_layout =
-                "e-m:x-p:32:32-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:32-n8:16:32-a:0:32-S32"
-                    .to_string();
-        }
-        if sess.target.arch == "wasm32" {
-            target_data_layout = target_data_layout.replace("-p10:8:8-p20:8:8", "");
-        }
-    }
     if llvm_version < (16, 0, 0) {
         if sess.target.arch == "s390x" {
+            // LLVM 16 data layout changed to always set 64-bit vector alignment,
+            // which is conditional in earlier LLVM versions.
+            // https://reviews.llvm.org/D131158 for the discussion.
             target_data_layout = target_data_layout.replace("-v128:64", "");
-        }
-
-        if sess.target.arch == "riscv64" {
+        } else if sess.target.arch == "riscv64" {
+            // LLVM 16 introduced this change so as to produce more efficient code.
+            // See https://reviews.llvm.org/D116735 for the discussion.
             target_data_layout = target_data_layout.replace("-n32:64-", "-n64-");
         }
     }
@@ -191,7 +182,7 @@ pub unsafe fn create_module<'ll>(
         //
         // FIXME(#34960)
         let cfg_llvm_root = option_env!("CFG_LLVM_ROOT").unwrap_or("");
-        let custom_llvm_used = cfg_llvm_root.trim() != "";
+        let custom_llvm_used = !cfg_llvm_root.trim().is_empty();
 
         if !custom_llvm_used && target_data_layout != llvm_data_layout {
             bug!(
@@ -416,12 +407,8 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
-        let coverage_cx = if tcx.sess.instrument_coverage() {
-            let covctx = coverageinfo::CrateCoverageContext::new();
-            Some(covctx)
-        } else {
-            None
-        };
+        let coverage_cx =
+            tcx.sess.instrument_coverage().then(coverageinfo::CrateCoverageContext::new);
 
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
             let dctx = debuginfo::CodegenUnitDebugContext::new(llmod);

@@ -37,8 +37,8 @@ LL | struct A<B>(B);
    |        ^
 help: consider further restricting this bound
    |
-LL | impl<B> Add for A<B> where B: Add + Add<Output = B> {
-   |                                   +++++++++++++++++
+LL | impl<B> Add for A<B> where B: Add<Output = B> {
+   |                                  ++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/missing-bounds.rs:21:14
@@ -60,8 +60,8 @@ LL | struct C<B>(B);
    |        ^
 help: consider further restricting this bound
    |
-LL | impl<B: Add + Add<Output = B>> Add for C<B> {
-   |             +++++++++++++++++
+LL | impl<B: Add<Output = B>> Add for C<B> {
+   |            ++++++++++++
 
 error[E0369]: cannot add `B` to `B`
   --> $DIR/missing-bounds.rs:31:21
@@ -96,8 +96,8 @@ LL | struct E<B>(B);
    |        ^
 help: consider further restricting this bound
    |
-LL | impl<B: Add + Add<Output = B>> Add for E<B> where <B as Add>::Output = B {
-   |             +++++++++++++++++
+LL | impl<B: Add<Output = B>> Add for E<B> where <B as Add>::Output = B {
+   |            ++++++++++++
 
 error: aborting due to 5 previous errors
 

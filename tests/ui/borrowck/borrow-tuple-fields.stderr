@@ -1,6 +1,8 @@
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/borrow-tuple-fields.rs:12:13
    |
+LL |     let x: (Box<_>, _) = (Box::new(1), 2);
+   |         - binding `x` declared here
 LL |     let r = &x.0;
    |             ---- borrow of `x.0` occurs here
 LL |     let y = x;
@@ -32,6 +34,8 @@ LL |     a.use_ref();
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/borrow-tuple-fields.rs:28:13
    |
+LL |     let x = Foo(Box::new(1), 2);
+   |         - binding `x` declared here
 LL |     let r = &x.0;
    |             ---- borrow of `x.0` occurs here
 LL |     let y = x;

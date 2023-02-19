@@ -9,7 +9,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 pub(crate) fn collect_definitions(
-    resolver: &mut Resolver<'_>,
+    resolver: &mut Resolver<'_, '_>,
     fragment: &AstFragment,
     expansion: LocalExpnId,
 ) {
@@ -18,14 +18,14 @@ pub(crate) fn collect_definitions(
 }
 
 /// Creates `DefId`s for nodes in the AST.
-struct DefCollector<'a, 'b> {
-    resolver: &'a mut Resolver<'b>,
+struct DefCollector<'a, 'b, 'tcx> {
+    resolver: &'a mut Resolver<'b, 'tcx>,
     parent_def: LocalDefId,
     impl_trait_context: ImplTraitContext,
     expansion: LocalExpnId,
 }
 
-impl<'a, 'b> DefCollector<'a, 'b> {
+impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
     fn create_def(&mut self, node_id: NodeId, data: DefPathData, span: Span) -> LocalDefId {
         let parent_def = self.parent_def;
         debug!("create_def(node_id={:?}, data={:?}, parent_def={:?})", node_id, data, parent_def);
@@ -81,7 +81,7 @@ impl<'a, 'b> DefCollector<'a, 'b> {
     }
 }
 
-impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
+impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
     fn visit_item(&mut self, i: &'a Item) {
         debug!("visit_item: {:?}", i);
 

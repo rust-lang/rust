@@ -75,7 +75,6 @@ pub use check::check_abi;
 use check::check_mod_item_types;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder};
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::BitSet;
@@ -105,6 +104,7 @@ pub fn provide(providers: &mut Providers) {
         region_scope_tree,
         collect_return_position_impl_trait_in_trait_tys,
         compare_impl_const: compare_impl_item::compare_impl_const_raw,
+        check_generator_obligations: check::check_generator_obligations,
         ..*providers
     };
 }
@@ -168,27 +168,24 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     }
 }
 
-fn report_forbidden_specialization(
-    tcx: TyCtxt<'_>,
-    impl_item: &hir::ImplItemRef,
-    parent_impl: DefId,
-) {
+fn report_forbidden_specialization(tcx: TyCtxt<'_>, impl_item: DefId, parent_impl: DefId) {
+    let span = tcx.def_span(impl_item);
+    let ident = tcx.item_name(impl_item);
     let mut err = struct_span_err!(
         tcx.sess,
-        impl_item.span,
+        span,
         E0520,
-        "`{}` specializes an item from a parent `impl`, but \
-         that item is not marked `default`",
-        impl_item.ident
+        "`{}` specializes an item from a parent `impl`, but that item is not marked `default`",
+        ident,
     );
-    err.span_label(impl_item.span, format!("cannot specialize default item `{}`", impl_item.ident));
+    err.span_label(span, format!("cannot specialize default item `{}`", ident));
 
     match tcx.span_of_impl(parent_impl) {
         Ok(span) => {
             err.span_label(span, "parent `impl` is here");
             err.note(&format!(
                 "to specialize, `{}` in the parent `impl` must be marked `default`",
-                impl_item.ident
+                ident
             ));
         }
         Err(cname) => {
@@ -202,7 +199,7 @@ fn report_forbidden_specialization(
 fn missing_items_err(
     tcx: TyCtxt<'_>,
     impl_span: Span,
-    missing_items: &[&ty::AssocItem],
+    missing_items: &[ty::AssocItem],
     full_impl_span: Span,
 ) {
     let missing_items_msg = missing_items
@@ -228,7 +225,7 @@ fn missing_items_err(
     let padding =
         tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(|| String::new());
 
-    for trait_item in missing_items {
+    for &trait_item in missing_items {
         let snippet = suggestion_signature(trait_item, tcx);
         let code = format!("{}{}\n{}", padding, snippet, padding);
         let msg = format!("implement the missing item: `{snippet}`");
@@ -275,7 +272,7 @@ fn default_body_is_unstable(
     reason: Option<Symbol>,
     issue: Option<NonZeroU32>,
 ) {
-    let missing_item_name = &tcx.associated_item(item_did).name;
+    let missing_item_name = tcx.associated_item(item_did).name;
     let use_of_unstable_library_feature_note = match reason {
         Some(r) => format!("use of unstable library feature '{feature}': {r}"),
         None => format!("use of unstable library feature '{feature}'"),
@@ -368,7 +365,7 @@ fn fn_sig_suggestion<'tcx>(
     sig: ty::FnSig<'tcx>,
     ident: Ident,
     predicates: ty::GenericPredicates<'tcx>,
-    assoc: &ty::AssocItem,
+    assoc: ty::AssocItem,
 ) -> String {
     let args = sig
         .inputs()
@@ -436,7 +433,7 @@ pub fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
 /// Return placeholder code for the given associated item.
 /// Similar to `ty::AssocItem::suggestion`, but appropriate for use as the code snippet of a
 /// structured suggestion.
-fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
+fn suggestion_signature(assoc: ty::AssocItem, tcx: TyCtxt<'_>) -> String {
     match assoc.kind {
         ty::AssocKind::Fn => {
             // We skip the binder here because the binder would deanonymize all
@@ -445,7 +442,7 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
             // regions just fine, showing `fn(&MyType)`.
             fn_sig_suggestion(
                 tcx,
-                tcx.fn_sig(assoc.def_id).skip_binder(),
+                tcx.fn_sig(assoc.def_id).subst_identity().skip_binder(),
                 assoc.ident(tcx),
                 tcx.predicates_of(assoc.def_id),
                 assoc,
@@ -453,7 +450,7 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
         }
         ty::AssocKind::Type => format!("type {} = Type;", assoc.name),
         ty::AssocKind::Const => {
-            let ty = tcx.type_of(assoc.def_id);
+            let ty = tcx.type_of(assoc.def_id).subst_identity();
             let val = ty_kind_suggestion(ty).unwrap_or("value");
             format!("const {}: {} = {};", assoc.name, ty, val)
         }

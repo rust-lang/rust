@@ -1,6 +1,8 @@
 error[E0505]: cannot move out of `a` because it is borrowed
   --> $DIR/borrow-for-loop-head.rs:4:18
    |
+LL |     let a = vec![1, 2, 3];
+   |         - binding `a` declared here
 LL |     for i in &a {
    |              -- borrow of `a` occurs here
 LL |         for j in a {

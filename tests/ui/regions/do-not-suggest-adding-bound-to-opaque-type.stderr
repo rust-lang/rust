@@ -1,6 +1,8 @@
 error[E0597]: `x` does not live long enough
   --> $DIR/do-not-suggest-adding-bound-to-opaque-type.rs:9:7
    |
+LL |     let x = ();
+   |         - binding `x` declared here
 LL |     S(&x)
    |     --^^-
    |     | |

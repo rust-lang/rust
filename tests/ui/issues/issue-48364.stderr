@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-48364.rs:2:21
    |
 LL |     b"".starts_with(stringify!(foo))
-   |         ----------- ^^^^^^^^^^^^^^^ expected slice `[u8]`, found `str`
+   |         ----------- ^^^^^^^^^^^^^^^ expected `&[u8]`, found `&str`
    |         |
    |         arguments to this method are incorrect
    |

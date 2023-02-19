@@ -128,7 +128,8 @@ impl PrimitiveExt for Primitive {
             Int(i, signed) => i.to_ty(tcx, signed),
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
-            Pointer => tcx.mk_mut_ptr(tcx.mk_unit()),
+            // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
+            Pointer(_) => tcx.mk_mut_ptr(tcx.mk_unit()),
         }
     }
 
@@ -138,7 +139,11 @@ impl PrimitiveExt for Primitive {
     fn to_int_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
-            Pointer => tcx.types.usize,
+            // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
+            Pointer(_) => {
+                let signed = false;
+                tcx.data_layout().ptr_sized_integer().to_ty(tcx, signed)
+            }
             F32 | F64 => bug!("floats do not have an int type"),
         }
     }
@@ -640,6 +645,7 @@ where
                 | ty::Never
                 | ty::FnDef(..)
                 | ty::GeneratorWitness(..)
+                | ty::GeneratorWitnessMIR(..)
                 | ty::Foreign(..)
                 | ty::Dynamic(_, _, ty::Dyn) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
@@ -680,7 +686,7 @@ where
                         Increase this counter if you tried to implement this but
                         failed to do it without duplicating a lot of code from
                         other places in the compiler: 2
-                        tcx.mk_tup(&[
+                        tcx.intern_tup(&[
                             tcx.mk_array(tcx.types.usize, 3),
                             tcx.mk_array(Option<fn()>),
                         ])
@@ -812,17 +818,12 @@ where
         let tcx = cx.tcx();
         let param_env = cx.param_env();
 
-        let addr_space_of_ty = |ty: Ty<'tcx>| {
-            if ty.is_fn() { cx.data_layout().instruction_address_space } else { AddressSpace::DATA }
-        };
-
         let pointee_info = match *this.ty.kind() {
             ty::RawPtr(mt) if offset.bytes() == 0 => {
                 tcx.layout_of(param_env.and(mt.ty)).ok().map(|layout| PointeeInfo {
                     size: layout.size,
                     align: layout.align.abi,
                     safe: None,
-                    address_space: addr_space_of_ty(mt.ty),
                 })
             }
             ty::FnPtr(fn_sig) if offset.bytes() == 0 => {
@@ -830,44 +831,26 @@ where
                     size: layout.size,
                     align: layout.align.abi,
                     safe: None,
-                    address_space: cx.data_layout().instruction_address_space,
                 })
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
-                let address_space = addr_space_of_ty(ty);
-                let kind = if tcx.sess.opts.optimize == OptLevel::No {
-                    // Use conservative pointer kind if not optimizing. This saves us the
-                    // Freeze/Unpin queries, and can save time in the codegen backend (noalias
-                    // attributes in LLVM have compile-time cost even in unoptimized builds).
-                    PointerKind::SharedMutable
-                } else {
-                    match mt {
-                        hir::Mutability::Not => {
-                            if ty.is_freeze(tcx, cx.param_env()) {
-                                PointerKind::Frozen
-                            } else {
-                                PointerKind::SharedMutable
-                            }
-                        }
-                        hir::Mutability::Mut => {
-                            // References to self-referential structures should not be considered
-                            // noalias, as another pointer to the structure can be obtained, that
-                            // is not based-on the original reference. We consider all !Unpin
-                            // types to be potentially self-referential here.
-                            if ty.is_unpin(tcx, cx.param_env()) {
-                                PointerKind::UniqueBorrowed
-                            } else {
-                                PointerKind::UniqueBorrowedPinned
-                            }
-                        }
-                    }
+                // Use conservative pointer kind if not optimizing. This saves us the
+                // Freeze/Unpin queries, and can save time in the codegen backend (noalias
+                // attributes in LLVM have compile-time cost even in unoptimized builds).
+                let optimize = tcx.sess.opts.optimize != OptLevel::No;
+                let kind = match mt {
+                    hir::Mutability::Not => PointerKind::SharedRef {
+                        frozen: optimize && ty.is_freeze(tcx, cx.param_env()),
+                    },
+                    hir::Mutability::Mut => PointerKind::MutableRef {
+                        unpin: optimize && ty.is_unpin(tcx, cx.param_env()),
+                    },
                 };
 
                 tcx.layout_of(param_env.and(ty)).ok().map(|layout| PointeeInfo {
                     size: layout.size,
                     align: layout.align.abi,
                     safe: Some(kind),
-                    address_space,
                 })
             }
 
@@ -904,7 +887,9 @@ where
                 let mut result = None;
 
                 if let Some(variant) = data_variant {
-                    let ptr_end = offset + Pointer.size(cx);
+                    // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
+                    // (requires passing in the expected address space from the caller)
+                    let ptr_end = offset + Pointer(AddressSpace::DATA).size(cx);
                     for i in 0..variant.fields.count() {
                         let field_start = variant.fields.offset(i);
                         if field_start <= offset {
@@ -930,7 +915,10 @@ where
                 if let Some(ref mut pointee) = result {
                     if let ty::Adt(def, _) = this.ty.kind() {
                         if def.is_box() && offset.bytes() == 0 {
-                            pointee.safe = Some(PointerKind::UniqueOwned);
+                            let optimize = tcx.sess.opts.optimize != OptLevel::No;
+                            pointee.safe = Some(PointerKind::Box {
+                                unpin: optimize && this.ty.boxed_ty().is_unpin(tcx, cx.param_env()),
+                            });
                         }
                     }
                 }
@@ -1132,6 +1120,13 @@ impl From<call::AdjustForForeignAbiError> for FnAbiError<'_> {
 
 impl<'tcx> fmt::Display for FnAbiError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        #[cfg(bootstrap)]
+        match self {
+            Self::Layout(err) => fmt::Display::fmt(err, f),
+            Self::AdjustForForeignAbi(err) => fmt::Display::fmt(err, f),
+        }
+
+        #[cfg(not(bootstrap))]
         match self {
             Self::Layout(err) => err.fmt(f),
             Self::AdjustForForeignAbi(err) => err.fmt(f),

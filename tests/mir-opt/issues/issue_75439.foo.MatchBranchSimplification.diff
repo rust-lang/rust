@@ -67,17 +67,14 @@
   
       bb7: {
           StorageDead(_6);                 // scope 4 at $DIR/issue_75439.rs:+5:35: +5:36
-          Deinit(_0);                      // scope 3 at $DIR/issue_75439.rs:+5:9: +5:39
-          ((_0 as Some).0: [u8; 4]) = move _5; // scope 3 at $DIR/issue_75439.rs:+5:9: +5:39
-          discriminant(_0) = 1;            // scope 3 at $DIR/issue_75439.rs:+5:9: +5:39
+          _0 = Option::<[u8; 4]>::Some(move _5); // scope 3 at $DIR/issue_75439.rs:+5:9: +5:39
           StorageDead(_5);                 // scope 3 at $DIR/issue_75439.rs:+5:38: +5:39
           StorageDead(_4);                 // scope 1 at $DIR/issue_75439.rs:+6:5: +6:6
           goto -> bb9;                     // scope 1 at $DIR/issue_75439.rs:+4:5: +8:6
       }
   
       bb8: {
-          Deinit(_0);                      // scope 1 at $DIR/issue_75439.rs:+7:9: +7:13
-          discriminant(_0) = 0;            // scope 1 at $DIR/issue_75439.rs:+7:9: +7:13
+          _0 = Option::<[u8; 4]>::None;    // scope 1 at $DIR/issue_75439.rs:+7:9: +7:13
           goto -> bb9;                     // scope 1 at $DIR/issue_75439.rs:+4:5: +8:6
       }
   

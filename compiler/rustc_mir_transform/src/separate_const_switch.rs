@@ -250,6 +250,7 @@ fn is_likely_const<'tcx>(mut tracked_place: Place<'tcx>, block: &BasicBlockData<
             | StatementKind::Coverage(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Intrinsic(_)
+            | StatementKind::ConstEvalCounter
             | StatementKind::Nop => {}
         }
     }
@@ -318,6 +319,7 @@ fn find_determining_place<'tcx>(
             | StatementKind::AscribeUserType(_, _)
             | StatementKind::Coverage(_)
             | StatementKind::Intrinsic(_)
+            | StatementKind::ConstEvalCounter
             | StatementKind::Nop => {}
 
             // If the discriminant is set, it is always set

@@ -271,6 +271,7 @@ pub enum ExprPrecedence {
     Try,
     InlineAsm,
     Mac,
+    FormatArgs,
 
     Array,
     Repeat,
@@ -335,7 +336,8 @@ impl ExprPrecedence {
             | ExprPrecedence::Index
             | ExprPrecedence::Try
             | ExprPrecedence::InlineAsm
-            | ExprPrecedence::Mac => PREC_POSTFIX,
+            | ExprPrecedence::Mac
+            | ExprPrecedence::FormatArgs => PREC_POSTFIX,
 
             // Never need parens
             ExprPrecedence::Array

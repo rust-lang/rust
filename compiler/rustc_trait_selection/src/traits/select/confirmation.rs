@@ -8,12 +8,11 @@
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_middle::ty::{
-    self, Binder, GenericArg, GenericArgKind, GenericParamDefKind, InternalSubsts, SubstsRef,
-    ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt,
+    self, Binder, GenericParamDefKind, InternalSubsts, SubstsRef, ToPolyTraitRef, ToPredicate,
+    TraitRef, Ty, TyCtxt, TypeVisitable,
 };
 use rustc_session::config::TraitSolver;
 use rustc_span::def_id::DefId;
@@ -152,7 +151,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let trait_predicate = self.infcx.shallow_resolve(obligation.predicate);
         let placeholder_trait_predicate =
-            self.infcx.replace_bound_vars_with_placeholders(trait_predicate).trait_ref;
+            self.infcx.instantiate_binder_with_placeholders(trait_predicate).trait_ref;
         let placeholder_self_ty = placeholder_trait_predicate.self_ty();
         let placeholder_trait_predicate = ty::Binder::dummy(placeholder_trait_predicate);
         let (def_id, substs) = match *placeholder_self_ty.kind() {
@@ -337,7 +336,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let cause = obligation.derived_cause(BuiltinDerivedObligation);
 
             let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
-            let trait_ref = self.infcx.replace_bound_vars_with_placeholders(poly_trait_ref);
+            let trait_ref = self.infcx.instantiate_binder_with_placeholders(poly_trait_ref);
             let trait_obligations: Vec<PredicateObligation<'_>> = self.impl_or_trait_obligations(
                 &cause,
                 obligation.recursion_depth + 1,
@@ -428,7 +427,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         debug!(?obligation, ?index, "confirm_object_candidate");
 
-        let trait_predicate = self.infcx.replace_bound_vars_with_placeholders(obligation.predicate);
+        let trait_predicate = self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
         let self_ty = self.infcx.shallow_resolve(trait_predicate.self_ty());
         let obligation_trait_ref = ty::Binder::dummy(trait_predicate.trait_ref);
         let ty::Dynamic(data, ..) = *self_ty.kind() else {
@@ -438,7 +437,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let object_trait_ref = data.principal().unwrap_or_else(|| {
             span_bug!(obligation.cause.span, "object candidate with no principal")
         });
-        let object_trait_ref = self.infcx.replace_bound_vars_with_fresh_vars(
+        let object_trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
             HigherRankedType,
             object_trait_ref,
@@ -525,29 +524,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .kind
                         {
                             GenericParamDefKind::Type { .. } => {
-                                let kind = ty::BoundTyKind::Param(param.name);
+                                let kind = ty::BoundTyKind::Param(param.def_id, param.name);
                                 let bound_var = ty::BoundVariableKind::Ty(kind);
                                 bound_vars.push(bound_var);
-                                tcx.mk_ty(ty::Bound(
+                                tcx.mk_bound(
                                     ty::INNERMOST,
                                     ty::BoundTy {
                                         var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                                         kind,
                                     },
-                                ))
+                                )
                                 .into()
                             }
                             GenericParamDefKind::Lifetime => {
                                 let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
                                 let bound_var = ty::BoundVariableKind::Region(kind);
                                 bound_vars.push(bound_var);
-                                tcx.mk_region(ty::ReLateBound(
+                                tcx.mk_re_late_bound(
                                     ty::INNERMOST,
                                     ty::BoundRegion {
                                         var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                                         kind,
                                     },
-                                ))
+                                )
                                 .into()
                             }
                             GenericParamDefKind::Const { .. } => {
@@ -558,15 +557,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                         ty::INNERMOST,
                                         ty::BoundVar::from_usize(bound_vars.len() - 1),
                                     ),
-                                    tcx.type_of(param.def_id),
+                                    tcx.type_of(param.def_id)
+                                        .no_bound_vars()
+                                        .expect("const parameter types cannot be generic"),
                                 )
                                 .into()
                             }
                         });
-                        let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
+                        let bound_vars = tcx.intern_bound_variable_kinds(&bound_vars);
                         let assoc_ty_substs = tcx.intern_substs(&substs);
-
-                        let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
                         let bound =
                             bound.map_bound(|b| b.kind().skip_binder()).subst(tcx, assoc_ty_substs);
                         tcx.mk_predicate(ty::Binder::bind_with_vars(bound, bound_vars))
@@ -630,7 +629,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
-        let output_ty = self.infcx.replace_bound_vars_with_placeholders(sig.output());
+        let output_ty = self.infcx.instantiate_binder_with_placeholders(sig.output());
         let output_ty = normalize_with_depth_to(
             self,
             obligation.param_env,
@@ -653,7 +652,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?obligation, "confirm_trait_alias_candidate");
 
         let alias_def_id = obligation.predicate.def_id();
-        let predicate = self.infcx.replace_bound_vars_with_placeholders(obligation.predicate);
+        let predicate = self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
         let trait_ref = predicate.trait_ref;
         let trait_def_id = trait_ref.def_id;
         let substs = trait_ref.substs;
@@ -1009,7 +1008,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // `T` -> `Trait`
             (_, &ty::Dynamic(ref data, r, ty::Dyn)) => {
                 let mut object_dids = data.auto_traits().chain(data.principal_def_id());
-                if let Some(did) = object_dids.find(|did| !tcx.is_object_safe(*did)) {
+                if let Some(did) = object_dids.find(|did| !tcx.check_is_object_safe(*did)) {
                     return Err(TraitNotObjectSafe(did));
                 }
 
@@ -1064,50 +1063,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // `Struct<T>` -> `Struct<U>`
             (&ty::Adt(def, substs_a), &ty::Adt(_, substs_b)) => {
-                let maybe_unsizing_param_idx = |arg: GenericArg<'tcx>| match arg.unpack() {
-                    GenericArgKind::Type(ty) => match ty.kind() {
-                        ty::Param(p) => Some(p.index),
-                        _ => None,
-                    },
-
-                    // Lifetimes aren't allowed to change during unsizing.
-                    GenericArgKind::Lifetime(_) => None,
-
-                    GenericArgKind::Const(ct) => match ct.kind() {
-                        ty::ConstKind::Param(p) => Some(p.index),
-                        _ => None,
-                    },
-                };
-
-                // FIXME(eddyb) cache this (including computing `unsizing_params`)
-                // by putting it in a query; it would only need the `DefId` as it
-                // looks at declared field types, not anything substituted.
-
-                // The last field of the structure has to exist and contain type/const parameters.
-                let (tail_field, prefix_fields) =
-                    def.non_enum_variant().fields.split_last().ok_or(Unimplemented)?;
-                let tail_field_ty = tcx.bound_type_of(tail_field.did);
-
-                let mut unsizing_params = GrowableBitSet::new_empty();
-                for arg in tail_field_ty.0.walk() {
-                    if let Some(i) = maybe_unsizing_param_idx(arg) {
-                        unsizing_params.insert(i);
-                    }
-                }
-
-                // Ensure none of the other fields mention the parameters used
-                // in unsizing.
-                for field in prefix_fields {
-                    for arg in tcx.type_of(field.did).walk() {
-                        if let Some(i) = maybe_unsizing_param_idx(arg) {
-                            unsizing_params.remove(i);
-                        }
-                    }
-                }
-
+                let unsizing_params = tcx.unsizing_params_for_adt(def.did());
                 if unsizing_params.is_empty() {
                     return Err(Unimplemented);
                 }
+
+                let tail_field = def
+                    .non_enum_variant()
+                    .fields
+                    .last()
+                    .expect("expected unsized ADT to have a tail field");
+                let tail_field_ty = tcx.type_of(tail_field.did);
 
                 // Extract `TailField<T>` and `TailField<U>` from `Struct<T>` and `Struct<U>`,
                 // normalizing in the process, since `type_of` returns something directly from
@@ -1223,7 +1189,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let cause = obligation.derived_cause(|derived| {
                 ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
                     derived,
-                    impl_def_id,
+                    impl_or_alias_def_id: impl_def_id,
+                    impl_def_predicate_index: None,
                     span: obligation.cause.span,
                 }))
             });
@@ -1284,6 +1251,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 ty::GeneratorWitness(tys) => {
                     stack.extend(tcx.erase_late_bound_regions(tys).to_vec());
+                }
+                ty::GeneratorWitnessMIR(def_id, substs) => {
+                    let tcx = self.tcx();
+                    stack.extend(tcx.generator_hidden_types(def_id).map(|bty| {
+                        let ty = bty.subst(tcx, substs);
+                        debug_assert!(!ty.has_late_bound_regions());
+                        ty
+                    }))
                 }
 
                 // If we have a projection type, make sure to normalize it so we replace it

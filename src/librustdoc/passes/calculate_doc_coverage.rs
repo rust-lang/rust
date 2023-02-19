@@ -216,13 +216,7 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                 );
 
                 let has_doc_example = tests.found_tests != 0;
-                // The `expect_def_id()` should be okay because `local_def_id_to_hir_id`
-                // would presumably panic if a fake `DefIndex` were passed.
-                let hir_id = self
-                    .ctx
-                    .tcx
-                    .hir()
-                    .local_def_id_to_hir_id(i.item_id.expect_def_id().expect_local());
+                let hir_id = DocContext::as_local_hir_id(self.ctx.tcx, i.item_id).unwrap();
                 let (level, source) = self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
 
                 // In case we have:

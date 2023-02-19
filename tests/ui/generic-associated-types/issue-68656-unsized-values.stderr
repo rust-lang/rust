@@ -15,8 +15,8 @@ LL |     type Item<'a>: std::ops::Deref<Target = T>;
    |                                    ^^^^^^^^^^ required by this bound in `UnsafeCopy::Item`
 help: consider further restricting this bound
    |
-LL | impl<T: Copy + std::ops::Deref + Deref<Target = T>> UnsafeCopy<T> for T {
-   |                                +++++++++++++++++++
+LL | impl<T: Copy + std::ops::Deref<Target = T>> UnsafeCopy<T> for T {
+   |                               ++++++++++++
 
 error: aborting due to previous error
 

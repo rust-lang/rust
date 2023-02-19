@@ -107,7 +107,9 @@ error[E0597]: `ap1` does not live long enough
   --> $DIR/variadic-ffi-4.rs:28:11
    |
 LL | pub unsafe extern "C" fn no_escape4(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
-   |                                                        - let's call the lifetime of this reference `'3`
+   |                                                        -                ------- binding `ap1` declared here
+   |                                                        |
+   |                                                        let's call the lifetime of this reference `'3`
 LL |     ap0 = &mut ap1;
    |     ------^^^^^^^^
    |     |     |

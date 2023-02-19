@@ -9,9 +9,7 @@ use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir as hir;
 use rustc_hir::LifetimeParamKind;
-use rustc_hir::{
-    BindingAnnotation, ByRef, GenericArg, GenericParam, GenericParamKind, Mutability, Node, Term,
-};
+use rustc_hir::{BindingAnnotation, ByRef, GenericArg, GenericParam, GenericParamKind, Node, Term};
 use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Ident, IdentPrinter, Symbol};
@@ -1746,7 +1744,7 @@ impl<'a> State<'a> {
                 if by_ref == ByRef::Yes {
                     self.word_nbsp("ref");
                 }
-                if mutbl == Mutability::Mut {
+                if mutbl.is_mut() {
                     self.word_nbsp("mut");
                 }
                 self.print_ident(ident);

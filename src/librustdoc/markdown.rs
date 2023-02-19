@@ -72,7 +72,14 @@ pub(crate) fn render<P: AsRef<Path>>(
     let mut ids = IdMap::new();
     let error_codes = ErrorCodes::from(options.unstable_features.is_nightly_build());
     let text = if !options.markdown_no_toc {
-        MarkdownWithToc(text, &mut ids, error_codes, edition, &playground).into_string()
+        MarkdownWithToc {
+            content: text,
+            ids: &mut ids,
+            error_codes,
+            edition,
+            playground: &playground,
+        }
+        .into_string()
     } else {
         Markdown {
             content: text,

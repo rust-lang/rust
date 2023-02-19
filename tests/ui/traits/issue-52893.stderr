@@ -5,7 +5,7 @@ LL | impl<F, Name, P> AddClass<Name, F> for Class<P>
    |      - this type parameter
 ...
 LL |         builder.push(output);
-   |                 ---- ^^^^^^ expected type parameter `F`, found struct `Class`
+   |                 ---- ^^^^^^ expected type parameter `F`, found `Class<P>`
    |                 |
    |                 arguments to this method are incorrect
    |

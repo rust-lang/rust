@@ -1,0 +1,56 @@
+- // MIR for `ref_copies` before ScalarReplacementOfAggregates
++ // MIR for `ref_copies` after ScalarReplacementOfAggregates
+  
+  fn ref_copies(_1: &Foo) -> () {
+      debug x => _1;                       // in scope 0 at $DIR/sroa.rs:+0:15: +0:16
+      let mut _0: ();                      // return place in scope 0 at $DIR/sroa.rs:+0:24: +0:24
+      let _2: Foo;                         // in scope 0 at $DIR/sroa.rs:+1:9: +1:10
++     let _5: u8;                          // in scope 0 at $DIR/sroa.rs:+1:9: +1:10
++     let _6: ();                          // in scope 0 at $DIR/sroa.rs:+1:9: +1:10
++     let _7: &str;                        // in scope 0 at $DIR/sroa.rs:+1:9: +1:10
++     let _8: std::option::Option<isize>;  // in scope 0 at $DIR/sroa.rs:+1:9: +1:10
+      scope 1 {
+-         debug y => _2;                   // in scope 1 at $DIR/sroa.rs:+1:9: +1:10
++         debug y => Foo{ .0 => _5, .1 => _6, .2 => _7, .3 => _8, }; // in scope 1 at $DIR/sroa.rs:+1:9: +1:10
+          let _3: u8;                      // in scope 1 at $DIR/sroa.rs:+2:9: +2:10
+          scope 2 {
+              debug t => _3;               // in scope 2 at $DIR/sroa.rs:+2:9: +2:10
+              let _4: &str;                // in scope 2 at $DIR/sroa.rs:+3:9: +3:10
+              scope 3 {
+                  debug u => _4;           // in scope 3 at $DIR/sroa.rs:+3:9: +3:10
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);                 // scope 0 at $DIR/sroa.rs:+1:9: +1:10
+-         _2 = (*_1);                      // scope 0 at $DIR/sroa.rs:+1:13: +1:15
++         StorageLive(_5);                 // scope 0 at $DIR/sroa.rs:+1:9: +1:10
++         StorageLive(_6);                 // scope 0 at $DIR/sroa.rs:+1:9: +1:10
++         StorageLive(_7);                 // scope 0 at $DIR/sroa.rs:+1:9: +1:10
++         StorageLive(_8);                 // scope 0 at $DIR/sroa.rs:+1:9: +1:10
++         nop;                             // scope 0 at $DIR/sroa.rs:+1:9: +1:10
++         _5 = ((*_1).0: u8);              // scope 0 at $DIR/sroa.rs:+1:13: +1:15
++         _6 = ((*_1).1: ());              // scope 0 at $DIR/sroa.rs:+1:13: +1:15
++         _7 = ((*_1).2: &str);            // scope 0 at $DIR/sroa.rs:+1:13: +1:15
++         _8 = ((*_1).3: std::option::Option<isize>); // scope 0 at $DIR/sroa.rs:+1:13: +1:15
++         nop;                             // scope 0 at $DIR/sroa.rs:+1:13: +1:15
+          StorageLive(_3);                 // scope 1 at $DIR/sroa.rs:+2:9: +2:10
+-         _3 = (_2.0: u8);                 // scope 1 at $DIR/sroa.rs:+2:13: +2:16
++         _3 = _5;                         // scope 1 at $DIR/sroa.rs:+2:13: +2:16
+          StorageLive(_4);                 // scope 2 at $DIR/sroa.rs:+3:9: +3:10
+-         _4 = (_2.2: &str);               // scope 2 at $DIR/sroa.rs:+3:13: +3:16
++         _4 = _7;                         // scope 2 at $DIR/sroa.rs:+3:13: +3:16
+          _0 = const ();                   // scope 0 at $DIR/sroa.rs:+0:24: +4:2
+          StorageDead(_4);                 // scope 2 at $DIR/sroa.rs:+4:1: +4:2
+          StorageDead(_3);                 // scope 1 at $DIR/sroa.rs:+4:1: +4:2
+-         StorageDead(_2);                 // scope 0 at $DIR/sroa.rs:+4:1: +4:2
++         StorageDead(_5);                 // scope 0 at $DIR/sroa.rs:+4:1: +4:2
++         StorageDead(_6);                 // scope 0 at $DIR/sroa.rs:+4:1: +4:2
++         StorageDead(_7);                 // scope 0 at $DIR/sroa.rs:+4:1: +4:2
++         StorageDead(_8);                 // scope 0 at $DIR/sroa.rs:+4:1: +4:2
++         nop;                             // scope 0 at $DIR/sroa.rs:+4:1: +4:2
+          return;                          // scope 0 at $DIR/sroa.rs:+4:2: +4:2
+      }
+  }
+  

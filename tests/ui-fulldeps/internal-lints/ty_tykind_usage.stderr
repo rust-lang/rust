@@ -121,59 +121,65 @@ LL |         TyKind::GeneratorWitness(..) => (),
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:34:9
    |
-LL |         TyKind::Never => (),
+LL |         TyKind::GeneratorWitnessMIR(..) => (),
    |         ^^^^^^ help: try using `ty::<kind>` directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:35:9
    |
-LL |         TyKind::Tuple(..) => (),
+LL |         TyKind::Never => (),
    |         ^^^^^^ help: try using `ty::<kind>` directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:36:9
    |
-LL |         TyKind::Alias(..) => (),
+LL |         TyKind::Tuple(..) => (),
    |         ^^^^^^ help: try using `ty::<kind>` directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:37:9
    |
-LL |         TyKind::Param(..) => (),
+LL |         TyKind::Alias(..) => (),
    |         ^^^^^^ help: try using `ty::<kind>` directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:38:9
    |
-LL |         TyKind::Bound(..) => (),
+LL |         TyKind::Param(..) => (),
    |         ^^^^^^ help: try using `ty::<kind>` directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:39:9
    |
-LL |         TyKind::Placeholder(..) => (),
+LL |         TyKind::Bound(..) => (),
    |         ^^^^^^ help: try using `ty::<kind>` directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:40:9
    |
-LL |         TyKind::Infer(..) => (),
+LL |         TyKind::Placeholder(..) => (),
    |         ^^^^^^ help: try using `ty::<kind>` directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:41:9
    |
+LL |         TyKind::Infer(..) => (),
+   |         ^^^^^^ help: try using `ty::<kind>` directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:42:9
+   |
 LL |         TyKind::Error(_) => (),
    |         ^^^^^^ help: try using `ty::<kind>` directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
-  --> $DIR/ty_tykind_usage.rs:46:12
+  --> $DIR/ty_tykind_usage.rs:47:12
    |
 LL |     if let TyKind::Int(int_ty) = kind {}
    |            ^^^^^^ help: try using `ty::<kind>` directly: `ty`
 
 error: usage of `ty::TyKind`
-  --> $DIR/ty_tykind_usage.rs:48:24
+  --> $DIR/ty_tykind_usage.rs:49:24
    |
 LL |     fn ty_kind(ty_bad: TyKind<'_>, ty_good: Ty<'_>) {}
    |                        ^^^^^^^^^^
@@ -181,7 +187,7 @@ LL |     fn ty_kind(ty_bad: TyKind<'_>, ty_good: Ty<'_>) {}
    = help: try using `Ty` instead
 
 error: usage of `ty::TyKind`
-  --> $DIR/ty_tykind_usage.rs:50:37
+  --> $DIR/ty_tykind_usage.rs:51:37
    |
 LL |     fn ir_ty_kind<I: Interner>(bad: IrTyKind<I>) -> IrTyKind<I> {
    |                                     ^^^^^^^^^^^
@@ -189,7 +195,7 @@ LL |     fn ir_ty_kind<I: Interner>(bad: IrTyKind<I>) -> IrTyKind<I> {
    = help: try using `Ty` instead
 
 error: usage of `ty::TyKind`
-  --> $DIR/ty_tykind_usage.rs:50:53
+  --> $DIR/ty_tykind_usage.rs:51:53
    |
 LL |     fn ir_ty_kind<I: Interner>(bad: IrTyKind<I>) -> IrTyKind<I> {
    |                                                     ^^^^^^^^^^^
@@ -197,12 +203,12 @@ LL |     fn ir_ty_kind<I: Interner>(bad: IrTyKind<I>) -> IrTyKind<I> {
    = help: try using `Ty` instead
 
 error: usage of `ty::TyKind::<kind>`
-  --> $DIR/ty_tykind_usage.rs:53:9
+  --> $DIR/ty_tykind_usage.rs:54:9
    |
 LL |         IrTyKind::Bool
    |         --------^^^^^^
    |         |
    |         help: try using `ty::<kind>` directly: `ty`
 
-error: aborting due to 32 previous errors
+error: aborting due to 33 previous errors
 

@@ -8,6 +8,7 @@ mod project;
 mod structural_impls;
 pub mod util;
 
+use hir::def_id::LocalDefId;
 use rustc_hir as hir;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Const, ToPredicate, Ty, TyCtxt};
@@ -146,7 +147,7 @@ impl<'tcx, O> Obligation<'tcx, O> {
     pub fn misc(
         tcx: TyCtxt<'tcx>,
         span: Span,
-        body_id: hir::HirId,
+        body_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         trait_ref: impl ToPredicate<'tcx, O>,
     ) -> Obligation<'tcx, O> {

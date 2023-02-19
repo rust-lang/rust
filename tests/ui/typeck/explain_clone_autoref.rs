@@ -9,5 +9,5 @@ fn clone_thing(nc: &NotClone) -> NotClone {
     nc.clone()
     //~^ ERROR mismatched type
     //~| NOTE `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
-    //~| NOTE expected struct `NotClone`, found `&NotClone`
+    //~| NOTE expected `NotClone`, found `&NotClone`
 }

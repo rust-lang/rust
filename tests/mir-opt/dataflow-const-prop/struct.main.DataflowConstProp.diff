@@ -21,8 +21,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/struct.rs:+1:9: +1:14
-          Deinit(_1);                      // scope 0 at $DIR/struct.rs:+1:17: +1:21
-          (_1.0: i32) = const 1_i32;       // scope 0 at $DIR/struct.rs:+1:17: +1:21
+          _1 = S(const 1_i32);             // scope 0 at $DIR/struct.rs:+1:17: +1:21
           StorageLive(_2);                 // scope 1 at $DIR/struct.rs:+2:9: +2:10
           StorageLive(_3);                 // scope 1 at $DIR/struct.rs:+2:13: +2:16
 -         _3 = (_1.0: i32);                // scope 1 at $DIR/struct.rs:+2:13: +2:16

@@ -38,7 +38,7 @@ error[E0503]: cannot use `x` because it was mutably borrowed
   --> $DIR/closure-access-spans.rs:23:13
    |
 LL |     let r = &mut x;
-   |             ------ borrow of `x` occurs here
+   |             ------ `x` is borrowed here
 LL |     move || x;
    |             ^ use of borrowed `x`
 LL |     r.use_ref();
@@ -47,6 +47,8 @@ LL |     r.use_ref();
 error[E0505]: cannot move out of `x` because it is borrowed
   --> $DIR/closure-access-spans.rs:29:5
    |
+LL | fn closure_move_capture_conflict(mut x: String) {
+   |                                  ----- binding `x` declared here
 LL |     let r = &x;
    |             -- borrow of `x` occurs here
 LL |     || x;

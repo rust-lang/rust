@@ -87,7 +87,7 @@ impl<'tcx> VariantDef {
         InhabitedPredicate::all(
             tcx,
             self.fields.iter().map(|field| {
-                let pred = tcx.type_of(field.did).inhabited_predicate(tcx);
+                let pred = tcx.type_of(field.did).subst_identity().inhabited_predicate(tcx);
                 if adt.is_enum() {
                     return pred;
                 }
@@ -191,7 +191,7 @@ fn inhabited_predicate_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> InhabitedP
 
         // If we can evaluate the array length before having a `ParamEnv`, then
         // we can simplify the predicate. This is an optimization.
-        Array(ty, len) => match len.kind().try_to_machine_usize(tcx) {
+        Array(ty, len) => match len.kind().try_to_target_usize(tcx) {
             Some(0) => InhabitedPredicate::True,
             Some(1..) => ty.inhabited_predicate(tcx),
             None => ty.inhabited_predicate(tcx).or(tcx, InhabitedPredicate::ConstIsZero(len)),

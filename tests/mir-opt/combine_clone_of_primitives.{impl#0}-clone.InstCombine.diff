@@ -61,10 +61,7 @@
   
       bb3: {
           StorageDead(_9);                 // scope 0 at $DIR/combine_clone_of_primitives.rs:10:15: 10:16
-          Deinit(_0);                      // scope 0 at $DIR/combine_clone_of_primitives.rs:+0:10: +0:15
-          (_0.0: T) = move _2;             // scope 0 at $DIR/combine_clone_of_primitives.rs:+0:10: +0:15
-          (_0.1: u64) = move _5;           // scope 0 at $DIR/combine_clone_of_primitives.rs:+0:10: +0:15
-          (_0.2: [f32; 3]) = move _8;      // scope 0 at $DIR/combine_clone_of_primitives.rs:+0:10: +0:15
+          _0 = MyThing::<T> { v: move _2, i: move _5, a: move _8 }; // scope 0 at $DIR/combine_clone_of_primitives.rs:+0:10: +0:15
           StorageDead(_8);                 // scope 0 at $DIR/combine_clone_of_primitives.rs:+0:14: +0:15
           StorageDead(_5);                 // scope 0 at $DIR/combine_clone_of_primitives.rs:+0:14: +0:15
           StorageDead(_2);                 // scope 0 at $DIR/combine_clone_of_primitives.rs:+0:14: +0:15

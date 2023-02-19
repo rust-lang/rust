@@ -58,3 +58,39 @@ call-function: ("check-colors", {
     "help_hover_border": "rgb(0, 0, 0)",
     "help_hover_color": "rgb(0, 0, 0)",
 })
+
+// Now testing the top and bottom background in case there is only one scraped examples.
+goto: "file://" + |DOC_PATH| + "/scrape_examples/fn.test.html"
+
+define-function: (
+    "check-background",
+    (theme, background_color_start, background_color_end),
+    block {
+        local-storage: { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false", }
+        reload:
+        assert-css: (".scraped-example:not(.expanded) .code-wrapper::before", {
+            "background-image": "linear-gradient(" + |background_color_start| + ", " +
+                |background_color_end| + ")",
+        })
+        assert-css: (".scraped-example:not(.expanded) .code-wrapper::after", {
+            "background-image": "linear-gradient(to top, " + |background_color_start| + ", " +
+                |background_color_end| + ")",
+        })
+    },
+)
+
+call-function: ("check-background", {
+    "theme": "ayu",
+    "background_color_start": "rgb(15, 20, 25)",
+    "background_color_end": "rgba(15, 20, 25, 0)",
+})
+call-function: ("check-background", {
+    "theme": "dark",
+    "background_color_start": "rgb(53, 53, 53)",
+    "background_color_end": "rgba(53, 53, 53, 0)",
+})
+call-function: ("check-background", {
+    "theme": "light",
+    "background_color_start": "rgb(255, 255, 255)",
+    "background_color_end": "rgba(255, 255, 255, 0)",
+})

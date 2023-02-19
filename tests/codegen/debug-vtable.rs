@@ -9,6 +9,14 @@
 // compile-flags: -Cdebuginfo=2 -Copt-level=0 -Csymbol-mangling-version=v0
 // ignore-tidy-linelength
 
+// Make sure that vtables don't have the unnamed_addr attribute when debuginfo is enabled.
+// This helps debuggers more reliably map from dyn pointer to concrete type.
+// CHECK: @vtable.0 = private constant <{
+// CHECK: @vtable.1 = private constant <{
+// CHECK: @vtable.2 = private constant <{
+// CHECK: @vtable.3 = private constant <{
+// CHECK: @vtable.4 = private constant <{
+
 // NONMSVC: ![[USIZE:[0-9]+]] = !DIBasicType(name: "usize"
 // MSVC: ![[USIZE:[0-9]+]] = !DIDerivedType(tag: DW_TAG_typedef, name: "usize"
 // NONMSVC: ![[PTR:[0-9]+]] = !DIDerivedType(tag: DW_TAG_pointer_type, name: "*const ()"

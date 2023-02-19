@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
 
+use super::utils::remove_dir_if_exists;
+
 #[derive(Debug, Clone)]
 pub(crate) struct Dirs {
     pub(crate) source_dir: PathBuf,
@@ -42,7 +44,6 @@ impl RelPath {
     pub(crate) const DIST: RelPath = RelPath::Base(PathBase::Dist);
 
     pub(crate) const SCRIPTS: RelPath = RelPath::SOURCE.join("scripts");
-    pub(crate) const BUILD_SYSROOT: RelPath = RelPath::SOURCE.join("build_sysroot");
     pub(crate) const PATCHES: RelPath = RelPath::SOURCE.join("patches");
 
     pub(crate) const fn join(&'static self, suffix: &'static str) -> RelPath {
@@ -62,9 +63,7 @@ impl RelPath {
 
     pub(crate) fn ensure_fresh(&self, dirs: &Dirs) {
         let path = self.to_path(dirs);
-        if path.exists() {
-            fs::remove_dir_all(&path).unwrap();
-        }
+        remove_dir_if_exists(&path);
         fs::create_dir_all(path).unwrap();
     }
 }

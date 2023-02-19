@@ -51,6 +51,9 @@ fn expr() {
     check(PrefixEntryPoint::Expr, "-1", "-1");
     check(PrefixEntryPoint::Expr, "fn foo() {}", "fn");
     check(PrefixEntryPoint::Expr, "#[attr] ()", "#[attr] ()");
+    check(PrefixEntryPoint::Expr, "foo.0", "foo.0");
+    check(PrefixEntryPoint::Expr, "foo.0.1", "foo.0.1");
+    check(PrefixEntryPoint::Expr, "foo.0. foo", "foo.0. foo");
 }
 
 #[test]
@@ -88,6 +91,7 @@ fn check(entry: PrefixEntryPoint, input: &str, prefix: &str) {
     for step in entry.parse(&input).iter() {
         match step {
             Step::Token { n_input_tokens, .. } => n_tokens += n_input_tokens as usize,
+            Step::FloatSplit { .. } => n_tokens += 1,
             Step::Enter { .. } | Step::Exit | Step::Error { .. } => (),
         }
     }

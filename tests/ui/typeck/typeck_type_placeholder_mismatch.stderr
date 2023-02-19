@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/typeck_type_placeholder_mismatch.rs:13:21
    |
 LL |     let x: Foo<_> = Bar::<usize>(PhantomData);
-   |            ------   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Foo`, found struct `Bar`
+   |            ------   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Foo<_>`, found `Bar<usize>`
    |            |
    |            expected due to this
    |
@@ -13,7 +13,7 @@ error[E0308]: mismatched types
   --> $DIR/typeck_type_placeholder_mismatch.rs:22:21
    |
 LL |     let x: Foo<_> = Bar::<usize>(PhantomData);
-   |            ------   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Foo`, found struct `Bar`
+   |            ------   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Foo<_>`, found `Bar<usize>`
    |            |
    |            expected due to this
    |

@@ -6,19 +6,15 @@
       let mut _0: usize;                   // return place in scope 0 at $DIR/lower_array_len.rs:+0:60: +0:65
       let mut _2: &[u8];                   // in scope 0 at $DIR/lower_array_len.rs:+1:5: +1:14
       let mut _3: &[u8; N];                // in scope 0 at $DIR/lower_array_len.rs:+1:5: +1:14
-+     let mut _4: &[u8; N];                // in scope 0 at $DIR/lower_array_len.rs:+1:5: +1:14
   
       bb0: {
           StorageLive(_2);                 // scope 0 at $DIR/lower_array_len.rs:+1:5: +1:14
           StorageLive(_3);                 // scope 0 at $DIR/lower_array_len.rs:+1:5: +1:14
           _3 = &_1;                        // scope 0 at $DIR/lower_array_len.rs:+1:5: +1:14
-+         StorageLive(_4);                 // scope 0 at $DIR/lower_array_len.rs:+1:5: +1:14
-+         _4 = _3;                         // scope 0 at $DIR/lower_array_len.rs:+1:5: +1:14
           _2 = move _3 as &[u8] (Pointer(Unsize)); // scope 0 at $DIR/lower_array_len.rs:+1:5: +1:14
           StorageDead(_3);                 // scope 0 at $DIR/lower_array_len.rs:+1:7: +1:8
 -         _0 = Len((*_2));                 // scope 0 at $DIR/lower_array_len.rs:+1:5: +1:14
-+         _0 = Len((*_4));                 // scope 0 at $DIR/lower_array_len.rs:+1:5: +1:14
-+         StorageDead(_4);                 // scope 0 at $DIR/lower_array_len.rs:+1:5: +1:14
++         _0 = const N;                    // scope 0 at $DIR/lower_array_len.rs:+1:5: +1:14
           goto -> bb1;                     // scope 0 at $DIR/lower_array_len.rs:+1:5: +1:14
       }
   

@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     (x, y) = &(1, 2);
    |     ^^^^^^   ------- this expression has type `&({integer}, {integer})`
    |     |
-   |     expected reference, found tuple
+   |     expected `&({integer}, {integer})`, found `(_, _)`
    |
    = note: expected reference `&({integer}, {integer})`
                   found tuple `(_, _)`

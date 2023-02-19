@@ -5,7 +5,7 @@
 
 pub struct Foo;
 
-// @count foo/struct.Foo.html '//*[@class="impl-items"]//*[@class="method has-srclink"]' 2
+// @count foo/struct.Foo.html '//*[@class="impl-items"]//*[@class="method"]' 2
 // @!has - '//*[@class="impl-items"]//*[@class="method"]' 'mut'
 impl Foo {
     pub fn foo(mut self) {}
@@ -13,6 +13,6 @@ impl Foo {
     pub fn bar(mut bar: ()) {}
 }
 
-// @count foo/fn.baz.html '//div[@class="item-decl"]/pre[@class="rust"]' 1
-// @!has - '//div[@class="item-decl"]/pre[@class="rust"]' 'mut'
+// @count foo/fn.baz.html '//pre[@class="rust item-decl"]' 1
+// @!has - '//pre[@class="rust item-decl"]' 'mut'
 pub fn baz(mut foo: Foo) {}

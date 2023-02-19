@@ -242,6 +242,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_inline_asm(&mut self, asm: &'ast InlineAsm) {
         walk_inline_asm(self, asm)
     }
+    fn visit_format_args(&mut self, fmt: &'ast FormatArgs) {
+        walk_format_args(self, fmt)
+    }
     fn visit_inline_asm_sym(&mut self, sym: &'ast InlineAsmSym) {
         walk_inline_asm_sym(self, sym)
     }
@@ -756,6 +759,15 @@ pub fn walk_inline_asm_sym<'a, V: Visitor<'a>>(visitor: &mut V, sym: &'a InlineA
     visitor.visit_path(&sym.path, sym.id);
 }
 
+pub fn walk_format_args<'a, V: Visitor<'a>>(visitor: &mut V, fmt: &'a FormatArgs) {
+    for arg in fmt.arguments.all_args() {
+        if let FormatArgumentKind::Named(name) = arg.kind {
+            visitor.visit_ident(name);
+        }
+        visitor.visit_expr(&arg.expr);
+    }
+}
+
 pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
     walk_list!(visitor, visit_attribute, expression.attrs.iter());
 
@@ -896,6 +908,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::MacCall(mac) => visitor.visit_mac_call(mac),
         ExprKind::Paren(subexpression) => visitor.visit_expr(subexpression),
         ExprKind::InlineAsm(asm) => visitor.visit_inline_asm(asm),
+        ExprKind::FormatArgs(f) => visitor.visit_format_args(f),
         ExprKind::Yield(optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }

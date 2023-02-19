@@ -56,9 +56,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
 use rustc_hir::intravisit::FnKind as HirFnKind;
-use rustc_hir::{
-    Body, FnDecl, ForeignItemKind, GenericParamKind, HirId, Node, PatKind, PredicateOrigin,
-};
+use rustc_hir::{Body, FnDecl, ForeignItemKind, GenericParamKind, Node, PatKind, PredicateOrigin};
 use rustc_index::vec::Idx;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
@@ -185,7 +183,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..) => {
-                self.check_heap_type(cx, it.span, cx.tcx.type_of(it.owner_id))
+                self.check_heap_type(cx, it.span, cx.tcx.type_of(it.owner_id).subst_identity())
             }
             _ => (),
         }
@@ -194,7 +192,11 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
         match it.kind {
             hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
                 for field in struct_def.fields() {
-                    self.check_heap_type(cx, field.span, cx.tcx.type_of(field.def_id));
+                    self.check_heap_type(
+                        cx,
+                        field.span,
+                        cx.tcx.type_of(field.def_id).subst_identity(),
+                    );
                 }
             }
             _ => (),
@@ -582,26 +584,28 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
-        // If the method is an impl for a trait, don't doc.
-        if method_context(cx, impl_item.hir_id()) == MethodLateContext::TraitImpl {
-            return;
-        }
+        let context = method_context(cx, impl_item.owner_id.def_id);
 
-        // If the method is an impl for an item with docs_hidden, don't doc.
-        if method_context(cx, impl_item.hir_id()) == MethodLateContext::PlainImpl {
-            let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
-            let impl_ty = cx.tcx.type_of(parent);
-            let outerdef = match impl_ty.kind() {
-                ty::Adt(def, _) => Some(def.did()),
-                ty::Foreign(def_id) => Some(*def_id),
-                _ => None,
-            };
-            let is_hidden = match outerdef {
-                Some(id) => cx.tcx.is_doc_hidden(id),
-                None => false,
-            };
-            if is_hidden {
-                return;
+        match context {
+            // If the method is an impl for a trait, don't doc.
+            MethodLateContext::TraitImpl => return,
+            MethodLateContext::TraitAutoImpl => {}
+            // If the method is an impl for an item with docs_hidden, don't doc.
+            MethodLateContext::PlainImpl => {
+                let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
+                let impl_ty = cx.tcx.type_of(parent).subst_identity();
+                let outerdef = match impl_ty.kind() {
+                    ty::Adt(def, _) => Some(def.did()),
+                    ty::Foreign(def_id) => Some(*def_id),
+                    _ => None,
+                };
+                let is_hidden = match outerdef {
+                    Some(id) => cx.tcx.is_doc_hidden(id),
+                    None => false,
+                };
+                if is_hidden {
+                    return;
+                }
             }
         }
 
@@ -698,7 +702,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         // and recommending Copy might be a bad idea.
         for field in def.all_fields() {
             let did = field.did;
-            if cx.tcx.type_of(did).is_unsafe_ptr() {
+            if cx.tcx.type_of(did).subst_identity().is_unsafe_ptr() {
                 return;
             }
         }
@@ -732,7 +736,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
             cx.tcx,
             param_env,
             ty,
-            traits::ObligationCause::misc(item.span, item.hir_id()),
+            traits::ObligationCause::misc(item.span, item.owner_id.def_id),
         )
         .is_ok()
         {
@@ -798,7 +802,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
         if self.impling_types.is_none() {
             let mut impls = LocalDefIdSet::default();
             cx.tcx.for_each_impl(debug, |d| {
-                if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
+                if let Some(ty_def) = cx.tcx.type_of(d).subst_identity().ty_adt_def() {
                     if let Some(def_id) = ty_def.did().as_local() {
                         impls.insert(def_id);
                     }
@@ -1296,19 +1300,18 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         _: &'tcx FnDecl<'_>,
         _: &'tcx Body<'_>,
         span: Span,
-        hir_id: HirId,
+        def_id: LocalDefId,
     ) {
         if fn_kind.asyncness() == IsAsync::Async
             && !cx.tcx.features().closure_track_caller
-            && let attrs = cx.tcx.hir().attrs(hir_id)
             // Now, check if the function has the `#[track_caller]` attribute
-            && let Some(attr) = attrs.iter().find(|attr| attr.has_name(sym::track_caller))
-            {
-                cx.emit_spanned_lint(UNGATED_ASYNC_FN_TRACK_CALLER, attr.span, BuiltinUngatedAsyncFnTrackCaller {
-                    label: span,
-                    parse_sess: &cx.tcx.sess.parse_sess,
-                });
-            }
+            && let Some(attr) = cx.tcx.get_attr(def_id.to_def_id(), sym::track_caller)
+        {
+            cx.emit_spanned_lint(UNGATED_ASYNC_FN_TRACK_CALLER, attr.span, BuiltinUngatedAsyncFnTrackCaller {
+                label: span,
+                parse_sess: &cx.tcx.sess.parse_sess,
+            });
+        }
     }
 }
 
@@ -1592,15 +1595,19 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     Clause(Clause::TypeOutlives(..)) |
                     Clause(Clause::RegionOutlives(..)) => "lifetime",
 
+                    // `ConstArgHasType` is never global as `ct` is always a param
+                    Clause(Clause::ConstArgHasType(..)) |
                     // Ignore projections, as they can only be global
                     // if the trait bound is global
                     Clause(Clause::Projection(..)) |
+                    AliasEq(..) |
                     // Ignore bounds that a user can't type
                     WellFormed(..) |
                     ObjectSafe(..) |
                     ClosureKind(..) |
                     Subtype(..) |
                     Coerce(..) |
+                    // FIXME(generic_const_exprs): `ConstEvaluatable` can be written
                     ConstEvaluatable(..) |
                     ConstEquate(..) |
                     Ambiguous |
@@ -2006,7 +2013,7 @@ impl ExplicitOutlivesRequirements {
         inferred_outlives: &[ty::Region<'tcx>],
         predicate_span: Span,
     ) -> Vec<(usize, Span)> {
-        use rustc_middle::middle::resolve_lifetime::Region;
+        use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 
         bounds
             .iter()
@@ -2016,8 +2023,8 @@ impl ExplicitOutlivesRequirements {
                     return None;
                 };
 
-                let is_inferred = match tcx.named_region(lifetime.hir_id) {
-                    Some(Region::EarlyBound(def_id)) => inferred_outlives
+                let is_inferred = match tcx.named_bound_var(lifetime.hir_id) {
+                    Some(ResolvedArg::EarlyBound(def_id)) => inferred_outlives
                         .iter()
                         .any(|r| matches!(**r, ty::ReEarlyBound(ebr) if { ebr.def_id == def_id })),
                     _ => false,
@@ -2096,7 +2103,7 @@ impl ExplicitOutlivesRequirements {
 
 impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        use rustc_middle::middle::resolve_lifetime::Region;
+        use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 
         let def_id = item.owner_id.def_id;
         if let hir::ItemKind::Struct(_, hir_generics)
@@ -2119,8 +2126,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                 let (relevant_lifetimes, bounds, predicate_span, in_where_clause) =
                     match where_predicate {
                         hir::WherePredicate::RegionPredicate(predicate) => {
-                            if let Some(Region::EarlyBound(region_def_id)) =
-                                cx.tcx.named_region(predicate.lifetime.hir_id)
+                            if let Some(ResolvedArg::EarlyBound(region_def_id)) =
+                                cx.tcx.named_bound_var(predicate.lifetime.hir_id)
                             {
                                 (
                                     Self::lifetimes_outliving_lifetime(
@@ -2175,13 +2182,31 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     dropped_predicate_count += 1;
                 }
 
-                if drop_predicate && !in_where_clause {
-                    lint_spans.push(predicate_span);
-                } else if drop_predicate && i + 1 < num_predicates {
-                    // If all the bounds on a predicate were inferable and there are
-                    // further predicates, we want to eat the trailing comma.
-                    let next_predicate_span = hir_generics.predicates[i + 1].span();
-                    where_lint_spans.push(predicate_span.to(next_predicate_span.shrink_to_lo()));
+                if drop_predicate {
+                    if !in_where_clause {
+                        lint_spans.push(predicate_span);
+                    } else if predicate_span.from_expansion() {
+                        // Don't try to extend the span if it comes from a macro expansion.
+                        where_lint_spans.push(predicate_span);
+                    } else if i + 1 < num_predicates {
+                        // If all the bounds on a predicate were inferable and there are
+                        // further predicates, we want to eat the trailing comma.
+                        let next_predicate_span = hir_generics.predicates[i + 1].span();
+                        if next_predicate_span.from_expansion() {
+                            where_lint_spans.push(predicate_span);
+                        } else {
+                            where_lint_spans
+                                .push(predicate_span.to(next_predicate_span.shrink_to_lo()));
+                        }
+                    } else {
+                        // Eat the optional trailing comma after the last predicate.
+                        let where_span = hir_generics.where_clause_span;
+                        if where_span.from_expansion() {
+                            where_lint_spans.push(predicate_span);
+                        } else {
+                            where_lint_spans.push(predicate_span.to(where_span.shrink_to_hi()));
+                        }
+                    }
                 } else {
                     where_lint_spans.extend(self.consolidate_outlives_bound_spans(
                         predicate_span.shrink_to_lo(),
@@ -2224,6 +2249,11 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                 } else {
                     Applicability::MaybeIncorrect
                 };
+
+                // Due to macros, there might be several predicates with the same span
+                // and we only want to suggest removing them once.
+                lint_spans.sort_unstable();
+                lint_spans.dedup();
 
                 cx.emit_spanned_lint(
                     EXPLICIT_OUTLIVES_REQUIREMENTS,
@@ -2284,11 +2314,8 @@ impl EarlyLintPass for IncompleteFeatures {
             .for_each(|(&name, &span)| {
                 let note = rustc_feature::find_feature_issue(name, GateIssue::Language)
                     .map(|n| BuiltinIncompleteFeaturesNote { n });
-                let help = if HAS_MIN_FEATURES.contains(&name) {
-                    Some(BuiltinIncompleteFeaturesHelp)
-                } else {
-                    None
-                };
+                let help =
+                    HAS_MIN_FEATURES.contains(&name).then_some(BuiltinIncompleteFeaturesHelp);
                 cx.emit_spanned_lint(
                     INCOMPLETE_FEATURES,
                     span,
@@ -2581,7 +2608,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     ty.tuple_fields().iter().find_map(|field| ty_find_init_error(cx, field, init))
                 }
                 Array(ty, len) => {
-                    if matches!(len.try_eval_usize(cx.tcx, cx.param_env), Some(v) if v > 0) {
+                    if matches!(len.try_eval_target_usize(cx.tcx, cx.param_env), Some(v) if v > 0) {
                         // Array length known at array non-empty -- recurse.
                         ty_find_init_error(cx, *ty, init)
                     } else {
@@ -2661,7 +2688,7 @@ pub struct ClashingExternDeclarations {
     /// the symbol should be reported as a clashing declaration.
     // FIXME: Technically, we could just store a &'tcx str here without issue; however, the
     // `impl_lint_pass` macro doesn't currently support lints parametric over a lifetime.
-    seen_decls: FxHashMap<Symbol, HirId>,
+    seen_decls: FxHashMap<Symbol, hir::OwnerId>,
 }
 
 /// Differentiate between whether the name for an extern decl came from the link_name attribute or
@@ -2687,19 +2714,20 @@ impl ClashingExternDeclarations {
     pub(crate) fn new() -> Self {
         ClashingExternDeclarations { seen_decls: FxHashMap::default() }
     }
+
     /// Insert a new foreign item into the seen set. If a symbol with the same name already exists
     /// for the item, return its HirId without updating the set.
-    fn insert(&mut self, tcx: TyCtxt<'_>, fi: &hir::ForeignItem<'_>) -> Option<HirId> {
+    fn insert(&mut self, tcx: TyCtxt<'_>, fi: &hir::ForeignItem<'_>) -> Option<hir::OwnerId> {
         let did = fi.owner_id.to_def_id();
         let instance = Instance::new(did, ty::List::identity_for_item(tcx, did));
         let name = Symbol::intern(tcx.symbol_name(instance).name);
-        if let Some(&hir_id) = self.seen_decls.get(&name) {
+        if let Some(&existing_id) = self.seen_decls.get(&name) {
             // Avoid updating the map with the new entry when we do find a collision. We want to
             // make sure we're always pointing to the first definition as the previous declaration.
             // This lets us avoid emitting "knock-on" diagnostics.
-            Some(hir_id)
+            Some(existing_id)
         } else {
-            self.seen_decls.insert(name, fi.hir_id())
+            self.seen_decls.insert(name, fi.owner_id)
         }
     }
 
@@ -2830,8 +2858,8 @@ impl ClashingExternDeclarations {
                                     structurally_same_type_impl(
                                         seen_types,
                                         cx,
-                                        tcx.type_of(a_did),
-                                        tcx.type_of(b_did),
+                                        tcx.type_of(a_did).subst_identity(),
+                                        tcx.type_of(b_did).subst_identity(),
                                         ckind,
                                     )
                                 },
@@ -2926,16 +2954,16 @@ impl ClashingExternDeclarations {
 impl_lint_pass!(ClashingExternDeclarations => [CLASHING_EXTERN_DECLARATIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
+    #[instrument(level = "trace", skip(self, cx))]
     fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, this_fi: &hir::ForeignItem<'_>) {
-        trace!("ClashingExternDeclarations: check_foreign_item: {:?}", this_fi);
         if let ForeignItemKind::Fn(..) = this_fi.kind {
             let tcx = cx.tcx;
-            if let Some(existing_hid) = self.insert(tcx, this_fi) {
-                let existing_decl_ty = tcx.type_of(tcx.hir().local_def_id(existing_hid));
-                let this_decl_ty = tcx.type_of(this_fi.owner_id);
+            if let Some(existing_did) = self.insert(tcx, this_fi) {
+                let existing_decl_ty = tcx.type_of(existing_did).skip_binder();
+                let this_decl_ty = tcx.type_of(this_fi.owner_id).subst_identity();
                 debug!(
                     "ClashingExternDeclarations: Comparing existing {:?}: {:?} to this {:?}: {:?}",
-                    existing_hid, existing_decl_ty, this_fi.owner_id, this_decl_ty
+                    existing_did, existing_decl_ty, this_fi.owner_id, this_decl_ty
                 );
                 // Check that the declarations match.
                 if !Self::structurally_same_type(
@@ -2944,7 +2972,7 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
                     this_decl_ty,
                     CItemKind::Declaration,
                 ) {
-                    let orig_fi = tcx.hir().expect_foreign_item(existing_hid.expect_owner());
+                    let orig_fi = tcx.hir().expect_foreign_item(existing_did);
                     let orig = Self::name_of_extern_decl(tcx, orig_fi);
 
                     // We want to ensure that we use spans for both decls that include where the

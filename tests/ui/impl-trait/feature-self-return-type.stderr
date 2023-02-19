@@ -4,6 +4,7 @@ error[E0597]: `bar` does not live long enough
 LL |         let x = {
    |             - borrow later stored here
 LL |             let bar = 22;
+   |                 --- binding `bar` declared here
 LL |             Foo::new(&bar).into()
    |                      ^^^^ borrowed value does not live long enough
 LL |
@@ -16,6 +17,7 @@ error[E0597]: `y` does not live long enough
 LL |         let x = {
    |             - borrow later stored here
 LL |             let y = ();
+   |                 - binding `y` declared here
 LL |             foo(&y)
    |                 ^^ borrowed value does not live long enough
 LL |
@@ -28,6 +30,7 @@ error[E0597]: `y` does not live long enough
 LL |         let x = {
    |             - borrow later stored here
 LL |             let y = ();
+   |                 - binding `y` declared here
 LL |             foo(&y)
    |                 ^^ borrowed value does not live long enough
 LL |

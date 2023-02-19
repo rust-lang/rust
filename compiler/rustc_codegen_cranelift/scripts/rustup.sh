@@ -17,10 +17,10 @@ case $1 in
         done
 
         ./clean_all.sh
+
         ./y.rs prepare
 
-        (cd build_sysroot && cargo update)
-
+        (cd download/sysroot && cargo update && cargo fetch && cp Cargo.lock ../../build_sysroot/)
         ;;
     "commit")
         git add rust-toolchain build_sysroot/Cargo.lock

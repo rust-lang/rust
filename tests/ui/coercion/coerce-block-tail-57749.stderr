@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-block-tail-57749.rs:33:14
    |
 LL |     reset(&{ Homura });
-   |              ^^^^^^ expected `u32`, found struct `Homura`
+   |              ^^^^^^ expected `u32`, found `Homura`
    |
 help: consider dereferencing the type
    |

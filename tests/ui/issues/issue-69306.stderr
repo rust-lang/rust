@@ -22,7 +22,7 @@ error[E0308]: mismatched types
 LL | impl<T> S0<T> {
    |      - this type parameter
 LL |     const C: S0<u8> = Self(0);
-   |                       ^^^^^^^ expected `u8`, found type parameter `T`
+   |                       ^^^^^^^ expected `S0<u8>`, found `S0<T>`
    |
    = note: expected struct `S0<u8>`
               found struct `S0<T>`
@@ -89,7 +89,7 @@ error[E0308]: mismatched types
 LL | impl<T> S1<T, u8> {
    |      - this type parameter
 LL |     const C: S1<u8, u8> = Self(0, 1);
-   |                           ^^^^^^^^^^ expected `u8`, found type parameter `T`
+   |                           ^^^^^^^^^^ expected `S1<u8, u8>`, found `S1<T, u8>`
    |
    = note: expected struct `S1<u8, _>`
               found struct `S1<T, _>`
@@ -126,7 +126,7 @@ LL |     fn map<U>(x: U) -> S2<U> {
    |            |
    |            expected type parameter
 LL |         Self(x)
-   |         ^^^^^^^ expected type parameter `U`, found type parameter `T`
+   |         ^^^^^^^ expected `S2<U>`, found `S2<T>`
    |
    = note: expected struct `S2<U>`
               found struct `S2<T>`

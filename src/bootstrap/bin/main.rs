@@ -16,12 +16,17 @@ fn main() {
     let mut build_lock;
     let _build_lock_guard;
     if cfg!(any(unix, windows)) {
-        build_lock = fd_lock::RwLock::new(t!(std::fs::File::create(config.out.join("lock"))));
+        let path = config.out.join("lock");
+        build_lock = fd_lock::RwLock::new(t!(std::fs::File::create(&path)));
         _build_lock_guard = match build_lock.try_write() {
             Ok(lock) => lock,
             err => {
-                println!("warning: build directory locked, waiting for lock");
                 drop(err);
+                if let Some(pid) = get_lock_owner(&path) {
+                    println!("warning: build directory locked by process {pid}, waiting for lock");
+                } else {
+                    println!("warning: build directory locked, waiting for lock");
+                }
                 t!(build_lock.write())
             }
         };
@@ -97,4 +102,31 @@ fn check_version(config: &Config) -> Option<String> {
     msg.push_str(&suggestion);
 
     Some(msg)
+}
+
+/// Get the PID of the process which took the write lock by
+/// parsing `/proc/locks`.
+#[cfg(target_os = "linux")]
+fn get_lock_owner(f: &std::path::Path) -> Option<u64> {
+    use std::fs::File;
+    use std::io::{BufRead, BufReader};
+    use std::os::unix::fs::MetadataExt;
+
+    let lock_inode = std::fs::metadata(f).ok()?.ino();
+    let lockfile = File::open("/proc/locks").ok()?;
+    BufReader::new(lockfile).lines().find_map(|line| {
+        //                       pid--vvvvvv       vvvvvvv--- inode
+        // 21: FLOCK  ADVISORY  WRITE 359238 08:02:3719774 0 EOF
+        let line = line.ok()?;
+        let parts = line.split_whitespace().collect::<Vec<_>>();
+        let (pid, inode) = (parts[4].parse::<u64>().ok()?, &parts[5]);
+        let inode = inode.rsplit_once(':')?.1.parse::<u64>().ok()?;
+        if inode == lock_inode { Some(pid) } else { None }
+    })
+}
+
+#[cfg(not(target_os = "linux"))]
+fn get_lock_owner(_: &std::path::Path) -> Option<u64> {
+    // FIXME: Implement on other OS's
+    None
 }

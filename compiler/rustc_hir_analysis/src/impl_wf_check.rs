@@ -55,7 +55,7 @@ fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let min_specialization = tcx.features().min_specialization;
     let module = tcx.hir_module_items(module_def_id);
     for id in module.items() {
-        if matches!(tcx.def_kind(id.owner_id), DefKind::Impl) {
+        if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. }) {
             enforce_impl_params_are_constrained(tcx, id.owner_id.def_id);
             if min_specialization {
                 check_min_specialization(tcx, id.owner_id.def_id);
@@ -70,7 +70,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
     // Every lifetime used in an associated type must be constrained.
-    let impl_self_ty = tcx.type_of(impl_def_id);
+    let impl_self_ty = tcx.type_of(impl_def_id).subst_identity();
     if impl_self_ty.references_error() {
         // Don't complain about unconstrained type params when self ty isn't known due to errors.
         // (#36836)
@@ -104,7 +104,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
             match item.kind {
                 ty::AssocKind::Type => {
                     if item.defaultness(tcx).has_value() {
-                        cgp::parameters_for(&tcx.type_of(def_id), true)
+                        cgp::parameters_for(&tcx.type_of(def_id).subst_identity(), true)
                     } else {
                         Vec::new()
                     }

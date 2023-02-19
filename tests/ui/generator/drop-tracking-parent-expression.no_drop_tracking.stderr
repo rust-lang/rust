@@ -1,0 +1,334 @@
+error: generator cannot be sent between threads safely
+  --> $DIR/drop-tracking-parent-expression.rs:27:25
+   |
+LL |               assert_send(g);
+   |                           ^ generator is not `Send`
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+   |
+   = help: within `[generator@$DIR/drop-tracking-parent-expression.rs:21:21: 21:28]`, the trait `Send` is not implemented for `copy::Client`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/drop-tracking-parent-expression.rs:25:22
+   |
+LL |               let g = move || match drop($name::Client { ..$name::Client::default() }) {
+   |                                                            ------------------------ has type `copy::Client` which is not `Send`
+...
+LL |                   _ => yield,
+   |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
+LL |               };
+   |               - `$name::Client::default()` is later dropped here
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+note: required by a bound in `assert_send`
+  --> $DIR/drop-tracking-parent-expression.rs:49:19
+   |
+LL | fn assert_send<T: Send>(_thing: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+   = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: generator cannot be sent between threads safely
+  --> $DIR/drop-tracking-parent-expression.rs:40:25
+   |
+LL |               assert_send(g);
+   |                           ^ generator is not `Send`
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+   |
+   = help: within `[generator@$DIR/drop-tracking-parent-expression.rs:37:21: 37:28]`, the trait `Send` is not implemented for `copy::Client`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/drop-tracking-parent-expression.rs:38:22
+   |
+LL |               let g = move || match drop($name::Client::default()) {
+   |                                          ------------------------ has type `copy::Client` which is not `Send`
+LL |                   _ => yield,
+   |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
+LL |               };
+   |               - `$name::Client::default()` is later dropped here
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+note: required by a bound in `assert_send`
+  --> $DIR/drop-tracking-parent-expression.rs:49:19
+   |
+LL | fn assert_send<T: Send>(_thing: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+   = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: generator cannot be sent between threads safely
+  --> $DIR/drop-tracking-parent-expression.rs:27:25
+   |
+LL |               assert_send(g);
+   |                           ^ generator is not `Send`
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+   |
+   = help: within `[generator@$DIR/drop-tracking-parent-expression.rs:21:21: 21:28]`, the trait `Send` is not implemented for `derived_drop::Client`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/drop-tracking-parent-expression.rs:25:22
+   |
+LL |               let g = move || match drop($name::Client { ..$name::Client::default() }) {
+   |                                                            ------------------------ has type `derived_drop::Client` which is not `Send`
+...
+LL |                   _ => yield,
+   |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
+LL |               };
+   |               - `$name::Client::default()` is later dropped here
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+note: required by a bound in `assert_send`
+  --> $DIR/drop-tracking-parent-expression.rs:49:19
+   |
+LL | fn assert_send<T: Send>(_thing: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+   = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: generator cannot be sent between threads safely
+  --> $DIR/drop-tracking-parent-expression.rs:40:25
+   |
+LL |               assert_send(g);
+   |                           ^ generator is not `Send`
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+   |
+   = help: within `[generator@$DIR/drop-tracking-parent-expression.rs:37:21: 37:28]`, the trait `Send` is not implemented for `derived_drop::Client`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/drop-tracking-parent-expression.rs:38:22
+   |
+LL |               let g = move || match drop($name::Client::default()) {
+   |                                          ------------------------ has type `derived_drop::Client` which is not `Send`
+LL |                   _ => yield,
+   |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
+LL |               };
+   |               - `$name::Client::default()` is later dropped here
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+note: required by a bound in `assert_send`
+  --> $DIR/drop-tracking-parent-expression.rs:49:19
+   |
+LL | fn assert_send<T: Send>(_thing: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+   = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: generator cannot be sent between threads safely
+  --> $DIR/drop-tracking-parent-expression.rs:27:25
+   |
+LL |               assert_send(g);
+   |                           ^ generator is not `Send`
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+   |
+   = help: within `[generator@$DIR/drop-tracking-parent-expression.rs:21:21: 21:28]`, the trait `Send` is not implemented for `significant_drop::Client`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/drop-tracking-parent-expression.rs:25:22
+   |
+LL |               let g = move || match drop($name::Client { ..$name::Client::default() }) {
+   |                                                            ------------------------ has type `significant_drop::Client` which is not `Send`
+...
+LL |                   _ => yield,
+   |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
+LL |               };
+   |               - `$name::Client::default()` is later dropped here
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+note: required by a bound in `assert_send`
+  --> $DIR/drop-tracking-parent-expression.rs:49:19
+   |
+LL | fn assert_send<T: Send>(_thing: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+   = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: generator cannot be sent between threads safely
+  --> $DIR/drop-tracking-parent-expression.rs:40:25
+   |
+LL |               assert_send(g);
+   |                           ^ generator is not `Send`
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+   |
+   = help: within `[generator@$DIR/drop-tracking-parent-expression.rs:37:21: 37:28]`, the trait `Send` is not implemented for `significant_drop::Client`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/drop-tracking-parent-expression.rs:38:22
+   |
+LL |               let g = move || match drop($name::Client::default()) {
+   |                                          ------------------------ has type `significant_drop::Client` which is not `Send`
+LL |                   _ => yield,
+   |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
+LL |               };
+   |               - `$name::Client::default()` is later dropped here
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+note: required by a bound in `assert_send`
+  --> $DIR/drop-tracking-parent-expression.rs:49:19
+   |
+LL | fn assert_send<T: Send>(_thing: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+   = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: generator cannot be sent between threads safely
+  --> $DIR/drop-tracking-parent-expression.rs:27:25
+   |
+LL |               assert_send(g);
+   |                           ^ generator is not `Send`
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+   |
+   = help: within `[generator@$DIR/drop-tracking-parent-expression.rs:21:21: 21:28]`, the trait `Send` is not implemented for `insignificant_dtor::Client`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/drop-tracking-parent-expression.rs:25:22
+   |
+LL |               let g = move || match drop($name::Client { ..$name::Client::default() }) {
+   |                                                            ------------------------ has type `insignificant_dtor::Client` which is not `Send`
+...
+LL |                   _ => yield,
+   |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
+LL |               };
+   |               - `$name::Client::default()` is later dropped here
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+note: required by a bound in `assert_send`
+  --> $DIR/drop-tracking-parent-expression.rs:49:19
+   |
+LL | fn assert_send<T: Send>(_thing: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+   = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: generator cannot be sent between threads safely
+  --> $DIR/drop-tracking-parent-expression.rs:40:25
+   |
+LL |               assert_send(g);
+   |                           ^ generator is not `Send`
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+   |
+   = help: within `[generator@$DIR/drop-tracking-parent-expression.rs:37:21: 37:28]`, the trait `Send` is not implemented for `insignificant_dtor::Client`
+note: generator is not `Send` as this value is used across a yield
+  --> $DIR/drop-tracking-parent-expression.rs:38:22
+   |
+LL |               let g = move || match drop($name::Client::default()) {
+   |                                          ------------------------ has type `insignificant_dtor::Client` which is not `Send`
+LL |                   _ => yield,
+   |                        ^^^^^ yield occurs here, with `$name::Client::default()` maybe used later
+LL |               };
+   |               - `$name::Client::default()` is later dropped here
+...
+LL | /     type_combinations!(
+LL | |         // OK
+LL | |         copy => { #[derive(Copy, Clone, Default)] pub struct Client; };
+LL | |         // NOT OK: MIR borrowck thinks that this is used after the yield, even though
+...  |
+LL | |         };
+LL | |     );
+   | |_____- in this macro invocation
+note: required by a bound in `assert_send`
+  --> $DIR/drop-tracking-parent-expression.rs:49:19
+   |
+LL | fn assert_send<T: Send>(_thing: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+   = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 8 previous errors
+

@@ -13,7 +13,7 @@
           StorageLive(_3);                 // scope 0 at $DIR/cycle.rs:+1:5: +1:6
           _3 = &_1;                        // scope 0 at $DIR/cycle.rs:+1:5: +1:6
           StorageLive(_4);                 // scope 0 at $DIR/cycle.rs:+1:5: +1:8
-          Deinit(_4);                      // scope 0 at $DIR/cycle.rs:+1:5: +1:8
+          _4 = ();                         // scope 0 at $DIR/cycle.rs:+1:5: +1:8
           _2 = <impl Fn() as Fn<()>>::call(move _3, move _4) -> [return: bb1, unwind: bb3]; // scope 0 at $DIR/cycle.rs:+1:5: +1:8
                                            // mir::Constant
                                            // + span: $DIR/cycle.rs:6:5: 6:6

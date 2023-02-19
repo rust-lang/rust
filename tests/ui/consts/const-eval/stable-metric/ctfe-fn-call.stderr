@@ -1,0 +1,20 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ctfe-fn-call.rs:28:5
+   |
+LL |     foo();
+   |     ^^^^^ exceeded interpreter step limit (see `#[const_eval_limit]`)
+   |
+note: inside `call_foo`
+  --> $DIR/ctfe-fn-call.rs:28:5
+   |
+LL |     foo();
+   |     ^^^^^
+note: inside `X`
+  --> $DIR/ctfe-fn-call.rs:32:16
+   |
+LL | const X: u32 = call_foo();
+   |                ^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

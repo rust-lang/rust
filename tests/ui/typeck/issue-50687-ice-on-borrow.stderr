@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-50687-ice-on-borrow.rs:40:17
    |
 LL |     let _: () = Borrow::borrow(&owned);
-   |            --   ^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found reference
+   |            --   ^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `&_`
    |            |
    |            expected due to this
    |

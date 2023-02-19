@@ -154,7 +154,7 @@ fn mk_ty_param(
         .iter()
         .map(|b| {
             let path = b.to_path(cx, span, self_ident, self_generics);
-            cx.trait_bound(path)
+            cx.trait_bound(path, false)
         })
         .collect();
     cx.typaram(span, Ident::new(name, span), bounds, None)

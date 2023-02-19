@@ -8,7 +8,7 @@ pub struct Foo;
 /// Hello empty impl block!
 impl Foo {}
 // We ensure that this empty impl block without doc isn't rendered.
-// @count - '//*[@class="impl has-srclink"]' 'impl Foo' 1
+// @count - '//*[@class="impl"]' 'impl Foo' 1
 impl Foo {}
 
 // Just to ensure that empty trait impl blocks are rendered.

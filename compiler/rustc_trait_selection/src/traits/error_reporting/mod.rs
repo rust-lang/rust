@@ -34,11 +34,10 @@ use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::fold::{ir::TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, FmtPrinter, Print};
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
-    TypeVisitable,
 };
 use rustc_session::config::TraitSolver;
 use rustc_session::Limit;
@@ -101,6 +100,18 @@ pub trait InferCtxtExt<'tcx> {
 }
 
 pub trait TypeErrCtxtExt<'tcx> {
+    fn build_overflow_error<T>(
+        &self,
+        predicate: &T,
+        span: Span,
+        suggest_increasing_limit: bool,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
+    where
+        T: fmt::Display
+            + TypeFoldable<'tcx>
+            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
+        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
+
     fn report_overflow_error<T>(
         &self,
         predicate: &T,
@@ -484,6 +495,26 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
     {
+        let mut err = self.build_overflow_error(predicate, span, suggest_increasing_limit);
+        mutate(&mut err);
+        err.emit();
+
+        self.tcx.sess.abort_if_errors();
+        bug!();
+    }
+
+    fn build_overflow_error<T>(
+        &self,
+        predicate: &T,
+        span: Span,
+        suggest_increasing_limit: bool,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
+    where
+        T: fmt::Display
+            + TypeFoldable<'tcx>
+            + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
+        <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
+    {
         let predicate = self.resolve_vars_if_possible(predicate.clone());
         let mut pred_str = predicate.to_string();
 
@@ -511,11 +542,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             self.suggest_new_overflow_limit(&mut err);
         }
 
-        mutate(&mut err);
-
-        err.emit();
-        self.tcx.sess.abort_if_errors();
-        bug!();
+        err
     }
 
     /// Reports that an overflow has occurred and halts compilation. We
@@ -839,14 +866,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             err.note(s.as_str());
                         }
                         if let Some(ref s) = parent_label {
-                            let body = tcx
-                                .hir()
-                                .opt_local_def_id(obligation.cause.body_id)
-                                .unwrap_or_else(|| {
-                                    tcx.hir().body_owner_def_id(hir::BodyId {
-                                        hir_id: obligation.cause.body_id,
-                                    })
-                                });
+                            let body = obligation.cause.body_id;
                             err.span_label(tcx.def_span(body), s);
                         }
 
@@ -934,6 +954,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             );
                         }
 
+                        let body_hir_id =
+                            self.tcx.hir().local_def_id_to_hir_id(obligation.cause.body_id);
                         // Try to report a help message
                         if is_fn_trait
                             && let Ok((implemented_kind, params)) = self.type_implements_fn_trait(
@@ -1014,7 +1036,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             if !self.report_similar_impl_candidates(
                                 impl_candidates,
                                 trait_ref,
-                                obligation.cause.body_id,
+                                body_hir_id,
                                 &mut err,
                                 true,
                             ) {
@@ -1050,7 +1072,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     self.report_similar_impl_candidates(
                                         impl_candidates,
                                         trait_ref,
-                                        obligation.cause.body_id,
+                                        body_hir_id,
                                         &mut err,
                                         true,
                                     );
@@ -1207,20 +1229,23 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
 
                     ty::PredicateKind::WellFormed(ty) => {
-                        if self.tcx.sess.opts.unstable_opts.trait_solver == TraitSolver::Classic {
-                            // WF predicates cannot themselves make
-                            // errors. They can only block due to
-                            // ambiguity; otherwise, they always
-                            // degenerate into other obligations
-                            // (which may fail).
-                            span_bug!(span, "WF predicate not satisfied for {:?}", ty);
-                        } else {
-                            // FIXME: we'll need a better message which takes into account
-                            // which bounds actually failed to hold.
-                            self.tcx.sess.struct_span_err(
-                                span,
-                                &format!("the type `{}` is not well-formed", ty),
-                            )
+                        match self.tcx.sess.opts.unstable_opts.trait_solver {
+                            TraitSolver::Classic => {
+                                // WF predicates cannot themselves make
+                                // errors. They can only block due to
+                                // ambiguity; otherwise, they always
+                                // degenerate into other obligations
+                                // (which may fail).
+                                span_bug!(span, "WF predicate not satisfied for {:?}", ty);
+                            }
+                            TraitSolver::Chalk | TraitSolver::Next => {
+                                // FIXME: we'll need a better message which takes into account
+                                // which bounds actually failed to hold.
+                                self.tcx.sess.struct_span_err(
+                                    span,
+                                    &format!("the type `{}` is not well-formed", ty),
+                                )
+                            }
                         }
                     }
 
@@ -1252,6 +1277,18 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         span,
                         "TypeWellFormedFromEnv predicate should only exist in the environment"
                     ),
+
+                    ty::PredicateKind::AliasEq(..) => span_bug!(
+                        span,
+                        "AliasEq predicate should never be the predicate cause of a SelectionError"
+                    ),
+
+                    ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                        self.tcx.sess.struct_span_err(
+                            span,
+                            &format!("the constant `{}` is not of type `{}`", ct, ty),
+                        )
+                    }
                 }
             }
 
@@ -1598,7 +1635,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Eventually I'll need to implement param-env-aware
                 // `Γ₁ ⊦ φ₁ => Γ₂ ⊦ φ₂` logic.
                 let param_env = ty::ParamEnv::empty();
-                if self.can_sub(param_env, error, implication).is_ok() {
+                if self.can_sub(param_env, error, implication) {
                     debug!("error_implies: {:?} -> {:?} -> {:?}", cond, error, implication);
                     return true;
                 }
@@ -1690,7 +1727,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let (values, err) = if let ty::PredicateKind::Clause(ty::Clause::Projection(data)) =
                 bound_predicate.skip_binder()
             {
-                let data = self.replace_bound_vars_with_fresh_vars(
+                let data = self.instantiate_binder_with_fresh_vars(
                     obligation.cause.span,
                     infer::LateBoundRegionConversionTime::HigherRankedType,
                     bound_predicate.rebind(data),
@@ -1843,10 +1880,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         with_forced_trimmed_paths! {
             if Some(pred.projection_ty.def_id) == self.tcx.lang_items().fn_once_output() {
+                let fn_kind = self_ty.prefix_string(self.tcx);
+                let item = match self_ty.kind() {
+                    ty::FnDef(def, _) => self.tcx.item_name(*def).to_string(),
+                    _ => self_ty.to_string(),
+                };
                 Some(format!(
-                    "expected `{self_ty}` to be a {fn_kind} that returns `{expected_ty}`, but it \
+                    "expected `{item}` to be a {fn_kind} that returns `{expected_ty}`, but it \
                      returns `{normalized_ty}`",
-                    fn_kind = self_ty.prefix_string(self.tcx)
                 ))
             } else if Some(trait_def_id) == self.tcx.lang_items().future_trait() {
                 Some(format!(
@@ -1896,6 +1937,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ty::Generator(..) => Some(16),
                 ty::Foreign(..) => Some(17),
                 ty::GeneratorWitness(..) => Some(18),
+                ty::GeneratorWitnessMIR(..) => Some(19),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
             }
         }
@@ -2305,10 +2347,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 predicate.to_opt_poly_trait_pred().unwrap(),
                             );
                             if impl_candidates.len() < 10 {
+                                let hir =
+                                    self.tcx.hir().local_def_id_to_hir_id(obligation.cause.body_id);
                                 self.report_similar_impl_candidates(
                                     impl_candidates,
                                     trait_ref,
-                                    body_id.map(|id| id.hir_id).unwrap_or(obligation.cause.body_id),
+                                    body_id.map(|id| id.hir_id).unwrap_or(hir),
                                     &mut err,
                                     false,
                                 );
@@ -2395,7 +2439,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             };
                             let mut suggestions = vec![(
                                 path.span.shrink_to_lo(),
-                                format!("<{} as ", self.tcx.type_of(impl_def_id))
+                                format!("<{} as ", self.tcx.type_of(impl_def_id).subst_identity())
                             )];
                             if let Some(generic_arg) = trait_path_segment.args {
                                 let between_span = trait_path_segment.ident.span.between(generic_arg.span_ext);
@@ -2637,8 +2681,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             var_map: FxHashMap<Ty<'tcx>, Ty<'tcx>>,
         }
 
-        impl<'a, 'tcx> TypeFolder<'tcx> for ParamToVarFolder<'a, 'tcx> {
-            fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+        impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ParamToVarFolder<'a, 'tcx> {
+            fn interner(&self) -> TyCtxt<'tcx> {
                 self.infcx.tcx
             }
 
@@ -2828,7 +2872,7 @@ pub struct FindExprBySpan<'hir> {
 }
 
 impl<'hir> FindExprBySpan<'hir> {
-    fn new(span: Span) -> Self {
+    pub fn new(span: Span) -> Self {
         Self { span, result: None, ty_result: None }
     }
 }
@@ -2926,7 +2970,7 @@ impl ArgKind {
 
 struct HasNumericInferVisitor;
 
-impl<'tcx> ty::TypeVisitor<'tcx> for HasNumericInferVisitor {
+impl<'tcx> ty::ir::TypeVisitor<TyCtxt<'tcx>> for HasNumericInferVisitor {
     type BreakTy = ();
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

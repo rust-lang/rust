@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match (S { a: 1 }) {
    |           ------------ this expression has type `S`
 LL |         E::C(_) => (),
-   |         ^^^^^^^ expected struct `S`, found enum `E`
+   |         ^^^^^^^ expected `S`, found `E`
 
 error: aborting due to previous error
 

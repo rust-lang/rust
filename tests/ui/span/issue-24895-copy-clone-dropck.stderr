@@ -1,6 +1,9 @@
 error[E0597]: `d1` does not live long enough
   --> $DIR/issue-24895-copy-clone-dropck.rs:27:14
    |
+LL |     let (d2, d1);
+   |              -- binding `d1` declared here
+LL |     d1 = D(34, "d1");
 LL |     d2 = D(S(&d1, "inner"), "d2");
    |              ^^^ borrowed value does not live long enough
 LL | }

@@ -1,4 +1,4 @@
-error: [-, o]
+error: [+, o]
   --> $DIR/E0208.rs:4:1
    |
 LL | struct Foo<'a, T> {

@@ -131,7 +131,7 @@ pub fn print_crate<'a>(
 
         // Currently, in Rust 2018 we don't have `extern crate std;` at the crate
         // root, so this is not needed, and actually breaks things.
-        if edition == Edition::Edition2015 {
+        if edition.is_rust_2015() {
             // `#![no_std]`
             let fake_attr = attr::mk_attr_word(g, ast::AttrStyle::Inner, sym::no_std, DUMMY_SP);
             s.print_attribute(&fake_attr);
@@ -1567,8 +1567,18 @@ impl<'a> State<'a> {
 
             match bound {
                 GenericBound::Trait(tref, modifier) => {
-                    if modifier == &TraitBoundModifier::Maybe {
-                        self.word("?");
+                    match modifier {
+                        TraitBoundModifier::None => {}
+                        TraitBoundModifier::Maybe => {
+                            self.word("?");
+                        }
+                        TraitBoundModifier::MaybeConst => {
+                            self.word_space("~const");
+                        }
+                        TraitBoundModifier::MaybeConstMaybe => {
+                            self.word_space("~const");
+                            self.word("?");
+                        }
                     }
                     self.print_poly_trait_ref(tref);
                 }

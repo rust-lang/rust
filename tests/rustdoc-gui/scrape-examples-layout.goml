@@ -40,10 +40,10 @@ assert-property: (
 store-value: (offset_y, 4)
 
 // First with desktop
-assert-position: (".scraped-example .code-wrapper", {"y": 255})
-assert-position: (".scraped-example .code-wrapper .prev", {"y": 255 + |offset_y|})
+assert-position: (".scraped-example .code-wrapper", {"y": 253})
+assert-position: (".scraped-example .code-wrapper .prev", {"y": 253 + |offset_y|})
 
 // Then with mobile
 size: (600, 600)
-assert-position: (".scraped-example .code-wrapper", {"y": 314})
-assert-position: (".scraped-example .code-wrapper .prev", {"y": 314 + |offset_y|})
+assert-position: (".scraped-example .code-wrapper", {"y": 308})
+assert-position: (".scraped-example .code-wrapper .prev", {"y": 308 + |offset_y|})

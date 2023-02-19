@@ -13,8 +13,8 @@ use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::DefId;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::def_id::LOCAL_CRATE;
@@ -40,7 +40,7 @@ pub(crate) struct JsonRenderer<'tcx> {
     /// The directory where the blob will be written to.
     out_path: PathBuf,
     cache: Rc<Cache>,
-    imported_items: FxHashSet<DefId>,
+    imported_items: DefIdSet,
 }
 
 impl<'tcx> JsonRenderer<'tcx> {
@@ -80,12 +80,11 @@ impl<'tcx> JsonRenderer<'tcx> {
                         // document primitive items in an arbitrary crate by using
                         // `doc(primitive)`.
                         let mut is_primitive_impl = false;
-                        if let clean::types::ItemKind::ImplItem(ref impl_) = *item.kind {
-                            if impl_.trait_.is_none() {
-                                if let clean::types::Type::Primitive(_) = impl_.for_ {
-                                    is_primitive_impl = true;
-                                }
-                            }
+                        if let clean::types::ItemKind::ImplItem(ref impl_) = *item.kind &&
+                            impl_.trait_.is_none() &&
+                            let clean::types::Type::Primitive(_) = impl_.for_
+                        {
+                            is_primitive_impl = true;
                         }
 
                         if item.item_id.is_local() || is_primitive_impl {
@@ -222,7 +221,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     fn after_krate(&mut self) -> Result<(), Error> {
         debug!("Done with crate");
 
-        debug!("Adding Primitve impls");
+        debug!("Adding Primitive impls");
         for primitive in Rc::clone(&self.cache).primitive_locations.values() {
             self.get_impls(*primitive);
         }

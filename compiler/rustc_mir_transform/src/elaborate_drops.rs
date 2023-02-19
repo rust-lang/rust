@@ -18,6 +18,35 @@ use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use std::fmt;
 
+/// During MIR building, Drop and DropAndReplace terminators are inserted in every place where a drop may occur.
+/// However, in this phase, the presence of these terminators does not guarantee that a destructor will run,
+/// as the target of the drop may be uninitialized.
+/// In general, the compiler cannot determine at compile time whether a destructor will run or not.
+///
+/// At a high level, this pass refines Drop and DropAndReplace to only run the destructor if the
+/// target is initialized. The way this is achievied is by inserting drop flags for every variable
+/// that may be dropped, and then using those flags to determine whether a destructor should run.
+/// This pass also removes DropAndReplace, replacing it with a Drop paired with an assign statement.
+/// Once this is complete, Drop terminators in the MIR correspond to a call to the "drop glue" or
+/// "drop shim" for the type of the dropped place.
+///
+/// This pass relies on dropped places having an associated move path, which is then used to determine
+/// the initialization status of the place and its descendants.
+/// It's worth noting that a MIR containing a Drop without an associated move path is probably ill formed,
+/// as it would allow running a destructor on a place behind a reference:
+///
+/// ```text
+// fn drop_term<T>(t: &mut T) {
+//     mir!(
+//         {
+//             Drop(*t, exit)
+//         }
+//         exit = {
+//             Return()
+//         }
+//     )
+// }
+/// ```
 pub struct ElaborateDrops;
 
 impl<'tcx> MirPass<'tcx> for ElaborateDrops {

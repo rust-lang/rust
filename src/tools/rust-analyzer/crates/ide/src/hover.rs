@@ -15,10 +15,11 @@ use ide_db::{
     FxIndexSet, RootDatabase,
 };
 use itertools::Itertools;
-use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, T};
+use syntax::{ast, AstNode, SyntaxKind::*, SyntaxNode, T};
 
 use crate::{
     doc_links::token_as_doc_comment,
+    markdown_remove::remove_markdown,
     markup::Markup,
     runnables::{runnable_fn, runnable_mod},
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable, TryToNav,
@@ -26,14 +27,9 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
     pub links_in_hover: bool,
-    pub documentation: Option<HoverDocFormat>,
+    pub documentation: bool,
     pub keywords: bool,
-}
-
-impl HoverConfig {
-    fn markdown(&self) -> bool {
-        matches!(self.documentation, Some(HoverDocFormat::Markdown))
-    }
+    pub format: HoverDocFormat,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -90,19 +86,38 @@ pub struct HoverResult {
 // image::https://user-images.githubusercontent.com/48062697/113020658-b5f98b80-917a-11eb-9f88-3dbc27320c95.gif[]
 pub(crate) fn hover(
     db: &RootDatabase,
-    FileRange { file_id, range }: FileRange,
+    frange @ FileRange { file_id, range }: FileRange,
     config: &HoverConfig,
 ) -> Option<RangeInfo<HoverResult>> {
     let sema = &hir::Semantics::new(db);
     let file = sema.parse(file_id).syntax().clone();
+    let mut res = if range.is_empty() {
+        hover_simple(sema, FilePosition { file_id, offset: range.start() }, file, config)
+    } else {
+        hover_ranged(sema, frange, file, config)
+    }?;
 
-    if !range.is_empty() {
-        return hover_ranged(&file, range, sema, config);
+    if let HoverDocFormat::PlainText = config.format {
+        res.info.markup = remove_markdown(res.info.markup.as_str()).into();
     }
-    let offset = range.start();
+    Some(res)
+}
 
+fn hover_simple(
+    sema: &Semantics<'_, RootDatabase>,
+    FilePosition { file_id, offset }: FilePosition,
+    file: SyntaxNode,
+    config: &HoverConfig,
+) -> Option<RangeInfo<HoverResult>> {
     let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
-        IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] | T![Self] => 4,
+        IDENT
+        | INT_NUMBER
+        | LIFETIME_IDENT
+        | T![self]
+        | T![super]
+        | T![crate]
+        | T![Self]
+        | T![_] => 4,
         // index and prefix ops
         T!['['] | T![']'] | T![?] | T![*] | T![-] | T![!] => 3,
         kind if kind.is_keyword() => 2,
@@ -135,19 +150,18 @@ pub(crate) fn hover(
     } else {
         sema.descend_into_macros_with_same_text(original_token.clone())
     };
+    let descended = || descended.iter();
 
-    // try lint hover
-    let result = descended
-        .iter()
+    let result = descended()
+        // try lint hover
         .find_map(|token| {
             // FIXME: Definition should include known lints and the like instead of having this special case here
             let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
             render::try_for_lint(&attr, token)
         })
-        // try item definitions
+        // try definitions
         .or_else(|| {
-            descended
-                .iter()
+            descended()
                 .filter_map(|token| {
                     let node = token.parent()?;
                     let class = IdentClass::classify_token(sema, token)?;
@@ -168,10 +182,12 @@ pub(crate) fn hover(
                 })
         })
         // try keywords
-        .or_else(|| descended.iter().find_map(|token| render::keyword(sema, config, token)))
-        // try rest item hover
+        .or_else(|| descended().find_map(|token| render::keyword(sema, config, token)))
+        // try _ hovers
+        .or_else(|| descended().find_map(|token| render::underscore(sema, config, token)))
+        // try rest pattern hover
         .or_else(|| {
-            descended.iter().find_map(|token| {
+            descended().find_map(|token| {
                 if token.kind() != DOT2 {
                     return None;
                 }
@@ -187,16 +203,41 @@ pub(crate) fn hover(
             })
         });
 
-    result
-        .map(|mut res: HoverResult| {
-            res.actions = dedupe_or_merge_hover_actions(res.actions);
-            RangeInfo::new(original_token.text_range(), res)
-        })
-        // fallback to type hover if there aren't any other suggestions
-        // this finds its own range instead of using the closest token's range
-        .or_else(|| {
-            descended.iter().find_map(|token| hover_type_fallback(sema, config, token, token))
-        })
+    result.map(|mut res: HoverResult| {
+        res.actions = dedupe_or_merge_hover_actions(res.actions);
+        RangeInfo::new(original_token.text_range(), res)
+    })
+}
+
+fn hover_ranged(
+    sema: &Semantics<'_, RootDatabase>,
+    FileRange { range, .. }: FileRange,
+    file: SyntaxNode,
+    config: &HoverConfig,
+) -> Option<RangeInfo<HoverResult>> {
+    // FIXME: make this work in attributes
+    let expr_or_pat = file
+        .covering_element(range)
+        .ancestors()
+        .take_while(|it| ast::MacroCall::can_cast(it.kind()) || !ast::Item::can_cast(it.kind()))
+        .find_map(Either::<ast::Expr, ast::Pat>::cast)?;
+    let res = match &expr_or_pat {
+        Either::Left(ast::Expr::TryExpr(try_expr)) => render::try_expr(sema, config, try_expr),
+        Either::Left(ast::Expr::PrefixExpr(prefix_expr))
+            if prefix_expr.op_kind() == Some(ast::UnaryOp::Deref) =>
+        {
+            render::deref_expr(sema, config, prefix_expr)
+        }
+        _ => None,
+    };
+    let res = res.or_else(|| render::type_info_of(sema, config, &expr_or_pat));
+    res.map(|it| {
+        let range = match expr_or_pat {
+            Either::Left(it) => it.syntax().text_range(),
+            Either::Right(it) => it.syntax().text_range(),
+        };
+        RangeInfo::new(range, it)
+    })
 }
 
 pub(crate) fn hover_for_definition(
@@ -213,82 +254,17 @@ pub(crate) fn hover_for_definition(
     render::definition(sema.db, definition, famous_defs.as_ref(), config).map(|markup| {
         HoverResult {
             markup: render::process_markup(sema.db, definition, &markup, config),
-            actions: show_implementations_action(sema.db, definition)
-                .into_iter()
-                .chain(show_fn_references_action(sema.db, definition))
-                .chain(runnable_action(sema, definition, file_id))
-                .chain(goto_type_action_for_def(sema.db, definition))
-                .collect(),
+            actions: [
+                show_implementations_action(sema.db, definition),
+                show_fn_references_action(sema.db, definition),
+                runnable_action(sema, definition, file_id),
+                goto_type_action_for_def(sema.db, definition),
+            ]
+            .into_iter()
+            .flatten()
+            .collect(),
         }
     })
-}
-
-fn hover_ranged(
-    file: &SyntaxNode,
-    range: syntax::TextRange,
-    sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
-) -> Option<RangeInfo<HoverResult>> {
-    // FIXME: make this work in attributes
-    let expr_or_pat = file.covering_element(range).ancestors().find_map(|it| {
-        match_ast! {
-            match it {
-                ast::Expr(expr) => Some(Either::Left(expr)),
-                ast::Pat(pat) => Some(Either::Right(pat)),
-                _ => None,
-            }
-        }
-    })?;
-    let res = match &expr_or_pat {
-        Either::Left(ast::Expr::TryExpr(try_expr)) => render::try_expr(sema, config, try_expr),
-        Either::Left(ast::Expr::PrefixExpr(prefix_expr))
-            if prefix_expr.op_kind() == Some(ast::UnaryOp::Deref) =>
-        {
-            render::deref_expr(sema, config, prefix_expr)
-        }
-        _ => None,
-    };
-    let res = res.or_else(|| render::type_info(sema, config, &expr_or_pat));
-    res.map(|it| {
-        let range = match expr_or_pat {
-            Either::Left(it) => it.syntax().text_range(),
-            Either::Right(it) => it.syntax().text_range(),
-        };
-        RangeInfo::new(range, it)
-    })
-}
-
-fn hover_type_fallback(
-    sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
-    token: &SyntaxToken,
-    original_token: &SyntaxToken,
-) -> Option<RangeInfo<HoverResult>> {
-    let node =
-        token.parent_ancestors().take_while(|it| !ast::Item::can_cast(it.kind())).find(|n| {
-            ast::Expr::can_cast(n.kind())
-                || ast::Pat::can_cast(n.kind())
-                || ast::Type::can_cast(n.kind())
-        })?;
-
-    let expr_or_pat = match_ast! {
-        match node {
-            ast::Expr(it) => Either::Left(it),
-            ast::Pat(it) => Either::Right(it),
-            // If this node is a MACRO_CALL, it means that `descend_into_macros_many` failed to resolve.
-            // (e.g expanding a builtin macro). So we give up here.
-            ast::MacroCall(_it) => return None,
-            _ => return None,
-        }
-    };
-
-    let res = render::type_info(sema, config, &expr_or_pat)?;
-
-    let range = sema
-        .original_range_opt(&node)
-        .map(|frange| frange.range)
-        .unwrap_or_else(|| original_token.text_range());
-    Some(RangeInfo::new(range, res))
 }
 
 fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {

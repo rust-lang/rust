@@ -1,4 +1,4 @@
-error[E0369]: cannot mod `&&{integer}` by `{integer}`
+error[E0369]: cannot calculate the remainder of `&&{integer}` divided by `{integer}`
   --> $DIR/binary-op-on-double-ref.rs:5:11
    |
 LL |         x % 2 == 0

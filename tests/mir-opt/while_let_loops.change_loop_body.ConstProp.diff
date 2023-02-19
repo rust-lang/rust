@@ -16,8 +16,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/while_let_loops.rs:+1:9: +1:15
           _1 = const 0_i32;                // scope 0 at $DIR/while_let_loops.rs:+1:18: +1:19
           StorageLive(_2);                 // scope 2 at $DIR/while_let_loops.rs:+2:28: +2:32
-          Deinit(_2);                      // scope 2 at $DIR/while_let_loops.rs:+2:28: +2:32
-          discriminant(_2) = 0;            // scope 2 at $DIR/while_let_loops.rs:+2:28: +2:32
+          _2 = Option::<u32>::None;        // scope 2 at $DIR/while_let_loops.rs:+2:28: +2:32
 -         _3 = discriminant(_2);           // scope 2 at $DIR/while_let_loops.rs:+2:15: +2:25
 -         switchInt(move _3) -> [1: bb1, otherwise: bb3]; // scope 2 at $DIR/while_let_loops.rs:+2:15: +2:25
 +         _3 = const 0_isize;              // scope 2 at $DIR/while_let_loops.rs:+2:15: +2:25

@@ -1,7 +1,11 @@
 // check-pass
 // compile-flags: -Zhir-stats
 // only-x86_64
-// ignore-stage1  FIXME: remove after next bootstrap bump
+
+// Type layouts sometimes change. When that happens, until the next bootstrap
+// bump occurs, stage1 and stage2 will give different outputs for this test.
+// Add an `ignore-stage1` comment marker to work around that problem during
+// that time.
 
 // The aim here is to include at least one of every different type of top-level
 // AST/HIR node reported by `-Zhir-stats`.

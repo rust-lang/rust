@@ -207,6 +207,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ///
     /// In some cases, such as when `erased_ty` represents a `ty::Param`, however,
     /// the result is precise.
+    #[instrument(level = "debug", skip(self))]
     fn declared_generic_bounds_from_env_for_erased_ty(
         &self,
         erased_ty: Ty<'tcx>,

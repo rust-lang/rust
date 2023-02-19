@@ -6,11 +6,12 @@ use clippy_utils::{fn_has_unsatisfiable_preds, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{def_id, Body, FnDecl, HirId, LangItem};
+use rustc_hir::{def_id, Body, FnDecl, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::sym;
 
@@ -69,12 +70,10 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
         cx: &LateContext<'tcx>,
         _: FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
-        body: &'tcx Body<'_>,
+        _: &'tcx Body<'_>,
         _: Span,
-        _: HirId,
+        def_id: LocalDefId,
     ) {
-        let def_id = cx.tcx.hir().body_owner_def_id(body.id());
-
         // Building MIR for `fn`s with unsatisfiable preds results in ICE.
         if fn_has_unsatisfiable_preds(cx, def_id.to_def_id()) {
             return;

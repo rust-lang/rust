@@ -87,6 +87,7 @@
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
+#![cfg_attr(not(bootstrap), warn(multiple_supertrait_upcastable))]
 //
 // Library features:
 #![feature(alloc_layout_extra)]
@@ -115,7 +116,6 @@
 #![feature(const_eval_select)]
 #![feature(const_pin)]
 #![feature(const_waker)]
-#![feature(cstr_from_bytes_until_nul)]
 #![feature(dispatch_from_dyn)]
 #![feature(error_generic_member_access)]
 #![feature(error_in_core)]
@@ -195,6 +195,7 @@
 #![feature(c_unwind)]
 #![feature(with_negative_coherence)]
 #![cfg_attr(test, feature(panic_update_hook))]
+#![cfg_attr(not(bootstrap), feature(multiple_supertrait_upcastable))]
 //
 // Rustdoc features:
 #![feature(doc_cfg)]

@@ -1,6 +1,8 @@
 use crate::creader::{CStore, LoadedMacro};
 use crate::foreign_modules;
 use crate::native_libs;
+use crate::rmeta::table::IsDefault;
+use crate::rmeta::AttrFlags;
 
 use rustc_ast as ast;
 use rustc_attr::Deprecation;
@@ -87,6 +89,14 @@ macro_rules! provide_one {
             }
         }
     };
+    ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_defaulted_array }) => {
+        provide_one! {
+            $tcx, $def_id, $other, $cdata, $name => {
+                let lazy = $cdata.root.tables.$name.get($cdata, $def_id.index);
+                if lazy.is_default() { &[] } else { $tcx.arena.alloc_from_iter(lazy.decode(($cdata, $tcx))) }
+            }
+        }
+    };
     ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_direct }) => {
         provide_one! {
             $tcx, $def_id, $other, $cdata, $name => {
@@ -104,7 +114,7 @@ macro_rules! provide_one {
         fn $name<'tcx>(
             $tcx: TyCtxt<'tcx>,
             def_id_arg: ty::query::query_keys::$name<'tcx>,
-        ) -> ty::query::query_values::$name<'tcx> {
+        ) -> ty::query::query_provided::$name<'tcx> {
             let _prof_timer =
                 $tcx.prof.generic_activity(concat!("metadata_decode_entry_", stringify!($name)));
 
@@ -186,10 +196,10 @@ impl IntoArgs for (CrateNum, SimplifiedType) {
 }
 
 provide! { tcx, def_id, other, cdata,
-    explicit_item_bounds => { table }
+    explicit_item_bounds => { table_defaulted_array }
     explicit_predicates_of => { table }
     generics_of => { table }
-    inferred_outlives_of => { table }
+    inferred_outlives_of => { table_defaulted_array }
     super_predicates_of => { table }
     type_of => { table }
     variances_of => { table }
@@ -201,6 +211,7 @@ provide! { tcx, def_id, other, cdata,
     thir_abstract_const => { table }
     optimized_mir => { table }
     mir_for_ctfe => { table }
+    mir_generator_witnesses => { table }
     promoted_mir => { table }
     def_span => { table }
     def_ident_span => { table }
@@ -225,12 +236,7 @@ provide! { tcx, def_id, other, cdata,
     deduced_param_attrs => { table }
     is_type_alias_impl_trait => {
         debug_assert_eq!(tcx.def_kind(def_id), DefKind::OpaqueTy);
-        cdata
-            .root
-            .tables
-            .is_type_alias_impl_trait
-            .get(cdata, def_id.index)
-            .is_some()
+        cdata.root.tables.is_type_alias_impl_trait.get(cdata, def_id.index)
     }
     collect_return_position_impl_trait_in_trait_tys => {
         Ok(cdata
@@ -298,6 +304,7 @@ provide! { tcx, def_id, other, cdata,
     extra_filename => { cdata.root.extra_filename.clone() }
 
     traits_in_crate => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
+    trait_impls_in_crate => { tcx.arena.alloc_from_iter(cdata.get_trait_impls()) }
     implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
     crate_incoherent_impls => { cdata.get_incoherent_impls(tcx, other) }
 
@@ -338,6 +345,11 @@ provide! { tcx, def_id, other, cdata,
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
     generator_diagnostic_data => { cdata.get_generator_diagnostic_data(tcx, def_id.index) }
+    is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
+    doc_link_resolutions => { tcx.arena.alloc(cdata.get_doc_link_resolutions(def_id.index)) }
+    doc_link_traits_in_scope => {
+        tcx.arena.alloc_from_iter(cdata.get_doc_link_traits_in_scope(def_id.index))
+    }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
@@ -425,7 +437,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         return;
                     }
 
-                    if ty::util::is_doc_hidden(tcx, parent) {
+                    if tcx.is_doc_hidden(parent) {
                         fallback_map.push((def_id, parent));
                         return;
                     }
@@ -596,42 +608,6 @@ impl CStore {
         sess: &Session,
     ) -> Span {
         self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
-    }
-
-    /// Decodes all trait impls in the crate (for rustdoc).
-    pub fn trait_impls_in_crate_untracked(
-        &self,
-        cnum: CrateNum,
-    ) -> impl Iterator<Item = (DefId, DefId, Option<SimplifiedType>)> + '_ {
-        self.get_crate_data(cnum).get_trait_impls()
-    }
-
-    /// Decodes all inherent impls in the crate (for rustdoc).
-    pub fn inherent_impls_in_crate_untracked(
-        &self,
-        cnum: CrateNum,
-    ) -> impl Iterator<Item = (DefId, DefId)> + '_ {
-        self.get_crate_data(cnum).get_inherent_impls()
-    }
-
-    /// Decodes all incoherent inherent impls in the crate (for rustdoc).
-    pub fn incoherent_impls_in_crate_untracked(
-        &self,
-        cnum: CrateNum,
-    ) -> impl Iterator<Item = DefId> + '_ {
-        self.get_crate_data(cnum).get_all_incoherent_impls()
-    }
-
-    pub fn associated_item_def_ids_untracked<'a>(
-        &'a self,
-        def_id: DefId,
-        sess: &'a Session,
-    ) -> impl Iterator<Item = DefId> + 'a {
-        self.get_crate_data(def_id.krate).get_associated_item_def_ids(def_id.index, sess)
-    }
-
-    pub fn may_have_doc_links_untracked(&self, def_id: DefId) -> bool {
-        self.get_crate_data(def_id.krate).get_may_have_doc_links(def_id.index)
     }
 }
 

@@ -25,6 +25,8 @@ session_profile_sample_use_file_does_not_exist = file `{$path}` passed to `-C pr
 
 session_target_requires_unwind_tables = target requires unwind tables, they cannot be disabled with `-C force-unwind-tables=no`
 
+session_instrumentation_not_supported = {$us} instrumentation is not supported for this target
+
 session_sanitizer_not_supported = {$us} sanitizer is not supported for this target
 
 session_sanitizers_not_supported = {$us} sanitizers are not supported for this target
@@ -89,3 +91,5 @@ session_int_literal_too_large = integer literal is too large
 
 session_invalid_int_literal_width = invalid width `{$width}` for integer literal
     .help = valid widths are 8, 16, 32, 64 and 128
+
+session_optimization_fuel_exhausted = optimization-fuel-exhausted: {$msg}

@@ -1,6 +1,8 @@
 error[E0597]: `s` does not live long enough
   --> $DIR/check-trait-object-bounds-3.rs:15:34
    |
+LL |         let s = String::from("abcdef");
+   |             - binding `s` declared here
 LL |         z = f::<dyn X<Y = &str>>(&s);
    |             ---------------------^^-
    |             |                    |

@@ -4,6 +4,7 @@ error[E0597]: `arg` does not live long enough
 LL |     let _arg = match args.next() {
    |         ---- borrow later stored here
 LL |         Some(arg) => {
+   |              --- binding `arg` declared here
 LL |             match arg.to_str() {
    |                   ^^^^^^^^^^^^ borrowed value does not live long enough
 ...

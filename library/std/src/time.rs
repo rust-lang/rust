@@ -1,6 +1,6 @@
 //! Temporal quantification.
 //!
-//! # Examples:
+//! # Examples
 //!
 //! There are multiple ways to create a new [`Duration`]:
 //!

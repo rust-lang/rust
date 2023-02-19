@@ -141,6 +141,7 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
             StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)
+            | StatementKind::ConstEvalCounter
             | StatementKind::Nop
             | StatementKind::Retag(..)
             | StatementKind::Intrinsic(..)

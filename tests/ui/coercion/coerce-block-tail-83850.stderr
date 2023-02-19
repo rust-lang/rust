@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-block-tail-83850.rs:5:7
    |
 LL |     f(&Box::new([1, 2]));
-   |     - ^^^^^^^^^^^^^^^^^ expected slice `[i32]`, found struct `Box`
+   |     - ^^^^^^^^^^^^^^^^^ expected `&[i32]`, found `&Box<[{integer}; 2]>`
    |     |
    |     arguments to this function are incorrect
    |

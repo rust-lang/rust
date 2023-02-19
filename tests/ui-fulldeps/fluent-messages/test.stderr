@@ -93,6 +93,14 @@ LL |         test_crate => "./missing-crate-name.ftl",
    |
    = help: replace any '-'s with '_'s
 
-error: aborting due to 10 previous errors
+error: referenced message `message` does not exist (in message `missing_message_ref`)
+  --> $DIR/test.rs:104:20
+   |
+LL |         missing => "./missing-message-ref.ftl"
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: you may have meant to use a variable reference (`{$message}`)
+
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0428`.

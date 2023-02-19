@@ -1,6 +1,8 @@
 error[E0505]: cannot move out of `v` because it is borrowed
   --> $DIR/borrowck-loan-blocks-move-cc.rs:14:19
    |
+LL |     let v: Box<_> = Box::new(3);
+   |         - binding `v` declared here
 LL |     let w = &v;
    |             -- borrow of `v` occurs here
 LL |     thread::spawn(move|| {
@@ -15,6 +17,8 @@ LL |     w.use_ref();
 error[E0505]: cannot move out of `v` because it is borrowed
   --> $DIR/borrowck-loan-blocks-move-cc.rs:24:19
    |
+LL |     let v: Box<_> = Box::new(3);
+   |         - binding `v` declared here
 LL |     let w = &v;
    |             -- borrow of `v` occurs here
 LL |     thread::spawn(move|| {

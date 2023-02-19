@@ -29,7 +29,6 @@ use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
-use tracing::error;
 use vfs::AbsPathBuf;
 
 use crate::{
@@ -937,8 +936,7 @@ pub(crate) fn handle_hover(
 
     let line_index = snap.file_line_index(file_range.file_id)?;
     let range = to_proto::range(&line_index, info.range);
-    let markup_kind =
-        snap.config.hover().documentation.map_or(ide::HoverDocFormat::Markdown, |kind| kind);
+    let markup_kind = snap.config.hover().format;
     let hover = lsp_ext::Hover {
         hover: lsp_types::Hover {
             contents: HoverContents::Markup(to_proto::markup_content(
@@ -1360,55 +1358,10 @@ pub(crate) fn handle_inlay_hints(
 }
 
 pub(crate) fn handle_inlay_hints_resolve(
-    snap: GlobalStateSnapshot,
-    mut hint: InlayHint,
+    _snap: GlobalStateSnapshot,
+    hint: InlayHint,
 ) -> Result<InlayHint> {
     let _p = profile::span("handle_inlay_hints_resolve");
-    let data = match hint.data.take() {
-        Some(it) => it,
-        None => return Ok(hint),
-    };
-
-    let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
-
-    match snap.url_file_version(&resolve_data.text_document.uri) {
-        Some(version) if version == resolve_data.text_document.version => {}
-        Some(version) => {
-            error!(
-                "attempted inlayHints/resolve of '{}' at version {} while server version is {}",
-                resolve_data.text_document.uri, resolve_data.text_document.version, version,
-            );
-            return Ok(hint);
-        }
-        None => {
-            error!(
-                "attempted inlayHints/resolve of unknown file '{}' at version {}",
-                resolve_data.text_document.uri, resolve_data.text_document.version,
-            );
-            return Ok(hint);
-        }
-    }
-    let file_range = from_proto::file_range_uri(
-        &snap,
-        &resolve_data.text_document.uri,
-        match resolve_data.position {
-            PositionOrRange::Position(pos) => Range::new(pos, pos),
-            PositionOrRange::Range(range) => range,
-        },
-    )?;
-    let info = match snap.analysis.hover(&snap.config.hover(), file_range)? {
-        None => return Ok(hint),
-        Some(info) => info,
-    };
-
-    let markup_kind =
-        snap.config.hover().documentation.map_or(ide::HoverDocFormat::Markdown, |kind| kind);
-
-    // FIXME: hover actions?
-    hint.tooltip = Some(lsp_types::InlayHintTooltip::MarkupContent(to_proto::markup_content(
-        info.info.markup,
-        markup_kind,
-    )));
     Ok(hint)
 }
 
@@ -1516,7 +1469,8 @@ pub(crate) fn handle_semantic_tokens_full(
 
     let mut highlight_config = snap.config.highlighting_config();
     // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
-    highlight_config.syntactic_name_ref_highlighting = !snap.proc_macros_loaded;
+    highlight_config.syntactic_name_ref_highlighting =
+        snap.workspaces.is_empty() || !snap.proc_macros_loaded;
 
     let highlights = snap.analysis.highlight(highlight_config, file_id)?;
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
@@ -1539,7 +1493,8 @@ pub(crate) fn handle_semantic_tokens_full_delta(
 
     let mut highlight_config = snap.config.highlighting_config();
     // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
-    highlight_config.syntactic_name_ref_highlighting = !snap.proc_macros_loaded;
+    highlight_config.syntactic_name_ref_highlighting =
+        snap.workspaces.is_empty() || !snap.proc_macros_loaded;
 
     let highlights = snap.analysis.highlight(highlight_config, file_id)?;
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
@@ -1570,7 +1525,12 @@ pub(crate) fn handle_semantic_tokens_range(
     let text = snap.analysis.file_text(frange.file_id)?;
     let line_index = snap.file_line_index(frange.file_id)?;
 
-    let highlights = snap.analysis.highlight_range(snap.config.highlighting_config(), frange)?;
+    let mut highlight_config = snap.config.highlighting_config();
+    // Avoid flashing a bunch of unresolved references when the proc-macro servers haven't been spawned yet.
+    highlight_config.syntactic_name_ref_highlighting =
+        snap.workspaces.is_empty() || !snap.proc_macros_loaded;
+
+    let highlights = snap.analysis.highlight_range(highlight_config, frange)?;
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
     Ok(Some(semantic_tokens.into()))
 }

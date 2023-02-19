@@ -8,7 +8,7 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected struct `Foo<{float}, _>`
     //~| found type `{integer}`
-    //~| expected struct `Foo`, found integer
+    //~| expected `Foo<{float}, _>`, found integer
     }
 
 }

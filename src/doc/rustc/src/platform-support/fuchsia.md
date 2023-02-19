@@ -697,7 +697,7 @@ test environment with:
 src/ci/docker/scripts/fuchsia-test-runner.py start
     --rust ${RUST_SRC_PATH}/install
     --sdk ${SDK_PATH}
-    --target-arch {x64,arm64}
+    --target-triple {x86_64-unknown-fuchsia|aarch64-unknown-fuchsia}
 ```
 
 Where `${RUST_SRC_PATH}/install` is the `prefix` set in `config.toml` and

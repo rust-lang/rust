@@ -2,7 +2,7 @@ use std::{
     env,
     ffi::{OsStr, OsString},
     fs::{self, File},
-    io::{BufRead, BufReader, ErrorKind},
+    io::{self, BufRead, BufReader, ErrorKind},
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -18,10 +18,20 @@ use crate::{
     Config,
 };
 
+static SHOULD_FIX_BINS_AND_DYLIBS: OnceCell<bool> = OnceCell::new();
+
 /// Generic helpers that are useful anywhere in bootstrap.
 impl Config {
     pub fn is_verbose(&self) -> bool {
         self.verbose > 0
+    }
+
+    pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(&self, src: P, link: Q) -> io::Result<()> {
+        #[cfg(unix)]
+        use std::os::unix::fs::symlink as symlink_file;
+        #[cfg(windows)]
+        use std::os::windows::fs::symlink_file;
+        if !self.dry_run() { symlink_file(src.as_ref(), link.as_ref()) } else { Ok(()) }
     }
 
     pub(crate) fn create(&self, path: &Path, s: &str) {
@@ -70,6 +80,51 @@ impl Config {
         check_run(cmd, self.is_verbose())
     }
 
+    /// Whether or not `fix_bin_or_dylib` needs to be run; can only be true
+    /// on NixOS
+    fn should_fix_bins_and_dylibs(&self) -> bool {
+        let val = *SHOULD_FIX_BINS_AND_DYLIBS.get_or_init(|| {
+            match Command::new("uname").arg("-s").stderr(Stdio::inherit()).output() {
+                Err(_) => return false,
+                Ok(output) if !output.status.success() => return false,
+                Ok(output) => {
+                    let mut os_name = output.stdout;
+                    if os_name.last() == Some(&b'\n') {
+                        os_name.pop();
+                    }
+                    if os_name != b"Linux" {
+                        return false;
+                    }
+                }
+            }
+
+            // If the user has asked binaries to be patched for Nix, then
+            // don't check for NixOS or `/lib`.
+            // NOTE: this intentionally comes after the Linux check:
+            // - patchelf only works with ELF files, so no need to run it on Mac or Windows
+            // - On other Unix systems, there is no stable syscall interface, so Nix doesn't manage the global libc.
+            if self.patch_binaries_for_nix {
+                return true;
+            }
+
+            // Use `/etc/os-release` instead of `/etc/NIXOS`.
+            // The latter one does not exist on NixOS when using tmpfs as root.
+            let is_nixos = match File::open("/etc/os-release") {
+                Err(e) if e.kind() == ErrorKind::NotFound => false,
+                Err(e) => panic!("failed to access /etc/os-release: {}", e),
+                Ok(os_release) => BufReader::new(os_release).lines().any(|l| {
+                    let l = l.expect("reading /etc/os-release");
+                    matches!(l.trim(), "ID=nixos" | "ID='nixos'" | "ID=\"nixos\"")
+                }),
+            };
+            is_nixos && !Path::new("/lib").exists()
+        });
+        if val {
+            println!("info: You seem to be using Nix.");
+        }
+        val
+    }
+
     /// Modifies the interpreter section of 'fname' to fix the dynamic linker,
     /// or the RPATH section, to fix the dynamic library search path
     ///
@@ -78,45 +133,8 @@ impl Config {
     ///
     /// Please see https://nixos.org/patchelf.html for more information
     fn fix_bin_or_dylib(&self, fname: &Path) {
-        // FIXME: cache NixOS detection?
-        match Command::new("uname").arg("-s").stderr(Stdio::inherit()).output() {
-            Err(_) => return,
-            Ok(output) if !output.status.success() => return,
-            Ok(output) => {
-                let mut s = output.stdout;
-                if s.last() == Some(&b'\n') {
-                    s.pop();
-                }
-                if s != b"Linux" {
-                    return;
-                }
-            }
-        }
-
-        // If the user has asked binaries to be patched for Nix, then
-        // don't check for NixOS or `/lib`, just continue to the patching.
-        // NOTE: this intentionally comes after the Linux check:
-        // - patchelf only works with ELF files, so no need to run it on Mac or Windows
-        // - On other Unix systems, there is no stable syscall interface, so Nix doesn't manage the global libc.
-        if !self.patch_binaries_for_nix {
-            // Use `/etc/os-release` instead of `/etc/NIXOS`.
-            // The latter one does not exist on NixOS when using tmpfs as root.
-            const NIX_IDS: &[&str] = &["ID=nixos", "ID='nixos'", "ID=\"nixos\""];
-            let os_release = match File::open("/etc/os-release") {
-                Err(e) if e.kind() == ErrorKind::NotFound => return,
-                Err(e) => panic!("failed to access /etc/os-release: {}", e),
-                Ok(f) => f,
-            };
-            if !BufReader::new(os_release).lines().any(|l| NIX_IDS.contains(&t!(l).trim())) {
-                return;
-            }
-            if Path::new("/lib").exists() {
-                return;
-            }
-        }
-
-        // At this point we're pretty sure the user is running NixOS or using Nix
-        println!("info: you seem to be using Nix. Attempting to patch {}", fname.display());
+        assert_eq!(SHOULD_FIX_BINS_AND_DYLIBS.get(), Some(&true));
+        println!("attempting to patch {}", fname.display());
 
         // Only build `.nix-deps` once.
         static NIX_DEPS_DIR: OnceCell<PathBuf> = OnceCell::new();
@@ -163,8 +181,7 @@ impl Config {
             // appear to have this (even when `../lib` is redundant).
             // NOTE: there are only two paths here, delimited by a `:`
             let mut entries = OsString::from("$ORIGIN/../lib:");
-            entries.push(t!(fs::canonicalize(nix_deps_dir)));
-            entries.push("/lib");
+            entries.push(t!(fs::canonicalize(nix_deps_dir)).join("lib"));
             entries
         };
         patchelf.args(&[OsString::from("--set-rpath"), rpath_entries]);
@@ -211,10 +228,10 @@ impl Config {
             "--retry",
             "3",
             "-Sf",
-            "-o",
         ]);
-        curl.arg(tempfile);
         curl.arg(url);
+        let f = File::create(tempfile).unwrap();
+        curl.stdout(Stdio::from(f));
         if !self.check_run(&mut curl) {
             if self.build.contains("windows-msvc") {
                 println!("Fallback to PowerShell");
@@ -318,18 +335,48 @@ impl Config {
         let channel = format!("{version}-{date}");
 
         let host = self.build;
-        let rustfmt_path = self.initial_rustc.with_file_name(exe("rustfmt", host));
-        let bin_root = self.out.join(host.triple).join("stage0");
+        let bin_root = self.out.join(host.triple).join("rustfmt");
+        let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
         let rustfmt_stamp = bin_root.join(".rustfmt-stamp");
+
+        #[cfg(not(windows))]
+        {
+            let legacy_rustfmt = self.initial_rustc.with_file_name(exe("rustfmt", host));
+            if !legacy_rustfmt.exists() {
+                t!(self.symlink_file(&rustfmt_path, &legacy_rustfmt));
+            }
+        }
+
         if rustfmt_path.exists() && !program_out_of_date(&rustfmt_stamp, &channel) {
             return Some(rustfmt_path);
         }
 
-        let filename = format!("rustfmt-{version}-{build}.tar.xz", build = host.triple);
-        self.download_component(DownloadSource::Dist, filename, "rustfmt-preview", &date, "stage0");
+        self.download_component(
+            DownloadSource::Dist,
+            format!("rustfmt-{version}-{build}.tar.xz", build = host.triple),
+            "rustfmt-preview",
+            &date,
+            "rustfmt",
+        );
+        self.download_component(
+            DownloadSource::Dist,
+            format!("rustc-{version}-{build}.tar.xz", build = host.triple),
+            "rustc",
+            &date,
+            "rustfmt",
+        );
 
-        self.fix_bin_or_dylib(&bin_root.join("bin").join("rustfmt"));
-        self.fix_bin_or_dylib(&bin_root.join("bin").join("cargo-fmt"));
+        if self.should_fix_bins_and_dylibs() {
+            self.fix_bin_or_dylib(&bin_root.join("bin").join("rustfmt"));
+            self.fix_bin_or_dylib(&bin_root.join("bin").join("cargo-fmt"));
+            let lib_dir = bin_root.join("lib");
+            for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
+                let lib = t!(lib);
+                if lib.path().extension() == Some(OsStr::new("so")) {
+                    self.fix_bin_or_dylib(&lib.path());
+                }
+            }
+        }
 
         self.create(&rustfmt_stamp, &channel);
         Some(rustfmt_path)
@@ -358,16 +405,21 @@ impl Config {
             let filename = format!("rust-src-{version}.tar.xz");
             self.download_ci_component(filename, "rust-src", commit);
 
-            self.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
-            self.fix_bin_or_dylib(&bin_root.join("bin").join("rustdoc"));
-            self.fix_bin_or_dylib(&bin_root.join("libexec").join("rust-analyzer-proc-macro-srv"));
-            let lib_dir = bin_root.join("lib");
-            for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
-                let lib = t!(lib);
-                if lib.path().extension() == Some(OsStr::new("so")) {
-                    self.fix_bin_or_dylib(&lib.path());
+            if self.should_fix_bins_and_dylibs() {
+                self.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
+                self.fix_bin_or_dylib(&bin_root.join("bin").join("rustdoc"));
+                self.fix_bin_or_dylib(
+                    &bin_root.join("libexec").join("rust-analyzer-proc-macro-srv"),
+                );
+                let lib_dir = bin_root.join("lib");
+                for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
+                    let lib = t!(lib);
+                    if lib.path().extension() == Some(OsStr::new("so")) {
+                        self.fix_bin_or_dylib(&lib.path());
+                    }
                 }
             }
+
             t!(fs::write(rustc_stamp, commit));
         }
     }
@@ -459,8 +511,10 @@ impl Config {
         let key = format!("{}{}", llvm_sha, self.llvm_assertions);
         if program_out_of_date(&llvm_stamp, &key) && !self.dry_run() {
             self.download_ci_llvm(&llvm_sha);
-            for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
-                self.fix_bin_or_dylib(&t!(entry).path());
+            if self.should_fix_bins_and_dylibs() {
+                for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
+                    self.fix_bin_or_dylib(&t!(entry).path());
+                }
             }
 
             // Update the timestamp of llvm-config to force rustc_llvm to be
@@ -475,13 +529,16 @@ impl Config {
             let llvm_config = llvm_root.join("bin").join(exe("llvm-config", self.build));
             t!(filetime::set_file_times(&llvm_config, now, now));
 
-            let llvm_lib = llvm_root.join("lib");
-            for entry in t!(fs::read_dir(&llvm_lib)) {
-                let lib = t!(entry).path();
-                if lib.extension().map_or(false, |ext| ext == "so") {
-                    self.fix_bin_or_dylib(&lib);
+            if self.should_fix_bins_and_dylibs() {
+                let llvm_lib = llvm_root.join("lib");
+                for entry in t!(fs::read_dir(&llvm_lib)) {
+                    let lib = t!(entry).path();
+                    if lib.extension().map_or(false, |ext| ext == "so") {
+                        self.fix_bin_or_dylib(&lib);
+                    }
                 }
             }
+
             t!(fs::write(llvm_stamp, key));
         }
     }

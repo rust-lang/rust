@@ -104,6 +104,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
+            | StatementKind::ConstEvalCounter
             | StatementKind::Nop => {
                 // safe (at least as emitted during MIR construction)
             }
@@ -125,6 +126,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                     }
                 }
                 &AggregateKind::Closure(def_id, _) | &AggregateKind::Generator(def_id, _, _) => {
+                    let def_id = def_id.expect_local();
                     let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
                         self.tcx.unsafety_check_result(def_id);
                     self.register_violations(violations, used_unsafe_blocks.iter().copied());
@@ -445,7 +447,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'_, 'tcx> {
         _fd: &'tcx hir::FnDecl<'tcx>,
         b: hir::BodyId,
         _s: rustc_span::Span,
-        _id: HirId,
+        _id: LocalDefId,
     ) {
         if matches!(fk, intravisit::FnKind::Closure) {
             self.visit_body(self.tcx.hir().body(b))

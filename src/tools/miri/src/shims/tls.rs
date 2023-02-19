@@ -108,7 +108,7 @@ impl<'tcx> TlsData<'tcx> {
     ) -> InterpResult<'tcx> {
         match self.keys.get_mut(&key) {
             Some(TlsEntry { data, .. }) => {
-                if new_data.to_machine_usize(cx)? != 0 {
+                if new_data.to_target_usize(cx)? != 0 {
                     trace!("TLS key {} for thread {:?} stored: {:?}", key, thread_id, new_data);
                     data.insert(thread_id, new_data);
                 } else {
@@ -356,7 +356,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             state.last_key = Some(key);
             trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, active_thread);
             assert!(
-                !ptr.to_machine_usize(this).unwrap() != 0,
+                !ptr.to_target_usize(this).unwrap() != 0,
                 "data can't be NULL when dtor is called!"
             );
 

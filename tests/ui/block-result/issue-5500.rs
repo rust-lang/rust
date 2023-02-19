@@ -3,5 +3,5 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected unit type `()`
     //~| found reference `&_`
-    //~| expected `()`, found reference
+    //~| expected `()`, found `&_`
 }

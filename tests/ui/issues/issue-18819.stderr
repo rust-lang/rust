@@ -4,7 +4,7 @@ error[E0061]: this function takes 2 arguments but 1 argument was supplied
 LL |     print_x(X);
    |     ^^^^^^^--- an argument of type `&str` is missing
    |
-note: expected reference, found struct `X`
+note: expected `&dyn Foo<Item = bool>`, found `X`
   --> $DIR/issue-18819.rs:16:13
    |
 LL |     print_x(X);

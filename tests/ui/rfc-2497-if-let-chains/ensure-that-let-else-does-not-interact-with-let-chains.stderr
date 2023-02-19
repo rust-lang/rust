@@ -37,6 +37,11 @@ help: add a block here
    |
 LL |     if let Some(n) = opt else {
    |                         ^
+help: remove the `if` if you meant to write a `let...else` statement
+   |
+LL -     if let Some(n) = opt else {
+LL +     let Some(n) = opt else {
+   |
 
 error: this `if` expression is missing a block after the condition
   --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:28:5
@@ -101,7 +106,7 @@ error[E0308]: mismatched types
   --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:9:19
    |
 LL |     let Some(n) = opt && n == 1 else {
-   |                   ^^^ expected `bool`, found enum `Option`
+   |                   ^^^ expected `bool`, found `Option<i32>`
    |
    = note: expected type `bool`
               found enum `Option<i32>`
@@ -112,7 +117,7 @@ error[E0308]: mismatched types
 LL |     let Some(n) = opt && n == 1 else {
    |         ^^^^^^^   ------------- this expression has type `bool`
    |         |
-   |         expected `bool`, found enum `Option`
+   |         expected `bool`, found `Option<_>`
    |
    = note: expected type `bool`
               found enum `Option<_>`
@@ -121,7 +126,7 @@ error[E0308]: mismatched types
   --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:15:19
    |
 LL |     let Some(n) = opt && let another = n else {
-   |                   ^^^ expected `bool`, found enum `Option`
+   |                   ^^^ expected `bool`, found `Option<i32>`
    |
    = note: expected type `bool`
               found enum `Option<i32>`
@@ -132,7 +137,7 @@ error[E0308]: mismatched types
 LL |     let Some(n) = opt && let another = n else {
    |         ^^^^^^^   ---------------------- this expression has type `bool`
    |         |
-   |         expected `bool`, found enum `Option`
+   |         expected `bool`, found `Option<_>`
    |
    = note: expected type `bool`
               found enum `Option<_>`

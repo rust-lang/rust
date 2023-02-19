@@ -1,4 +1,4 @@
-error[E0599]: no method named `call` found for closure `[closure@unboxed-closures-static-call-wrong-trait.rs:6:26]` in the current scope
+error[E0599]: no method named `call` found for closure `[closure@$DIR/unboxed-closures-static-call-wrong-trait.rs:6:26: 6:29]` in the current scope
   --> $DIR/unboxed-closures-static-call-wrong-trait.rs:7:10
    |
 LL |     mut_.call((0, ));

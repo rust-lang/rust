@@ -17,5 +17,5 @@ impl Visit for () where
 
 fn main() {
     <() as Visit>::visit();
-    //~^ ERROR type mismatch resolving `for<'a> <() as Array<'a>>::Element == ()`
+    //~^ ERROR type mismatch resolving `<() as Array<'a>>::Element == ()`
 }

@@ -238,7 +238,7 @@ impl<K, V> HashMap<K, V, RandomState> {
     ///
     /// The hash map will be able to hold at least `capacity` elements without
     /// reallocating. This method is allowed to allocate for more elements than
-    /// `capacity`. If `capacity` is 0, the hash set will not allocate.
+    /// `capacity`. If `capacity` is 0, the hash map will not allocate.
     ///
     /// # Examples
     ///

@@ -3,8 +3,10 @@
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    visit::TypeVisitable, AliasTy, Const, ConstKind, DefIdTree, InferConst, InferTy, Opaque,
-    PolyTraitPredicate, Projection, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
+    ir::{FallibleTypeFolder, TypeVisitor},
+    visit::TypeVisitable,
+    AliasTy, Const, ConstKind, DefIdTree, InferConst, InferTy, Opaque, PolyTraitPredicate,
+    Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -76,7 +78,7 @@ impl<'tcx> Ty<'tcx> {
     }
 }
 
-pub trait IsSuggestable<'tcx> {
+pub trait IsSuggestable<'tcx>: Sized {
     /// Whether this makes sense to suggest in a diagnostic.
     ///
     /// We filter out certain types and constants since they don't provide
@@ -87,14 +89,20 @@ pub trait IsSuggestable<'tcx> {
     /// Only if `infer_suggestable` is true, we consider type and const
     /// inference variables to be suggestable.
     fn is_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> bool;
+
+    fn make_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> Option<Self>;
 }
 
 impl<'tcx, T> IsSuggestable<'tcx> for T
 where
-    T: TypeVisitable<'tcx>,
+    T: TypeVisitable<'tcx> + TypeFoldable<'tcx>,
 {
     fn is_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> bool {
         self.visit_with(&mut IsSuggestableVisitor { tcx, infer_suggestable }).is_continue()
+    }
+
+    fn make_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> Option<T> {
+        self.try_fold_with(&mut MakeSuggestableFolder { tcx, infer_suggestable }).ok()
     }
 }
 
@@ -186,6 +194,9 @@ fn suggest_removing_unsized_bound(
 }
 
 /// Suggest restricting a type param with a new bound.
+///
+/// If `span_to_replace` is provided, then that span will be replaced with the
+/// `constraint`. If one wasn't provided, then the full bound will be suggested.
 pub fn suggest_constraining_type_param(
     tcx: TyCtxt<'_>,
     generics: &hir::Generics<'_>,
@@ -193,12 +204,14 @@ pub fn suggest_constraining_type_param(
     param_name: &str,
     constraint: &str,
     def_id: Option<DefId>,
+    span_to_replace: Option<Span>,
 ) -> bool {
     suggest_constraining_type_params(
         tcx,
         generics,
         err,
         [(param_name, constraint, def_id)].into_iter(),
+        span_to_replace,
     )
 }
 
@@ -208,6 +221,7 @@ pub fn suggest_constraining_type_params<'a>(
     generics: &hir::Generics<'_>,
     err: &mut Diagnostic,
     param_names_and_constraints: impl Iterator<Item = (&'a str, &'a str, Option<DefId>)>,
+    span_to_replace: Option<Span>,
 ) -> bool {
     let mut grouped = FxHashMap::default();
     param_names_and_constraints.for_each(|(param_name, constraint, def_id)| {
@@ -246,7 +260,9 @@ pub fn suggest_constraining_type_params<'a>(
         let mut suggest_restrict = |span, bound_list_non_empty| {
             suggestions.push((
                 span,
-                if bound_list_non_empty {
+                if span_to_replace.is_some() {
+                    constraint.clone()
+                } else if bound_list_non_empty {
                     format!(" + {}", constraint)
                 } else {
                     format!(" {}", constraint)
@@ -254,6 +270,11 @@ pub fn suggest_constraining_type_params<'a>(
                 SuggestChangingConstraintsMessage::RestrictBoundFurther,
             ))
         };
+
+        if let Some(span) = span_to_replace {
+            suggest_restrict(span, true);
+            continue;
+        }
 
         // When the type parameter has been provided bounds
         //
@@ -440,7 +461,7 @@ pub struct IsSuggestableVisitor<'tcx> {
     infer_suggestable: bool,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
     type BreakTy = ();
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -460,8 +481,9 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
 
             Alias(Opaque, AliasTy { def_id, .. }) => {
                 let parent = self.tcx.parent(def_id);
+                let parent_ty = self.tcx.type_of(parent).subst_identity();
                 if let DefKind::TyAlias | DefKind::AssocTy = self.tcx.def_kind(parent)
-                    && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *self.tcx.type_of(parent).kind()
+                    && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {
                     // Okay
@@ -507,5 +529,86 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
         }
 
         c.super_visit_with(self)
+    }
+}
+
+pub struct MakeSuggestableFolder<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    infer_suggestable: bool,
+}
+
+impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
+    type Error = ();
+
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn try_fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+        let t = match *t.kind() {
+            Infer(InferTy::TyVar(_)) if self.infer_suggestable => t,
+
+            FnDef(def_id, substs) => {
+                self.tcx.mk_fn_ptr(self.tcx.fn_sig(def_id).subst(self.tcx, substs))
+            }
+
+            // FIXME(compiler-errors): We could replace these with infer, I guess.
+            Closure(..)
+            | Infer(..)
+            | Generator(..)
+            | GeneratorWitness(..)
+            | Bound(_, _)
+            | Placeholder(_)
+            | Error(_) => {
+                return Err(());
+            }
+
+            Alias(Opaque, AliasTy { def_id, .. }) => {
+                let parent = self.tcx.parent(def_id);
+                let parent_ty = self.tcx.type_of(parent).subst_identity();
+                if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy = self.tcx.def_kind(parent)
+                    && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *parent_ty.kind()
+                    && parent_opaque_def_id == def_id
+                {
+                    t
+                } else {
+                    return Err(());
+                }
+            }
+
+            Param(param) => {
+                // FIXME: It would be nice to make this not use string manipulation,
+                // but it's pretty hard to do this, since `ty::ParamTy` is missing
+                // sufficient info to determine if it is synthetic, and we don't
+                // always have a convenient way of getting `ty::Generics` at the call
+                // sites we invoke `IsSuggestable::is_suggestable`.
+                if param.name.as_str().starts_with("impl ") {
+                    return Err(());
+                }
+
+                t
+            }
+
+            _ => t,
+        };
+
+        t.try_super_fold_with(self)
+    }
+
+    fn try_fold_const(&mut self, c: Const<'tcx>) -> Result<Const<'tcx>, ()> {
+        let c = match c.kind() {
+            ConstKind::Infer(InferConst::Var(_)) if self.infer_suggestable => c,
+
+            ConstKind::Infer(..)
+            | ConstKind::Bound(..)
+            | ConstKind::Placeholder(..)
+            | ConstKind::Error(..) => {
+                return Err(());
+            }
+
+            _ => c,
+        };
+
+        c.try_super_fold_with(self)
     }
 }

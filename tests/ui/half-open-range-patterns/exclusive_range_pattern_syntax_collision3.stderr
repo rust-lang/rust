@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match [5..4, 99..105, 43..44] {
    |           ----------------------- this expression has type `[std::ops::Range<{integer}>; 3]`
 LL |         [..9, 99..100, _] => {},
-   |            ^ expected struct `Range`, found integer
+   |            ^ expected `Range<{integer}>`, found integer
    |
    = note: expected struct `std::ops::Range<{integer}>`
                 found type `{integer}`
@@ -17,7 +17,7 @@ LL |     match [5..4, 99..105, 43..44] {
 LL |         [..9, 99..100, _] => {},
    |               ^^  --- this is of type `{integer}`
    |               |
-   |               expected struct `Range`, found integer
+   |               expected `Range<{integer}>`, found integer
    |
    = note: expected struct `std::ops::Range<{integer}>`
                 found type `{integer}`
@@ -28,7 +28,7 @@ error[E0308]: mismatched types
 LL |     match [5..4, 99..105, 43..44] {
    |           ----------------------- this expression has type `[std::ops::Range<{integer}>; 3]`
 LL |         [..9, 99..100, _] => {},
-   |               --  ^^^ expected struct `Range`, found integer
+   |               --  ^^^ expected `Range<{integer}>`, found integer
    |               |
    |               this is of type `{integer}`
    |

@@ -1,6 +1,8 @@
 error[E0597]: `z.1` does not live long enough
   --> $DIR/borrowck-local-borrow-with-panic-outlives-fn.rs:3:15
    |
+LL |     let mut z = (0, 0);
+   |         ----- binding `z` declared here
 LL |     *x = Some(&mut z.1);
    |     ----------^^^^^^^^-
    |     |         |

@@ -13,17 +13,29 @@ LL | fn foo2(_: &dyn (Drop + AsRef<str>)) {}
 help: remove the parentheses
    |
 LL - fn foo2(_: &dyn (Drop + AsRef<str>)) {}
-LL + fn foo2(_: &dyn Drop + AsRef<str>) {}
+LL + fn foo2(_: &dyn  Drop + AsRef<str>) {}
+   |
+
+error: incorrect braces around trait bounds
+  --> $DIR/trait-object-delimiters.rs:8:25
+   |
+LL | fn foo2_no_space(_: &dyn(Drop + AsRef<str>)) {}
+   |                         ^                 ^
+   |
+help: remove the parentheses
+   |
+LL - fn foo2_no_space(_: &dyn(Drop + AsRef<str>)) {}
+LL + fn foo2_no_space(_: &dyn Drop + AsRef<str>) {}
    |
 
 error: expected parameter name, found `{`
-  --> $DIR/trait-object-delimiters.rs:8:17
+  --> $DIR/trait-object-delimiters.rs:10:17
    |
 LL | fn foo3(_: &dyn {Drop + AsRef<str>}) {}
    |                 ^ expected parameter name
 
 error: expected one of `!`, `(`, `)`, `*`, `,`, `?`, `for`, `~`, lifetime, or path, found `{`
-  --> $DIR/trait-object-delimiters.rs:8:17
+  --> $DIR/trait-object-delimiters.rs:10:17
    |
 LL | fn foo3(_: &dyn {Drop + AsRef<str>}) {}
    |                -^ expected one of 10 possible tokens
@@ -31,13 +43,13 @@ LL | fn foo3(_: &dyn {Drop + AsRef<str>}) {}
    |                help: missing `,`
 
 error: expected identifier, found `<`
-  --> $DIR/trait-object-delimiters.rs:12:17
+  --> $DIR/trait-object-delimiters.rs:14:17
    |
 LL | fn foo4(_: &dyn <Drop + AsRef<str>>) {}
    |                 ^ expected identifier
 
 error: invalid `dyn` keyword
-  --> $DIR/trait-object-delimiters.rs:14:25
+  --> $DIR/trait-object-delimiters.rs:16:25
    |
 LL | fn foo5(_: &(dyn Drop + dyn AsRef<str>)) {}
    |                         ^^^ help: remove this keyword
@@ -56,13 +68,13 @@ LL | fn foo1(_: &dyn Drop + AsRef<str>) {}
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
 error[E0224]: at least one trait is required for an object type
-  --> $DIR/trait-object-delimiters.rs:8:13
+  --> $DIR/trait-object-delimiters.rs:10:13
    |
 LL | fn foo3(_: &dyn {Drop + AsRef<str>}) {}
    |             ^^^
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
-  --> $DIR/trait-object-delimiters.rs:14:29
+  --> $DIR/trait-object-delimiters.rs:16:29
    |
 LL | fn foo5(_: &(dyn Drop + dyn AsRef<str>)) {}
    |                  ----       ^^^^^^^^^^ additional non-auto trait
@@ -72,7 +84,7 @@ LL | fn foo5(_: &(dyn Drop + dyn AsRef<str>)) {}
    = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Drop + AsRef<str> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0224, E0225.
 For more information about an error, try `rustc --explain E0224`.

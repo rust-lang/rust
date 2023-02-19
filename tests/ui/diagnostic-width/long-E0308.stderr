@@ -16,7 +16,7 @@ LL |  |         Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok...
 LL |  |             Ok("")
 LL |  |         ))))))))))))))))))))))))))))))
 LL |  |     ))))))))))))))))))))))))))))));
-   |  |__________________________________^ expected struct `Atype`, found enum `Result`
+   |  |__________________________________^ expected `Atype<Btype<..., ...>, ...>`, found `Result<Result<..., ...>, ...>`
    |
    = note: expected struct `Atype<Btype<..., ...>, ...>`
            the full type name has been written to '$TEST_BUILD_DIR/diagnostic-width/long-E0308/long-E0308.long-type-hash.txt'
@@ -32,7 +32,7 @@ LL | |         Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(...
 LL | |             Ok(Ok(Ok(Ok(Ok(Ok(Ok("")))))))
 LL | |         ))))))))))))))))))))))))))))))
 LL | |     ))))))))))))))))))))))));
-   | |____________________________^ expected enum `Option`, found enum `Result`
+   | |____________________________^ expected `Option<Result<..., ...>>`, found `Result<Result<..., ...>, ...>`
    |
    = note: expected enum `Option<Result<..., ...>>`
            the full type name has been written to '$TEST_BUILD_DIR/diagnostic-width/long-E0308/long-E0308.long-type-hash.txt'
@@ -50,7 +50,7 @@ LL | |           Atype<
 ...  |
 LL | |       i32
 LL | |     > = ();
-   | |     -   ^^ expected struct `Atype`, found `()`
+   | |     -   ^^ expected `Atype<Btype<..., ...>, ...>`, found `()`
    | |_____|
    |       expected due to this
    |
@@ -69,7 +69,7 @@ LL | |         Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(...
 LL | |             Ok(Ok(Ok(Ok(Ok(Ok(Ok("")))))))
 LL | |         ))))))))))))))))))))))))))))))
 LL | |     ))))))))))))))))))))))));
-   | |____________________________^ expected `()`, found enum `Result`
+   | |____________________________^ expected `()`, found `Result<Result<..., ...>, ...>`
    |
    = note: expected unit type `()`
                    found enum `Result<Result<..., ...>, ...>`

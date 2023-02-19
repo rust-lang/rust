@@ -1,6 +1,9 @@
 error[E0597]: `x` does not live long enough
   --> $DIR/vec_refs_data_with_early_death.rs:17:12
    |
+LL |     let x: i8 = 3;
+   |         - binding `x` declared here
+...
 LL |     v.push(&x);
    |            ^^ borrowed value does not live long enough
 ...
@@ -15,6 +18,9 @@ LL | }
 error[E0597]: `y` does not live long enough
   --> $DIR/vec_refs_data_with_early_death.rs:19:12
    |
+LL |     let y: i8 = 4;
+   |         - binding `y` declared here
+...
 LL |     v.push(&y);
    |            ^^ borrowed value does not live long enough
 ...

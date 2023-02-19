@@ -22,7 +22,7 @@ error[E0308]: mismatched types
 LL |     let &&x = &1isize as &dyn T;
    |          ^^   ----------------- this expression has type `&dyn T`
    |          |
-   |          expected trait object `dyn T`, found reference
+   |          expected `dyn T`, found `&_`
    |
    = note: expected trait object `dyn T`
                  found reference `&_`
@@ -38,7 +38,7 @@ error[E0308]: mismatched types
 LL |     let &&&x = &(&1isize as &dyn T);
    |           ^^   -------------------- this expression has type `&&dyn T`
    |           |
-   |           expected trait object `dyn T`, found reference
+   |           expected `dyn T`, found `&_`
    |
    = note: expected trait object `dyn T`
                  found reference `&_`
@@ -54,7 +54,7 @@ error[E0308]: mismatched types
 LL |     let box box x = Box::new(1isize) as Box<dyn T>;
    |             ^^^^^   ------------------------------ this expression has type `Box<dyn T>`
    |             |
-   |             expected trait object `dyn T`, found struct `Box`
+   |             expected `dyn T`, found `Box<_>`
    |
    = note: expected trait object `dyn T`
                     found struct `Box<_>`

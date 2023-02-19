@@ -238,7 +238,6 @@
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
-#![feature(box_syntax)]
 #![feature(c_unwind)]
 #![feature(cfg_target_thread_local)]
 #![feature(concat_idents)]
@@ -274,13 +273,9 @@
 #![feature(utf8_chunks)]
 //
 // Library features (core):
-#![feature(array_error_internals)]
 #![feature(atomic_mut_ptr)]
-#![feature(char_error_internals)]
 #![feature(char_internals)]
 #![feature(core_intrinsics)]
-#![feature(cstr_from_bytes_until_nul)]
-#![feature(cstr_internals)]
 #![feature(duration_constants)]
 #![feature(error_generic_member_access)]
 #![feature(error_in_core)]
@@ -292,7 +287,6 @@
 #![feature(float_next_up_down)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
-#![feature(int_error_internals)]
 #![feature(is_some_and)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_write_slice)]
@@ -359,7 +353,6 @@
 #![feature(const_ip)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
-#![feature(const_socketaddr)]
 #![feature(thread_local_internals)]
 //
 #![default_lib_allocator]

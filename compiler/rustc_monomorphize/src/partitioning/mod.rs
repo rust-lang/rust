@@ -114,7 +114,9 @@ use rustc_span::symbol::Symbol;
 
 use crate::collector::InliningMap;
 use crate::collector::{self, MonoItemCollectionMode};
-use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined, UnknownPartitionStrategy};
+use crate::errors::{
+    CouldntDumpMonoStats, SymbolAlreadyDefined, UnknownCguCollectionMode, UnknownPartitionStrategy,
+};
 
 pub struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -180,7 +182,7 @@ pub fn partition<'tcx>(
         partitioner.place_root_mono_items(cx, mono_items)
     };
 
-    initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
+    initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.create_size_estimate(tcx));
 
     debug_dump(tcx, "INITIAL PARTITIONING:", initial_partitioning.codegen_units.iter());
 
@@ -200,7 +202,7 @@ pub fn partition<'tcx>(
         partitioner.place_inlined_mono_items(cx, initial_partitioning)
     };
 
-    post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
+    post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.create_size_estimate(tcx));
 
     debug_dump(tcx, "POST INLINING:", post_inlining.codegen_units.iter());
 
@@ -348,17 +350,13 @@ where
 fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[CodegenUnit<'_>]) {
     let collection_mode = match tcx.sess.opts.unstable_opts.print_mono_items {
         Some(ref s) => {
-            let mode_string = s.to_lowercase();
-            let mode_string = mode_string.trim();
-            if mode_string == "eager" {
+            let mode = s.to_lowercase();
+            let mode = mode.trim();
+            if mode == "eager" {
                 MonoItemCollectionMode::Eager
             } else {
-                if mode_string != "lazy" {
-                    let message = format!(
-                        "Unknown codegen-item collection mode '{mode_string}'. \
-                                           Falling back to 'lazy' mode."
-                    );
-                    tcx.sess.warn(&message);
+                if mode != "lazy" {
+                    tcx.sess.emit_warning(UnknownCguCollectionMode { mode });
                 }
 
                 MonoItemCollectionMode::Lazy

@@ -3,7 +3,7 @@ use crate::infer::{DefiningAnchor, InferCtxt, InferOk};
 use crate::traits;
 use hir::def::DefKind;
 use hir::def_id::{DefId, LocalDefId};
-use hir::{HirId, OpaqueTyOrigin};
+use hir::OpaqueTyOrigin;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
@@ -12,8 +12,8 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
-    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitor,
+    self, ir::TypeVisitor, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable,
 };
 use rustc_span::Span;
 
@@ -48,7 +48,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn replace_opaque_types_with_inference_vars<T: TypeFoldable<'tcx>>(
         &self,
         value: T,
-        body_id: HirId,
+        body_id: LocalDefId,
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferOk<'tcx, T> {
@@ -431,7 +431,7 @@ pub struct ConstrainOpaqueTypeRegionVisitor<'tcx, OP: FnMut(ty::Region<'tcx>)> {
     pub op: OP,
 }
 
-impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<'tcx, OP>
+impl<'tcx, OP> TypeVisitor<TyCtxt<'tcx>> for ConstrainOpaqueTypeRegionVisitor<'tcx, OP>
 where
     OP: FnMut(ty::Region<'tcx>),
 {

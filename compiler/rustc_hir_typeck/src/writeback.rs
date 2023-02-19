@@ -13,8 +13,8 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::fold::{ir::TypeFolder, TypeFoldable, TypeSuperFoldable};
+use rustc_middle::ty::visit::TypeSuperVisitable;
 use rustc_middle::ty::TypeckResults;
 use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -40,8 +40,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         body: &'tcx hir::Body<'tcx>,
     ) -> &'tcx ty::TypeckResults<'tcx> {
-        let item_id = self.tcx.hir().body_owner(body.id());
-        let item_def_id = self.tcx.hir().local_def_id(item_id);
+        let item_def_id = self.tcx.hir().body_owner_def_id(body.id());
 
         // This attribute causes us to dump some writeback information
         // in the form of errors, which is used for unit tests.
@@ -55,7 +54,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Type only exists for constants and statics, not functions.
         match self.tcx.hir().body_owner_kind(item_def_id) {
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => {
-                wbcx.visit_node_id(body.value.span, item_id);
+                let item_hir_id = self.tcx.hir().local_def_id_to_hir_id(item_def_id);
+                wbcx.visit_node_id(body.value.span, item_hir_id);
             }
             hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn => (),
         }
@@ -545,6 +545,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         self.typeck_results.generator_interior_types =
             fcx_typeck_results.generator_interior_types.clone();
+        for (&expr_def_id, predicates) in fcx_typeck_results.generator_interior_predicates.iter() {
+            let predicates = self.resolve(predicates.clone(), &self.fcx.tcx.def_span(expr_def_id));
+            self.typeck_results.generator_interior_predicates.insert(expr_def_id, predicates);
+        }
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -557,7 +561,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             struct RecursionChecker {
                 def_id: LocalDefId,
             }
-            impl<'tcx> ty::TypeVisitor<'tcx> for RecursionChecker {
+            impl<'tcx> ty::ir::TypeVisitor<TyCtxt<'tcx>> for RecursionChecker {
                 type BreakTy = ();
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                     if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *t.kind() {
@@ -759,8 +763,8 @@ struct EraseEarlyRegions<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> TypeFolder<'tcx> for EraseEarlyRegions<'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseEarlyRegions<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -775,8 +779,8 @@ impl<'tcx> TypeFolder<'tcx> for EraseEarlyRegions<'tcx> {
     }
 }
 
-impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -793,7 +797,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
                 let e = self.report_error(t);
                 self.replaced_with_error = Some(e);
-                self.tcx().ty_error_with_guaranteed(e)
+                self.interner().ty_error_with_guaranteed(e)
             }
         }
     }
@@ -810,7 +814,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 debug!("Resolver::fold_const: input const `{:?}` not fully resolvable", ct);
                 let e = self.report_error(ct);
                 self.replaced_with_error = Some(e);
-                self.tcx().const_error_with_guaranteed(ct.ty(), e)
+                self.interner().const_error_with_guaranteed(ct.ty(), e)
             }
         }
     }

@@ -105,10 +105,8 @@ impl Backoff {
 
     /// Backs off using lightweight spinning.
     ///
-    /// This method should be used for:
-    ///     - Retrying an operation because another thread made progress. i.e. on CAS failure.
-    ///     - Waiting for an operation to complete by spinning optimistically for a few iterations
-    ///     before falling back to parking the thread (see `Backoff::is_completed`).
+    /// This method should be used for retrying an operation because another thread made
+    /// progress. i.e. on CAS failure.
     #[inline]
     pub fn spin_light(&self) {
         let step = self.step.get().min(SPIN_LIMIT);
@@ -133,11 +131,5 @@ impl Backoff {
         }
 
         self.step.set(self.step.get() + 1);
-    }
-
-    /// Returns `true` if quadratic backoff has completed and parking the thread is advised.
-    #[inline]
-    pub fn is_completed(&self) -> bool {
-        self.step.get() > SPIN_LIMIT
     }
 }

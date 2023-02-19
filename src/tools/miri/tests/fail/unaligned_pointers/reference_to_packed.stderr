@@ -1,8 +1,8 @@
 error: Undefined Behavior: accessing memory with alignment ALIGN, but alignment ALIGN is required
   --> $DIR/reference_to_packed.rs:LL:CC
    |
-LL |         let i = *p;
-   |                 ^^ accessing memory with alignment ALIGN, but alignment ALIGN is required
+LL |         let p: &i32 = unsafe { raw_to_ref(ptr::addr_of!(foo.x)) };
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ accessing memory with alignment ALIGN, but alignment ALIGN is required
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

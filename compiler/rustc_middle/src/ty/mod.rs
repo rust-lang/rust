@@ -31,13 +31,12 @@ pub use generics::*;
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_attr as attr;
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, LifetimeRes, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
@@ -147,6 +146,10 @@ mod structural_impls;
 mod sty;
 mod typeck_results;
 
+pub mod ir {
+    pub use super::{fold::ir::*, visit::ir::*};
+}
+
 // Data types
 
 pub type RegisteredTools = FxHashSet<Ident>;
@@ -182,6 +185,9 @@ pub struct ResolverGlobalCtxt {
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: FxHashMap<Span, Span>,
     pub registered_tools: RegisteredTools,
+    pub doc_link_resolutions: FxHashMap<LocalDefId, DocLinkResMap>,
+    pub doc_link_traits_in_scope: FxHashMap<LocalDefId, Vec<DefId>>,
+    pub all_macro_rules: FxHashMap<Symbol, Res<ast::NodeId>>,
 }
 
 /// Resolutions that should only be used for lowering.
@@ -453,18 +459,6 @@ pub struct CReaderCacheKey {
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
 
-impl<'tcx> TyCtxt<'tcx> {
-    /// A "bool" type used in rustc_mir_transform unit tests when we
-    /// have not spun up a TyCtxt.
-    pub const BOOL_TY_FOR_UNIT_TESTING: Ty<'tcx> =
-        Ty(Interned::new_unchecked(&WithCachedTypeInfo {
-            internee: ty::Bool,
-            stable_hash: Fingerprint::ZERO,
-            flags: TypeFlags::empty(),
-            outer_exclusive_binder: DebruijnIndex::from_usize(0),
-        }));
-}
-
 impl ty::EarlyBoundRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
@@ -558,6 +552,8 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(Clause::RegionOutlives(_))
             | PredicateKind::Clause(Clause::TypeOutlives(_))
             | PredicateKind::Clause(Clause::Projection(_))
+            | PredicateKind::Clause(Clause::ConstArgHasType(..))
+            | PredicateKind::AliasEq(..)
             | PredicateKind::ObjectSafe(_)
             | PredicateKind::ClosureKind(_, _, _)
             | PredicateKind::Subtype(_)
@@ -595,6 +591,10 @@ pub enum Clause<'tcx> {
     /// `where <T as TraitRef>::Name == X`, approximately.
     /// See the `ProjectionPredicate` struct for details.
     Projection(ProjectionPredicate<'tcx>),
+
+    /// Ensures that a const generic argument to a parameter `const N: u8`
+    /// is of type `u8`.
+    ConstArgHasType(Const<'tcx>, Ty<'tcx>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
@@ -645,6 +645,12 @@ pub enum PredicateKind<'tcx> {
     /// A marker predicate that is always ambiguous.
     /// Used for coherence to mark opaque types as possibly equal to each other but ambiguous.
     Ambiguous,
+
+    /// Separate from `Clause::Projection` which is used for normalization in new solver.
+    /// This predicate requires two terms to be equal to eachother.
+    ///
+    /// Only used for new solver
+    AliasEq(Term<'tcx>, Term<'tcx>),
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -917,13 +923,13 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Term<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for Term<'tcx> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         Ok(self.unpack().try_fold_with(folder)?.pack())
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for Term<'tcx> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.unpack().visit_with(visitor)
     }
@@ -974,6 +980,33 @@ impl<'tcx> Term<'tcx> {
         match self.unpack() {
             TermKind::Ty(ty) => ty.into(),
             TermKind::Const(c) => c.into(),
+        }
+    }
+
+    /// This function returns `None` for `AliasKind::Opaque`.
+    ///
+    /// FIXME: rename `AliasTy` to `AliasTerm` and make sure we correctly
+    /// deal with constants.
+    pub fn to_alias_term_no_opaque(&self, tcx: TyCtxt<'tcx>) -> Option<AliasTy<'tcx>> {
+        match self.unpack() {
+            TermKind::Ty(ty) => match ty.kind() {
+                ty::Alias(kind, alias_ty) => match kind {
+                    AliasKind::Projection => Some(*alias_ty),
+                    AliasKind::Opaque => None,
+                },
+                _ => None,
+            },
+            TermKind::Const(ct) => match ct.kind() {
+                ConstKind::Unevaluated(uv) => Some(tcx.mk_alias_ty(uv.def.did, uv.substs)),
+                _ => None,
+            },
+        }
+    }
+
+    pub fn is_infer(&self) -> bool {
+        match self.unpack() {
+            TermKind::Ty(ty) => ty.is_ty_or_numeric_infer(),
+            TermKind::Const(ct) => ct.is_ct_infer(),
         }
     }
 }
@@ -1165,6 +1198,8 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(Clause::Trait(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Projection(..))
+            | PredicateKind::Clause(Clause::ConstArgHasType(..))
+            | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
@@ -1184,6 +1219,8 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(Clause::Projection(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Trait(..))
+            | PredicateKind::Clause(Clause::ConstArgHasType(..))
+            | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
@@ -1203,7 +1240,9 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(Clause::TypeOutlives(data)) => Some(predicate.rebind(data)),
             PredicateKind::Clause(Clause::Trait(..))
+            | PredicateKind::Clause(Clause::ConstArgHasType(..))
             | PredicateKind::Clause(Clause::Projection(..))
+            | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(Clause::RegionOutlives(..))
@@ -1382,7 +1421,7 @@ pub struct Placeholder<T> {
 
 pub type PlaceholderRegion = Placeholder<BoundRegionKind>;
 
-pub type PlaceholderType = Placeholder<BoundVar>;
+pub type PlaceholderType = Placeholder<BoundTyKind>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 #[derive(TyEncodable, TyDecodable, PartialOrd, Ord)]
@@ -1589,7 +1628,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
+impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     fn try_fold_with<F: ty::fold::FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
@@ -1602,7 +1641,7 @@ impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitable<'tcx> for ParamEnv<'tcx> {
+impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.caller_bounds().visit_with(visitor)?;
         self.reveal().visit_with(visitor)
@@ -1986,7 +2025,7 @@ impl<'tcx> FieldDef {
     /// Returns the type of this field. The resulting type is not normalized. The `subst` is
     /// typically obtained via the second field of [`TyKind::Adt`].
     pub fn ty(&self, tcx: TyCtxt<'tcx>, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
-        tcx.bound_type_of(self.did).subst(tcx, subst)
+        tcx.type_of(self.did).subst(tcx, subst)
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
@@ -2167,7 +2206,7 @@ impl<'tcx> TyCtxt<'tcx> {
         Some(Ident::new(def, span))
     }
 
-    pub fn opt_associated_item(self, def_id: DefId) -> Option<&'tcx AssocItem> {
+    pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
         if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
             Some(self.associated_item(def_id))
         } else {
@@ -2357,13 +2396,15 @@ impl<'tcx> TyCtxt<'tcx> {
         self.trait_def(trait_def_id).has_auto_impl
     }
 
+    /// Returns `true` if this is coinductive, either because it is
+    /// an auto trait or because it has the `#[rustc_coinductive]` attribute.
+    pub fn trait_is_coinductive(self, trait_def_id: DefId) -> bool {
+        self.trait_def(trait_def_id).is_coinductive
+    }
+
     /// Returns `true` if this is a trait alias.
     pub fn trait_is_alias(self, trait_def_id: DefId) -> bool {
         self.def_kind(trait_def_id) == DefKind::TraitAlias
-    }
-
-    pub fn trait_is_coinductive(self, trait_def_id: DefId) -> bool {
-        self.trait_is_auto(trait_def_id) || self.lang_items().sized_trait() == Some(trait_def_id)
     }
 
     /// Returns layout of a generator. Layout might be unavailable if the
@@ -2396,7 +2437,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
         if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
             let parent = self.parent(def_id);
-            if let DefKind::Impl = self.def_kind(parent) {
+            if let DefKind::Impl { .. } = self.def_kind(parent) {
                 return Some(parent);
             }
         }
@@ -2437,6 +2478,7 @@ impl<'tcx> TyCtxt<'tcx> {
         ident
     }
 
+    // FIXME(vincenzoapalzzo): move the HirId to a LocalDefId
     pub fn adjust_ident_and_get_scope(
         self,
         mut ident: Ident,
@@ -2468,10 +2510,6 @@ impl<'tcx> TyCtxt<'tcx> {
                 // inlined code being attributed to the inline callsite.
                 span.from_expansion() && !span.is_inlined()
             }
-    }
-
-    pub fn is_object_safe(self, key: DefId) -> bool {
-        self.object_safety_violations(key).is_empty()
     }
 
     #[inline]
@@ -2619,7 +2657,7 @@ impl<'tcx> fmt::Debug for SymbolName<'tcx> {
 }
 
 #[derive(Debug, Default, Copy, Clone)]
-pub struct FoundRelationships {
+pub struct InferVarInfo {
     /// This is true if we identified that this Ty (`?T`) is found in a `?T: Foo`
     /// obligation, where:
     ///

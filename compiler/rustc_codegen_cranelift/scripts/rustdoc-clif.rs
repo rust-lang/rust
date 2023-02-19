@@ -24,7 +24,7 @@ fn main() {
     }
 
     // Ensure that the right toolchain is used
-    env::set_var("RUSTUP_TOOLCHAIN", env!("RUSTUP_TOOLCHAIN"));
+    env::set_var("RUSTUP_TOOLCHAIN", env!("TOOLCHAIN_NAME"));
 
     #[cfg(unix)]
     Command::new("rustdoc").args(args).exec();

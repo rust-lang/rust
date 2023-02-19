@@ -46,7 +46,7 @@ pub(super) fn infer_predicates(
                         // For field of type &'a T (reference) or Adt
                         // (struct/enum/union) there will be outlive
                         // requirements for adt_def.
-                        let field_ty = tcx.type_of(field_def.did);
+                        let field_ty = tcx.type_of(field_def.did).subst_identity();
                         let field_span = tcx.def_span(field_def.did);
                         insert_required_predicates_to_be_wf(
                             tcx,

@@ -12,8 +12,8 @@ pub trait Index<I: ?Sized> {
 }
 
 // @has assoc_types/fn.use_output.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' '-> &T::Output'
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]//a[@href="trait.Index.html#associatedtype.Output"]' 'Output'
+// @has - '//pre[@class="rust item-decl"]' '-> &T::Output'
+// @has - '//pre[@class="rust item-decl"]//a[@href="trait.Index.html#associatedtype.Output"]' 'Output'
 pub fn use_output<T: Index<usize>>(obj: &T, index: usize) -> &T::Output {
     obj.index(index)
 }
@@ -23,13 +23,13 @@ pub trait Feed {
 }
 
 // @has assoc_types/fn.use_input.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'T::Input'
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]//a[@href="trait.Feed.html#associatedtype.Input"]' 'Input'
+// @has - '//pre[@class="rust item-decl"]' 'T::Input'
+// @has - '//pre[@class="rust item-decl"]//a[@href="trait.Feed.html#associatedtype.Input"]' 'Input'
 pub fn use_input<T: Feed>(_feed: &T, _element: T::Input) { }
 
 // @has assoc_types/fn.cmp_input.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'where T::Input: PartialEq<U::Input>'
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]//a[@href="trait.Feed.html#associatedtype.Input"]' 'Input'
+// @has - '//pre[@class="rust item-decl"]' 'where T::Input: PartialEq<U::Input>'
+// @has - '//pre[@class="rust item-decl"]//a[@href="trait.Feed.html#associatedtype.Input"]' 'Input'
 pub fn cmp_input<T: Feed, U: Feed>(a: &T::Input, b: &U::Input) -> bool
     where T::Input: PartialEq<U::Input>
 {

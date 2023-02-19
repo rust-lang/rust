@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -18,7 +18,7 @@ use super::search_index::build_index;
 use super::write_shared::write_shared;
 use super::{
     collect_spans_and_sources, print_sidebar, scrape_examples_help, sidebar_module_like, AllTypes,
-    LinkFromSrc, NameDoc, StylePath, BASIC_KEYWORDS,
+    LinkFromSrc, StylePath,
 };
 
 use crate::clean::{self, types::ExternalLocation, ExternalCrate};
@@ -56,7 +56,7 @@ pub(crate) struct Context<'tcx> {
     pub(super) render_redirect_pages: bool,
     /// Tracks section IDs for `Deref` targets so they match in both the main
     /// body and the sidebar.
-    pub(super) deref_id_map: FxHashMap<DefId, String>,
+    pub(super) deref_id_map: DefIdMap<String>,
     /// The map used to ensure all generated 'id=' attributes are unique.
     pub(super) id_map: IdMap,
     /// Shared mutable state.
@@ -182,7 +182,10 @@ impl<'tcx> Context<'tcx> {
         };
         title.push_str(" - Rust");
         let tyname = it.type_();
-        let desc = it.doc_value().as_ref().map(|doc| plain_text_summary(doc));
+        let desc = it
+            .doc_value()
+            .as_ref()
+            .map(|doc| plain_text_summary(doc, &it.link_names(&self.cache())));
         let desc = if let Some(desc) = desc {
             desc
         } else if it.is_crate() {
@@ -195,7 +198,6 @@ impl<'tcx> Context<'tcx> {
                 self.shared.layout.krate
             )
         };
-        let keywords = make_item_keywords(it);
         let name;
         let tyname_s = if it.is_crate() {
             name = format!("{} crate", tyname);
@@ -212,7 +214,6 @@ impl<'tcx> Context<'tcx> {
                 static_root_path: clone_shared.static_root_path.as_deref(),
                 title: &title,
                 description: &desc,
-                keywords: &keywords,
                 resource_suffix: &clone_shared.resource_suffix,
             };
             let mut page_buffer = Buffer::html();
@@ -258,7 +259,7 @@ impl<'tcx> Context<'tcx> {
     }
 
     /// Construct a map of items shown in the sidebar to a plain-text summary of their docs.
-    fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<NameDoc>> {
+    fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<String>> {
         // BTreeMap instead of HashMap to get a sorted output
         let mut map: BTreeMap<_, Vec<_>> = BTreeMap::new();
         let mut inserted: FxHashMap<ItemType, FxHashSet<Symbol>> = FxHashMap::default();
@@ -276,10 +277,7 @@ impl<'tcx> Context<'tcx> {
             if inserted.entry(short).or_default().insert(myname) {
                 let short = short.to_string();
                 let myname = myname.to_string();
-                map.entry(short).or_default().push((
-                    myname,
-                    Some(item.doc_value().map_or_else(String::new, |s| plain_text_summary(&s))),
-                ));
+                map.entry(short).or_default().push(myname);
             }
         }
 
@@ -544,7 +542,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             dst,
             render_redirect_pages: false,
             id_map,
-            deref_id_map: FxHashMap::default(),
+            deref_id_map: Default::default(),
             shared: Rc::new(scx),
             include_sources,
             types_with_notable_traits: FxHashSet::default(),
@@ -572,7 +570,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             current: self.current.clone(),
             dst: self.dst.clone(),
             render_redirect_pages: self.render_redirect_pages,
-            deref_id_map: FxHashMap::default(),
+            deref_id_map: Default::default(),
             id_map: IdMap::new(),
             shared: Rc::clone(&self.shared),
             include_sources: self.include_sources,
@@ -598,7 +596,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             root_path: "../",
             static_root_path: shared.static_root_path.as_deref(),
             description: "List of all items in this crate",
-            keywords: BASIC_KEYWORDS,
             resource_suffix: &shared.resource_suffix,
         };
         let all = shared.all.replace(AllTypes::new());
@@ -708,14 +705,12 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             shared.fs.write(scrape_examples_help_file, v)?;
         }
 
-        if let Some(ref redirections) = shared.redirections {
-            if !redirections.borrow().is_empty() {
-                let redirect_map_path =
-                    self.dst.join(crate_name.as_str()).join("redirect-map.json");
-                let paths = serde_json::to_string(&*redirections.borrow()).unwrap();
-                shared.ensure_dir(&self.dst.join(crate_name.as_str()))?;
-                shared.fs.write(redirect_map_path, paths)?;
-            }
+        if let Some(ref redirections) = shared.redirections && !redirections.borrow().is_empty() {
+            let redirect_map_path =
+                self.dst.join(crate_name.as_str()).join("redirect-map.json");
+            let paths = serde_json::to_string(&*redirections.borrow()).unwrap();
+            shared.ensure_dir(&self.dst.join(crate_name.as_str()))?;
+            shared.fs.write(redirect_map_path, paths)?;
         }
 
         // No need for it anymore.
@@ -827,8 +822,4 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     fn cache(&self) -> &Cache {
         &self.shared.cache
     }
-}
-
-fn make_item_keywords(it: &clean::Item) -> String {
-    format!("{}, {}", BASIC_KEYWORDS, it.name.as_ref().unwrap())
 }

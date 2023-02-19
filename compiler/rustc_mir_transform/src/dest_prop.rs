@@ -136,8 +136,8 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::{dump_mir, PassWhere};
 use rustc_middle::mir::{
-    traversal, BasicBlock, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place,
-    Rvalue, Statement, StatementKind, TerminatorKind,
+    traversal, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place, Rvalue,
+    Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::MaybeLiveLocals;
@@ -328,7 +328,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Merger<'a, 'tcx> {
         match &statement.kind {
             StatementKind::Assign(box (dest, rvalue)) => {
                 match rvalue {
-                    Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
+                    Rvalue::CopyForDeref(place)
+                    | Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
                         // These might've been turned into self-assignments by the replacement
                         // (this includes the original statement we wanted to eliminate).
                         if dest == place {
@@ -467,7 +468,7 @@ impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
             // to reuse the allocation.
             write_info: write_info_alloc,
             // Doesn't matter what we put here, will be overwritten before being used
-            at: Location { block: BasicBlock::from_u32(0), statement_index: 0 },
+            at: Location::START,
         };
         this.internal_filter_liveness();
     }
@@ -577,6 +578,7 @@ impl WriteInfo {
                 self.add_place(**place);
             }
             StatementKind::Intrinsic(_)
+            | StatementKind::ConstEvalCounter
             | StatementKind::Nop
             | StatementKind::Coverage(_)
             | StatementKind::StorageLive(_)
@@ -754,7 +756,7 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, '_, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
         if let StatementKind::Assign(box (
             lhs,
-            Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
+            Rvalue::CopyForDeref(rhs) | Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
         )) = &statement.kind
         {
             let Some((src, dest)) = places_to_candidate_pair(*lhs, *rhs, self.body) else {

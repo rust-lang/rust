@@ -109,7 +109,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                 let tail_expr_finished =
                     if is_async { make::expr_await(tail_expr) } else { tail_expr };
                 let body = make::block_expr([], Some(tail_expr_finished));
-                let f = make::fn_(vis, name, type_params, params, body, ret_type, is_async)
+                let f = make::fn_(vis, name, type_params, None, params, body, ret_type, is_async)
                     .indent(ast::edit::IndentLevel(1))
                     .clone_for_update();
 

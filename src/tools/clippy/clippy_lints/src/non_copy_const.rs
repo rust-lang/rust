@@ -313,7 +313,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                                 // and, in that case, the definition is *not* generic.
                                 cx.tcx.normalize_erasing_regions(
                                     cx.tcx.param_env(of_trait_def_id),
-                                    cx.tcx.type_of(of_assoc_item),
+                                    cx.tcx.type_of(of_assoc_item).subst_identity(),
                                 ),
                             ))
                             .is_err();

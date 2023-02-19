@@ -61,7 +61,8 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Just iterating the collection itself makes the intent
-    /// more clear and is probably faster.
+    /// more clear and is probably faster because it eliminates
+    /// the bounds check that is done when indexing.
     ///
     /// ### Example
     /// ```rust

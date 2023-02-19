@@ -154,7 +154,7 @@ fn typeck_const_arg<'tcx>(
     tcx: TyCtxt<'tcx>,
     (did, param_did): (LocalDefId, DefId),
 ) -> &ty::TypeckResults<'tcx> {
-    let fallback = move || tcx.type_of(param_did);
+    let fallback = move || tcx.type_of(param_did).subst_identity();
     typeck_with_fallback(tcx, did, fallback)
 }
 
@@ -162,7 +162,7 @@ fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckResults<'tc
     if let Some(param_did) = tcx.opt_const_param_of(def_id) {
         tcx.typeck_const_arg((def_id, param_did))
     } else {
-        let fallback = move || tcx.type_of(def_id.to_def_id());
+        let fallback = move || tcx.type_of(def_id.to_def_id()).subst_identity();
         typeck_with_fallback(tcx, def_id, fallback)
     }
 }
@@ -201,13 +201,13 @@ fn typeck_with_fallback<'tcx>(
 
     let typeck_results = Inherited::build(tcx, def_id).enter(|inh| {
         let param_env = tcx.param_env(def_id);
-        let mut fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
+        let mut fcx = FnCtxt::new(&inh, param_env, def_id);
 
         if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
             let fn_sig = if rustc_hir_analysis::collect::get_infer_ret_ty(&decl.output).is_some() {
                 fcx.astconv().ty_of_fn(id, header.unsafety, header.abi, decl, None, None)
             } else {
-                tcx.fn_sig(def_id)
+                tcx.fn_sig(def_id).subst_identity()
             };
 
             check_abi(tcx, id, span, fn_sig.abi());
@@ -294,14 +294,24 @@ fn typeck_with_fallback<'tcx>(
         // Before the generator analysis, temporary scopes shall be marked to provide more
         // precise information on types to be captured.
         fcx.resolve_rvalue_scopes(def_id.to_def_id());
-        fcx.resolve_generator_interiors(def_id.to_def_id());
 
         for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
             let ty = fcx.normalize(span, ty);
             fcx.require_type_is_sized(ty, span, code);
         }
 
-        fcx.select_all_obligations_or_error();
+        fcx.select_obligations_where_possible(|_| {});
+
+        debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
+
+        // This must be the last thing before `report_ambiguity_errors`.
+        fcx.resolve_generator_interiors(def_id.to_def_id());
+
+        debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
+
+        if let None = fcx.infcx.tainted_by_errors() {
+            fcx.report_ambiguity_errors();
+        }
 
         if let None = fcx.infcx.tainted_by_errors() {
             fcx.check_transmutes();

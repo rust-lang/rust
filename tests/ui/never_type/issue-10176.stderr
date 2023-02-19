@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn f() -> isize {
    |           ----- expected `isize` because of return type
 LL |     (return 1, return 2)
-   |     ^^^^^^^^^^^^^^^^^^^^ expected `isize`, found tuple
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `isize`, found `(!, !)`
    |
    = note: expected type `isize`
              found tuple `(!, !)`

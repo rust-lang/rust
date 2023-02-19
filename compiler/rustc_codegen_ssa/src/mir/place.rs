@@ -9,7 +9,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::{Abi, Align, FieldsShape, Int, TagEncoding};
+use rustc_target::abi::{Abi, Align, FieldsShape, Int, Pointer, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
 #[derive(Copy, Clone, Debug)]
@@ -209,6 +209,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         cast_to: Ty<'tcx>,
     ) -> V {
+        let dl = &bx.tcx().data_layout;
         let cast_to_layout = bx.cx().layout_of(cast_to);
         let cast_to_size = cast_to_layout.layout.size();
         let cast_to = bx.cx().immediate_backend_type(cast_to_layout);
@@ -250,12 +251,14 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
                 // Cast to an integer so we don't have to treat a pointer as a
                 // special case.
-                let (tag, tag_llty) = if tag_scalar.primitive().is_ptr() {
-                    let t = bx.type_isize();
-                    let tag = bx.ptrtoint(tag_imm, t);
-                    (tag, t)
-                } else {
-                    (tag_imm, bx.cx().immediate_backend_type(tag_op.layout))
+                let (tag, tag_llty) = match tag_scalar.primitive() {
+                    // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
+                    Pointer(_) => {
+                        let t = bx.type_from_integer(dl.ptr_sized_integer());
+                        let tag = bx.ptrtoint(tag_imm, t);
+                        (tag, t)
+                    }
+                    _ => (tag_imm, bx.cx().immediate_backend_type(tag_op.layout)),
                 };
 
                 let tag_size = tag_scalar.size(bx.cx());

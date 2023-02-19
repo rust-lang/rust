@@ -47,7 +47,7 @@ impl DepNodeIndex {
 }
 
 impl From<DepNodeIndex> for QueryInvocationId {
-    #[inline]
+    #[inline(always)]
     fn from(dep_node_index: DepNodeIndex) -> Self {
         QueryInvocationId(dep_node_index.as_u32())
     }

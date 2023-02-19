@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Foo: Qux` is not satisfied in `impl Future<Output = ()>`
-  --> $DIR/issue-64130-3-other.rs:24:12
+  --> $DIR/issue-64130-3-other.rs:27:12
    |
 LL | async fn bar() {
    |                - within this `impl Future<Output = ()>`
@@ -8,7 +8,7 @@ LL |     is_qux(bar());
    |            ^^^^^ within `impl Future<Output = ()>`, the trait `Qux` is not implemented for `Foo`
    |
 note: future does not implement `Qux` as this value is used across an await
-  --> $DIR/issue-64130-3-other.rs:18:10
+  --> $DIR/issue-64130-3-other.rs:21:10
    |
 LL |     let x = Foo;
    |         - has type `Foo` which does not implement `Qux`
@@ -17,7 +17,7 @@ LL |     baz().await;
 LL | }
    | - `x` is later dropped here
 note: required by a bound in `is_qux`
-  --> $DIR/issue-64130-3-other.rs:14:14
+  --> $DIR/issue-64130-3-other.rs:17:14
    |
 LL | fn is_qux<T: Qux>(t: T) {}
    |              ^^^ required by this bound in `is_qux`

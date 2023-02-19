@@ -5,9 +5,9 @@ fn a() {
     let mut vec = [Box::new(1), Box::new(2), Box::new(3)];
     match vec {
         [box ref _a, _, _] => {
-        //~^ NOTE borrow of `vec[_]` occurs here
+        //~^ NOTE `vec[_]` is borrowed here
             vec[0] = Box::new(4); //~ ERROR cannot assign
-            //~^ NOTE assignment to borrowed `vec[_]` occurs here
+            //~^ NOTE `vec[_]` is assigned to here
             _a.use_ref();
             //~^ NOTE borrow later used here
         }
@@ -19,9 +19,9 @@ fn b() {
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
         &mut [ref _b @ ..] => {
-        //~^ borrow of `vec[_]` occurs here
+        //~^ `vec[_]` is borrowed here
             vec[0] = Box::new(4); //~ ERROR cannot assign
-            //~^ NOTE assignment to borrowed `vec[_]` occurs here
+            //~^ NOTE `vec[_]` is assigned to here
             _b.use_ref();
             //~^ NOTE borrow later used here
         }

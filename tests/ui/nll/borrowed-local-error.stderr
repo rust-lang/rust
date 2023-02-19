@@ -4,6 +4,7 @@ error[E0597]: `v` does not live long enough
 LL |     let x = gimme({
    |             ----- borrow later used by call
 LL |         let v = (22,);
+   |             - binding `v` declared here
 LL |         &v
    |         ^^ borrowed value does not live long enough
 LL |

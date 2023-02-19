@@ -790,6 +790,7 @@ fn should_sort_failures_before_printing_them() {
         failures: vec![(test_b, Vec::new()), (test_a, Vec::new())],
         options: Options::new(),
         not_failures: Vec::new(),
+        ignores: Vec::new(),
         time_failures: Vec::new(),
     };
 

@@ -2,7 +2,7 @@ use super::apple_base::{opts, Arch};
 use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let llvm_target = "arm64-apple-ios14.0-macabi";
+    let llvm_target = "arm64-apple-ios-macabi";
 
     let arch = Arch::Arm64_macabi;
     let mut base = opts("ios", arch);
@@ -22,7 +22,7 @@ pub fn target() -> Target {
             // These arguments are not actually invoked - they just have
             // to look right to pass App Store validation.
             bitcode_llvm_cmdline: "-triple\0\
-                arm64-apple-ios14.0-macabi\0\
+                arm64-apple-ios-macabi\0\
                 -emit-obj\0\
                 -disable-llvm-passes\0\
                 -Os\0"

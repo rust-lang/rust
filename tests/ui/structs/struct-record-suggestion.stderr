@@ -18,7 +18,7 @@ error[E0308]: mismatched types
   --> $DIR/struct-record-suggestion.rs:23:20
    |
 LL |     let q = B { b: 1..Default::default() };
-   |                    ^^^^^^^^^^^^^^^^^^^^^ expected `u32`, found struct `Range`
+   |                    ^^^^^^^^^^^^^^^^^^^^^ expected `u32`, found `Range<{integer}>`
    |
    = note: expected type `u32`
             found struct `std::ops::Range<{integer}>`

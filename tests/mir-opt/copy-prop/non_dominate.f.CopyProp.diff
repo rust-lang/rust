@@ -1,0 +1,29 @@
+- // MIR for `f` before CopyProp
++ // MIR for `f` after CopyProp
+  
+  fn f(_1: bool) -> bool {
+      let mut _0: bool;                    // return place in scope 0 at $DIR/non_dominate.rs:+0:18: +0:22
+      let mut _2: bool;                    // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+      let mut _3: bool;                    // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+  
+      bb0: {
+          goto -> bb1;                     // scope 0 at $DIR/non_dominate.rs:+4:11: +4:20
+      }
+  
+      bb1: {
+          _3 = _1;                         // scope 0 at $DIR/non_dominate.rs:+5:17: +5:22
+          switchInt(_3) -> [0: bb3, otherwise: bb2]; // scope 0 at $DIR/non_dominate.rs:+5:24: +5:58
+      }
+  
+      bb2: {
+          _2 = _3;                         // scope 0 at $DIR/non_dominate.rs:+8:17: +8:22
+          _1 = const false;                // scope 0 at $DIR/non_dominate.rs:+8:24: +8:33
+          goto -> bb1;                     // scope 0 at $DIR/non_dominate.rs:+8:35: +8:44
+      }
+  
+      bb3: {
+          _0 = _2;                         // scope 0 at $DIR/non_dominate.rs:+9:17: +9:24
+          return;                          // scope 0 at $DIR/non_dominate.rs:+9:26: +9:34
+      }
+  }
+  

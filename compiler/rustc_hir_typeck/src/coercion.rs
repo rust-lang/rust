@@ -765,7 +765,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             self.cause.clone(),
             self.param_env,
             ty::Binder::dummy(
-                self.tcx.at(self.cause.span).mk_trait_ref(hir::LangItem::PointerSized, [a]),
+                self.tcx.at(self.cause.span).mk_trait_ref(hir::LangItem::PointerLike, [a]),
             ),
         ));
 
@@ -1046,7 +1046,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.param_env,
                 )
                 .may_apply()
-                .then(|| deref_ty)
+                .then_some(deref_ty)
         })
     }
 
@@ -1613,12 +1613,14 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 if visitor.ret_exprs.len() > 0 && let Some(expr) = expression {
                     self.note_unreachable_loop_return(&mut err, &expr, &visitor.ret_exprs);
                 }
+
                 let reported = err.emit_unless(unsized_return);
 
                 self.final_ty = Some(fcx.tcx.ty_error_with_guaranteed(reported));
             }
         }
     }
+
     fn note_unreachable_loop_return(
         &self,
         err: &mut Diagnostic,
@@ -1821,7 +1823,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         .trait_ref()
                         .and_then(|t| t.trait_def_id())
                         .map_or(false, |def_id| {
-                            fcx.tcx.object_safety_violations(def_id).is_empty()
+                            fcx.tcx.check_is_object_safe(def_id)
                         })
                 })
             }

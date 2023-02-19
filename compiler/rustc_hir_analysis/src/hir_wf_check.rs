@@ -1,11 +1,12 @@
 use crate::collect::ItemCtxt;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{ForeignItem, ForeignItemKind, HirId};
+use rustc_hir::{ForeignItem, ForeignItemKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCause, WellFormedLoc};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, Region, TyCtxt, TypeFoldable, TypeFolder};
+use rustc_middle::ty::{self, ir::TypeFolder, Region, TyCtxt, TypeFoldable};
+use rustc_span::def_id::LocalDefId;
 use rustc_trait_selection::traits;
 
 pub fn provide(providers: &mut Providers) {
@@ -57,7 +58,7 @@ fn diagnostic_hir_wf_check<'tcx>(
         cause: Option<ObligationCause<'tcx>>,
         cause_depth: usize,
         icx: ItemCtxt<'tcx>,
-        hir_id: HirId,
+        def_id: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
         depth: usize,
     }
@@ -68,7 +69,7 @@ fn diagnostic_hir_wf_check<'tcx>(
             let tcx_ty = self.icx.to_ty(ty).fold_with(&mut EraseAllBoundRegions { tcx: self.tcx });
             let cause = traits::ObligationCause::new(
                 ty.span,
-                self.hir_id,
+                self.def_id,
                 traits::ObligationCauseCode::WellFormed(None),
             );
             let errors = traits::fully_solve_obligation(
@@ -106,7 +107,7 @@ fn diagnostic_hir_wf_check<'tcx>(
         cause: None,
         cause_depth: 0,
         icx,
-        hir_id,
+        def_id,
         param_env: tcx.param_env(def_id.to_def_id()),
         depth: 0,
     };
@@ -188,8 +189,8 @@ struct EraseAllBoundRegions<'tcx> {
 // us an inaccurate span for an error message, but cannot
 // lead to unsoundness (we call `delay_span_bug` at the start
 // of `diagnostic_hir_wf_check`).
-impl<'tcx> TypeFolder<'tcx> for EraseAllBoundRegions<'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseAllBoundRegions<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {

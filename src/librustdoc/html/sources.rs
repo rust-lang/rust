@@ -4,7 +4,7 @@ use crate::error::Error;
 use crate::html::format::Buffer;
 use crate::html::highlight;
 use crate::html::layout;
-use crate::html::render::{Context, BASIC_KEYWORDS};
+use crate::html::render::Context;
 use crate::visit::DocVisitor;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -228,7 +228,6 @@ impl SourceCollector<'_, '_> {
             root_path: &root_path,
             static_root_path: shared.static_root_path.as_deref(),
             description: &desc,
-            keywords: BASIC_KEYWORDS,
             resource_suffix: &shared.resource_suffix,
         };
         let v = layout::render(

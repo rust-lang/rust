@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     let (x, y) = ();
    |         ^^^^^^   -- this expression has type `()`
    |         |
-   |         expected `()`, found tuple
+   |         expected `()`, found `(_, _)`
    |
    = note: expected unit type `()`
                   found tuple `(_, _)`

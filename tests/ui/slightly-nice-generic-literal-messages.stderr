@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match Foo(1.1, marker::PhantomData) {
    |           ----------------------------- this expression has type `Foo<{float}, _>`
 LL |         1 => {}
-   |         ^ expected struct `Foo`, found integer
+   |         ^ expected `Foo<{float}, _>`, found integer
    |
    = note: expected struct `Foo<{float}, _>`
                 found type `{integer}`

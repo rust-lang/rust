@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
         // `Deref` is being implemented for `t`
         if let hir::ItemKind::Impl(impl_) = item.kind
             && let Some(trait_) = &impl_.of_trait
-            && let t = cx.tcx.type_of(item.owner_id)
+            && let t = cx.tcx.type_of(item.owner_id).subst_identity()
             && let opt_did @ Some(did) = trait_.trait_def_id()
             && opt_did == cx.tcx.lang_items().deref_trait()
             // `t` is `dyn t_principal`
@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
             });
             cx.emit_spanned_lint(DEREF_INTO_DYN_SUPERTRAIT, cx.tcx.def_span(item.owner_id.def_id), SupertraitAsDerefTarget {
                 t,
-                target_principal: target_principal.to_string(),
+                target_principal,
                 label,
             });
         }

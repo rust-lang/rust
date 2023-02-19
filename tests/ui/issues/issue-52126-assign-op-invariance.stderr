@@ -1,6 +1,8 @@
 error[E0597]: `line` does not live long enough
   --> $DIR/issue-52126-assign-op-invariance.rs:34:28
    |
+LL |     for line in vec!["123456789".to_string(), "12345678".to_string()] {
+   |         ---- binding `line` declared here
 LL |         let v: Vec<&str> = line.split_whitespace().collect();
    |                            ^^^^^^^^^^^^^^^^^^^^^^^ borrowed value does not live long enough
 ...

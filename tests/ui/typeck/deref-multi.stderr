@@ -58,7 +58,7 @@ error[E0308]: mismatched types
 LL | fn d(x: std::sync::Mutex<&i32>) -> i32 {
    |                                    --- expected `i32` because of return type
 LL |     x.lock().unwrap()
-   |     ^^^^^^^^^^^^^^^^^ expected `i32`, found struct `MutexGuard`
+   |     ^^^^^^^^^^^^^^^^^ expected `i32`, found `MutexGuard<'_, &i32>`
    |
    = note: expected type `i32`
             found struct `MutexGuard<'_, &i32>`

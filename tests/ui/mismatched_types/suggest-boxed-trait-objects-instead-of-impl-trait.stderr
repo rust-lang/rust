@@ -6,7 +6,7 @@ LL | |         S
    | |         - expected because of this
 LL | |     } else {
 LL | |         Y
-   | |         ^ expected struct `S`, found struct `Y`
+   | |         ^ expected `S`, found `Y`
 LL | |     }
    | |_____- `if` and `else` have incompatible types
    |
@@ -28,7 +28,7 @@ LL | /     match true {
 LL | |         true => S,
    | |                 - this is found to be of type `S`
 LL | |         false => Y,
-   | |                  ^ expected struct `S`, found struct `Y`
+   | |                  ^ expected `S`, found `Y`
 LL | |     }
    | |_____- `match` arms have incompatible types
    |

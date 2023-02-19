@@ -16,7 +16,7 @@ error[E0308]: mismatched types
 LL |     fn method(&self) -> Option<&Vec<u8>> {
    |                         ---------------- expected `Option<&Vec<u8>>` because of return type
 LL |         self.option..as_ref().map(|x| x)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected enum `Option`, found struct `Range`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<&Vec<u8>>`, found `Range<Option<Vec<u8>>>`
    |
    = note: expected enum `Option<&Vec<u8>>`
             found struct `std::ops::Range<Option<Vec<u8>>>`
@@ -32,7 +32,7 @@ error[E0308]: mismatched types
 LL |     fn method2(&self) -> Option<&u8> {
    |                          ----------- expected `Option<&u8>` because of return type
 LL |         self.option..foo().get(0)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ expected enum `Option`, found struct `Range`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Option<&u8>`, found `Range<Option<Vec<u8>>>`
    |
    = note: expected enum `Option<&u8>`
             found struct `std::ops::Range<Option<Vec<u8>>>`

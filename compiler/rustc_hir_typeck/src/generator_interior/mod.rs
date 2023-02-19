@@ -271,15 +271,13 @@ pub fn resolve_interior<'a, 'tcx>(
                     },
                     _ => mk_bound_region(None),
                 };
-                let r = fcx.tcx.mk_region(ty::ReLateBound(current_depth, br));
+                let r = fcx.tcx.mk_re_late_bound(current_depth, br);
                 r
             });
-            if captured_tys.insert(ty) {
+            captured_tys.insert(ty).then(|| {
                 cause.ty = ty;
-                Some(cause)
-            } else {
-                None
-            }
+                cause
+            })
         })
         .collect();
 
@@ -302,7 +300,7 @@ pub fn resolve_interior<'a, 'tcx>(
                     let var = ty::BoundVar::from_usize(bound_vars.len());
                     bound_vars.push(ty::BoundVariableKind::Region(kind));
                     counter += 1;
-                    fcx.tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion { var, kind }))
+                    fcx.tcx.mk_re_late_bound(ty::INNERMOST, ty::BoundRegion { var, kind })
                 },
                 types: &mut |b| bug!("unexpected bound ty in binder: {b:?}"),
                 consts: &mut |b, ty| bug!("unexpected bound ct in binder: {b:?} {ty}"),
@@ -314,7 +312,7 @@ pub fn resolve_interior<'a, 'tcx>(
 
     // Extract type components to build the witness type.
     let type_list = fcx.tcx.mk_type_list(type_causes.iter().map(|cause| cause.ty));
-    let bound_vars = fcx.tcx.mk_bound_variable_kinds(bound_vars.iter());
+    let bound_vars = fcx.tcx.intern_bound_variable_kinds(&bound_vars);
     let witness =
         fcx.tcx.mk_generator_witness(ty::Binder::bind_with_vars(type_list, bound_vars.clone()));
 
@@ -364,7 +362,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                             let ty = tcx.mk_ref(
                                 // Use `ReErased` as `resolve_interior` is going to replace all the
                                 // regions anyway.
-                                tcx.mk_region(ty::ReErased),
+                                tcx.lifetimes.re_erased,
                                 ty::TypeAndMut { ty, mutbl: hir::Mutability::Not },
                             );
                             self.interior_visitor.record(
@@ -647,7 +645,8 @@ fn check_must_not_suspend_ty<'tcx>(
                 hir_id,
                 SuspendCheckData {
                     descr_pre,
-                    plural_len: len.try_eval_usize(fcx.tcx, fcx.param_env).unwrap_or(0) as usize
+                    plural_len: len.try_eval_target_usize(fcx.tcx, fcx.param_env).unwrap_or(0)
+                        as usize
                         + 1,
                     ..data
                 },

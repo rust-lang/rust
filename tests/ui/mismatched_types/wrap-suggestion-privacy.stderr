@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/wrap-suggestion-privacy.rs:12:19
    |
 LL |     needs_wrapper(0);
-   |     ------------- ^ expected struct `Wrapper`, found integer
+   |     ------------- ^ expected `Wrapper<i32>`, found integer
    |     |
    |     arguments to this function are incorrect
    |
@@ -22,7 +22,7 @@ error[E0308]: mismatched types
   --> $DIR/wrap-suggestion-privacy.rs:17:20
    |
 LL |     needs_wrapping(0);
-   |     -------------- ^ expected struct `Wrapping`, found integer
+   |     -------------- ^ expected `Wrapping<i32>`, found integer
    |     |
    |     arguments to this function are incorrect
    |
@@ -42,7 +42,7 @@ error[E0308]: mismatched types
   --> $DIR/wrap-suggestion-privacy.rs:22:17
    |
 LL |     needs_ready(Some(0));
-   |     ----------- ^^^^^^^ expected struct `Ready`, found enum `Option`
+   |     ----------- ^^^^^^^ expected `Ready<i32>`, found `Option<{integer}>`
    |     |
    |     arguments to this function are incorrect
    |

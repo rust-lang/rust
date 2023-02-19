@@ -20,7 +20,7 @@ LL | fn main() {
    |           - expected `()` because of default return type
 LL |   let b = Bob + 3.5;
 LL |   b + 3
-   |   ^^^^^ expected `()`, found struct `Bob`
+   |   ^^^^^ expected `()`, found `Bob`
 
 error: aborting due to 2 previous errors
 

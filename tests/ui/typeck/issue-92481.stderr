@@ -49,7 +49,7 @@ LL |   fn r({) {
 LL | /     Ok {
 LL | |         d..||_=m
 LL | |     }
-   | |_____^ expected `()`, found enum `Result`
+   | |_____^ expected `()`, found `Result<_, _>`
    |
    = note: expected unit type `()`
                    found enum `Result<_, _>`

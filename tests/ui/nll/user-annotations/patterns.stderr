@@ -1,6 +1,8 @@
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:6:9
    |
+LL |     let x = 22;
+   |         - binding `x` declared here
 LL |     let y: &'static u32;
    |            ------------ type annotation requires that `x` is borrowed for `'static`
 LL |     y = &x;
@@ -11,6 +13,8 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:14:9
    |
+LL |     let x = 22;
+   |         - binding `x` declared here
 LL |     let (y, z): (&'static u32, &'static u32);
    |                 ---------------------------- type annotation requires that `x` is borrowed for `'static`
 LL |     y = &x;
@@ -21,6 +25,8 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:20:13
    |
+LL |     let x = 22;
+   |         - binding `x` declared here
 LL |     let y = &x;
    |             ^^ borrowed value does not live long enough
 LL |     let ref z: &'static u32 = y;
@@ -32,6 +38,8 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:39:9
    |
+LL |     let x = 22;
+   |         - binding `x` declared here
 LL |     let Single { value: y }: Single<&'static u32>;
    |                              -------------------- type annotation requires that `x` is borrowed for `'static`
 LL |     y = &x;
@@ -42,6 +50,8 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:51:10
    |
+LL |     let x = 22;
+   |         - binding `x` declared here
 LL |     let Single2 { value: mut _y }: Single2<StaticU32>;
    |                                    ------------------ type annotation requires that `x` is borrowed for `'static`
 LL |     _y = &x;
@@ -52,6 +62,8 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:56:27
    |
+LL |     let x = 22;
+   |         - binding `x` declared here
 LL |     let y: &'static u32 = &x;
    |            ------------   ^^ borrowed value does not live long enough
    |            |
@@ -62,6 +74,8 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:61:27
    |
+LL |     let x = 22;
+   |         - binding `x` declared here
 LL |     let _: &'static u32 = &x;
    |            ------------   ^^ borrowed value does not live long enough
    |            |
@@ -100,6 +114,8 @@ LL |     let (_a, b): (Vec<&'static String>, _) = (vec![&String::new()], 44);
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:75:40
    |
+LL |     let x = 22;
+   |         - binding `x` declared here
 LL |     let (_, _): (&'static u32, u32) = (&x, 44);
    |                 -------------------    ^^ borrowed value does not live long enough
    |                 |
@@ -110,6 +126,8 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:80:40
    |
+LL |     let x = 22;
+   |         - binding `x` declared here
 LL |     let (y, _): (&'static u32, u32) = (&x, 44);
    |                 -------------------    ^^ borrowed value does not live long enough
    |                 |
@@ -120,6 +138,8 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:85:69
    |
+LL |     let x = 22;
+   |         - binding `x` declared here
 LL |     let Single { value: y }: Single<&'static u32> = Single { value: &x };
    |                              --------------------                   ^^ borrowed value does not live long enough
    |                              |
@@ -130,6 +150,8 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:90:69
    |
+LL |     let x = 22;
+   |         - binding `x` declared here
 LL |     let Single { value: _ }: Single<&'static u32> = Single { value: &x };
    |                              --------------------                   ^^ borrowed value does not live long enough
    |                              |
@@ -140,6 +162,8 @@ LL | }
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:98:17
    |
+LL |     let x = 22;
+   |         - binding `x` declared here
 LL |     let Double { value1: _, value2: _ }: Double<&'static u32> = Double {
    |                                          -------------------- type annotation requires that `x` is borrowed for `'static`
 LL |         value1: &x,

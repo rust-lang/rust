@@ -14,7 +14,6 @@ mod object_safety;
 pub mod outlives_bounds;
 mod project;
 pub mod query;
-pub(crate) mod relationships;
 mod select;
 mod specialize;
 mod structural_match;
@@ -27,12 +26,11 @@ use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeSuperVisitable};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
+use rustc_span::def_id::{DefId, CRATE_DEF_ID};
 use rustc_span::Span;
 
 use std::fmt::Debug;
@@ -152,7 +150,7 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
         // We can use a dummy node-id here because we won't pay any mind
         // to region obligations that arise (there shouldn't really be any
         // anyhow).
-        cause: ObligationCause::misc(span, hir::CRATE_HIR_ID),
+        cause: ObligationCause::misc(span, CRATE_DEF_ID),
         recursion_depth: 0,
         predicate: pred.to_predicate(infcx.tcx),
     };
@@ -167,14 +165,12 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
         // that guess. While imperfect, I believe this is sound.
 
         // FIXME(@lcnr): this function doesn't seem right.
+        //
         // The handling of regions in this area of the code is terrible,
         // see issue #29149. We should be able to improve on this with
         // NLL.
         let errors = fully_solve_obligation(infcx, obligation);
 
-        // Note: we only assume something is `Copy` if we can
-        // *definitively* show that it implements `Copy`. Otherwise,
-        // assume it is move; linear is always ok.
         match &errors[..] {
             [] => true,
             errors => {
@@ -485,7 +481,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
         generics: &'tcx ty::Generics,
         trait_item_def_id: DefId,
     }
-    impl<'tcx> ty::TypeVisitor<'tcx> for ReferencesOnlyParentGenerics<'tcx> {
+    impl<'tcx> ty::ir::TypeVisitor<TyCtxt<'tcx>> for ReferencesOnlyParentGenerics<'tcx> {
         type BreakTy = ();
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             // If this is a parameter from the trait item's own generics, then bail
@@ -527,16 +523,14 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
 
     let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };
     let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {
-        if pred.visit_with(&mut visitor).is_continue() {
-            Some(Obligation::new(
+        pred.visit_with(&mut visitor).is_continue().then(|| {
+            Obligation::new(
                 tcx,
                 ObligationCause::dummy_with_span(*span),
                 param_env,
                 ty::EarlyBinder(*pred).subst(tcx, impl_trait_ref.substs),
-            ))
-        } else {
-            None
-        }
+            )
+        })
     });
 
     let infcx = tcx.infer_ctxt().ignoring_regions().build();
@@ -558,6 +552,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
         subst_and_check_impossible_predicates,
+        check_tys_might_be_eq: misc::check_tys_might_be_eq,
         is_impossible_method,
         ..*providers
     };

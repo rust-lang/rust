@@ -1,8 +1,12 @@
 error: unexpected closing delimiter: `}`
   --> $DIR/issue-70583-block-is-empty-2.rs:14:1
    |
+LL |         match self {
+   |                    - this delimiter might not be properly closed...
 LL |             ErrorHandled::Reported => {}}
-   |                                       -- block is empty, you might have not meant to close it
+   |                                       --- ...as it matches this but it has different indentation
+   |                                       |
+   |                                       block is empty, you might have not meant to close it
 ...
 LL | }
    | ^ unexpected closing delimiter

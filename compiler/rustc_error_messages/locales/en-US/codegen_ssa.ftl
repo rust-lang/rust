@@ -22,7 +22,7 @@ codegen_ssa_ignoring_output = ignoring -o because multiple .{$extension} files w
 
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
-codegen_ssa_incompatible_linking_modifiers = the linking modifiers `+bundle` and `+whole-archive` are not compatible with each other when generating rlibs
+codegen_ssa_incompatible_linking_modifiers = link modifiers combination `+bundle,+whole-archive` is unstable when generating rlibs
 
 codegen_ssa_add_native_library = failed to add native library {$library_path}: {$error}
 
@@ -179,9 +179,9 @@ codegen_ssa_extract_bundled_libs_write_file = failed to write file '{$rlib}': {$
 
 codegen_ssa_unsupported_arch = unsupported arch `{$arch}` for os `{$os}`
 
-codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {error}
+codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {$error}
 
-codegen_ssa_read_file = failed to read file: {message}
+codegen_ssa_read_file = failed to read file: {$message}
 
 codegen_ssa_unsupported_link_self_contained = option `-C link-self-contained` is not supported on this target
 

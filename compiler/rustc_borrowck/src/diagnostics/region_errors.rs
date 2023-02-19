@@ -575,7 +575,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *output_ty.kind() {
-            output_ty = self.infcx.tcx.type_of(def_id)
+            output_ty = self.infcx.tcx.type_of(def_id).subst_identity()
         };
 
         debug!("report_fnmut_error: output_ty={:?}", output_ty);
@@ -583,9 +583,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let err = FnMutError {
             span: *span,
             ty_err: match output_ty.kind() {
-                ty::Closure(_, _) => FnMutReturnTypeErr::ReturnClosure { span: *span },
                 ty::Generator(def, ..) if self.infcx.tcx.generator_is_async(*def) => {
                     FnMutReturnTypeErr::ReturnAsyncBlock { span: *span }
+                }
+                _ if output_ty.contains_closure() => {
+                    FnMutReturnTypeErr::ReturnClosure { span: *span }
                 }
                 _ => FnMutReturnTypeErr::ReturnRef { span: *span },
             },
@@ -813,17 +815,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             if *outlived_f != ty::ReStatic {
                 return;
             }
+            let suitable_region = self.infcx.tcx.is_suitable_region(f);
+            let Some(suitable_region) = suitable_region else { return; };
 
-            let fn_returns = self
-                .infcx
-                .tcx
-                .is_suitable_region(f)
-                .map(|r| self.infcx.tcx.return_type_impl_or_dyn_traits(r.def_id))
-                .unwrap_or_default();
-
-            if fn_returns.is_empty() {
-                return;
-            }
+            let fn_returns = self.infcx.tcx.return_type_impl_or_dyn_traits(suitable_region.def_id);
 
             let param = if let Some(param) = find_param_with_region(self.infcx.tcx, f, outlived_f) {
                 param
@@ -839,15 +834,43 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             };
             let captures = format!("captures data from {arg}");
 
-            return nice_region_error::suggest_new_region_bound(
-                self.infcx.tcx,
-                diag,
-                fn_returns,
-                lifetime.to_string(),
-                Some(arg),
-                captures,
-                Some((param.param_ty_span, param.param_ty.to_string())),
-                self.infcx.tcx.is_suitable_region(f).map(|r| r.def_id),
+            if !fn_returns.is_empty() {
+                nice_region_error::suggest_new_region_bound(
+                    self.infcx.tcx,
+                    diag,
+                    fn_returns,
+                    lifetime.to_string(),
+                    Some(arg),
+                    captures,
+                    Some((param.param_ty_span, param.param_ty.to_string())),
+                    Some(suitable_region.def_id),
+                );
+                return;
+            }
+
+            let Some((alias_tys, alias_span)) = self
+                .infcx
+                .tcx
+                .return_type_impl_or_dyn_traits_with_type_alias(suitable_region.def_id) else { return; };
+
+            // in case the return type of the method is a type alias
+            let mut spans_suggs: Vec<_> = Vec::new();
+            for alias_ty in alias_tys {
+                if alias_ty.span.desugaring_kind().is_some() {
+                    // Skip `async` desugaring `impl Future`.
+                    ()
+                }
+                if let TyKind::TraitObject(_, lt, _) = alias_ty.kind {
+                    spans_suggs.push((lt.ident.span.shrink_to_hi(), " + 'a".to_string()));
+                }
+            }
+            spans_suggs.push((alias_span.shrink_to_hi(), "<'a>".to_string()));
+            diag.multipart_suggestion_verbose(
+                &format!(
+                    "to declare that the trait object {captures}, you can add a lifetime parameter `'a` in the type alias"
+                ),
+                spans_suggs,
+                Applicability::MaybeIncorrect,
             );
         }
     }
@@ -873,7 +896,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             debug!(?fn_did, ?substs);
 
             // Only suggest this on function calls, not closures
-            let ty = tcx.type_of(fn_did);
+            let ty = tcx.type_of(fn_did).subst_identity();
             debug!("ty: {:?}, ty.kind: {:?}", ty, ty.kind());
             if let ty::Closure(_, _) = ty.kind() {
                 return;
@@ -976,7 +999,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn suggest_move_on_borrowing_closure(&self, diag: &mut Diagnostic) {
         let map = self.infcx.tcx.hir();
         let body_id = map.body_owned_by(self.mir_def_id());
-        let expr = &map.body(body_id).value;
+        let expr = &map.body(body_id).value.peel_blocks();
         let mut closure_span = None::<rustc_span::Span>;
         match expr.kind {
             hir::ExprKind::MethodCall(.., args, _) => {
@@ -991,20 +1014,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }
                 }
             }
-            hir::ExprKind::Block(blk, _) => {
-                if let Some(expr) = blk.expr {
-                    // only when the block is a closure
-                    if let hir::ExprKind::Closure(hir::Closure {
-                        capture_clause: hir::CaptureBy::Ref,
-                        body,
-                        ..
-                    }) = expr.kind
-                    {
-                        let body = map.body(*body);
-                        if !matches!(body.generator_kind, Some(hir::GeneratorKind::Async(..))) {
-                            closure_span = Some(expr.span.shrink_to_lo());
-                        }
-                    }
+            hir::ExprKind::Closure(hir::Closure {
+                capture_clause: hir::CaptureBy::Ref,
+                body,
+                ..
+            }) => {
+                let body = map.body(*body);
+                if !matches!(body.generator_kind, Some(hir::GeneratorKind::Async(..))) {
+                    closure_span = Some(expr.span.shrink_to_lo());
                 }
             }
             _ => {}

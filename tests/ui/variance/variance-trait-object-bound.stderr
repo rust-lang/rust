@@ -1,4 +1,4 @@
-error: [-]
+error: [+]
   --> $DIR/variance-trait-object-bound.rs:14:1
    |
 LL | struct TOption<'a> {

@@ -26,7 +26,7 @@ use rustc_infer::infer::InferOk;
 use rustc_infer::infer::TypeTrace;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, DefIdTree, IsSuggestable, Ty, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{self, DefIdTree, IsSuggestable, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{self, sym, Span};
@@ -34,7 +34,6 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext}
 
 use std::iter;
 use std::mem;
-use std::ops::ControlFlow;
 use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -79,7 +78,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
             InlineAsmCtxt::new_in_fn(self.tcx, self.param_env, get_operand_ty)
-                .check_asm(asm, self.tcx.hir().local_def_id_to_hir_id(enclosing_id));
+                .check_asm(asm, enclosing_id);
         }
     }
 
@@ -756,15 +755,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         errors.drain_filter(|error| {
-                let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(e))) = error else { return false };
-                let (provided_ty, provided_span) = provided_arg_tys[*provided_idx];
-                let trace = mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
-                if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308(_)) {
-                    self.err_ctxt().report_and_explain_type_error(trace, *e).emit();
-                    return true;
-                }
-                false
-            });
+            let Error::Invalid(
+                provided_idx,
+                expected_idx,
+                Compatibility::Incompatible(Some(e)),
+            ) = error else { return false };
+            let (provided_ty, provided_span) = provided_arg_tys[*provided_idx];
+            let trace =
+                mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
+            if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308(_)) {
+                self.err_ctxt().report_and_explain_type_error(trace, *e).emit();
+                return true;
+            }
+            false
+        });
 
         // We're done if we found errors, but we already emitted them.
         if errors.is_empty() {
@@ -808,7 +812,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: full_call_span,
                 });
-                self.point_at_expr_source_of_inferred_type(&mut err, rcvr, expected, callee_ty);
+                self.point_at_expr_source_of_inferred_type(
+                    &mut err,
+                    rcvr,
+                    expected,
+                    callee_ty,
+                    provided_arg_span,
+                );
             }
             // Call out where the function is defined
             self.label_fn_like(
@@ -859,7 +869,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let mut suggestion_text = SuggestionText::None;
 
+        let ty_to_snippet = |ty: Ty<'tcx>, expected_idx: ExpectedIdx| {
+            if ty.is_unit() {
+                "()".to_string()
+            } else if ty.is_suggestable(tcx, false) {
+                format!("/* {} */", ty)
+            } else if let Some(fn_def_id) = fn_def_id
+                && self.tcx.def_kind(fn_def_id).is_fn_like()
+                && let self_implicit =
+                    matches!(call_expr.kind, hir::ExprKind::MethodCall(..)) as usize
+                && let Some(arg) = self.tcx.fn_arg_names(fn_def_id)
+                    .get(expected_idx.as_usize() + self_implicit)
+                && arg.name != kw::SelfLower
+            {
+                format!("/* {} */", arg.name)
+            } else {
+                "/* value */".to_string()
+            }
+        };
+
         let mut errors = errors.into_iter().peekable();
+        let mut suggestions = vec![];
         while let Some(error) = errors.next() {
             match error {
                 Error::Invalid(provided_idx, expected_idx, compatibility) => {
@@ -900,7 +930,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "".to_string()
                     };
                     labels
-                        .push((provided_span, format!("argument{} unexpected", provided_ty_name)));
+                        .push((provided_span, format!("unexpected argument{}", provided_ty_name)));
+                    let mut span = provided_span;
+                    if arg_idx.index() > 0
+                        && let Some((_, prev)) = provided_arg_tys
+                            .get(ProvidedIdx::from_usize(arg_idx.index() - 1)
+                    ) {
+                        // Include previous comma
+                        span = span.with_lo(prev.hi());
+                    } else if let Some((_, next)) = provided_arg_tys.get(
+                        ProvidedIdx::from_usize(arg_idx.index() + 1),
+                    ) {
+                        // Include next comma
+                        span = span.until(*next);
+                    }
+                    suggestions.push((span, String::new()));
+
                     suggestion_text = match suggestion_text {
                         SuggestionText::None => SuggestionText::Remove(false),
                         SuggestionText::Remove(_) => SuggestionText::Remove(true),
@@ -1090,6 +1135,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        // Incorporate the argument changes in the removal suggestion.
+        // When a type is *missing*, and the rest are additional, we want to suggest these with a
+        // multipart suggestion, but in order to do so we need to figure out *where* the arg that
+        // was provided but had the wrong type should go, because when looking at `expected_idx`
+        // that is the position in the argument list in the definition, while `provided_idx` will
+        // not be present. So we have to look at what the *last* provided position was, and point
+        // one after to suggest the replacement. FIXME(estebank): This is hacky, and there's
+        // probably a better more involved change we can make to make this work.
+        // For example, if we have
+        // ```
+        // fn foo(i32, &'static str) {}
+        // foo((), (), ());
+        // ```
+        // what should be suggested is
+        // ```
+        // foo(/* i32 */, /* &str */);
+        // ```
+        // which includes the replacement of the first two `()` for the correct type, and the
+        // removal of the last `()`.
+        let mut prev = -1;
+        for (expected_idx, provided_idx) in matched_inputs.iter_enumerated() {
+            // We want to point not at the *current* argument expression index, but rather at the
+            // index position where it *should have been*, which is *after* the previous one.
+            if let Some(provided_idx) = provided_idx {
+                prev = provided_idx.index() as i64;
+            }
+            let idx = ProvidedIdx::from_usize((prev + 1) as usize);
+            if let None = provided_idx
+                && let Some((_, arg_span)) = provided_arg_tys.get(idx)
+            {
+                // There is a type that was *not* found anywhere, so it isn't a move, but a
+                // replacement and we look at what type it should have been. This will allow us
+                // To suggest a multipart suggestion when encountering `foo(1, "")` where the def
+                // was `fn foo(())`.
+                let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
+                suggestions.push((*arg_span, ty_to_snippet(expected_ty, expected_idx)));
+            }
+        }
+
         // If we have less than 5 things to say, it would be useful to call out exactly what's wrong
         if labels.len() <= 5 {
             for (span, label) in labels {
@@ -1107,7 +1191,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(format!("provide the argument{}", if plural { "s" } else { "" }))
             }
             SuggestionText::Remove(plural) => {
-                Some(format!("remove the extra argument{}", if plural { "s" } else { "" }))
+                err.multipart_suggestion(
+                    &format!("remove the extra argument{}", if plural { "s" } else { "" }),
+                    suggestions,
+                    Applicability::HasPlaceholders,
+                );
+                None
             }
             SuggestionText::Swap => Some("swap these arguments".to_string()),
             SuggestionText::Reorder => Some("reorder these arguments".to_string()),
@@ -1146,20 +1235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     // Propose a placeholder of the correct type
                     let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
-                    if expected_ty.is_unit() {
-                        "()".to_string()
-                    } else if expected_ty.is_suggestable(tcx, false) {
-                        format!("/* {} */", expected_ty)
-                    } else if let Some(fn_def_id) = fn_def_id
-                        && self.tcx.def_kind(fn_def_id).is_fn_like()
-                        && let self_implicit = matches!(call_expr.kind, hir::ExprKind::MethodCall(..)) as usize
-                        && let Some(arg) = self.tcx.fn_arg_names(fn_def_id).get(expected_idx.as_usize() + self_implicit)
-                        && arg.name != kw::SelfLower
-                    {
-                        format!("/* {} */", arg.name)
-                    } else {
-                        "/* value */".to_string()
-                    }
+                    ty_to_snippet(expected_ty, expected_idx)
                 };
                 suggestion += &suggestion_text;
             }
@@ -1325,11 +1401,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Does the expected pattern type originate from an expression and what is the span?
         let (origin_expr, ty_span) = match (decl.ty, decl.init) {
-            (Some(ty), _) => (false, Some(ty.span)), // Bias towards the explicit user type.
+            (Some(ty), _) => (None, Some(ty.span)), // Bias towards the explicit user type.
             (_, Some(init)) => {
-                (true, Some(init.span.find_ancestor_inside(decl.span).unwrap_or(init.span)))
+                (Some(init), Some(init.span.find_ancestor_inside(decl.span).unwrap_or(init.span)))
             } // No explicit type; so use the scrutinee.
-            _ => (false, None), // We have `let $pat;`, so the expected type is unconstrained.
+            _ => (None, None), // We have `let $pat;`, so the expected type is unconstrained.
         };
 
         // Type check the pattern. Override if necessary to avoid knock-on errors.
@@ -1664,7 +1740,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match *qpath {
             QPath::Resolved(ref maybe_qself, ref path) => {
                 let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself).raw);
-                let ty = self.astconv().res_to_ty(self_ty, path, true);
+                let ty = self.astconv().res_to_ty(self_ty, path, hir_id, true);
                 (path.res, self.handle_raw_ty(path_span, ty))
             }
             QPath::TypeRelative(ref qself, ref segment) => {
@@ -1751,353 +1827,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn adjust_fulfillment_error_for_expr_obligation(
-        &self,
-        error: &mut traits::FulfillmentError<'tcx>,
-    ) -> bool {
-        let (traits::ExprItemObligation(def_id, hir_id, idx) | traits::ExprBindingObligation(def_id, _, hir_id, idx))
-            = *error.obligation.cause.code().peel_derives() else { return false; };
-        let hir = self.tcx.hir();
-        let hir::Node::Expr(expr) = hir.get(hir_id) else { return false; };
-
-        let Some(unsubstituted_pred) =
-            self.tcx.predicates_of(def_id).instantiate_identity(self.tcx).predicates.into_iter().nth(idx)
-            else { return false; };
-
-        let generics = self.tcx.generics_of(def_id);
-        let predicate_substs = match unsubstituted_pred.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => pred.trait_ref.substs,
-            ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => pred.projection_ty.substs,
-            _ => ty::List::empty(),
-        };
-
-        let find_param_matching = |matches: &dyn Fn(&ty::ParamTy) -> bool| {
-            predicate_substs.types().find_map(|ty| {
-                ty.walk().find_map(|arg| {
-                    if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                        && let ty::Param(param_ty) = ty.kind()
-                        && matches(param_ty)
-                    {
-                        Some(arg)
-                    } else {
-                        None
-                    }
-                })
-            })
-        };
-
-        // Prefer generics that are local to the fn item, since these are likely
-        // to be the cause of the unsatisfied predicate.
-        let mut param_to_point_at = find_param_matching(&|param_ty| {
-            self.tcx.parent(generics.type_param(param_ty, self.tcx).def_id) == def_id
-        });
-        // Fall back to generic that isn't local to the fn item. This will come
-        // from a trait or impl, for example.
-        let mut fallback_param_to_point_at = find_param_matching(&|param_ty| {
-            self.tcx.parent(generics.type_param(param_ty, self.tcx).def_id) != def_id
-                && param_ty.name != rustc_span::symbol::kw::SelfUpper
-        });
-        // Finally, the `Self` parameter is possibly the reason that the predicate
-        // is unsatisfied. This is less likely to be true for methods, because
-        // method probe means that we already kinda check that the predicates due
-        // to the `Self` type are true.
-        let mut self_param_to_point_at =
-            find_param_matching(&|param_ty| param_ty.name == rustc_span::symbol::kw::SelfUpper);
-
-        // Finally, for ambiguity-related errors, we actually want to look
-        // for a parameter that is the source of the inference type left
-        // over in this predicate.
-        if let traits::FulfillmentErrorCode::CodeAmbiguity = error.code {
-            fallback_param_to_point_at = None;
-            self_param_to_point_at = None;
-            param_to_point_at =
-                self.find_ambiguous_parameter_in(def_id, error.root_obligation.predicate);
-        }
-
-        if self.closure_span_overlaps_error(error, expr.span) {
-            return false;
-        }
-
-        match &expr.kind {
-            hir::ExprKind::Path(qpath) => {
-                if let hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Call(callee, args),
-                    hir_id: call_hir_id,
-                    span: call_span,
-                    ..
-                }) = hir.get_parent(expr.hir_id)
-                    && callee.hir_id == expr.hir_id
-                {
-                    if self.closure_span_overlaps_error(error, *call_span) {
-                        return false;
-                    }
-
-                    for param in
-                        [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
-                        .into_iter()
-                        .flatten()
-                    {
-                        if self.point_at_arg_if_possible(
-                                error,
-                                def_id,
-                                param,
-                                *call_hir_id,
-                                callee.span,
-                                None,
-                                args,
-                            )
-                        {
-                            return true;
-                        }
-                    }
-                }
-                // Notably, we only point to params that are local to the
-                // item we're checking, since those are the ones we are able
-                // to look in the final `hir::PathSegment` for. Everything else
-                // would require a deeper search into the `qpath` than I think
-                // is worthwhile.
-                if let Some(param_to_point_at) = param_to_point_at
-                    && self.point_at_path_if_possible(error, def_id, param_to_point_at, qpath)
-                {
-                    return true;
-                }
-            }
-            hir::ExprKind::MethodCall(segment, receiver, args, ..) => {
-                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
-                    .into_iter()
-                    .flatten()
-                {
-                    if self.point_at_arg_if_possible(
-                        error,
-                        def_id,
-                        param,
-                        hir_id,
-                        segment.ident.span,
-                        Some(receiver),
-                        args,
-                    ) {
-                        return true;
-                    }
-                }
-                if let Some(param_to_point_at) = param_to_point_at
-                    && self.point_at_generic_if_possible(error, def_id, param_to_point_at, segment)
-                {
-                    return true;
-                }
-            }
-            hir::ExprKind::Struct(qpath, fields, ..) => {
-                if let Res::Def(DefKind::Struct | DefKind::Variant, variant_def_id) =
-                    self.typeck_results.borrow().qpath_res(qpath, hir_id)
-                {
-                    for param in
-                        [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
-                    {
-                        if let Some(param) = param
-                            && self.point_at_field_if_possible(
-                                error,
-                                def_id,
-                                param,
-                                variant_def_id,
-                                fields,
-                            )
-                        {
-                            return true;
-                        }
-                    }
-                }
-                if let Some(param_to_point_at) = param_to_point_at
-                    && self.point_at_path_if_possible(error, def_id, param_to_point_at, qpath)
-                {
-                    return true;
-                }
-            }
-            _ => {}
-        }
-
-        false
-    }
-
-    fn closure_span_overlaps_error(
-        &self,
-        error: &traits::FulfillmentError<'tcx>,
-        span: Span,
-    ) -> bool {
-        if let traits::FulfillmentErrorCode::CodeSelectionError(
-            traits::SelectionError::OutputTypeParameterMismatch(_, expected, _),
-        ) = error.code
-            && let ty::Closure(def_id, _) | ty::Generator(def_id, ..) = expected.skip_binder().self_ty().kind()
-            && span.overlaps(self.tcx.def_span(*def_id))
-        {
-            true
-        } else {
-            false
-        }
-    }
-
-    fn point_at_arg_if_possible(
-        &self,
-        error: &mut traits::FulfillmentError<'tcx>,
-        def_id: DefId,
-        param_to_point_at: ty::GenericArg<'tcx>,
-        call_hir_id: hir::HirId,
-        callee_span: Span,
-        receiver: Option<&'tcx hir::Expr<'tcx>>,
-        args: &'tcx [hir::Expr<'tcx>],
-    ) -> bool {
-        let ty = self.tcx.type_of(def_id);
-        if !ty.is_fn() {
-            return false;
-        }
-        let sig = ty.fn_sig(self.tcx).skip_binder();
-        let args_referencing_param: Vec<_> = sig
-            .inputs()
-            .iter()
-            .enumerate()
-            .filter(|(_, ty)| find_param_in_ty(**ty, param_to_point_at))
-            .collect();
-        // If there's one field that references the given generic, great!
-        if let [(idx, _)] = args_referencing_param.as_slice()
-            && let Some(arg) = receiver
-                .map_or(args.get(*idx), |rcvr| if *idx == 0 { Some(rcvr) } else { args.get(*idx - 1) }) {
-            error.obligation.cause.span = arg.span.find_ancestor_in_same_ctxt(error.obligation.cause.span).unwrap_or(arg.span);
-            error.obligation.cause.map_code(|parent_code| {
-                ObligationCauseCode::FunctionArgumentObligation {
-                    arg_hir_id: arg.hir_id,
-                    call_hir_id,
-                    parent_code,
-                }
-            });
-            return true;
-        } else if args_referencing_param.len() > 0 {
-            // If more than one argument applies, then point to the callee span at least...
-            // We have chance to fix this up further in `point_at_generics_if_possible`
-            error.obligation.cause.span = callee_span;
-        }
-
-        false
-    }
-
-    fn point_at_field_if_possible(
-        &self,
-        error: &mut traits::FulfillmentError<'tcx>,
-        def_id: DefId,
-        param_to_point_at: ty::GenericArg<'tcx>,
-        variant_def_id: DefId,
-        expr_fields: &[hir::ExprField<'tcx>],
-    ) -> bool {
-        let def = self.tcx.adt_def(def_id);
-
-        let identity_substs = ty::InternalSubsts::identity_for_item(self.tcx, def_id);
-        let fields_referencing_param: Vec<_> = def
-            .variant_with_id(variant_def_id)
-            .fields
-            .iter()
-            .filter(|field| {
-                let field_ty = field.ty(self.tcx, identity_substs);
-                find_param_in_ty(field_ty, param_to_point_at)
-            })
-            .collect();
-
-        if let [field] = fields_referencing_param.as_slice() {
-            for expr_field in expr_fields {
-                // Look for the ExprField that matches the field, using the
-                // same rules that check_expr_struct uses for macro hygiene.
-                if self.tcx.adjust_ident(expr_field.ident, variant_def_id) == field.ident(self.tcx)
-                {
-                    error.obligation.cause.span = expr_field
-                        .expr
-                        .span
-                        .find_ancestor_in_same_ctxt(error.obligation.cause.span)
-                        .unwrap_or(expr_field.span);
-                    return true;
-                }
-            }
-        }
-
-        false
-    }
-
-    fn point_at_path_if_possible(
-        &self,
-        error: &mut traits::FulfillmentError<'tcx>,
-        def_id: DefId,
-        param: ty::GenericArg<'tcx>,
-        qpath: &QPath<'tcx>,
-    ) -> bool {
-        match qpath {
-            hir::QPath::Resolved(_, path) => {
-                if let Some(segment) = path.segments.last()
-                    && self.point_at_generic_if_possible(error, def_id, param, segment)
-                {
-                    return true;
-                }
-            }
-            hir::QPath::TypeRelative(_, segment) => {
-                if self.point_at_generic_if_possible(error, def_id, param, segment) {
-                    return true;
-                }
-            }
-            _ => {}
-        }
-
-        false
-    }
-
-    fn point_at_generic_if_possible(
-        &self,
-        error: &mut traits::FulfillmentError<'tcx>,
-        def_id: DefId,
-        param_to_point_at: ty::GenericArg<'tcx>,
-        segment: &hir::PathSegment<'tcx>,
-    ) -> bool {
-        let own_substs = self
-            .tcx
-            .generics_of(def_id)
-            .own_substs(ty::InternalSubsts::identity_for_item(self.tcx, def_id));
-        let Some((index, _)) = own_substs
-            .iter()
-            .filter(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_)))
-            .enumerate()
-            .find(|(_, arg)| **arg == param_to_point_at) else { return false };
-        let Some(arg) = segment
-            .args()
-            .args
-            .iter()
-            .filter(|arg| matches!(arg, hir::GenericArg::Type(_)))
-            .nth(index) else { return false; };
-        error.obligation.cause.span = arg
-            .span()
-            .find_ancestor_in_same_ctxt(error.obligation.cause.span)
-            .unwrap_or(arg.span());
-        true
-    }
-
-    fn find_ambiguous_parameter_in<T: TypeVisitable<'tcx>>(
-        &self,
-        item_def_id: DefId,
-        t: T,
-    ) -> Option<ty::GenericArg<'tcx>> {
-        struct FindAmbiguousParameter<'a, 'tcx>(&'a FnCtxt<'a, 'tcx>, DefId);
-        impl<'tcx> TypeVisitor<'tcx> for FindAmbiguousParameter<'_, 'tcx> {
-            type BreakTy = ty::GenericArg<'tcx>;
-            fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
-                if let Some(origin) = self.0.type_var_origin(ty)
-                    && let TypeVariableOriginKind::TypeParameterDefinition(_, Some(def_id)) =
-                        origin.kind
-                    && let generics = self.0.tcx.generics_of(self.1)
-                    && let Some(index) = generics.param_def_id_to_index(self.0.tcx, def_id)
-                    && let Some(subst) = ty::InternalSubsts::identity_for_item(self.0.tcx, self.1)
-                        .get(index as usize)
-                {
-                    ControlFlow::Break(*subst)
-                } else {
-                    ty.super_visit_with(self)
-                }
-            }
-        }
-        t.visit_with(&mut FindAmbiguousParameter(self, item_def_id)).break_value()
-    }
-
     fn label_fn_like(
         &self,
         err: &mut Diagnostic,
@@ -2126,7 +1855,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match *callee_ty.kind() {
                 ty::Param(param) => {
                     let param =
-                        self.tcx.generics_of(self.body_id.owner).type_param(&param, self.tcx);
+                        self.tcx.generics_of(self.body_id).type_param(&param, self.tcx);
                     if param.kind.is_synthetic() {
                         // if it's `impl Fn() -> ..` then just fall down to the def-id based logic
                         def_id = param.def_id;
@@ -2135,7 +1864,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // and point at that.
                         let instantiated = self
                             .tcx
-                            .explicit_predicates_of(self.body_id.owner)
+                            .explicit_predicates_of(self.body_id)
                             .instantiate_identity(self.tcx);
                         // FIXME(compiler-errors): This could be problematic if something has two
                         // fn-like predicates with different args, but callable types really never
@@ -2233,24 +1962,4 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
     }
-}
-
-fn find_param_in_ty<'tcx>(ty: Ty<'tcx>, param_to_point_at: ty::GenericArg<'tcx>) -> bool {
-    let mut walk = ty.walk();
-    while let Some(arg) = walk.next() {
-        if arg == param_to_point_at {
-            return true;
-        } else if let ty::GenericArgKind::Type(ty) = arg.unpack()
-            && let ty::Alias(ty::Projection, ..) = ty.kind()
-        {
-            // This logic may seem a bit strange, but typically when
-            // we have a projection type in a function signature, the
-            // argument that's being passed into that signature is
-            // not actually constraining that projection's substs in
-            // a meaningful way. So we skip it, and see improvements
-            // in some UI tests.
-            walk.skip_current_subtree();
-        }
-    }
-    false
 }

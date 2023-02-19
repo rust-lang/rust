@@ -28,36 +28,30 @@
       bb0: {
 -         StorageLive(_1);                 // scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+1:20: +1:28
 -         StorageLive(_2);                 // scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+1:21: +1:23
--         Deinit(_2);                      // scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+1:21: +1:23
+-         _2 = ();                         // scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+1:21: +1:23
 -         StorageLive(_3);                 // scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+1:25: +1:27
--         Deinit(_3);                      // scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+1:25: +1:27
--         Deinit(_1);                      // scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+1:20: +1:28
--         (_1.0: ()) = move _2;            // scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+1:20: +1:28
--         (_1.1: ()) = move _3;            // scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+1:20: +1:28
+-         _3 = ();                         // scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+1:25: +1:27
+-         _1 = (move _2, move _3);         // scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+1:20: +1:28
 -         StorageDead(_3);                 // scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+1:27: +1:28
 -         StorageDead(_2);                 // scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+1:27: +1:28
 -         StorageDead(_1);                 // scope 0 at $DIR/simplify_locals_removes_unused_consts.rs:+1:28: +1:29
 -         StorageLive(_4);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:5: +2:22
 -         StorageLive(_5);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:13: +2:21
 -         StorageLive(_6);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:14: +2:16
--         Deinit(_6);                      // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:14: +2:16
+-         _6 = ();                         // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:14: +2:16
 -         StorageLive(_7);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:18: +2:20
--         Deinit(_7);                      // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:18: +2:20
--         Deinit(_5);                      // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:13: +2:21
--         (_5.0: ()) = move _6;            // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:13: +2:21
--         (_5.1: ()) = move _7;            // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:13: +2:21
+-         _7 = ();                         // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:18: +2:20
+-         _5 = (move _6, move _7);         // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:13: +2:21
 -         StorageDead(_7);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:20: +2:21
 -         StorageDead(_6);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:20: +2:21
 -         _4 = use_zst(move _5) -> bb1;    // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:5: +2:22
 +         StorageLive(_1);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:5: +2:22
 +         StorageLive(_2);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:13: +2:21
 +         StorageLive(_3);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:14: +2:16
-+         Deinit(_3);                      // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:14: +2:16
++         _3 = ();                         // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:14: +2:16
 +         StorageLive(_4);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:18: +2:20
-+         Deinit(_4);                      // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:18: +2:20
-+         Deinit(_2);                      // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:13: +2:21
-+         (_2.0: ()) = move _3;            // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:13: +2:21
-+         (_2.1: ()) = move _4;            // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:13: +2:21
++         _4 = ();                         // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:18: +2:20
++         _2 = (move _3, move _4);         // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:13: +2:21
 +         StorageDead(_4);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:20: +2:21
 +         StorageDead(_3);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:20: +2:21
 +         _1 = use_zst(move _2) -> bb1;    // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+2:5: +2:22
@@ -73,8 +67,7 @@
 -         StorageLive(_9);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:34
 -         StorageLive(_10);                // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:30
 -         StorageLive(_11);                // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:28
--         Deinit(_11);                     // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:28
--         (_11.0: u8) = const 40_u8;       // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:28
+-         _11 = Temp { x: const 40_u8 };   // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:28
 -         _10 = (_11.0: u8);               // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:30
 -         _9 = Add(move _10, const 2_u8);  // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:34
 -         StorageDead(_10);                // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:33: +4:34
@@ -85,8 +78,7 @@
 +         StorageLive(_6);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:34
 +         StorageLive(_7);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:30
 +         StorageLive(_8);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:28
-+         Deinit(_8);                      // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:28
-+         (_8.0: u8) = const 40_u8;        // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:28
++         _8 = Temp { x: const 40_u8 };    // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:28
 +         _7 = (_8.0: u8);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:30
 +         _6 = Add(move _7, const 2_u8);   // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:12: +4:34
 +         StorageDead(_7);                 // scope 1 at $DIR/simplify_locals_removes_unused_consts.rs:+4:33: +4:34

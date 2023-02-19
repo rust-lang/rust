@@ -18,7 +18,7 @@ use crate::translation::{to_fluent_args, Translate};
 use crate::{
     diagnostic::DiagnosticLocation, CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage,
     FluentBundle, Handler, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
-    SubstitutionHighlight, SuggestionStyle,
+    SubstitutionHighlight, SuggestionStyle, TerminalUrl,
 };
 use rustc_lint_defs::pluralize;
 
@@ -66,6 +66,7 @@ impl HumanReadableErrorType {
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
         track_diagnostics: bool,
+        terminal_url: TerminalUrl,
     ) -> EmitterWriter {
         let (short, color_config) = self.unzip();
         let color = color_config.suggests_using_colors();
@@ -80,6 +81,7 @@ impl HumanReadableErrorType {
             diagnostic_width,
             macro_backtrace,
             track_diagnostics,
+            terminal_url,
         )
     }
 }
@@ -652,6 +654,7 @@ pub struct EmitterWriter {
 
     macro_backtrace: bool,
     track_diagnostics: bool,
+    terminal_url: TerminalUrl,
 }
 
 #[derive(Debug)]
@@ -672,6 +675,7 @@ impl EmitterWriter {
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
         track_diagnostics: bool,
+        terminal_url: TerminalUrl,
     ) -> EmitterWriter {
         let dst = Destination::from_stderr(color_config);
         EmitterWriter {
@@ -685,6 +689,7 @@ impl EmitterWriter {
             diagnostic_width,
             macro_backtrace,
             track_diagnostics,
+            terminal_url,
         }
     }
 
@@ -699,6 +704,7 @@ impl EmitterWriter {
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
         track_diagnostics: bool,
+        terminal_url: TerminalUrl,
     ) -> EmitterWriter {
         EmitterWriter {
             dst: Raw(dst, colored),
@@ -711,6 +717,7 @@ impl EmitterWriter {
             diagnostic_width,
             macro_backtrace,
             track_diagnostics,
+            terminal_url,
         }
     }
 
@@ -1378,7 +1385,13 @@ impl EmitterWriter {
             // only render error codes, not lint codes
             if let Some(DiagnosticId::Error(ref code)) = *code {
                 buffer.append(0, "[", Style::Level(*level));
-                buffer.append(0, code, Style::Level(*level));
+                let code = if let TerminalUrl::Yes = self.terminal_url {
+                    let path = "https://doc.rust-lang.org/error_codes";
+                    format!("\x1b]8;;{path}/{code}.html\x07{code}\x1b]8;;\x07")
+                } else {
+                    code.clone()
+                };
+                buffer.append(0, &code, Style::Level(*level));
                 buffer.append(0, "]", Style::Level(*level));
                 label_width += 2 + code.len();
             }
@@ -1755,7 +1768,7 @@ impl EmitterWriter {
 
         // Render the replacements for each suggestion
         let suggestions = suggestion.splice_lines(sm);
-        debug!("emit_suggestion_default: suggestions={:?}", suggestions);
+        debug!(?suggestions);
 
         if suggestions.is_empty() {
             // Suggestions coming from macros can have malformed spans. This is a heavy handed
@@ -1784,6 +1797,7 @@ impl EmitterWriter {
         for (complete, parts, highlights, only_capitalization) in
             suggestions.iter().take(MAX_SUGGESTIONS)
         {
+            debug!(?complete, ?parts, ?highlights);
             notice_capitalization |= only_capitalization;
 
             let has_deletion = parts.iter().any(|p| p.is_deletion(sm));
@@ -1796,17 +1810,17 @@ impl EmitterWriter {
                 // telling users to make a change but not clarifying *where*.
                 let loc = sm.lookup_char_pos(parts[0].span.lo());
                 if loc.file.name != sm.span_to_filename(span) && loc.file.name.is_real() {
-                    buffer.puts(row_num - 1, 0, "--> ", Style::LineNumber);
-                    buffer.append(
-                        row_num - 1,
-                        &format!(
-                            "{}:{}:{}",
-                            sm.filename_for_diagnostics(&loc.file.name),
-                            sm.doctest_offset_line(&loc.file.name, loc.line),
-                            loc.col.0 + 1,
-                        ),
-                        Style::LineAndColumn,
-                    );
+                    let arrow = "--> ";
+                    buffer.puts(row_num - 1, 0, arrow, Style::LineNumber);
+                    let filename = sm.filename_for_diagnostics(&loc.file.name);
+                    let offset = sm.doctest_offset_line(&loc.file.name, loc.line);
+                    let message = format!("{}:{}:{}", filename, offset, loc.col.0 + 1);
+                    if row_num == 2 {
+                        let col = usize::max(max_line_num_len + 1, arrow.len());
+                        buffer.puts(1, col, &message, Style::LineAndColumn);
+                    } else {
+                        buffer.append(row_num - 1, &message, Style::LineAndColumn);
+                    }
                     for _ in 0..max_line_num_len {
                         buffer.prepend(row_num - 1, " ", Style::NoStyle);
                     }
@@ -1882,9 +1896,8 @@ impl EmitterWriter {
                             &mut buffer,
                             &mut row_num,
                             &Vec::new(),
-                            p,
+                            p + line_start,
                             l,
-                            line_start,
                             show_code_change,
                             max_line_num_len,
                             &file_lines,
@@ -1907,9 +1920,8 @@ impl EmitterWriter {
                                 &mut buffer,
                                 &mut row_num,
                                 &Vec::new(),
-                                p,
+                                p + line_start,
                                 l,
-                                line_start,
                                 show_code_change,
                                 max_line_num_len,
                                 &file_lines,
@@ -1925,9 +1937,8 @@ impl EmitterWriter {
                                 &mut buffer,
                                 &mut row_num,
                                 &Vec::new(),
-                                p,
+                                p + line_start,
                                 l,
-                                line_start,
                                 show_code_change,
                                 max_line_num_len,
                                 &file_lines,
@@ -1941,9 +1952,8 @@ impl EmitterWriter {
                     &mut buffer,
                     &mut row_num,
                     highlight_parts,
-                    line_pos,
+                    line_pos + line_start,
                     line,
-                    line_start,
                     show_code_change,
                     max_line_num_len,
                     &file_lines,
@@ -2113,30 +2123,38 @@ impl EmitterWriter {
                         }
                     }
                     for sugg in suggestions {
-                        if sugg.style == SuggestionStyle::CompletelyHidden {
-                            // do not display this suggestion, it is meant only for tools
-                        } else if sugg.style == SuggestionStyle::HideCodeAlways {
-                            if let Err(e) = self.emit_message_default(
-                                &MultiSpan::new(),
-                                &[(sugg.msg.to_owned(), Style::HeaderMsg)],
-                                args,
-                                &None,
-                                &Level::Help,
-                                max_line_num_len,
-                                true,
-                                None,
-                            ) {
-                                panic!("failed to emit error: {}", e);
+                        match sugg.style {
+                            SuggestionStyle::CompletelyHidden => {
+                                // do not display this suggestion, it is meant only for tools
                             }
-                        } else if let Err(e) = self.emit_suggestion_default(
-                            span,
-                            sugg,
-                            args,
-                            &Level::Help,
-                            max_line_num_len,
-                        ) {
-                            panic!("failed to emit error: {}", e);
-                        };
+                            SuggestionStyle::HideCodeAlways => {
+                                if let Err(e) = self.emit_message_default(
+                                    &MultiSpan::new(),
+                                    &[(sugg.msg.to_owned(), Style::HeaderMsg)],
+                                    args,
+                                    &None,
+                                    &Level::Help,
+                                    max_line_num_len,
+                                    true,
+                                    None,
+                                ) {
+                                    panic!("failed to emit error: {}", e);
+                                }
+                            }
+                            SuggestionStyle::HideCodeInline
+                            | SuggestionStyle::ShowCode
+                            | SuggestionStyle::ShowAlways => {
+                                if let Err(e) = self.emit_suggestion_default(
+                                    span,
+                                    sugg,
+                                    args,
+                                    &Level::Help,
+                                    max_line_num_len,
+                                ) {
+                                    panic!("failed to emit error: {}", e);
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -2159,40 +2177,63 @@ impl EmitterWriter {
         buffer: &mut StyledBuffer,
         row_num: &mut usize,
         highlight_parts: &Vec<SubstitutionHighlight>,
-        line_pos: usize,
-        line: &str,
-        line_start: usize,
+        line_num: usize,
+        line_to_add: &str,
         show_code_change: DisplaySuggestion,
         max_line_num_len: usize,
         file_lines: &FileLines,
         is_multiline: bool,
     ) {
-        // Print the span column to avoid confusion
-        buffer.puts(*row_num, 0, &self.maybe_anonymized(line_start + line_pos), Style::LineNumber);
         if let DisplaySuggestion::Diff = show_code_change {
-            // Add the line number for both addition and removal to drive the point home.
-            //
-            // N - fn foo<A: T>(bar: A) {
-            // N + fn foo(bar: impl T) {
-            buffer.puts(
-                *row_num - 1,
-                0,
-                &self.maybe_anonymized(line_start + line_pos),
-                Style::LineNumber,
-            );
-            buffer.puts(*row_num - 1, max_line_num_len + 1, "- ", Style::Removal);
-            buffer.puts(
-                *row_num - 1,
-                max_line_num_len + 3,
-                &normalize_whitespace(
-                    &file_lines.file.get_line(file_lines.lines[line_pos].line_index).unwrap(),
-                ),
-                Style::NoStyle,
-            );
-            buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
+            // We need to print more than one line if the span we need to remove is multiline.
+            // For more info: https://github.com/rust-lang/rust/issues/92741
+            let lines_to_remove = file_lines.lines.iter().take(file_lines.lines.len() - 1);
+            for (index, line_to_remove) in lines_to_remove.enumerate() {
+                buffer.puts(
+                    *row_num - 1,
+                    0,
+                    &self.maybe_anonymized(line_num + index),
+                    Style::LineNumber,
+                );
+                buffer.puts(*row_num - 1, max_line_num_len + 1, "- ", Style::Removal);
+                let line = normalize_whitespace(
+                    &file_lines.file.get_line(line_to_remove.line_index).unwrap(),
+                );
+                buffer.puts(*row_num - 1, max_line_num_len + 3, &line, Style::NoStyle);
+                *row_num += 1;
+            }
+            // If the last line is exactly equal to the line we need to add, we can skip both of them.
+            // This allows us to avoid output like the following:
+            // 2 - &
+            // 2 + if true { true } else { false }
+            // 3 - if true { true } else { false }
+            // If those lines aren't equal, we print their diff
+            let last_line_index = file_lines.lines[file_lines.lines.len() - 1].line_index;
+            let last_line = &file_lines.file.get_line(last_line_index).unwrap();
+            if last_line != line_to_add {
+                buffer.puts(
+                    *row_num - 1,
+                    0,
+                    &self.maybe_anonymized(line_num + file_lines.lines.len() - 1),
+                    Style::LineNumber,
+                );
+                buffer.puts(*row_num - 1, max_line_num_len + 1, "- ", Style::Removal);
+                buffer.puts(
+                    *row_num - 1,
+                    max_line_num_len + 3,
+                    &normalize_whitespace(last_line),
+                    Style::NoStyle,
+                );
+                buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
+                buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
+                buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
+            } else {
+                *row_num -= 2;
+            }
         } else if is_multiline {
+            buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
             match &highlight_parts[..] {
-                [SubstitutionHighlight { start: 0, end }] if *end == line.len() => {
+                [SubstitutionHighlight { start: 0, end }] if *end == line_to_add.len() => {
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
                 }
                 [] => {
@@ -2202,17 +2243,17 @@ impl EmitterWriter {
                     buffer.puts(*row_num, max_line_num_len + 1, "~ ", Style::Addition);
                 }
             }
+            buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
         } else {
+            buffer.puts(*row_num, 0, &self.maybe_anonymized(line_num), Style::LineNumber);
             draw_col_separator(buffer, *row_num, max_line_num_len + 1);
+            buffer.append(*row_num, &normalize_whitespace(line_to_add), Style::NoStyle);
         }
-
-        // print the suggestion
-        buffer.append(*row_num, &normalize_whitespace(line), Style::NoStyle);
 
         // Colorize addition/replacements with green.
         for &SubstitutionHighlight { start, end } in highlight_parts {
             // Account for tabs when highlighting (#87972).
-            let tabs: usize = line
+            let tabs: usize = line_to_add
                 .chars()
                 .take(start)
                 .map(|ch| match ch {

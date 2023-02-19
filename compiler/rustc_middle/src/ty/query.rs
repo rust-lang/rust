@@ -1,3 +1,5 @@
+#![allow(unused_parens)]
+
 use crate::dep_graph;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
@@ -6,7 +8,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
-use crate::middle::resolve_lifetime::{ObjectLifetimeDefault, Region, ResolveLifetimes};
+use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars, ResolvedArg};
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
@@ -30,11 +32,11 @@ use crate::traits::specialization_graph;
 use crate::traits::{self, ImplSource};
 use crate::ty::context::TyCtxtFeed;
 use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::layout::TyAndLayout;
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::GeneratorDiagnosticData;
 use crate::ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt, UnusedGenericParams};
+use rustc_arena::TypedArena;
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr as attr;
@@ -42,10 +44,11 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::WorkerLocal;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_hir::lang_items::{LangItem, LanguageItems};
@@ -60,12 +63,19 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi;
 use rustc_target::spec::PanicStrategy;
+use std::mem;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
+
+#[derive(Default)]
+pub struct QuerySystem<'tcx> {
+    pub arenas: QueryArenas<'tcx>,
+    pub caches: QueryCaches<'tcx>,
+}
 
 #[derive(Copy, Clone)]
 pub struct TyCtxtAt<'tcx> {
@@ -106,30 +116,21 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-/// Helper for `TyCtxtEnsure` to avoid a closure.
-#[inline(always)]
-fn noop<T>(_: &T) {}
-
-/// Helper to ensure that queries only return `Copy` types.
-#[inline(always)]
-fn copy<T: Copy>(x: &T) -> T {
-    *x
-}
-
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
+    (LocalDefId) => { impl IntoQueryParam<LocalDefId> };
     ($K:ty) => { $K };
 }
 
-macro_rules! query_storage {
-    ([][$K:ty, $V:ty]) => {
-        <<$K as Key>::CacheSelector as CacheSelector<'tcx, $V>>::Cache
+macro_rules! query_if_arena {
+    ([] $arena:tt $no_arena:tt) => {
+        $no_arena
     };
-    ([(arena_cache) $($rest:tt)*][$K:ty, $V:ty]) => {
-        <<$K as Key>::CacheSelector as CacheSelector<'tcx, $V>>::ArenaCache
+    ([(arena_cache) $($rest:tt)*] $arena:tt $no_arena:tt) => {
+        $arena
     };
-    ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
-        query_storage!([$($modifiers)*][$($args)*])
+    ([$other:tt $($modifiers:tt)*]$($args:tt)*) => {
+        query_if_arena!([$($modifiers)*]$($args)*)
     };
 }
 
@@ -141,7 +142,7 @@ macro_rules! separate_provide_extern_decl {
         for<'tcx> fn(
             TyCtxt<'tcx>,
             query_keys::$name<'tcx>,
-        ) -> query_values::$name<'tcx>
+        ) -> query_provided::$name<'tcx>
     };
     ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
         separate_provide_extern_decl!([$($modifiers)*][$($args)*])
@@ -199,17 +200,71 @@ macro_rules! define_callbacks {
 
             $(pub type $name<'tcx> = $V;)*
         }
+
+        /// This module specifies the type returned from query providers and the type used for
+        /// decoding. For regular queries this is the declared returned type `V`, but
+        /// `arena_cache` will use `<V as Deref>::Target` instead.
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_provided {
+            use super::*;
+
+            $(
+                pub type $name<'tcx> = query_if_arena!([$($modifiers)*] (<$V as Deref>::Target) ($V));
+            )*
+        }
+
+        /// This module has a function per query which takes a `query_provided` value and coverts
+        /// it to a regular `V` value by allocating it on an arena if the query has the
+        /// `arena_cache` modifier. This will happen when computing the query using a provider or
+        /// decoding a stored result.
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_provided_to_value {
+            use super::*;
+
+            $(
+                #[inline(always)]
+                pub fn $name<'tcx>(
+                    _tcx: TyCtxt<'tcx>,
+                    value: query_provided::$name<'tcx>,
+                ) -> query_values::$name<'tcx> {
+                    query_if_arena!([$($modifiers)*]
+                        {
+                            if mem::needs_drop::<query_provided::$name<'tcx>>() {
+                                &*_tcx.query_system.arenas.$name.alloc(value)
+                            } else {
+                                &*_tcx.arena.dropless.alloc(value)
+                            }
+                        }
+                        (value)
+                    )
+                }
+            )*
+        }
         #[allow(nonstandard_style, unused_lifetimes)]
         pub mod query_storage {
             use super::*;
 
-            $(pub type $name<'tcx> = query_storage!([$($modifiers)*][$($K)*, $V]);)*
+            $(
+                pub type $name<'tcx> = <<$($K)* as Key>::CacheSelector as CacheSelector<'tcx, $V>>::Cache;
+            )*
         }
-        #[allow(nonstandard_style, unused_lifetimes)]
-        pub mod query_stored {
-            use super::*;
 
-            $(pub type $name<'tcx> = <query_storage::$name<'tcx> as QueryStorage>::Stored;)*
+        pub struct QueryArenas<'tcx> {
+            $($(#[$attr])* pub $name: query_if_arena!([$($modifiers)*]
+                (WorkerLocal<TypedArena<<$V as Deref>::Target>>)
+                ()
+            ),)*
+        }
+
+        impl Default for QueryArenas<'_> {
+            fn default() -> Self {
+                Self {
+                    $($name: query_if_arena!([$($modifiers)*]
+                        (WorkerLocal::new(|_| Default::default()))
+                        ()
+                    ),)*
+                }
+            }
         }
 
         #[derive(Default)]
@@ -224,14 +279,10 @@ macro_rules! define_callbacks {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, noop);
-
-                match cached {
-                    Ok(()) => return,
-                    Err(()) => (),
-                }
-
-                self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure);
+                match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
+                    Some(_) => return,
+                    None => self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure),
+                };
             })*
         }
 
@@ -239,7 +290,7 @@ macro_rules! define_callbacks {
             $($(#[$attr])*
             #[inline(always)]
             #[must_use]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<'tcx>
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
                 self.at(DUMMY_SP).$name(key)
             })*
@@ -248,19 +299,15 @@ macro_rules! define_callbacks {
         impl<'tcx> TyCtxtAt<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<'tcx>
+            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> $V
             {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, copy);
-
-                match cached {
-                    Ok(value) => return value,
-                    Err(()) => (),
+                match try_get_cached(self.tcx, &self.tcx.query_system.caches.$name, &key) {
+                    Some(value) => value,
+                    None => self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap(),
                 }
-
-                self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap()
             })*
         }
 
@@ -268,7 +315,7 @@ macro_rules! define_callbacks {
             $(pub $name: for<'tcx> fn(
                 TyCtxt<'tcx>,
                 query_keys::$name<'tcx>,
-            ) -> query_values::$name<'tcx>,)*
+            ) -> query_provided::$name<'tcx>,)*
         }
 
         pub struct ExternProviders {
@@ -323,7 +370,7 @@ macro_rules! define_callbacks {
                 span: Span,
                 key: query_keys::$name<'tcx>,
                 mode: QueryMode,
-            ) -> Option<query_stored::$name<'tcx>>;)*
+            ) -> Option<$V>;)*
         }
     };
 }
@@ -345,34 +392,34 @@ macro_rules! define_feedable {
         $(impl<'tcx, K: IntoQueryParam<$($K)*> + Copy> TyCtxtFeed<'tcx, K> {
             $(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, value: $V) -> query_stored::$name<'tcx> {
+            pub fn $name(self, value: query_provided::$name<'tcx>) -> $V {
                 let key = self.key().into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
                 let tcx = self.tcx;
-                let cache = &tcx.query_caches.$name;
+                let value = query_provided_to_value::$name(tcx, value);
+                let cache = &tcx.query_system.caches.$name;
 
-                let cached = try_get_cached(tcx, cache, &key, copy);
-
-                match cached {
-                    Ok(old) => {
+                match try_get_cached(tcx, cache, &key) {
+                    Some(old) => {
                         bug!(
                             "Trying to feed an already recorded value for query {} key={key:?}:\nold value: {old:?}\nnew value: {value:?}",
                             stringify!($name),
-                        );
+                        )
                     }
-                    Err(()) => (),
+                    None => {
+                        let dep_node = dep_graph::DepNode::construct(tcx, dep_graph::DepKind::$name, &key);
+                        let dep_node_index = tcx.dep_graph.with_feed_task(
+                            dep_node,
+                            tcx,
+                            key,
+                            &value,
+                            hash_result!([$($modifiers)*]),
+                        );
+                        cache.complete(key, value, dep_node_index);
+                        value
+                    }
                 }
-
-                let dep_node = dep_graph::DepNode::construct(tcx, dep_graph::DepKind::$name, &key);
-                let dep_node_index = tcx.dep_graph.with_feed_task(
-                    dep_node,
-                    tcx,
-                    key,
-                    &value,
-                    hash_result!([$($modifiers)*]),
-                );
-                cache.complete(key, value, dep_node_index)
             }
         })*
     }
@@ -415,6 +462,13 @@ mod sealed {
         #[inline(always)]
         fn into_query_param(self) -> P {
             *self
+        }
+    }
+
+    impl IntoQueryParam<LocalDefId> for OwnerId {
+        #[inline(always)]
+        fn into_query_param(self) -> LocalDefId {
+            self.def_id
         }
     }
 

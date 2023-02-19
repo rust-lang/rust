@@ -6,7 +6,7 @@ LL | impl<'a, T> Fn<(&'a T,)> for Foo {
 LL |   extern "rust-call" fn call(&self, (_,): (T,)) {}
    |                                           ^^^^
    |                                           |
-   |                                           expected `&T`, found type parameter `T`
+   |                                           expected `&'a T`, found type parameter `T`
    |                                           help: change the parameter type to match the trait: `(&'a T,)`
    |
    = note: expected signature `extern "rust-call" fn(&Foo, (&'a T,))`
@@ -20,7 +20,7 @@ LL | impl<'a, T> FnMut<(&'a T,)> for Foo {
 LL |   extern "rust-call" fn call_mut(&mut self, (_,): (T,)) {}
    |                                                   ^^^^
    |                                                   |
-   |                                                   expected `&T`, found type parameter `T`
+   |                                                   expected `&'a T`, found type parameter `T`
    |                                                   help: change the parameter type to match the trait: `(&'a T,)`
    |
    = note: expected signature `extern "rust-call" fn(&mut Foo, (&'a T,))`
@@ -35,7 +35,7 @@ LL | impl<'a, T> FnOnce<(&'a T,)> for Foo {
 LL |   extern "rust-call" fn call_once(self, (_,): (T,)) {}
    |                                               ^^^^
    |                                               |
-   |                                               expected `&T`, found type parameter `T`
+   |                                               expected `&'a T`, found type parameter `T`
    |                                               help: change the parameter type to match the trait: `(&'a T,)`
    |
    = note: expected signature `extern "rust-call" fn(Foo, (&'a T,))`

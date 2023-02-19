@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match None {
    |           ---- this expression has type `Option<_>`
 LL |         Err(_) => ()
-   |         ^^^^^^ expected enum `Option`, found enum `Result`
+   |         ^^^^^^ expected `Option<_>`, found `Result<_, _>`
    |
    = note: expected enum `Option<_>`
               found enum `Result<_, _>`

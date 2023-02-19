@@ -20,7 +20,7 @@ error[E0599]: no method named `managed` found for struct `Box<(dyn Foo + 'static
   --> $DIR/object-pointer-types.rs:23:7
    |
 LL |     x.managed();
-   |       ^^^^^^^ method not found in `Box<(dyn Foo + 'static)>`
+   |       ^^^^^^^ method not found in `Box<dyn Foo>`
 
 error: aborting due to 3 previous errors
 

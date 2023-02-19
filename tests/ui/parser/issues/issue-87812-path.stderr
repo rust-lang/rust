@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-87812-path.rs:3:24
    |
 LL |         let _: usize = $f;
-   |                -----   ^^ expected `usize`, found struct `Baz`
+   |                -----   ^^ expected `usize`, found `Baz`
    |                |
    |                expected due to this
 ...

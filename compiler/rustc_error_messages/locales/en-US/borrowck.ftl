@@ -18,7 +18,7 @@ borrowck_generic_does_not_live_long_enough =
     `{$kind}` does not live long enough
 
 borrowck_move_borrowed =
-    cannot move out of `{$desc}` beacause it is borrowed
+    cannot move out of `{$desc}` because it is borrowed
 
 borrowck_var_does_not_need_mut =
     variable does not need to be mutable
@@ -33,7 +33,7 @@ borrowck_var_here_defined = variable defined here
 
 borrowck_var_here_captured = variable captured here
 
-borrowck_closure_inferred_mut =  inferred to be a `FnMut` closure
+borrowck_closure_inferred_mut = inferred to be a `FnMut` closure
 
 borrowck_returned_closure_escaped =
     returns a closure that contains a reference to a captured variable, which then escapes the closure body
@@ -87,10 +87,10 @@ borrowck_use_due_to_use_closure =
     use occurs due to use in closure
 
 borrowck_assign_due_to_use_closure =
-    assign occurs due to use in closure
+    assignment occurs due to use in closure
 
 borrowck_assign_part_due_to_use_closure =
-    assign to part occurs due to use in closure
+    assignment to part occurs due to use in closure
 
 borrowck_capture_immute =
     capture is immutable because of use here
@@ -123,4 +123,7 @@ borrowck_cannot_move_when_borrowed =
 
 borrowck_opaque_type_non_generic_param =
     expected generic {$kind} parameter, found `{$ty}`
-    .label = this generic parameter must be used with a generic {$kind} parameter
+    .label = {STREQ($ty, "'static") ->
+        [true] cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
+        *[other] this generic parameter must be used with a generic {$kind} parameter
+    }

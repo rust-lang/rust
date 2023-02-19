@@ -1084,7 +1084,11 @@ pub(crate) fn format_trait(
             let item_snippet = context.snippet(item.span);
             if let Some(lo) = item_snippet.find('/') {
                 // 1 = `{`
-                let comment_hi = body_lo - BytePos(1);
+                let comment_hi = if generics.params.len() > 0 {
+                    generics.span.lo() - BytePos(1)
+                } else {
+                    body_lo - BytePos(1)
+                };
                 let comment_lo = item.span.lo() + BytePos(lo as u32);
                 if comment_lo < comment_hi {
                     match recover_missing_comment_in_span(
@@ -1241,7 +1245,7 @@ fn format_unit_struct(
 ) -> Option<String> {
     let header_str = format_header(context, p.prefix, p.ident, p.vis, offset);
     let generics_str = if let Some(generics) = p.generics {
-        let hi = context.snippet_provider.span_before(p.span, ";");
+        let hi = context.snippet_provider.span_before_last(p.span, ";");
         format_generics(
             context,
             generics,
@@ -2602,7 +2606,7 @@ fn rewrite_params(
         &param_items,
         context
             .config
-            .fn_args_layout()
+            .fn_params_layout()
             .to_list_tactic(param_items.len()),
         Separator::Comma,
         one_line_budget,

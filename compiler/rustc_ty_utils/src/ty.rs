@@ -1,8 +1,11 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt};
+use rustc_index::bit_set::BitSet;
+use rustc_middle::ty::{
+    self, Binder, EarlyBinder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt,
+};
 use rustc_session::config::TraitSolver;
+use rustc_span::def_id::{DefId, CRATE_DEF_ID};
 use rustc_trait_selection::traits;
 
 fn sized_constraint_for_ty<'tcx>(
@@ -16,7 +19,13 @@ fn sized_constraint_for_ty<'tcx>(
         Bool | Char | Int(..) | Uint(..) | Float(..) | RawPtr(..) | Ref(..) | FnDef(..)
         | FnPtr(_) | Array(..) | Closure(..) | Generator(..) | Never => vec![],
 
-        Str | Dynamic(..) | Slice(_) | Foreign(..) | Error(_) | GeneratorWitness(..) => {
+        Str
+        | Dynamic(..)
+        | Slice(_)
+        | Foreign(..)
+        | Error(_)
+        | GeneratorWitness(..)
+        | GeneratorWitnessMIR(..) => {
             // these are never sized - return the target type
             vec![ty]
         }
@@ -96,7 +105,7 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
         def.variants()
             .iter()
             .flat_map(|v| v.fields.last())
-            .flat_map(|f| sized_constraint_for_ty(tcx, def, tcx.type_of(f.did))),
+            .flat_map(|f| sized_constraint_for_ty(tcx, def, tcx.type_of(f.did).subst_identity())),
     );
 
     debug!("adt_sized_constraint: {:?} => {:?}", def, result);
@@ -208,14 +217,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         constness,
     );
 
-    let body_id =
-        local_did.and_then(|id| tcx.hir().maybe_body_owned_by(id).map(|body| body.hir_id));
-    let body_id = match body_id {
-        Some(id) => id,
-        None if hir_id.is_some() => hir_id.unwrap(),
-        _ => hir::CRATE_HIR_ID,
-    };
-
+    let body_id = local_did.unwrap_or(CRATE_DEF_ID);
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
 }
@@ -299,14 +301,14 @@ fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predica
         // In an inherent impl, we assume that the receiver type and all its
         // constituents are well-formed.
         NodeKind::InherentImpl => {
-            let self_ty = tcx.type_of(def_id);
+            let self_ty = tcx.type_of(def_id).subst_identity();
             inputs.extend(self_ty.walk());
         }
 
         // In an fn, we assume that the arguments and all their constituents are
         // well-formed.
         NodeKind::Fn => {
-            let fn_sig = tcx.fn_sig(def_id);
+            let fn_sig = tcx.fn_sig(def_id).subst_identity();
             let fn_sig = tcx.liberate_late_bound_regions(def_id, fn_sig);
 
             inputs.extend(fn_sig.inputs().iter().flat_map(|ty| ty.walk()));
@@ -355,7 +357,7 @@ fn instance_def_size_estimate<'tcx>(
 /// If `def_id` is an issue 33140 hack impl, returns its self type; otherwise, returns `None`.
 ///
 /// See [`ty::ImplOverlapKind::Issue33140`] for more details.
-fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
+fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'_>>> {
     debug!("issue33140_self_ty({:?})", def_id);
 
     let trait_ref = tcx
@@ -394,7 +396,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 
     if self_ty_matches {
         debug!("issue33140_self_ty - MATCHES!");
-        Some(self_ty)
+        Some(EarlyBinder(self_ty))
     } else {
         debug!("issue33140_self_ty - non-matching self type");
         None
@@ -407,6 +409,52 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
     node.fn_sig().map_or(hir::IsAsync::NotAsync, |sig| sig.header.asyncness)
 }
 
+fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32> {
+    let def = tcx.adt_def(def_id);
+    let num_params = tcx.generics_of(def_id).count();
+
+    let maybe_unsizing_param_idx = |arg: ty::GenericArg<'tcx>| match arg.unpack() {
+        ty::GenericArgKind::Type(ty) => match ty.kind() {
+            ty::Param(p) => Some(p.index),
+            _ => None,
+        },
+
+        // We can't unsize a lifetime
+        ty::GenericArgKind::Lifetime(_) => None,
+
+        ty::GenericArgKind::Const(ct) => match ct.kind() {
+            ty::ConstKind::Param(p) => Some(p.index),
+            _ => None,
+        },
+    };
+
+    // The last field of the structure has to exist and contain type/const parameters.
+    let Some((tail_field, prefix_fields)) =
+        def.non_enum_variant().fields.split_last() else
+    {
+        return BitSet::new_empty(num_params);
+    };
+
+    let mut unsizing_params = BitSet::new_empty(num_params);
+    for arg in tcx.type_of(tail_field.did).subst_identity().walk() {
+        if let Some(i) = maybe_unsizing_param_idx(arg) {
+            unsizing_params.insert(i);
+        }
+    }
+
+    // Ensure none of the other fields mention the parameters used
+    // in unsizing.
+    for field in prefix_fields {
+        for arg in tcx.type_of(field.did).subst_identity().walk() {
+            if let Some(i) = maybe_unsizing_param_idx(arg) {
+                unsizing_params.remove(i);
+            }
+        }
+    }
+
+    unsizing_params
+}
+
 pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         asyncness,
@@ -416,6 +464,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         instance_def_size_estimate,
         issue33140_self_ty,
         impl_defaultness,
+        unsizing_params_for_adt,
         ..*providers
     };
 }

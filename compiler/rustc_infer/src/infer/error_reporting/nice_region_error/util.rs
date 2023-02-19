@@ -65,7 +65,7 @@ pub fn find_param_with_region<'tcx>(
 
     let owner_id = hir.body_owner(body_id);
     let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
-    let poly_fn_sig = tcx.fn_sig(id);
+    let poly_fn_sig = tcx.fn_sig(id).subst_identity();
 
     let fn_sig = tcx.liberate_late_bound_regions(id, poly_fn_sig);
     let body = hir.body(body_id);
@@ -90,20 +90,18 @@ pub fn find_param_with_region<'tcx>(
                     r
                 }
             });
-            if found_anon_region {
+            found_anon_region.then(|| {
                 let ty_hir_id = fn_decl.inputs[index].hir_id;
                 let param_ty_span = hir.span(ty_hir_id);
                 let is_first = index == 0;
-                Some(AnonymousParamInfo {
+                AnonymousParamInfo {
                     param,
                     param_ty: new_param_ty,
                     param_ty_span,
                     bound_region,
                     is_first,
-                })
-            } else {
-                None
-            }
+                }
+            })
         })
 }
 
@@ -125,7 +123,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         br: ty::BoundRegionKind,
         hir_sig: &hir::FnSig<'_>,
     ) -> Option<Span> {
-        let fn_ty = self.tcx().type_of(scope_def_id);
+        let fn_ty = self.tcx().type_of(scope_def_id).subst_identity();
         if let ty::FnDef(_, _) = fn_ty.kind() {
             let ret_ty = fn_ty.fn_sig(self.tcx()).output();
             let span = hir_sig.decl.output.span();

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/nested_erroneous_ctfe.rs:2:16
    |
 LL |     [9; || [9; []]];
-   |                ^^ expected `usize`, found array of 0 elements
+   |                ^^ expected `usize`, found `[_; 0]`
    |
    = note: expected type `usize`
              found array `[_; 0]`

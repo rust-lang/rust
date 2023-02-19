@@ -19,7 +19,8 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use tt::Subtree;
+
+use ::tt::token_id as tt;
 
 use crate::{
     msg::{ExpandMacro, FlatTree, PanicMessage},
@@ -70,7 +71,7 @@ impl MacroDylib {
 
 /// A handle to a specific macro (a `#[proc_macro]` annotated function).
 ///
-/// It exists withing a context of a specific [`ProcMacroProcess`] -- currently
+/// It exists within a context of a specific [`ProcMacroProcess`] -- currently
 /// we share a single expander process for all macros.
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
@@ -114,14 +115,14 @@ impl ProcMacroServer {
     /// Spawns an external process as the proc macro server and returns a client connected to it.
     pub fn spawn(
         process_path: AbsPathBuf,
-        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+        args: impl IntoIterator<Item = impl AsRef<OsStr>> + Clone,
     ) -> io::Result<ProcMacroServer> {
         let process = ProcMacroProcessSrv::run(process_path, args)?;
         Ok(ProcMacroServer { process: Arc::new(Mutex::new(process)) })
     }
 
     pub fn load_dylib(&self, dylib: MacroDylib) -> Result<Vec<ProcMacro>, ServerError> {
-        let _p = profile::span("ProcMacroClient::by_dylib_path");
+        let _p = profile::span("ProcMacroClient::load_dylib");
         let macros =
             self.process.lock().unwrap_or_else(|e| e.into_inner()).find_proc_macros(&dylib.path)?;
 
@@ -151,10 +152,10 @@ impl ProcMacro {
 
     pub fn expand(
         &self,
-        subtree: &Subtree,
-        attr: Option<&Subtree>,
+        subtree: &tt::Subtree,
+        attr: Option<&tt::Subtree>,
         env: Vec<(String, String)>,
-    ) -> Result<Result<Subtree, PanicMessage>, ServerError> {
+    ) -> Result<Result<tt::Subtree, PanicMessage>, ServerError> {
         let current_dir = env
             .iter()
             .find(|(name, _)| name == "CARGO_MANIFEST_DIR")
@@ -173,7 +174,7 @@ impl ProcMacro {
         let response = self.process.lock().unwrap_or_else(|e| e.into_inner()).send_task(request)?;
         match response {
             msg::Response::ExpandMacro(it) => Ok(it.map(FlatTree::to_subtree)),
-            msg::Response::ListMacros { .. } => {
+            msg::Response::ListMacros(..) | msg::Response::ApiVersionCheck(..) => {
                 Err(ServerError { message: "unexpected response".to_string(), io: None })
             }
         }

@@ -26,9 +26,7 @@
           _3 = move ((_1 as Some).0: std::boxed::Box<()>); // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:14: +3:15
           StorageLive(_4);                 // scope 1 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:25: +3:26
           _4 = move _3;                    // scope 1 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:25: +3:26
-          Deinit(_0);                      // scope 1 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:20: +3:27
-          ((_0 as Some).0: std::boxed::Box<()>) = move _4; // scope 1 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:20: +3:27
-          discriminant(_0) = 1;            // scope 1 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:20: +3:27
+          _0 = Option::<Box<()>>::Some(move _4); // scope 1 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:20: +3:27
           StorageDead(_4);                 // scope 1 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:26: +3:27
           StorageDead(_3);                 // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:26: +3:27
           goto -> bb4;                     // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:26: +3:27
@@ -39,8 +37,7 @@
       }
   
       bb3: {
-          Deinit(_0);                      // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+2:17: +2:21
-          discriminant(_0) = 0;            // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+2:17: +2:21
+          _0 = Option::<Box<()>>::None;    // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+2:17: +2:21
           goto -> bb4;                     // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+2:17: +2:21
       }
   

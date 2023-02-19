@@ -18,7 +18,7 @@ LL |       let s: String = if let Some(s) = opt_str {
    |  ______________________________________________^
 LL | |
 LL | |     } else {
-   | |_____^ expected struct `String`, found `()`
+   | |_____^ expected `String`, found `()`
    |
 help: consider returning the local binding `s`
    |
@@ -31,7 +31,7 @@ error[E0308]: mismatched types
   --> $DIR/return-bindings.rs:14:11
    |
 LL | fn c() -> Option<i32> {
-   |    -      ^^^^^^^^^^^ expected enum `Option`, found `()`
+   |    -      ^^^^^^^^^^^ expected `Option<i32>`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
    |
@@ -50,7 +50,7 @@ LL |       let s: String = if let Some(s) = opt_str {
    |  ______________________________________________^
 LL | |
 LL | |     } else {
-   | |_____^ expected struct `String`, found `()`
+   | |_____^ expected `String`, found `()`
    |
 help: consider returning the local binding `s`
    |
@@ -67,7 +67,7 @@ LL |       let s = if let Some(s) = opt_str {
 LL | |     } else {
    | |_____- expected because of this
 LL |           String::new()
-   |           ^^^^^^^^^^^^^ expected `()`, found struct `String`
+   |           ^^^^^^^^^^^^^ expected `()`, found `String`
    |
 help: consider returning the local binding `s`
    |
@@ -80,7 +80,7 @@ error[E0308]: mismatched types
   --> $DIR/return-bindings.rs:37:20
    |
 LL |         Some(s) => {}
-   |                    ^^ expected struct `String`, found `()`
+   |                    ^^ expected `String`, found `()`
    |
 help: consider returning the local binding `s`
    |
@@ -95,7 +95,7 @@ LL |       let s = match opt_str {
 LL | |         Some(s) => {}
    | |                    -- this is found to be of type `()`
 LL | |         None => String::new(),
-   | |                 ^^^^^^^^^^^^^ expected `()`, found struct `String`
+   | |                 ^^^^^^^^^^^^^ expected `()`, found `String`
 LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types

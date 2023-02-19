@@ -1,11 +1,11 @@
 use crate::infer::InferCtxt;
 use crate::traits;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
-use rustc_span::Span;
+use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_span::{Span, DUMMY_SP};
 
 use std::iter;
 /// Returns the set of obligations needed to make `arg` well-formed.
@@ -17,7 +17,7 @@ use std::iter;
 pub fn obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: hir::HirId,
+    body_id: LocalDefId,
     recursion_depth: usize,
     arg: GenericArg<'tcx>,
     span: Span,
@@ -75,6 +75,34 @@ pub fn obligations<'tcx>(
     Some(result)
 }
 
+/// Compute the predicates that are required for a type to be well-formed.
+///
+/// This is only intended to be used in the new solver, since it does not
+/// take into account recursion depth or proper error-reporting spans.
+pub fn unnormalized_obligations<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    arg: GenericArg<'tcx>,
+) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
+    if let ty::GenericArgKind::Lifetime(..) = arg.unpack() {
+        return Some(vec![]);
+    }
+
+    debug_assert_eq!(arg, infcx.resolve_vars_if_possible(arg));
+
+    let mut wf = WfPredicates {
+        tcx: infcx.tcx,
+        param_env,
+        body_id: CRATE_DEF_ID,
+        span: DUMMY_SP,
+        out: vec![],
+        recursion_depth: 0,
+        item: None,
+    };
+    wf.compute(arg);
+    Some(wf.out)
+}
+
 /// Returns the obligations that make this trait reference
 /// well-formed. For example, if there is a trait `Set` defined like
 /// `trait Set<K:Eq>`, then the trait reference `Foo: Set<Bar>` is WF
@@ -82,7 +110,7 @@ pub fn obligations<'tcx>(
 pub fn trait_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: hir::HirId,
+    body_id: LocalDefId,
     trait_pred: &ty::TraitPredicate<'tcx>,
     span: Span,
     item: &'tcx hir::Item<'tcx>,
@@ -105,7 +133,7 @@ pub fn trait_obligations<'tcx>(
 pub fn predicate_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: hir::HirId,
+    body_id: LocalDefId,
     predicate: ty::Predicate<'tcx>,
     span: Span,
 ) -> Vec<traits::PredicateObligation<'tcx>> {
@@ -135,6 +163,10 @@ pub fn predicate_obligations<'tcx>(
                 ty::TermKind::Const(c) => c.into(),
             })
         }
+        ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+            wf.compute(ct.into());
+            wf.compute(ty.into());
+        }
         ty::PredicateKind::WellFormed(arg) => {
             wf.compute(arg);
         }
@@ -159,6 +191,9 @@ pub fn predicate_obligations<'tcx>(
         ty::PredicateKind::TypeWellFormedFromEnv(..) => {
             bug!("TypeWellFormedFromEnv is only used for Chalk")
         }
+        ty::PredicateKind::AliasEq(..) => {
+            bug!("We should only wf check where clauses and `AliasEq` is not a `Clause`")
+        }
     }
 
     wf.normalize(infcx)
@@ -167,7 +202,7 @@ pub fn predicate_obligations<'tcx>(
 struct WfPredicates<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: hir::HirId,
+    body_id: LocalDefId,
     span: Span,
     out: Vec<traits::PredicateObligation<'tcx>>,
     recursion_depth: usize,
@@ -523,6 +558,7 @@ impl<'tcx> WfPredicates<'tcx> {
                 | ty::Error(_)
                 | ty::Str
                 | ty::GeneratorWitness(..)
+                | ty::GeneratorWitnessMIR(..)
                 | ty::Never
                 | ty::Param(_)
                 | ty::Bound(..)
@@ -847,7 +883,7 @@ pub fn object_region_bounds<'tcx>(
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically
     // a placeholder type.
-    let open_ty = tcx.mk_ty_infer(ty::FreshTy(0));
+    let open_ty = tcx.mk_fresh_ty(0);
 
     let predicates = existential_predicates.iter().filter_map(|predicate| {
         if let ty::ExistentialPredicate::Projection(_) = predicate.skip_binder() {
@@ -890,6 +926,7 @@ pub(crate) fn required_region_bounds<'tcx>(
             match obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::Clause::Projection(..))
                 | ty::PredicateKind::Clause(ty::Clause::Trait(..))
+                | ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::WellFormed(..)
@@ -899,6 +936,7 @@ pub(crate) fn required_region_bounds<'tcx>(
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
+                | ty::PredicateKind::AliasEq(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
                 ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
                     ref t,

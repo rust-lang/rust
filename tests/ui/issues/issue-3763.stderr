@@ -1,17 +1,17 @@
 error[E0616]: field `priv_field` of struct `MyStruct` is private
-  --> $DIR/issue-3763.rs:18:32
+  --> $DIR/issue-3763.rs:17:32
    |
 LL |     let _woohoo = (&my_struct).priv_field;
    |                                ^^^^^^^^^^ private field
 
 error[E0616]: field `priv_field` of struct `MyStruct` is private
-  --> $DIR/issue-3763.rs:21:41
+  --> $DIR/issue-3763.rs:20:41
    |
 LL |     let _woohoo = (Box::new(my_struct)).priv_field;
    |                                         ^^^^^^^^^^ private field
 
 error[E0624]: associated function `happyfun` is private
-  --> $DIR/issue-3763.rs:24:18
+  --> $DIR/issue-3763.rs:23:18
    |
 LL |         fn happyfun(&self) {}
    |         ------------------ private associated function defined here
@@ -20,7 +20,7 @@ LL |     (&my_struct).happyfun();
    |                  ^^^^^^^^ private associated function
 
 error[E0624]: associated function `happyfun` is private
-  --> $DIR/issue-3763.rs:26:27
+  --> $DIR/issue-3763.rs:25:27
    |
 LL |         fn happyfun(&self) {}
    |         ------------------ private associated function defined here
@@ -29,7 +29,7 @@ LL |     (Box::new(my_struct)).happyfun();
    |                           ^^^^^^^^ private associated function
 
 error[E0616]: field `priv_field` of struct `MyStruct` is private
-  --> $DIR/issue-3763.rs:27:26
+  --> $DIR/issue-3763.rs:26:26
    |
 LL |     let nope = my_struct.priv_field;
    |                          ^^^^^^^^^^ private field

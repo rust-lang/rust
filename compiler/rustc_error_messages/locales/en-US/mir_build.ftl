@@ -299,10 +299,18 @@ mir_build_borrow_of_moved_value = borrow of moved value
     .suggestion = borrow this binding in the pattern to avoid moving the value
 
 mir_build_multiple_mut_borrows = cannot borrow value as mutable more than once at a time
-    .label = first mutable borrow, by `{$name}`, occurs here
-    .mutable_borrow = another mutable borrow, by `{$name_mut}`, occurs here
-    .immutable_borrow = also borrowed as immutable, by `{$name_immut}`, here
-    .moved = also moved into `{$name_moved}` here
+
+mir_build_already_borrowed = cannot borrow value as mutable because it is also borrowed as immutable
+
+mir_build_already_mut_borrowed = cannot borrow value as immutable because it is also borrowed as mutable
+
+mir_build_moved_while_borrowed = cannot move out of value because it is borrowed
+
+mir_build_mutable_borrow = value is mutably borrowed by `{$name}` here
+
+mir_build_borrow = value is borrowed by `{$name}` here
+
+mir_build_moved = value is moved into `{$name}` here
 
 mir_build_union_pattern = cannot use unions in constant patterns
 

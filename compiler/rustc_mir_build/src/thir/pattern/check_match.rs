@@ -208,9 +208,9 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             // Don't report arm reachability of desugared `match $iter.into_iter() { iter => .. }`
             // when the iterator is an uninhabited type. unreachable_code will trigger instead.
             hir::MatchSource::ForLoopDesugar if arms.len() == 1 => {}
-            hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {
-                report_arm_reachability(&cx, &report)
-            }
+            hir::MatchSource::ForLoopDesugar
+            | hir::MatchSource::Normal
+            | hir::MatchSource::FormatArgs => report_arm_reachability(&cx, &report),
             // Unreachable patterns in try and await expressions occur when one of
             // the arms are an uninhabited type. Which is OK.
             hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
@@ -926,58 +926,55 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
     sub.each_binding(|_, hir_id, span, name| {
         match typeck_results.extract_binding_mode(sess, hir_id, span) {
             Some(ty::BindByReference(mut_inner)) => match (mut_outer, mut_inner) {
-                (Mutability::Not, Mutability::Not) => {} // Both sides are `ref`.
-                (Mutability::Mut, Mutability::Mut) => conflicts_mut_mut.push((span, name)), // 2x `ref mut`.
-                _ => conflicts_mut_ref.push((span, name)), // `ref` + `ref mut` in either direction.
+                // Both sides are `ref`.
+                (Mutability::Not, Mutability::Not) => {}
+                // 2x `ref mut`.
+                (Mutability::Mut, Mutability::Mut) => {
+                    conflicts_mut_mut.push(Conflict::Mut { span, name })
+                }
+                (Mutability::Not, Mutability::Mut) => {
+                    conflicts_mut_ref.push(Conflict::Mut { span, name })
+                }
+                (Mutability::Mut, Mutability::Not) => {
+                    conflicts_mut_ref.push(Conflict::Ref { span, name })
+                }
             },
             Some(ty::BindByValue(_)) if is_binding_by_move(cx, hir_id) => {
-                conflicts_move.push((span, name)) // `ref mut?` + by-move conflict.
+                conflicts_move.push(Conflict::Moved { span, name }) // `ref mut?` + by-move conflict.
             }
             Some(ty::BindByValue(_)) | None => {} // `ref mut?` + by-copy is fine.
         }
     });
 
-    // Report errors if any.
-    if !conflicts_mut_mut.is_empty() {
-        // Report mutability conflicts for e.g. `ref mut x @ Some(ref mut y)`.
-        let mut occurences = vec![];
+    let report_mut_mut = !conflicts_mut_mut.is_empty();
+    let report_mut_ref = !conflicts_mut_ref.is_empty();
+    let report_move_conflict = !conflicts_move.is_empty();
 
-        for (span, name_mut) in conflicts_mut_mut {
-            occurences.push(MultipleMutBorrowOccurence::Mutable { span, name_mut });
-        }
-        for (span, name_immut) in conflicts_mut_ref {
-            occurences.push(MultipleMutBorrowOccurence::Immutable { span, name_immut });
-        }
-        for (span, name_moved) in conflicts_move {
-            occurences.push(MultipleMutBorrowOccurence::Moved { span, name_moved });
-        }
-        sess.emit_err(MultipleMutBorrows { span: pat.span, binding_span, occurences, name });
-    } else if !conflicts_mut_ref.is_empty() {
+    let mut occurences = match mut_outer {
+        Mutability::Mut => vec![Conflict::Mut { span: binding_span, name }],
+        Mutability::Not => vec![Conflict::Ref { span: binding_span, name }],
+    };
+    occurences.extend(conflicts_mut_mut);
+    occurences.extend(conflicts_mut_ref);
+    occurences.extend(conflicts_move);
+
+    // Report errors if any.
+    if report_mut_mut {
+        // Report mutability conflicts for e.g. `ref mut x @ Some(ref mut y)`.
+        sess.emit_err(MultipleMutBorrows { span: pat.span, occurences });
+    } else if report_mut_ref {
         // Report mutability conflicts for e.g. `ref x @ Some(ref mut y)` or the converse.
-        let (primary, also) = match mut_outer {
-            Mutability::Mut => ("mutable", "immutable"),
-            Mutability::Not => ("immutable", "mutable"),
+        match mut_outer {
+            Mutability::Mut => {
+                sess.emit_err(AlreadyMutBorrowed { span: pat.span, occurences });
+            }
+            Mutability::Not => {
+                sess.emit_err(AlreadyBorrowed { span: pat.span, occurences });
+            }
         };
-        let msg =
-            format!("cannot borrow value as {} because it is also borrowed as {}", also, primary);
-        let mut err = sess.struct_span_err(pat.span, &msg);
-        err.span_label(binding_span, format!("{} borrow, by `{}`, occurs here", primary, name));
-        for (span, name) in conflicts_mut_ref {
-            err.span_label(span, format!("{} borrow, by `{}`, occurs here", also, name));
-        }
-        for (span, name) in conflicts_move {
-            err.span_label(span, format!("also moved into `{}` here", name));
-        }
-        err.emit();
-    } else if !conflicts_move.is_empty() {
+    } else if report_move_conflict {
         // Report by-ref and by-move conflicts, e.g. `ref x @ y`.
-        let mut err =
-            sess.struct_span_err(pat.span, "cannot move out of value because it is borrowed");
-        err.span_label(binding_span, format!("value borrowed, by `{}`, here", name));
-        for (span, name) in conflicts_move {
-            err.span_label(span, format!("value moved into `{}` here", name));
-        }
-        err.emit();
+        sess.emit_err(MovedWhileBorrowed { span: pat.span, occurences });
     }
 }
 

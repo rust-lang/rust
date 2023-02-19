@@ -14,6 +14,7 @@ use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
@@ -650,7 +651,7 @@ pub fn transparent_newtype_field<'a, 'tcx>(
 ) -> Option<&'a ty::FieldDef> {
     let param_env = tcx.param_env(variant.def_id);
     variant.fields.iter().find(|field| {
-        let field_ty = tcx.type_of(field.did);
+        let field_ty = tcx.type_of(field.did).subst_identity();
         let is_zst = tcx.layout_of(param_env.and(field_ty)).map_or(false, |layout| layout.is_zst());
         !is_zst
     })
@@ -1107,6 +1108,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Placeholder(..)
             | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
         }
@@ -1142,7 +1144,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
         struct ProhibitOpaqueTypes;
-        impl<'tcx> ty::visit::TypeVisitor<'tcx> for ProhibitOpaqueTypes {
+        impl<'tcx> ty::visit::ir::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueTypes {
             type BreakTy = Ty<'tcx>;
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -1223,9 +1225,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_foreign_fn(&mut self, id: hir::HirId, decl: &hir::FnDecl<'_>) {
-        let def_id = self.cx.tcx.hir().local_def_id(id);
-        let sig = self.cx.tcx.fn_sig(def_id);
+    fn check_foreign_fn(&mut self, def_id: LocalDefId, decl: &hir::FnDecl<'_>) {
+        let sig = self.cx.tcx.fn_sig(def_id).subst_identity();
         let sig = self.cx.tcx.erase_late_bound_regions(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
@@ -1238,9 +1239,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_foreign_static(&mut self, id: hir::HirId, span: Span) {
-        let def_id = self.cx.tcx.hir().local_def_id(id);
-        let ty = self.cx.tcx.type_of(def_id);
+    fn check_foreign_static(&mut self, id: hir::OwnerId, span: Span) {
+        let ty = self.cx.tcx.type_of(id).subst_identity();
         self.check_type_for_ffi_and_report_errors(span, ty, true, false);
     }
 
@@ -1260,10 +1260,10 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
         if !vis.is_internal_abi(abi) {
             match it.kind {
                 hir::ForeignItemKind::Fn(ref decl, _, _) => {
-                    vis.check_foreign_fn(it.hir_id(), decl);
+                    vis.check_foreign_fn(it.owner_id.def_id, decl);
                 }
                 hir::ForeignItemKind::Static(ref ty, _) => {
-                    vis.check_foreign_static(it.hir_id(), ty.span);
+                    vis.check_foreign_static(it.owner_id, ty.span);
                 }
                 hir::ForeignItemKind::Type => (),
             }
@@ -1279,7 +1279,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
         decl: &'tcx hir::FnDecl<'_>,
         _: &'tcx hir::Body<'_>,
         _: Span,
-        hir_id: hir::HirId,
+        id: LocalDefId,
     ) {
         use hir::intravisit::FnKind;
 
@@ -1291,7 +1291,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
 
         let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Definition };
         if !vis.is_internal_abi(abi) {
-            vis.check_foreign_fn(hir_id, decl);
+            vis.check_foreign_fn(id, decl);
         }
     }
 }
@@ -1301,7 +1301,7 @@ declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.kind {
-            let t = cx.tcx.type_of(it.owner_id);
+            let t = cx.tcx.type_of(it.owner_id).subst_identity();
             let ty = cx.tcx.erase_regions(t);
             let Ok(layout) = cx.layout_of(ty) else { return };
             let Variants::Multiple {
@@ -1421,7 +1421,7 @@ impl InvalidAtomicOrdering {
             && recognized_names.contains(&method_path.ident.name)
             && let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
             && let Some(impl_did) = cx.tcx.impl_of_method(m_def_id)
-            && let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def()
+            && let Some(adt) = cx.tcx.type_of(impl_did).subst_identity().ty_adt_def()
             // skip extension traits, only lint functions from the standard library
             && cx.tcx.trait_id_of_impl(impl_did).is_none()
             && let parent = cx.tcx.parent(adt.did())

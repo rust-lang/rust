@@ -9,6 +9,7 @@ use crate::fold::DocFolder;
 use crate::passes::Pass;
 
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::ty::DefIdTree;
 
 pub(crate) const PROPAGATE_DOC_CFG: Pass = Pass {
     name: "propagate-doc-cfg",
@@ -41,24 +42,22 @@ impl<'a, 'tcx> CfgPropagator<'a, 'tcx> {
         let Some(def_id) = item.item_id.as_def_id().and_then(|def_id| def_id.as_local())
             else { return };
 
-        let hir = self.cx.tcx.hir();
-        let hir_id = hir.local_def_id_to_hir_id(def_id);
-
         if check_parent {
-            let expected_parent = hir.get_parent_item(hir_id);
+            let expected_parent = self.cx.tcx.opt_local_parent(def_id);
             // If parents are different, it means that `item` is a reexport and we need
             // to compute the actual `cfg` by iterating through its "real" parents.
-            if self.parent == Some(expected_parent.def_id) {
+            if self.parent.is_some() && self.parent == expected_parent {
                 return;
             }
         }
 
         let mut attrs = Vec::new();
-        for (parent_hir_id, _) in hir.parent_iter(hir_id) {
-            if let Some(def_id) = hir.opt_local_def_id(parent_hir_id) {
-                attrs.extend_from_slice(load_attrs(self.cx, def_id.to_def_id()));
-            }
+        let mut next_def_id = def_id;
+        while let Some(parent_def_id) = self.cx.tcx.opt_local_parent(next_def_id) {
+            attrs.extend_from_slice(load_attrs(self.cx, parent_def_id.to_def_id()));
+            next_def_id = parent_def_id;
         }
+
         let (_, cfg) = merge_attrs(self.cx, None, item.attrs.other_attrs.as_slice(), Some(&attrs));
         item.cfg = cfg;
     }

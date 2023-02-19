@@ -94,7 +94,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_candidates_for_transmutability(obligation, &mut candidates);
             } else if lang_items.tuple_trait() == Some(def_id) {
                 self.assemble_candidate_for_tuple(obligation, &mut candidates);
-            } else if lang_items.pointer_sized() == Some(def_id) {
+            } else if lang_items.pointer_like() == Some(def_id) {
                 self.assemble_candidate_for_ptr_sized(obligation, &mut candidates);
             } else {
                 if lang_items.clone_trait() == Some(def_id) {
@@ -174,8 +174,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .param_env
             .caller_bounds()
             .iter()
-            .filter_map(|p| p.to_opt_poly_trait_pred())
-            .filter(|p| !p.references_error());
+            .filter(|p| !p.references_error())
+            .filter_map(|p| p.to_opt_poly_trait_pred());
 
         // Micro-optimization: filter out predicates relating to different traits.
         let matching_bounds =
@@ -396,7 +396,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // still be provided by a manual implementation for
                     // this trait and type.
                 }
-                ty::Param(..) | ty::Alias(ty::Projection, ..) => {
+                ty::Param(..)
+                | ty::Alias(ty::Projection, ..)
+                | ty::Placeholder(..)
+                | ty::Bound(..) => {
                     // In these cases, we don't know what the actual
                     // type is. Therefore, we cannot break it down
                     // into its constituent types. So we don't
@@ -448,6 +451,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         self.infcx.probe(|_snapshot| {
+            if obligation.has_non_region_late_bound() {
+                return;
+            }
+
             // The code below doesn't care about regions, and the
             // self-ty here doesn't escape this probe, so just erase
             // any LBR.
@@ -466,7 +473,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if let Some(principal) = data.principal() {
                         if !self.infcx.tcx.features().object_safe_for_dispatch {
                             principal.with_self_ty(self.tcx(), self_ty)
-                        } else if self.tcx().is_object_safe(principal.def_id()) {
+                        } else if self.tcx().check_is_object_safe(principal.def_id()) {
                             principal.with_self_ty(self.tcx(), self_ty)
                         } else {
                             return;
@@ -488,7 +495,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
             let placeholder_trait_predicate =
-                self.infcx.replace_bound_vars_with_placeholders(poly_trait_predicate);
+                self.infcx.instantiate_binder_with_placeholders(poly_trait_predicate);
 
             // Count only those upcast versions that match the trait-ref
             // we are looking for. Specifically, do not only check for the
@@ -765,7 +772,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::Tuple(_)
-            | ty::GeneratorWitness(_) => {
+            | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(..) => {
                 // These are built-in, and cannot have a custom `impl const Destruct`.
                 candidates.vec.push(ConstDestructCandidate(None));
             }
@@ -826,6 +834,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Closure(_, _)
             | ty::Generator(_, _, _)
             | ty::GeneratorWitness(_)
+            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Alias(..)
             | ty::Param(_)

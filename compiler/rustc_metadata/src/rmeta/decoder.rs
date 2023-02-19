@@ -11,7 +11,7 @@ use rustc_data_structures::sync::{Lock, LockGuard, Lrc, OnceCell};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::diagnostic_items::DiagnosticItems;
@@ -654,7 +654,7 @@ impl<'a, 'tcx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyValue<T> {
 impl<'a, 'tcx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyArray<T> {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
         let len = decoder.read_usize();
-        if len == 0 { LazyArray::empty() } else { decoder.read_lazy_array(len) }
+        if len == 0 { LazyArray::default() } else { decoder.read_lazy_array(len) }
     }
 }
 
@@ -864,7 +864,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .children
                 .get(self, index)
-                .unwrap_or_else(LazyArray::empty)
+                .expect("fields are not encoded for a variant")
                 .decode(self)
                 .map(|index| ty::FieldDef {
                     did: self.local_def_id(index),
@@ -896,7 +896,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .children
                 .get(self, item_id)
-                .unwrap_or_else(LazyArray::empty)
+                .expect("variants are not encoded for an enum")
                 .decode(self)
                 .filter_map(|index| {
                     let kind = self.def_kind(index);
@@ -985,7 +985,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let vis = self.get_visibility(id);
         let span = self.get_span(id, sess);
         let macro_rules = match kind {
-            DefKind::Macro(..) => self.root.tables.macro_rules.get(self, id).is_some(),
+            DefKind::Macro(..) => self.root.tables.is_macro_rules.get(self, id),
             _ => false,
         };
 
@@ -1045,7 +1045,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .fn_arg_names
             .get(self, id)
-            .unwrap_or_else(LazyArray::empty)
+            .expect("argument names not encoded for a function")
             .decode((self, sess))
             .nth(0)
             .map_or(false, |ident| ident.name == kw::SelfLower)
@@ -1060,7 +1060,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .children
             .get(self, id)
-            .unwrap_or_else(LazyArray::empty)
+            .expect("associated items not encoded for an item")
             .decode((self, sess))
             .map(move |child_index| self.local_def_id(child_index))
     }
@@ -1068,13 +1068,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn get_associated_item(self, id: DefIndex, sess: &'a Session) -> ty::AssocItem {
         let name = self.item_name(id);
 
-        let kind = match self.def_kind(id) {
-            DefKind::AssocConst => ty::AssocKind::Const,
-            DefKind::AssocFn => ty::AssocKind::Fn,
-            DefKind::AssocTy => ty::AssocKind::Type,
+        let (kind, has_self) = match self.def_kind(id) {
+            DefKind::AssocConst => (ty::AssocKind::Const, false),
+            DefKind::AssocFn => (ty::AssocKind::Fn, self.get_fn_has_self_parameter(id, sess)),
+            DefKind::AssocTy => (ty::AssocKind::Type, false),
             _ => bug!("cannot get associated-item of `{:?}`", self.def_key(id)),
         };
-        let has_self = self.get_fn_has_self_parameter(id, sess);
         let container = self.root.tables.assoc_container.get(self, id).unwrap();
 
         ty::AssocItem {
@@ -1131,7 +1130,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .children
             .get(self, id)
-            .unwrap_or_else(LazyArray::empty)
+            .expect("fields not encoded for a struct")
             .decode(self)
             .map(move |index| respan(self.get_span(index, sess), self.item_name(index)))
     }
@@ -1144,7 +1143,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .children
             .get(self, id)
-            .unwrap_or_else(LazyArray::empty)
+            .expect("fields not encoded for a struct")
             .decode(self)
             .map(move |field_index| self.get_visibility(field_index))
     }
@@ -1159,25 +1158,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .tables
                 .inherent_impls
                 .get(self, id)
-                .unwrap_or_else(LazyArray::empty)
                 .decode(self)
                 .map(|index| self.local_def_id(index)),
         )
-    }
-
-    /// Decodes all inherent impls in the crate (for rustdoc).
-    fn get_inherent_impls(self) -> impl Iterator<Item = (DefId, DefId)> + 'a {
-        (0..self.root.tables.inherent_impls.size()).flat_map(move |i| {
-            let ty_index = DefIndex::from_usize(i);
-            let ty_def_id = self.local_def_id(ty_index);
-            self.root
-                .tables
-                .inherent_impls
-                .get(self, ty_index)
-                .unwrap_or_else(LazyArray::empty)
-                .decode(self)
-                .map(move |impl_index| (ty_def_id, self.local_def_id(impl_index)))
-        })
     }
 
     /// Decodes all traits in the crate (for rustdoc and rustc diagnostics).
@@ -1186,23 +1169,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Decodes all trait impls in the crate (for rustdoc).
-    fn get_trait_impls(self) -> impl Iterator<Item = (DefId, DefId, Option<SimplifiedType>)> + 'a {
-        self.cdata.trait_impls.iter().flat_map(move |(&(trait_cnum_raw, trait_index), impls)| {
-            let trait_def_id = DefId {
-                krate: self.cnum_map[CrateNum::from_u32(trait_cnum_raw)],
-                index: trait_index,
-            };
-            impls.decode(self).map(move |(impl_index, simplified_self_ty)| {
-                (trait_def_id, self.local_def_id(impl_index), simplified_self_ty)
-            })
+    fn get_trait_impls(self) -> impl Iterator<Item = DefId> + 'a {
+        self.cdata.trait_impls.values().flat_map(move |impls| {
+            impls.decode(self).map(move |(impl_index, _)| self.local_def_id(impl_index))
         })
-    }
-
-    fn get_all_incoherent_impls(self) -> impl Iterator<Item = DefId> + 'a {
-        self.cdata
-            .incoherent_impls
-            .values()
-            .flat_map(move |impls| impls.decode(self).map(move |idx| self.local_def_id(idx)))
     }
 
     fn get_incoherent_impls(self, tcx: TyCtxt<'tcx>, simp: SimplifiedType) -> &'tcx [DefId] {
@@ -1283,7 +1253,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn get_macro(self, id: DefIndex, sess: &Session) -> ast::MacroDef {
         match self.def_kind(id) {
             DefKind::Macro(_) => {
-                let macro_rules = self.root.tables.macro_rules.get(self, id).is_some();
+                let macro_rules = self.root.tables.is_macro_rules.get(self, id);
                 let body =
                     self.root.tables.macro_definition.get(self, id).unwrap().decode((self, sess));
                 ast::MacroDef { macro_rules, body: ast::ptr::P(body) }
@@ -1322,7 +1292,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     ) -> DefPathHash {
         *def_path_hashes
             .entry(index)
-            .or_insert_with(|| self.root.tables.def_path_hashes.get(self, index).unwrap())
+            .or_insert_with(|| self.root.tables.def_path_hashes.get(self, index))
     }
 
     #[inline]
@@ -1594,12 +1564,30 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             })
     }
 
-    fn get_may_have_doc_links(self, index: DefIndex) -> bool {
-        self.root.tables.may_have_doc_links.get(self, index).is_some()
+    fn get_attr_flags(self, index: DefIndex) -> AttrFlags {
+        self.root.tables.attr_flags.get(self, index)
     }
 
     fn get_is_intrinsic(self, index: DefIndex) -> bool {
-        self.root.tables.is_intrinsic.get(self, index).is_some()
+        self.root.tables.is_intrinsic.get(self, index)
+    }
+
+    fn get_doc_link_resolutions(self, index: DefIndex) -> DocLinkResMap {
+        self.root
+            .tables
+            .doc_link_resolutions
+            .get(self, index)
+            .expect("no resolutions for a doc link")
+            .decode(self)
+    }
+
+    fn get_doc_link_traits_in_scope(self, index: DefIndex) -> impl Iterator<Item = DefId> + 'a {
+        self.root
+            .tables
+            .doc_link_traits_in_scope
+            .get(self, index)
+            .expect("no traits in scope for a doc link")
+            .decode(self)
     }
 }
 

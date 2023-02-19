@@ -7,7 +7,7 @@ LL | enum A { B, C }
 LL |     match (true, false) {
    |           ------------- this expression has type `(bool, bool)`
 LL |         A::B => (),
-   |         ^^^^ expected tuple, found enum `A`
+   |         ^^^^ expected `(bool, bool)`, found `A`
    |
    = note: expected tuple `(bool, bool)`
                found enum `A`
@@ -40,7 +40,7 @@ error[E0308]: mismatched types
 LL |     match (true, false) {
    |           ------------- this expression has type `(bool, bool)`
 LL |         box (true, false) => ()
-   |         ^^^^^^^^^^^^^^^^^ expected tuple, found struct `Box`
+   |         ^^^^^^^^^^^^^^^^^ expected `(bool, bool)`, found `Box<_>`
    |
    = note: expected tuple `(bool, bool)`
              found struct `Box<_>`
@@ -51,7 +51,7 @@ error[E0308]: mismatched types
 LL |     match (true, false) {
    |           ------------- this expression has type `(bool, bool)`
 LL |         &(true, false) => ()
-   |         ^^^^^^^^^^^^^^ expected tuple, found reference
+   |         ^^^^^^^^^^^^^^ expected `(bool, bool)`, found `&_`
    |
    = note:  expected tuple `(bool, bool)`
            found reference `&_`

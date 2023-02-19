@@ -1,0 +1,13 @@
+error: missing `struct` for struct definition
+  --> $DIR/pub-ident-struct-4.rs:3:4
+   |
+LL | pub T(String);
+   |    ^
+   |
+help: add `struct` here to parse `T` as a public struct
+   |
+LL | pub struct T(String);
+   |     ++++++
+
+error: aborting due to previous error
+

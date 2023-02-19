@@ -58,7 +58,9 @@ pub fn provide(providers: &mut Providers) {
         let (param_env, value) = param_env_and_value.into_parts();
         const_eval::deref_mir_constant(tcx, param_env, value)
     };
-    providers.permits_uninit_init =
-        |tcx, ty| util::might_permit_raw_init(tcx, ty, InitKind::UninitMitigated0x01Fill);
-    providers.permits_zero_init = |tcx, ty| util::might_permit_raw_init(tcx, ty, InitKind::Zero);
+    providers.permits_uninit_init = |tcx, param_env_and_ty| {
+        util::might_permit_raw_init(tcx, param_env_and_ty, InitKind::UninitMitigated0x01Fill)
+    };
+    providers.permits_zero_init =
+        |tcx, param_env_and_ty| util::might_permit_raw_init(tcx, param_env_and_ty, InitKind::Zero);
 }

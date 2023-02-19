@@ -849,6 +849,7 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
 /// Helper function to get the LLVM type for a Scalar. Pointers are returned as
 /// the equivalent integer type.
 fn llvm_asm_scalar_type<'ll>(cx: &CodegenCx<'ll, '_>, scalar: Scalar) -> &'ll Type {
+    let dl = &cx.tcx.data_layout;
     match scalar.primitive() {
         Primitive::Int(Integer::I8, _) => cx.type_i8(),
         Primitive::Int(Integer::I16, _) => cx.type_i16(),
@@ -856,7 +857,8 @@ fn llvm_asm_scalar_type<'ll>(cx: &CodegenCx<'ll, '_>, scalar: Scalar) -> &'ll Ty
         Primitive::Int(Integer::I64, _) => cx.type_i64(),
         Primitive::F32 => cx.type_f32(),
         Primitive::F64 => cx.type_f64(),
-        Primitive::Pointer => cx.type_isize(),
+        // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
+        Primitive::Pointer(_) => cx.type_from_integer(dl.ptr_sized_integer()),
         _ => unreachable!(),
     }
 }
@@ -868,6 +870,7 @@ fn llvm_fixup_input<'ll, 'tcx>(
     reg: InlineAsmRegClass,
     layout: &TyAndLayout<'tcx>,
 ) -> &'ll Value {
+    let dl = &bx.tcx.data_layout;
     match (reg, layout.abi) {
         (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg), Abi::Scalar(s)) => {
             if let Primitive::Int(Integer::I8, _) = s.primitive() {
@@ -881,8 +884,10 @@ fn llvm_fixup_input<'ll, 'tcx>(
             let elem_ty = llvm_asm_scalar_type(bx.cx, s);
             let count = 16 / layout.size.bytes();
             let vec_ty = bx.cx.type_vector(elem_ty, count);
-            if let Primitive::Pointer = s.primitive() {
-                value = bx.ptrtoint(value, bx.cx.type_isize());
+            // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
+            if let Primitive::Pointer(_) = s.primitive() {
+                let t = bx.type_from_integer(dl.ptr_sized_integer());
+                value = bx.ptrtoint(value, t);
             }
             bx.insert_element(bx.const_undef(vec_ty), value, bx.const_i32(0))
         }
@@ -958,7 +963,7 @@ fn llvm_fixup_output<'ll, 'tcx>(
         }
         (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16), Abi::Scalar(s)) => {
             value = bx.extract_element(value, bx.const_i32(0));
-            if let Primitive::Pointer = s.primitive() {
+            if let Primitive::Pointer(_) = s.primitive() {
                 value = bx.inttoptr(value, layout.llvm_type(bx.cx));
             }
             value

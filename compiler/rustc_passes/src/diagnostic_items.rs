@@ -32,11 +32,8 @@ fn collect_item(tcx: TyCtxt<'_>, items: &mut DiagnosticItems, name: Symbol, item
     if let Some(original_def_id) = items.name_to_id.insert(name, item_def_id) {
         if original_def_id != item_def_id {
             let orig_span = tcx.hir().span_if_local(original_def_id);
-            let orig_crate_name = if orig_span.is_some() {
-                None
-            } else {
-                Some(tcx.crate_name(original_def_id.krate))
-            };
+            let orig_crate_name =
+                orig_span.is_none().then(|| tcx.crate_name(original_def_id.krate));
             match tcx.hir().span_if_local(item_def_id) {
                 Some(span) => tcx.sess.emit_err(DuplicateDiagnosticItem { span, name }),
                 None => tcx.sess.emit_err(DuplicateDiagnosticItemInCrate {

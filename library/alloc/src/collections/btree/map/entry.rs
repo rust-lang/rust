@@ -347,7 +347,7 @@ impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(self, value: V) -> &'a mut V {
+    pub fn insert(mut self, value: V) -> &'a mut V {
         let out_ptr = match self.handle {
             None => {
                 // SAFETY: There is no tree yet so no reference to it exists.
@@ -358,25 +358,27 @@ impl<'a, K: Ord, V, A: Allocator + Clone> VacantEntry<'a, K, V, A> {
                 map.length = 1;
                 val_ptr
             }
-            Some(handle) => match handle.insert_recursing(self.key, value, self.alloc.clone()) {
-                (None, val_ptr) => {
-                    // SAFETY: We have consumed self.handle.
-                    let map = unsafe { self.dormant_map.awaken() };
-                    map.length += 1;
-                    val_ptr
-                }
-                (Some(ins), val_ptr) => {
-                    drop(ins.left);
-                    // SAFETY: We have consumed self.handle and dropped the
-                    // remaining reference to the tree, ins.left.
-                    let map = unsafe { self.dormant_map.awaken() };
-                    let root = map.root.as_mut().unwrap(); // same as ins.left
-                    root.push_internal_level(self.alloc).push(ins.kv.0, ins.kv.1, ins.right);
-                    map.length += 1;
-                    val_ptr
-                }
-            },
+            Some(handle) => {
+                let new_handle =
+                    handle.insert_recursing(self.key, value, self.alloc.clone(), |ins| {
+                        drop(ins.left);
+                        // SAFETY: Pushing a new root node doesn't invalidate
+                        // handles to existing nodes.
+                        let map = unsafe { self.dormant_map.reborrow() };
+                        let root = map.root.as_mut().unwrap(); // same as ins.left
+                        root.push_internal_level(self.alloc).push(ins.kv.0, ins.kv.1, ins.right)
+                    });
+
+                // Get the pointer to the value
+                let val_ptr = new_handle.into_val_mut();
+
+                // SAFETY: We have consumed self.handle.
+                let map = unsafe { self.dormant_map.awaken() };
+                map.length += 1;
+                val_ptr
+            }
         };
+
         // Now that we have finished growing the tree using borrowed references,
         // dereference the pointer to a part of it, that we picked up along the way.
         unsafe { &mut *out_ptr }

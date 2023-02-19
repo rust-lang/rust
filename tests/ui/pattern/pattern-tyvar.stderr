@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match t {
    |           - this expression has type `Bar`
 LL |       Bar::T1(_, Some::<isize>(x)) => {
-   |                  ^^^^^^^^^^^^^^^^ expected struct `Vec`, found `isize`
+   |                  ^^^^^^^^^^^^^^^^ expected `Option<Vec<isize>>`, found `Option<isize>`
    |
    = note: expected enum `Option<Vec<isize>>`
               found enum `Option<isize>`

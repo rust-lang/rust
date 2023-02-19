@@ -55,7 +55,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
             ExprKind::Repeat { value, count } => {
-                if Some(0) == count.try_eval_usize(this.tcx, this.param_env) {
+                if Some(0) == count.try_eval_target_usize(this.tcx, this.param_env) {
                     this.build_zero_repeat(block, value, scope, source_info)
                 } else {
                     let value_operand = unpack!(
@@ -439,10 +439,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // We implicitly set the discriminant to 0. See
                         // librustc_mir/transform/deaggregator.rs for details.
                         let movability = movability.unwrap();
-                        Box::new(AggregateKind::Generator(closure_id, substs, movability))
+                        Box::new(AggregateKind::Generator(
+                            closure_id.to_def_id(),
+                            substs,
+                            movability,
+                        ))
                     }
                     UpvarSubsts::Closure(substs) => {
-                        Box::new(AggregateKind::Closure(closure_id, substs))
+                        Box::new(AggregateKind::Closure(closure_id.to_def_id(), substs))
                     }
                 };
                 block.and(Rvalue::Aggregate(result, operands))

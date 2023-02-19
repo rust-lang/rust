@@ -31,6 +31,16 @@ fn test_no_semicolon() -> bool {
     true
 }
 
+#[rustfmt::skip]
+fn test_multiple_semicolon() -> bool {
+    true
+}
+
+#[rustfmt::skip]
+fn test_multiple_semicolon_with_spaces() -> bool {
+    true
+}
+
 fn test_if_block() -> bool {
     if true {
         true

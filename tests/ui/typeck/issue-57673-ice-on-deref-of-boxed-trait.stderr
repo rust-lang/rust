@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn ice(x: Box<dyn Iterator<Item=()>>) {
    |                                       - help: try adding a return type: `-> (dyn Iterator<Item = ()> + 'static)`
 LL |     *x
-   |     ^^ expected `()`, found trait object `dyn Iterator`
+   |     ^^ expected `()`, found `dyn Iterator`
    |
    = note: expected unit type `()`
            found trait object `(dyn Iterator<Item = ()> + 'static)`

@@ -65,11 +65,8 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
             } else {
                 ForLoopsOverFalliblesLoopSub::UseWhileLet { start_span: expr.span.with_hi(pat.span.lo()), end_span: pat.span.between(arg.span), var }
             } ;
-        let question_mark = if suggest_question_mark(cx, adt, substs, expr.span) {
-            Some(ForLoopsOverFalliblesQuestionMark { suggestion: arg.span.shrink_to_hi() })
-        } else {
-            None
-        };
+        let question_mark = suggest_question_mark(cx, adt, substs, expr.span)
+            .then(|| ForLoopsOverFalliblesQuestionMark { suggestion: arg.span.shrink_to_hi() });
         let suggestion = ForLoopsOverFalliblesSuggestion {
             var,
             start_span: expr.span.with_hi(pat.span.lo()),
@@ -139,9 +136,10 @@ fn suggest_question_mark<'tcx>(
 
     let ty = substs.type_at(0);
     let infcx = cx.tcx.infer_ctxt().build();
+    let body_def_id = cx.tcx.hir().body_owner_def_id(body_id);
     let cause = ObligationCause::new(
         span,
-        body_id.hir_id,
+        body_def_id,
         rustc_infer::traits::ObligationCauseCode::MiscObligation,
     );
     let errors = rustc_trait_selection::traits::fully_solve_bound(

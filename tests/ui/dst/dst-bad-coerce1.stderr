@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/dst-bad-coerce1.rs:16:29
    |
 LL |     let f3: &Fat<[usize]> = f2;
-   |             -------------   ^^ expected slice `[usize]`, found array `[isize; 3]`
+   |             -------------   ^^ expected `&Fat<[usize]>`, found `&Fat<[isize; 3]>`
    |             |
    |             expected due to this
    |
@@ -21,7 +21,7 @@ error[E0308]: mismatched types
   --> $DIR/dst-bad-coerce1.rs:28:27
    |
 LL |     let f3: &([usize],) = f2;
-   |             -----------   ^^ expected slice `[usize]`, found array `[isize; 3]`
+   |             -----------   ^^ expected `&([usize],)`, found `&([isize; 3],)`
    |             |
    |             expected due to this
    |

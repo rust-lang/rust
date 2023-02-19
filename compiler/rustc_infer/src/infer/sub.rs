@@ -1,8 +1,7 @@
 use super::combine::{CombineFields, RelationDir};
-use super::SubregionOrigin;
+use super::{ObligationEmittingRelation, SubregionOrigin};
 
-use crate::infer::combine::ConstEquateRelation;
-use crate::traits::Obligation;
+use crate::traits::{Obligation, PredicateObligations};
 use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::TyVar;
@@ -161,7 +160,7 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                 let a_types = infcx.tcx.anonymize_bound_vars(a_types);
                 let b_types = infcx.tcx.anonymize_bound_vars(b_types);
                 if a_types.bound_vars() == b_types.bound_vars() {
-                    let (a_types, b_types) = infcx.replace_bound_vars_with_placeholders(
+                    let (a_types, b_types) = infcx.instantiate_binder_with_placeholders(
                         a_types.map_bound(|a_types| (a_types, b_types.skip_binder())),
                     );
                     for (a, b) in std::iter::zip(a_types, b_types) {
@@ -191,12 +190,13 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
         // from the "cause" field, we could perhaps give more tailored
         // error messages.
         let origin = SubregionOrigin::Subtype(Box::new(self.fields.trace.clone()));
+        // Subtype(&'a u8, &'b u8) => Outlives('a: 'b) => SubRegion('b, 'a)
         self.fields
             .infcx
             .inner
             .borrow_mut()
             .unwrap_region_constraints()
-            .make_subregion(origin, a, b);
+            .make_subregion(origin, b, a);
 
         Ok(a)
     }
@@ -227,8 +227,15 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> ConstEquateRelation<'tcx> for Sub<'_, '_, 'tcx> {
-    fn const_equate_obligation(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>) {
-        self.fields.add_const_equate_obligation(self.a_is_expected, a, b);
+impl<'tcx> ObligationEmittingRelation<'tcx> for Sub<'_, '_, 'tcx> {
+    fn register_predicates(
+        &mut self,
+        obligations: impl IntoIterator<Item = impl ty::ToPredicate<'tcx>>,
+    ) {
+        self.fields.register_predicates(obligations);
+    }
+
+    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
+        self.fields.register_obligations(obligations);
     }
 }

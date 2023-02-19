@@ -46,7 +46,7 @@ pub(crate) fn maybe_create_entry_wrapper(
         is_main_fn: bool,
         sigpipe: u8,
     ) {
-        let main_ret_ty = tcx.fn_sig(rust_main_def_id).output();
+        let main_ret_ty = tcx.fn_sig(rust_main_def_id).no_bound_vars().unwrap().output();
         // Given that `main()` has no arguments,
         // then its return type cannot have
         // late-bound regions, since late-bound
@@ -64,13 +64,20 @@ pub(crate) fn maybe_create_entry_wrapper(
             ],
             returns: vec![AbiParam::new(m.target_config().pointer_type() /*isize*/)],
             call_conv: crate::conv_to_call_conv(
+                tcx.sess,
                 tcx.sess.target.options.entry_abi,
                 m.target_config().default_call_conv,
             ),
         };
 
         let entry_name = tcx.sess.target.options.entry_name.as_ref();
-        let cmain_func_id = m.declare_function(entry_name, Linkage::Export, &cmain_sig).unwrap();
+        let cmain_func_id = match m.declare_function(entry_name, Linkage::Export, &cmain_sig) {
+            Ok(func_id) => func_id,
+            Err(err) => {
+                tcx.sess
+                    .fatal(&format!("entry symbol `{entry_name}` declared multiple times: {err}"));
+            }
+        };
 
         let instance = Instance::mono(tcx, rust_main_def_id).polymorphize(tcx);
 
@@ -112,7 +119,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     tcx,
                     ParamEnv::reveal_all(),
                     report.def_id,
-                    tcx.mk_substs([GenericArg::from(main_ret_ty)].iter()),
+                    tcx.intern_substs(&[GenericArg::from(main_ret_ty)]),
                 )
                 .unwrap()
                 .unwrap()
@@ -162,7 +169,11 @@ pub(crate) fn maybe_create_entry_wrapper(
             bcx.seal_all_blocks();
             bcx.finalize();
         }
-        m.define_function(cmain_func_id, &mut ctx).unwrap();
+
+        if let Err(err) = m.define_function(cmain_func_id, &mut ctx) {
+            tcx.sess.fatal(&format!("entry symbol `{entry_name}` defined multiple times: {err}"));
+        }
+
         unwind_context.add_function(cmain_func_id, &ctx, m.isa());
     }
 }

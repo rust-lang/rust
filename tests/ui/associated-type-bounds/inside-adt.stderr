@@ -95,7 +95,7 @@ LL | union U1 { f: ManuallyDrop<dyn Iterator<Item: Copy>> }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `ManuallyDrop<(dyn Iterator<Item = impl Copy> + 'static)>`, the trait `Sized` is not implemented for `(dyn Iterator<Item = impl Copy> + 'static)`
-   = note: required because it appears within the type `ManuallyDrop<(dyn Iterator<Item = impl Copy> + 'static)>`
+   = note: required because it appears within the type `ManuallyDrop<dyn Iterator<Item = impl Copy>>`
    = note: no field of a union may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -114,7 +114,7 @@ LL | union U3 { f: ManuallyDrop<dyn Iterator<Item: 'static>> }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `ManuallyDrop<(dyn Iterator<Item = impl Sized + 'static> + 'static)>`, the trait `Sized` is not implemented for `(dyn Iterator<Item = impl Sized + 'static> + 'static)`
-   = note: required because it appears within the type `ManuallyDrop<(dyn Iterator<Item = impl Sized + 'static> + 'static)>`
+   = note: required because it appears within the type `ManuallyDrop<dyn Iterator<Item = impl Sized>>`
    = note: no field of a union may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size

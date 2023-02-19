@@ -7,7 +7,7 @@ LL | fn f<'a: 'static>(t: &'a str) -> X<'a> {
    = note: `#[warn(named_static_lifetimes)]` on by default
    = help: you can use the `'static` lifetime directly, in place of `'a`
 
-error: non-defining opaque type use in defining scope
+error[E0792]: expected generic lifetime parameter, found `'static`
   --> $DIR/bounds-are-checked.rs:10:5
    |
 LL | type X<'a> = impl Into<&'static str> + From<&'a str>;
@@ -18,3 +18,4 @@ LL |     t
 
 error: aborting due to previous error; 1 warning emitted
 
+For more information about this error, try `rustc --explain E0792`.

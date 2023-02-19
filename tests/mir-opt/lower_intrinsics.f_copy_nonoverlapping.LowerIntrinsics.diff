@@ -25,9 +25,9 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:9: +1:12
-          Deinit(_1);                      // scope 0 at $DIR/lower_intrinsics.rs:+1:15: +1:17
+          _1 = ();                         // scope 0 at $DIR/lower_intrinsics.rs:+1:15: +1:17
           StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:9: +2:16
-          Deinit(_2);                      // scope 1 at $DIR/lower_intrinsics.rs:+2:19: +2:21
+          _2 = ();                         // scope 1 at $DIR/lower_intrinsics.rs:+2:19: +2:21
           StorageLive(_3);                 // scope 3 at $DIR/lower_intrinsics.rs:+4:9: +4:95
           StorageLive(_4);                 // scope 3 at $DIR/lower_intrinsics.rs:+4:29: +4:59
           StorageLive(_5);                 // scope 3 at $DIR/lower_intrinsics.rs:+4:29: +4:45

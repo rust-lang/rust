@@ -29,11 +29,6 @@ mod tests;
 pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let module = crate::visit_ast::RustdocVisitor::new(cx).visit();
 
-    for &cnum in cx.tcx.crates(()) {
-        // Analyze doc-reachability for extern items
-        crate::visit_lib::lib_embargo_visit_item(cx, cnum.as_def_id());
-    }
-
     // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
     let mut module = clean_doc_module(&module, cx);
@@ -134,7 +129,7 @@ fn external_generic_args<'tcx>(
         });
         GenericArgs::Parenthesized { inputs, output }
     } else {
-        GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() }
+        GenericArgs::AngleBracketed { args: args.into(), bindings }
     }
 }
 
@@ -271,7 +266,7 @@ pub(crate) fn print_evaluated_const(
     underscores_and_type: bool,
 ) -> Option<String> {
     tcx.const_eval_poly(def_id).ok().and_then(|val| {
-        let ty = tcx.type_of(def_id);
+        let ty = tcx.type_of(def_id).subst_identity();
         match (val, ty.kind()) {
             (_, &ty::Ref(..)) => None,
             (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
@@ -350,10 +345,10 @@ pub(crate) fn is_literal_expr(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
             return true;
         }
 
-        if let hir::ExprKind::Unary(hir::UnOp::Neg, expr) = &expr.kind {
-            if let hir::ExprKind::Lit(_) = &expr.kind {
-                return true;
-            }
+        if let hir::ExprKind::Unary(hir::UnOp::Neg, expr) = &expr.kind &&
+            let hir::ExprKind::Lit(_) = &expr.kind
+        {
+            return true;
         }
     }
 

@@ -3,15 +3,15 @@
 #![crate_name = "foo"]
 
 // @has foo/fn.bar.html
-// @has - '//div[@class="item-decl"]/pre[@class="rust"]' 'pub fn bar() -> '
+// @has - '//pre[@class="rust item-decl"]' 'pub fn bar() -> '
 /// foo
 pub fn bar() -> usize {
     2
 }
 
 // @has foo/struct.Foo.html
-// @has - '//*[@class="method has-srclink"]' 'pub fn new()'
-// @has - '//*[@class="method has-srclink"]' 'fn not_pub()'
+// @has - '//*[@class="method"]' 'pub fn new()'
+// @has - '//*[@class="method"]' 'fn not_pub()'
 pub struct Foo(usize);
 
 impl Foo {

@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | fn foo(mut s: String) -> String {
    |                          ------ expected `String` because of return type
 LL |     s.push_str("asdf")
-   |     ^^^^^^^^^^^^^^^^^^ expected struct `String`, found `()`
+   |     ^^^^^^^^^^^^^^^^^^ expected `String`, found `()`
    |
 note: method `push_str` modifies its receiver in-place
   --> $DIR/chain-method-call-mutation-in-place.rs:3:7

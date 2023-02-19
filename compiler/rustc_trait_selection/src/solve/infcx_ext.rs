@@ -26,7 +26,7 @@ pub(super) trait InferCtxtExt<'tcx> {
         rhs: T,
     ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution>;
 
-    fn instantiate_bound_vars_with_infer<T: TypeFoldable<'tcx> + Copy>(
+    fn instantiate_binder_with_infer<T: TypeFoldable<'tcx> + Copy>(
         &self,
         value: ty::Binder<'tcx, T>,
     ) -> T;
@@ -65,11 +65,11 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             })
     }
 
-    fn instantiate_bound_vars_with_infer<T: TypeFoldable<'tcx> + Copy>(
+    fn instantiate_binder_with_infer<T: TypeFoldable<'tcx> + Copy>(
         &self,
         value: ty::Binder<'tcx, T>,
     ) -> T {
-        self.replace_bound_vars_with_fresh_vars(
+        self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
             LateBoundRegionConversionTime::HigherRankedType,
             value,

@@ -58,9 +58,10 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
         clippy_lint_warn.iter().for_each(|v| clippy_lint_levels.push(format!("-W{}", v)));
         clippy_lint_forbid.iter().for_each(|v| clippy_lint_levels.push(format!("-F{}", v)));
         args.extend(clippy_lint_levels);
+        args.extend(builder.config.free_args.clone());
         args
     } else {
-        vec![]
+        builder.config.free_args.clone()
     }
 }
 
@@ -99,6 +100,10 @@ impl Step for Std {
             cargo_subcommand(builder.kind),
         );
         std_cargo(builder, target, compiler.stage, &mut cargo);
+        if matches!(builder.config.cmd, Subcommand::Fix { .. }) {
+            // By default, cargo tries to fix all targets. Tell it not to fix tests until we've added `test` to the sysroot.
+            cargo.arg("--lib");
+        }
 
         builder.info(&format!(
             "Checking stage{} library artifacts ({} -> {})",

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/option-to-bool.rs:4:16
    |
 LL |     if true && x {}
-   |        ----    ^ expected `bool`, found enum `Option`
+   |        ----    ^ expected `bool`, found `Option<i32>`
    |        |
    |        expected because this is `bool`
    |

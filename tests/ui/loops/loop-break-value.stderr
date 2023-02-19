@@ -167,7 +167,7 @@ error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:80:15
    |
 LL |         break (break, break);
-   |               ^^^^^^^^^^^^^^ expected `()`, found tuple
+   |               ^^^^^^^^^^^^^^ expected `()`, found `(!, !)`
    |
    = note: expected unit type `()`
                   found tuple `(!, !)`

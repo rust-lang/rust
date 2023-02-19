@@ -1,0 +1,30 @@
+error: future cannot be sent between threads safely
+  --> $DIR/issue-67252-unnamed-future.rs:21:11
+   |
+LL |       spawn(async {
+   |  ___________^
+LL | |         let a = std::ptr::null_mut::<()>(); // `*mut ()` is not `Send`
+LL | |         AFuture.await;
+LL | |         drop(a);
+LL | |     });
+   | |_____^ future created by async block is not `Send`
+   |
+   = help: within `[async block@$DIR/issue-67252-unnamed-future.rs:21:11: 25:6]`, the trait `Send` is not implemented for `*mut ()`
+note: future is not `Send` as this value is used across an await
+  --> $DIR/issue-67252-unnamed-future.rs:23:16
+   |
+LL |         let a = std::ptr::null_mut::<()>(); // `*mut ()` is not `Send`
+   |             - has type `*mut ()` which is not `Send`
+LL |         AFuture.await;
+   |                ^^^^^^ await occurs here, with `a` maybe used later
+LL |         drop(a);
+LL |     });
+   |     - `a` is later dropped here
+note: required by a bound in `spawn`
+  --> $DIR/issue-67252-unnamed-future.rs:9:13
+   |
+LL | fn spawn<T: Send>(_: T) {}
+   |             ^^^^ required by this bound in `spawn`
+
+error: aborting due to previous error
+

@@ -244,7 +244,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
         assert_eq!(args.len(), 2);
 
         let ptr = self.read_pointer(&args[0])?;
-        let target_align = self.read_scalar(&args[1])?.to_machine_usize(self)?;
+        let target_align = self.read_scalar(&args[1])?.to_target_usize(self)?;
 
         if !target_align.is_power_of_two() {
             throw_ub_format!("`align_offset` called with non-power-of-two align: {}", target_align);
@@ -276,7 +276,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
                     Ok(ControlFlow::Break(()))
                 } else {
                     // Not alignable in const, return `usize::MAX`.
-                    let usize_max = Scalar::from_machine_usize(self.machine_usize_max(), self);
+                    let usize_max = Scalar::from_target_usize(self.target_usize_max(), self);
                     self.write_scalar(usize_max, dest)?;
                     self.return_to_block(ret)?;
                     Ok(ControlFlow::Break(()))
@@ -470,8 +470,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 ecx.write_scalar(Scalar::from_u8(cmp), dest)?;
             }
             sym::const_allocate => {
-                let size = ecx.read_scalar(&args[0])?.to_machine_usize(ecx)?;
-                let align = ecx.read_scalar(&args[1])?.to_machine_usize(ecx)?;
+                let size = ecx.read_scalar(&args[0])?.to_target_usize(ecx)?;
+                let align = ecx.read_scalar(&args[1])?.to_target_usize(ecx)?;
 
                 let align = match Align::from_bytes(align) {
                     Ok(a) => a,
@@ -487,8 +487,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             }
             sym::const_deallocate => {
                 let ptr = ecx.read_pointer(&args[0])?;
-                let size = ecx.read_scalar(&args[1])?.to_machine_usize(ecx)?;
-                let align = ecx.read_scalar(&args[2])?.to_machine_usize(ecx)?;
+                let size = ecx.read_scalar(&args[1])?.to_target_usize(ecx)?;
+                let align = ecx.read_scalar(&args[2])?.to_target_usize(ecx)?;
 
                 let size = Size::from_bytes(size);
                 let align = match Align::from_bytes(align) {
@@ -561,8 +561,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         throw_unsup_format!("pointer arithmetic or comparison is not supported at compile-time");
     }
 
-    fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
-        // The step limit has already been hit in a previous call to `before_terminator`.
+    fn increment_const_eval_counter(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+        // The step limit has already been hit in a previous call to `increment_const_eval_counter`.
         if ecx.machine.steps_remaining == 0 {
             return Ok(());
         }
@@ -622,10 +622,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         let alloc = alloc.inner();
         if is_write {
             // Write access. These are never allowed, but we give a targeted error message.
-            if alloc.mutability == Mutability::Not {
-                Err(err_ub!(WriteToReadOnly(alloc_id)).into())
-            } else {
-                Err(ConstEvalErrKind::ModifiedGlobal.into())
+            match alloc.mutability {
+                Mutability::Not => Err(err_ub!(WriteToReadOnly(alloc_id)).into()),
+                Mutability::Mut => Err(ConstEvalErrKind::ModifiedGlobal.into()),
             }
         } else {
             // Read access. These are usually allowed, with some exceptions.

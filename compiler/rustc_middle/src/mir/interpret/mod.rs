@@ -110,7 +110,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
-use rustc_target::abi::Endian;
+use rustc_target::abi::{AddressSpace, Endian, HasDataLayout};
 
 use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -436,6 +436,17 @@ impl<'tcx> GlobalAlloc<'tcx> {
         match *self {
             GlobalAlloc::VTable(ty, poly_trait_ref) => (ty, poly_trait_ref),
             _ => bug!("expected vtable, got {:?}", self),
+        }
+    }
+
+    /// The address space that this `GlobalAlloc` should be placed in.
+    #[inline]
+    pub fn address_space(&self, cx: &impl HasDataLayout) -> AddressSpace {
+        match self {
+            GlobalAlloc::Function(..) => cx.data_layout().instruction_address_space,
+            GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) | GlobalAlloc::VTable(..) => {
+                AddressSpace::DATA
+            }
         }
     }
 }

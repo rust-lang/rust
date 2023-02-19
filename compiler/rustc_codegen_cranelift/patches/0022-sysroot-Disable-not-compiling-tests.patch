@@ -18,7 +18,7 @@ new file mode 100644
 index 0000000..46fd999
 --- /dev/null
 +++ b/library/core/tests/Cargo.toml
-@@ -0,0 +1,11 @@
+@@ -0,0 +1,12 @@
 +[package]
 +name = "core"
 +version = "0.0.0"
@@ -29,6 +29,7 @@ index 0000000..46fd999
 +path = "lib.rs"
 +
 +[dependencies]
-+rand = "0.7"
++rand = { version = "0.8.5", default-features = false }
++rand_xorshift = { version = "0.3.0", default-features = false }
 --
 2.21.0 (Apple Git-122)

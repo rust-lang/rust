@@ -44,3 +44,13 @@ interface_failed_writing_file =
 
 interface_proc_macro_crate_panic_abort =
     building proc macro crate with `panic=abort` may crash the compiler should the proc-macro panic
+
+interface_unsupported_crate_type_for_target =
+    dropping unsupported crate type `{$crate_type}` for target `{$target_triple}`
+
+interface_multiple_output_types_adaption =
+    due to multiple output types requested, the explicitly specified output file name will be adapted for each output type
+
+interface_ignoring_extra_filename = ignoring -C extra-filename flag due to -o flag
+
+interface_ignoring_out_dir = ignoring --out-dir flag due to -o flag

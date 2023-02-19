@@ -14,7 +14,7 @@ use crate::sys::net::{cvt, cvt_gai, cvt_r, init, wrlen_t, Socket};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 
-use libc::{c_int, c_void};
+use crate::ffi::{c_int, c_void};
 
 cfg_if::cfg_if! {
     if #[cfg(any(
@@ -47,7 +47,7 @@ cfg_if::cfg_if! {
         target_os = "dragonfly", target_os = "freebsd",
         target_os = "openbsd", target_os = "netbsd",
         target_os = "solaris", target_os = "illumos"))] {
-        use libc::c_uchar;
+        use crate::ffi::c_uchar;
         type IpV4MultiCastType = c_uchar;
     } else {
         type IpV4MultiCastType = c_int;
@@ -127,8 +127,8 @@ fn to_ipv6mr_interface(value: u32) -> c_int {
 }
 
 #[cfg(not(target_os = "android"))]
-fn to_ipv6mr_interface(value: u32) -> libc::c_uint {
-    value as libc::c_uint
+fn to_ipv6mr_interface(value: u32) -> crate::ffi::c_uint {
+    value as crate::ffi::c_uint
 }
 
 ////////////////////////////////////////////////////////////////////////////////

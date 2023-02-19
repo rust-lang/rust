@@ -1,7 +1,9 @@
+use crate::middle::resolve_bound_vars as rbv;
 use crate::mir::interpret::LitToConstInput;
 use crate::ty::{self, DefIdTree, InternalSubsts, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::HashStable;
 use std::fmt;
@@ -71,7 +73,10 @@ impl<'tcx> Const<'tcx> {
         let expr = &tcx.hir().body(body_id).value;
         debug!(?expr);
 
-        let ty = tcx.type_of(def.def_id_for_type_of());
+        let ty = tcx
+            .type_of(def.def_id_for_type_of())
+            .no_bound_vars()
+            .expect("const parameter types cannot be generic");
 
         match Self::try_eval_lit_or_param(tcx, ty, expr) {
             Some(v) => v,
@@ -125,16 +130,30 @@ impl<'tcx> Const<'tcx> {
             }
         }
 
-        use hir::{def::DefKind::ConstParam, def::Res, ExprKind, Path, QPath};
         match expr.kind {
-            ExprKind::Path(QPath::Resolved(_, &Path { res: Res::Def(ConstParam, def_id), .. })) => {
-                // Find the name and index of the const parameter by indexing the generics of
-                // the parent item and construct a `ParamConst`.
-                let item_def_id = tcx.parent(def_id);
-                let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&def_id];
-                let name = tcx.item_name(def_id);
-                Some(tcx.mk_const(ty::ParamConst::new(index, name), ty))
+            hir::ExprKind::Path(hir::QPath::Resolved(
+                _,
+                &hir::Path { res: Res::Def(DefKind::ConstParam, def_id), .. },
+            )) => {
+                match tcx.named_bound_var(expr.hir_id) {
+                    Some(rbv::ResolvedArg::EarlyBound(_)) => {
+                        // Find the name and index of the const parameter by indexing the generics of
+                        // the parent item and construct a `ParamConst`.
+                        let item_def_id = tcx.parent(def_id);
+                        let generics = tcx.generics_of(item_def_id);
+                        let index = generics.param_def_id_to_index[&def_id];
+                        let name = tcx.item_name(def_id);
+                        Some(tcx.mk_const(ty::ParamConst::new(index, name), ty))
+                    }
+                    Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => Some(tcx.mk_const(
+                        ty::ConstKind::Bound(debruijn, ty::BoundVar::from_u32(index)),
+                        ty,
+                    )),
+                    Some(rbv::ResolvedArg::Error(guar)) => {
+                        Some(tcx.const_error_with_guaranteed(ty, guar))
+                    }
+                    arg => bug!("unexpected bound var resolution for {:?}: {arg:?}", expr.hir_id),
+                }
             }
             _ => None,
         }
@@ -175,7 +194,7 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     /// Creates an interned usize constant.
-    pub fn from_usize(tcx: TyCtxt<'tcx>, n: u64) -> Self {
+    pub fn from_target_usize(tcx: TyCtxt<'tcx>, n: u64) -> Self {
         Self::from_bits(tcx, n as u128, ParamEnv::empty().and(tcx.types.usize))
     }
 
@@ -201,8 +220,12 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn try_eval_usize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<u64> {
-        self.kind().eval(tcx, param_env).try_to_machine_usize(tcx)
+    pub fn try_eval_target_usize(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+    ) -> Option<u64> {
+        self.kind().eval(tcx, param_env).try_to_target_usize(tcx)
     }
 
     #[inline]
@@ -229,8 +252,8 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     /// Panics if the value cannot be evaluated or doesn't contain a valid `usize`.
-    pub fn eval_usize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u64 {
-        self.try_eval_usize(tcx, param_env)
+    pub fn eval_target_usize(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u64 {
+        self.try_eval_target_usize(tcx, param_env)
             .unwrap_or_else(|| bug!("expected usize, got {:#?}", self))
     }
 

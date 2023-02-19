@@ -9,7 +9,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Warns for a Bitwise XOR (`^`) operator being probably confused as a powering. It will not trigger if any of the numbers are not in decimal.
     /// ### Why is this bad?
-    ///	It's most probably a typo and may lead to unexpected behaviours.
+    /// It's most probably a typo and may lead to unexpected behaviours.
     /// ### Example
     /// ```rust
     /// let x = 3_i32 ^ 4_i32;
@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let x = 3_i32.pow(4);
     /// ```
-    #[clippy::version = "1.66.0"]
+    #[clippy::version = "1.67.0"]
     pub SUSPICIOUS_XOR_USED_AS_POW,
     restriction,
     "XOR (`^`) operator possibly used as exponentiation operator"

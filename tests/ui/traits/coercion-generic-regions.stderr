@@ -1,6 +1,8 @@
 error[E0597]: `person` does not live long enough
   --> $DIR/coercion-generic-regions.rs:17:24
    |
+LL |     let person = "Fred".to_string();
+   |         ------ binding `person` declared here
 LL |     let person: &str = &person;
    |                        ^^^^^^^
    |                        |

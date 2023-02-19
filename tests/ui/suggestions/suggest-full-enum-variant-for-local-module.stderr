@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/suggest-full-enum-variant-for-local-module.rs:9:28
    |
 LL |     let _: option::O<()> = ();
-   |            -------------   ^^ expected enum `O`, found `()`
+   |            -------------   ^^ expected `O<()>`, found `()`
    |            |
    |            expected due to this
    |

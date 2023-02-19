@@ -19,18 +19,18 @@ import shutil
 import signal
 import subprocess
 import sys
-from typing import ClassVar, List
+from typing import ClassVar, List, Optional
 
 
 @dataclass
 class TestEnvironment:
     rust_dir: str
     sdk_dir: str
-    target_arch: str
-    package_server_pid: int = None
-    emu_addr: str = None
-    libstd_name: str = None
-    libtest_name: str = None
+    target: str
+    package_server_pid: Optional[int] = None
+    emu_addr: Optional[str] = None
+    libstd_name: Optional[str] = None
+    libtest_name: Optional[str] = None
     verbose: bool = False
 
     @staticmethod
@@ -39,6 +39,15 @@ class TestEnvironment:
         if tmp_dir is not None:
             return os.path.abspath(tmp_dir)
         return os.path.join(os.path.dirname(__file__), "tmp~")
+
+    @staticmethod
+    def triple_to_arch(triple):
+        if "x86_64" in triple:
+            return "x64"
+        elif "aarch64" in triple:
+            return "arm64"
+        else:
+            raise Exception(f"Unrecognized target triple {triple}")
 
     @classmethod
     def env_file_path(cls):
@@ -49,7 +58,7 @@ class TestEnvironment:
         return cls(
             os.path.abspath(args.rust),
             os.path.abspath(args.sdk),
-            args.target_arch,
+            args.target,
             verbose=args.verbose,
         )
 
@@ -60,20 +69,13 @@ class TestEnvironment:
             return cls(
                 test_env["rust_dir"],
                 test_env["sdk_dir"],
-                test_env["target_arch"],
+                test_env["target"],
                 libstd_name=test_env["libstd_name"],
                 libtest_name=test_env["libtest_name"],
                 emu_addr=test_env["emu_addr"],
                 package_server_pid=test_env["package_server_pid"],
                 verbose=test_env["verbose"],
             )
-
-    def image_name(self):
-        if self.target_arch == "x64":
-            return "qemu-x64"
-        if self.target_arch == "arm64":
-            return "qemu-arm64"
-        raise Exception(f"Unrecognized target architecture {self.target_arch}")
 
     def write_to_file(self):
         with open(self.env_file_path(), "w", encoding="utf-8") as f:
@@ -108,13 +110,6 @@ class TestEnvironment:
     def repo_dir(self):
         return os.path.join(self.tmp_dir(), self.TEST_REPO_NAME)
 
-    def rustlib_dir(self):
-        if self.target_arch == "x64":
-            return "x86_64-unknown-fuchsia"
-        if self.target_arch == "arm64":
-            return "aarch64-unknown-fuchsia"
-        raise Exception(f"Unrecognized target architecture {self.target_arch}")
-
     def libs_dir(self):
         return os.path.join(
             self.rust_dir,
@@ -125,7 +120,7 @@ class TestEnvironment:
         return os.path.join(
             self.libs_dir(),
             "rustlib",
-            self.rustlib_dir(),
+            self.target,
             "lib",
         )
 
@@ -384,7 +379,7 @@ class TestEnvironment:
                 "--emulator-log",
                 self.emulator_log_path(),
                 "--image-name",
-                self.image_name(),
+                "qemu-" + self.triple_to_arch(self.target),
             ],
             stdout=self.subprocess_output(),
             stderr=self.subprocess_output(),
@@ -642,11 +637,11 @@ class TestEnvironment:
                         package_dir=package_dir,
                         package_name=package_name,
                         rust_dir=self.rust_dir,
-                        rustlib_dir=self.rustlib_dir(),
+                        rustlib_dir=self.target,
                         sdk_dir=self.sdk_dir,
                         libstd_name=self.libstd_name,
                         libtest_name=self.libtest_name,
-                        target_arch=self.target_arch,
+                        target_arch=self.triple_to_arch(self.target),
                     )
                 )
                 for shared_lib in shared_libs:
@@ -969,8 +964,8 @@ def main():
         action="store_true",
     )
     start_parser.add_argument(
-        "--target-arch",
-        help="the architecture of the image to test",
+        "--target",
+        help="the target platform to test",
         required=True,
     )
     start_parser.set_defaults(func=start)

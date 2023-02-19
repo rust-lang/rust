@@ -323,7 +323,10 @@ impl DebugCounters {
                         String::new()
                     },
                     self.format_operand(lhs),
-                    if op == Op::Add { "+" } else { "-" },
+                    match op {
+                        Op::Add => "+",
+                        Op::Subtract => "-",
+                    },
                     self.format_operand(rhs),
                 );
             }

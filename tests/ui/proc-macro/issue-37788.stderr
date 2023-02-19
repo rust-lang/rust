@@ -7,7 +7,7 @@ LL |     // Test that constructing the `visible_parent_map` (in `cstore_impl.rs`
 LL |     std::cell::Cell::new(0)
    |     ^^^^^^^^^^^^^^^^^^^^^^^- help: consider using a semicolon here: `;`
    |     |
-   |     expected `()`, found struct `Cell`
+   |     expected `()`, found `Cell<{integer}>`
    |
    = note: expected unit type `()`
                  found struct `Cell<{integer}>`

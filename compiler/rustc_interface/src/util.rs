@@ -1,3 +1,4 @@
+use crate::errors;
 use info;
 use libloading::Library;
 use rustc_ast as ast;
@@ -472,16 +473,15 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     }
 
     base.retain(|crate_type| {
-        let res = !output::invalid_output_for_target(session, *crate_type);
-
-        if !res {
-            session.warn(&format!(
-                "dropping unsupported crate type `{}` for target `{}`",
-                *crate_type, session.opts.target_triple
-            ));
+        if output::invalid_output_for_target(session, *crate_type) {
+            session.emit_warning(errors::UnsupportedCrateTypeForTarget {
+                crate_type: *crate_type,
+                target_triple: &session.opts.target_triple,
+            });
+            false
+        } else {
+            true
         }
-
-        res
     });
 
     base
@@ -517,19 +517,16 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
             let unnamed_output_types =
                 sess.opts.output_types.values().filter(|a| a.is_none()).count();
             let ofile = if unnamed_output_types > 1 {
-                sess.warn(
-                    "due to multiple output types requested, the explicitly specified \
-                     output file name will be adapted for each output type",
-                );
+                sess.emit_warning(errors::MultipleOutputTypesAdaption);
                 None
             } else {
                 if !sess.opts.cg.extra_filename.is_empty() {
-                    sess.warn("ignoring -C extra-filename flag due to -o flag");
+                    sess.emit_warning(errors::IgnoringExtraFilename);
                 }
                 Some(out_file.clone())
             };
             if sess.io.output_dir != None {
-                sess.warn("ignoring --out-dir flag due to -o flag");
+                sess.emit_warning(errors::IgnoringOutDir);
             }
 
             OutputFilenames::new(

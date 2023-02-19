@@ -1,3 +1,4 @@
+// unit-test: ConstProp
 #![feature(raw_ref_op)]
 
 // EMIT_MIR const_prop_miscompile.foo.ConstProp.diff

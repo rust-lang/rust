@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     c.read_to(v);
    |       ------- ^
    |       |       |
-   |       |       expected `&mut [u8]`, found struct `Vec`
+   |       |       expected `&mut [u8]`, found `Vec<_>`
    |       |       help: consider mutably borrowing here: `&mut v`
    |       arguments to this method are incorrect
    |

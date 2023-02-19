@@ -501,6 +501,27 @@ error: `#[suggestion(style(...))]` is not a valid attribute
 LL | #[suggestion(parse_add_paren, code = "", style("foo"))]
    |                                          ^^^^^^^^^^^^
 
+error: `#[primary_span]` is not a valid attribute
+  --> $DIR/subdiagnostic-derive.rs:806:5
+   |
+LL |     #[primary_span]
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: there must be exactly one primary span
+   = help: to create a suggestion with multiple spans, use `#[multipart_suggestion]` instead
+
+error: suggestion without `#[primary_span]` field
+  --> $DIR/subdiagnostic-derive.rs:803:1
+   |
+LL | / #[suggestion(parse_add_paren, code = "")]
+LL | |
+LL | | struct PrimarySpanOnVec {
+LL | |     #[primary_span]
+...  |
+LL | |     sub: Vec<Span>,
+LL | | }
+   | |_^
+
 error: cannot find attribute `foo` in this scope
   --> $DIR/subdiagnostic-derive.rs:63:3
    |
@@ -561,6 +582,6 @@ error[E0425]: cannot find value `slug` in module `rustc_errors::fluent`
 LL | #[label(slug)]
    |         ^^^^ not found in `rustc_errors::fluent`
 
-error: aborting due to 79 previous errors
+error: aborting due to 81 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

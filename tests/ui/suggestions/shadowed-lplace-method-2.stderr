@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/shadowed-lplace-method-2.rs:22:17
    |
 LL |     *x.foo(0) = ();
-   |     ---------   ^^ expected struct `X`, found `()`
+   |     ---------   ^^ expected `X`, found `()`
    |     |
    |     expected due to the type of this binding
    |

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-7061.rs:4:46
    |
 LL |     fn foo(&'a mut self) -> Box<BarStruct> { self }
-   |                             --------------   ^^^^ expected struct `Box`, found `&mut BarStruct`
+   |                             --------------   ^^^^ expected `Box<BarStruct>`, found `&mut BarStruct`
    |                             |
    |                             expected `Box<BarStruct>` because of return type
    |

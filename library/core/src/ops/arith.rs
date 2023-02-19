@@ -86,7 +86,8 @@ pub trait Add<Rhs = Self> {
     /// ```
     /// assert_eq!(12 + 1, 13);
     /// ```
-    #[must_use]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[rustc_diagnostic_item = "add"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn add(self, rhs: Rhs) -> Self::Output;
 }
@@ -195,7 +196,8 @@ pub trait Sub<Rhs = Self> {
     /// ```
     /// assert_eq!(12 - 1, 11);
     /// ```
-    #[must_use]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[rustc_diagnostic_item = "sub"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn sub(self, rhs: Rhs) -> Self::Output;
 }
@@ -325,7 +327,8 @@ pub trait Mul<Rhs = Self> {
     /// ```
     /// assert_eq!(12 * 2, 24);
     /// ```
-    #[must_use]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[rustc_diagnostic_item = "mul"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn mul(self, rhs: Rhs) -> Self::Output;
 }
@@ -459,7 +462,8 @@ pub trait Div<Rhs = Self> {
     /// ```
     /// assert_eq!(12 / 2, 6);
     /// ```
-    #[must_use]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[rustc_diagnostic_item = "div"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn div(self, rhs: Rhs) -> Self::Output;
 }
@@ -545,7 +549,7 @@ div_impl_float! { f32 f64 }
 #[lang = "rem"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
-    message = "cannot mod `{Self}` by `{Rhs}`",
+    message = "cannot calculate the remainder of `{Self}` divided by `{Rhs}`",
     label = "no implementation for `{Self} % {Rhs}`"
 )]
 #[doc(alias = "%")]
@@ -562,7 +566,8 @@ pub trait Rem<Rhs = Self> {
     /// ```
     /// assert_eq!(12 % 10, 2);
     /// ```
-    #[must_use]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[rustc_diagnostic_item = "rem"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rem(self, rhs: Rhs) -> Self::Output;
 }
@@ -678,7 +683,8 @@ pub trait Neg {
     /// let x: i32 = 12;
     /// assert_eq!(-x, -12);
     /// ```
-    #[must_use]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[rustc_diagnostic_item = "neg"]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn neg(self) -> Self::Output;
 }
@@ -981,7 +987,7 @@ div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 #[lang = "rem_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented(
-    message = "cannot mod-assign `{Self}` by `{Rhs}``",
+    message = "cannot calculate and assign the remainder of `{Self}` divided by `{Rhs}`",
     label = "no implementation for `{Self} %= {Rhs}`"
 )]
 #[doc(alias = "%")]

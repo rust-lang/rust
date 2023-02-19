@@ -709,7 +709,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                         bx.range_metadata(load, vr);
                     }
                 }
-                abi::Pointer if vr.start < vr.end && !vr.contains(0) => {
+                abi::Pointer(_) if vr.start < vr.end && !vr.contains(0) => {
                     bx.nonnull_metadata(load);
                 }
                 _ => {}

@@ -137,7 +137,7 @@ pub(super) fn check<'tcx>(
 /// Checks if the given method call matches the expected signature of `([&[mut]] self) -> bool`
 fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
     cx.typeck_results().type_dependent_def_id(call_id).map_or(false, |id| {
-        let sig = cx.tcx.fn_sig(id).skip_binder();
+        let sig = cx.tcx.fn_sig(id).subst_identity().skip_binder();
         sig.inputs().len() == 1 && sig.output().is_bool()
     })
 }
@@ -165,7 +165,7 @@ fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty:
 fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -> bool {
     let typeck = cx.typeck_results();
     if let Some(id) = typeck.type_dependent_def_id(call_id)
-        && let sig = cx.tcx.fn_sig(id)
+        && let sig = cx.tcx.fn_sig(id).subst_identity()
         && sig.skip_binder().output().is_bool()
         && let [_, search_ty] = *sig.skip_binder().inputs()
         && let ty::Ref(_, search_ty, Mutability::Not) = *cx.tcx.erase_late_bound_regions(sig.rebind(search_ty)).kind()
@@ -173,7 +173,7 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
         && let Some(iter_item) = cx.tcx
             .associated_items(iter_trait)
             .find_by_name_and_kind(cx.tcx, Ident::with_dummy_span(Symbol::intern("Item")), AssocKind::Type, iter_trait)
-        && let substs = cx.tcx.mk_substs([GenericArg::from(typeck.expr_ty_adjusted(iter_expr))].into_iter())
+        && let substs = cx.tcx.intern_substs(&[GenericArg::from(typeck.expr_ty_adjusted(iter_expr))])
         && let proj_ty = cx.tcx.mk_projection(iter_item.def_id, substs)
         && let Ok(item_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, proj_ty)
     {

@@ -95,7 +95,7 @@ LL | fn unsized_local() where Dst<dyn A>: Sized {
    |                          ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Dst<(dyn A + 'static)>`, the trait `Sized` is not implemented for `(dyn A + 'static)`
-note: required because it appears within the type `Dst<(dyn A + 'static)>`
+note: required because it appears within the type `Dst<dyn A>`
   --> $DIR/feature-gate-trivial_bounds.rs:48:8
    |
 LL | struct Dst<X: ?Sized> {

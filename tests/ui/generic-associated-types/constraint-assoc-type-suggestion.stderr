@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/constraint-assoc-type-suggestion.rs:10:23
    |
 LL |     let b: Vec<i32> = a;
-   |            --------   ^ expected struct `Vec`, found associated type
+   |            --------   ^ expected `Vec<i32>`, found associated type
    |            |
    |            expected due to this
    |

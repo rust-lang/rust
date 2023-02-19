@@ -319,19 +319,10 @@ impl<T> Channel<T> {
     ) -> Result<(), SendTimeoutError<T>> {
         let token = &mut Token::default();
         loop {
-            // Try sending a message several times.
-            let backoff = Backoff::new();
-            loop {
-                if self.start_send(token) {
-                    let res = unsafe { self.write(token, msg) };
-                    return res.map_err(SendTimeoutError::Disconnected);
-                }
-
-                if backoff.is_completed() {
-                    break;
-                } else {
-                    backoff.spin_light();
-                }
+            // Try sending a message.
+            if self.start_send(token) {
+                let res = unsafe { self.write(token, msg) };
+                return res.map_err(SendTimeoutError::Disconnected);
             }
 
             if let Some(d) = deadline {
@@ -379,6 +370,7 @@ impl<T> Channel<T> {
     pub(crate) fn recv(&self, deadline: Option<Instant>) -> Result<T, RecvTimeoutError> {
         let token = &mut Token::default();
         loop {
+            // Try receiving a message.
             if self.start_recv(token) {
                 let res = unsafe { self.read(token) };
                 return res.map_err(|_| RecvTimeoutError::Disconnected);

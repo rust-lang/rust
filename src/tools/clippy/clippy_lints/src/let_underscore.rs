@@ -84,7 +84,7 @@ declare_clippy_lint! {
     /// let _ = foo().await;
     /// # }
     /// ```
-    #[clippy::version = "1.66"]
+    #[clippy::version = "1.67.0"]
     pub LET_UNDERSCORE_FUTURE,
     suspicious,
     "non-binding `let` on a future"

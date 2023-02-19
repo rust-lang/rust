@@ -15,7 +15,7 @@ LL | type MyPrivate = impl Sized;
 LL |     fn dont_define_this(_private: MyPrivate) {}
    |                                   ^^^^^^^^^
    |                                   |
-   |                                   expected struct `Private`, found opaque type
+   |                                   expected `Private`, found opaque type
    |                                   help: change the parameter type to match the trait: `Private`
    |
 note: type in trait

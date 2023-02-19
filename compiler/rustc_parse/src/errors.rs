@@ -1,8 +1,11 @@
+use std::borrow::Cow;
+
 use rustc_ast::token::Token;
-use rustc_ast::Path;
+use rustc_ast::{Path, Visibility};
 use rustc_errors::{fluent, AddToDiagnostic, Applicability, EmissionGuarantee, IntoDiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
+use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
@@ -337,7 +340,9 @@ pub(crate) struct IfExpressionMissingThenBlock {
     #[primary_span]
     pub if_span: Span,
     #[subdiagnostic]
-    pub sub: IfExpressionMissingThenBlockSub,
+    pub missing_then_block_sub: IfExpressionMissingThenBlockSub,
+    #[subdiagnostic]
+    pub let_else_sub: Option<IfExpressionLetSomeSub>,
 }
 
 #[derive(Subdiagnostic)]
@@ -346,6 +351,13 @@ pub(crate) enum IfExpressionMissingThenBlockSub {
     UnfinishedCondition(#[primary_span] Span),
     #[help(add_then_block)]
     AddThenBlock(#[primary_span] Span),
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(parse_extra_if_in_let_else, applicability = "maybe-incorrect", code = "")]
+pub(crate) struct IfExpressionLetSomeSub {
+    #[primary_span]
+    pub if_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -419,6 +431,18 @@ pub(crate) enum MissingInInForLoopSub {
     InNotOf(#[primary_span] Span),
     #[suggestion(add_in, style = "short", applicability = "maybe-incorrect", code = " in ")]
     AddIn(#[primary_span] Span),
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_missing_expression_in_for_loop)]
+pub(crate) struct MissingExpressionInForLoop {
+    #[primary_span]
+    #[suggestion(
+        code = "/* expression */ ",
+        applicability = "has-placeholders",
+        style = "verbose"
+    )]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -638,6 +662,45 @@ pub(crate) struct MatchArmBodyWithoutBraces {
     pub num_statements: usize,
     #[subdiagnostic]
     pub sub: MatchArmBodyWithoutBracesSugg,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_inclusive_range_extra_equals)]
+#[note]
+pub(crate) struct InclusiveRangeExtraEquals {
+    #[primary_span]
+    #[suggestion(
+        suggestion_remove_eq,
+        style = "short",
+        code = "..=",
+        applicability = "maybe-incorrect"
+    )]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_inclusive_range_match_arrow)]
+pub(crate) struct InclusiveRangeMatchArrow {
+    #[primary_span]
+    pub arrow: Span,
+    #[label]
+    pub span: Span,
+    #[suggestion(style = "verbose", code = " ", applicability = "machine-applicable")]
+    pub after_pat: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_inclusive_range_no_end, code = "E0586")]
+#[note]
+pub(crate) struct InclusiveRangeNoEnd {
+    #[primary_span]
+    #[suggestion(
+        suggestion_open_range,
+        code = "..",
+        applicability = "machine-applicable",
+        style = "short"
+    )]
+    pub span: Span,
 }
 
 #[derive(Subdiagnostic)]
@@ -1278,4 +1341,930 @@ pub(crate) struct WhereClauseBeforeTupleStructBodySugg {
     pub snippet: String,
     #[suggestion_part(code = "")]
     pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_async_fn_in_2015, code = "E0670")]
+pub(crate) struct AsyncFnIn2015 {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub help: HelpUseLatestEdition,
+}
+
+#[derive(Subdiagnostic)]
+#[label(parse_async_block_in_2015)]
+pub(crate) struct AsyncBlockIn2015 {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_self_argument_pointer)]
+pub(crate) struct SelfArgumentPointer {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_unexpected_token_after_dot)]
+pub struct UnexpectedTokenAfterDot<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub actual: Cow<'a, str>,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_visibility_not_followed_by_item)]
+#[help]
+pub(crate) struct VisibilityNotFollowedByItem {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub vis: Visibility,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_default_not_followed_by_item)]
+#[note]
+pub(crate) struct DefaultNotFollowedByItem {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum MissingKeywordForItemDefinition {
+    #[diag(parse_missing_struct_for_struct_definition)]
+    Struct {
+        #[primary_span]
+        #[suggestion(style = "short", applicability = "maybe-incorrect", code = " struct ")]
+        span: Span,
+        ident: Ident,
+    },
+    #[diag(parse_missing_fn_for_function_definition)]
+    Function {
+        #[primary_span]
+        #[suggestion(style = "short", applicability = "maybe-incorrect", code = " fn ")]
+        span: Span,
+        ident: Ident,
+    },
+    #[diag(parse_missing_fn_for_method_definition)]
+    Method {
+        #[primary_span]
+        #[suggestion(style = "short", applicability = "maybe-incorrect", code = " fn ")]
+        span: Span,
+        ident: Ident,
+    },
+    #[diag(parse_ambiguous_missing_keyword_for_item_definition)]
+    Ambiguous {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        subdiag: Option<AmbiguousMissingKwForItemSub>,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum AmbiguousMissingKwForItemSub {
+    #[suggestion(suggestion, applicability = "maybe-incorrect", code = "{snippet}!")]
+    SuggestMacro {
+        #[primary_span]
+        span: Span,
+        snippet: String,
+    },
+    #[help(help)]
+    HelpMacro,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_missing_trait_in_trait_impl)]
+pub(crate) struct MissingTraitInTraitImpl {
+    #[primary_span]
+    #[suggestion(suggestion_add_trait, code = " Trait ", applicability = "has-placeholders")]
+    pub span: Span,
+    #[suggestion(suggestion_remove_for, code = "", applicability = "maybe-incorrect")]
+    pub for_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_missing_for_in_trait_impl)]
+pub(crate) struct MissingForInTraitImpl {
+    #[primary_span]
+    #[suggestion(style = "short", code = " for ", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_expected_trait_in_trait_impl_found_type)]
+pub(crate) struct ExpectedTraitInTraitImplFoundType {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_bounds_not_allowed_on_trait_aliases)]
+pub(crate) struct BoundsNotAllowedOnTraitAliases {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_trait_alias_cannot_be_auto)]
+pub(crate) struct TraitAliasCannotBeAuto {
+    #[primary_span]
+    #[label(parse_trait_alias_cannot_be_auto)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_trait_alias_cannot_be_unsafe)]
+pub(crate) struct TraitAliasCannotBeUnsafe {
+    #[primary_span]
+    #[label(parse_trait_alias_cannot_be_unsafe)]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_associated_static_item_not_allowed)]
+pub(crate) struct AssociatedStaticItemNotAllowed {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_extern_crate_name_with_dashes)]
+pub(crate) struct ExternCrateNameWithDashes {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: ExternCrateNameWithDashesSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+pub(crate) struct ExternCrateNameWithDashesSugg {
+    #[suggestion_part(code = "_")]
+    pub dashes: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_extern_item_cannot_be_const)]
+#[note]
+pub(crate) struct ExternItemCannotBeConst {
+    #[primary_span]
+    pub ident_span: Span,
+    #[suggestion(code = "static ", applicability = "machine-applicable")]
+    pub const_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_const_global_cannot_be_mutable)]
+pub(crate) struct ConstGlobalCannotBeMutable {
+    #[primary_span]
+    #[label]
+    pub ident_span: Span,
+    #[suggestion(code = "static", applicability = "maybe-incorrect")]
+    pub const_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_missing_const_type)]
+pub(crate) struct MissingConstType {
+    #[primary_span]
+    #[suggestion(code = "{colon} <type>", applicability = "has-placeholders")]
+    pub span: Span,
+
+    pub kind: &'static str,
+    pub colon: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_enum_struct_mutually_exclusive)]
+pub(crate) struct EnumStructMutuallyExclusive {
+    #[primary_span]
+    #[suggestion(code = "enum", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum UnexpectedTokenAfterStructName {
+    #[diag(parse_unexpected_token_after_struct_name_found_reserved_identifier)]
+    ReservedIdentifier {
+        #[primary_span]
+        #[label(parse_unexpected_token_after_struct_name)]
+        span: Span,
+        token: Token,
+    },
+    #[diag(parse_unexpected_token_after_struct_name_found_keyword)]
+    Keyword {
+        #[primary_span]
+        #[label(parse_unexpected_token_after_struct_name)]
+        span: Span,
+        token: Token,
+    },
+    #[diag(parse_unexpected_token_after_struct_name_found_reserved_keyword)]
+    ReservedKeyword {
+        #[primary_span]
+        #[label(parse_unexpected_token_after_struct_name)]
+        span: Span,
+        token: Token,
+    },
+    #[diag(parse_unexpected_token_after_struct_name_found_doc_comment)]
+    DocComment {
+        #[primary_span]
+        #[label(parse_unexpected_token_after_struct_name)]
+        span: Span,
+        token: Token,
+    },
+    #[diag(parse_unexpected_token_after_struct_name_found_other)]
+    Other {
+        #[primary_span]
+        #[label(parse_unexpected_token_after_struct_name)]
+        span: Span,
+        token: Token,
+    },
+}
+
+impl UnexpectedTokenAfterStructName {
+    pub fn new(span: Span, token: Token) -> Self {
+        match TokenDescription::from_token(&token) {
+            Some(TokenDescription::ReservedIdentifier) => Self::ReservedIdentifier { span, token },
+            Some(TokenDescription::Keyword) => Self::Keyword { span, token },
+            Some(TokenDescription::ReservedKeyword) => Self::ReservedKeyword { span, token },
+            Some(TokenDescription::DocComment) => Self::DocComment { span, token },
+            None => Self::Other { span, token },
+        }
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_unexpected_self_in_generic_parameters)]
+#[note]
+pub(crate) struct UnexpectedSelfInGenericParameters {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_unexpected_default_value_for_lifetime_in_generic_parameters)]
+pub(crate) struct UnexpectedDefaultValueForLifetimeInGenericParameters {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_multiple_where_clauses)]
+pub(crate) struct MultipleWhereClauses {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub previous: Span,
+    #[suggestion(style = "verbose", code = ",", applicability = "maybe-incorrect")]
+    pub between: Span,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum UnexpectedNonterminal {
+    #[diag(parse_nonterminal_expected_item_keyword)]
+    Item(#[primary_span] Span),
+    #[diag(parse_nonterminal_expected_statement)]
+    Statement(#[primary_span] Span),
+    #[diag(parse_nonterminal_expected_ident)]
+    Ident {
+        #[primary_span]
+        span: Span,
+        token: Token,
+    },
+    #[diag(parse_nonterminal_expected_lifetime)]
+    Lifetime {
+        #[primary_span]
+        span: Span,
+        token: Token,
+    },
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum TopLevelOrPatternNotAllowed {
+    #[diag(parse_or_pattern_not_allowed_in_let_binding)]
+    LetBinding {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        sub: Option<TopLevelOrPatternNotAllowedSugg>,
+    },
+    #[diag(parse_or_pattern_not_allowed_in_fn_parameters)]
+    FunctionParameter {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        sub: Option<TopLevelOrPatternNotAllowedSugg>,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_cannot_be_raw_ident)]
+pub struct CannotBeRawIdent {
+    #[primary_span]
+    pub span: Span,
+    pub ident: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_cr_doc_comment)]
+pub struct CrDocComment {
+    #[primary_span]
+    pub span: Span,
+    pub block: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_no_digits_literal, code = "E0768")]
+pub struct NoDigitsLiteral {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_invalid_digit_literal)]
+pub struct InvalidDigitLiteral {
+    #[primary_span]
+    pub span: Span,
+    pub base: u32,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_empty_exponent_float)]
+pub struct EmptyExponentFloat {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_float_literal_unsupported_base)]
+pub struct FloatLiteralUnsupportedBase {
+    #[primary_span]
+    pub span: Span,
+    pub base: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_unknown_prefix)]
+#[note]
+pub struct UnknownPrefix<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub prefix: &'a str,
+    #[subdiagnostic]
+    pub sugg: Option<UnknownPrefixSugg>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum UnknownPrefixSugg {
+    #[suggestion(suggestion_br, code = "br", applicability = "maybe-incorrect", style = "verbose")]
+    UseBr(#[primary_span] Span),
+    #[suggestion(
+        suggestion_whitespace,
+        code = " ",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    Whitespace(#[primary_span] Span),
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_too_many_hashes)]
+pub struct TooManyHashes {
+    #[primary_span]
+    pub span: Span,
+    pub num: u32,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_unknown_start_of_token)]
+pub struct UnknownTokenStart {
+    #[primary_span]
+    pub span: Span,
+    pub escaped: String,
+    #[subdiagnostic]
+    pub sugg: Option<TokenSubstitution>,
+    #[subdiagnostic]
+    pub null: Option<UnknownTokenNull>,
+    #[subdiagnostic]
+    pub repeat: Option<UnknownTokenRepeat>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum TokenSubstitution {
+    #[suggestion(sugg_quotes, code = "{suggestion}", applicability = "maybe-incorrect")]
+    DirectedQuotes {
+        #[primary_span]
+        span: Span,
+        suggestion: String,
+        ascii_str: &'static str,
+        ascii_name: &'static str,
+    },
+    #[suggestion(sugg_other, code = "{suggestion}", applicability = "maybe-incorrect")]
+    Other {
+        #[primary_span]
+        span: Span,
+        suggestion: String,
+        ch: String,
+        u_name: &'static str,
+        ascii_str: &'static str,
+        ascii_name: &'static str,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[note(note_repeats)]
+pub struct UnknownTokenRepeat {
+    pub repeats: usize,
+}
+
+#[derive(Subdiagnostic)]
+#[help(help_null)]
+pub struct UnknownTokenNull;
+
+#[derive(Diagnostic)]
+pub enum UnescapeError {
+    #[diag(parse_invalid_unicode_escape)]
+    #[help]
+    InvalidUnicodeEscape {
+        #[primary_span]
+        #[label]
+        span: Span,
+        surrogate: bool,
+    },
+    #[diag(parse_escape_only_char)]
+    EscapeOnlyChar {
+        #[primary_span]
+        span: Span,
+        #[suggestion(escape, applicability = "machine-applicable", code = "{escaped_sugg}")]
+        char_span: Span,
+        escaped_sugg: String,
+        escaped_msg: String,
+        byte: bool,
+    },
+    #[diag(parse_bare_cr)]
+    BareCr {
+        #[primary_span]
+        #[suggestion(escape, applicability = "machine-applicable", code = "\\r")]
+        span: Span,
+        double_quotes: bool,
+    },
+    #[diag(parse_bare_cr_in_raw_string)]
+    BareCrRawString(#[primary_span] Span),
+    #[diag(parse_too_short_hex_escape)]
+    TooShortHexEscape(#[primary_span] Span),
+    #[diag(parse_invalid_char_in_escape)]
+    InvalidCharInEscape {
+        #[primary_span]
+        #[label]
+        span: Span,
+        is_hex: bool,
+        ch: String,
+    },
+    #[diag(parse_out_of_range_hex_escape)]
+    OutOfRangeHexEscape(
+        #[primary_span]
+        #[label]
+        Span,
+    ),
+    #[diag(parse_leading_underscore_unicode_escape)]
+    LeadingUnderscoreUnicodeEscape {
+        #[primary_span]
+        #[label(parse_leading_underscore_unicode_escape_label)]
+        span: Span,
+        ch: String,
+    },
+    #[diag(parse_overlong_unicode_escape)]
+    OverlongUnicodeEscape(
+        #[primary_span]
+        #[label]
+        Span,
+    ),
+    #[diag(parse_unclosed_unicode_escape)]
+    UnclosedUnicodeEscape(
+        #[primary_span]
+        #[label]
+        Span,
+        #[suggestion(terminate, code = "}}", applicability = "maybe-incorrect", style = "verbose")]
+        Span,
+    ),
+    #[diag(parse_no_brace_unicode_escape)]
+    NoBraceInUnicodeEscape {
+        #[primary_span]
+        span: Span,
+        #[label]
+        label: Option<Span>,
+        #[subdiagnostic]
+        sub: NoBraceUnicodeSub,
+    },
+    #[diag(parse_unicode_escape_in_byte)]
+    #[help]
+    UnicodeEscapeInByte(
+        #[primary_span]
+        #[label]
+        Span,
+    ),
+    #[diag(parse_empty_unicode_escape)]
+    EmptyUnicodeEscape(
+        #[primary_span]
+        #[label]
+        Span,
+    ),
+    #[diag(parse_zero_chars)]
+    ZeroChars(
+        #[primary_span]
+        #[label]
+        Span,
+    ),
+    #[diag(parse_lone_slash)]
+    LoneSlash(
+        #[primary_span]
+        #[label]
+        Span,
+    ),
+    #[diag(parse_unskipped_whitespace)]
+    UnskippedWhitespace {
+        #[primary_span]
+        span: Span,
+        #[label]
+        char_span: Span,
+        ch: String,
+    },
+    #[diag(parse_multiple_skipped_lines)]
+    MultipleSkippedLinesWarning(
+        #[primary_span]
+        #[label]
+        Span,
+    ),
+    #[diag(parse_more_than_one_char)]
+    MoreThanOneChar {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        note: Option<MoreThanOneCharNote>,
+        #[subdiagnostic]
+        suggestion: MoreThanOneCharSugg,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub enum MoreThanOneCharSugg {
+    #[suggestion(consider_normalized, code = "{normalized}", applicability = "machine-applicable")]
+    NormalizedForm {
+        #[primary_span]
+        span: Span,
+        ch: String,
+        normalized: String,
+    },
+    #[suggestion(remove_non, code = "{ch}", applicability = "maybe-incorrect")]
+    RemoveNonPrinting {
+        #[primary_span]
+        span: Span,
+        ch: String,
+    },
+    #[suggestion(use_double_quotes, code = "{sugg}", applicability = "machine-applicable")]
+    Quotes {
+        #[primary_span]
+        span: Span,
+        is_byte: bool,
+        sugg: String,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub enum MoreThanOneCharNote {
+    #[note(followed_by)]
+    AllCombining {
+        #[primary_span]
+        span: Span,
+        chr: String,
+        len: usize,
+        escaped_marks: String,
+    },
+    #[note(non_printing)]
+    NonPrinting {
+        #[primary_span]
+        span: Span,
+        escaped: String,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub enum NoBraceUnicodeSub {
+    #[suggestion(use_braces, code = "{suggestion}", applicability = "maybe-incorrect")]
+    Suggestion {
+        #[primary_span]
+        span: Span,
+        suggestion: String,
+    },
+    #[help(format_of_unicode)]
+    Help,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum TopLevelOrPatternNotAllowedSugg {
+    #[suggestion(
+        parse_sugg_remove_leading_vert_in_pattern,
+        code = "{pat}",
+        applicability = "machine-applicable"
+    )]
+    RemoveLeadingVert {
+        #[primary_span]
+        span: Span,
+        pat: String,
+    },
+    #[suggestion(
+        parse_sugg_wrap_pattern_in_parens,
+        code = "({pat})",
+        applicability = "machine-applicable"
+    )]
+    WrapInParens {
+        #[primary_span]
+        span: Span,
+        pat: String,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_unexpected_vert_vert_before_function_parameter)]
+#[note(parse_note_pattern_alternatives_use_single_vert)]
+pub(crate) struct UnexpectedVertVertBeforeFunctionParam {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_unexpected_vert_vert_in_pattern)]
+pub(crate) struct UnexpectedVertVertInPattern {
+    #[primary_span]
+    #[suggestion(code = "|", applicability = "machine-applicable")]
+    pub span: Span,
+    #[label(parse_label_while_parsing_or_pattern_here)]
+    pub start: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_trailing_vert_not_allowed)]
+pub(crate) struct TrailingVertNotAllowed {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
+    #[label(parse_label_while_parsing_or_pattern_here)]
+    pub start: Option<Span>,
+    pub token: Token,
+    #[note(parse_note_pattern_alternatives_use_single_vert)]
+    pub note_double_vert: Option<()>,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_dotdotdot_rest_pattern)]
+pub(crate) struct DotDotDotRestPattern {
+    #[primary_span]
+    #[suggestion(style = "short", code = "..", applicability = "machine-applicable")]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_pattern_on_wrong_side_of_at)]
+pub(crate) struct PatternOnWrongSideOfAt {
+    #[primary_span]
+    #[suggestion(code = "{whole_pat}", applicability = "machine-applicable")]
+    pub whole_span: Span,
+    pub whole_pat: String,
+    #[label(label_pattern)]
+    pub pattern: Span,
+    #[label(label_binding)]
+    pub binding: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_expected_binding_left_of_at)]
+#[note]
+pub(crate) struct ExpectedBindingLeftOfAt {
+    #[primary_span]
+    pub whole_span: Span,
+    #[label(label_lhs)]
+    pub lhs: Span,
+    #[label(label_rhs)]
+    pub rhs: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_ambiguous_range_pattern)]
+pub(crate) struct AmbiguousRangePattern {
+    #[primary_span]
+    #[suggestion(code = "({pat})", applicability = "maybe-incorrect")]
+    pub span: Span,
+    pub pat: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_unexpected_lifetime_in_pattern)]
+pub(crate) struct UnexpectedLifetimeInPattern {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
+    pub symbol: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_ref_mut_order_incorrect)]
+pub(crate) struct RefMutOrderIncorrect {
+    #[primary_span]
+    #[suggestion(code = "ref mut", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum InvalidMutInPattern {
+    #[diag(parse_mut_on_nested_ident_pattern)]
+    #[note(parse_note_mut_pattern_usage)]
+    NestedIdent {
+        #[primary_span]
+        #[suggestion(code = "{pat}", applicability = "machine-applicable")]
+        span: Span,
+        pat: String,
+    },
+    #[diag(parse_mut_on_non_ident_pattern)]
+    #[note(parse_note_mut_pattern_usage)]
+    NonIdent {
+        #[primary_span]
+        #[suggestion(code = "{pat}", applicability = "machine-applicable")]
+        span: Span,
+        pat: String,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_repeated_mut_in_pattern)]
+pub(crate) struct RepeatedMutInPattern {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_dot_dot_dot_range_to_pattern_not_allowed)]
+pub(crate) struct DotDotDotRangeToPatternNotAllowed {
+    #[primary_span]
+    #[suggestion(style = "short", code = "..=", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_enum_pattern_instead_of_identifier)]
+pub(crate) struct EnumPatternInsteadOfIdentifier {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_dot_dot_dot_for_remaining_fields)]
+pub(crate) struct DotDotDotForRemainingFields {
+    #[primary_span]
+    #[suggestion(code = "..", style = "verbose", applicability = "machine-applicable")]
+    pub span: Span,
+    pub token_str: Cow<'static, str>,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_expected_comma_after_pattern_field)]
+pub(crate) struct ExpectedCommaAfterPatternField {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_return_types_use_thin_arrow)]
+pub(crate) struct ReturnTypesUseThinArrow {
+    #[primary_span]
+    #[suggestion(style = "short", code = "->", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_need_plus_after_trait_object_lifetime)]
+pub(crate) struct NeedPlusAfterTraitObjectLifetime {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_expected_mut_or_const_in_raw_pointer_type)]
+pub(crate) struct ExpectedMutOrConstInRawPointerType {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code("mut ", "const "), applicability = "has-placeholders")]
+    pub after_asterisk: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_lifetime_after_mut)]
+pub(crate) struct LifetimeAfterMut {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = "&{snippet} mut", applicability = "maybe-incorrect")]
+    pub suggest_lifetime: Option<Span>,
+    pub snippet: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_dyn_after_mut)]
+pub(crate) struct DynAfterMut {
+    #[primary_span]
+    #[suggestion(code = "&mut dyn", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_fn_pointer_cannot_be_const)]
+pub(crate) struct FnPointerCannotBeConst {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    #[label]
+    pub qualifier: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_fn_pointer_cannot_be_async)]
+pub(crate) struct FnPointerCannotBeAsync {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    #[label]
+    pub qualifier: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_nested_c_variadic_type, code = "E0743")]
+pub(crate) struct NestedCVariadicType {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_invalid_dyn_keyword)]
+#[help]
+pub(crate) struct InvalidDynKeyword {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_negative_bounds_not_supported)]
+pub(crate) struct NegativeBoundsNotSupported {
+    #[primary_span]
+    pub negative_bounds: Vec<Span>,
+    #[label]
+    pub last_span: Span,
+    #[subdiagnostic]
+    pub sub: Option<NegativeBoundsNotSupportedSugg>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    suggestion,
+    style = "tool-only",
+    code = "{fixed}",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct NegativeBoundsNotSupportedSugg {
+    #[primary_span]
+    pub bound_list: Span,
+    pub num_bounds: usize,
+    pub fixed: String,
+}
+
+#[derive(Subdiagnostic)]
+pub enum HelpUseLatestEdition {
+    #[help(parse_help_set_edition_cargo)]
+    #[note(parse_note_edition_guide)]
+    Cargo { edition: Edition },
+    #[help(parse_help_set_edition_standalone)]
+    #[note(parse_note_edition_guide)]
+    Standalone { edition: Edition },
+}
+
+impl HelpUseLatestEdition {
+    pub fn new() -> Self {
+        let edition = LATEST_STABLE_EDITION;
+        if std::env::var_os("CARGO").is_some() {
+            Self::Cargo { edition }
+        } else {
+            Self::Standalone { edition }
+        }
+    }
 }

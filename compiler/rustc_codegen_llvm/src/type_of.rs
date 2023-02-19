@@ -1,13 +1,12 @@
 use crate::common::*;
 use crate::context::TypeLowering;
-use crate::llvm_util::get_version;
 use crate::type_::Type;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Ty, TypeVisitable};
-use rustc_target::abi::{Abi, AddressSpace, Align, FieldsShape};
+use rustc_target::abi::{Abi, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F32, F64};
 use rustc_target::abi::{PointeeInfo, Scalar, Size, TyAbiInterface, Variants};
 use smallvec::{smallvec, SmallVec};
@@ -43,10 +42,8 @@ fn uncached_llvm_type<'a, 'tcx>(
         // in problematically distinct types due to HRTB and subtyping (see #47638).
         // ty::Dynamic(..) |
         ty::Adt(..) | ty::Closure(..) | ty::Foreign(..) | ty::Generator(..) | ty::Str
-            // For performance reasons we use names only when emitting LLVM IR. Unless we are on
-            // LLVM < 14, where the use of unnamed types resulted in various issues, e.g., #76213,
-            // #79564, and #79246.
-            if get_version() < (14, 0, 0) || !cx.sess().fewer_names() =>
+            // For performance reasons we use names only when emitting LLVM IR.
+            if !cx.sess().fewer_names() =>
         {
             let mut name = with_no_visible_paths!(with_no_trimmed_paths!(layout.ty.to_string()));
             if let (&ty::Adt(def, _), &Variants::Single { index }) =
@@ -157,7 +154,7 @@ fn struct_llfields<'a, 'tcx>(
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}", offset, layout.size);
     }
-    let field_remapping = if padding_used { Some(field_remapping) } else { None };
+    let field_remapping = padding_used.then_some(field_remapping);
     (result, packed, field_remapping)
 }
 
@@ -312,14 +309,13 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             Int(i, _) => cx.type_from_integer(i),
             F32 => cx.type_f32(),
             F64 => cx.type_f64(),
-            Pointer => {
+            Pointer(address_space) => {
                 // If we know the alignment, pick something better than i8.
-                let (pointee, address_space) =
-                    if let Some(pointee) = self.pointee_info_at(cx, offset) {
-                        (cx.type_pointee_for_align(pointee.align), pointee.address_space)
-                    } else {
-                        (cx.type_i8(), AddressSpace::DATA)
-                    };
+                let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {
+                    cx.type_pointee_for_align(pointee.align)
+                } else {
+                    cx.type_i8()
+                };
                 cx.type_ptr_to_ext(pointee, address_space)
             }
         }

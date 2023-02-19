@@ -1,0 +1,56 @@
+DefId(0:3 ~ thir_flat[45a6]::main):
+Thir {
+    arms: [],
+    blocks: [
+        Block {
+            targeted_by_break: false,
+            region_scope: Node(1),
+            opt_destruction_scope: None,
+            span: $DIR/thir-flat.rs:4:15: 4:17 (#0),
+            stmts: [],
+            expr: None,
+            safety_mode: Safe,
+        },
+    ],
+    exprs: [
+        Expr {
+            ty: (),
+            temp_lifetime: Some(
+                Node(2),
+            ),
+            span: $DIR/thir-flat.rs:4:15: 4:17 (#0),
+            kind: Block {
+                block: b0,
+            },
+        },
+        Expr {
+            ty: (),
+            temp_lifetime: Some(
+                Node(2),
+            ),
+            span: $DIR/thir-flat.rs:4:15: 4:17 (#0),
+            kind: Scope {
+                region_scope: Node(2),
+                lint_level: Explicit(
+                    HirId(DefId(0:3 ~ thir_flat[45a6]::main).2),
+                ),
+                value: e0,
+            },
+        },
+        Expr {
+            ty: (),
+            temp_lifetime: Some(
+                Node(2),
+            ),
+            span: $DIR/thir-flat.rs:4:15: 4:17 (#0),
+            kind: Scope {
+                region_scope: Destruction(2),
+                lint_level: Inherited,
+                value: e1,
+            },
+        },
+    ],
+    stmts: [],
+    params: [],
+}
+

@@ -15,7 +15,7 @@ LL | impl<T> Foo for Box<T> {
    | ---------------------- parent `impl` is here
 ...
 LL |     type Ty = Vec<()>;
-   |     ^^^^^^^^^^^^^^^^^^ cannot specialize default item `Ty`
+   |     ^^^^^^^ cannot specialize default item `Ty`
    |
    = note: to specialize, `Ty` in the parent `impl` must be marked `default`
 
@@ -26,7 +26,7 @@ LL | impl<T> Foo for Box<T> {
    | ---------------------- parent `impl` is here
 ...
 LL |     const CONST: u8 = 42;
-   |     ^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `CONST`
+   |     ^^^^^^^^^^^^^^^ cannot specialize default item `CONST`
    |
    = note: to specialize, `CONST` in the parent `impl` must be marked `default`
 
@@ -37,7 +37,7 @@ LL | impl<T> Foo for Box<T> {
    | ---------------------- parent `impl` is here
 ...
 LL |     fn foo(&self) -> bool { true }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `foo`
+   |     ^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `foo`
    |
    = note: to specialize, `foo` in the parent `impl` must be marked `default`
 
@@ -48,7 +48,7 @@ LL | impl<T> Foo for Vec<T> {}
    | ---------------------- parent `impl` is here
 ...
 LL |     type Ty = Vec<()>;
-   |     ^^^^^^^^^^^^^^^^^^ cannot specialize default item `Ty`
+   |     ^^^^^^^ cannot specialize default item `Ty`
    |
    = note: to specialize, `Ty` in the parent `impl` must be marked `default`
 
@@ -59,7 +59,7 @@ LL | impl<T> Foo for Vec<T> {}
    | ---------------------- parent `impl` is here
 ...
 LL |     const CONST: u8 = 42;
-   |     ^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `CONST`
+   |     ^^^^^^^^^^^^^^^ cannot specialize default item `CONST`
    |
    = note: to specialize, `CONST` in the parent `impl` must be marked `default`
 
@@ -70,7 +70,7 @@ LL | impl<T> Foo for Vec<T> {}
    | ---------------------- parent `impl` is here
 ...
 LL |     fn foo(&self) -> bool { true }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `foo`
+   |     ^^^^^^^^^^^^^^^^^^^^^ cannot specialize default item `foo`
    |
    = note: to specialize, `foo` in the parent `impl` must be marked `default`
 

@@ -243,18 +243,6 @@ install!((self, builder, _config),
             );
         }
     };
-    Analysis, alias = "analysis", Self::should_build(_config), only_hosts: false, {
-        // `expect` should be safe, only None with host != build, but this
-        // only uses the `build` compiler
-        let tarball = builder.ensure(dist::Analysis {
-            // Find the actual compiler (handling the full bootstrap option) which
-            // produced the save-analysis data because that data isn't copied
-            // through the sysroot uplifting.
-            compiler: builder.compiler_for(builder.top_stage, builder.config.build, self.target),
-            target: self.target
-        }).expect("missing analysis");
-        install_sh(builder, "analysis", self.compiler.stage, Some(self.target), &tarball);
-    };
     Rustc, path = "compiler/rustc", true, only_hosts: true, {
         let tarball = builder.ensure(dist::Rustc {
             compiler: builder.compiler(builder.top_stage, self.target),

@@ -5,7 +5,7 @@ LL | fn clone_thing(nc: &NotClone) -> NotClone {
    |                                  -------- expected `NotClone` because of return type
 LL |
 LL |     nc.clone()
-   |     ^^^^^^^^^^ expected struct `NotClone`, found `&NotClone`
+   |     ^^^^^^^^^^ expected `NotClone`, found `&NotClone`
    |
 note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
   --> $DIR/explain_clone_autoref.rs:9:5

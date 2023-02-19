@@ -13,7 +13,7 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable,
+    self, ir::TypeFolder, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeSuperFoldable, TypeVisitable,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -335,7 +335,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 format!("cannot divide `{lhs_ty}` by `{rhs_ty}`")
                             }
                             hir::BinOpKind::Rem => {
-                                format!("cannot mod `{lhs_ty}` by `{rhs_ty}`")
+                                format!(
+                                    "cannot calculate the remainder of `{lhs_ty}` divided by `{rhs_ty}`"
+                                )
                             }
                             hir::BinOpKind::BitAnd => {
                                 format!("no implementation for `{lhs_ty} & {rhs_ty}`")
@@ -488,9 +490,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             if let Some(output_def_id) = output_def_id
                                                 && let Some(trait_def_id) = trait_def_id
                                                 && self.tcx.parent(output_def_id) == trait_def_id
-                                                && output_ty.is_suggestable(self.tcx, false)
+                                                && let Some(output_ty) = output_ty.make_suggestable(self.tcx, false)
                                             {
-                                                Some(("Output", *output_ty))
+                                                Some(("Output", output_ty))
                                             } else {
                                                 None
                                             }
@@ -961,8 +963,8 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
 
 struct TypeParamEraser<'a, 'tcx>(&'a FnCtxt<'a, 'tcx>, Span);
 
-impl<'tcx> TypeFolder<'tcx> for TypeParamEraser<'_, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TypeParamEraser<'_, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
         self.0.tcx
     }
 

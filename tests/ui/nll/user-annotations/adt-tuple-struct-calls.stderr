@@ -1,6 +1,9 @@
 error[E0597]: `c` does not live long enough
   --> $DIR/adt-tuple-struct-calls.rs:27:7
    |
+LL |     let c = 66;
+   |         - binding `c` declared here
+LL |     let f = SomeStruct::<&'static u32>;
 LL |     f(&c);
    |     --^^-
    |     | |
@@ -14,7 +17,9 @@ error[E0597]: `c` does not live long enough
    |
 LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
    |                                   -- lifetime `'a` defined here
-...
+LL |     let c = 66;
+   |         - binding `c` declared here
+LL |     let f = SomeStruct::<&'a u32>;
 LL |     f(&c);
    |     --^^-
    |     | |

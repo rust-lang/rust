@@ -21,15 +21,20 @@ jobs:
         cargo fmt --check
         rustfmt --check build_system/mod.rs
 
+
   build:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+
+    defaults:
+      run:
+        shell: bash
 
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-20.04 # FIXME switch to ubuntu-22.04 once #1303 is fixed
+          - os: ubuntu-latest
             env:
               TARGET_TRIPLE: x86_64-unknown-linux-gnu
           - os: macos-latest
@@ -46,36 +51,31 @@ jobs:
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: s390x-unknown-linux-gnu
+          - os: windows-latest
+            env:
+              TARGET_TRIPLE: x86_64-pc-windows-msvc
+          - os: windows-latest
+            env:
+              TARGET_TRIPLE: x86_64-pc-windows-gnu
 
     steps:
     - uses: actions/checkout@v3
-
-    - name: Cache cargo installed crates
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/bin
-        key: ${{ runner.os }}-cargo-installed-crates
-
-    - name: Cache cargo registry and index
-      uses: actions/cache@v3
-      with:
-        path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-        key: ${{ runner.os }}-cargo-registry-and-index-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache cargo target dir
       uses: actions/cache@v3
       with:
         path: build/cg_clif
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+
+    - name: Set MinGW as the default toolchain
+      if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
+      run: rustup set default-host x86_64-pc-windows-gnu
 
     - name: Install MinGW toolchain and wine
       if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc-mingw-w64-x86-64 wine-stable
-        rustup target add x86_64-pc-windows-gnu
 
     - name: Install AArch64 toolchain and qemu
       if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'aarch64-unknown-linux-gnu'
@@ -88,6 +88,13 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc-s390x-linux-gnu qemu-user
+
+    - name: Use sparse cargo registry
+      run: |
+        cat >> ~/.cargo/config.toml <<EOF
+        [unstable]
+        sparse-registry = true
+        EOF
 
     - name: Prepare dependencies
       run: ./y.rs prepare
@@ -104,69 +111,36 @@ jobs:
     - name: Test
       env:
         TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
-      run: |
-        # Enable backtraces for easier debugging
-        export RUST_BACKTRACE=1
+      run: ./y.rs test
 
-        # Reduce amount of benchmark runs as they are slow
-        export COMPILE_RUNS=2
-        export RUN_RUNS=2
 
-        # Enable extra checks
-        export CG_CLIF_ENABLE_VERIFIER=1
-
-        ./y.rs test
-
-    - name: Package prebuilt cg_clif
-      run: tar cvfJ cg_clif.tar.xz dist
-
-    - name: Upload prebuilt cg_clif
-      if: matrix.env.TARGET_TRIPLE != 'x86_64-pc-windows-gnu'
-      uses: actions/upload-artifact@v2
-      with:
-        name: cg_clif-${{ matrix.env.TARGET_TRIPLE }}
-        path: cg_clif.tar.xz
-
-    - name: Upload prebuilt cg_clif (cross compile)
-      if: matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
-      uses: actions/upload-artifact@v3
-      with:
-        name: cg_clif-${{ runner.os }}-cross-x86_64-mingw
-        path: cg_clif.tar.xz
-
-  windows:
+  abi_cafe:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
 
+    defaults:
+      run:
+        shell: bash
+
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
-          # Native Windows build with MSVC
+          - os: ubuntu-latest
+            env:
+              TARGET_TRIPLE: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            env:
+              TARGET_TRIPLE: x86_64-apple-darwin
           - os: windows-latest
             env:
               TARGET_TRIPLE: x86_64-pc-windows-msvc
-          # cross-compile from Windows to Windows MinGW
           - os: windows-latest
             env:
               TARGET_TRIPLE: x86_64-pc-windows-gnu
 
     steps:
     - uses: actions/checkout@v3
-
-    - name: Cache cargo installed crates
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/bin
-        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-installed-crates
-
-    - name: Cache cargo registry and index
-      uses: actions/cache@v3
-      with:
-        path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-registry-and-index-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache cargo target dir
       uses: actions/cache@v3
@@ -178,50 +152,146 @@ jobs:
       if: matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
 
-    - name: Prepare dependencies
+    - name: Use sparse cargo registry
       run: |
-        git config --global core.autocrlf false
-        rustc y.rs -o y.exe -g
-        ./y.exe prepare
+        cat >> ~/.cargo/config.toml <<EOF
+        [unstable]
+        sparse-registry = true
+        EOF
 
-    - name: Build without unstable features
-      env:
-        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
-      # This is the config rust-lang/rust uses for builds
-      run: ./y.rs build --no-unstable-features
+    - name: Prepare dependencies
+      run: ./y.rs prepare
 
     - name: Build
       run: ./y.rs build --sysroot none
 
-    - name: Test
+    - name: Test abi-cafe
+      env:
+        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
+      run: ./y.rs abi-cafe
+
+
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Cache cargo target dir
+      uses: actions/cache@v3
+      with:
+        path: build/cg_clif
+        key: ${{ runner.os }}-x86_64-unknown-linux-gnu-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+
+    - name: Cache cargo bin dir
+      uses: actions/cache@v3
+      with:
+        path: ~/.cargo/bin
+        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-bin-dir-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+
+    - name: Use sparse cargo registry
       run: |
-        # Enable backtraces for easier debugging
-        $Env:RUST_BACKTRACE=1
+        cat >> ~/.cargo/config.toml <<EOF
+        [unstable]
+        sparse-registry = true
+        EOF
 
-        # Reduce amount of benchmark runs as they are slow
-        $Env:COMPILE_RUNS=2
-        $Env:RUN_RUNS=2
+    - name: Install hyperfine
+      run: cargo install hyperfine || true
 
-        # Enable extra checks
-        $Env:CG_CLIF_ENABLE_VERIFIER=1
+    - name: Prepare dependencies
+      run: ./y.rs prepare
 
-        # WIP Disable some tests
+    - name: Build
+      run: CI_OPT=1 ./y.rs build --sysroot none
 
-        # This fails due to some weird argument handling by hyperfine, not an actual regression
-        # more of a build system issue
-        (Get-Content config.txt) -replace '(bench.simple-raytracer)', '# $1' |  Out-File config.txt
+    - name: Benchmark
+      run: CI_OPT=1 ./y.rs bench
 
-        # This fails with a different output than expected
-        (Get-Content config.txt) -replace '(test.regex-shootout-regex-dna)', '# $1' |  Out-File config.txt
 
-        ./y.exe test
+  dist:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # FIXME update at some point in the future once most distros use a newer glibc
+          - os: ubuntu-20.04
+            env:
+              TARGET_TRIPLE: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            env:
+              TARGET_TRIPLE: x86_64-apple-darwin
+          # cross-compile from Linux to Windows using mingw
+          - os: ubuntu-latest
+            env:
+              TARGET_TRIPLE: x86_64-pc-windows-gnu
+          - os: windows-latest
+            env:
+              TARGET_TRIPLE: x86_64-pc-windows-msvc
+          - os: windows-latest
+            env:
+              TARGET_TRIPLE: x86_64-pc-windows-gnu
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Cache cargo target dir
+      uses: actions/cache@v3
+      with:
+        path: build/cg_clif
+        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-dist-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
+
+    - name: Set MinGW as the default toolchain
+      if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
+      run: rustup set default-host x86_64-pc-windows-gnu
+
+    - name: Install MinGW toolchain and wine
+      if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-mingw-w64-x86-64 wine-stable
+
+    - name: Use sparse cargo registry
+      run: |
+        cat >> ~/.cargo/config.toml <<EOF
+        [unstable]
+        sparse-registry = true
+        EOF
+
+    - name: Prepare dependencies
+      run: ./y.rs prepare
+
+    - name: Build backend
+      run: CI_OPT=1 ./y.rs build --sysroot none
+
+    - name: Build sysroot
+      run: CI_OPT=1 ./y.rs build
 
     - name: Package prebuilt cg_clif
-      # don't use compression as xzip isn't supported by tar on windows and bzip2 hangs
-      run: tar cvf cg_clif.tar dist
+      run: tar cvfJ cg_clif.tar.xz dist
 
     - name: Upload prebuilt cg_clif
+      if: matrix.os == 'windows-latest' || matrix.env.TARGET_TRIPLE != 'x86_64-pc-windows-gnu'
       uses: actions/upload-artifact@v3
       with:
         name: cg_clif-${{ matrix.env.TARGET_TRIPLE }}
-        path: cg_clif.tar
+        path: cg_clif.tar.xz
+
+    - name: Upload prebuilt cg_clif (cross compile)
+      if: matrix.os != 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
+      uses: actions/upload-artifact@v3
+      with:
+        name: cg_clif-${{ runner.os }}-cross-x86_64-mingw
+        path: cg_clif.tar.xz

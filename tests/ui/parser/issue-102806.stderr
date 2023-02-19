@@ -32,7 +32,12 @@ error: expected field pattern, found `...`
   --> $DIR/issue-102806.rs:21:22
    |
 LL |     let V3 { z: val, ... } = v;
-   |                      ^^^ help: to omit remaining fields, use one fewer `.`: `..`
+   |                      ^^^
+   |
+help: to omit remaining fields, use `..`
+   |
+LL |     let V3 { z: val, .. } = v;
+   |                      ~~
 
 error[E0063]: missing fields `x` and `y` in initializer of `V3`
   --> $DIR/issue-102806.rs:17:13

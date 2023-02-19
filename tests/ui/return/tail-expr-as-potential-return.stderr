@@ -3,7 +3,7 @@ error[E0308]: mismatched types
    |
 LL | /     if x {
 LL | |         Err(42)
-   | |         ^^^^^^^ expected `()`, found enum `Result`
+   | |         ^^^^^^^ expected `()`, found `Result<_, {integer}>`
 LL | |                 //| HELP you might have meant to return this value
 LL | |     }
    | |_____- expected this to be `()`
@@ -35,7 +35,7 @@ error[E0308]: mismatched types
    |
 LL | /     if x {
 LL | |         Err(42)
-   | |         ^^^^^^^ expected `()`, found enum `Result`
+   | |         ^^^^^^^ expected `()`, found `Result<_, {integer}>`
 LL | |                 //| HELP you might have meant to return this value
 LL | |     }
    | |_____- expected this to be `()`

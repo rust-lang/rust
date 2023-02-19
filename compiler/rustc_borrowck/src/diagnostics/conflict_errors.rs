@@ -766,7 +766,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let copy_did = infcx.tcx.require_lang_item(LangItem::Copy, Some(span));
         let cause = ObligationCause::new(
             span,
-            self.mir_hir_id(),
+            self.mir_def_id(),
             rustc_infer::traits::ObligationCauseCode::MiscObligation,
         );
         let errors = rustc_trait_selection::traits::fully_solve_bound(
@@ -803,6 +803,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 predicates
                     .iter()
                     .map(|(param, constraint)| (param.name.as_str(), &**constraint, None)),
+                None,
             );
         }
     }
@@ -1185,11 +1186,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return None;
             };
             debug!("checking call args for uses of inner_param: {:?}", args);
-            if args.contains(&Operand::Move(inner_param)) {
-                Some((loc, term))
-            } else {
-                None
-            }
+            args.contains(&Operand::Move(inner_param)).then_some((loc, term))
         }) else {
             debug!("no uses of inner_param found as a by-move call arg");
             return;
@@ -1736,7 +1733,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 &self.local_names,
                 &mut err,
                 "",
-                None,
+                Some(borrow_span),
                 None,
             );
         }
@@ -2595,11 +2592,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if is_closure {
                 None
             } else {
-                let ty = self.infcx.tcx.type_of(self.mir_def_id());
+                let ty = self.infcx.tcx.type_of(self.mir_def_id()).subst_identity();
                 match ty.kind() {
                     ty::FnDef(_, _) | ty::FnPtr(_) => self.annotate_fn_sig(
                         self.mir_def_id(),
-                        self.infcx.tcx.fn_sig(self.mir_def_id()),
+                        self.infcx.tcx.fn_sig(self.mir_def_id()).subst_identity(),
                     ),
                     _ => None,
                 }
@@ -2645,6 +2642,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             operands,
                         ) = rvalue
                         {
+                            let def_id = def_id.expect_local();
                             for operand in operands {
                                 let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) = operand else {
                                     continue;
@@ -2667,7 +2665,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 // into a place then we should annotate the closure in
                                 // case it ends up being assigned into the return place.
                                 annotated_closure =
-                                    self.annotate_fn_sig(*def_id, substs.as_closure().sig());
+                                    self.annotate_fn_sig(def_id, substs.as_closure().sig());
                                 debug!(
                                     "annotate_argument_and_return_for_borrow: \
                                      annotated_closure={:?} assigned_from_local={:?} \

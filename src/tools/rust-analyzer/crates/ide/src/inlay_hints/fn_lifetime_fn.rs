@@ -10,7 +10,7 @@ use syntax::{
     SyntaxToken,
 };
 
-use crate::{InlayHint, InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints};
+use crate::{InlayHint, InlayHintsConfig, InlayKind, LifetimeElisionHints};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -23,9 +23,8 @@ pub(super) fn hints(
 
     let mk_lt_hint = |t: SyntaxToken, label: String| InlayHint {
         range: t.text_range(),
-        kind: InlayKind::LifetimeHint,
+        kind: InlayKind::Lifetime,
         label: label.into(),
-        tooltip: Some(InlayTooltip::String("Elided lifetime".into())),
     };
 
     let param_list = func.param_list()?;
@@ -183,21 +182,19 @@ pub(super) fn hints(
             let is_empty = gpl.generic_params().next().is_none();
             acc.push(InlayHint {
                 range: angle_tok.text_range(),
-                kind: InlayKind::LifetimeHint,
+                kind: InlayKind::Lifetime,
                 label: format!(
                     "{}{}",
                     allocated_lifetimes.iter().format(", "),
                     if is_empty { "" } else { ", " }
                 )
                 .into(),
-                tooltip: Some(InlayTooltip::String("Elided lifetimes".into())),
             });
         }
         (None, allocated_lifetimes) => acc.push(InlayHint {
             range: func.name()?.syntax().text_range(),
-            kind: InlayKind::GenericParamListHint,
+            kind: InlayKind::GenericParamList,
             label: format!("<{}>", allocated_lifetimes.iter().format(", "),).into(),
-            tooltip: Some(InlayTooltip::String("Elided lifetimes".into())),
         }),
     }
     Some(())

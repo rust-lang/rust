@@ -1,5 +1,5 @@
 // rustfmt-normalize_comments: true
-// rustfmt-fn_args_layout: Vertical
+// rustfmt-fn_params_layout: Vertical
 // rustfmt-brace_style: AlwaysNextLine
 
 // Case with only one variable.

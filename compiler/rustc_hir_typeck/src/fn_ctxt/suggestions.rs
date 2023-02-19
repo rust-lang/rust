@@ -3,7 +3,7 @@ use super::FnCtxt;
 use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
-use rustc_errors::{Applicability, Diagnostic, MultiSpan};
+use rustc_errors::{fluent, Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
@@ -13,6 +13,7 @@ use rustc_hir::{
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, suggest_constraining_type_params, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty,
     TypeVisitable,
@@ -31,7 +32,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results
             .borrow()
             .liberated_fn_sigs()
-            .get(self.tcx.hir().parent_id(self.body_id))
+            .get(self.tcx.hir().local_def_id_to_hir_id(self.body_id))
             .copied()
     }
 
@@ -164,7 +165,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
-        self.err_ctxt().extract_callable_info(self.body_id, self.param_env, ty)
+        let body_hir_id = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
+        self.err_ctxt().extract_callable_info(body_hir_id, self.param_env, ty)
     }
 
     pub fn suggest_two_fn_call(
@@ -413,11 +415,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::Adt(adt, _) = peeled.kind()
                     && Some(adt.did()) == self.tcx.lang_items().string()
                 {
+                    let sugg = if ref_cnt == 0 {
+                        ".as_deref()"
+                    } else {
+                        ".map(|x| x.as_str())"
+                    };
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_hi(),
-                        "try converting the passed type into a `&str`",
-                        format!(".map(|x| &*{}x)", "*".repeat(ref_cnt)),
-                        Applicability::MaybeIncorrect,
+                        fluent::hir_typeck_convert_to_str,
+                        sugg,
+                        Applicability::MachineApplicable,
                     );
                     return true;
                 }
@@ -681,7 +688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return true;
             }
             &hir::FnRetTy::DefaultReturn(span) if expected.is_unit() => {
-                if found.is_suggestable(self.tcx, false) {
+                if let Some(found) = found.make_suggestable(self.tcx, false) {
                     err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: found.to_string() });
                     return true;
                 } else if let ty::Closure(_, substs) = found.kind()
@@ -698,10 +705,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             hir::FnRetTy::Return(ty) => {
+                let span = ty.span;
+
+                if let hir::TyKind::OpaqueDef(item_id, ..) = ty.kind
+                && let hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::OpaqueTy(op_ty),
+                    ..
+                }) = self.tcx.hir().get(item_id.hir_id())
+                && let hir::OpaqueTy {
+                    bounds: [bound], ..
+                } = op_ty
+                && let hir::GenericBound::LangItemTrait(
+                    hir::LangItem::Future, _, _, generic_args) = bound
+                && let hir::GenericArgs { bindings: [ty_binding], .. } = generic_args
+                && let hir::TypeBinding { kind, .. } = ty_binding
+                && let hir::TypeBindingKind::Equality { term } = kind
+                && let hir::Term::Ty(term_ty) = term {
+                    // Check if async function's return type was omitted.
+                    // Don't emit suggestions if the found type is `impl Future<...>`.
+                    debug!("suggest_missing_return_type: found = {:?}", found);
+                    if found.is_suggestable(self.tcx, false) {
+                        if term_ty.span.is_empty() {
+                            err.subdiagnostic(AddReturnTypeSuggestion::Add { span, found: found.to_string() });
+                            return true;
+                        } else {
+                            err.subdiagnostic(ExpectedReturnTypeLabel::Other { span, expected });
+                        }
+                    }
+                }
+
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
-                let span = ty.span;
                 let ty = self.astconv().ast_ty_to_ty(ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
@@ -980,7 +1015,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let expr_inner_ty = substs.type_at(0);
             let expected_inner_ty = expected_substs.type_at(0);
             if let ty::Ref(_, ty, hir::Mutability::Not) = expr_inner_ty.kind()
-                && self.can_eq(self.param_env, *ty, expected_inner_ty).is_ok()
+                && self.can_eq(self.param_env, *ty, expected_inner_ty)
             {
                 let def_path = self.tcx.def_path_str(adt_def.did());
                 if self.type_is_copy_modulo_regions(self.param_env, *ty, expr.span) {
@@ -1019,7 +1054,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(result_did) = self.tcx.get_diagnostic_item(sym::Result)
             && adt_def.did() == result_did
             // Check that the error types are equal
-            && self.can_eq(self.param_env, substs.type_at(1), expected_substs.type_at(1)).is_ok()
+            && self.can_eq(self.param_env, substs.type_at(1), expected_substs.type_at(1))
         {
             return suggest_copied_or_cloned();
         } else if let Some(option_did) = self.tcx.get_diagnostic_item(sym::Option)
@@ -1238,6 +1273,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Suggest providing `std::ptr::null()` or `std::ptr::null_mut()` if they
+    /// pass in a literal 0 to an raw pointer.
+    #[instrument(skip(self, err))]
+    pub(crate) fn suggest_null_ptr_for_literal_zero_given_to_ptr_arg(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        // Expected type needs to be a raw pointer.
+        let ty::RawPtr(ty::TypeAndMut { mutbl, .. }) = expected_ty.kind() else {
+            return false;
+        };
+
+        // Provided expression needs to be a literal `0`.
+        let ExprKind::Lit(Spanned {
+            node: rustc_ast::LitKind::Int(0, _),
+            span,
+        }) = expr.kind else {
+            return false;
+        };
+
+        // We need to find a null pointer symbol to suggest
+        let null_sym = match mutbl {
+            hir::Mutability::Not => sym::ptr_null,
+            hir::Mutability::Mut => sym::ptr_null_mut,
+        };
+        let Some(null_did) = self.tcx.get_diagnostic_item(null_sym) else {
+            return false;
+        };
+        let null_path_str = with_no_trimmed_paths!(self.tcx.def_path_str(null_did));
+
+        // We have satisfied all requirements to provide a suggestion. Emit it.
+        err.span_suggestion(
+            span,
+            format!("if you meant to create a null pointer, use `{null_path_str}()`"),
+            null_path_str + "()",
+            Applicability::MachineApplicable,
+        );
+
+        true
+    }
+
     pub(crate) fn suggest_associated_const(
         &self,
         err: &mut Diagnostic,
@@ -1258,16 +1336,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::Path { segments: [segment], .. },
             ))
             | hir::ExprKind::Path(QPath::TypeRelative(ty, segment)) => {
-                let self_ty = self.astconv().ast_ty_to_ty(ty);
-                if let Ok(pick) = self.probe_for_name(
-                    Mode::Path,
-                    Ident::new(capitalized_name, segment.ident.span),
-                    Some(expected_ty),
-                    IsSuggestion(true),
-                    self_ty,
-                    expr.hir_id,
-                    ProbeScope::TraitsInScope,
-                ) {
+                if let Some(self_ty) = self.typeck_results.borrow().node_type_opt(ty.hir_id)
+                    && let Ok(pick) = self.probe_for_name(
+                        Mode::Path,
+                        Ident::new(capitalized_name, segment.ident.span),
+                        Some(expected_ty),
+                        IsSuggestion(true),
+                        self_ty,
+                        expr.hir_id,
+                        ProbeScope::TraitsInScope,
+                    )
+                {
                     (pick.item, segment)
                 } else {
                     return false;
@@ -1299,7 +1378,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Same item
             return false;
         }
-        let item_ty = self.tcx.type_of(item.def_id);
+        let item_ty = self.tcx.type_of(item.def_id).subst_identity();
         // FIXME(compiler-errors): This check is *so* rudimentary
         if item_ty.needs_subst() {
             return false;
@@ -1379,6 +1458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     generics,
                     diag,
                     vec![(param.name.as_str(), "Clone", Some(clone_trait_did))].into_iter(),
+                    None,
                 );
             } else {
                 self.suggest_derive(diag, &[(trait_ref.to_predicate(self.tcx), None, None)]);
