@@ -207,7 +207,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for Ty<'tcx> {
             })
         } else {
             let tcx = decoder.interner();
-            tcx.mk_ty(rustc_type_ir::TyKind::decode(decoder))
+            tcx.mk_ty_from_kind(rustc_type_ir::TyKind::decode(decoder))
         }
     }
 }
@@ -263,7 +263,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for mir::Place<'tcx> {
 
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Region<'tcx> {
     fn decode(decoder: &mut D) -> Self {
-        decoder.interner().mk_region(Decodable::decode(decoder))
+        decoder.interner().mk_region_from_kind(Decodable::decode(decoder))
     }
 }
 
