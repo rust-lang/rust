@@ -284,6 +284,8 @@ impl StepDescription {
         }
     }
 
+    /// This might run the builder. Returns false if no targets can be determined indicating that
+    /// builder was not run
     fn maybe_run(&self, builder: &Builder<'_>, pathsets: Vec<PathSet>) -> bool {
         if pathsets.iter().any(|set| self.is_excluded(builder, set)) {
             return true;
