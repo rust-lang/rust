@@ -1,4 +1,4 @@
-#![feature(no_core, lang_items, never_type, linkage, extern_types, thread_local, box_syntax)]
+#![feature(no_core, lang_items, never_type, linkage, extern_types, thread_local, box_syntax, repr_simd)]
 #![no_core]
 #![allow(dead_code, non_camel_case_types)]
 
@@ -339,7 +339,15 @@ fn main() {
 
         assert_eq!(unsafe { intrinsics::size_of_val(x) }, 0);
         assert_eq!(unsafe { intrinsics::min_align_of_val(x) }, 1);
-}
+    }
+
+    #[repr(simd)]
+    struct V([f64; 2]);
+
+    unsafe {
+        let f = V([0.0, 1.0]);
+        let _a = f.0[0];
+    }
 }
 
 #[cfg(all(not(jit), target_arch = "x86_64", any(target_os = "linux", target_os = "darwin")))]
