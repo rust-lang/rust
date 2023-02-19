@@ -459,7 +459,7 @@ impl<'a> Parser<'a> {
                 // Maybe the user misspelled `macro_rules` (issue #91227)
                 if self.token.is_ident()
                     && path.segments.len() == 1
-                    && edit_distance("macro_rules", &path.segments[0].ident.to_string(), 3)
+                    && edit_distance("macro_rules", &path.segments[0].ident.to_string(), 2)
                         .is_some()
                 {
                     err.span_suggestion(
