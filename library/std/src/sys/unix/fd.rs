@@ -284,6 +284,10 @@ impl<'a> Read for &'a FileDesc {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
     }
+
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf(cursor)
+    }
 }
 
 impl AsInner<OwnedFd> for FileDesc {
