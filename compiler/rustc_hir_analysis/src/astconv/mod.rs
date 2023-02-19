@@ -2284,8 +2284,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if let Some((assoc_item, def_scope, impl_substs)) = applicable_candidates.pop() {
             self.check_assoc_ty(assoc_item, name, def_scope, block, span);
 
-            // FIXME(inherent_associated_types): To fully *confirm* the *probed* candidate,
-            // we still need to register region obligations for regionck to prove/disprove.
+            // FIXME(inherent_associated_types): To fully *confirm* the *probed* candidate, we still
+            // need to relate the Self-type with fresh item substs & register region obligations for
+            // regionck to prove/disprove.
 
             let item_substs =
                 self.create_substs_for_associated_item(span, assoc_item, segment, impl_substs);

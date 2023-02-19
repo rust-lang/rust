@@ -291,6 +291,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         fulfillment_errors: Vec<FulfillmentError<'tcx>>,
         span: Span,
     ) -> ErrorGuaranteed {
+        // FIXME(fmease): This was copied in parts from an old version of `rustc_hir_typeck::method::suggest`.
+        // Either
+        // * update this code by applying changes similar to #106702 or by taking a
+        //   Vec<(DefId, (DefId, DefId), Option<Vec<FulfillmentError<'tcx>>>)> or
+        // * deduplicate this code across the two crates.
+
         let tcx = self.tcx();
 
         let adt_did = self_ty.ty_adt_def().map(|def| def.did());
@@ -338,7 +344,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let mut bound_spans = Vec::new();
 
-        // FIXME(fmease): Copied from `rustc_hir_typeck::method::probe`. Deduplicate.
         let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
             let msg = format!(
                 "doesn't satisfy `{}`",
@@ -367,7 +372,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         };
 
-        // FIXME(fmease): Copied from `rustc_hir_typeck::method::probe`. Deduplicate.
         let format_pred = |pred: ty::Predicate<'tcx>| {
             let bound_predicate = pred.kind();
             match bound_predicate.skip_binder() {
