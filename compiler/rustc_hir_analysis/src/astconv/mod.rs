@@ -2810,7 +2810,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             var: ty::BoundVar::from_u32(index),
                             kind: ty::BoundTyKind::Param(def_id, name),
                         };
-                        tcx.mk_ty(ty::Bound(debruijn, br))
+                        tcx.mk_bound(debruijn, br)
                     }
                     Some(rbv::ResolvedArg::EarlyBound(_)) => {
                         let def_id = def_id.expect_local();
