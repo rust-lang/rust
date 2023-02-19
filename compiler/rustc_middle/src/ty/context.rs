@@ -720,7 +720,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
     #[track_caller]
     pub fn ty_error_with_guaranteed(self, reported: ErrorGuaranteed) -> Ty<'tcx> {
-        self.mk_ty(Error(reported))
+        self.mk_ty_from_kind(Error(reported))
     }
 
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
@@ -734,7 +734,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[track_caller]
     pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {
         let reported = self.sess.delay_span_bug(span, msg);
-        self.mk_ty(Error(reported))
+        self.mk_ty_from_kind(Error(reported))
     }
 
     /// Constructs a `RegionKind::ReError` lifetime.
@@ -1686,7 +1686,7 @@ impl<'tcx> TyCtxt<'tcx> {
     // Avoid this in favour of more specific `mk_*` methods, where possible.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
-    pub fn mk_ty(self, st: TyKind<'tcx>) -> Ty<'tcx> {
+    pub fn mk_ty_from_kind(self, st: TyKind<'tcx>) -> Ty<'tcx> {
         self.interners.intern_ty(
             st,
             self.sess,
@@ -1751,12 +1751,12 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_adt(self, def: AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         // Take a copy of substs so that we own the vectors inside.
-        self.mk_ty(Adt(def, substs))
+        self.mk_ty_from_kind(Adt(def, substs))
     }
 
     #[inline]
     pub fn mk_foreign(self, def_id: DefId) -> Ty<'tcx> {
-        self.mk_ty(Foreign(def_id))
+        self.mk_ty_from_kind(Foreign(def_id))
     }
 
     fn mk_generic_adt(self, wrapper_def_id: DefId, ty_param: Ty<'tcx>) -> Ty<'tcx> {
@@ -1773,7 +1773,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }
             });
-        self.mk_ty(Adt(adt_def, substs))
+        self.mk_ty_from_kind(Adt(adt_def, substs))
     }
 
     #[inline]
@@ -1802,12 +1802,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_ptr(self, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(RawPtr(tm))
+        self.mk_ty_from_kind(RawPtr(tm))
     }
 
     #[inline]
     pub fn mk_ref(self, r: Region<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(Ref(r, tm.ty, tm.mutbl))
+        self.mk_ty_from_kind(Ref(r, tm.ty, tm.mutbl))
     }
 
     #[inline]
@@ -1832,22 +1832,26 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
-        self.mk_ty(Array(ty, ty::Const::from_target_usize(self, n)))
+        self.mk_ty_from_kind(Array(ty, ty::Const::from_target_usize(self, n)))
     }
 
     #[inline]
     pub fn mk_array_with_const_len(self, ty: Ty<'tcx>, ct: Const<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(Array(ty, ct))
+        self.mk_ty_from_kind(Array(ty, ct))
     }
 
     #[inline]
     pub fn mk_slice(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(Slice(ty))
+        self.mk_ty_from_kind(Slice(ty))
     }
 
     #[inline]
     pub fn mk_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
-        if ts.is_empty() { self.types.unit } else { self.mk_ty(Tuple(self.mk_type_list(&ts))) }
+        if ts.is_empty() {
+            self.types.unit
+        } else {
+            self.mk_ty_from_kind(Tuple(self.mk_type_list(&ts)))
+        }
     }
 
     pub fn mk_tup_from_iter<I, T>(self, iter: I) -> T::Output
@@ -1875,7 +1879,7 @@ impl<'tcx> TyCtxt<'tcx> {
         substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
     ) -> Ty<'tcx> {
         let substs = self.check_and_mk_substs(def_id, substs);
-        self.mk_ty(FnDef(def_id, substs))
+        self.mk_ty_from_kind(FnDef(def_id, substs))
     }
 
     #[inline(always)]
@@ -1900,7 +1904,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_fn_ptr(self, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(FnPtr(fty))
+        self.mk_ty_from_kind(FnPtr(fty))
     }
 
     #[inline]
@@ -1910,7 +1914,7 @@ impl<'tcx> TyCtxt<'tcx> {
         reg: ty::Region<'tcx>,
         repr: DynKind,
     ) -> Ty<'tcx> {
-        self.mk_ty(Dynamic(obj, reg, repr))
+        self.mk_ty_from_kind(Dynamic(obj, reg, repr))
     }
 
     #[inline]
@@ -1924,7 +1928,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_closure(self, closure_id: DefId, closure_substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(Closure(closure_id, closure_substs))
+        self.mk_ty_from_kind(Closure(closure_id, closure_substs))
     }
 
     #[inline]
@@ -1934,12 +1938,12 @@ impl<'tcx> TyCtxt<'tcx> {
         generator_substs: SubstsRef<'tcx>,
         movability: hir::Movability,
     ) -> Ty<'tcx> {
-        self.mk_ty(Generator(id, generator_substs, movability))
+        self.mk_ty_from_kind(Generator(id, generator_substs, movability))
     }
 
     #[inline]
     pub fn mk_generator_witness(self, types: ty::Binder<'tcx, &'tcx List<Ty<'tcx>>>) -> Ty<'tcx> {
-        self.mk_ty(GeneratorWitness(types))
+        self.mk_ty_from_kind(GeneratorWitness(types))
     }
 
     /// Creates a `&mut Context<'_>` [`Ty`] with erased lifetimes.
@@ -1953,7 +1957,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_generator_witness_mir(self, id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(GeneratorWitnessMIR(id, substs))
+        self.mk_ty_from_kind(GeneratorWitnessMIR(id, substs))
     }
 
     #[inline]
@@ -1964,17 +1968,21 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_ty_var(self, v: TyVid) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
-        self.types.ty_vars.get(v.as_usize()).copied().unwrap_or_else(|| self.mk_ty(Infer(TyVar(v))))
+        self.types
+            .ty_vars
+            .get(v.as_usize())
+            .copied()
+            .unwrap_or_else(|| self.mk_ty_from_kind(Infer(TyVar(v))))
     }
 
     #[inline]
     pub fn mk_int_var(self, v: IntVid) -> Ty<'tcx> {
-        self.mk_ty(Infer(IntVar(v)))
+        self.mk_ty_from_kind(Infer(IntVar(v)))
     }
 
     #[inline]
     pub fn mk_float_var(self, v: FloatVid) -> Ty<'tcx> {
-        self.mk_ty(Infer(FloatVar(v)))
+        self.mk_ty_from_kind(Infer(FloatVar(v)))
     }
 
     #[inline]
@@ -1984,7 +1992,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .fresh_tys
             .get(n as usize)
             .copied()
-            .unwrap_or_else(|| self.mk_ty(Infer(ty::FreshTy(n))))
+            .unwrap_or_else(|| self.mk_ty_from_kind(Infer(ty::FreshTy(n))))
     }
 
     #[inline]
@@ -1994,7 +2002,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .fresh_int_tys
             .get(n as usize)
             .copied()
-            .unwrap_or_else(|| self.mk_ty(Infer(ty::FreshIntTy(n))))
+            .unwrap_or_else(|| self.mk_ty_from_kind(Infer(ty::FreshIntTy(n))))
     }
 
     #[inline]
@@ -2004,12 +2012,12 @@ impl<'tcx> TyCtxt<'tcx> {
             .fresh_float_tys
             .get(n as usize)
             .copied()
-            .unwrap_or_else(|| self.mk_ty(Infer(ty::FreshFloatTy(n))))
+            .unwrap_or_else(|| self.mk_ty_from_kind(Infer(ty::FreshFloatTy(n))))
     }
 
     #[inline]
     pub fn mk_ty_param(self, index: u32, name: Symbol) -> Ty<'tcx> {
-        self.mk_ty(Param(ParamTy { index, name }))
+        self.mk_ty_from_kind(Param(ParamTy { index, name }))
     }
 
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
@@ -2031,17 +2039,17 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_bound(self, index: ty::DebruijnIndex, bound_ty: ty::BoundTy) -> Ty<'tcx> {
-        self.mk_ty(Bound(index, bound_ty))
+        self.mk_ty_from_kind(Bound(index, bound_ty))
     }
 
     #[inline]
     pub fn mk_placeholder(self, placeholder: ty::PlaceholderType) -> Ty<'tcx> {
-        self.mk_ty(Placeholder(placeholder))
+        self.mk_ty_from_kind(Placeholder(placeholder))
     }
 
     #[inline]
     pub fn mk_alias(self, kind: ty::AliasKind, alias_ty: ty::AliasTy<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(Alias(kind, alias_ty))
+        self.mk_ty_from_kind(Alias(kind, alias_ty))
     }
 
     #[inline]
@@ -2094,7 +2102,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     // Avoid this in favour of more specific `mk_re_*` methods, where possible,
     // to avoid the cost of the `match`.
-    pub fn mk_region(self, kind: ty::RegionKind<'tcx>) -> Region<'tcx> {
+    pub fn mk_region_from_kind(self, kind: ty::RegionKind<'tcx>) -> Region<'tcx> {
         match kind {
             ty::ReEarlyBound(region) => self.mk_re_early_bound(region),
             ty::ReLateBound(debruijn, region) => self.mk_re_late_bound(debruijn, region),

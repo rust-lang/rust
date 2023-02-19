@@ -487,7 +487,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             | ty::Foreign(..) => return Ok(self),
         };
 
-        Ok(if *self.kind() == kind { self } else { folder.interner().mk_ty(kind) })
+        Ok(if *self.kind() == kind { self } else { folder.interner().mk_ty_from_kind(kind) })
     }
 }
 

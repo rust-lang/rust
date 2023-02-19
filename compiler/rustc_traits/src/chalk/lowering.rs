@@ -490,7 +490,7 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
             TyKind::InferenceVar(_, _) => unimplemented!(),
             TyKind::Dyn(_) => unimplemented!(),
         };
-        interner.tcx.mk_ty(kind)
+        interner.tcx.mk_ty_from_kind(kind)
     }
 }
 
