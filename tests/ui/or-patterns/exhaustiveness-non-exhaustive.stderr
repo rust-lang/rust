@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `(2_u8..=u8::MAX, _)` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/exhaustiveness-non-exhaustive.rs:5:11
    |
 LL |     match (0u8, 0u8) {
@@ -11,7 +11,7 @@ LL ~         (0 | 1, 2 | 3) => {}
 LL +         (2_u8..=u8::MAX, _) => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `((4_u8..=u8::MAX))` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/exhaustiveness-non-exhaustive.rs:9:11
    |
 LL |     match ((0u8,),) {
@@ -24,7 +24,7 @@ LL ~         ((0 | 1,) | (2 | 3,),) => {}
 LL +         ((4_u8..=u8::MAX)) => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `(Some(2_u8..=u8::MAX))` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/exhaustiveness-non-exhaustive.rs:13:11
    |
 LL |     match (Some(0u8),) {

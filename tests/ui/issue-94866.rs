@@ -8,7 +8,7 @@ enum Enum { A, B }
 
 fn main() {
     match Enum::A {
-    //~^ ERROR non-exhaustive patterns
+    //~^ ERROR match is non-exhaustive
     Enum::A => m!()
     }
 }

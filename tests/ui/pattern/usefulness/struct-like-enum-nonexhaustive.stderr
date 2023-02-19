@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `A::B { x: Some(_) }` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/struct-like-enum-nonexhaustive.rs:8:11
    |
 LL |     match x {

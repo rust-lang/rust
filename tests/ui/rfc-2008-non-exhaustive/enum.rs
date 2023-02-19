@@ -14,14 +14,14 @@ fn main() {
     let enum_unit = NonExhaustiveEnum::Unit;
 
     match enum_unit {
-        //~^ ERROR non-exhaustive patterns: `_` not covered [E0004]
+        //~^ ERROR match is non-exhaustive [E0004]
         NonExhaustiveEnum::Unit => "first",
         NonExhaustiveEnum::Tuple(_) => "second",
         NonExhaustiveEnum::Struct { .. } => "third"
     };
 
     match enum_unit {};
-    //~^ ERROR non-exhaustive patterns: `_` not covered [E0004]
+    //~^ ERROR match is non-exhaustive [E0004]
 
     // Everything below this is expected to compile successfully.
 

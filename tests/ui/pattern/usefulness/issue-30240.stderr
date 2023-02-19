@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `&_` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-30240.rs:2:11
    |
 LL |     match "world" {
@@ -11,7 +11,7 @@ LL ~         "hello" => {}
 LL +         &_ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&_` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-30240.rs:6:11
    |
 LL |     match "world" {

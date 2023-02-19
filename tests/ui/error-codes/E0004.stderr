@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `Terminator::HastaLaVistaBaby` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/E0004.rs:9:11
    |
 LL |     match x {

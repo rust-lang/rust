@@ -12,8 +12,8 @@ macro_rules! m {
 }
 
 fn floats() {
-    m!(0f32, f32::NEG_INFINITY..); //~ ERROR non-exhaustive patterns: `_` not covered
-    m!(0f32, ..f32::INFINITY); //~ ERROR non-exhaustive patterns: `_` not covered
+    m!(0f32, f32::NEG_INFINITY..); //~ ERROR match is non-exhaustive
+    m!(0f32, ..f32::INFINITY); //~ ERROR match is non-exhaustive
 }
 
 fn khar() {
@@ -22,12 +22,12 @@ fn khar() {
     const VAL: char = 'a';
     const VAL_1: char = 'b';
     const VAL_2: char = 'c';
-    m!('a', ..core::char::MAX); //~ ERROR non-exhaustive patterns
-    m!('a', ..ALMOST_MAX); //~ ERROR non-exhaustive patterns
-    m!('a', ALMOST_MIN..); //~ ERROR non-exhaustive patterns
-    m!('a', ..=ALMOST_MAX); //~ ERROR non-exhaustive patterns
-    m!('a', ..=VAL | VAL_2..); //~ ERROR non-exhaustive patterns
-    m!('a', ..VAL_1 | VAL_2..); //~ ERROR non-exhaustive patterns
+    m!('a', ..core::char::MAX); //~ ERROR match is non-exhaustive
+    m!('a', ..ALMOST_MAX); //~ ERROR match is non-exhaustive
+    m!('a', ALMOST_MIN..); //~ ERROR match is non-exhaustive
+    m!('a', ..=ALMOST_MAX); //~ ERROR match is non-exhaustive
+    m!('a', ..=VAL | VAL_2..); //~ ERROR match is non-exhaustive
+    m!('a', ..VAL_1 | VAL_2..); //~ ERROR match is non-exhaustive
 }
 
 mod unsigned {
@@ -37,12 +37,12 @@ mod unsigned {
         const VAL: u8 = 42;
         const VAL_1: u8 = VAL + 1;
         const VAL_2: u8 = VAL + 2;
-        m!(0, ..u8::MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ALMOST_MIN..); //~ ERROR non-exhaustive patterns
-        m!(0, ..=ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..=VAL | VAL_2..); //~ ERROR non-exhaustive patterns
-        m!(0, ..VAL_1 | VAL_2..); //~ ERROR non-exhaustive patterns
+        m!(0, ..u8::MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ALMOST_MIN..); //~ ERROR match is non-exhaustive
+        m!(0, ..=ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..=VAL | VAL_2..); //~ ERROR match is non-exhaustive
+        m!(0, ..VAL_1 | VAL_2..); //~ ERROR match is non-exhaustive
     }
     fn u16() {
         const ALMOST_MAX: u16 = u16::MAX - 1;
@@ -50,12 +50,12 @@ mod unsigned {
         const VAL: u16 = 42;
         const VAL_1: u16 = VAL + 1;
         const VAL_2: u16 = VAL + 2;
-        m!(0, ..u16::MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ALMOST_MIN..); //~ ERROR non-exhaustive patterns
-        m!(0, ..=ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..=VAL | VAL_2..); //~ ERROR non-exhaustive patterns
-        m!(0, ..VAL_1 | VAL_2..); //~ ERROR non-exhaustive patterns
+        m!(0, ..u16::MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ALMOST_MIN..); //~ ERROR match is non-exhaustive
+        m!(0, ..=ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..=VAL | VAL_2..); //~ ERROR match is non-exhaustive
+        m!(0, ..VAL_1 | VAL_2..); //~ ERROR match is non-exhaustive
     }
     fn u32() {
         const ALMOST_MAX: u32 = u32::MAX - 1;
@@ -63,12 +63,12 @@ mod unsigned {
         const VAL: u32 = 42;
         const VAL_1: u32 = VAL + 1;
         const VAL_2: u32 = VAL + 2;
-        m!(0, ..u32::MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ALMOST_MIN..); //~ ERROR non-exhaustive patterns
-        m!(0, ..=ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..=VAL | VAL_2..); //~ ERROR non-exhaustive patterns
-        m!(0, ..VAL_1 | VAL_2..); //~ ERROR non-exhaustive patterns
+        m!(0, ..u32::MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ALMOST_MIN..); //~ ERROR match is non-exhaustive
+        m!(0, ..=ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..=VAL | VAL_2..); //~ ERROR match is non-exhaustive
+        m!(0, ..VAL_1 | VAL_2..); //~ ERROR match is non-exhaustive
     }
     fn u64() {
         const ALMOST_MAX: u64 = u64::MAX - 1;
@@ -76,12 +76,12 @@ mod unsigned {
         const VAL: u64 = 42;
         const VAL_1: u64 = VAL + 1;
         const VAL_2: u64 = VAL + 2;
-        m!(0, ..u64::MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ALMOST_MIN..); //~ ERROR non-exhaustive patterns
-        m!(0, ..=ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..=VAL | VAL_2..); //~ ERROR non-exhaustive patterns
-        m!(0, ..VAL_1 | VAL_2..); //~ ERROR non-exhaustive patterns
+        m!(0, ..u64::MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ALMOST_MIN..); //~ ERROR match is non-exhaustive
+        m!(0, ..=ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..=VAL | VAL_2..); //~ ERROR match is non-exhaustive
+        m!(0, ..VAL_1 | VAL_2..); //~ ERROR match is non-exhaustive
     }
     fn u128() {
         const ALMOST_MAX: u128 = u128::MAX - 1;
@@ -89,12 +89,12 @@ mod unsigned {
         const VAL: u128 = 42;
         const VAL_1: u128 = VAL + 1;
         const VAL_2: u128 = VAL + 2;
-        m!(0, ..u128::MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ALMOST_MIN..); //~ ERROR non-exhaustive patterns
-        m!(0, ..=ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..=VAL | VAL_2..); //~ ERROR non-exhaustive patterns
-        m!(0, ..VAL_1 | VAL_2..); //~ ERROR non-exhaustive patterns
+        m!(0, ..u128::MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ALMOST_MIN..); //~ ERROR match is non-exhaustive
+        m!(0, ..=ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..=VAL | VAL_2..); //~ ERROR match is non-exhaustive
+        m!(0, ..VAL_1 | VAL_2..); //~ ERROR match is non-exhaustive
     }
 }
 
@@ -105,12 +105,12 @@ mod signed {
         const VAL: i8 = 42;
         const VAL_1: i8 = VAL + 1;
         const VAL_2: i8 = VAL + 2;
-        m!(0, ..i8::MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ALMOST_MIN..); //~ ERROR non-exhaustive patterns
-        m!(0, ..=ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..=VAL | VAL_2..); //~ ERROR non-exhaustive patterns
-        m!(0, ..VAL_1 | VAL_2..); //~ ERROR non-exhaustive patterns
+        m!(0, ..i8::MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ALMOST_MIN..); //~ ERROR match is non-exhaustive
+        m!(0, ..=ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..=VAL | VAL_2..); //~ ERROR match is non-exhaustive
+        m!(0, ..VAL_1 | VAL_2..); //~ ERROR match is non-exhaustive
     }
     fn i16() {
         const ALMOST_MAX: i16 = i16::MAX - 1;
@@ -118,12 +118,12 @@ mod signed {
         const VAL: i16 = 42;
         const VAL_1: i16 = VAL + 1;
         const VAL_2: i16 = VAL + 2;
-        m!(0, ..i16::MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ALMOST_MIN..); //~ ERROR non-exhaustive patterns
-        m!(0, ..=ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..=VAL | VAL_2..); //~ ERROR non-exhaustive patterns
-        m!(0, ..VAL_1 | VAL_2..); //~ ERROR non-exhaustive patterns
+        m!(0, ..i16::MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ALMOST_MIN..); //~ ERROR match is non-exhaustive
+        m!(0, ..=ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..=VAL | VAL_2..); //~ ERROR match is non-exhaustive
+        m!(0, ..VAL_1 | VAL_2..); //~ ERROR match is non-exhaustive
     }
     fn i32() {
         const ALMOST_MAX: i32 = i32::MAX - 1;
@@ -131,12 +131,12 @@ mod signed {
         const VAL: i32 = 42;
         const VAL_1: i32 = VAL + 1;
         const VAL_2: i32 = VAL + 2;
-        m!(0, ..i32::MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ALMOST_MIN..); //~ ERROR non-exhaustive patterns
-        m!(0, ..=ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..=VAL | VAL_2..); //~ ERROR non-exhaustive patterns
-        m!(0, ..VAL_1 | VAL_2..); //~ ERROR non-exhaustive patterns
+        m!(0, ..i32::MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ALMOST_MIN..); //~ ERROR match is non-exhaustive
+        m!(0, ..=ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..=VAL | VAL_2..); //~ ERROR match is non-exhaustive
+        m!(0, ..VAL_1 | VAL_2..); //~ ERROR match is non-exhaustive
     }
     fn i64() {
         const ALMOST_MAX: i64 = i64::MAX - 1;
@@ -144,12 +144,12 @@ mod signed {
         const VAL: i64 = 42;
         const VAL_1: i64 = VAL + 1;
         const VAL_2: i64 = VAL + 2;
-        m!(0, ..i64::MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ALMOST_MIN..); //~ ERROR non-exhaustive patterns
-        m!(0, ..=ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..=VAL | VAL_2..); //~ ERROR non-exhaustive patterns
-        m!(0, ..VAL_1 | VAL_2..); //~ ERROR non-exhaustive patterns
+        m!(0, ..i64::MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ALMOST_MIN..); //~ ERROR match is non-exhaustive
+        m!(0, ..=ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..=VAL | VAL_2..); //~ ERROR match is non-exhaustive
+        m!(0, ..VAL_1 | VAL_2..); //~ ERROR match is non-exhaustive
     }
     fn i128() {
         const ALMOST_MAX: i128 = i128::MAX - 1;
@@ -157,11 +157,11 @@ mod signed {
         const VAL: i128 = 42;
         const VAL_1: i128 = VAL + 1;
         const VAL_2: i128 = VAL + 2;
-        m!(0, ..i128::MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ALMOST_MIN..); //~ ERROR non-exhaustive patterns
-        m!(0, ..=ALMOST_MAX); //~ ERROR non-exhaustive patterns
-        m!(0, ..=VAL | VAL_2..); //~ ERROR non-exhaustive patterns
-        m!(0, ..VAL_1 | VAL_2..); //~ ERROR non-exhaustive patterns
+        m!(0, ..i128::MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ALMOST_MIN..); //~ ERROR match is non-exhaustive
+        m!(0, ..=ALMOST_MAX); //~ ERROR match is non-exhaustive
+        m!(0, ..=VAL | VAL_2..); //~ ERROR match is non-exhaustive
+        m!(0, ..VAL_1 | VAL_2..); //~ ERROR match is non-exhaustive
     }
 }

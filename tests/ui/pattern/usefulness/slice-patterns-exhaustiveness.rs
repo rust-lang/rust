@@ -6,15 +6,15 @@ fn main() {
     let s10: &[bool; 10] = &[false; 10];
 
     match s2 {
-        //~^ ERROR `&[false, _]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         [true, .., true] => {}
     }
     match s3 {
-        //~^ ERROR `&[false, ..]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         [true, .., true] => {}
     }
     match s10 {
-        //~^ ERROR `&[false, ..]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         [true, .., true] => {}
     }
 
@@ -23,58 +23,58 @@ fn main() {
         [.., false] => {}
     }
     match s2 {
-        //~^ ERROR `&[false, true]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         [true, ..] => {}
         [.., false] => {}
     }
     match s3 {
-        //~^ ERROR `&[false, .., true]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         [true, ..] => {}
         [.., false] => {}
     }
     match s {
-        //~^ ERROR `&[false, .., true]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         [] => {}
         [true, ..] => {}
         [.., false] => {}
     }
 
     match s {
-        //~^ ERROR `&[_, ..]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         [] => {}
     }
     match s {
-        //~^ ERROR `&[_, _, ..]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         [] => {}
         [_] => {}
     }
     match s {
-        //~^ ERROR `&[false, ..]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         [] => {}
         [true, ..] => {}
     }
     match s {
-        //~^ ERROR `&[false, _, ..]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         [] => {}
         [_] => {}
         [true, ..] => {}
     }
     match s {
-        //~^ ERROR `&[_, .., false]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         [] => {}
         [_] => {}
         [.., true] => {}
     }
 
     match s {
-        //~^ ERROR `&[_, _, .., true]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         [] => {}
         [_] => {}
         [_, _] => {}
         [.., false] => {}
     }
     match s {
-        //~^ ERROR `&[true, _, .., _]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         [] => {}
         [_] => {}
         [_, _] => {}
@@ -83,30 +83,30 @@ fn main() {
 
     const CONST: &[bool] = &[true];
     match s {
-        //~^ ERROR `&[]` and `&[_, _, ..]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         &[true] => {}
     }
     match s {
-        //~^ ERROR `&[]` and `&[_, _, ..]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         CONST => {}
     }
     match s {
-        //~^ ERROR `&[]` and `&[_, _, ..]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         CONST => {}
         &[false] => {}
     }
     match s {
-        //~^ ERROR `&[]` and `&[_, _, ..]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         &[false] => {}
         CONST => {}
     }
     match s {
-        //~^ ERROR `&[_, _, ..]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         &[] => {}
         CONST => {}
     }
     match s {
-        //~^ ERROR `&[false]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         &[] => {}
         CONST => {}
         &[_, _, ..] => {}
@@ -119,7 +119,7 @@ fn main() {
     }
     const CONST1: &[bool; 1] = &[true];
     match s1 {
-        //~^ ERROR `&[false]` not covered
+        //~^ ERROR match is non-exhaustive [E0004]
         CONST1 => {}
     }
     match s1 {

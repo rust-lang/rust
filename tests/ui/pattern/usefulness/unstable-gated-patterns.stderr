@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `UnstableEnum::Unstable` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/unstable-gated-patterns.rs:10:11
    |
 LL |     match UnstableEnum::Stable {

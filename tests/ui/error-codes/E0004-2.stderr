@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `None` and `Some(_)` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/E0004-2.rs:4:11
    |
 LL |     match x { }

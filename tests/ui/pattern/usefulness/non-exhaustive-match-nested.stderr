@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `(Some(&[]), Err(_))` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/non-exhaustive-match-nested.rs:5:11
    |
 LL |     match (l1, l2) {
@@ -11,7 +11,7 @@ LL ~         (None, Ok(&[_, _, ..])) => "None, Ok(at least two elements)",
 LL +         (Some(&[]), Err(_)) => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `T::A(U::C)` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/non-exhaustive-match-nested.rs:15:11
    |
 LL |     match x {

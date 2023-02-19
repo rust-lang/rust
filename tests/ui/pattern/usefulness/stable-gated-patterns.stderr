@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `UnstableEnum::Stable2` and `_` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/stable-gated-patterns.rs:8:11
    |
 LL |     match UnstableEnum::Stable {
@@ -19,7 +19,7 @@ LL ~         UnstableEnum::Stable => {}
 LL +         UnstableEnum::Stable2 | _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/stable-gated-patterns.rs:13:11
    |
 LL |     match UnstableEnum::Stable {

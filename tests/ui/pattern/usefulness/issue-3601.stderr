@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `box _` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-3601.rs:30:44
    |
 LL |         box NodeKind::Element(ed) => match ed.kind {

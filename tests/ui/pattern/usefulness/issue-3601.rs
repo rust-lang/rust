@@ -27,7 +27,7 @@ fn main() {
 
     // n.b. span could be better
     match n.kind {
-        box NodeKind::Element(ed) => match ed.kind { //~ ERROR non-exhaustive patterns
+        box NodeKind::Element(ed) => match ed.kind { //~ ERROR match is non-exhaustive
             box ElementKind::HTMLImageElement(ref d) if d.image.is_some() => { true }
         },
     };

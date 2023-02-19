@@ -36,7 +36,7 @@ LL +         _ => todo!(),
 LL ~     }
    |
 
-error[E0004]: non-exhaustive patterns: `UninhabitedVariants::Tuple(_)` and `UninhabitedVariants::Struct { .. }` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/match_same_crate.rs:38:11
    |
 LL |     match x {}

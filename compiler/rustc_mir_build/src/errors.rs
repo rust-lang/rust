@@ -352,7 +352,7 @@ pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
     pub cx: &'m MatchCheckCtxt<'p, 'tcx>,
     pub expr_span: Span,
     pub span: Span,
-    pub ty: Ty<'tcx>,
+    pub scrut_ty: Ty<'tcx>,
 }
 
 impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
@@ -363,8 +363,8 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
             error_code!(E0004),
         );
 
-        let peeled_ty = self.ty.peel_refs();
-        diag.set_arg("ty", self.ty);
+        let peeled_ty = self.scrut_ty.peel_refs();
+        diag.set_arg("scrut_ty", self.scrut_ty);
         diag.set_arg("peeled_ty", peeled_ty);
 
         if let ty::Adt(def, _) = peeled_ty.kind() {
@@ -384,7 +384,7 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
             diag.span_note(span, fluent::mir_build_def_note);
         }
 
-        let is_variant_list_non_exhaustive = match self.ty.kind() {
+        let is_variant_list_non_exhaustive = match self.scrut_ty.kind() {
             ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local() => {
                 true
             }
@@ -397,7 +397,7 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
             diag.note(fluent::mir_build_type_note);
         }
 
-        if let ty::Ref(_, sub_ty, _) = self.ty.kind() {
+        if let ty::Ref(_, sub_ty, _) = self.scrut_ty.kind() {
             if !sub_ty.is_inhabited_from(self.cx.tcx, self.cx.module, self.cx.param_env) {
                 diag.note(fluent::mir_build_reference_note);
             }
@@ -760,7 +760,7 @@ impl<'tcx> Uncovered<'tcx> {
     pub fn new<'p>(
         span: Span,
         cx: &MatchCheckCtxt<'p, 'tcx>,
-        witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
+        witnesses: &[DeconstructedPat<'p, 'tcx>],
     ) -> Self {
         let witness_1 = witnesses.get(0).unwrap().to_pat(cx);
         Self {
@@ -906,4 +906,10 @@ pub enum RustcBoxAttrReason {
     NotBoxNew,
     #[note(mir_build_missing_box)]
     MissingBox,
+#[diag(mir_build_non_exhaustive_pattern, code = "E0004")]
+pub(crate) struct NonExhaustivePatterns<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub uncovered: Uncovered<'tcx>,
 }

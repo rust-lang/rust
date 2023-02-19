@@ -6,7 +6,7 @@ enum Foo {
 
 fn main() {
     match Foo::A(true) {
-        //~^ ERROR non-exhaustive patterns: `Foo::A(false)`, `Foo::B(false)` and `Foo::C(false)` not covered
+        //~^ ERROR match is non-exhaustive
         Foo::A(true) => {}
         Foo::B(true) => {}
         Foo::C(true) => {}

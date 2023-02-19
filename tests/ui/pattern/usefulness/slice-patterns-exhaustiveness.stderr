@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `&[false, _]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:8:11
    |
 LL |     match s2 {
@@ -11,7 +11,7 @@ LL ~         [true, .., true] => {}
 LL +         &[false, _] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[false, ..]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:12:11
    |
 LL |     match s3 {
@@ -24,7 +24,7 @@ LL ~         [true, .., true] => {}
 LL +         &[false, ..] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[false, ..]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:16:11
    |
 LL |     match s10 {
@@ -37,7 +37,7 @@ LL ~         [true, .., true] => {}
 LL +         &[false, ..] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[false, true]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:25:11
    |
 LL |     match s2 {
@@ -50,7 +50,7 @@ LL ~         [.., false] => {}
 LL +         &[false, true] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[false, .., true]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:30:11
    |
 LL |     match s3 {
@@ -63,7 +63,7 @@ LL ~         [.., false] => {}
 LL +         &[false, .., true] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[false, .., true]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:35:11
    |
 LL |     match s {
@@ -76,7 +76,7 @@ LL ~         [.., false] => {}
 LL +         &[false, .., true] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:42:11
    |
 LL |     match s {
@@ -89,7 +89,7 @@ LL ~         [] => {}
 LL +         &[_, ..] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[_, _, ..]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:46:11
    |
 LL |     match s {
@@ -102,7 +102,7 @@ LL ~         [_] => {}
 LL +         &[_, _, ..] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[false, ..]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:51:11
    |
 LL |     match s {
@@ -115,7 +115,7 @@ LL ~         [true, ..] => {}
 LL +         &[false, ..] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[false, _, ..]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:56:11
    |
 LL |     match s {
@@ -128,7 +128,7 @@ LL ~         [true, ..] => {}
 LL +         &[false, _, ..] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[_, .., false]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:62:11
    |
 LL |     match s {
@@ -141,7 +141,7 @@ LL ~         [.., true] => {}
 LL +         &[_, .., false] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[_, _, .., true]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:69:11
    |
 LL |     match s {
@@ -154,7 +154,7 @@ LL ~         [.., false] => {}
 LL +         &[_, _, .., true] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[true, _, .., _]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:76:11
    |
 LL |     match s {
@@ -167,7 +167,7 @@ LL ~         [false, .., false] => {}
 LL +         &[true, _, .., _] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[]` and `&[_, _, ..]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:85:11
    |
 LL |     match s {
@@ -180,7 +180,7 @@ LL ~         &[true] => {}
 LL +         &[] | &[_, _, ..] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[]` and `&[_, _, ..]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:89:11
    |
 LL |     match s {
@@ -193,7 +193,7 @@ LL ~         CONST => {}
 LL +         &[] | &[_, _, ..] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[]` and `&[_, _, ..]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:93:11
    |
 LL |     match s {
@@ -206,7 +206,7 @@ LL ~         &[false] => {}
 LL +         &[] | &[_, _, ..] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[]` and `&[_, _, ..]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:98:11
    |
 LL |     match s {
@@ -219,7 +219,7 @@ LL ~         CONST => {}
 LL +         &[] | &[_, _, ..] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[_, _, ..]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:103:11
    |
 LL |     match s {
@@ -232,7 +232,7 @@ LL ~         CONST => {}
 LL +         &[_, _, ..] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[false]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:108:11
    |
 LL |     match s {
@@ -245,7 +245,7 @@ LL ~         &[_, _, ..] => {}
 LL +         &[false] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[false]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice-patterns-exhaustiveness.rs:121:11
    |
 LL |     match s1 {

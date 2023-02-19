@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `L1::B` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/non-exhaustive-match.rs:26:25
    |
 LL |     let _b = || { match l1 { L1::A => () } };
@@ -34,7 +34,7 @@ LL +         _ => todo!(),
 LL ~     } };
    |
 
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/non-exhaustive-match.rs:39:25
    |
 LL |     let _e = || { match e2 { E2::A => (), E2::B => () } };

@@ -55,7 +55,7 @@ LL +         _ => todo!(),
 LL ~     }
    |
 
-error[E0004]: non-exhaustive patterns: `UninhabitedVariants::Tuple(_)` and `UninhabitedVariants::Struct { .. }` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/match_with_exhaustive_patterns.rs:34:11
    |
 LL |     match x {}

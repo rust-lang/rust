@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `&[]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/slice.rs:4:11
    |
 LL |     match sl {

@@ -5,7 +5,7 @@ enum A {
 
 fn main() {
     let x = A::B { x: Some(3) };
-    match x {   //~ ERROR non-exhaustive patterns
+    match x {   //~ ERROR match is non-exhaustive
         A::C => {}
         A::B { x: None } => {}
     }

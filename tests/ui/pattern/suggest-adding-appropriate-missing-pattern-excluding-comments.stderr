@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `None` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/suggest-adding-appropriate-missing-pattern-excluding-comments.rs:4:11
    |
 LL |     match Some(1) {

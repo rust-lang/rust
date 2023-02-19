@@ -17,7 +17,7 @@ LL +         _ => todo!(),
 LL ~     }
    |
 
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/enum.rs:16:11
    |
 LL |     match enum_unit {
@@ -35,7 +35,7 @@ LL ~         NonExhaustiveEnum::Struct { .. } => "third",
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/enum.rs:23:11
    |
 LL |     match enum_unit {};

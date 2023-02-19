@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `Foo::A(false)`, `Foo::B(false)` and `Foo::C(false)` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-56379.rs:8:11
    |
 LL |     match Foo::A(true) {

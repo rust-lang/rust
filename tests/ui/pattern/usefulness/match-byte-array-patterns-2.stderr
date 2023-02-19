@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `&[0_u8..=64_u8, _, _, _]` and `&[66_u8..=u8::MAX, _, _, _]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/match-byte-array-patterns-2.rs:4:11
    |
 LL |     match buf {
@@ -11,7 +11,7 @@ LL ~         b"AAAA" => {}
 LL +         &[0_u8..=64_u8, _, _, _] | &[66_u8..=u8::MAX, _, _, _] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `&[]`, `&[_]`, `&[_, _]` and 2 more not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/match-byte-array-patterns-2.rs:10:11
    |
 LL |     match buf {

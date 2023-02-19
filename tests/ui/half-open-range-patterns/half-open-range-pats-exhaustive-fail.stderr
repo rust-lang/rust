@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:15:8
    |
 LL |     m!(0f32, f32::NEG_INFINITY..);
@@ -10,7 +10,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, _ => todo!() }
    |                                ++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:16:8
    |
 LL |     m!(0f32, ..f32::INFINITY);
@@ -22,7 +22,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, _ => todo!() }
    |                                ++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `'\u{10ffff}'` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:25:8
    |
 LL |     m!('a', ..core::char::MAX);
@@ -34,7 +34,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, '\u{10ffff}' => todo!() }
    |                                +++++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `'\u{10fffe}'..='\u{10ffff}'` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:26:8
    |
 LL |     m!('a', ..ALMOST_MAX);
@@ -46,7 +46,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, '\u{10fffe}'..='\u{10ffff}' => todo!() }
    |                                ++++++++++++++++++++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `'\0'` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:27:8
    |
 LL |     m!('a', ALMOST_MIN..);
@@ -58,7 +58,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, '\0' => todo!() }
    |                                +++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `'\u{10ffff}'` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:28:8
    |
 LL |     m!('a', ..=ALMOST_MAX);
@@ -70,7 +70,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, '\u{10ffff}' => todo!() }
    |                                +++++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `'b'` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:29:8
    |
 LL |     m!('a', ..=VAL | VAL_2..);
@@ -82,7 +82,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 'b' => todo!() }
    |                                ++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `'b'` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:30:8
    |
 LL |     m!('a', ..VAL_1 | VAL_2..);
@@ -94,7 +94,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 'b' => todo!() }
    |                                ++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `u8::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:40:12
    |
 LL |         m!(0, ..u8::MAX);
@@ -106,7 +106,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, u8::MAX => todo!() }
    |                                ++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `254_u8..=u8::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:41:12
    |
 LL |         m!(0, ..ALMOST_MAX);
@@ -118,7 +118,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 254_u8..=u8::MAX => todo!() }
    |                                +++++++++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `0_u8` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:42:12
    |
 LL |         m!(0, ALMOST_MIN..);
@@ -130,7 +130,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 0_u8 => todo!() }
    |                                +++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `u8::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:43:12
    |
 LL |         m!(0, ..=ALMOST_MAX);
@@ -142,7 +142,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, u8::MAX => todo!() }
    |                                ++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_u8` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:44:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
@@ -154,7 +154,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_u8 => todo!() }
    |                                ++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_u8` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:45:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
@@ -166,7 +166,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_u8 => todo!() }
    |                                ++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `u16::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:53:12
    |
 LL |         m!(0, ..u16::MAX);
@@ -178,7 +178,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, u16::MAX => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `65534_u16..=u16::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:54:12
    |
 LL |         m!(0, ..ALMOST_MAX);
@@ -190,7 +190,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 65534_u16..=u16::MAX => todo!() }
    |                                +++++++++++++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `0_u16` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:55:12
    |
 LL |         m!(0, ALMOST_MIN..);
@@ -202,7 +202,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 0_u16 => todo!() }
    |                                ++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `u16::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:56:12
    |
 LL |         m!(0, ..=ALMOST_MAX);
@@ -214,7 +214,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, u16::MAX => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_u16` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:57:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
@@ -226,7 +226,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_u16 => todo!() }
    |                                +++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_u16` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:58:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
@@ -238,7 +238,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_u16 => todo!() }
    |                                +++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `u32::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:66:12
    |
 LL |         m!(0, ..u32::MAX);
@@ -250,7 +250,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, u32::MAX => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `4294967294_u32..=u32::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:67:12
    |
 LL |         m!(0, ..ALMOST_MAX);
@@ -262,7 +262,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 4294967294_u32..=u32::MAX => todo!() }
    |                                ++++++++++++++++++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `0_u32` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:68:12
    |
 LL |         m!(0, ALMOST_MIN..);
@@ -274,7 +274,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 0_u32 => todo!() }
    |                                ++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `u32::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:69:12
    |
 LL |         m!(0, ..=ALMOST_MAX);
@@ -286,7 +286,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, u32::MAX => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_u32` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:70:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
@@ -298,7 +298,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_u32 => todo!() }
    |                                +++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_u32` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:71:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
@@ -310,7 +310,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_u32 => todo!() }
    |                                +++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `u64::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:79:12
    |
 LL |         m!(0, ..u64::MAX);
@@ -322,7 +322,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, u64::MAX => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `18446744073709551614_u64..=u64::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:80:12
    |
 LL |         m!(0, ..ALMOST_MAX);
@@ -334,7 +334,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 18446744073709551614_u64..=u64::MAX => todo!() }
    |                                ++++++++++++++++++++++++++++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `0_u64` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:81:12
    |
 LL |         m!(0, ALMOST_MIN..);
@@ -346,7 +346,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 0_u64 => todo!() }
    |                                ++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `u64::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:82:12
    |
 LL |         m!(0, ..=ALMOST_MAX);
@@ -358,7 +358,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, u64::MAX => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_u64` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:83:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
@@ -370,7 +370,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_u64 => todo!() }
    |                                +++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_u64` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:84:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
@@ -382,7 +382,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_u64 => todo!() }
    |                                +++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `u128::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:92:12
    |
 LL |         m!(0, ..u128::MAX);
@@ -394,7 +394,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, u128::MAX => todo!() }
    |                                ++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `340282366920938463463374607431768211454_u128..=u128::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:93:12
    |
 LL |         m!(0, ..ALMOST_MAX);
@@ -406,7 +406,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 340282366920938463463374607431768211454_u128..=u128::MAX => todo!() }
    |                                +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `0_u128` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:94:12
    |
 LL |         m!(0, ALMOST_MIN..);
@@ -418,7 +418,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 0_u128 => todo!() }
    |                                +++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `u128::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:95:12
    |
 LL |         m!(0, ..=ALMOST_MAX);
@@ -430,7 +430,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, u128::MAX => todo!() }
    |                                ++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_u128` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:96:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
@@ -442,7 +442,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_u128 => todo!() }
    |                                ++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_u128` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:97:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
@@ -454,7 +454,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_u128 => todo!() }
    |                                ++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i8::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:108:12
    |
 LL |         m!(0, ..i8::MAX);
@@ -466,7 +466,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i8::MAX => todo!() }
    |                                ++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `126_i8..=i8::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:109:12
    |
 LL |         m!(0, ..ALMOST_MAX);
@@ -478,7 +478,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 126_i8..=i8::MAX => todo!() }
    |                                +++++++++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i8::MIN` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:110:12
    |
 LL |         m!(0, ALMOST_MIN..);
@@ -490,7 +490,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i8::MIN => todo!() }
    |                                ++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i8::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:111:12
    |
 LL |         m!(0, ..=ALMOST_MAX);
@@ -502,7 +502,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i8::MAX => todo!() }
    |                                ++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_i8` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:112:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
@@ -514,7 +514,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_i8 => todo!() }
    |                                ++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_i8` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:113:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
@@ -526,7 +526,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_i8 => todo!() }
    |                                ++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i16::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:121:12
    |
 LL |         m!(0, ..i16::MAX);
@@ -538,7 +538,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i16::MAX => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `32766_i16..=i16::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:122:12
    |
 LL |         m!(0, ..ALMOST_MAX);
@@ -550,7 +550,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 32766_i16..=i16::MAX => todo!() }
    |                                +++++++++++++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i16::MIN` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:123:12
    |
 LL |         m!(0, ALMOST_MIN..);
@@ -562,7 +562,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i16::MIN => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i16::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:124:12
    |
 LL |         m!(0, ..=ALMOST_MAX);
@@ -574,7 +574,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i16::MAX => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_i16` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:125:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
@@ -586,7 +586,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_i16 => todo!() }
    |                                +++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_i16` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:126:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
@@ -598,7 +598,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_i16 => todo!() }
    |                                +++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i32::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:134:12
    |
 LL |         m!(0, ..i32::MAX);
@@ -610,7 +610,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i32::MAX => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `2147483646_i32..=i32::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:135:12
    |
 LL |         m!(0, ..ALMOST_MAX);
@@ -622,7 +622,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 2147483646_i32..=i32::MAX => todo!() }
    |                                ++++++++++++++++++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i32::MIN` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:136:12
    |
 LL |         m!(0, ALMOST_MIN..);
@@ -634,7 +634,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i32::MIN => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i32::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:137:12
    |
 LL |         m!(0, ..=ALMOST_MAX);
@@ -646,7 +646,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i32::MAX => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_i32` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:138:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
@@ -658,7 +658,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_i32 => todo!() }
    |                                +++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_i32` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:139:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
@@ -670,7 +670,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_i32 => todo!() }
    |                                +++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i64::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:147:12
    |
 LL |         m!(0, ..i64::MAX);
@@ -682,7 +682,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i64::MAX => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `9223372036854775806_i64..=i64::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:148:12
    |
 LL |         m!(0, ..ALMOST_MAX);
@@ -694,7 +694,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 9223372036854775806_i64..=i64::MAX => todo!() }
    |                                +++++++++++++++++++++++++++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i64::MIN` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:149:12
    |
 LL |         m!(0, ALMOST_MIN..);
@@ -706,7 +706,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i64::MIN => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i64::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:150:12
    |
 LL |         m!(0, ..=ALMOST_MAX);
@@ -718,7 +718,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i64::MAX => todo!() }
    |                                +++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_i64` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:151:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
@@ -730,7 +730,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_i64 => todo!() }
    |                                +++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_i64` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:152:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);
@@ -742,7 +742,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_i64 => todo!() }
    |                                +++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i128::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:160:12
    |
 LL |         m!(0, ..i128::MAX);
@@ -754,7 +754,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i128::MAX => todo!() }
    |                                ++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `170141183460469231731687303715884105726_i128..=i128::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:161:12
    |
 LL |         m!(0, ..ALMOST_MAX);
@@ -766,7 +766,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 170141183460469231731687303715884105726_i128..=i128::MAX => todo!() }
    |                                +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i128::MIN` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:162:12
    |
 LL |         m!(0, ALMOST_MIN..);
@@ -778,7 +778,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i128::MIN => todo!() }
    |                                ++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `i128::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:163:12
    |
 LL |         m!(0, ..=ALMOST_MAX);
@@ -790,7 +790,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, i128::MAX => todo!() }
    |                                ++++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_i128` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:164:12
    |
 LL |         m!(0, ..=VAL | VAL_2..);
@@ -802,7 +802,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL |         match $s { $($t)+ => {}, 43_i128 => todo!() }
    |                                ++++++++++++++++++++
 
-error[E0004]: non-exhaustive patterns: `43_i128` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/half-open-range-pats-exhaustive-fail.rs:165:12
    |
 LL |         m!(0, ..VAL_1 | VAL_2..);

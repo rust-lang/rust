@@ -28,7 +28,7 @@ fn cannot_empty_match_on_empty_tuple_struct_to_anything(x: UninhabitedTupleStruc
 }
 
 fn cannot_empty_match_on_enum_with_empty_variants_struct_to_anything(x: UninhabitedVariants) -> A {
-    match x {} //~ ERROR non-exhaustive patterns
+    match x {} //~ ERROR match is non-exhaustive [E0004]
 }
 
 fn main() {}

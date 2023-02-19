@@ -1,9 +1,9 @@
 fn main() {
-    match "world" { //~ ERROR non-exhaustive patterns: `&_`
+    match "world" { //~ ERROR match is non-exhaustive
         "hello" => {}
     }
 
-    match "world" { //~ ERROR non-exhaustive patterns: `&_`
+    match "world" { //~ ERROR match is non-exhaustive
         ref _x if false => {}
         "hello" => {}
     }

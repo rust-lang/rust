@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/type_polymorphic_byte_str_literals.rs:11:11
    |
 LL |     match data {
@@ -11,7 +11,7 @@ LL ~         b"" => 1,
 LL ~         &[_, ..] => todo!(),
    |
 
-error[E0004]: non-exhaustive patterns: `&[]`, `&[_]`, `&[_, _]` and 1 more not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/type_polymorphic_byte_str_literals.rs:23:11
    |
 LL |     match data {

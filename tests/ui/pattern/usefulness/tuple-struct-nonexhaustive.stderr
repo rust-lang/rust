@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `Foo(_, _)` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/tuple-struct-nonexhaustive.rs:5:11
    |
 LL |     match x {

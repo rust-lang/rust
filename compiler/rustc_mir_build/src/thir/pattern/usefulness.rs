@@ -897,7 +897,7 @@ fn is_useful<'p, 'tcx>(
                     pcx.span,
                     NonExhaustiveOmittedPattern {
                         scrut_ty: pcx.ty,
-                        uncovered: Uncovered::new(pcx.span, pcx.cx, patterns),
+                        uncovered: Uncovered::new(pcx.span, pcx.cx, &patterns),
                     },
                 );
             }

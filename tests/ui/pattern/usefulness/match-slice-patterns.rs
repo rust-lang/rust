@@ -1,6 +1,6 @@
 fn check(list: &[Option<()>]) {
     match list {
-    //~^ ERROR `&[_, Some(_), .., None, _]` not covered
+    //~^ ERROR match is non-exhaustive [E0004]
         &[] => {},
         &[_] => {},
         &[_, _] => {},

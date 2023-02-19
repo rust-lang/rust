@@ -21,7 +21,7 @@ fn main() {
         Foo::A => {}
         Foo::B => {}
     }
-    //~^^^^ ERROR non-exhaustive patterns: `Foo::C` not covered
+    //~^^^^ ERROR match is non-exhaustive
 
     match Foo::A {
         Foo::A => {}

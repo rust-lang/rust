@@ -5,7 +5,7 @@ struct Foo {
 
 fn struct_with_a_nested_enum_and_vector() {
     match (Foo { first: true, second: None }) {
-//~^ ERROR non-exhaustive patterns: `Foo { first: false, second: Some([_, _, _, _]) }` not covered
+//~^ ERROR match is non-exhaustive
         Foo { first: true, second: None } => (),
         Foo { first: true, second: Some(_) } => (),
         Foo { first: false, second: None } => (),
@@ -21,7 +21,7 @@ enum Color {
 
 fn enum_with_single_missing_variant() {
     match Color::Red {
-    //~^ ERROR non-exhaustive patterns: `Color::Red` not covered
+    //~^ ERROR match is non-exhaustive
         Color::CustomRGBA { .. } => (),
         Color::Green => ()
     }
@@ -33,7 +33,7 @@ enum Direction {
 
 fn enum_with_multiple_missing_variants() {
     match Direction::North {
-    //~^ ERROR non-exhaustive patterns: `Direction::East`, `Direction::South` and `Direction::West` not covered
+    //~^ ERROR match is non-exhaustive
         Direction::North => ()
     }
 }
@@ -44,15 +44,14 @@ enum ExcessiveEnum {
 
 fn enum_with_excessive_missing_variants() {
     match ExcessiveEnum::First {
-    //~^ ERROR `ExcessiveEnum::Second`, `ExcessiveEnum::Third`, `ExcessiveEnum::Fourth` and 8 more not covered
-
+    //~^ ERROR match is non-exhaustive [E0004]
         ExcessiveEnum::First => ()
     }
 }
 
 fn enum_struct_variant() {
     match Color::Red {
-    //~^ ERROR non-exhaustive patterns: `Color::CustomRGBA { a: true, .. }` not covered
+    //~^ ERROR match is non-exhaustive
         Color::Red => (),
         Color::Green => (),
         Color::CustomRGBA { a: false, r: _, g: _, b: 0 } => (),
@@ -68,7 +67,7 @@ enum Enum {
 fn vectors_with_nested_enums() {
     let x: &'static [Enum] = &[Enum::First, Enum::Second(false)];
     match *x {
-    //~^ ERROR non-exhaustive patterns: `[Enum::Second(true), Enum::Second(false)]` not covered
+    //~^ ERROR match is non-exhaustive
         [] => (),
         [_] => (),
         [Enum::First, _] => (),
@@ -81,7 +80,7 @@ fn vectors_with_nested_enums() {
 
 fn missing_nil() {
     match ((), false) {
-    //~^ ERROR non-exhaustive patterns: `((), false)` not covered
+    //~^ ERROR match is non-exhaustive
         ((), true) => ()
     }
 }

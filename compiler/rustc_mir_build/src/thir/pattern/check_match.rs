@@ -4,14 +4,12 @@ use super::usefulness::{
 };
 use super::{PatCtxt, PatternError};
 
-use crate::errors::*;
+use crate::errors::{self, *};
 
 use hir::{ExprKind, PatKind};
 use rustc_arena::TypedArena;
 use rustc_ast::{LitKind, Mutability};
-use rustc_errors::{
-    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
-};
+use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
@@ -23,7 +21,6 @@ use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };
-use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::{BytePos, Span};
 
@@ -41,14 +38,6 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
         pattern_arena: &pattern_arena,
     };
     visitor.visit_body(tcx.hir().body(body_id));
-}
-
-fn create_e0004(
-    sess: &Session,
-    sp: Span,
-    error_message: String,
-) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-    struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
 #[derive(PartialEq)]
@@ -458,7 +447,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         self.tcx.sess.emit_err(PatternNotCovered {
             span: pat.span,
             origin,
-            uncovered: Uncovered::new(pat.span, &cx, witnesses),
+            uncovered: Uncovered::new(pat.span, &cx, &witnesses),
             inform,
             interpreted_as_const,
             _p: (),
@@ -605,7 +594,7 @@ fn report_arm_reachability<'p, 'tcx>(
 fn non_exhaustive_match<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     scrut_ty: Ty<'tcx>,
-    sp: Span,
+    span: Span,
     witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
     arms: &[hir::Arm<'tcx>],
     expr_span: Span,
@@ -617,37 +606,26 @@ fn non_exhaustive_match<'p, 'tcx>(
     };
     // In the case of an empty match, replace the '`_` not covered' diagnostic with something more
     // informative.
-    let mut err;
-    let pattern;
-    let patterns_len;
     if is_empty_match && !non_empty_enum {
-        cx.tcx.sess.emit_err(NonExhaustivePatternsTypeNotEmpty {
-            cx,
-            expr_span,
-            span: sp,
-            ty: scrut_ty,
-        });
+        cx.tcx.sess.emit_err(NonExhaustivePatternsTypeNotEmpty { cx, expr_span, span, scrut_ty });
         return;
+    }
+
+    let patterns_len = witnesses.len();
+    let pattern = if witnesses.len() < 4 {
+        witnesses
+            .iter()
+            .map(|witness| witness.to_pat(cx).to_string())
+            .collect::<Vec<String>>()
+            .join(" | ")
     } else {
-        // FIXME: migration of this diagnostic will require list support
-        let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
-        err = create_e0004(
-            cx.tcx.sess,
-            sp,
-            format!("non-exhaustive patterns: {} not covered", joined_patterns),
-        );
-        err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
-        patterns_len = witnesses.len();
-        pattern = if witnesses.len() < 4 {
-            witnesses
-                .iter()
-                .map(|witness| witness.to_pat(cx).to_string())
-                .collect::<Vec<String>>()
-                .join(" | ")
-        } else {
-            "_".to_string()
-        };
+        "_".to_string()
     };
+
+    let mut err = cx.tcx.sess.create_err(errors::NonExhaustivePatterns {
+        span,
+        uncovered: Uncovered::new(span, &cx, &witnesses),
+    });
 
     let is_variant_list_non_exhaustive = match scrut_ty.kind() {
         ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local() => true,
@@ -687,15 +665,15 @@ fn non_exhaustive_match<'p, 'tcx>(
     let mut suggestion = None;
     let sm = cx.tcx.sess.source_map();
     match arms {
-        [] if sp.eq_ctxt(expr_span) => {
+        [] if span.eq_ctxt(expr_span) => {
             // Get the span for the empty match body `{}`.
-            let (indentation, more) = if let Some(snippet) = sm.indentation_before(sp) {
+            let (indentation, more) = if let Some(snippet) = sm.indentation_before(span) {
                 (format!("\n{}", snippet), "    ")
             } else {
                 (" ".to_string(), "")
             };
             suggestion = Some((
-                sp.shrink_to_hi().with_hi(expr_span.hi()),
+                span.shrink_to_hi().with_hi(expr_span.hi()),
                 format!(
                     " {{{indentation}{more}{pattern} => todo!(),{indentation}}}",
                     indentation = indentation,
@@ -774,34 +752,6 @@ fn non_exhaustive_match<'p, 'tcx>(
         err.help(&msg);
     }
     err.emit();
-}
-
-pub(crate) fn joined_uncovered_patterns<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    witnesses: &[DeconstructedPat<'p, 'tcx>],
-) -> String {
-    const LIMIT: usize = 3;
-    let pat_to_str = |pat: &DeconstructedPat<'p, 'tcx>| pat.to_pat(cx).to_string();
-    match witnesses {
-        [] => bug!(),
-        [witness] => format!("`{}`", witness.to_pat(cx)),
-        [head @ .., tail] if head.len() < LIMIT => {
-            let head: Vec<_> = head.iter().map(pat_to_str).collect();
-            format!("`{}` and `{}`", head.join("`, `"), tail.to_pat(cx))
-        }
-        _ => {
-            let (head, tail) = witnesses.split_at(LIMIT);
-            let head: Vec<_> = head.iter().map(pat_to_str).collect();
-            format!("`{}` and {} more", head.join("`, `"), tail.len())
-        }
-    }
-}
-
-pub(crate) fn pattern_not_covered_label(
-    witnesses: &[DeconstructedPat<'_, '_>],
-    joined_patterns: &str,
-) -> String {
-    format!("pattern{} {} not covered", rustc_errors::pluralize!(witnesses.len()), joined_patterns)
 }
 
 /// Point at the definition of non-covered `enum` variants.

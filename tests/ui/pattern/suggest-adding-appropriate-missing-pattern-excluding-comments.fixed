@@ -1,7 +1,7 @@
 // run-rustfix
 
 fn main() {
-    match Some(1) { //~ ERROR non-exhaustive patterns: `None` not covered
+    match Some(1) { //~ ERROR match is non-exhaustive
         Some(1) => {}
         // hello
         Some(_) => {}

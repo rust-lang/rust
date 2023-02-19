@@ -9,7 +9,7 @@ pub fn main() {
         _ => {}
     }
 
-    match 0u8 { //~ ERROR non-exhaustive patterns
+    match 0u8 { //~ ERROR match is non-exhaustive
         0 .. 128 => {}
         128 ..= 255 if true => {}
     }

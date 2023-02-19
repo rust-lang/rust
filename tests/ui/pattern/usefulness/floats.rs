@@ -7,7 +7,7 @@ fn main() {
       _ => {} // ok
     }
 
-    match 0.0 { //~ ERROR non-exhaustive patterns
+    match 0.0 { //~ ERROR match is non-exhaustive
       0.0..=1.0 => {}
     }
 

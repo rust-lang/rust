@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `(Enum::B, _)`, `(Enum::C, _)`, `(Enum::D, _)` and 2 more not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-35609.rs:10:11
    |
 LL |     match (A, ()) {
@@ -11,7 +11,7 @@ LL ~         (A, _) => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `(_, Enum::B)`, `(_, Enum::C)`, `(_, Enum::D)` and 2 more not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-35609.rs:14:11
    |
 LL |     match (A, A) {
@@ -24,7 +24,7 @@ LL ~         (_, A) => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `((Enum::B, _), _)`, `((Enum::C, _), _)`, `((Enum::D, _), _)` and 2 more not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-35609.rs:18:11
    |
 LL |     match ((A, ()), ()) {
@@ -37,7 +37,7 @@ LL ~         ((A, ()), _) => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `((Enum::B, _), _)`, `((Enum::C, _), _)`, `((Enum::D, _), _)` and 2 more not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-35609.rs:22:11
    |
 LL |     match ((A, ()), A) {
@@ -50,7 +50,7 @@ LL ~         ((A, ()), _) => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `((Enum::B, _), _)`, `((Enum::C, _), _)`, `((Enum::D, _), _)` and 2 more not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-35609.rs:26:11
    |
 LL |     match ((A, ()), ()) {
@@ -63,7 +63,7 @@ LL ~         ((A, _), _) => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `S(Enum::B, _)`, `S(Enum::C, _)`, `S(Enum::D, _)` and 2 more not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-35609.rs:31:11
    |
 LL |     match S(A, ()) {
@@ -81,7 +81,7 @@ LL ~         S(A, _) => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `Sd { x: Enum::B, .. }`, `Sd { x: Enum::C, .. }`, `Sd { x: Enum::D, .. }` and 2 more not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-35609.rs:35:11
    |
 LL |     match (Sd { x: A, y: () }) {
@@ -99,7 +99,7 @@ LL ~         Sd { x: A, y: _ } => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `Some(Enum::B)`, `Some(Enum::C)`, `Some(Enum::D)` and 2 more not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-35609.rs:39:11
    |
 LL |     match Some(A) {

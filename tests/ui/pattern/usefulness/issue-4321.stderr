@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `(true, false)` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-4321.rs:3:31
    |
 LL |     println!("foo {:}", match tup {

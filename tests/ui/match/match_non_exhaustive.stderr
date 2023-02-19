@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `L::B` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/match_non_exhaustive.rs:23:11
    |
 LL |     match l { L::A => () };
@@ -34,7 +34,7 @@ LL +         _ => todo!(),
 LL ~     };
    |
 
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/match_non_exhaustive.rs:30:11
    |
 LL |     match e2 { E2::A => (), E2::B => () };

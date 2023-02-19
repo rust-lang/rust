@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `(X::A, Some(X::A))`, `(X::A, Some(X::B))`, `(X::B, Some(X::B))` and 2 more not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-72377.rs:8:11
    |
 LL |     match (x, y) {

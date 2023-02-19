@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/doc-hidden-non-exhaustive.rs:15:11
    |
 LL |     match HiddenEnum::A {
@@ -16,7 +16,7 @@ LL ~         HiddenEnum::B => {}
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `HiddenEnum::B` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/doc-hidden-non-exhaustive.rs:21:11
    |
 LL |     match HiddenEnum::A {
@@ -37,7 +37,7 @@ LL ~         HiddenEnum::C => {}
 LL +         HiddenEnum::B => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `HiddenEnum::B` and `_` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/doc-hidden-non-exhaustive.rs:27:11
    |
 LL |     match HiddenEnum::A {
@@ -58,7 +58,7 @@ LL ~         HiddenEnum::A => {}
 LL +         HiddenEnum::B | _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `Some(HiddenEnum::B)` and `Some(_)` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/doc-hidden-non-exhaustive.rs:32:11
    |
 LL |     match None {
@@ -76,7 +76,7 @@ LL ~         Some(HiddenEnum::A) => {}
 LL +         Some(HiddenEnum::B) | Some(_) => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `InCrate::C` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/doc-hidden-non-exhaustive.rs:38:11
    |
 LL |     match InCrate::A {

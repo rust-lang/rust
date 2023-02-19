@@ -44,21 +44,21 @@ fn main() {
     let '\u{0000}'..='\u{10FFFF}' = 'v';
 
     // Almost exhaustive
-    m!(0u8, 0..255); //~ ERROR non-exhaustive patterns
-    m!(0u8, 0..=254); //~ ERROR non-exhaustive patterns
-    m!(0u8, 1..=255); //~ ERROR non-exhaustive patterns
-    m!(0u8, 0..42 | 43..=255); //~ ERROR non-exhaustive patterns
-    m!(0i8, -128..127); //~ ERROR non-exhaustive patterns
-    m!(0i8, -128..=126); //~ ERROR non-exhaustive patterns
-    m!(0i8, -127..=127); //~ ERROR non-exhaustive patterns
-    match 0i8 { //~ ERROR non-exhaustive patterns
+    m!(0u8, 0..255); //~ ERROR match is non-exhaustive
+    m!(0u8, 0..=254); //~ ERROR match is non-exhaustive
+    m!(0u8, 1..=255); //~ ERROR match is non-exhaustive
+    m!(0u8, 0..42 | 43..=255); //~ ERROR match is non-exhaustive
+    m!(0i8, -128..127); //~ ERROR match is non-exhaustive
+    m!(0i8, -128..=126); //~ ERROR match is non-exhaustive
+    m!(0i8, -127..=127); //~ ERROR match is non-exhaustive
+    match 0i8 { //~ ERROR match is non-exhaustive
         i8::MIN ..= -1 => {}
         1 ..= i8::MAX => {}
     }
     const ALMOST_MAX: u128 = u128::MAX - 1;
-    m!(0u128, 0..=ALMOST_MAX); //~ ERROR non-exhaustive patterns
-    m!(0u128, 0..=4); //~ ERROR non-exhaustive patterns
-    m!(0u128, 1..=u128::MAX); //~ ERROR non-exhaustive patterns
+    m!(0u128, 0..=ALMOST_MAX); //~ ERROR match is non-exhaustive
+    m!(0u128, 0..=4); //~ ERROR match is non-exhaustive
+    m!(0u128, 1..=u128::MAX); //~ ERROR match is non-exhaustive
 
     // More complicatedly (non-)exhaustive
     match 0u8 {
@@ -66,7 +66,7 @@ fn main() {
         20 ..= 70 => {}
         50 ..= 255 => {}
     }
-    match (0u8, true) { //~ ERROR non-exhaustive patterns
+    match (0u8, true) { //~ ERROR match is non-exhaustive
         (0 ..= 125, false) => {}
         (128 ..= 255, false) => {}
         (0 ..= 255, true) => {}

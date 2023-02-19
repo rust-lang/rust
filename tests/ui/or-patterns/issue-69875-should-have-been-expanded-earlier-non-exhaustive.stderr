@@ -12,7 +12,7 @@ help: you might want to use `if let` to ignore the variants that aren't matched
 LL |     if let (0 | (1 | 2)) = 0 { todo!() }
    |     ++                       ~~~~~~~~~~~
 
-error[E0004]: non-exhaustive patterns: `i32::MIN..=-1_i32` and `3_i32..=i32::MAX` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/issue-69875-should-have-been-expanded-earlier-non-exhaustive.rs:3:11
    |
 LL |     match 0 {

@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `E::B` and `E::C` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/non-exhaustive-defined-here.rs:35:11
    |
 LL |     match e1 {
@@ -47,7 +47,7 @@ help: you might want to use `if let` to ignore the variants that aren't matched
 LL |     if let E::A = e { todo!() }
    |     ++              ~~~~~~~~~~~
 
-error[E0004]: non-exhaustive patterns: `&E::B` and `&E::C` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/non-exhaustive-defined-here.rs:50:11
    |
 LL |     match e {
@@ -96,7 +96,7 @@ help: you might want to use `if let` to ignore the variants that aren't matched
 LL |     if let E::A = e { todo!() }
    |     ++              ~~~~~~~~~~~
 
-error[E0004]: non-exhaustive patterns: `&&mut &E::B` and `&&mut &E::C` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/non-exhaustive-defined-here.rs:66:11
    |
 LL |     match e {
@@ -145,7 +145,7 @@ help: you might want to use `if let` to ignore the variants that aren't matched
 LL |     if let E::A = e { todo!() }
    |     ++              ~~~~~~~~~~~
 
-error[E0004]: non-exhaustive patterns: `Opt::None` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/non-exhaustive-defined-here.rs:92:11
    |
 LL |     match e {

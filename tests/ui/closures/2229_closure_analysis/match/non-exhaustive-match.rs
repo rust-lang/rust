@@ -24,7 +24,7 @@ fn main() {
     let _a = || { match l1 { L1::A => (), L1::B => () } };
     // (except if the match is already non-exhaustive)
     let _b = || { match l1 { L1::A => () } };
-    //~^ ERROR: non-exhaustive patterns: `L1::B` not covered [E0004]
+    //~^ ERROR match is non-exhaustive [E0004]
 
     // l2 should not be captured as it is a non-exhaustive SingleVariant
     // defined in this crate
@@ -37,7 +37,7 @@ fn main() {
     let _d = || { match e1 {} };
     //~^ ERROR: non-exhaustive patterns: type `E1` is non-empty [E0004]
     let _e = || { match e2 { E2::A => (), E2::B => () } };
-    //~^ ERROR: non-exhaustive patterns: `_` not covered [E0004]
+    //~^ ERROR match is non-exhaustive [E0004]
     let _f = || { match e2 { E2::A => (), E2::B => (), _ => () }  };
 
     // e3 should be captured as it is a non-exhaustive SingleVariant

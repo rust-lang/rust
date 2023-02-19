@@ -4,22 +4,22 @@ enum T { A, B }
 
 fn main() {
     let x = T::A;
-    match x { T::B => { } } //~ ERROR non-exhaustive patterns: `T::A` not covered
-    match true { //~ ERROR non-exhaustive patterns: `false` not covered
+    match x { T::B => { } } //~ ERROR match is non-exhaustive
+    match true { //~ ERROR match is non-exhaustive
       true => {}
     }
-    match Some(10) { //~ ERROR non-exhaustive patterns: `Some(_)` not covered
+    match Some(10) { //~ ERROR match is non-exhaustive
       None => {}
     }
-    match (2, 3, 4) { //~ ERROR non-exhaustive patterns: `(_, _, i32::MIN..=3_i32)`
+    match (2, 3, 4) { //~ ERROR match is non-exhaustive
                       //  and `(_, _, 5_i32..=i32::MAX)` not covered
       (_, _, 4) => {}
     }
-    match (T::A, T::A) { //~ ERROR non-exhaustive patterns: `(T::A, T::A)` and `(T::B, T::B)` not covered
+    match (T::A, T::A) { //~ ERROR match is non-exhaustive
       (T::A, T::B) => {}
       (T::B, T::A) => {}
     }
-    match T::A { //~ ERROR non-exhaustive patterns: `T::B` not covered
+    match T::A { //~ ERROR match is non-exhaustive
       T::A => {}
     }
     // This is exhaustive, though the algorithm got it wrong at one point
@@ -30,7 +30,7 @@ fn main() {
     }
     let vec = vec![Some(42), None, Some(21)];
     let vec: &[Option<isize>] = &vec;
-    match *vec { //~ ERROR non-exhaustive patterns: `[]` not covered
+    match *vec { //~ ERROR match is non-exhaustive
         [Some(..), None, ref tail @ ..] => {}
         [Some(..), Some(..), ref tail @ ..] => {}
         [None] => {}
@@ -43,7 +43,7 @@ fn main() {
     }
     let vec = vec![0.5f32];
     let vec: &[f32] = &vec;
-    match *vec { //~ ERROR non-exhaustive patterns: `[_, _, _, _, ..]` not covered
+    match *vec { //~ ERROR match is non-exhaustive
         [0.1, 0.2, 0.3] => (),
         [0.1, 0.2] => (),
         [0.1] => (),

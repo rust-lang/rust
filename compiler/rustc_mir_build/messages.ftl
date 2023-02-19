@@ -176,10 +176,10 @@ mir_build_unused_unsafe = unnecessary `unsafe` block
 mir_build_unused_unsafe_enclosing_block_label = because it's nested under this `unsafe` block
 mir_build_unused_unsafe_enclosing_fn_label = because it's nested under this `unsafe` fn
 
-mir_build_non_exhaustive_patterns_type_not_empty = non-exhaustive patterns: type `{$ty}` is non-empty
+mir_build_non_exhaustive_patterns_type_not_empty = non-exhaustive patterns: type `{$scrut_ty}` is non-empty
     .def_note = `{$peeled_ty}` defined here
-    .type_note = the matched value is of type `{$ty}`
-    .non_exhaustive_type_note = the matched value is of type `{$ty}`, which is marked as non-exhaustive
+    .type_note = the matched value is of type `{$scrut_ty}`
+    .non_exhaustive_type_note = the matched value is of type `{$scrut_ty}`, which is marked as non-exhaustive
     .reference_note = references are always considered inhabited
     .suggestion = ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
     .help = ensure that all possible cases are being handled by adding a match arm with a wildcard pattern
@@ -375,8 +375,9 @@ mir_build_suggest_let_else = you might want to use `let else` to handle the {$co
 
 mir_build_suggest_attempted_int_lit = alternatively, you could prepend the pattern with an underscore to define a new named variable; identifiers cannot begin with digits
 
-
 mir_build_rustc_box_attribute_error = `#[rustc_box]` attribute used incorrectly
     .attributes = no other attributes may be applied
     .not_box = `#[rustc_box]` may only be applied to a `Box::new()` call
     .missing_box = `#[rustc_box]` requires the `owned_box` lang item
+
+mir_build_non_exhaustive_pattern = match is non-exhaustive

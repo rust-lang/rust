@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `Foo { first: false, second: Some([_, _, _, _]) }` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/non-exhaustive-pattern-witness.rs:7:11
    |
 LL |     match (Foo { first: true, second: None }) {
@@ -16,7 +16,7 @@ LL ~         Foo { first: false, second: Some([1, 2, 3, 4]) } => (),
 LL +         Foo { first: false, second: Some([_, _, _, _]) } => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `Color::Red` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/non-exhaustive-pattern-witness.rs:23:11
    |
 LL |     match Color::Red {
@@ -36,7 +36,7 @@ LL ~         Color::Green => (),
 LL +         Color::Red => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `Direction::East`, `Direction::South` and `Direction::West` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/non-exhaustive-pattern-witness.rs:35:11
    |
 LL |     match Direction::North {
@@ -59,7 +59,7 @@ LL ~         Direction::North => (),
 LL +         Direction::East | Direction::South | Direction::West => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `ExcessiveEnum::Second`, `ExcessiveEnum::Third`, `ExcessiveEnum::Fourth` and 8 more not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/non-exhaustive-pattern-witness.rs:46:11
    |
 LL |     match ExcessiveEnum::First {
@@ -77,8 +77,8 @@ LL ~         ExcessiveEnum::First => (),
 LL +         _ => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `Color::CustomRGBA { a: true, .. }` not covered
-  --> $DIR/non-exhaustive-pattern-witness.rs:54:11
+error[E0004]: match is non-exhaustive
+  --> $DIR/non-exhaustive-pattern-witness.rs:53:11
    |
 LL |     match Color::Red {
    |           ^^^^^^^^^^ pattern `Color::CustomRGBA { a: true, .. }` not covered
@@ -98,8 +98,8 @@ LL ~         Color::CustomRGBA { a: false, r: _, g: _, b: _ } => (),
 LL +         Color::CustomRGBA { a: true, .. } => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `[Enum::Second(true), Enum::Second(false)]` not covered
-  --> $DIR/non-exhaustive-pattern-witness.rs:70:11
+error[E0004]: match is non-exhaustive
+  --> $DIR/non-exhaustive-pattern-witness.rs:69:11
    |
 LL |     match *x {
    |           ^^ pattern `[Enum::Second(true), Enum::Second(false)]` not covered
@@ -111,8 +111,8 @@ LL ~         [_, _, ref tail @ .., _] => (),
 LL +         [Enum::Second(true), Enum::Second(false)] => todo!()
    |
 
-error[E0004]: non-exhaustive patterns: `((), false)` not covered
-  --> $DIR/non-exhaustive-pattern-witness.rs:83:11
+error[E0004]: match is non-exhaustive
+  --> $DIR/non-exhaustive-pattern-witness.rs:82:11
    |
 LL |     match ((), false) {
    |           ^^^^^^^^^^^ pattern `((), false)` not covered

@@ -1,4 +1,4 @@
-error[E0004]: non-exhaustive patterns: `Err(_)` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/uninhabited-matches-feature-gated.rs:6:19
    |
 LL |     let _ = match x {
@@ -64,7 +64,7 @@ LL +         _ => todo!(),
 LL ~     };
    |
 
-error[E0004]: non-exhaustive patterns: `&[_, ..]` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/uninhabited-matches-feature-gated.rs:24:19
    |
 LL |     let _ = match x {
@@ -77,7 +77,7 @@ LL ~         &[] => (),
 LL ~         &[_, ..] => todo!(),
    |
 
-error[E0004]: non-exhaustive patterns: `Err(_)` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/uninhabited-matches-feature-gated.rs:32:19
    |
 LL |     let _ = match x {

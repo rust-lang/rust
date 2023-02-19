@@ -8,7 +8,7 @@ fn parse_data1(data: &[u8]) -> u32 {
 }
 
 fn parse_data2(data: &[u8]) -> u32 {
-    match data { //~ ERROR non-exhaustive patterns: `&[_, ..]` not covered
+    match data { //~ ERROR match is non-exhaustive
         b"" => 1,
     }
 }
@@ -20,7 +20,7 @@ fn parse_data3(data: &[u8; 0]) -> u8 {
 }
 
 fn parse_data4(data: &[u8]) -> u8 {
-    match data { //~ ERROR non-exhaustive patterns
+    match data { //~ ERROR match is non-exhaustive
         b"aaa" => 0,
         [_, _, _] => 1,
     }

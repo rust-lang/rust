@@ -8,7 +8,7 @@ LL |         E_SL => {}
    = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
    = note: `#[warn(indirect_structural_match)]` on by default
 
-error[E0004]: non-exhaustive patterns: `&_` not covered
+error[E0004]: match is non-exhaustive
   --> $DIR/incomplete-slice.rs:9:11
    |
 LL |     match &[][..] {

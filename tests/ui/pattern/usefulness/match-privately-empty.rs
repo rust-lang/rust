@@ -11,7 +11,7 @@ mod private {
 
 fn main() {
     match private::DATA {
-    //~^ ERROR non-exhaustive patterns: `Some(Private { misc: true, .. })` not covered
+    //~^ ERROR match is non-exhaustive
         None => {}
         Some(private::Private {
             misc: false,
