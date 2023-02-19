@@ -1273,7 +1273,7 @@ impl Abi {
         matches!(*self, Abi::Scalar(_))
     }
 
-    /// Returns the fixed alignment of this ABI, if any
+    /// Returns the fixed alignment of this ABI, if any is mandated.
     pub fn inherent_align<C: HasDataLayout>(&self, cx: &C) -> Option<AbiAndPrefAlign> {
         Some(match *self {
             Abi::Scalar(s) => s.align(cx),
@@ -1282,6 +1282,27 @@ impl Abi {
             }
             Abi::Vector { element, count } => {
                 cx.data_layout().vector_align(element.size(cx) * count)
+            }
+            Abi::Uninhabited | Abi::Aggregate { .. } => return None,
+        })
+    }
+
+    /// Returns the fixed size of this ABI, if any is mandated.
+    pub fn inherent_size<C: HasDataLayout>(&self, cx: &C) -> Option<Size> {
+        Some(match *self {
+            Abi::Scalar(s) => {
+                // No padding in scalars.
+                s.size(cx)
+            }
+            Abi::ScalarPair(s1, s2) => {
+                // May have some padding between the pair.
+                let field2_offset = s1.size(cx).align_to(s2.align(cx).abi);
+                (field2_offset + s2.size(cx)).align_to(self.inherent_align(cx)?.abi)
+            }
+            Abi::Vector { element, count } => {
+                // No padding in vectors, except possibly for trailing padding
+                // to make the size a multiple of align (e.g. for vectors of size 3).
+                (element.size(cx) * count).align_to(self.inherent_align(cx)?.abi)
             }
             Abi::Uninhabited | Abi::Aggregate { .. } => return None,
         })

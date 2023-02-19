@@ -4,7 +4,7 @@ use rustc_middle::ty::{
 };
 use rustc_target::abi::*;
 
-use std::cmp;
+use std::assert_matches::assert_matches;
 
 /// Enforce some basic invariants on layouts.
 pub(super) fn sanity_check_layout<'tcx>(
@@ -68,21 +68,31 @@ pub(super) fn sanity_check_layout<'tcx>(
     }
 
     fn check_layout_abi<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, layout: &TyAndLayout<'tcx>) {
+        // Verify the ABI mandated alignment and size.
+        let align = layout.abi.inherent_align(cx).map(|align| align.abi);
+        let size = layout.abi.inherent_size(cx);
+        let Some((align, size)) = align.zip(size) else {
+            assert_matches!(
+                layout.layout.abi(),
+                Abi::Uninhabited | Abi::Aggregate { .. },
+                "ABI unexpectedly missing alignment and/or size in {layout:#?}"
+            );
+            return
+        };
+        assert_eq!(
+            layout.layout.align().abi,
+            align,
+            "alignment mismatch between ABI and layout in {layout:#?}"
+        );
+        assert_eq!(
+            layout.layout.size(),
+            size,
+            "size mismatch between ABI and layout in {layout:#?}"
+        );
+
+        // Verify per-ABI invariants
         match layout.layout.abi() {
-            Abi::Scalar(scalar) => {
-                // No padding in scalars.
-                let size = scalar.size(cx);
-                let align = scalar.align(cx).abi;
-                assert_eq!(
-                    layout.layout.size(),
-                    size,
-                    "size mismatch between ABI and layout in {layout:#?}"
-                );
-                assert_eq!(
-                    layout.layout.align().abi,
-                    align,
-                    "alignment mismatch between ABI and layout in {layout:#?}"
-                );
+            Abi::Scalar(_) => {
                 // Check that this matches the underlying field.
                 let inner = skip_newtypes(cx, layout);
                 assert!(
@@ -135,24 +145,6 @@ pub(super) fn sanity_check_layout<'tcx>(
                 }
             }
             Abi::ScalarPair(scalar1, scalar2) => {
-                // Sanity-check scalar pairs. Computing the expected size and alignment is a bit of work.
-                let size1 = scalar1.size(cx);
-                let align1 = scalar1.align(cx).abi;
-                let size2 = scalar2.size(cx);
-                let align2 = scalar2.align(cx).abi;
-                let align = cmp::max(align1, align2);
-                let field2_offset = size1.align_to(align2);
-                let size = (field2_offset + size2).align_to(align);
-                assert_eq!(
-                    layout.layout.size(),
-                    size,
-                    "size mismatch between ABI and layout in {layout:#?}"
-                );
-                assert_eq!(
-                    layout.layout.align().abi,
-                    align,
-                    "alignment mismatch between ABI and layout in {layout:#?}",
-                );
                 // Check that the underlying pair of fields matches.
                 let inner = skip_newtypes(cx, layout);
                 assert!(
@@ -189,8 +181,9 @@ pub(super) fn sanity_check_layout<'tcx>(
                         "`ScalarPair` layout for type with less than two non-ZST fields: {inner:#?}"
                     )
                 });
-                assert!(
-                    fields.next().is_none(),
+                assert_matches!(
+                    fields.next(),
+                    None,
                     "`ScalarPair` layout for type with at least three non-ZST fields: {inner:#?}"
                 );
                 // The fields might be in opposite order.
@@ -200,6 +193,10 @@ pub(super) fn sanity_check_layout<'tcx>(
                     (offset2, field2, offset1, field1)
                 };
                 // The fields should be at the right offset, and match the `scalar` layout.
+                let size1 = scalar1.size(cx);
+                let align1 = scalar1.align(cx).abi;
+                let size2 = scalar2.size(cx);
+                let align2 = scalar2.align(cx).abi;
                 assert_eq!(
                     offset1,
                     Size::ZERO,
@@ -213,10 +210,12 @@ pub(super) fn sanity_check_layout<'tcx>(
                     field1.align.abi, align1,
                     "`ScalarPair` first field with bad align in {inner:#?}",
                 );
-                assert!(
-                    matches!(field1.abi, Abi::Scalar(_)),
+                assert_matches!(
+                    field1.abi,
+                    Abi::Scalar(_),
                     "`ScalarPair` first field with bad ABI in {inner:#?}",
                 );
+                let field2_offset = size1.align_to(align2);
                 assert_eq!(
                     offset2, field2_offset,
                     "`ScalarPair` second field at bad offset in {inner:#?}",
@@ -229,27 +228,14 @@ pub(super) fn sanity_check_layout<'tcx>(
                     field2.align.abi, align2,
                     "`ScalarPair` second field with bad align in {inner:#?}",
                 );
-                assert!(
-                    matches!(field2.abi, Abi::Scalar(_)),
+                assert_matches!(
+                    field2.abi,
+                    Abi::Scalar(_),
                     "`ScalarPair` second field with bad ABI in {inner:#?}",
                 );
             }
-            Abi::Vector { count, element } => {
-                // No padding in vectors, except possibly for trailing padding to make the size a multiple of align.
-                let size = element.size(cx) * count;
-                let align = cx.data_layout().vector_align(size).abi;
-                let size = size.align_to(align); // needed e.g. for vectors of size 3
+            Abi::Vector { element, .. } => {
                 assert!(align >= element.align(cx).abi); // just sanity-checking `vector_align`.
-                assert_eq!(
-                    layout.layout.size(),
-                    size,
-                    "size mismatch between ABI and layout in {layout:#?}"
-                );
-                assert_eq!(
-                    layout.layout.align().abi,
-                    align,
-                    "alignment mismatch between ABI and layout in {layout:#?}"
-                );
                 // FIXME: Do some kind of check of the inner type, like for Scalar and ScalarPair.
             }
             Abi::Uninhabited | Abi::Aggregate { .. } => {} // Nothing to check.
