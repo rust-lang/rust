@@ -1,3 +1,11 @@
+error[E0277]: `main` has invalid return type `Option<()>`
+  --> $DIR/issue-102605.rs:11:14
+   |
+LL | fn main() -> Option<()> {
+   |              ^^^^^^^^^^ `main` can only return types that implement `Termination`
+   |
+   = help: consider using `()`, or a `Result`
+
 error[E0308]: mismatched types
   --> $DIR/issue-102605.rs:13:20
    |
@@ -24,14 +32,6 @@ help: try wrapping the expression in `Err`
    |
 LL |     convert_result(Err(foo()))
    |                    ++++     +
-
-error[E0277]: `main` has invalid return type `Option<()>`
-  --> $DIR/issue-102605.rs:11:14
-   |
-LL | fn main() -> Option<()> {
-   |              ^^^^^^^^^^ `main` can only return types that implement `Termination`
-   |
-   = help: consider using `()`, or a `Result`
 
 error: aborting due to 2 previous errors
 

@@ -8,7 +8,7 @@ use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ItemKind, Node, PathSegment};
 use rustc_infer::infer::opaque_types::ConstrainOpaqueTypeRegionVisitor;
@@ -1377,6 +1377,9 @@ pub(super) fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let module = tcx.hir_module_items(module_def_id);
     for id in module.items() {
         check_item_type(tcx, id);
+    }
+    if module_def_id == CRATE_DEF_ID {
+        super::entry::check_for_entry_fn(tcx);
     }
 }
 
