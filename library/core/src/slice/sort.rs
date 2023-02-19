@@ -10,6 +10,7 @@
 //! TimSort.
 
 use crate::cmp;
+use crate::intrinsics;
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::ptr;
 
@@ -141,10 +142,6 @@ where
 }
 
 /// Sort `v` assuming `v[..offset]` is already sorted.
-///
-/// Never inline this function to avoid code bloat. It still optimizes nicely and has practically no
-/// performance impact. Even improving performance in some cases.
-#[inline(never)]
 fn insertion_sort_shift_left<T, F>(v: &mut [T], offset: usize, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
@@ -166,10 +163,6 @@ where
 }
 
 /// Sort `v` assuming `v[offset..]` is already sorted.
-///
-/// Never inline this function to avoid code bloat. It still optimizes nicely and has practically no
-/// performance impact. Even improving performance in some cases.
-#[inline(never)]
 fn insertion_sort_shift_right<T, F>(v: &mut [T], offset: usize, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
@@ -1053,6 +1046,7 @@ fn unpack_maybe_unit_slice<T>(buf: &mut [mem::MaybeUninit<T>]) -> (*mut T, usize
 /// 2. for every `i` in `2..runs.len()`: `runs[i - 2].len > runs[i - 1].len + runs[i].len`
 ///
 /// The invariants ensure that the total running time is *O*(*n* \* log(*n*)) worst-case.
+#[inline(always)]
 pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
     v: &mut [T],
     is_less: &mut CmpF,
@@ -1072,12 +1066,17 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
 
     let len = v.len();
 
-    if len < 2 {
-        // These inputs are always sorted.
+    // This path is critical for very small inputs. Always pick insertion sort for these inputs,
+    // without any other analysis. This is perf critical for small inputs, in cold code.
+    if intrinsics::likely(len <= max_len_always_insertion_sort::<T>()) {
+        if intrinsics::likely(len >= 2) {
+            insertion_sort_shift_left(v, 1, is_less);
+        }
+
         return;
     }
 
-    if sort_small_stable(v, is_less) {
+    if sort_small_stable_with_analysis(v, is_less) {
         return;
     }
 
@@ -1148,6 +1147,10 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
     }
 }
 
+/// This will only be called for inputs size > 20, so it's ok to have this not-inlined. This way we
+/// can get more of the performance critical stuff, for small inputs inlined directly into the
+/// caller.
+#[inline(never)]
 fn merge_sort_impl<T, CmpF, RunAllocF, RunDeallocF>(
     v: &mut [T],
     is_less: &mut CmpF,
@@ -1414,76 +1417,86 @@ where
     }
 }
 
-fn sort_small_stable<T, F>(v: &mut [T], is_less: &mut F) -> bool
+/// Keep this of the critical inlined path. This is only called for non-tiny slices.
+#[inline(never)]
+fn sort_small_stable_with_analysis<T, F>(v: &mut [T], is_less: &mut F) -> bool
 where
     F: FnMut(&T, &T) -> bool,
 {
     let len = v.len();
 
-    // Slices of up to this length get sorted using optimized sorting for small slices.
-    const fn max_len_small_sort_stable<T>() -> usize {
-        if is_cheap_to_move::<T>() { 32 } else { 20 }
-    }
+    assert!(len > max_len_always_insertion_sort::<T>());
 
     if len > max_len_small_sort_stable::<T>() {
         return false;
     }
 
-    let (end, was_reversed) = find_streak(v, is_less);
-    if was_reversed {
-        v[..end].reverse();
-    }
+    // For larger inputs it's worth it to check if they are already ascending or descending.
+    let (streak_end, was_reversed) = find_streak(v, is_less);
 
-    if end == len {
+    if !qualifies_for_stable_sort_network::<T>() || (len - streak_end) <= cmp::max(len / 2, 8) {
+        if was_reversed {
+            v[..streak_end].reverse();
+        }
+
+        insertion_sort_shift_left(v, streak_end, is_less);
         return true;
     }
 
-    if is_cheap_to_move::<T>() {
-        // Testing showed that even though this incurs more comparisons, up to size 32 (4 * 8),
-        // avoiding the allocation and sticking with simple code is worth it. Going further eg. 40
-        // is still worth it for u64 or even types with more expensive comparisons, but risks
-        // incurring just too many comparisons than doing the regular TimSort.
-        if len < 8 {
-            insertion_sort_shift_left(v, end, is_less);
-            insertion_sort_shift_left(v, 1, is_less);
-            return true;
-        } else if len < 16 {
-            sort8_stable(&mut v[0..8], is_less);
-            insertion_sort_shift_left(v, 8, is_less);
-            return true;
-        }
+    let even_len = len - (len % 2 != 0) as usize;
+    let len_div_2 = even_len / 2;
 
-        // This should optimize to a shift right https://godbolt.org/z/vYGsznPPW.
-        let even_len = len - (len % 2 != 0) as usize;
-        let len_div_2 = even_len / 2;
-
+    // This logic is only works if max_len_always_insertion_sort is at least 15.
+    // Otherwise the slice operation for the second sort8 will fail.
+    let pre_sorted = if len < 32 {
         sort8_stable(&mut v[0..8], is_less);
         sort8_stable(&mut v[len_div_2..(len_div_2 + 8)], is_less);
 
-        insertion_sort_shift_left(&mut v[0..len_div_2], 8, is_less);
-        insertion_sort_shift_left(&mut v[len_div_2..], 8, is_less);
-
-        let mut swap = mem::MaybeUninit::<[T; max_len_small_sort_stable::<i32>()]>::uninit();
-        let swap_ptr = swap.as_mut_ptr() as *mut T;
-
-        // SAFETY: We checked that T is Copy and thus observation safe.
-        // Should is_less panic v was not modified in bi_directional_merge_even and retains it's original input.
-        // swap and v must not alias and swap has v.len() space.
-        unsafe {
-            merge(&mut v[..even_len], len_div_2, swap_ptr, even_len, is_less);
-        }
-
-        if len != even_len {
-            // SAFETY: We know len >= 2.
-            unsafe {
-                insert_tail(v, is_less);
-            }
-        }
+        8
     } else {
-        insertion_sort_shift_left(v, end, is_less);
+        sort16_stable(&mut v[0..16], is_less);
+        sort16_stable(&mut v[len_div_2..(len_div_2 + 16)], is_less);
+
+        16
+    };
+
+    insertion_sort_shift_left(&mut v[0..len_div_2], pre_sorted, is_less);
+    insertion_sort_shift_left(&mut v[len_div_2..], pre_sorted, is_less);
+
+    // Unfortunately max_len_small_sort_stable can't be currently be const, this is a workaround.
+    const SWAP_LEN: usize = 40;
+    debug_assert!(SWAP_LEN == max_len_small_sort_stable::<T>());
+
+    let mut swap = mem::MaybeUninit::<[T; SWAP_LEN]>::uninit();
+    let swap_ptr = swap.as_mut_ptr() as *mut T;
+
+    // SAFETY: We checked that T is Copy and thus observation safe. Should is_less panic v was not
+    // modified in bi_directional_merge_even and retains it's original input. swap and v must not
+    // alias and swap has v.len() space.
+    unsafe {
+        bi_directional_merge_even(&mut v[..even_len], swap_ptr, is_less);
+        ptr::copy_nonoverlapping(swap_ptr, v.as_mut_ptr(), even_len);
+    }
+
+    if len != even_len {
+        // SAFETY: We know len >= 2.
+        unsafe {
+            insert_tail(v, is_less);
+        }
     }
 
     true
+}
+
+// Slices of up to this length get sorted using optimized sorting for small slices.
+fn max_len_small_sort_stable<T>() -> usize {
+    if qualifies_for_stable_sort_network::<T>() { 40 } else { 20 }
+}
+
+// Slices of up to this length always get sorted with insertion sort, directly inlined as part of
+// the hot path.
+const fn max_len_always_insertion_sort<T>() -> usize {
+    15
 }
 
 /// Takes a range as denoted by start and end, that is already sorted and extends it to the right if
@@ -1495,19 +1508,19 @@ where
     let len = v.len();
     assert!(end >= start && end <= len);
 
-    // This value is a balance between least comparisons and best performance, as
-    // influenced by for example cache locality.
-    const MIN_INSERTION_RUN: usize = 10;
-    const MAX_IGNORE_PRE_SORTED: usize = 6;
-
     // Insert some more elements into the run if it's too short. Insertion sort is faster than
     // merge sort on short sequences, so this significantly improves performance.
     let start_end_diff = end - start;
 
+    // This value is a balance between least comparisons and best performance, as
+    // influenced by for example cache locality.
+    const MAX_IGNORE_PRE_SORTED: usize = 6;
     const FAST_SORT_SIZE: usize = 32;
 
-    if is_cheap_to_move::<T>()
-        && !has_direct_iterior_mutability::<T>()
+    // Reduce the border conditions where new runs are created that don't fit FAST_SORT_SIZE.
+    let min_insertion_run = if qualifies_for_stable_sort_network::<T>() { 20 } else { 10 };
+
+    if qualifies_for_stable_sort_network::<T>()
         && (start + FAST_SORT_SIZE) <= len
         && start_end_diff <= MAX_IGNORE_PRE_SORTED
     {
@@ -1526,11 +1539,11 @@ where
         // ought to have found it. So we prefer minimizing the total amount of comparisons,
         // which are user provided and may be of arbitrary cost.
         sort32_stable(&mut v[start..(start + FAST_SORT_SIZE)], is_less);
-    } else if start_end_diff < MIN_INSERTION_RUN && end < len {
+    } else if start_end_diff < min_insertion_run && end < len {
         // v[start_found..end] are elements that are already sorted in the input. We want to extend
-        // the sorted region to the left, so we push up MIN_INSERTION_RUN - 1 to the right. Which is
+        // the sorted region to the left, so we push up min_insertion_run - 1 to the right. Which is
         // more efficient that trying to push those already sorted elements to the left.
-        end = cmp::min(start + MIN_INSERTION_RUN, len);
+        end = cmp::min(start + min_insertion_run, len);
         let presorted_start = cmp::max(start_end_diff, 1);
 
         insertion_sort_shift_left(&mut v[start..end], presorted_start, is_less);
@@ -1743,6 +1756,14 @@ fn has_direct_iterior_mutability<T>() -> bool {
     //   Otherwise a type like Mutex<Option<Box<str>>> could lead to double free.
     //   FIXME use proper abstraction
     !T::is_copy()
+}
+
+#[inline(always)]
+fn qualifies_for_stable_sort_network<T>() -> bool {
+    // This is only a heuristic but, generally for expensive to compare types, it's not worth it to
+    // use the stable sorting-network. Which is great at extracting instruction-level parallelism
+    // (ILP) for types like integers, but not for a complex type with indirection.
+    is_cheap_to_move::<T>() && T::is_copy()
 }
 
 #[inline(always)]
@@ -2150,6 +2171,32 @@ where
         swap_next_if_less(arr_ptr.add(1), is_less);
         swap_next_if_less(arr_ptr.add(3), is_less);
         swap_next_if_less(arr_ptr.add(5), is_less);
+    }
+}
+
+/// Sort 16 elements
+///
+/// Never inline this function to avoid code bloat. It still optimizes nicely and has practically no
+/// performance impact.
+#[inline(never)]
+fn sort16_stable<T, F>(v: &mut [T], is_less: &mut F)
+where
+    F: FnMut(&T, &T) -> bool,
+{
+    assert!(v.len() == 16 && !has_direct_iterior_mutability::<T>());
+
+    sort8_stable(&mut v[0..8], is_less);
+    sort8_stable(&mut v[8..16], is_less);
+
+    let mut swap = mem::MaybeUninit::<[T; 16]>::uninit();
+    let swap_ptr = swap.as_mut_ptr() as *mut T;
+
+    // SAFETY: We checked that T is Copy and thus observation safe. Should is_less panic v
+    // was not modified in bi_directional_merge_even and retains it's original input. swap
+    // and v must not alias and swap has v.len() space.
+    unsafe {
+        bi_directional_merge_even(v, swap_ptr, is_less);
+        ptr::copy_nonoverlapping(swap_ptr, v.as_mut_ptr(), 16);
     }
 }
 
