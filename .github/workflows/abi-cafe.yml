@@ -1,4 +1,4 @@
-name: CI
+name: Abi-cafe
 
 on:
   - push
@@ -7,6 +7,9 @@ jobs:
   abi_cafe:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.os }}-${{ matrix.env.TARGET_TRIPLE }}
+      cancel-in-progress: true
 
     defaults:
       run:
