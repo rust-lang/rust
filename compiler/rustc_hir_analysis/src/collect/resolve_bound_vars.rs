@@ -924,17 +924,16 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         origin,
                         ..
                     }) => {
-
                         let (bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) =
                             bound_generic_params
-                            .iter()
-                            .enumerate()
-                            .map(|(late_bound_idx, param)| {
-                                let pair = ResolvedArg::late(late_bound_idx as u32, param);
-                                let r = late_arg_as_bound_arg(this.tcx, &pair.1, param);
-                                (pair, r)
-                            })
-                            .unzip();
+                                .iter()
+                                .enumerate()
+                                .map(|(late_bound_idx, param)| {
+                                    let pair = ResolvedArg::late(late_bound_idx as u32, param);
+                                    let r = late_arg_as_bound_arg(this.tcx, &pair.1, param);
+                                    (pair, r)
+                                })
+                                .unzip();
                         this.record_late_bound_vars(hir_id, binders.clone());
                         // Even if there are no lifetimes defined here, we still wrap it in a binder
                         // scope. If there happens to be a nested poly trait ref (an error), that
@@ -968,23 +967,21 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                                 if lt.res != hir::LifetimeName::Static {
                                     continue;
                                 }
-                                this.insert_lifetime(lt, Region::Static);
+                                this.insert_lifetime(lt, ResolvedArg::StaticLifetime);
                                 this.tcx.struct_span_lint_hir(
                                     lint::builtin::NAMED_STATIC_LIFETIMES,
                                     lifetime.hir_id,
-                                    lifetime.span,
+                                    lifetime.ident.span,
+                                    format!(
+                                        "unnecessary lifetime parameter `{}`",
+                                        lifetime.ident
+                                    ),
                                     |lint| {
-                                        let msg = &format!(
-                                            "unnecessary lifetime parameter `{}`",
-                                            lifetime.name.ident(),
-                                        );
                                         let help = &format!(
                                             "you can use the `'static` lifetime directly, in place of `{}`",
-                                            lifetime.name.ident(),
+                                            lifetime.ident,
                                         );
-                                        lint.build(msg)
-                                            .help(help)
-                                            .emit();
+                                        lint.note(help)
                                     },
                                 );
                             }
