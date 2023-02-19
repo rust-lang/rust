@@ -2,11 +2,11 @@
 #![doc(issue_tracker_base_url = "https://issue_url/")]
 #![unstable(feature = "test", issue = "32374")]
 
-// @matches issue_32374/index.html '//*[@class="item-left"]/span[@class="stab deprecated"]' \
+// @matches issue_32374/index.html '//*[@class="item-name"]/span[@class="stab deprecated"]' \
 //      'Deprecated'
-// @matches issue_32374/index.html '//*[@class="item-left"]/span[@class="stab unstable"]' \
+// @matches issue_32374/index.html '//*[@class="item-name"]/span[@class="stab unstable"]' \
 //      'Experimental'
-// @matches issue_32374/index.html '//*[@class="item-right docblock-short"]/text()' 'Docs'
+// @matches issue_32374/index.html '//*[@class="desc docblock-short"]/text()' 'Docs'
 
 // @has issue_32374/struct.T.html '//*[@class="stab deprecated"]/span' '👎'
 // @has issue_32374/struct.T.html '//*[@class="stab deprecated"]/span' \

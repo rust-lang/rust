@@ -1,7 +1,7 @@
 // This test checks that the correct font is used on module items (in index.html pages).
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 assert-css: (
-    ".item-table .item-left > a",
+    ".item-table .item-name > a",
     {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
     ALL,
 )
@@ -13,55 +13,55 @@ assert-css: (
 
 // modules
 assert-css: (
-    "#modules + .item-table .item-left a",
+    "#modules + .item-table .item-name a",
     {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
 )
 assert-css: (
-    "#modules + .item-table .item-right.docblock-short",
+    "#modules + .item-table .desc.docblock-short",
     {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
 )
 // structs
 assert-css: (
-    "#structs + .item-table .item-left a",
+    "#structs + .item-table .item-name a",
     {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
 )
 assert-css: (
-    "#structs + .item-table .item-right.docblock-short",
+    "#structs + .item-table .desc.docblock-short",
     {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
 )
 // enums
 assert-css: (
-    "#enums + .item-table .item-left a",
+    "#enums + .item-table .item-name a",
     {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
 )
 assert-css: (
-    "#enums + .item-table .item-right.docblock-short",
+    "#enums + .item-table .desc.docblock-short",
     {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
 )
 // traits
 assert-css: (
-    "#traits + .item-table .item-left a",
+    "#traits + .item-table .item-name a",
     {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
 )
 assert-css: (
-    "#traits + .item-table .item-right.docblock-short",
+    "#traits + .item-table .desc.docblock-short",
     {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
 )
 // functions
 assert-css: (
-    "#functions + .item-table .item-left a",
+    "#functions + .item-table .item-name a",
     {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
 )
 assert-css: (
-    "#functions + .item-table .item-right.docblock-short",
+    "#functions + .item-table .desc.docblock-short",
     {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
 )
 // keywords
 assert-css: (
-    "#keywords + .item-table .item-left a",
+    "#keywords + .item-table .item-name a",
     {"font-family": '"Fira Sans", Arial, NanumBarunGothic, sans-serif'},
 )
 assert-css: (
-    "#keywords + .item-table .item-right.docblock-short",
+    "#keywords + .item-table .desc.docblock-short",
     {"font-family": '"Source Serif 4", NanumBarunGothic, serif'},
 )
