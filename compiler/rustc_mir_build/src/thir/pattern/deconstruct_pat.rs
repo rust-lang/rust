@@ -449,7 +449,7 @@ impl SliceKind {
 
 /// A constructor for array and slice patterns.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(super) struct Slice {
+pub(crate) struct Slice {
     /// `None` if the matched value is a slice, `Some(n)` if it is an array of size `n`.
     array_len: Option<usize>,
     /// The kind of pattern it is: fixed-length `[x, y]` or variable length `[x, .., y]`.
@@ -621,7 +621,7 @@ impl SplitVarLenSlice {
 /// constructor. `Constructor::apply` reconstructs the pattern from a pair of `Constructor` and
 /// `Fields`.
 #[derive(Clone, Debug, PartialEq)]
-pub(super) enum Constructor<'tcx> {
+pub(crate) enum Constructor<'tcx> {
     /// The constructor for patterns that have a single constructor, like tuples, struct patterns
     /// and fixed-length arrays.
     Single,
@@ -1522,17 +1522,17 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         matches!(self.ctor, Or)
     }
 
-    pub(super) fn ctor(&self) -> &Constructor<'tcx> {
+    pub(crate) fn ctor(&self) -> &Constructor<'tcx> {
         &self.ctor
     }
-    pub(super) fn ty(&self) -> Ty<'tcx> {
+    pub(crate) fn ty(&self) -> Ty<'tcx> {
         self.ty
     }
     pub(super) fn span(&self) -> Span {
         self.span
     }
 
-    pub(super) fn iter_fields<'a>(
+    pub(crate) fn iter_fields<'a>(
         &'a self,
     ) -> impl Iterator<Item = &'p DeconstructedPat<'p, 'tcx>> + Captures<'a> {
         self.fields.iter_patterns()

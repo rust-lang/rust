@@ -9,14 +9,14 @@ use crate::errors;
 use hir::{ExprKind, PatKind};
 use rustc_arena::TypedArena;
 use rustc_ast::{LitKind, Mutability};
-use rustc_errors::{Applicability, Diagnostic, MultiSpan};
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Pat};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
@@ -432,18 +432,6 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 (sp.map(|_|errors::Inform), None, None,  None, None)
             };
 
-        let adt_defined_here = try {
-            let ty = pattern_ty.peel_refs();
-            let ty::Adt(def, _) = ty.kind() else { None? };
-            let adt_def_span = cx.tcx.hir().get_if_local(def.did())?.ident()?.span;
-            let mut variants = vec![];
-
-            for span in maybe_point_at_variant(&cx, *def, witnesses.iter().take(5)) {
-                variants.push(errors::Variant { span });
-            }
-            errors::AdtDefinedHere { adt_def_span, ty, variants }
-        };
-
         self.tcx.sess.emit_err(errors::PatternNotCovered {
             span: pat.span,
             origin,
@@ -455,7 +443,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             let_suggestion,
             misc_suggestion,
             res_defined_here,
-            adt_defined_here,
+            adt_defined_here: errors::AdtDefinedHere::new(&cx, pattern_ty, &witnesses),
         });
     }
 }
@@ -633,14 +621,13 @@ fn non_exhaustive_match<'p, 'tcx>(
     let mut err = cx.tcx.sess.create_err(errors::NonExhaustivePatterns {
         span,
         uncovered: errors::Uncovered::new(span, &cx, &witnesses),
+        adt_defined_here: errors::AdtDefinedHere::new(&cx, scrut_ty, &witnesses),
     });
 
     let is_variant_list_non_exhaustive = match scrut_ty.kind() {
         ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local() => true,
         _ => false,
     };
-
-    adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
     err.note(&format!(
         "the matched value is of type `{}`{}",
         scrut_ty,
@@ -760,64 +747,6 @@ fn non_exhaustive_match<'p, 'tcx>(
         err.help(&msg);
     }
     err.emit();
-}
-
-/// Point at the definition of non-covered `enum` variants.
-fn adt_defined_here<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    err: &mut Diagnostic,
-    ty: Ty<'tcx>,
-    witnesses: &[DeconstructedPat<'p, 'tcx>],
-) {
-    let ty = ty.peel_refs();
-    if let ty::Adt(def, _) = ty.kind() {
-        let mut spans = vec![];
-        if witnesses.len() < 5 {
-            for sp in maybe_point_at_variant(cx, *def, witnesses.iter()) {
-                spans.push(sp);
-            }
-        }
-        let def_span = cx
-            .tcx
-            .hir()
-            .get_if_local(def.did())
-            .and_then(|node| node.ident())
-            .map(|ident| ident.span)
-            .unwrap_or_else(|| cx.tcx.def_span(def.did()));
-        let mut span: MultiSpan =
-            if spans.is_empty() { def_span.into() } else { spans.clone().into() };
-
-        span.push_span_label(def_span, "");
-        for pat in spans {
-            span.push_span_label(pat, "not covered");
-        }
-        err.span_note(span, &format!("`{}` defined here", ty));
-    }
-}
-
-fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    def: AdtDef<'tcx>,
-    patterns: impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>>,
-) -> Vec<Span> {
-    use Constructor::*;
-    let mut covered = vec![];
-    for pattern in patterns {
-        if let Variant(variant_index) = pattern.ctor() {
-            if let ty::Adt(this_def, _) = pattern.ty().kind() && this_def.did() != def.did() {
-                continue;
-            }
-            let sp = def.variant(*variant_index).ident(cx.tcx).span;
-            if covered.contains(&sp) {
-                // Don't point at variants that have already been covered due to other patterns to avoid
-                // visual clutter.
-                continue;
-            }
-            covered.push(sp);
-        }
-        covered.extend(maybe_point_at_variant(cx, def, pattern.iter_fields()));
-    }
-    covered
 }
 
 /// Check if a by-value binding is by-value. That is, check if the binding's type is not `Copy`.

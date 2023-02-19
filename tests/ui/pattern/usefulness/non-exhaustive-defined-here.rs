@@ -4,18 +4,15 @@
 
 #[derive(Clone)]
 enum E {
-    //~^ NOTE
-    //~| NOTE
-    //~| NOTE
+    //~^ NOTE `E` defined here
+    //~| NOTE `E` defined here
+    //~| NOTE `E` defined here
     //~| NOTE
     //~| NOTE
     //~| NOTE
     A,
     B,
-    //~^ NOTE `E` defined here
-    //~| NOTE `E` defined here
-    //~| NOTE `E` defined here
-    //~| NOTE  not covered
+    //~^ NOTE  not covered
     //~| NOTE  not covered
     //~| NOTE  not covered
     //~| NOTE  not covered
@@ -79,12 +76,11 @@ fn by_ref_thrice(e: & &mut &E) {
 }
 
 enum Opt {
-    //~^ NOTE
+    //~^ NOTE `Opt` defined here
     //~| NOTE
     Some(u8),
     None,
-    //~^ NOTE `Opt` defined here
-    //~| NOTE not covered
+    //~^ NOTE not covered
     //~| NOTE not covered
 }
 

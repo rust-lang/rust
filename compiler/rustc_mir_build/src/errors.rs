@@ -1,7 +1,8 @@
 use crate::{
     fluent_generated as fluent,
-    thir::pattern::{deconstruct_pat::DeconstructedPat, MatchCheckCtxt},
+    thir::pattern::{deconstruct_pat::{Constructor, DeconstructedPat}, MatchCheckCtxt},
 };
+use rustc_errors::Handler;
 use rustc_errors::{
     error_code, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     Handler, IntoDiagnostic, MultiSpan, SubdiagnosticMessage,
@@ -9,7 +10,7 @@ use rustc_errors::{
 use rustc_hir::def::Res;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::thir::Pat;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, AdtDef, Ty};
 use rustc_span::{symbol::Ident, Span};
 
 #[derive(LintDiagnostic)]
@@ -805,14 +806,52 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
 #[note(mir_build_more_information)]
 pub struct Inform;
 
-pub struct AdtDefinedHere<'tcx> {
-    pub adt_def_span: Span,
-    pub ty: Ty<'tcx>,
-    pub variants: Vec<Variant>,
+pub(crate) struct AdtDefinedHere<'tcx> {
+    adt_def_span: Span,
+    ty: Ty<'tcx>,
+    variants: Vec<Span>,
 }
 
-pub struct Variant {
-    pub span: Span,
+impl<'tcx> AdtDefinedHere<'tcx> {
+    pub fn new<'p>(
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        ty: Ty<'tcx>,
+        witnesses: &[DeconstructedPat<'p, 'tcx>],
+    ) -> Option<Self> {
+        fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
+            cx: &MatchCheckCtxt<'p, 'tcx>,
+            def: AdtDef<'tcx>,
+            patterns: impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>>,
+        ) -> Vec<Span> {
+            let mut covered = vec![];
+            for pattern in patterns {
+                if let Constructor::Variant(variant_index) = pattern.ctor() {
+                    if let ty::Adt(this_def, _) = pattern.ty().kind() && this_def.did() != def.did() {
+                        continue;
+                    }
+                    let sp = def.variant(*variant_index).ident(cx.tcx).span;
+                    if covered.contains(&sp) {
+                        // Don't point at variants that have already been covered due to other patterns to avoid
+                        // visual clutter.
+                        continue;
+                    }
+                    covered.push(sp);
+                }
+                covered.extend(maybe_point_at_variant(cx, def, pattern.iter_fields()));
+            }
+            covered
+        }
+
+        let ty = ty.peel_refs();
+        let ty::Adt(def, _) = ty.kind() else { None? };
+        let adt_def_span = cx.tcx.hir().get_if_local(def.did())?.ident()?.span;
+        let mut variants = vec![];
+
+        for span in maybe_point_at_variant(&cx, *def, witnesses.iter().take(5)) {
+            variants.push(span);
+        }
+        Some(AdtDefinedHere { adt_def_span, ty, variants })
+    }
 }
 
 impl<'tcx> AddToDiagnostic for AdtDefinedHere<'tcx> {
@@ -912,4 +951,6 @@ pub(crate) struct NonExhaustivePatterns<'tcx> {
     pub span: Span,
     #[subdiagnostic]
     pub uncovered: Uncovered<'tcx>,
+    #[subdiagnostic]
+    pub adt_defined_here: Option<AdtDefinedHere<'tcx>>,
 }
