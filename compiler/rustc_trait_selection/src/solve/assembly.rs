@@ -90,16 +90,20 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
 
     fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId;
 
+    // Consider a clause, which consists of a "assumption" and some "requirements",
+    // to satisfy a goal. If the requirements hold, then attempt to satisfy our
+    // goal by equating it with the assumption.
+    fn consider_implied_clause(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        assumption: ty::Predicate<'tcx>,
+        requirements: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) -> QueryResult<'tcx>;
+
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         impl_def_id: DefId,
-    ) -> QueryResult<'tcx>;
-
-    fn consider_assumption(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-        assumption: ty::Predicate<'tcx>,
     ) -> QueryResult<'tcx>;
 
     // A type implements an `auto trait` if its components do as well. These components
@@ -355,7 +359,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         for (i, assumption) in goal.param_env.caller_bounds().iter().enumerate() {
-            match G::consider_assumption(self, goal, assumption) {
+            match G::consider_implied_clause(self, goal, assumption, []) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::ParamEnv(i), result })
                 }
@@ -402,7 +406,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         for assumption in self.tcx().item_bounds(alias_ty.def_id).subst(self.tcx(), alias_ty.substs)
         {
-            match G::consider_assumption(self, goal, assumption) {
+            match G::consider_implied_clause(self, goal, assumption, []) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::AliasBound, result })
                 }
@@ -452,7 +456,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         for assumption in
             elaborate_predicates(tcx, bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)))
         {
-            match G::consider_assumption(self, goal, assumption.predicate) {
+            match G::consider_implied_clause(self, goal, assumption.predicate, []) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
                 }
