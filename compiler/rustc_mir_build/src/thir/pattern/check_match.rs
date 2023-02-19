@@ -4,7 +4,7 @@ use super::usefulness::{
 };
 use super::{PatCtxt, PatternError};
 
-use crate::errors::{self, *};
+use crate::errors;
 
 use hir::{ExprKind, PatKind};
 use rustc_arena::TypedArena;
@@ -100,16 +100,16 @@ impl PatCtxt<'_, '_> {
         for error in &self.errors {
             match *error {
                 PatternError::StaticInPattern(span) => {
-                    self.tcx.sess.emit_err(StaticInPattern { span });
+                    self.tcx.sess.emit_err(errors::StaticInPattern { span });
                 }
                 PatternError::AssocConstInPattern(span) => {
-                    self.tcx.sess.emit_err(AssocConstInPattern { span });
+                    self.tcx.sess.emit_err(errors::AssocConstInPattern { span });
                 }
                 PatternError::ConstParamInPattern(span) => {
-                    self.tcx.sess.emit_err(ConstParamInPattern { span });
+                    self.tcx.sess.emit_err(errors::ConstParamInPattern { span });
                 }
                 PatternError::NonConstPath(span) => {
-                    self.tcx.sess.emit_err(NonConstPath { span });
+                    self.tcx.sess.emit_err(errors::NonConstPath { span });
                 }
             }
         }
@@ -347,7 +347,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 let span_end = prefix.last().unwrap().unwrap().0;
                 let span = span_start.to(span_end);
                 let count = prefix.len();
-                cx.tcx.emit_spanned_lint(IRREFUTABLE_LET_PATTERNS, top, span, LeadingIrrefutableLetPatterns { count });
+                cx.tcx.emit_spanned_lint(IRREFUTABLE_LET_PATTERNS, top, span, errors::LeadingIrrefutableLetPatterns { count });
             }
         }
         if let Some(from) = chain_refutabilities.iter().rposition(|r| !matches!(*r, Some((_, false)))) && from != (chain_refutabilities.len() - 1) {
@@ -357,7 +357,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             let span_end = suffix.last().unwrap().unwrap().0;
             let span = span_start.to(span_end);
             let count = suffix.len();
-            cx.tcx.emit_spanned_lint(IRREFUTABLE_LET_PATTERNS, top, span, TrailingIrrefutableLetPatterns { count });
+            cx.tcx.emit_spanned_lint(IRREFUTABLE_LET_PATTERNS, top, span, errors::TrailingIrrefutableLetPatterns { count });
         }
         true
     }
@@ -390,14 +390,14 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             {
                 (
                     None,
-                    Some(InterpretedAsConst {
+                    Some(errors::InterpretedAsConst {
                         span: pat.span,
                         article: res.article(),
                         variable: ident.to_string().to_lowercase(),
                         res,
                     }),
                     try {
-                        ResDefinedHere {
+                        errors::ResDefinedHere {
                             def_span: cx.tcx.hir().res_span(res)?,
                             res,
                         }
@@ -423,13 +423,13 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                     && bindings.is_empty()
                     && let ExprKind::Lit(Spanned { node: LitKind::Int(_, _), span }) = expr.kind {
                     // Then give a suggestion, the user might've meant to create a binding instead.
-                    Some(MiscPatternSuggestion::AttemptedIntegerLiteral { start_span: span.shrink_to_lo() })
+                    Some(errors::MiscPatternSuggestion::AttemptedIntegerLiteral { start_span: span.shrink_to_lo() })
                 } else { None };
 
-                let let_suggestion = if bindings.is_empty() {SuggestLet::If{start_span, semi_span, count}} else{ SuggestLet::Else{end_span, count }};
-                (sp.map(|_|Inform), None, None, Some(let_suggestion), int_suggestion)
+                let let_suggestion = if bindings.is_empty() {errors::SuggestLet::If{start_span, semi_span, count}} else{ errors::SuggestLet::Else{end_span, count }};
+                (sp.map(|_|errors::Inform), None, None, Some(let_suggestion), int_suggestion)
             } else{
-                (sp.map(|_|Inform), None, None,  None, None)
+                (sp.map(|_|errors::Inform), None, None,  None, None)
             };
 
         let adt_defined_here = try {
@@ -439,15 +439,15 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             let mut variants = vec![];
 
             for span in maybe_point_at_variant(&cx, *def, witnesses.iter().take(5)) {
-                variants.push(Variant { span });
+                variants.push(errors::Variant { span });
             }
-            AdtDefinedHere { adt_def_span, ty, variants }
+            errors::AdtDefinedHere { adt_def_span, ty, variants }
         };
 
-        self.tcx.sess.emit_err(PatternNotCovered {
+        self.tcx.sess.emit_err(errors::PatternNotCovered {
             span: pat.span,
             origin,
-            uncovered: Uncovered::new(pat.span, &cx, &witnesses),
+            uncovered: errors::Uncovered::new(pat.span, &cx, &witnesses),
             inform,
             interpreted_as_const,
             _p: (),
@@ -484,7 +484,7 @@ fn check_for_bindings_named_same_as_variants(
                 BINDINGS_WITH_VARIANT_NAME,
                 p.hir_id,
                 p.span,
-                BindingsWithVariantName {
+                errors::BindingsWithVariantName {
                     // If this is an irrefutable pattern, and there's > 1 variant,
                     // then we can't actually match on this. Applying the below
                     // suggestion would produce code that breaks on `check_irrefutable`.
@@ -514,7 +514,10 @@ fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<
         UNREACHABLE_PATTERNS,
         id,
         span,
-        UnreachablePattern { span: if catchall.is_some() { Some(span) } else { None }, catchall },
+        errors::UnreachablePattern {
+            span: if catchall.is_some() { Some(span) } else { None },
+            catchall,
+        },
     );
 }
 
@@ -532,7 +535,7 @@ fn irrefutable_let_patterns(
 ) {
     macro_rules! emit_diag {
         ($lint:tt) => {{
-            tcx.emit_spanned_lint(IRREFUTABLE_LET_PATTERNS, id, span, $lint { count });
+            tcx.emit_spanned_lint(IRREFUTABLE_LET_PATTERNS, id, span, errors::$lint { count });
         }};
     }
 
@@ -607,7 +610,12 @@ fn non_exhaustive_match<'p, 'tcx>(
     // In the case of an empty match, replace the '`_` not covered' diagnostic with something more
     // informative.
     if is_empty_match && !non_empty_enum {
-        cx.tcx.sess.emit_err(NonExhaustivePatternsTypeNotEmpty { cx, expr_span, span, scrut_ty });
+        cx.tcx.sess.emit_err(errors::NonExhaustivePatternsTypeNotEmpty {
+            cx,
+            expr_span,
+            span,
+            scrut_ty,
+        });
         return;
     }
 
@@ -624,7 +632,7 @@ fn non_exhaustive_match<'p, 'tcx>(
 
     let mut err = cx.tcx.sess.create_err(errors::NonExhaustivePatterns {
         span,
-        uncovered: Uncovered::new(span, &cx, &witnesses),
+        uncovered: errors::Uncovered::new(span, &cx, &witnesses),
     });
 
     let is_variant_list_non_exhaustive = match scrut_ty.kind() {
@@ -850,7 +858,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
                 }
             });
             if !conflicts_ref.is_empty() {
-                sess.emit_err(BorrowOfMovedValue {
+                sess.emit_err(errors::BorrowOfMovedValue {
                     span: pat.span,
                     binding_span,
                     conflicts_ref,
@@ -880,17 +888,17 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
                 (Mutability::Not, Mutability::Not) => {}
                 // 2x `ref mut`.
                 (Mutability::Mut, Mutability::Mut) => {
-                    conflicts_mut_mut.push(Conflict::Mut { span, name })
+                    conflicts_mut_mut.push(errors::Conflict::Mut { span, name })
                 }
                 (Mutability::Not, Mutability::Mut) => {
-                    conflicts_mut_ref.push(Conflict::Mut { span, name })
+                    conflicts_mut_ref.push(errors::Conflict::Mut { span, name })
                 }
                 (Mutability::Mut, Mutability::Not) => {
-                    conflicts_mut_ref.push(Conflict::Ref { span, name })
+                    conflicts_mut_ref.push(errors::Conflict::Ref { span, name })
                 }
             },
             Some(ty::BindByValue(_)) if is_binding_by_move(cx, hir_id) => {
-                conflicts_move.push(Conflict::Moved { span, name }) // `ref mut?` + by-move conflict.
+                conflicts_move.push(errors::Conflict::Moved { span, name }) // `ref mut?` + by-move conflict.
             }
             Some(ty::BindByValue(_)) | None => {} // `ref mut?` + by-copy is fine.
         }
@@ -901,8 +909,8 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
     let report_move_conflict = !conflicts_move.is_empty();
 
     let mut occurences = match mut_outer {
-        Mutability::Mut => vec![Conflict::Mut { span: binding_span, name }],
-        Mutability::Not => vec![Conflict::Ref { span: binding_span, name }],
+        Mutability::Mut => vec![errors::Conflict::Mut { span: binding_span, name }],
+        Mutability::Not => vec![errors::Conflict::Ref { span: binding_span, name }],
     };
     occurences.extend(conflicts_mut_mut);
     occurences.extend(conflicts_mut_ref);
@@ -911,20 +919,20 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
     // Report errors if any.
     if report_mut_mut {
         // Report mutability conflicts for e.g. `ref mut x @ Some(ref mut y)`.
-        sess.emit_err(MultipleMutBorrows { span: pat.span, occurences });
+        sess.emit_err(errors::MultipleMutBorrows { span: pat.span, occurences });
     } else if report_mut_ref {
         // Report mutability conflicts for e.g. `ref x @ Some(ref mut y)` or the converse.
         match mut_outer {
             Mutability::Mut => {
-                sess.emit_err(AlreadyMutBorrowed { span: pat.span, occurences });
+                sess.emit_err(errors::AlreadyMutBorrowed { span: pat.span, occurences });
             }
             Mutability::Not => {
-                sess.emit_err(AlreadyBorrowed { span: pat.span, occurences });
+                sess.emit_err(errors::AlreadyBorrowed { span: pat.span, occurences });
             }
         };
     } else if report_move_conflict {
         // Report by-ref and by-move conflicts, e.g. `ref x @ y`.
-        sess.emit_err(MovedWhileBorrowed { span: pat.span, occurences });
+        sess.emit_err(errors::MovedWhileBorrowed { span: pat.span, occurences });
     }
 }
 
