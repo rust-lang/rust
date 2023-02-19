@@ -1315,15 +1315,6 @@ impl Config {
             } else {
                 RustfmtState::Unavailable
             };
-        } else {
-            // If using a system toolchain for bootstrapping, see if that has rustfmt available.
-            let host = config.build;
-            let rustfmt_path = config.initial_rustc.with_file_name(exe("rustfmt", host));
-            let bin_root = config.out.join(host.triple).join("stage0");
-            if !rustfmt_path.starts_with(&bin_root) {
-                // Using a system-provided toolchain; we shouldn't download rustfmt.
-                *config.initial_rustfmt.borrow_mut() = RustfmtState::SystemToolchain(rustfmt_path);
-            }
         }
 
         // Now that we've reached the end of our configuration, infer the
