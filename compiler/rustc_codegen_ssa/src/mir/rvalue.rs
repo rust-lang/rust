@@ -652,15 +652,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         rhs: Bx::Value,
         input_ty: Ty<'tcx>,
     ) -> OperandValue<Bx::Value> {
-        // This case can currently arise only from functions marked
-        // with #[rustc_inherit_overflow_checks] and inlined from
-        // another crate (mostly core::num generic/#[inline] fns),
-        // while the current crate doesn't use overflow checks.
-        if !bx.cx().check_overflow() {
-            let val = self.codegen_scalar_binop(bx, op, lhs, rhs, input_ty);
-            return OperandValue::Pair(val, bx.cx().const_bool(false));
-        }
-
         let (val, of) = match op {
             // These are checked using intrinsics
             mir::BinOp::Add | mir::BinOp::Sub | mir::BinOp::Mul => {

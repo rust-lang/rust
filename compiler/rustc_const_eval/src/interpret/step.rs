@@ -185,9 +185,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let left = self.read_immediate(&self.eval_operand(left, None)?)?;
                 let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
                 let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
-                self.binop_with_overflow(
-                    bin_op, /*force_overflow_checks*/ false, &left, &right, &dest,
-                )?;
+                self.binop_with_overflow(bin_op, &left, &right, &dest)?;
             }
 
             UnaryOp(un_op, ref operand) => {
