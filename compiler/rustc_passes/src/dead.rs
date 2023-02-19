@@ -259,7 +259,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// for discussion).
     fn should_ignore_item(&mut self, def_id: DefId) -> bool {
         if let Some(impl_of) = self.tcx.impl_of_method(def_id) {
-            if !self.tcx.has_attr(impl_of, sym::automatically_derived) {
+            if !self.tcx.is_automatically_derived(impl_of) {
                 return false;
             }
 

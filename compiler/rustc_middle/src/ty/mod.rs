@@ -46,7 +46,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::cstore::Untracked;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{ExpnId, Span};
+use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 use rustc_type_ir::WithCachedTypeInfo;
@@ -2444,8 +2444,23 @@ impl<'tcx> TyCtxt<'tcx> {
         None
     }
 
-    /// If the given `DefId` belongs to a trait that was automatically derived, returns `true`.
-    pub fn is_builtin_derive(self, def_id: DefId) -> bool {
+    /// Check if the given `DefId` is `#\[automatically_derived\], *and*
+    /// whether it was produced by expanding a builtin derive macro.
+    pub fn is_builtin_derived(self, def_id: DefId) -> bool {
+        if self.is_automatically_derived(def_id)
+            && let Some(def_id) = def_id.as_local()
+            && let outer = self.def_span(def_id).ctxt().outer_expn_data()
+            && matches!(outer.kind, ExpnKind::Macro(MacroKind::Derive, _))
+            && self.has_attr(outer.macro_def_id.unwrap(), sym::rustc_builtin_macro)
+        {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Check if the given `DefId` is `#\[automatically_derived\]`.
+    pub fn is_automatically_derived(self, def_id: DefId) -> bool {
         self.has_attr(def_id, sym::automatically_derived)
     }
 
