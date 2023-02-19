@@ -884,7 +884,8 @@ fn preprocess_link(
     let mut parts = stripped.split('#');
 
     let link = parts.next().unwrap();
-    if link.trim().is_empty() {
+    let link = link.trim();
+    if link.is_empty() {
         // This is an anchor to an element of the current page, nothing to do in here!
         return None;
     }
@@ -897,7 +898,7 @@ fn preprocess_link(
     // Parse and strip the disambiguator from the link, if present.
     let (disambiguator, path_str, link_text) = match Disambiguator::from_str(link) {
         Ok(Some((d, path, link_text))) => (Some(d), path.trim(), link_text.trim()),
-        Ok(None) => (None, link.trim(), link.trim()),
+        Ok(None) => (None, link, link),
         Err((err_msg, relative_range)) => {
             // Only report error if we would not have ignored this link. See issue #83859.
             if !should_ignore_link_with_disambiguators(link) {
