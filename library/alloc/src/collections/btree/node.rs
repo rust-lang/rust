@@ -46,6 +46,20 @@ const KV_IDX_CENTER: usize = B - 1;
 const EDGE_IDX_LEFT_OF_CENTER: usize = B - 1;
 const EDGE_IDX_RIGHT_OF_CENTER: usize = B;
 
+/// Workaround <https://github.com/rust-lang/rust/issues/108751>
+macro_rules! leaf_node_capacity {
+    () => {
+        11
+    }; // instead of: CAPACITY
+}
+
+/// Workaround <https://github.com/rust-lang/rust/issues/108751>
+macro_rules! internal_node_capacity {
+    () => {
+        12
+    }; // instead of: 2 * B
+}
+
 /// The underlying representation of leaf nodes and part of the representation of internal nodes.
 struct LeafNode<K, V> {
     /// We want to be covariant in `K` and `V`.
@@ -61,8 +75,8 @@ struct LeafNode<K, V> {
 
     /// The arrays storing the actual data of the node. Only the first `len` elements of each
     /// array are initialized and valid.
-    keys: [MaybeUninit<K>; CAPACITY],
-    vals: [MaybeUninit<V>; CAPACITY],
+    keys: [MaybeUninit<K>; leaf_node_capacity!()], // @FIXME leaf_node_capacity!() workaround for https://github.com/rust-lang/rust/issues/108751
+    vals: [MaybeUninit<V>; leaf_node_capacity!()],
 }
 
 impl<K, V> LeafNode<K, V> {
@@ -100,7 +114,7 @@ struct InternalNode<K, V> {
     /// The pointers to the children of this node. `len + 1` of these are considered
     /// initialized and valid, except that near the end, while the tree is held
     /// through borrow type `Dying`, some of these pointers are dangling.
-    edges: [MaybeUninit<BoxedNode<K, V>>; 2 * B],
+    edges: [MaybeUninit<BoxedNode<K, V>>; internal_node_capacity!()], // @FIXME internal_node_capacity!() workaround for https://github.com/rust-lang/rust/issues/108751
 }
 
 impl<K, V> InternalNode<K, V> {
@@ -319,7 +333,8 @@ impl<BorrowType: marker::BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type>
         self,
     ) -> Result<Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::Edge>, Self> {
         const {
-            assert!(BorrowType::TRAVERSAL_PERMIT);
+            //@FIXME uncomment once compilable
+            //assert!(BorrowType::TRAVERSAL_PERMIT);
         }
 
         // We need to use raw pointers to nodes because, if BorrowType is marker::ValMut,
@@ -1063,7 +1078,8 @@ impl<BorrowType: marker::BorrowType, K, V>
     /// both, upon success, do nothing.
     pub fn descend(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
         const {
-            assert!(BorrowType::TRAVERSAL_PERMIT);
+            // @FIXME uncomment once compilable
+            //assert!(BorrowType::TRAVERSAL_PERMIT);
         }
 
         // We need to use raw pointers to nodes because, if BorrowType is

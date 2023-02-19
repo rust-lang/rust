@@ -143,6 +143,7 @@
 #![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::co_alloc::CoAllocPref;
 use core::alloc::Allocator;
 use core::fmt;
 use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen};
@@ -155,6 +156,7 @@ use crate::alloc::Global;
 use crate::collections::TryReserveError;
 use crate::slice;
 use crate::vec::{self, AsVecIntoIter, Vec};
+use crate::CO_ALLOC_PREF_DEFAULT;
 
 #[cfg(test)]
 mod tests;
@@ -1317,7 +1319,8 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain(&mut self) -> Drain<'_, T, A> {
+    #[allow(unused_braces)]
+    pub fn drain(&mut self) -> Drain<'_, T, A, { SHORT_TERM_VEC_CO_ALLOC_PREF!() }> {
         Drain { iter: self.data.drain(..) }
     }
 
@@ -1639,15 +1642,24 @@ unsafe impl<T: Ord, A: Allocator> TrustedLen for IntoIterSorted<T, A> {}
 /// [`drain`]: BinaryHeap::drain
 #[stable(feature = "drain", since = "1.6.0")]
 #[derive(Debug)]
+#[allow(unused_braces)]
 pub struct Drain<
     'a,
     T: 'a,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-> {
-    iter: vec::Drain<'a, T, A>,
+    /*#[unstable(feature = "global_co_alloc_drain", issue = "none")]*/
+    const CO_ALLOC_PREF: CoAllocPref = { CO_ALLOC_PREF_DEFAULT!() },
+> where
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
+{
+    iter: vec::Drain<'a, T, A, CO_ALLOC_PREF>,
 }
 
-impl<T, A: Allocator> Drain<'_, T, A> {
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
+{
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn allocator(&self) -> &A {
@@ -1656,7 +1668,11 @@ impl<T, A: Allocator> Drain<'_, T, A> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Iterator for Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
+{
     type Item = T;
 
     #[inline]
@@ -1671,7 +1687,12 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> DoubleEndedIterator
+    for Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
+{
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.iter.next_back()
@@ -1679,14 +1700,25 @@ impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> ExactSizeIterator
+    for Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
+{
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T, A: Allocator> FusedIterator for Drain<'_, T, A> {}
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> FusedIterator
+    for Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
+{
+}
 
 /// A draining iterator over the elements of a `BinaryHeap`.
 ///
@@ -1785,13 +1817,15 @@ impl<T: Ord, const N: usize> From<[T; N]> for BinaryHeap<T> {
     }
 }
 
+// @FIXME CoAlloc const generic param?
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
-impl<T, A: Allocator> From<BinaryHeap<T, A>> for Vec<T, A> {
+#[allow(unused_braces)]
+impl<T, A: Allocator> From<BinaryHeap<T, A>> for Vec<T, A, { CO_ALLOC_PREF_DEFAULT!() }> {
     /// Converts a `BinaryHeap<T>` into a `Vec<T>`.
     ///
     /// This conversion requires no data movement or allocation, and has
     /// constant time complexity.
-    fn from(heap: BinaryHeap<T, A>) -> Vec<T, A> {
+    fn from(heap: BinaryHeap<T, A>) -> Vec<T, A, { CO_ALLOC_PREF_DEFAULT!() }> {
         heap.data
     }
 }

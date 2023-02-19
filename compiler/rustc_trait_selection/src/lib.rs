@@ -14,10 +14,13 @@
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
+#![feature(allocator_api)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(extract_if)]
+#![feature(global_co_alloc_meta)]
+// FIXME CoAlloc #![feature(hash_drain_filter)] ???
 #![feature(let_chains)]
 #![feature(if_let_guard)]
 #![feature(never_type)]

@@ -80,15 +80,16 @@ LL | struct Struct {
 error[E0599]: the method `test` exists for struct `Foo<Vec<Enum>, Instant>`, but its trait bounds were not satisfied
   --> $DIR/derive-trait-for-method-call.rs:40:15
    |
-LL | struct Foo<X, Y> (X, Y);
-   | ---------------- method `test` not found for this struct
+LL |   struct Foo<X, Y> (X, Y);
+   |   ---------------- method `test` not found for this struct
 ...
-LL |     let y = x.test();
-   |               ^^^^ method cannot be called on `Foo<Vec<Enum>, Instant>` due to unsatisfied trait bounds
+LL |       let y = x.test();
+   |                 ^^^^ method cannot be called on `Foo<Vec<Enum>, Instant>` due to unsatisfied trait bounds
   --> $SRC_DIR/std/src/time.rs:LL:COL
    |
    = note: doesn't satisfy `Instant: Default`
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
    = note: doesn't satisfy `Vec<Enum>: Clone`
    |

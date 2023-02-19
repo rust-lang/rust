@@ -1442,6 +1442,9 @@ mod size_asserts {
     static_assert_size!(Operand<'_>, 24);
     static_assert_size!(Place<'_>, 16);
     static_assert_size!(PlaceElem<'_>, 24);
-    static_assert_size!(Rvalue<'_>, 40);
+    static_assert_size!(
+        Rvalue<'_>,
+        40 + std::mem::size_of::<<std::alloc::Global as std::alloc::Allocator>::CoAllocMeta>()
+    );
     // tidy-alphabetical-end
 }

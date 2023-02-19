@@ -1,9 +1,10 @@
 use crate::alloc::{Allocator, Global};
+use crate::co_alloc::CoAllocPref;
 use core::fmt;
 use core::iter::{FusedIterator, TrustedLen};
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::ptr::{self, NonNull};
-use core::slice::{self};
+use core::slice;
 
 use super::Vec;
 
@@ -19,28 +20,41 @@ use super::Vec;
 /// let iter: std::vec::Drain<'_, _> = v.drain(..);
 /// ```
 #[stable(feature = "drain", since = "1.6.0")]
+#[allow(unused_braces)]
 pub struct Drain<
     'a,
     T: 'a,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + 'a = Global,
-> {
+    const CO_ALLOC_PREF: CoAllocPref = { SHORT_TERM_VEC_CO_ALLOC_PREF!() },
+> where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     /// Index of tail to preserve
     pub(super) tail_start: usize,
     /// Length of tail
     pub(super) tail_len: usize,
     /// Current remaining range to remove
     pub(super) iter: slice::Iter<'a, T>,
-    pub(super) vec: NonNull<Vec<T, A>>,
+    pub(super) vec: NonNull<Vec<T, A, CO_ALLOC_PREF>>,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A> {
+#[allow(unused_braces)]
+impl<T: fmt::Debug, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> fmt::Debug
+    for Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Drain").field(&self.iter.as_slice()).finish()
     }
 }
 
-impl<'a, T, A: Allocator> Drain<'a, T, A> {
+#[allow(unused_braces)]
+impl<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drain<'a, T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     /// Returns the remaining items of this iterator as a slice.
     ///
     /// # Examples
@@ -137,19 +151,40 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
 }
 
 #[stable(feature = "vec_drain_as_slice", since = "1.46.0")]
-impl<'a, T, A: Allocator> AsRef<[T]> for Drain<'a, T, A> {
+#[allow(unused_braces)]
+impl<'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> AsRef<[T]>
+    for Drain<'a, T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     fn as_ref(&self) -> &[T] {
         self.as_slice()
     }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Sync, A: Sync + Allocator> Sync for Drain<'_, T, A> {}
+#[allow(unused_braces)]
+unsafe impl<T: Sync, A: Sync + Allocator, const CO_ALLOC_PREF: CoAllocPref> Sync
+    for Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
+}
 #[stable(feature = "drain", since = "1.6.0")]
-unsafe impl<T: Send, A: Send + Allocator> Send for Drain<'_, T, A> {}
+#[allow(unused_braces)]
+unsafe impl<T: Send, A: Send + Allocator, const CO_ALLOC_PREF: CoAllocPref> Send
+    for Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
+}
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Iterator for Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     type Item = T;
 
     #[inline]
@@ -163,7 +198,12 @@ impl<T, A: Allocator> Iterator for Drain<'_, T, A> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> DoubleEndedIterator
+    for Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.iter.next_back().map(|elt| unsafe { ptr::read(elt as *const _) })
@@ -171,12 +211,25 @@ impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator> Drop for Drain<'_, T, A> {
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop for Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     fn drop(&mut self) {
         /// Moves back the un-`Drain`ed elements to restore the original `Vec`.
-        struct DropGuard<'r, 'a, T, A: Allocator>(&'r mut Drain<'a, T, A>);
+        #[allow(unused_braces)]
+        struct DropGuard<'r, 'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref>(
+            &'r mut Drain<'a, T, A, CO_ALLOC_PREF>,
+        )
+        where
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:;
 
-        impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
+        impl<'r, 'a, T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop
+            for DropGuard<'r, 'a, T, A, CO_ALLOC_PREF>
+        where
+            [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+        {
             fn drop(&mut self) {
                 if self.0.tail_len > 0 {
                     unsafe {
@@ -240,14 +293,31 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> ExactSizeIterator
+    for Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<T, A: Allocator> TrustedLen for Drain<'_, T, A> {}
+#[allow(unused_braces)]
+unsafe impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> TrustedLen
+    for Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T, A: Allocator> FusedIterator for Drain<'_, T, A> {}
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> FusedIterator
+    for Drain<'_, T, A, CO_ALLOC_PREF>
+where
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
+{
+}

@@ -1,4 +1,5 @@
 use crate::alloc::{Allocator, Global};
+use crate::co_alloc::CoAllocPref;
 use core::ptr;
 use core::slice;
 
@@ -20,15 +21,19 @@ use super::Vec;
 #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
 #[derive(Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
+#[allow(unused_braces)]
 pub struct ExtractIf<
     'a,
     T,
     F,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    /*#[unstable(feature = "global_co_alloc_drain", issue = "none")]*/
+    const CO_ALLOC_PREF: CoAllocPref = { CO_ALLOC_PREF_DEFAULT!() },
 > where
     F: FnMut(&mut T) -> bool,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
-    pub(super) vec: &'a mut Vec<T, A>,
+    pub(super) vec: &'a mut Vec<T, A, CO_ALLOC_PREF>,
     /// The index of the item that will be inspected by the next call to `next`.
     pub(super) idx: usize,
     /// The number of items that have been drained (removed) thus far.
@@ -39,7 +44,7 @@ pub struct ExtractIf<
     pub(super) pred: F,
 }
 
-impl<T, F, A: Allocator> ExtractIf<'_, T, F, A>
+impl<T, F, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> ExtractIf<'_, T, F, A, CO_ALLOC_PREF>
 where
     F: FnMut(&mut T) -> bool,
 {
@@ -52,9 +57,12 @@ where
 }
 
 #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator> Iterator for ExtractIf<'_, T, F, A>
+#[allow(unused_braces)]
+impl<T, F, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Iterator
+    for ExtractIf<'_, T, F, A, CO_ALLOC_PREF>
 where
     F: FnMut(&mut T) -> bool,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     type Item = T;
 
@@ -88,9 +96,12 @@ where
 }
 
 #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator> Drop for ExtractIf<'_, T, F, A>
+#[allow(unused_braces)]
+impl<T, F, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> Drop
+    for ExtractIf<'_, T, F, A, CO_ALLOC_PREF>
 where
     F: FnMut(&mut T) -> bool,
+    [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
 {
     fn drop(&mut self) {
         unsafe {

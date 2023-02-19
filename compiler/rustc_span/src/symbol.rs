@@ -1643,6 +1643,7 @@ symbols! {
         to_string,
         to_string_method,
         to_vec,
+        to_vec_co,
         todo_macro,
         tool_attributes,
         tool_lints,

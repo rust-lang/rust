@@ -38,7 +38,6 @@ pub use rustc_type_ir::{Movability, Mutability};
 use std::fmt;
 use std::mem;
 use thin_vec::{thin_vec, ThinVec};
-
 /// A "Label" is an identifier of some point in sources,
 /// e.g. in the following code:
 ///
@@ -3171,30 +3170,31 @@ pub type ForeignItem = Item<ForeignItemKind>;
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
+    use std::alloc::{Allocator, Global};
     // tidy-alphabetical-start
     static_assert_size!(AssocItem, 88);
     static_assert_size!(AssocItemKind, 16);
     static_assert_size!(Attribute, 32);
-    static_assert_size!(Block, 32);
-    static_assert_size!(Expr, 72);
-    static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 160);
+    static_assert_size!(Block, 32 + mem::size_of::<<Global as Allocator>::CoAllocMeta>());
+    static_assert_size!(Expr, 72 + mem::size_of::<<Global as Allocator>::CoAllocMeta>());
+    static_assert_size!(ExprKind, 40 + mem::size_of::<<Global as Allocator>::CoAllocMeta>());
+    static_assert_size!(Fn, 160 + 2 * mem::size_of::<<Global as Allocator>::CoAllocMeta>());
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);
-    static_assert_size!(GenericBound, 64);
-    static_assert_size!(Generics, 40);
-    static_assert_size!(Impl, 136);
-    static_assert_size!(Item, 136);
-    static_assert_size!(ItemKind, 64);
+    static_assert_size!(GenericBound, 64 + mem::size_of::<<Global as Allocator>::CoAllocMeta>());
+    static_assert_size!(Generics, 40 + 2 * mem::size_of::<<Global as Allocator>::CoAllocMeta>());
+    static_assert_size!(Impl, 136 + 3 * mem::size_of::<<Global as Allocator>::CoAllocMeta>());
+    static_assert_size!(Item, 136 + 3 * mem::size_of::<<Global as Allocator>::CoAllocMeta>());
+    static_assert_size!(ItemKind, 64 + 3 * mem::size_of::<<Global as Allocator>::CoAllocMeta>());
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
     static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
-    static_assert_size!(Pat, 72);
+    static_assert_size!(Pat, 72 + mem::size_of::<<Global as Allocator>::CoAllocMeta>());
     static_assert_size!(Path, 24);
     static_assert_size!(PathSegment, 24);
-    static_assert_size!(PatKind, 48);
+    static_assert_size!(PatKind, 48 + mem::size_of::<<Global as Allocator>::CoAllocMeta>());
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
     static_assert_size!(Ty, 64);

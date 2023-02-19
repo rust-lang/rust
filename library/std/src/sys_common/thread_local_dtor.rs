@@ -16,6 +16,7 @@
 use crate::cell::RefCell;
 use crate::ptr;
 use crate::sys_common::thread_local_key::StaticKey;
+use alloc::vec::PlVec;
 
 pub unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     // The fallback implementation uses a vanilla OS-based TLS key to track
@@ -32,9 +33,10 @@ pub unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut
     // FIXME(joboet): integrate RefCell into pointer to avoid infinite recursion
     // when the global allocator tries to register a destructor and just panic
     // instead.
-    type List = RefCell<Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>>;
+    type List = RefCell<PlVec<(*mut u8, unsafe extern "C" fn(*mut u8))>>;
     if DTORS.get().is_null() {
-        let v: Box<List> = Box::new(RefCell::new(Vec::new()));
+        //@FIXME CoAlloc try: let v: Box<List> = Box::new(RefCell::new(PlVec::new()));
+        let v: Box<List> = Box::new(RefCell::new(Vec::new_co()));
         DTORS.set(Box::into_raw(v) as *mut u8);
     }
     let list = &*(DTORS.get() as *const List);

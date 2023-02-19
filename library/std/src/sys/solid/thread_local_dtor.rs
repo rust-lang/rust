@@ -5,12 +5,13 @@
 
 use super::{abi, itron::task};
 use crate::cell::{Cell, RefCell};
+use alloc::vec::PlVec;
 
 #[thread_local]
 static REGISTERED: Cell<bool> = Cell::new(false);
 
 #[thread_local]
-static DTORS: RefCell<Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>> = RefCell::new(Vec::new());
+static DTORS: RefCell<PlVec<(*mut u8, unsafe extern "C" fn(*mut u8))>> = RefCell::new(PlVec::new());
 
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     if !REGISTERED.get() {

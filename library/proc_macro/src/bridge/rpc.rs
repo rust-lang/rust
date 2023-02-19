@@ -1,9 +1,12 @@
 //! Serialization for client-server communication.
 
+use std::alloc::Global;
 use std::any::Any;
 use std::io::Write;
 use std::num::NonZeroU32;
 use std::str;
+//use alloc::alloc::Global;
+//use std::CO_ALLOC_PREF_DEFAULT;
 
 pub(super) type Writer = super::buffer::Buffer;
 
@@ -224,7 +227,7 @@ impl<S> DecodeMut<'_, '_, S> for String {
     }
 }
 
-impl<S, T: Encode<S>> Encode<S> for Vec<T> {
+impl<S, T: Encode<S>> Encode<S> for Vec<T, Global, { CO_ALLOC_PREF_DEFAULT!() }> {
     fn encode(self, w: &mut Writer, s: &mut S) {
         self.len().encode(w, s);
         for x in self {
@@ -233,7 +236,9 @@ impl<S, T: Encode<S>> Encode<S> for Vec<T> {
     }
 }
 
-impl<'a, S, T: for<'s> DecodeMut<'a, 's, S>> DecodeMut<'a, '_, S> for Vec<T> {
+impl<'a, S, T: for<'s> DecodeMut<'a, 's, S>> DecodeMut<'a, '_, S>
+    for Vec<T, Global, { CO_ALLOC_PREF_DEFAULT!() }>
+{
     fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
         let len = usize::decode(r, s);
         let mut vec = Vec::with_capacity(len);

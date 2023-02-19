@@ -274,6 +274,8 @@ use crate::alloc::WriteCloneIntoRaw;
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 #[cfg(not(no_global_oom_handling))]
+use crate::co_alloc::CoAllocPref;
+#[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
@@ -2508,7 +2510,12 @@ impl<T: ?Sized, A: Allocator> From<Box<T, A>> for Rc<T, A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<T, A: Allocator> From<Vec<T, A>> for Rc<[T], A> {
+#[allow(unused_braces)]
+impl<T, A: Allocator, const CO_ALLOC_PREF: CoAllocPref> From<Vec<T, A, CO_ALLOC_PREF>>
+    for Rc<[T], A>
+where
+    [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
+{
     /// Allocate a reference-counted slice and move `v`'s items into it.
     ///
     /// # Example
@@ -2520,7 +2527,11 @@ impl<T, A: Allocator> From<Vec<T, A>> for Rc<[T], A> {
     /// assert_eq!(&[1, 2, 3], &shared[..]);
     /// ```
     #[inline]
-    fn from(v: Vec<T, A>) -> Rc<[T], A> {
+    #[allow(unused_braces)]
+    fn from(v: Vec<T, A, CO_ALLOC_PREF>) -> Rc<[T], A>
+    where
+        [(); { meta_num_slots_global!(CO_ALLOC_PREF) }]:,
+    {
         unsafe {
             let (vec_ptr, len, cap, alloc) = v.into_raw_parts_with_alloc();
 
@@ -2647,6 +2658,7 @@ trait ToRcSlice<T>: Iterator<Item = T> + Sized {
     fn to_rc_slice(self) -> Rc<[T]>;
 }
 
+// COOP_NOT_POSSIBLE
 #[cfg(not(no_global_oom_handling))]
 impl<T, I: Iterator<Item = T>> ToRcSlice<T> for I {
     default fn to_rc_slice(self) -> Rc<[T]> {

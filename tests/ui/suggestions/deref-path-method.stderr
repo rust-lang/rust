@@ -1,15 +1,15 @@
-error[E0599]: no function or associated item named `contains` found for struct `Vec<_, _>` in the current scope
+error[E0599]: no function or associated item named `contains` found for struct `Vec<_, _, _>` in the current scope
   --> $DIR/deref-path-method.rs:3:10
    |
 LL |     Vec::contains(&vec, &0);
-   |          ^^^^^^^^ function or associated item not found in `Vec<_, _>`
+   |          ^^^^^^^^ function or associated item not found in `Vec<_, _, _>`
    |
-note: if you're trying to build a new `Vec<_, _>` consider using one of the following associated functions:
+note: if you're trying to build a new `Vec<_, _, _>` consider using one of the following associated functions:
       Vec::<T>::new
       Vec::<T>::with_capacity
       Vec::<T>::from_raw_parts
       Vec::<T, A>::new_in
-      and 2 others
+      and 9 others
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 help: the function `contains` is implemented on `[_]`
    |

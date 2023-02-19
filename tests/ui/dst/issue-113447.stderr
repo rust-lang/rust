@@ -10,7 +10,7 @@ LL |     let _ = &[0u8] == [0xAA];
              <[A; N] as PartialEq<[B]>>
              <[A; N] as PartialEq<&[B]>>
              <[A; N] as PartialEq<&mut [B]>>
-             <[T] as PartialEq<Vec<U, A>>>
+             <[T] as PartialEq<Vec<U, A, CO_ALLOC_PREF>>>
              <[A] as PartialEq<[B]>>
              <[B] as PartialEq<[A; N]>>
              <&[u8] as PartialEq<Bytes>>

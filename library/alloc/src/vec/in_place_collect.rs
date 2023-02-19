@@ -155,6 +155,7 @@
 //! vec.truncate(write_idx);
 //! ```
 use crate::alloc::{handle_alloc_error, Global};
+use crate::co_alloc::CoAllocPref;
 use core::alloc::Allocator;
 use core::alloc::Layout;
 use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
@@ -199,10 +200,12 @@ where
     type Src = <<T as SourceIter>::Source as AsVecIntoIter>::Item;
 }
 
-impl<T, I> SpecFromIter<T, I> for Vec<T>
+#[allow(unused_braces)]
+impl<T, I, const CO_ALLOC_PREF: CoAllocPref> SpecFromIter<T, I> for Vec<T, Global, CO_ALLOC_PREF>
 where
     I: Iterator<Item = T> + InPlaceCollect,
     <I as SourceIter>::Source: AsVecIntoIter,
+    [(); { crate::meta_num_slots_global!(CO_ALLOC_PREF) }]:,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // See "Layout constraints" section in the module documentation. We rely on const
@@ -290,8 +293,7 @@ where
 
         mem::forget(dst_guard);
 
-        let vec = unsafe { Vec::from_raw_parts(dst_buf, len, dst_cap) };
-
+        let vec = unsafe { Vec::from_raw_parts_co(dst_buf, len, dst_cap) };
         vec
     }
 }

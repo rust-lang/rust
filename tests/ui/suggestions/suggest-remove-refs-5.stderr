@@ -2,7 +2,7 @@ error[E0277]: `Vec<i32>` is not an iterator
   --> $DIR/suggest-remove-refs-5.rs:4:14
    |
 LL |     for _ in &mut &mut v {}
-   |              ^^^^^^^^^^^ `Vec<i32>` is not an iterator; try calling `.into_iter()` or `.iter()`
+   |              ^^^^^^^^^^^ `Vec<i32>` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `Vec<i32>`
    = note: required for `&mut Vec<i32>` to implement `Iterator`

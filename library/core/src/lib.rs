@@ -110,7 +110,9 @@
 #![allow(rustdoc::redundant_explicit_links)]
 //
 // Library features:
+// FIXME CoAlloc: ? #![feature(const_align_offset)]
 // tidy-alphabetical-start
+#![feature(associated_type_defaults)]
 #![feature(char_indices_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_align_of_val_raw)]
@@ -221,7 +223,6 @@
 #![feature(doc_cfg)]
 #![feature(doc_cfg_hide)]
 #![feature(doc_notable_trait)]
-#![feature(effects)]
 #![feature(exhaustive_patterns)]
 #![feature(extern_types)]
 #![feature(fundamental)]

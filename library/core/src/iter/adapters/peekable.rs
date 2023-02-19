@@ -19,6 +19,24 @@ pub struct Peekable<I: Iterator> {
     peeked: Option<Option<I::Item>>,
 }
 
+/*
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: Iterator + Clone> Clone for Peekable<I>
+where I::Item : Clone {
+    fn clone(&self) -> Self {
+        dbg_printf!("Peekable::clone() started".as_bytes().as_ptr());
+        let ic= self.iter.clone();
+        dbg_printf!("self.iter cloned successfully.".as_bytes().as_ptr());
+        let pc= self.peeked.clone();
+        dbg_printf!("self.peeked cloned successfully.".as_bytes().as_ptr());
+
+        Self {
+            iter: ic, //self.iter.clone(),
+            peeked: pc //self.peeked.clone()
+        }
+    }
+}*/
+
 impl<I: Iterator> Peekable<I> {
     pub(in crate::iter) fn new(iter: I) -> Peekable<I> {
         Peekable { iter, peeked: None }

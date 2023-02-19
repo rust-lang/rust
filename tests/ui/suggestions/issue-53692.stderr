@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-53692.rs:7:33
+  --> $DIR/issue-53692.rs:6:33
    |
 LL |     let items_clone: Vec<i32> = ref_items.clone();
    |                      --------   ^^^^^^^^^^-----^^
@@ -12,7 +12,7 @@ LL |     let items_clone: Vec<i32> = ref_items.clone();
            found reference `&[i32]`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-53692.rs:14:26
+  --> $DIR/issue-53692.rs:13:26
    |
 LL |     let string: String = s.clone();
    |                 ------   ^^-----^^

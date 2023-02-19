@@ -1,12 +1,14 @@
 #[cfg(test)]
 mod tests;
 
+use crate::alloc::Global;
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::rc::Rc;
 use crate::slice::hack::into_vec;
 use crate::string::String;
 use crate::vec::Vec;
+use crate::CO_ALLOC_PREF_DEFAULT;
 use core::borrow::Borrow;
 use core::ffi::{c_char, CStr};
 use core::fmt;
@@ -723,7 +725,8 @@ impl fmt::Debug for CString {
 }
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
-impl From<CString> for Vec<u8> {
+#[allow(unused_braces)]
+impl From<CString> for Vec<u8, Global, { CO_ALLOC_PREF_DEFAULT!() }> {
     /// Converts a [`CString`] into a <code>[Vec]<[u8]></code>.
     ///
     /// The conversion consumes the [`CString`], and removes the terminating NUL byte.

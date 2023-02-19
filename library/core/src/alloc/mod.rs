@@ -48,6 +48,76 @@ impl fmt::Display for AllocError {
     }
 }
 
+/// (Non-Null) Pointer and coallocation metadata.
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+#[derive(Clone, Copy, Debug)]
+pub struct PtrAndMeta<M: CoAllocMetaBase> {
+    pub ptr: NonNull<u8>,
+    pub meta: M,
+}
+
+/// (NonNull) Slice and coallocation metadata.
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+#[derive(Clone, Copy, Debug)]
+/// Used for results (from `CoAllocator`'s functions, where applicable).
+pub struct SliceAndMeta<M: CoAllocMetaBase> {
+    pub slice: NonNull<[u8]>,
+    pub meta: M,
+}
+
+/// `Result` of `SliceAndMeta` or `AllocError`.
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+pub type SliceAndMetaResult<M> = Result<SliceAndMeta<M>, AllocError>;
+
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+#[const_trait]
+pub trait CoAllocMetaBase: Clone + Copy {
+    /// NOT for public use. This MAY BE REMOVED or CHANGED.
+    ///
+    /// For EXPERIMENTATION only.
+    const ZERO_METAS: [Self; 0];
+    const ONE_METAS: [Self; 1];
+
+    /// NOT for public use. This MAY BE REMOVED or CHANGED.
+    ///
+    /// For EXPERIMENTATION only.
+    // @FIXME Once we have const_trait again, make this into a const fn new_plain() -> Self;
+    const SINGLE: Self;
+}
+
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+#[derive(Clone, Copy, Debug)]
+pub struct CoAllocMetaPlain {}
+
+const CO_ALLOC_META_PLAIN: CoAllocMetaPlain = CoAllocMetaPlain {};
+
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+impl const CoAllocMetaBase for CoAllocMetaPlain {
+    const ZERO_METAS: [Self; 0] = [];
+    const ONE_METAS: [Self; 1] = [CO_ALLOC_META_PLAIN];
+
+    const SINGLE: Self = CO_ALLOC_META_PLAIN;
+}
+
+/// Whether an `Allocator` implementation supports coallocation.
+///
+/// This type WILL CHANGE (once ``#![feature(generic_const_exprs)]` and
+/// `#![feature(adt_const_params)]` are stable) to a dedicated struct/enum. Hence:
+/// - DO NOT mix this/cast this with/to `u8`, `u16`, (nor any other integer); and
+/// - DO NOT hard code any values, but use `CO_ALLOCATOR_SUPPORTS_META_YES` and `CO_ALLOCATOR_SUPPORTS_META_NO`.
+// @FIXME Once ICE is fixed: Change to `u32` (or any other unused unsinged integer type, and other
+// than `usize`, so we can't mix it up with `usize`).
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+pub type CoAllocatorMetaNumSlots = usize;
+
+/// Indicating that an Allocator supports coallocation (if a type of the allocated instances supports it, too).
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+pub const CO_ALLOCATOR_SUPPORTS_META_YES: CoAllocatorMetaNumSlots = 1;
+
+/// Indicating that an Allocator does not support coallocation.
+#[unstable(feature = "global_co_alloc_meta", issue = "none")]
+pub const CO_ALLOCATOR_SUPPORTS_META_NO: CoAllocatorMetaNumSlots = 0;
+
 /// An implementation of `Allocator` can allocate, grow, shrink, and deallocate arbitrary blocks of
 /// data described via [`Layout`][].
 ///
@@ -107,6 +177,20 @@ impl fmt::Display for AllocError {
 /// [*currently allocated*]: #currently-allocated-memory
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub unsafe trait Allocator {
+    /// NOT for public use. MAY CHANGE.
+    const CO_ALLOC_META_NUM_SLOTS: CoAllocatorMetaNumSlots = CO_ALLOCATOR_SUPPORTS_META_NO;
+
+    /// Type to store coallocation metadata (if both the allocator and the heap-based type support
+    /// coallocation, and if coallocation is used).
+    ///
+    /// If this is any type with non-zero size, then the actual `Allocator` implementation supports
+    /// cooperative functions (`co_*`) as first class citizens. NOT for public use. The default
+    /// value MAY be REMOVED or CHANGED.
+    ///
+    /// @FIXME Validate (preferrable at compile time, otherwise as a test) that this type's
+    /// alignment <= `usize` alignment.
+    type CoAllocMeta: CoAllocMetaBase = CoAllocMetaPlain;
+
     /// Attempts to allocate a block of memory.
     ///
     /// On success, returns a [`NonNull<[u8]>`][NonNull] meeting the size and alignment guarantees of `layout`.
@@ -128,6 +212,10 @@ pub unsafe trait Allocator {
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError>;
+
+    fn co_allocate(&self, _layout: Layout, _result: &mut SliceAndMetaResult<Self::CoAllocMeta>) {
+        panic!("FIXME")
+    }
 
     /// Behaves like `allocate`, but also ensures that the returned memory is zero-initialized.
     ///
@@ -151,6 +239,18 @@ pub unsafe trait Allocator {
         Ok(ptr)
     }
 
+    fn co_allocate_zeroed(
+        &self,
+        layout: Layout,
+        mut result: &mut SliceAndMetaResult<Self::CoAllocMeta>,
+    ) {
+        self.co_allocate(layout, &mut result);
+        if let Ok(SliceAndMeta { slice, .. }) = result {
+            // SAFETY: `alloc` returns a valid memory block
+            unsafe { slice.as_non_null_ptr().as_ptr().write_bytes(0, slice.len()) }
+        }
+    }
+
     /// Deallocates the memory referenced by `ptr`.
     ///
     /// # Safety
@@ -161,6 +261,10 @@ pub unsafe trait Allocator {
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout);
+
+    unsafe fn co_deallocate(&self, _ptr_and_meta: PtrAndMeta<Self::CoAllocMeta>, _layout: Layout) {
+        panic!("FIXME")
+    }
 
     /// Attempts to extend the memory block.
     ///
@@ -226,6 +330,37 @@ pub unsafe trait Allocator {
         Ok(new_ptr)
     }
 
+    unsafe fn co_grow(
+        &self,
+        ptr_and_meta: PtrAndMeta<Self::CoAllocMeta>,
+        old_layout: Layout,
+        new_layout: Layout,
+        mut result: &mut SliceAndMetaResult<Self::CoAllocMeta>,
+    ) {
+        debug_assert!(
+            new_layout.size() >= old_layout.size(),
+            "`new_layout.size()` must be greater than or equal to `old_layout.size()`"
+        );
+
+        self.co_allocate(new_layout, &mut result);
+
+        if let Ok(SliceAndMeta { slice, .. }) = result {
+            // SAFETY: because `new_layout.size()` must be greater than or equal to
+            // `old_layout.size()`, both the old and new memory allocation are valid for reads and
+            // writes for `old_layout.size()` bytes. Also, because the old allocation wasn't yet
+            // deallocated, it cannot overlap `new_slice_and_meta.slice`. Thus, the call to `copy_nonoverlapping` is
+            // safe. The safety contract for `dealloc` must be upheld by the caller.
+            unsafe {
+                ptr::copy_nonoverlapping(
+                    ptr_and_meta.ptr.as_ptr(),
+                    slice.as_mut_ptr(),
+                    old_layout.size(),
+                );
+                self.co_deallocate(ptr_and_meta, old_layout);
+            }
+        }
+    }
+
     /// Behaves like `grow`, but also ensures that the new contents are set to zero before being
     /// returned.
     ///
@@ -287,6 +422,37 @@ pub unsafe trait Allocator {
         }
 
         Ok(new_ptr)
+    }
+
+    unsafe fn co_grow_zeroed(
+        &self,
+        ptr_and_meta: PtrAndMeta<Self::CoAllocMeta>,
+        old_layout: Layout,
+        new_layout: Layout,
+        mut result: &mut SliceAndMetaResult<Self::CoAllocMeta>,
+    ) {
+        debug_assert!(
+            new_layout.size() >= old_layout.size(),
+            "`new_layout.size()` must be greater than or equal to `old_layout.size()`"
+        );
+
+        self.co_allocate_zeroed(new_layout, &mut result);
+
+        if let Ok(SliceAndMeta { slice, .. }) = result {
+            // SAFETY: because `new_layout.size()` must be greater than or equal to
+            // `old_layout.size()`, both the old and new memory allocation are valid for reads and
+            // writes for `old_layout.size()` bytes. Also, because the old allocation wasn't yet
+            // deallocated, it cannot overlap `new_slice_and_meta.slice`. Thus, the call to `copy_nonoverlapping` is
+            // safe. The safety contract for `dealloc` must be upheld by the caller.
+            unsafe {
+                ptr::copy_nonoverlapping(
+                    ptr_and_meta.ptr.as_ptr(),
+                    slice.as_mut_ptr(),
+                    old_layout.size(),
+                );
+                self.co_deallocate(ptr_and_meta, old_layout);
+            }
+        }
     }
 
     /// Attempts to shrink the memory block.
@@ -353,6 +519,37 @@ pub unsafe trait Allocator {
         Ok(new_ptr)
     }
 
+    unsafe fn co_shrink(
+        &self,
+        ptr_and_meta: PtrAndMeta<Self::CoAllocMeta>,
+        old_layout: Layout,
+        new_layout: Layout,
+        mut result: &mut SliceAndMetaResult<Self::CoAllocMeta>,
+    ) {
+        debug_assert!(
+            new_layout.size() <= old_layout.size(),
+            "`new_layout.size()` must be smaller than or equal to `old_layout.size()`"
+        );
+
+        self.co_allocate(new_layout, &mut result);
+
+        if let Ok(SliceAndMeta { slice, .. }) = result {
+            // SAFETY: because `new_layout.size()` must be lower than or equal to
+            // `old_layout.size()`, both the old and new memory allocation are valid for reads and
+            // writes for `new_layout.size()` bytes. Also, because the old allocation wasn't yet
+            // deallocated, it cannot overlap `new_slice_and_meta.slice`. Thus, the call to `copy_nonoverlapping` is
+            // safe. The safety contract for `dealloc` must be upheld by the caller.
+            unsafe {
+                ptr::copy_nonoverlapping(
+                    ptr_and_meta.ptr.as_ptr(),
+                    slice.as_mut_ptr(),
+                    new_layout.size(),
+                );
+                self.co_deallocate(ptr_and_meta, old_layout);
+            }
+        }
+    }
+
     /// Creates a "by reference" adapter for this instance of `Allocator`.
     ///
     /// The returned adapter also implements `Allocator` and will simply borrow this.
@@ -365,6 +562,7 @@ pub unsafe trait Allocator {
     }
 }
 
+// @FIXME
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl<A> Allocator for &A
 where
