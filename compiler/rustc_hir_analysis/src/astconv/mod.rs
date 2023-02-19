@@ -447,14 +447,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        ty::Const::from_opt_const_arg_anon_const(
-                            tcx,
-                            ty::WithOptConstParam {
-                                did: ct.value.def_id,
-                                const_param_did: Some(param.def_id),
-                            },
-                        )
-                        .into()
+                        let did = ct.value.def_id;
+                        tcx.feed_anon_const_type(did, tcx.type_of(param.def_id));
+                        ty::Const::from_anon_const(tcx, did).into()
                     }
                     (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
                         let ty = tcx

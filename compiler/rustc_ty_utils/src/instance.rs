@@ -15,12 +15,6 @@ fn resolve_instance<'tcx>(
     key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     let (param_env, (did, substs)) = key.into_parts();
-    if let Some(did) = did.as_local() {
-        if let Some(param_did) = tcx.opt_const_param_of(did) {
-            return tcx.resolve_instance_of_const_arg(param_env.and((did, param_did, substs)));
-        }
-    }
-
     inner_resolve_instance(tcx, param_env.and((ty::WithOptConstParam::unknown(did), substs)))
 }
 

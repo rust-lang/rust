@@ -449,6 +449,14 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_local_crate(self) -> TyCtxtFeed<'tcx, CrateNum> {
         TyCtxtFeed { tcx: self, key: LOCAL_CRATE }
     }
+
+    /// In order to break cycles involving `AnonConst`, we need to set the expected type by side
+    /// effect. However, we do not want this as a general capability, so this interface restricts
+    /// to the only allowed case.
+    pub fn feed_anon_const_type(self, key: LocalDefId, value: ty::EarlyBinder<Ty<'tcx>>) {
+        debug_assert_eq!(self.def_kind(key), DefKind::AnonConst);
+        TyCtxtFeed { tcx: self, key }.type_of(value)
+    }
 }
 
 impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
