@@ -22,7 +22,7 @@ jobs:
         rustfmt --check build_system/mod.rs
 
 
-  build:
+  test:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
 
