@@ -174,6 +174,7 @@ where
             slice.len() >= LANES,
             "slice length must be at least the number of lanes"
         );
+        assert!(core::mem::size_of::<Self>() == LANES * core::mem::size_of::<T>());
         // Safety:
         // - We've checked the length is sufficient.
         // - `T` and `Simd<T, N>` are Copy types.
@@ -203,6 +204,7 @@ where
             slice.len() >= LANES,
             "slice length must be at least the number of lanes"
         );
+        assert!(core::mem::size_of::<Self>() == LANES * core::mem::size_of::<T>());
         // Safety:
         // - We've checked the length is sufficient
         // - `T` and `Simd<T, N>` are Copy types.
