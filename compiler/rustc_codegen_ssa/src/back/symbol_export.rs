@@ -188,7 +188,7 @@ fn exported_symbols_provider_local(
     // Export TLS shims
     if !tcx.sess.target.dll_tls_export {
         symbols.extend(sorted.iter().filter_map(|(&def_id, &info)| {
-            tcx.is_thread_local_static(def_id).then(|| {
+            tcx.needs_thread_local_shim(def_id).then(|| {
                 (
                     ExportedSymbol::ThreadLocalShim(def_id),
                     SymbolExportInfo {

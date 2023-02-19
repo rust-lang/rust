@@ -464,7 +464,7 @@ fn collect_items_rec<'tcx>(
                 }
             }
 
-            if !tcx.sess.target.dll_tls_export && tcx.is_thread_local_static(def_id) {
+            if tcx.needs_thread_local_shim(def_id) {
                 neighbors.push(respan(
                     starting_point.span,
                     MonoItem::Fn(Instance {

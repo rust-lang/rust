@@ -463,7 +463,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::ThreadLocalRef(def_id) => {
                 assert!(bx.cx().tcx().is_static(def_id));
                 let layout = bx.layout_of(bx.cx().tcx().static_ptr_ty(def_id));
-                let static_ = if !def_id.is_local() && !bx.cx().tcx().sess.target.dll_tls_export {
+                let static_ = if !def_id.is_local() && bx.cx().tcx().needs_thread_local_shim(def_id)
+                {
                     let instance = ty::Instance {
                         def: ty::InstanceDef::ThreadLocalShim(def_id),
                         substs: ty::InternalSubsts::empty(),
