@@ -459,6 +459,13 @@ impl Resolver {
         })
     }
 
+    pub fn generic_params(&self) -> Option<&Interned<GenericParams>> {
+        self.scopes().find_map(|scope| match scope {
+            Scope::GenericParams { params, .. } => Some(params),
+            _ => None,
+        })
+    }
+
     pub fn body_owner(&self) -> Option<DefWithBodyId> {
         self.scopes().find_map(|scope| match scope {
             Scope::ExprScope(it) => Some(it.owner),

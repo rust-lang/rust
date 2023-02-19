@@ -42,7 +42,7 @@ use hir_def::{
     adt::VariantData,
     body::{BodyDiagnostic, SyntheticSyntax},
     expr::{BindingAnnotation, ExprOrPatId, LabelId, Pat, PatId},
-    generics::{TypeOrConstParamData, TypeParamProvenance},
+    generics::{TypeOrConstParamData, TypeParamProvenance, LifetimeParamData},
     item_tree::ItemTreeNode,
     lang_item::{LangItem, LangItemTarget},
     layout::{Layout, LayoutError, ReprOptions},
@@ -1168,6 +1168,22 @@ impl Adt {
             Adt::Union(u) => u.name(db),
             Adt::Enum(e) => e.name(db),
         }
+    }
+
+    /// Returns the lifetime of the DataType
+    pub fn lifetime(&self, db: &dyn HirDatabase) -> Option<LifetimeParamData> {
+        let resolver = match self {
+            Adt::Struct(s) => s.id.resolver(db.upcast()),
+            Adt::Union(u) => u.id.resolver(db.upcast()),
+            Adt::Enum(e) => e.id.resolver(db.upcast()),
+        };
+        resolver.generic_params().and_then(|gp| {
+            (&gp.lifetimes)
+            .iter()
+            // there should only be a single lifetime
+            // but `Arena` requires to use an iterator
+            .nth(0)
+        }).map(|arena| arena.1.clone())
     }
 
     pub fn as_enum(&self) -> Option<Enum> {
@@ -3337,6 +3353,25 @@ impl Type {
             .flat_map(|(_, substs)| substs.iter(Interner))
             .filter_map(|arg| arg.ty(Interner).cloned())
             .map(move |ty| self.derived(ty))
+    }
+
+    /// Combines lifetime indicators and type arguments into a single `Vec<SmolStr>`
+    pub fn lifetime_and_type_arguments<'a>(&'a self, db: &'a dyn HirDatabase) -> Vec<SmolStr> {
+        let mut names = if let Some(lt) = self
+            .as_adt()
+            .and_then(|a| {
+                a.lifetime(db)
+                .and_then(|lt| Some((&lt.name).to_smol_str().clone()))
+            }) {
+                vec![lt]
+            } else {
+                vec![]
+            };
+
+        for ty in self.type_arguments() {
+            names.push(SmolStr::new(ty.display(db).to_string()))
+        }
+        names
     }
 
     pub fn iterate_method_candidates_with_traits<T>(
