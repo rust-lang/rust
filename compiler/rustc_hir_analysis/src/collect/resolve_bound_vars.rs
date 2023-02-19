@@ -969,7 +969,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                                 }
                                 this.insert_lifetime(lt, ResolvedArg::StaticLifetime);
                                 this.tcx.struct_span_lint_hir(
-                                    lint::builtin::NAMED_STATIC_LIFETIMES,
+                                    lint::builtin::UNUSED_LIFETIMES,
                                     lifetime.hir_id,
                                     lifetime.ident.span,
                                     format!(
@@ -981,7 +981,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                                             "you can use the `'static` lifetime directly, in place of `{}`",
                                             lifetime.ident,
                                         );
-                                        lint.note(help)
+                                        lint.help(help)
                                     },
                                 );
                             }
