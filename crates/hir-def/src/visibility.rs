@@ -11,7 +11,7 @@ use crate::{
     nameres::DefMap,
     path::{ModPath, PathKind},
     resolver::HasResolver,
-    ConstId, FunctionId, HasModule, LocalFieldId, ModuleId, VariantId,
+    ConstId, FunctionId, HasModule, LocalFieldId, LocalModuleId, ModuleId, VariantId,
 };
 
 /// Visibility of an item, not yet resolved.
@@ -142,7 +142,8 @@ impl Visibility {
                 arc = to_module.def_map(db);
                 &arc
             };
-        let is_block_root = matches!(to_module.block, Some(_) if to_module_def_map[to_module.local_id].parent.is_none());
+        let is_block_root =
+            to_module.block.is_some() && to_module_def_map[to_module.local_id].parent.is_none();
         if is_block_root {
             to_module = to_module_def_map.containing_module(to_module.local_id).unwrap();
         }
