@@ -452,86 +452,84 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             args1 = [place.llval];
             &args1[..]
         };
-        let (drop_fn, fn_abi) = match ty.kind() {
-            // FIXME(eddyb) perhaps move some of this logic into
-            // `Instance::resolve_drop_in_place`?
-            ty::Dynamic(_, _, ty::Dyn) => {
-                // IN THIS ARM, WE HAVE:
-                // ty = *mut (dyn Trait)
-                // which is: exists<T> ( *mut T,    Vtable<T: Trait> )
-                //                       args[0]    args[1]
-                //
-                // args = ( Data, Vtable )
-                //                  |
-                //                  v
-                //                /-------\
-                //                | ...   |
-                //                \-------/
-                //
-                let virtual_drop = Instance {
-                    def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
-                    substs: drop_fn.substs,
-                };
-                debug!("ty = {:?}", ty);
-                debug!("drop_fn = {:?}", drop_fn);
-                debug!("args = {:?}", args);
-                let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
-                let vtable = args[1];
-                // Truncate vtable off of args list
-                args = &args[..1];
-                (
-                    meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                        .get_fn(bx, vtable, ty, &fn_abi),
-                    fn_abi,
-                )
-            }
-            ty::Dynamic(_, _, ty::DynStar) => {
-                // IN THIS ARM, WE HAVE:
-                // ty = *mut (dyn* Trait)
-                // which is: *mut exists<T: sizeof(T) == sizeof(usize)> (T, Vtable<T: Trait>)
-                //
-                // args = [ * ]
-                //          |
-                //          v
-                //      ( Data, Vtable )
-                //                |
-                //                v
-                //              /-------\
-                //              | ...   |
-                //              \-------/
-                //
-                //
-                // WE CAN CONVERT THIS INTO THE ABOVE LOGIC BY DOING
-                //
-                // data = &(*args[0]).0    // gives a pointer to Data above (really the same pointer)
-                // vtable = (*args[0]).1   // loads the vtable out
-                // (data, vtable)          // an equivalent Rust `*mut dyn Trait`
-                //
-                // SO THEN WE CAN USE THE ABOVE CODE.
-                let virtual_drop = Instance {
-                    def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
-                    substs: drop_fn.substs,
-                };
-                debug!("ty = {:?}", ty);
-                debug!("drop_fn = {:?}", drop_fn);
-                debug!("args = {:?}", args);
-                let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
-                let data = args[0];
-                let data_ty = bx.cx().backend_type(place.layout);
-                let vtable_ptr =
-                    bx.gep(data_ty, data, &[bx.cx().const_i32(0), bx.cx().const_i32(1)]);
-                let vtable = bx.load(bx.type_i8p(), vtable_ptr, abi::Align::ONE);
-                // Truncate vtable off of args list
-                args = &args[..1];
-                debug!("args' = {:?}", args);
-                (
-                    meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                        .get_fn(bx, vtable, ty, &fn_abi),
-                    fn_abi,
-                )
-            }
-            _ => (bx.get_fn_addr(drop_fn), bx.fn_abi_of_instance(drop_fn, ty::List::empty())),
-        };
+        let (drop_fn, fn_abi) =
+            match ty.kind() {
+                // FIXME(eddyb) perhaps move some of this logic into
+                // `Instance::resolve_drop_in_place`?
+                ty::Dynamic(_, _, ty::Dyn) => {
+                    // IN THIS ARM, WE HAVE:
+                    // ty = *mut (dyn Trait)
+                    // which is: exists<T> ( *mut T,    Vtable<T: Trait> )
+                    //                       args[0]    args[1]
+                    //
+                    // args = ( Data, Vtable )
+                    //                  |
+                    //                  v
+                    //                /-------\
+                    //                | ...   |
+                    //                \-------/
+                    //
+                    let virtual_drop = Instance {
+                        def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
+                        substs: drop_fn.substs,
+                    };
+                    debug!("ty = {:?}", ty);
+                    debug!("drop_fn = {:?}", drop_fn);
+                    debug!("args = {:?}", args);
+                    let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
+                    let vtable = args[1];
+                    // Truncate vtable off of args list
+                    args = &args[..1];
+                    (
+                        meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
+                            .get_fn(bx, vtable, ty, &fn_abi),
+                        fn_abi,
+                    )
+                }
+                ty::Dynamic(_, _, ty::DynStar) => {
+                    // IN THIS ARM, WE HAVE:
+                    // ty = *mut (dyn* Trait)
+                    // which is: *mut exists<T: sizeof(T) == sizeof(usize)> (T, Vtable<T: Trait>)
+                    //
+                    // args = [ * ]
+                    //          |
+                    //          v
+                    //      ( Data, Vtable )
+                    //                |
+                    //                v
+                    //              /-------\
+                    //              | ...   |
+                    //              \-------/
+                    //
+                    //
+                    // WE CAN CONVERT THIS INTO THE ABOVE LOGIC BY DOING
+                    //
+                    // data = &(*args[0]).0    // gives a pointer to Data above (really the same pointer)
+                    // vtable = (*args[0]).1   // loads the vtable out
+                    // (data, vtable)          // an equivalent Rust `*mut dyn Trait`
+                    //
+                    // SO THEN WE CAN USE THE ABOVE CODE.
+                    let virtual_drop = Instance {
+                        def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
+                        substs: drop_fn.substs,
+                    };
+                    debug!("ty = {:?}", ty);
+                    debug!("drop_fn = {:?}", drop_fn);
+                    debug!("args = {:?}", args);
+                    let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
+                    let meta_ptr = place.project_field(bx, 1);
+                    let meta = bx.load_operand(meta_ptr);
+                    // Truncate vtable off of args list
+                    args = &args[..1];
+                    debug!("args' = {:?}", args);
+                    (
+                        meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
+                            .get_fn(bx, meta.immediate(), ty, &fn_abi),
+                        fn_abi,
+                    )
+                }
+                _ => (bx.get_fn_addr(drop_fn), bx.fn_abi_of_instance(drop_fn, ty::List::empty())),
+            };
         helper.do_call(
             self,
             bx,

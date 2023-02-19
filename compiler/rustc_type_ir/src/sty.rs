@@ -26,11 +26,9 @@ pub enum DynKind {
     Dyn,
     /// A sized `dyn* Trait` object
     ///
-    /// These objects are represented as a `(data, vtable)` pair where `data` is a ptr-sized value
-    /// (often a pointer to the real object, but not necessarily) and `vtable` is a pointer to
-    /// the vtable for `dyn* Trait`. The representation is essentially the same as `&dyn Trait`
-    /// or similar, but the drop function included in the vtable is responsible for freeing the
-    /// underlying storage if needed. This allows a `dyn*` object to be treated agnostically with
+    /// These objects are represented as a `(data, vtable)` pair where `data` is a value of some
+    /// ptr-sized and ptr-aligned dynamically determined type `T` and `vtable` is a pointer to the
+    /// vtable of `impl T for Trait`. This allows a `dyn*` object to be treated agnostically with
     /// respect to whether it points to a `Box<T>`, `Rc<T>`, etc.
     DynStar,
 }
