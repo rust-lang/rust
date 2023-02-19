@@ -120,7 +120,7 @@ impl Visibility {
         self,
         db: &dyn DefDatabase,
         def_map: &DefMap,
-        mut from_module: crate::LocalModuleId,
+        mut from_module: LocalModuleId,
     ) -> bool {
         let mut to_module = match self {
             Visibility::Module(m) => m,
