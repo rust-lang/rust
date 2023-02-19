@@ -53,7 +53,7 @@ mod flags;
 mod format;
 mod install;
 mod metadata;
-mod native;
+mod llvm;
 mod run;
 mod sanity;
 mod setup;
