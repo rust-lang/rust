@@ -604,6 +604,7 @@ fn non_exhaustive_match<'p, 'tcx>(
             span,
             scrut_ty,
             type_note: errors::TypeNote::new(scrut_ty),
+            ref_note,
         });
         return;
     }
@@ -618,32 +619,29 @@ fn non_exhaustive_match<'p, 'tcx>(
     } else {
         "_".to_string()
     };
-
-    let mut err = cx.tcx.sess.create_err(errors::NonExhaustivePatterns {
+    let mut err = errors::NonExhaustivePatterns {
         span,
         uncovered: errors::Uncovered::new(span, &cx, &witnesses),
         adt_defined_here: errors::AdtDefinedHere::new(&cx, scrut_ty, &witnesses),
         type_note: errors::TypeNote::new(scrut_ty),
-    });
+        no_fixed_max_value: None,
+        ppsm: None,
+    };
 
     if (scrut_ty == cx.tcx.types.usize || scrut_ty == cx.tcx.types.isize)
         && !is_empty_match
         && witnesses.len() == 1
         && matches!(witnesses[0].ctor(), Constructor::NonExhaustive)
     {
-        err.note(&format!(
-            "`{}` does not have a fixed maximum value, so a wildcard `_` is necessary to match \
-             exhaustively",
-            scrut_ty,
-        ));
+        err.no_fixed_max_value = Some(errors::NoFixedMaxValue { scrut_ty });
+
         if cx.tcx.sess.is_nightly_build() {
-            err.help(&format!(
-                "add `#![feature(precise_pointer_size_matching)]` to the crate attributes to \
-                 enable precise `{}` matching",
-                scrut_ty,
-            ));
+            err.ppsm = Some(errors::SuggestPrecisePointerSizeMatching { scrut_ty });
         }
     }
+
+    let mut err = cx.tcx.sess.create_err(err);
+
     if let ty::Ref(_, sub_ty, _) = scrut_ty.kind() {
         if !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.param_env) {
             err.note("references are always considered inhabited");
