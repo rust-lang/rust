@@ -5647,3 +5647,181 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn assoc_fn_in_block_local_impl() {
+    check(
+        r#"
+struct S;
+mod m {
+    const _: () = {
+        impl crate::S {
+            pub(crate) fn foo() {}
+        }
+    };
+}
+fn test() {
+    S::foo$0();
+}
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            test::S
+            ```
+
+            ```rust
+            pub(crate) fn foo()
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+struct S;
+mod m {
+    const _: () = {
+        const _: () = {
+            impl crate::S {
+                pub(crate) fn foo() {}
+            }
+        };
+    };
+}
+fn test() {
+    S::foo$0();
+}
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            test::S
+            ```
+
+            ```rust
+            pub(crate) fn foo()
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+struct S;
+mod m {
+    mod inner {
+        const _: () = {
+            impl crate::S {
+                pub(super) fn foo() {}
+            }
+        };
+    }
+
+    fn test() {
+        crate::S::foo$0();
+    }
+}
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            test::S
+            ```
+
+            ```rust
+            pub(super) fn foo()
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn assoc_const_in_block_local_impl() {
+    check(
+        r#"
+struct S;
+mod m {
+    const _: () = {
+        impl crate::S {
+            pub(crate) const A: () = ();
+        }
+    };
+}
+fn test() {
+    S::A$0;
+}
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            pub(crate) const A: () = ()
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+struct S;
+mod m {
+    const _: () = {
+        const _: () = {
+            impl crate::S {
+                pub(crate) const A: () = ();
+            }
+        };
+    };
+}
+fn test() {
+    S::A$0;
+}
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            pub(crate) const A: () = ()
+            ```
+        "#]],
+    );
+
+    check(
+        r#"
+struct S;
+mod m {
+    mod inner {
+        const _: () = {
+            impl crate::S {
+                pub(super) const A: () = ();
+            }
+        };
+    }
+
+    fn test() {
+        crate::S::A$0;
+    }
+}
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            pub(super) const A: () = ()
+            ```
+        "#]],
+    );
+}
