@@ -2239,7 +2239,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     let ocx = ObligationCtxt::new_in_snapshot(&infcx);
 
                     let impl_ty = tcx.type_of(impl_);
-                    let impl_substs = self.fresh_item_substs(impl_, &infcx);
+                    let impl_substs = infcx.fresh_item_substs(impl_);
                     let impl_ty = impl_ty.subst(tcx, impl_substs);
                     let impl_ty = ocx.normalize(&cause, param_env, impl_ty);
 
@@ -2304,36 +2304,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             fulfillment_errors,
             span,
         ))
-    }
-
-    // FIXME(fmease): Copied from `rustc_hir_typeck::method::probe`. Deduplicate.
-    fn fresh_item_substs(&self, def_id: DefId, infcx: &InferCtxt<'tcx>) -> SubstsRef<'tcx> {
-        let tcx = self.tcx();
-
-        InternalSubsts::for_item(tcx, def_id, |param, _| match param.kind {
-            GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-            GenericParamDefKind::Type { .. } => infcx
-                .next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::SubstitutionPlaceholder,
-                    span: tcx.def_span(def_id),
-                })
-                .into(),
-            GenericParamDefKind::Const { .. } => {
-                let span = tcx.def_span(def_id);
-                let origin = ConstVariableOrigin {
-                    kind: ConstVariableOriginKind::SubstitutionPlaceholder,
-                    span,
-                };
-                infcx
-                    .next_const_var(
-                        tcx.type_of(param.def_id)
-                            .no_bound_vars()
-                            .expect("const parameter types cannot be generic"),
-                        origin,
-                    )
-                    .into()
-            }
-        })
     }
 
     fn lookup_assoc_ty(
@@ -3529,5 +3499,38 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 );
             }
         }
+    }
+}
+
+pub trait InferCtxtExt<'tcx> {
+    fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx>;
+}
+
+impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
+    fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx> {
+        InternalSubsts::for_item(self.tcx, def_id, |param, _| match param.kind {
+            GenericParamDefKind::Lifetime => self.tcx.lifetimes.re_erased.into(),
+            GenericParamDefKind::Type { .. } => self
+                .next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::SubstitutionPlaceholder,
+                    span: self.tcx.def_span(def_id),
+                })
+                .into(),
+            GenericParamDefKind::Const { .. } => {
+                let span = self.tcx.def_span(def_id);
+                let origin = ConstVariableOrigin {
+                    kind: ConstVariableOriginKind::SubstitutionPlaceholder,
+                    span,
+                };
+                self.next_const_var(
+                    self.tcx
+                        .type_of(param.def_id)
+                        .no_bound_vars()
+                        .expect("const parameter types cannot be generic"),
+                    origin,
+                )
+                .into()
+            }
+        })
     }
 }
