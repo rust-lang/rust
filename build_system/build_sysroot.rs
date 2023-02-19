@@ -46,13 +46,15 @@ pub(crate) fn build_sysroot(
         let wrapper_name = wrapper_base_name.replace("____", wrapper);
 
         let mut build_cargo_wrapper_cmd = Command::new(&bootstrap_host_compiler.rustc);
+        let wrapper_path = DIST_DIR.to_path(dirs).join(&wrapper_name);
         build_cargo_wrapper_cmd
             .env("TOOLCHAIN_NAME", toolchain_name.clone())
             .arg(RelPath::SCRIPTS.to_path(dirs).join(&format!("{wrapper}.rs")))
             .arg("-o")
-            .arg(DIST_DIR.to_path(dirs).join(wrapper_name))
+            .arg(&wrapper_path)
             .arg("-Cstrip=debuginfo");
         spawn_and_wait(build_cargo_wrapper_cmd);
+        try_hard_link(wrapper_path, BIN_DIR.to_path(dirs).join(wrapper_name));
     }
 
     let host = build_sysroot_for_triple(

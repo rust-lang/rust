@@ -36,7 +36,7 @@ changelog-seen = 2
 ninja = false
 
 [build]
-rustc = "$(pwd)/../dist/rustc-clif"
+rustc = "$(pwd)/../dist/bin/rustc-clif"
 cargo = "$(rustup which cargo)"
 full-bootstrap = true
 local-rebuild = true
