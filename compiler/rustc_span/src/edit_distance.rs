@@ -1,10 +1,13 @@
-//! Damerau-Levenshtein distances.
+//! Edit distances.
 //!
-//! The [Damerau-Levenshtein distance] is a metric for measuring the difference between two strings.
-//! This implementation is a restricted version of the algorithm, as it does not permit modifying
-//! characters that have already been transposed.
+//! The [edit distance] is a metric for measuring the difference between two strings.
 //!
-//! [Damerau-Levenshtein distance]: https://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance
+//! [edit distance]: https://en.wikipedia.org/wiki/Edit_distance
+
+// The current implementation is the restricted Damerau-Levenshtein algorithm. It is restricted
+// because it does not permit modifying characters that have already been transposed. The specific
+// algorithm should not matter to the caller of the methods, which is why it is not noted in the
+// documentation.
 
 use crate::symbol::Symbol;
 use std::{cmp, mem};
@@ -12,11 +15,12 @@ use std::{cmp, mem};
 #[cfg(test)]
 mod tests;
 
-/// Finds the restricted Damerau-Levenshtein distance between two strings. Characters that have
-/// already been transposed may not be modified.
+/// Finds the [edit distance] between two strings.
 ///
-/// Returns None if the distance exceeds the limit.
-pub fn lev_distance(a: &str, b: &str, limit: usize) -> Option<usize> {
+/// Returns `None` if the distance exceeds the limit.
+///
+/// [edit distance]: https://en.wikipedia.org/wiki/Edit_distance
+pub fn edit_distance(a: &str, b: &str, limit: usize) -> Option<usize> {
     let mut a = &a.chars().collect::<Vec<_>>()[..];
     let mut b = &b.chars().collect::<Vec<_>>()[..];
 
@@ -95,18 +99,18 @@ pub fn lev_distance(a: &str, b: &str, limit: usize) -> Option<usize> {
 }
 
 /// Provides a word similarity score between two words that accounts for substrings being more
-/// meaningful than a typical Levenshtein distance. The lower the score, the closer the match.
-/// 0 is an identical match.
+/// meaningful than a typical edit distance. The lower the score, the closer the match. 0 is an
+/// identical match.
 ///
-/// Uses the Levenshtein distance between the two strings and removes the cost of the length
-/// difference. If this is 0 then it is either a substring match or a full word match, in the
-/// substring match case we detect this and return `1`. To prevent finding meaningless substrings,
-/// eg. "in" in "shrink", we only perform this subtraction of length difference if one of the words
-/// is not greater than twice the length of the other. For cases where the words are close in size
-/// but not an exact substring then the cost of the length difference is discounted by half.
+/// Uses the edit distance between the two strings and removes the cost of the length difference.
+/// If this is 0 then it is either a substring match or a full word match, in the substring match
+/// case we detect this and return `1`. To prevent finding meaningless substrings, eg. "in" in
+/// "shrink", we only perform this subtraction of length difference if one of the words is not
+/// greater than twice the length of the other. For cases where the words are close in size but not
+/// an exact substring then the cost of the length difference is discounted by half.
 ///
 /// Returns `None` if the distance exceeds the limit.
-pub fn lev_distance_with_substrings(a: &str, b: &str, limit: usize) -> Option<usize> {
+pub fn edit_distance_with_substrings(a: &str, b: &str, limit: usize) -> Option<usize> {
     let n = a.chars().count();
     let m = b.chars().count();
 
@@ -114,10 +118,10 @@ pub fn lev_distance_with_substrings(a: &str, b: &str, limit: usize) -> Option<us
     // big difference in length.
     let big_len_diff = (n * 2) < m || (m * 2) < n;
     let len_diff = if n < m { m - n } else { n - m };
-    let lev = lev_distance(a, b, limit + len_diff)?;
+    let distance = edit_distance(a, b, limit + len_diff)?;
 
     // This is the crux, subtracting length difference means exact substring matches will now be 0
-    let score = lev - len_diff;
+    let score = distance - len_diff;
 
     // If the score is 0 but the words have different lengths then it's a substring match not a full
     // word match
@@ -136,12 +140,12 @@ pub fn lev_distance_with_substrings(a: &str, b: &str, limit: usize) -> Option<us
 
 /// Finds the best match for given word in the given iterator where substrings are meaningful.
 ///
-/// A version of [`find_best_match_for_name`] that uses [`lev_distance_with_substrings`] as the score
-/// for word similarity. This takes an optional distance limit which defaults to one-third of the
-/// given word.
+/// A version of [`find_best_match_for_name`] that uses [`edit_distance_with_substrings`] as the
+/// score for word similarity. This takes an optional distance limit which defaults to one-third of
+/// the given word.
 ///
-/// Besides the modified Levenshtein, we use case insensitive comparison to improve accuracy
-/// on an edge case with a lower(upper)case letters mismatch.
+/// We use case insensitive comparison to improve accuracy on an edge case with a lower(upper)case
+/// letters mismatch.
 pub fn find_best_match_for_name_with_substrings(
     candidates: &[Symbol],
     lookup: Symbol,
@@ -156,8 +160,8 @@ pub fn find_best_match_for_name_with_substrings(
 /// an optional limit for the maximum allowable edit distance, which defaults
 /// to one-third of the given word.
 ///
-/// Besides Levenshtein, we use case insensitive comparison to improve accuracy
-/// on an edge case with a lower(upper)case letters mismatch.
+/// We use case insensitive comparison to improve accuracy on an edge case with a lower(upper)case
+/// letters mismatch.
 pub fn find_best_match_for_name(
     candidates: &[Symbol],
     lookup: Symbol,
@@ -178,7 +182,7 @@ fn find_best_match_for_name_impl(
 
     // Priority of matches:
     // 1. Exact case insensitive match
-    // 2. Levenshtein distance match
+    // 2. Edit distance match
     // 3. Sorted word match
     if let Some(c) = candidates.iter().find(|c| c.as_str().to_uppercase() == lookup_uppercase) {
         return Some(*c);
@@ -188,9 +192,9 @@ fn find_best_match_for_name_impl(
     let mut best = None;
     for c in candidates {
         match if use_substring_score {
-            lev_distance_with_substrings(lookup, c.as_str(), dist)
+            edit_distance_with_substrings(lookup, c.as_str(), dist)
         } else {
-            lev_distance(lookup, c.as_str(), dist)
+            edit_distance(lookup, c.as_str(), dist)
         } {
             Some(0) => return Some(*c),
             Some(d) => {

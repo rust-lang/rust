@@ -39,7 +39,7 @@ use rustc_middle::ty::{self, print::Printer, subst::GenericArg, RegisteredTools,
 use rustc_session::lint::{BuiltinLintDiagnostics, LintExpectationId};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
-use rustc_span::lev_distance::find_best_match_for_name;
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{BytePos, Span};
 use rustc_target::abi;

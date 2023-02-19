@@ -47,7 +47,7 @@ pub use hygiene::{ExpnData, ExpnHash, ExpnId, LocalExpnId, SyntaxContext};
 use rustc_data_structures::stable_hasher::HashingControls;
 pub mod def_id;
 use def_id::{CrateNum, DefId, DefPathHash, LocalDefId, LOCAL_CRATE};
-pub mod lev_distance;
+pub mod edit_distance;
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
 
