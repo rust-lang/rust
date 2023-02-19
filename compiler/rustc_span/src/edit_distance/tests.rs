@@ -68,3 +68,13 @@ fn test_find_best_match_for_name() {
         );
     })
 }
+
+#[test]
+fn test_precise_algorithm() {
+    // Not Levenshtein distance.
+    assert_ne!(edit_distance("ab", "ba", usize::MAX), Some(2));
+    // Not unrestricted Damerau-Levenshtein distance.
+    assert_ne!(edit_distance("abde", "bcaed", usize::MAX), Some(3));
+    // The current implementation is a restricted Damerau-Levenshtein distance.
+    assert_eq!(edit_distance("abde", "bcaed", usize::MAX), Some(4));
+}
