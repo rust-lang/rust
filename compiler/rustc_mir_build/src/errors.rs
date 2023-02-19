@@ -355,6 +355,7 @@ pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
     pub span: Span,
     pub scrut_ty: Ty<'tcx>,
     pub type_note: TypeNote<'tcx>,
+    pub ref_note: Option<RefNote>,
 }
 
 impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
@@ -390,13 +391,13 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
             TypeNote::MarkedExhaustive { .. } => {
                 diag.note(fluent::mir_build_type_note_non_exhaustive)
             }
-            TypeNote::NotMarkedExhaustive { .. } => diag.note(fluent::mir_build_type_note),
+            TypeNote::NotMarkedExhaustive { .. } => {
+                diag.note(fluent::mir_build_type_note)
+            }
         };
 
-        if let ty::Ref(_, sub_ty, _) = self.scrut_ty.kind() {
-            if !sub_ty.is_inhabited_from(self.cx.tcx, self.cx.module, self.cx.param_env) {
-                diag.note(fluent::mir_build_reference_note);
-            }
+        if self.ref_note.is_some() {
+            diag.note(fluent::mir_build_ref_note);
         }
 
         let mut suggestion = None;
@@ -954,6 +955,8 @@ pub(crate) struct NonExhaustivePatterns<'tcx> {
     pub no_fixed_max_value: Option<NoFixedMaxValue<'tcx>>,
     #[subdiagnostic]
     pub ppsm: Option<SuggestPrecisePointerSizeMatching<'tcx>>,
+    #[subdiagnostic]
+    pub ref_note: Option<RefNote>,
 }
 
 #[derive(Subdiagnostic)]
@@ -986,3 +989,7 @@ pub struct NoFixedMaxValue<'tcx> {
 pub struct SuggestPrecisePointerSizeMatching<'tcx> {
     pub scrut_ty: Ty<'tcx>,
 }
+
+#[derive(Subdiagnostic)]
+#[note(mir_build_ref_note)]
+pub struct RefNote;

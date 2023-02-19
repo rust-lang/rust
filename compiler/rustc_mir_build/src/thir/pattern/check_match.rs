@@ -595,6 +595,12 @@ fn non_exhaustive_match<'p, 'tcx>(
         ty::Adt(def, _) => def.is_enum() && !def.variants().is_empty(),
         _ => false,
     };
+    let ref_note = if let ty::Ref(_, sub_ty, _) = scrut_ty.kind() && !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.param_env) {
+        Some(errors::RefNote)
+    } else {
+        None
+    };
+
     // In the case of an empty match, replace the '`_` not covered' diagnostic with something more
     // informative.
     if is_empty_match && !non_empty_enum {
@@ -626,6 +632,7 @@ fn non_exhaustive_match<'p, 'tcx>(
         type_note: errors::TypeNote::new(scrut_ty),
         no_fixed_max_value: None,
         ppsm: None,
+        ref_note,
     };
 
     if (scrut_ty == cx.tcx.types.usize || scrut_ty == cx.tcx.types.isize)
@@ -641,12 +648,6 @@ fn non_exhaustive_match<'p, 'tcx>(
     }
 
     let mut err = cx.tcx.sess.create_err(err);
-
-    if let ty::Ref(_, sub_ty, _) = scrut_ty.kind() {
-        if !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.param_env) {
-            err.note("references are always considered inhabited");
-        }
-    }
 
     let mut suggestion = None;
     let sm = cx.tcx.sess.source_map();
