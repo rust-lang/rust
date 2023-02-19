@@ -226,7 +226,7 @@
             },
             {
                 "command": "rust-analyzer.openDocs",
-                "title": "Open docs under cursor",
+                "title": "Open Docs",
                 "category": "rust-analyzer"
             },
             {
@@ -236,7 +236,7 @@
             },
             {
                 "command": "rust-analyzer.peekTests",
-                "title": "Peek related tests",
+                "title": "Peek Related Tests",
                 "category": "rust-analyzer"
             },
             {
