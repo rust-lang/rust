@@ -29,7 +29,7 @@ smallvec = { version = "1.8.1", features = [
 stable_deref_trait = "1.0.0"
 stacker = "0.1.15"
 tempfile = "3.2"
-thin-vec = "0.2.9"
+thin-vec = "0.2.12"
 tracing = "0.1"
 
 [dependencies.parking_lot]
