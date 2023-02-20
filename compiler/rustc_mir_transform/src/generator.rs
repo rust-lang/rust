@@ -597,16 +597,15 @@ fn locals_live_across_suspend_points<'tcx>(
     let borrowed_locals_results =
         MaybeBorrowedLocals.into_engine(tcx, body_ref).pass_name("generator").iterate_to_fixpoint();
 
-    let mut borrowed_locals_cursor =
-        rustc_mir_dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
+    let mut borrowed_locals_cursor = borrowed_locals_results.cloned_results_cursor(body_ref);
 
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
-    let requires_storage_results = MaybeRequiresStorage::new(body, &borrowed_locals_results)
-        .into_engine(tcx, body_ref)
-        .iterate_to_fixpoint();
-    let mut requires_storage_cursor =
-        rustc_mir_dataflow::ResultsCursor::new(body_ref, &requires_storage_results);
+    let mut requires_storage_results =
+        MaybeRequiresStorage::new(borrowed_locals_results.cloned_results_cursor(body))
+            .into_engine(tcx, body_ref)
+            .iterate_to_fixpoint();
+    let mut requires_storage_cursor = requires_storage_results.as_results_cursor(body_ref);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut liveness = MaybeLiveLocals
@@ -747,7 +746,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
     saved_locals: &GeneratorSavedLocals,
     always_live_locals: BitSet<Local>,
-    requires_storage: rustc_mir_dataflow::Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
+    mut requires_storage: rustc_mir_dataflow::Results<'tcx, MaybeRequiresStorage<'_, 'mir, 'tcx>>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
 
@@ -802,13 +801,14 @@ struct StorageConflictVisitor<'mir, 'tcx, 's> {
     local_conflicts: BitMatrix<Local, Local>,
 }
 
-impl<'mir, 'tcx> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx>
+impl<'mir, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx, R>
     for StorageConflictVisitor<'mir, 'tcx, '_>
 {
     type FlowState = BitSet<Local>;
 
     fn visit_statement_before_primary_effect(
         &mut self,
+        _results: &R,
         state: &Self::FlowState,
         _statement: &'mir Statement<'tcx>,
         loc: Location,
@@ -818,6 +818,7 @@ impl<'mir, 'tcx> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx>
 
     fn visit_terminator_before_primary_effect(
         &mut self,
+        _results: &R,
         state: &Self::FlowState,
         _terminator: &'mir Terminator<'tcx>,
         loc: Location,

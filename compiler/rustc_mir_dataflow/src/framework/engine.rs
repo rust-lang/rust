@@ -5,7 +5,9 @@ use crate::errors::{
 };
 use crate::framework::BitSetExt;
 
+use std::borrow::Borrow;
 use std::ffi::OsString;
+use std::marker::PhantomData;
 use std::path::PathBuf;
 
 use rustc_ast as ast;
@@ -22,52 +24,106 @@ use rustc_span::symbol::{sym, Symbol};
 use super::fmt::DebugWithContext;
 use super::graphviz;
 use super::{
-    visit_results, Analysis, Direction, GenKill, GenKillAnalysis, GenKillSet, JoinSemiLattice,
-    ResultsCursor, ResultsVisitor,
+    visit_results, Analysis, AnalysisDomain, CloneAnalysis, Direction, GenKill, GenKillAnalysis,
+    GenKillSet, JoinSemiLattice, ResultsClonedCursor, ResultsCursor, ResultsRefCursor,
+    ResultsVisitor,
 };
 
+pub type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as AnalysisDomain<'tcx>>::Domain>;
+
 /// A dataflow analysis that has converged to fixpoint.
-pub struct Results<'tcx, A>
+pub struct Results<'tcx, A, E = EntrySets<'tcx, A>>
 where
     A: Analysis<'tcx>,
 {
     pub analysis: A,
-    pub(super) entry_sets: IndexVec<BasicBlock, A::Domain>,
+    pub(super) entry_sets: E,
+    pub(super) _marker: PhantomData<&'tcx ()>,
 }
 
-impl<'tcx, A> Results<'tcx, A>
+/// `Results` type with a cloned `Analysis` and borrowed entry sets.
+pub type ResultsCloned<'res, 'tcx, A> = Results<'tcx, A, &'res EntrySets<'tcx, A>>;
+
+impl<'tcx, A, E> Results<'tcx, A, E>
 where
     A: Analysis<'tcx>,
+    E: Borrow<EntrySets<'tcx, A>>,
 {
     /// Creates a `ResultsCursor` that can inspect these `Results`.
     pub fn into_results_cursor<'mir>(
         self,
         body: &'mir mir::Body<'tcx>,
-    ) -> ResultsCursor<'mir, 'tcx, A> {
+    ) -> ResultsCursor<'mir, 'tcx, A, Self> {
         ResultsCursor::new(body, self)
     }
 
     /// Gets the dataflow state for the given block.
     pub fn entry_set_for_block(&self, block: BasicBlock) -> &A::Domain {
-        &self.entry_sets[block]
+        &self.entry_sets.borrow()[block]
     }
 
     pub fn visit_with<'mir>(
-        &self,
+        &mut self,
         body: &'mir mir::Body<'tcx>,
         blocks: impl IntoIterator<Item = BasicBlock>,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = A::Domain>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, Self, FlowState = A::Domain>,
     ) {
         visit_results(body, blocks, self, vis)
     }
 
     pub fn visit_reachable_with<'mir>(
-        &self,
+        &mut self,
         body: &'mir mir::Body<'tcx>,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = A::Domain>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, Self, FlowState = A::Domain>,
     ) {
         let blocks = mir::traversal::reachable(body);
         visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
+    }
+}
+impl<'tcx, A> Results<'tcx, A>
+where
+    A: Analysis<'tcx>,
+{
+    /// Creates a `ResultsCursor` that can inspect these `Results`.
+    pub fn as_results_cursor<'a, 'mir>(
+        &'a mut self,
+        body: &'mir mir::Body<'tcx>,
+    ) -> ResultsRefCursor<'a, 'mir, 'tcx, A> {
+        ResultsCursor::new(body, self)
+    }
+}
+impl<'tcx, A> Results<'tcx, A>
+where
+    A: Analysis<'tcx> + CloneAnalysis,
+{
+    /// Creates a new `Results` type with a cloned `Analysis` and borrowed entry sets.
+    pub fn clone_analysis(&self) -> ResultsCloned<'_, 'tcx, A> {
+        Results {
+            analysis: self.analysis.clone_analysis(),
+            entry_sets: &self.entry_sets,
+            _marker: PhantomData,
+        }
+    }
+
+    /// Creates a `ResultsCursor` that can inspect these `Results`.
+    pub fn cloned_results_cursor<'mir>(
+        &self,
+        body: &'mir mir::Body<'tcx>,
+    ) -> ResultsClonedCursor<'_, 'mir, 'tcx, A> {
+        self.clone_analysis().into_results_cursor(body)
+    }
+}
+impl<'res, 'tcx, A> Results<'tcx, A, &'res EntrySets<'tcx, A>>
+where
+    A: Analysis<'tcx> + CloneAnalysis,
+{
+    /// Creates a new `Results` type with a cloned `Analysis` and borrowed entry sets.
+    pub fn reclone_analysis(&self) -> Self {
+        Results {
+            analysis: self.analysis.clone_analysis(),
+            entry_sets: self.entry_sets,
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -98,7 +154,7 @@ where
     T: Idx,
 {
     /// Creates a new `Engine` to solve a gen-kill dataflow problem.
-    pub fn new_gen_kill(tcx: TyCtxt<'tcx>, body: &'a mir::Body<'tcx>, analysis: A) -> Self {
+    pub fn new_gen_kill(tcx: TyCtxt<'tcx>, body: &'a mir::Body<'tcx>, mut analysis: A) -> Self {
         // If there are no back-edges in the control-flow graph, we only ever need to apply the
         // transfer function for each block exactly once (assuming that we process blocks in RPO).
         //
@@ -114,7 +170,7 @@ where
 
         for (block, block_data) in body.basic_blocks.iter_enumerated() {
             let trans = &mut trans_for_block[block];
-            A::Direction::gen_kill_effects_in_block(&analysis, trans, block, block_data);
+            A::Direction::gen_kill_effects_in_block(&mut analysis, trans, block, block_data);
         }
 
         let apply_trans = Box::new(move |bb: BasicBlock, state: &mut A::Domain| {
@@ -171,7 +227,13 @@ where
         A::Domain: DebugWithContext<A>,
     {
         let Engine {
-            analysis, body, mut entry_sets, tcx, apply_trans_for_block, pass_name, ..
+            mut analysis,
+            body,
+            mut entry_sets,
+            tcx,
+            apply_trans_for_block,
+            pass_name,
+            ..
         } = self;
 
         let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
@@ -203,11 +265,13 @@ where
             // Apply the block transfer function, using the cached one if it exists.
             match &apply_trans_for_block {
                 Some(apply) => apply(bb, &mut state),
-                None => A::Direction::apply_effects_in_block(&analysis, &mut state, bb, bb_data),
+                None => {
+                    A::Direction::apply_effects_in_block(&mut analysis, &mut state, bb, bb_data)
+                }
             }
 
             A::Direction::join_state_into_successors_of(
-                &analysis,
+                &mut analysis,
                 tcx,
                 body,
                 &mut state,
@@ -221,9 +285,9 @@ where
             );
         }
 
-        let results = Results { analysis, entry_sets };
+        let mut results = Results { analysis, entry_sets, _marker: PhantomData };
 
-        let res = write_graphviz_results(tcx, &body, &results, pass_name);
+        let res = write_graphviz_results(tcx, body, &mut results, pass_name);
         if let Err(e) = res {
             error!("Failed to write graphviz dataflow results: {}", e);
         }
@@ -239,7 +303,7 @@ where
 fn write_graphviz_results<'tcx, A>(
     tcx: TyCtxt<'tcx>,
     body: &mir::Body<'tcx>,
-    results: &Results<'tcx, A>,
+    results: &mut Results<'tcx, A>,
     pass_name: Option<&'static str>,
 ) -> std::io::Result<()>
 where

@@ -16,7 +16,7 @@ pub trait Direction {
     ///
     /// `effects.start()` must precede or equal `effects.end()` in this direction.
     fn apply_effects_in_range<'tcx, A>(
-        analysis: &A,
+        analysis: &mut A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
@@ -25,7 +25,7 @@ pub trait Direction {
         A: Analysis<'tcx>;
 
     fn apply_effects_in_block<'tcx, A>(
-        analysis: &A,
+        analysis: &mut A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
@@ -33,7 +33,7 @@ pub trait Direction {
         A: Analysis<'tcx>;
 
     fn gen_kill_effects_in_block<'tcx, A>(
-        analysis: &A,
+        analysis: &mut A,
         trans: &mut GenKillSet<A::Idx>,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
@@ -44,13 +44,13 @@ pub trait Direction {
         state: &mut F,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &R,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = F>,
+        results: &mut R,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, R, FlowState = F>,
     ) where
         R: ResultsVisitable<'tcx, FlowState = F>;
 
     fn join_state_into_successors_of<'tcx, A>(
-        analysis: &A,
+        analysis: &mut A,
         tcx: TyCtxt<'tcx>,
         body: &mir::Body<'tcx>,
         exit_state: &mut A::Domain,
@@ -67,7 +67,7 @@ impl Direction for Backward {
     const IS_FORWARD: bool = false;
 
     fn apply_effects_in_block<'tcx, A>(
-        analysis: &A,
+        analysis: &mut A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
@@ -87,7 +87,7 @@ impl Direction for Backward {
     }
 
     fn gen_kill_effects_in_block<'tcx, A>(
-        analysis: &A,
+        analysis: &mut A,
         trans: &mut GenKillSet<A::Idx>,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
@@ -107,7 +107,7 @@ impl Direction for Backward {
     }
 
     fn apply_effects_in_range<'tcx, A>(
-        analysis: &A,
+        analysis: &mut A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
@@ -187,36 +187,36 @@ impl Direction for Backward {
         state: &mut F,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &R,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = F>,
+        results: &mut R,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, R, FlowState = F>,
     ) where
         R: ResultsVisitable<'tcx, FlowState = F>,
     {
         results.reset_to_block_entry(state, block);
 
-        vis.visit_block_end(&state, block_data, block);
+        vis.visit_block_end(results, &state, block_data, block);
 
         // Terminator
         let loc = Location { block, statement_index: block_data.statements.len() };
         let term = block_data.terminator();
         results.reconstruct_before_terminator_effect(state, term, loc);
-        vis.visit_terminator_before_primary_effect(state, term, loc);
+        vis.visit_terminator_before_primary_effect(results, state, term, loc);
         results.reconstruct_terminator_effect(state, term, loc);
-        vis.visit_terminator_after_primary_effect(state, term, loc);
+        vis.visit_terminator_after_primary_effect(results, state, term, loc);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
             let loc = Location { block, statement_index };
             results.reconstruct_before_statement_effect(state, stmt, loc);
-            vis.visit_statement_before_primary_effect(state, stmt, loc);
+            vis.visit_statement_before_primary_effect(results, state, stmt, loc);
             results.reconstruct_statement_effect(state, stmt, loc);
-            vis.visit_statement_after_primary_effect(state, stmt, loc);
+            vis.visit_statement_after_primary_effect(results, state, stmt, loc);
         }
 
-        vis.visit_block_start(state, block_data, block);
+        vis.visit_block_start(results, state, block_data, block);
     }
 
     fn join_state_into_successors_of<'tcx, A>(
-        analysis: &A,
+        analysis: &mut A,
         _tcx: TyCtxt<'tcx>,
         body: &mir::Body<'tcx>,
         exit_state: &mut A::Domain,
@@ -319,7 +319,7 @@ impl Direction for Forward {
     const IS_FORWARD: bool = true;
 
     fn apply_effects_in_block<'tcx, A>(
-        analysis: &A,
+        analysis: &mut A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
@@ -339,7 +339,7 @@ impl Direction for Forward {
     }
 
     fn gen_kill_effects_in_block<'tcx, A>(
-        analysis: &A,
+        analysis: &mut A,
         trans: &mut GenKillSet<A::Idx>,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
@@ -359,7 +359,7 @@ impl Direction for Forward {
     }
 
     fn apply_effects_in_range<'tcx, A>(
-        analysis: &A,
+        analysis: &mut A,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &mir::BasicBlockData<'tcx>,
@@ -435,35 +435,35 @@ impl Direction for Forward {
         state: &mut F,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &R,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = F>,
+        results: &mut R,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, R, FlowState = F>,
     ) where
         R: ResultsVisitable<'tcx, FlowState = F>,
     {
         results.reset_to_block_entry(state, block);
 
-        vis.visit_block_start(state, block_data, block);
+        vis.visit_block_start(results, state, block_data, block);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate() {
             let loc = Location { block, statement_index };
             results.reconstruct_before_statement_effect(state, stmt, loc);
-            vis.visit_statement_before_primary_effect(state, stmt, loc);
+            vis.visit_statement_before_primary_effect(results, state, stmt, loc);
             results.reconstruct_statement_effect(state, stmt, loc);
-            vis.visit_statement_after_primary_effect(state, stmt, loc);
+            vis.visit_statement_after_primary_effect(results, state, stmt, loc);
         }
 
         let loc = Location { block, statement_index: block_data.statements.len() };
         let term = block_data.terminator();
         results.reconstruct_before_terminator_effect(state, term, loc);
-        vis.visit_terminator_before_primary_effect(state, term, loc);
+        vis.visit_terminator_before_primary_effect(results, state, term, loc);
         results.reconstruct_terminator_effect(state, term, loc);
-        vis.visit_terminator_after_primary_effect(state, term, loc);
+        vis.visit_terminator_after_primary_effect(results, state, term, loc);
 
-        vis.visit_block_end(state, block_data, block);
+        vis.visit_block_end(results, state, block_data, block);
     }
 
     fn join_state_into_successors_of<'tcx, A>(
-        analysis: &A,
+        analysis: &mut A,
         _tcx: TyCtxt<'tcx>,
         _body: &mir::Body<'tcx>,
         exit_state: &mut A::Domain,

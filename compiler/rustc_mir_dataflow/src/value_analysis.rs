@@ -343,7 +343,7 @@ where
     T: ValueAnalysis<'tcx>,
 {
     fn apply_statement_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         statement: &Statement<'tcx>,
         _location: Location,
@@ -354,7 +354,7 @@ where
     }
 
     fn apply_terminator_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         terminator: &Terminator<'tcx>,
         _location: Location,
@@ -365,7 +365,7 @@ where
     }
 
     fn apply_call_return_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         _block: BasicBlock,
         return_places: crate::CallReturnPlaces<'_, 'tcx>,
@@ -376,7 +376,7 @@ where
     }
 
     fn apply_switch_int_edge_effects(
-        &self,
+        &mut self,
         _block: BasicBlock,
         discr: &Operand<'tcx>,
         apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,

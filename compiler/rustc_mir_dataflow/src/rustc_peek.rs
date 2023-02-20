@@ -17,7 +17,7 @@ use crate::impls::{
 use crate::move_paths::{HasMoveData, MoveData};
 use crate::move_paths::{LookupResult, MovePathIndex};
 use crate::MoveDataParamEnv;
-use crate::{Analysis, JoinSemiLattice, Results, ResultsCursor};
+use crate::{Analysis, JoinSemiLattice, ResultsCursor};
 
 pub struct SanityCheck;
 
@@ -42,7 +42,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
                 .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, body, &flow_inits);
+            sanity_check_via_rustc_peek(tcx, flow_inits.into_results_cursor(body));
         }
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_uninit).is_some() {
@@ -50,7 +50,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
                 .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, body, &flow_uninits);
+            sanity_check_via_rustc_peek(tcx, flow_uninits.into_results_cursor(body));
         }
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_definite_init).is_some() {
@@ -58,13 +58,13 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
                 .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, body, &flow_def_inits);
+            sanity_check_via_rustc_peek(tcx, flow_def_inits.into_results_cursor(body));
         }
 
         if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_liveness).is_some() {
             let flow_liveness = MaybeLiveLocals.into_engine(tcx, body).iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, body, &flow_liveness);
+            sanity_check_via_rustc_peek(tcx, flow_liveness.into_results_cursor(body));
         }
 
         if has_rustc_mir_with(tcx, def_id, sym::stop_after_dataflow).is_some() {
@@ -91,17 +91,14 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
 /// errors are not intended to be used for unit tests.)
 pub fn sanity_check_via_rustc_peek<'tcx, A>(
     tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
-    results: &Results<'tcx, A>,
+    mut cursor: ResultsCursor<'_, 'tcx, A>,
 ) where
     A: RustcPeekAt<'tcx>,
 {
-    let def_id = body.source.def_id();
+    let def_id = cursor.body().source.def_id();
     debug!("sanity_check_via_rustc_peek def_id: {:?}", def_id);
 
-    let mut cursor = ResultsCursor::new(body, results);
-
-    let peek_calls = body.basic_blocks.iter_enumerated().filter_map(|(bb, block_data)| {
+    let peek_calls = cursor.body().basic_blocks.iter_enumerated().filter_map(|(bb, block_data)| {
         PeekCall::from_terminator(tcx, block_data.terminator()).map(|call| (bb, block_data, call))
     });
 
@@ -132,8 +129,8 @@ pub fn sanity_check_via_rustc_peek<'tcx, A>(
             ) => {
                 let loc = Location { block: bb, statement_index };
                 cursor.seek_before_primary_effect(loc);
-                let state = cursor.get();
-                results.analysis.peek_at(tcx, *place, state, call);
+                let (state, analysis) = cursor.get_with_analysis();
+                analysis.peek_at(tcx, *place, state, call);
             }
 
             _ => {
