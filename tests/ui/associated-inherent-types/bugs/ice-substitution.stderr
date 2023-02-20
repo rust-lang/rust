@@ -1,0 +1,6 @@
+error: the compiler unexpectedly panicked. this is a bug.
+
+query stack during panic:
+#0 [typeck] type-checking `weird`
+#1 [typeck_item_bodies] type-checking all item bodies
+end of query stack
