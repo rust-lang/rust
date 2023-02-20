@@ -52,21 +52,22 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
         }
     }
 
-    // Only returns pointers to the slices, as that's
-    // all we need to drop them. May only be called if `self.remaining != 0`.
+    // Only returns pointers to the slices, as that's all we need
+    // to drop them. May only be called if `self.remaining != 0`.
     unsafe fn as_slices(&self) -> (*mut [T], *mut [T]) {
         unsafe {
             let deque = self.deque.as_ref();
 
-            let start = self.idx;
             // We know that `self.idx + self.remaining <= deque.len <= usize::MAX`, so this won't overflow.
-            let end = start + self.remaining;
+            let logical_remaining_range = self.idx..self.idx + self.remaining;
 
-            // SAFETY: `start..end` represents the range of elements that
+            // SAFETY: `logical_remaining_range` represents the
+            // range into the logical buffer of elements that
             // haven't been drained yet, so they're all initialized,
             // and `slice::range(start..end, end) == start..end`,
             // so the preconditions for `slice_ranges` are met.
-            let (a_range, b_range) = deque.slice_ranges(start..end, end);
+            let (a_range, b_range) =
+                deque.slice_ranges(logical_remaining_range.clone(), logical_remaining_range.end);
             (deque.buffer_range(a_range), deque.buffer_range(b_range))
         }
     }

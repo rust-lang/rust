@@ -1230,10 +1230,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Safety
     ///
     /// This function is always safe to call. For the resulting ranges to be valid
-    /// ranges into the physical buffer, the caller must ensure that for all possible
-    /// values of `range` and `len`, the result of calling `slice::range(range, ..len)`
-    /// represents a valid range into the logical buffer, and that all elements
-    /// in that range are initialized.
+    /// ranges into the physical buffer, the caller must ensure that the result of
+    /// calling `slice::range(range, ..len)` represents a valid range into the
+    /// logical buffer, and that all elements in that range are initialized.
     fn slice_ranges<R>(&self, range: R, len: usize) -> (Range<usize>, Range<usize>)
     where
         R: RangeBounds<usize>,
@@ -1244,7 +1243,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         if len == 0 {
             (0..0, 0..0)
         } else {
-            // `slice::range` guarantees that `start <= end <= self.len`.
+            // `slice::range` guarantees that `start <= end <= len`.
             // because `len != 0`, we know that `start < end`, so `start < len`
             // and the indexing is valid.
             let wrapped_start = self.to_physical_idx(start);
