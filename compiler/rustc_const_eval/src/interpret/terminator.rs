@@ -538,9 +538,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // pointer or `dyn Trait` type, but it could be wrapped in newtypes. So recursively
                 // unwrap those newtypes until we are there.
                 let mut receiver = args[0].clone();
-                let receiver = loop {
+                let receiver_place = loop {
                     match receiver.layout.ty.kind() {
-                        ty::Dynamic(..) | ty::Ref(..) | ty::RawPtr(..) => break receiver,
+                        ty::Ref(..) | ty::RawPtr(..) => break self.deref_operand(&receiver)?,
+                        ty::Dynamic(.., ty::Dyn) => break receiver.assert_mem_place(), // no immediate unsized values
+                        ty::Dynamic(.., ty::DynStar) => {
+                            // Not clear how to handle this, so far we assume the receiver is always a pointer.
+                            span_bug!(
+                                self.cur_span(),
+                                "by-value calls on a `dyn*`... are those a thing?"
+                            );
+                        }
                         _ => {
                             // Not there yet, search for the only non-ZST field.
                             let mut non_zst_field = None;
@@ -568,19 +576,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
 
                 // Obtain the underlying trait we are working on, and the adjusted receiver argument.
-                let recv_ty = receiver.layout.ty;
-                let receiver_place = match recv_ty.kind() {
-                    ty::Ref(..) | ty::RawPtr(..) => self.deref_operand(&receiver)?,
-                    ty::Dynamic(_, _, ty::Dyn) => receiver.assert_mem_place(), // unsized (`dyn`) cannot be immediate
-                    ty::Dynamic(_, _, ty::DynStar) => {
-                        // Not clear how to handle this, so far we assume the receiver is always a pointer.
-                        span_bug!(
-                            self.cur_span(),
-                            "by-value calls on a `dyn*`... are those a thing?"
-                        );
-                    }
-                    _ => bug!(),
-                };
                 let (vptr, dyn_ty, adjusted_receiver) = if let ty::Dynamic(data, _, ty::DynStar) =
                     receiver_place.layout.ty.kind()
                 {
