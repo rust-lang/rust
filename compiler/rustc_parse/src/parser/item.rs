@@ -19,8 +19,8 @@ use rustc_errors::{
     struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult,
     StashKey,
 };
+use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
-use rustc_span::lev_distance::lev_distance;
 use rustc_span::source_map::{self, Span};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
@@ -459,7 +459,8 @@ impl<'a> Parser<'a> {
                 // Maybe the user misspelled `macro_rules` (issue #91227)
                 if self.token.is_ident()
                     && path.segments.len() == 1
-                    && lev_distance("macro_rules", &path.segments[0].ident.to_string(), 3).is_some()
+                    && edit_distance("macro_rules", &path.segments[0].ident.to_string(), 2)
+                        .is_some()
                 {
                     err.span_suggestion(
                         path.span,

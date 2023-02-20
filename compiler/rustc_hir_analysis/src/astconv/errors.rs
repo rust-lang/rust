@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::traits::FulfillmentError;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::parse::feature_err;
-use rustc_span::lev_distance::find_best_match_for_name;
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
