@@ -24,8 +24,8 @@ use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_session::lint;
 use rustc_span::def_id::DefId;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::lev_distance::{
-    find_best_match_for_name_with_substrings, lev_distance_with_substrings,
+use rustc_span::edit_distance::{
+    edit_distance_with_substrings, find_best_match_for_name_with_substrings,
 };
 use rustc_span::symbol::sym;
 use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
@@ -69,7 +69,7 @@ struct ProbeContext<'a, 'tcx> {
     impl_dups: FxHashSet<DefId>,
 
     /// When probing for names, include names that are close to the
-    /// requested name (by Levenshtein distance)
+    /// requested name (by edit distance)
     allow_similar_names: bool,
 
     /// Some(candidate) if there is a private candidate
@@ -1793,7 +1793,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     /// Similarly to `probe_for_return_type`, this method attempts to find the best matching
     /// candidate method where the method name may have been misspelled. Similarly to other
-    /// Levenshtein based suggestions, we provide at most one such suggestion.
+    /// edit distance based suggestions, we provide at most one such suggestion.
     fn probe_for_similar_candidate(&mut self) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
         debug!("probing for method names similar to {:?}", self.method_name);
 
@@ -2024,8 +2024,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         if self.matches_by_doc_alias(x.def_id) {
                             return true;
                         }
-                        match lev_distance_with_substrings(name.as_str(), x.name.as_str(), max_dist)
-                        {
+                        match edit_distance_with_substrings(
+                            name.as_str(),
+                            x.name.as_str(),
+                            max_dist,
+                        ) {
                             Some(d) => d > 0,
                             None => false,
                         }

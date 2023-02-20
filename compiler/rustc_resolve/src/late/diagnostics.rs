@@ -25,9 +25,9 @@ use rustc_middle::ty::DefIdTree;
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span};
 
@@ -542,7 +542,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
         }
 
-        // Try Levenshtein algorithm.
+        // Try finding a suitable replacement.
         let typo_sugg =
             self.lookup_typo_candidate(path, source.namespace(), is_expected).to_opt_suggestion();
         if path.len() == 1 && self.self_type_is_available() {
@@ -770,7 +770,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 _ => {}
             }
 
-            // If the trait has a single item (which wasn't matched by Levenshtein), suggest it
+            // If the trait has a single item (which wasn't matched by the algorithm), suggest it
             let suggestion = self.get_single_associated_item(&path, &source, is_expected);
             if !self.r.add_typo_suggestion(err, suggestion, ident_span) {
                 fallback = !self.let_binding_suggestion(err, ident_span);

@@ -2,7 +2,9 @@ warning: unexpected `cfg` condition value
   --> $DIR/invalid-cfg-value.rs:7:7
    |
 LL | #[cfg(feature = "sedre")]
-   |       ^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^-------
+   |                 |
+   |                 help: did you mean: `"serde"`
    |
    = note: expected values for `feature` are: full, serde
    = note: `#[warn(unexpected_cfgs)]` on by default

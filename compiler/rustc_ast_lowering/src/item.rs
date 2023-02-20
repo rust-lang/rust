@@ -13,7 +13,7 @@ use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::PredicateOrigin;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::ty::{DefIdTree, ResolverAstLowering, TyCtxt};
-use rustc_span::lev_distance::find_best_match_for_name;
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, Symbol};
