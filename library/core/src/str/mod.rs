@@ -72,8 +72,8 @@ pub use iter::SplitInclusive;
 pub use validations::{next_code_point, utf8_char_width};
 
 use iter::MatchIndicesInternal;
+use iter::MatchesInternal;
 use iter::SplitInternal;
-use iter::{MatchesInternal, SplitNInternal};
 
 #[inline(never)]
 #[cold]
@@ -1330,13 +1330,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn split<'a, P: Pattern<&'a str>>(&'a self, pat: P) -> Split<'a, P> {
-        Split(SplitInternal {
-            start: 0,
-            end: self.len(),
-            matcher: pat.into_searcher(self),
-            allow_trailing_empty: true,
-            finished: false,
-        })
+        Split(SplitInternal::new(self, pat).with_allow_trailing_empty())
     }
 
     /// An iterator over substrings of this string slice, separated by
@@ -1370,13 +1364,7 @@ impl str {
     #[stable(feature = "split_inclusive", since = "1.51.0")]
     #[inline]
     pub fn split_inclusive<'a, P: Pattern<&'a str>>(&'a self, pat: P) -> SplitInclusive<'a, P> {
-        SplitInclusive(SplitInternal {
-            start: 0,
-            end: self.len(),
-            matcher: pat.into_searcher(self),
-            allow_trailing_empty: false,
-            finished: false,
-        })
+        SplitInclusive(SplitInternal::new(self, pat))
     }
 
     /// An iterator over substrings of the given string slice, separated by
@@ -1476,7 +1464,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn split_terminator<'a, P: Pattern<&'a str>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
-        SplitTerminator(SplitInternal { allow_trailing_empty: false, ..self.split(pat).0 })
+        SplitTerminator(SplitInternal::new(self, pat))
     }
 
     /// An iterator over substrings of `self`, separated by characters
@@ -1577,7 +1565,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn splitn<'a, P: Pattern<&'a str>>(&'a self, n: usize, pat: P) -> SplitN<'a, P> {
-        SplitN(SplitNInternal { iter: self.split(pat).0, count: n })
+        SplitN(self.split(pat).0.with_limit(n))
     }
 
     /// An iterator over substrings of this string slice, separated by a

@@ -557,17 +557,28 @@ macro_rules! generate_pattern_iterators {
     } => {}
 }
 
-derive_pattern_clone! {
-    clone SplitInternal
-    with |s| SplitInternal { matcher: s.matcher.clone(), ..*s }
+pub(super) struct SplitInternal<'a, P: Pattern<&'a str>>(
+    core::pattern::Split<&'a str, P::Searcher>,
+);
+
+impl<'a, P: Pattern<&'a str>> SplitInternal<'a, P> {
+    pub(super) fn new(haystack: &'a str, pattern: P) -> Self {
+        Self(core::pattern::Split::new(pattern.into_searcher(haystack)))
+    }
+
+    pub(super) fn with_allow_trailing_empty(self) -> Self {
+        Self(self.0.with_allow_trailing_empty())
+    }
+
+    pub(super) fn with_limit(self, count: usize) -> SplitNInternal<'a, P> {
+        SplitNInternal(self.0.with_limit(count))
+    }
 }
 
-pub(super) struct SplitInternal<'a, P: Pattern<&'a str>> {
-    pub(super) start: usize,
-    pub(super) end: usize,
-    pub(super) matcher: P::Searcher,
-    pub(super) allow_trailing_empty: bool,
-    pub(super) finished: bool,
+impl<'a, P: Pattern<&'a str, Searcher: Clone>> Clone for SplitInternal<'a, P> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
 }
 
 impl<'a, P> fmt::Debug for SplitInternal<'a, P>
@@ -575,159 +586,35 @@ where
     P: Pattern<&'a str, Searcher: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitInternal")
-            .field("start", &self.start)
-            .field("end", &self.end)
-            .field("matcher", &self.matcher)
-            .field("allow_trailing_empty", &self.allow_trailing_empty)
-            .field("finished", &self.finished)
-            .finish()
+        self.0.fmt(f)
     }
 }
 
 impl<'a, P: Pattern<&'a str>> SplitInternal<'a, P> {
-    #[inline]
-    fn get_end(&mut self) -> Option<&'a str> {
-        if !self.finished {
-            self.finished = true;
-
-            if self.allow_trailing_empty || self.end - self.start > 0 {
-                // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
-                let string = unsafe { self.matcher.haystack().get_unchecked(self.start..self.end) };
-                return Some(string);
-            }
-        }
-
-        None
-    }
-
-    #[inline]
     fn next(&mut self) -> Option<&'a str> {
-        if self.finished {
-            return None;
-        }
-
-        let haystack = self.matcher.haystack();
-        match self.matcher.next_match() {
-            // SAFETY: `Searcher` guarantees that `a` and `b` lie on unicode boundaries.
-            Some((a, b)) => unsafe {
-                let elt = haystack.get_unchecked(self.start..a);
-                self.start = b;
-                Some(elt)
-            },
-            None => self.get_end(),
-        }
+        self.0.next_fwd::<false>()
     }
 
-    #[inline]
     fn next_inclusive(&mut self) -> Option<&'a str> {
-        if self.finished {
-            return None;
-        }
-
-        let haystack = self.matcher.haystack();
-        match self.matcher.next_match() {
-            // SAFETY: `Searcher` guarantees that `b` lies on unicode boundary,
-            // and self.start is either the start of the original string,
-            // or `b` was assigned to it, so it also lies on unicode boundary.
-            Some((_, b)) => unsafe {
-                let elt = haystack.get_unchecked(self.start..b);
-                self.start = b;
-                Some(elt)
-            },
-            None => self.get_end(),
-        }
+        self.0.next_fwd::<true>()
     }
 
-    #[inline]
     fn next_back(&mut self) -> Option<&'a str>
     where
         P::Searcher: ReverseSearcher<&'a str>,
     {
-        if self.finished {
-            return None;
-        }
-
-        if !self.allow_trailing_empty {
-            self.allow_trailing_empty = true;
-            match self.next_back() {
-                Some(elt) if !elt.is_empty() => return Some(elt),
-                _ => {
-                    if self.finished {
-                        return None;
-                    }
-                }
-            }
-        }
-
-        let haystack = self.matcher.haystack();
-        match self.matcher.next_match_back() {
-            // SAFETY: `Searcher` guarantees that `a` and `b` lie on unicode boundaries.
-            Some((a, b)) => unsafe {
-                let elt = haystack.get_unchecked(b..self.end);
-                self.end = a;
-                Some(elt)
-            },
-            // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
-            None => unsafe {
-                self.finished = true;
-                Some(haystack.get_unchecked(self.start..self.end))
-            },
-        }
+        self.0.next_bwd::<false>()
     }
 
-    #[inline]
     fn next_back_inclusive(&mut self) -> Option<&'a str>
     where
         P::Searcher: ReverseSearcher<&'a str>,
     {
-        if self.finished {
-            return None;
-        }
-
-        if !self.allow_trailing_empty {
-            self.allow_trailing_empty = true;
-            match self.next_back_inclusive() {
-                Some(elt) if !elt.is_empty() => return Some(elt),
-                _ => {
-                    if self.finished {
-                        return None;
-                    }
-                }
-            }
-        }
-
-        let haystack = self.matcher.haystack();
-        match self.matcher.next_match_back() {
-            // SAFETY: `Searcher` guarantees that `b` lies on unicode boundary,
-            // and self.end is either the end of the original string,
-            // or `b` was assigned to it, so it also lies on unicode boundary.
-            Some((_, b)) => unsafe {
-                let elt = haystack.get_unchecked(b..self.end);
-                self.end = b;
-                Some(elt)
-            },
-            // SAFETY: self.start is either the start of the original string,
-            // or start of a substring that represents the part of the string that hasn't
-            // iterated yet. Either way, it is guaranteed to lie on unicode boundary.
-            // self.end is either the end of the original string,
-            // or `b` was assigned to it, so it also lies on unicode boundary.
-            None => unsafe {
-                self.finished = true;
-                Some(haystack.get_unchecked(self.start..self.end))
-            },
-        }
+        self.0.next_bwd::<true>()
     }
 
-    #[inline]
     fn remainder(&self) -> Option<&'a str> {
-        // `Self::get_end` doesn't change `self.start`
-        if self.finished {
-            return None;
-        }
-
-        // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
-        Some(unsafe { self.matcher.haystack().get_unchecked(self.start..self.end) })
+        self.0.remainder()
     }
 }
 
@@ -861,41 +748,26 @@ impl<'a, P: Pattern<&'a str>> RSplitTerminator<'a, P> {
 
 derive_pattern_clone! {
     clone SplitNInternal
-    with |s| SplitNInternal { iter: s.iter.clone(), ..*s }
+    with |s| SplitNInternal(s.0.clone())
 }
 
-pub(super) struct SplitNInternal<'a, P: Pattern<&'a str>> {
-    pub(super) iter: SplitInternal<'a, P>,
-    /// The number of splits remaining
-    pub(super) count: usize,
-}
+pub(super) struct SplitNInternal<'a, P: Pattern<&'a str>>(
+    core::pattern::SplitN<&'a str, P::Searcher>,
+);
 
 impl<'a, P> fmt::Debug for SplitNInternal<'a, P>
 where
     P: Pattern<&'a str, Searcher: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitNInternal")
-            .field("iter", &self.iter)
-            .field("count", &self.count)
-            .finish()
+        self.0.fmt(f)
     }
 }
 
 impl<'a, P: Pattern<&'a str>> SplitNInternal<'a, P> {
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
-        match self.count {
-            0 => None,
-            1 => {
-                self.count = 0;
-                self.iter.get_end()
-            }
-            _ => {
-                self.count -= 1;
-                self.iter.next()
-            }
-        }
+        self.0.next_fwd::<false>()
     }
 
     #[inline]
@@ -903,22 +775,12 @@ impl<'a, P: Pattern<&'a str>> SplitNInternal<'a, P> {
     where
         P::Searcher: ReverseSearcher<&'a str>,
     {
-        match self.count {
-            0 => None,
-            1 => {
-                self.count = 0;
-                self.iter.get_end()
-            }
-            _ => {
-                self.count -= 1;
-                self.iter.next_back()
-            }
-        }
+        self.0.next_bwd::<false>()
     }
 
     #[inline]
     fn remainder(&self) -> Option<&'a str> {
-        self.iter.remainder()
+        self.0.remainder()
     }
 }
 
