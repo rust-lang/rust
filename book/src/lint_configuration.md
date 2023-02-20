@@ -542,7 +542,8 @@ if no suggestion can be made.
 
 
 ### missing-docs-in-crate-items
-Whether to **only** check for missing documentation in `pub(crate)` items.
+Whether to **only** check for missing documentation in items visible within the current
+crate. For example, `pub(crate)` items.
 
 **Default Value:** `false` (`bool`)
 

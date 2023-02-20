@@ -36,7 +36,8 @@ declare_clippy_lint! {
 }
 
 pub struct MissingDoc {
-    /// Whether to only check for missing docs in `pub(crate)` items.
+    /// Whether to **only** check for missing documentation in items visible within the current
+    /// crate. For example, `pub(crate)` items.
     crate_items_only: bool,
     /// Stack of whether #[doc(hidden)] is set
     /// at each level which has lint attributes.
