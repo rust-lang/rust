@@ -567,8 +567,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                 };
 
-                //         break self.deref_operand(&receiver)?.into();
-
                 // Obtain the underlying trait we are working on, and the adjusted receiver argument.
                 let recv_ty = receiver.layout.ty;
                 let receiver_place = match recv_ty.kind() {
