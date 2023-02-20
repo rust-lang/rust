@@ -382,8 +382,8 @@ targets = {}
 top_level_keys = []
 
 for line in open(rust_dir + '/config.toml.example').read().split("\n"):
-    if cur_section == None: 
-        if line.count('=') == 1: 
+    if cur_section == None:
+        if line.count('=') == 1:
             top_level_key = line.split('=')[0]
             top_level_key = top_level_key.strip(' #')
             top_level_keys.append(top_level_key)
@@ -465,20 +465,19 @@ def configure_section(lines, config):
                 raise RuntimeError("failed to find config line for {}".format(key))
 
 
-def configure_top_level_key(lines, top_level_key, value): 
-    for i, line in enumerate(lines): 
-        if line.startswith('#' + top_level_key + ' = ') or line.startswith(top_level_key + ' = '): 
+def configure_top_level_key(lines, top_level_key, value):
+    for i, line in enumerate(lines):
+        if line.startswith('#' + top_level_key + ' = ') or line.startswith(top_level_key + ' = '):
             lines[i] = "{} = {}".format(top_level_key, value)
-            return 
-        
+            return
+
     raise RuntimeError("failed to find config line for {}".format(top_level_key))
 
-      
+
 for section_key, section_config in config.items():
-    if section_key not in sections and section_key not in top_level_keys: 
+    if section_key not in sections and section_key not in top_level_keys:
         raise RuntimeError("config key {} not in sections or top_level_keys".format(section_key))
-    
-    if section_key in top_level_keys: 
+    if section_key in top_level_keys:
         configure_top_level_key(sections[None], section_key, section_config)
 
     elif  section_key == 'target':
