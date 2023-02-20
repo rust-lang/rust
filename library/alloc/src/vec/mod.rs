@@ -1880,6 +1880,7 @@ where
         where
             [(); { crate::meta_num_slots!(A, CO_ALLOC_PREF) }]:,
         {
+            /// @FIXME This doc-comment here is only to workaround rust-lang/rustfmt issue #5691. Remove once it's fixed on nightly.
             /* Offset of the element we want to check if it is duplicate */
             read: usize,
 
