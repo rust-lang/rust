@@ -1459,7 +1459,8 @@ where
     let start_end_diff = end - start;
 
     // Reduce the border conditions where new runs are created that don't fit FAST_SORT_SIZE.
-    let min_insertion_run = if qualifies_for_stable_sort_network::<T>() { 20 } else { 10 };
+    let min_insertion_run =
+        if const { qualifies_for_stable_sort_network::<T>() } { 20 } else { 10 };
 
     if start_end_diff < min_insertion_run && end < len {
         end = cmp::min(start + min_insertion_run, len);
@@ -1492,7 +1493,7 @@ impl<T: IsCopyMarker> StableSortTypeImpl for T {
         // merge sort on short sequences, so this significantly improves performance.
         let start_end_diff = end - start;
 
-        if qualifies_for_stable_sort_network::<T>()
+        if const { qualifies_for_stable_sort_network::<T>() }
             && (start + FAST_SORT_SIZE) <= len
             && start_end_diff <= MAX_IGNORE_PRE_SORTED
         {
@@ -1663,8 +1664,7 @@ where
     F: FnMut(&T, &T) -> bool,
 {
     let len = v.len();
-    assert!(mid > 0 && mid < len && buf_len >= (cmp::min(mid, len - mid)));
-    debug_assert!(!buf_ptr.is_null());
+    assert!(mid > 0 && mid < len && buf_len >= (cmp::min(mid, len - mid)) && !buf_ptr.is_null());
 
     // SAFETY: We checked that the two slices must be non-empty and `mid` must be in bounds. The
     // caller has to guarantee that Buffer `buf` must be long enough to hold a copy of the shorter
@@ -1672,7 +1672,7 @@ where
     // is_less panic v was not modified in bi_directional_merge and retains it's original input.
     // buf_ptr and v must not alias and swap has v.len() space.
     unsafe {
-        if !has_direct_iterior_mutability::<T>() && len <= buf_len {
+        if const { !has_direct_iterior_mutability::<T>() } && len <= buf_len {
             bi_directional_merge(v, mid, buf_ptr, is_less);
             ptr::copy_nonoverlapping(buf_ptr, v.as_mut_ptr(), len);
         } else {
@@ -1686,23 +1686,29 @@ trait IsCopyMarker {}
 
 impl<T: Copy> IsCopyMarker for T {}
 
+#[const_trait]
 trait IsCopy {
-    fn is_copy() -> bool;
+    fn value() -> bool;
 }
 
-impl<T> IsCopy for T {
-    default fn is_copy() -> bool {
+impl<T> const IsCopy for T {
+    default fn value() -> bool {
         false
     }
 }
 
-impl<T: IsCopyMarker> IsCopy for T {
-    fn is_copy() -> bool {
+impl<T: IsCopyMarker> const IsCopy for T {
+    fn value() -> bool {
         true
     }
 }
 
-#[inline(always)]
+#[must_use]
+const fn is_copy<T>() -> bool {
+    <T as IsCopy>::value()
+}
+
+#[must_use]
 const fn is_cheap_to_move<T>() -> bool {
     // This is a heuristic, and as such it will guess wrong from time to time. The two parts broken
     // down:
@@ -1715,22 +1721,22 @@ const fn is_cheap_to_move<T>() -> bool {
 }
 
 // I would like to make this a const fn.
-#[inline(always)]
-fn has_direct_iterior_mutability<T>() -> bool {
+#[must_use]
+const fn has_direct_iterior_mutability<T>() -> bool {
     // - Can the type have interior mutability, this is checked by testing if T is Copy.
     //   If the type can have interior mutability it may alter itself during comparison in a way
     //   that must be observed after the sort operation concludes.
     //   Otherwise a type like Mutex<Option<Box<str>>> could lead to double free.
     //   FIXME use proper abstraction
-    !T::is_copy()
+    !is_copy::<T>()
 }
 
-#[inline(always)]
-fn qualifies_for_stable_sort_network<T>() -> bool {
+#[must_use]
+const fn qualifies_for_stable_sort_network<T>() -> bool {
     // This is only a heuristic but, generally for expensive to compare types, it's not worth it to
     // use the stable sorting-network. Which is great at extracting instruction-level parallelism
     // (ILP) for types like integers, but not for a complex type with indirection.
-    is_cheap_to_move::<T>() && T::is_copy() && !has_direct_iterior_mutability::<T>()
+    is_cheap_to_move::<T>() && is_copy::<T>() && !has_direct_iterior_mutability::<T>()
 }
 
 #[inline(always)]
@@ -1848,7 +1854,7 @@ where
     // Note, the pointers that have been written, are now one past where they were read and
     // copied. written == incremented or decremented + copy to dest.
 
-    assert!(!has_direct_iterior_mutability::<T>());
+    assert!(const { !has_direct_iterior_mutability::<T>() });
 
     let len = v.len();
     let src_ptr = v.as_ptr();
@@ -1899,7 +1905,7 @@ where
         let len = v.len();
         let src_ptr = v.as_ptr();
 
-        debug_assert!(!has_direct_iterior_mutability::<T>());
+        assert!(const { !has_direct_iterior_mutability::<T>() });
 
         // The original idea for bi-directional merging comes from Igor van den Hoven (quadsort), the
         // code was adapted to only perform 2 writes per loop iteration instead of 4. And it was adapted
@@ -2145,7 +2151,7 @@ fn sort32_stable<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
-    assert!(v.len() == 32 && !has_direct_iterior_mutability::<T>());
+    assert!(v.len() == 32 && const { !has_direct_iterior_mutability::<T>() });
 
     let mut swap = mem::MaybeUninit::<[T; 32]>::uninit();
     let swap_ptr = swap.as_mut_ptr() as *mut T;
