@@ -571,26 +571,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Obtain the underlying trait we are working on, and the adjusted receiver argument.
                 let recv_ty = receiver.layout.ty;
-                let (vptr, dyn_ty, adjusted_receiver) = match recv_ty.kind() {
-                    ty::Ref(..) | ty::RawPtr(..)
-                        if matches!(
-                            recv_ty.builtin_deref(true).unwrap().ty.kind(),
-                            ty::Dynamic(_, _, ty::DynStar)
-                        ) =>
-                    {
-                        let receiver = self.deref_operand(&receiver)?;
-                        let ty::Dynamic(data, ..) = receiver.layout.ty.kind() else { bug!() };
-                        let (recv, vptr) = self.unpack_dyn_star(&receiver.into())?;
-                        let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
-                        if dyn_trait != data.principal() {
-                            throw_ub_format!(
-                                "`dyn*` call on a pointer whose vtable does not match its type"
-                            );
-                        }
-                        let recv = recv.assert_mem_place(); // we passed an MPlaceTy to `unpack_dyn_star` so we definitely still have one
-
-                        (vptr, dyn_ty, recv.ptr)
-                    }
+                let receiver_place = match recv_ty.kind() {
+                    ty::Ref(..) | ty::RawPtr(..) => self.deref_operand(&receiver)?,
+                    ty::Dynamic(_, _, ty::Dyn) => receiver.assert_mem_place(), // unsized (`dyn`) cannot be immediate
                     ty::Dynamic(_, _, ty::DynStar) => {
                         // Not clear how to handle this, so far we assume the receiver is always a pointer.
                         span_bug!(
@@ -598,37 +581,45 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             "by-value calls on a `dyn*`... are those a thing?"
                         );
                     }
-                    _ => {
-                        let receiver_place = match recv_ty.kind() {
-                            ty::Ref(..) | ty::RawPtr(..) => self.deref_operand(&receiver)?,
-                            ty::Dynamic(_, _, ty::Dyn) => receiver.assert_mem_place(), // unsized (`dyn`) cannot be immediate
-                            _ => bug!(),
-                        };
-                        // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
-                        // (For that reason we also cannot use `unpack_dyn_trait`.)
-                        let receiver_tail = self.tcx.struct_tail_erasing_lifetimes(
-                            receiver_place.layout.ty,
-                            self.param_env,
+                    _ => bug!(),
+                };
+                let (vptr, dyn_ty, adjusted_receiver) = if let ty::Dynamic(data, _, ty::DynStar) =
+                    receiver_place.layout.ty.kind()
+                {
+                    let (recv, vptr) = self.unpack_dyn_star(&receiver_place.into())?;
+                    let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
+                    if dyn_trait != data.principal() {
+                        throw_ub_format!(
+                            "`dyn*` call on a pointer whose vtable does not match its type"
                         );
-                        let ty::Dynamic(data, _, ty::Dyn) = receiver_tail.kind() else {
+                    }
+                    let recv = recv.assert_mem_place(); // we passed an MPlaceTy to `unpack_dyn_star` so we definitely still have one
+
+                    (vptr, dyn_ty, recv.ptr)
+                } else {
+                    // Doesn't have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
+                    // (For that reason we also cannot use `unpack_dyn_trait`.)
+                    let receiver_tail = self
+                        .tcx
+                        .struct_tail_erasing_lifetimes(receiver_place.layout.ty, self.param_env);
+                    let ty::Dynamic(data, _, ty::Dyn) = receiver_tail.kind() else {
                             span_bug!(self.cur_span(), "dynamic call on non-`dyn` type {}", receiver_tail)
                         };
-                        assert!(receiver_place.layout.is_unsized());
+                    assert!(receiver_place.layout.is_unsized());
 
-                        // Get the required information from the vtable.
-                        let vptr = receiver_place.meta.unwrap_meta().to_pointer(self)?;
-                        let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
-                        if dyn_trait != data.principal() {
-                            throw_ub_format!(
-                                "`dyn` call on a pointer whose vtable does not match its type"
-                            );
-                        }
-
-                        // It might be surprising that we use a pointer as the receiver even if this
-                        // is a by-val case; this works because by-val passing of an unsized `dyn
-                        // Trait` to a function is actually desugared to a pointer.
-                        (vptr, dyn_ty, receiver_place.ptr)
+                    // Get the required information from the vtable.
+                    let vptr = receiver_place.meta.unwrap_meta().to_pointer(self)?;
+                    let (dyn_ty, dyn_trait) = self.get_ptr_vtable(vptr)?;
+                    if dyn_trait != data.principal() {
+                        throw_ub_format!(
+                            "`dyn` call on a pointer whose vtable does not match its type"
+                        );
                     }
+
+                    // It might be surprising that we use a pointer as the receiver even if this
+                    // is a by-val case; this works because by-val passing of an unsized `dyn
+                    // Trait` to a function is actually desugared to a pointer.
+                    (vptr, dyn_ty, receiver_place.ptr)
                 };
 
                 // Now determine the actual method to call. We can do that in two different ways and
