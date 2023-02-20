@@ -13,7 +13,6 @@ use crate::ty::visit::{TypeVisitable, TypeVisitor};
 use crate::ty::{self, ir, DefIdTree, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
-use core::alloc::GlobalCoAllocMeta;
 
 use rustc_data_structures::captures::Captures;
 use rustc_errors::ErrorGuaranteed;
@@ -35,6 +34,7 @@ use rustc_span::{Span, DUMMY_SP};
 
 use either::Either;
 
+use std::alloc::{Allocator, Global};
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::{ControlFlow, Index, IndexMut};
@@ -3078,7 +3078,10 @@ mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
-    static_assert_size!(BasicBlockData<'_>, 144 + mem::size_of::<GlobalCoAllocMeta>());
+    static_assert_size!(
+        BasicBlockData<'_>,
+        144 + mem::size_of::<<Global as Allocator>::CoAllocMeta>()
+    );
     static_assert_size!(LocalDecl<'_>, 56);
     static_assert_size!(Statement<'_>, 32);
     static_assert_size!(StatementKind<'_>, 16);

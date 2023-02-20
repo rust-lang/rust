@@ -1,5 +1,6 @@
 //! The main parser interface.
 
+#![feature(allocator_api)]
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(global_co_alloc_meta)]

@@ -12,7 +12,6 @@ mod ty;
 
 use crate::lexer::UnmatchedBrace;
 pub use attr_wrapper::AttrWrapper;
-use core::alloc::GlobalCoAllocMeta;
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use item::FnParseMode;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
@@ -38,6 +37,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
+use std::alloc::{Allocator, Global};
 use std::ops::Range;
 use std::{cmp, mem, slice};
 
@@ -170,7 +170,7 @@ pub struct Parser<'a> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(
     Parser<'_>,
-    312 + 4 * mem::size_of::<GlobalCoAllocMeta>()
+    312 + 4 * mem::size_of::<<Global as Allocator>::CoAllocMeta>()
 );
 
 /// Stores span information about a closure.
