@@ -1720,6 +1720,28 @@ const fn is_cheap_to_move<T>() -> bool {
     mem::size_of::<T>() <= mem::size_of::<[usize; 4]>()
 }
 
+#[rustc_unsafe_specialization_marker]
+trait FreezeMarker {}
+
+impl<T: crate::marker::Freeze> FreezeMarker for T {}
+
+#[const_trait]
+trait IsFreeze {
+    fn value() -> bool;
+}
+
+impl<T> const IsFreeze for T {
+    default fn value() -> bool {
+        false
+    }
+}
+
+impl<T: FreezeMarker> const IsFreeze for T {
+    fn value() -> bool {
+        true
+    }
+}
+
 // I would like to make this a const fn.
 #[must_use]
 const fn has_direct_iterior_mutability<T>() -> bool {
@@ -1727,8 +1749,7 @@ const fn has_direct_iterior_mutability<T>() -> bool {
     //   If the type can have interior mutability it may alter itself during comparison in a way
     //   that must be observed after the sort operation concludes.
     //   Otherwise a type like Mutex<Option<Box<str>>> could lead to double free.
-    //   FIXME use proper abstraction
-    !is_copy::<T>()
+    !<T as IsFreeze>::value()
 }
 
 #[must_use]
