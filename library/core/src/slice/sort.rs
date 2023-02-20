@@ -1068,15 +1068,16 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
 
     // This path is critical for very small inputs. Always pick insertion sort for these inputs,
     // without any other analysis. This is perf critical for small inputs, in cold code.
-    if intrinsics::likely(len <= max_len_always_insertion_sort::<T>()) {
+    const MAX_LEN_ALWAYS_INSERTION_SORT: usize = 20;
+
+    if intrinsics::likely(len <= MAX_LEN_ALWAYS_INSERTION_SORT) {
         if intrinsics::likely(len >= 2) {
+            // More specialized and faster options, extending the range of allocation free sorting
+            // are possible but come at a great cost of additional code, which is problematic for
+            // compile-times.
             insertion_sort_shift_left(v, 1, is_less);
         }
 
-        return;
-    }
-
-    if sort_small_stable_with_analysis(v, is_less) {
         return;
     }
 
@@ -1188,7 +1189,7 @@ fn merge_sort_impl<T, CmpF, RunAllocF, RunDeallocF>(
 
         // Insert some more elements into the run if it's too short. Insertion sort is faster than
         // merge sort on short sequences, so this significantly improves performance.
-        local_end = provide_sorted_batch(local_v, 0, local_end, is_less);
+        local_end = <T as StableSortTypeImpl>::provide_sorted_batch(local_v, 0, local_end, is_less);
 
         end = start + local_end;
 
@@ -1417,91 +1418,36 @@ where
     }
 }
 
-/// Keep this of the critical inlined path. This is only called for non-tiny slices.
-#[inline(never)]
-fn sort_small_stable_with_analysis<T, F>(v: &mut [T], is_less: &mut F) -> bool
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    let len = v.len();
-
-    assert!(len > max_len_always_insertion_sort::<T>());
-
-    if len > max_len_small_sort_stable::<T>() {
-        return false;
-    }
-
-    // For larger inputs it's worth it to check if they are already ascending or descending.
-    let (streak_end, was_reversed) = find_streak(v, is_less);
-
-    if !qualifies_for_stable_sort_network::<T>() || (len - streak_end) <= cmp::max(len / 2, 8) {
-        if was_reversed {
-            v[..streak_end].reverse();
-        }
-
-        insertion_sort_shift_left(v, streak_end, is_less);
-        return true;
-    }
-
-    let even_len = len - (len % 2 != 0) as usize;
-    let len_div_2 = even_len / 2;
-
-    // This logic is only works if max_len_always_insertion_sort is at least 15.
-    // Otherwise the slice operation for the second sort8 will fail.
-    let pre_sorted = if len < 32 {
-        sort8_stable(&mut v[0..8], is_less);
-        sort8_stable(&mut v[len_div_2..(len_div_2 + 8)], is_less);
-
-        8
-    } else {
-        sort16_stable(&mut v[0..16], is_less);
-        sort16_stable(&mut v[len_div_2..(len_div_2 + 16)], is_less);
-
-        16
-    };
-
-    insertion_sort_shift_left(&mut v[0..len_div_2], pre_sorted, is_less);
-    insertion_sort_shift_left(&mut v[len_div_2..], pre_sorted, is_less);
-
-    // Unfortunately max_len_small_sort_stable can't be currently be const, this is a workaround.
-    const SWAP_LEN: usize = 40;
-    debug_assert!(SWAP_LEN == max_len_small_sort_stable::<T>());
-
-    let mut swap = mem::MaybeUninit::<[T; SWAP_LEN]>::uninit();
-    let swap_ptr = swap.as_mut_ptr() as *mut T;
-
-    // SAFETY: We checked that T is Copy and thus observation safe. Should is_less panic v was not
-    // modified in bi_directional_merge_even and retains it's original input. swap and v must not
-    // alias and swap has v.len() space.
-    unsafe {
-        bi_directional_merge_even(&mut v[..even_len], swap_ptr, is_less);
-        ptr::copy_nonoverlapping(swap_ptr, v.as_mut_ptr(), even_len);
-    }
-
-    if len != even_len {
-        // SAFETY: We know len >= 2.
-        unsafe {
-            insert_tail(v, is_less);
-        }
-    }
-
-    true
+// Use a trait to focus code-gen on only the parts actually relevant for the type.
+// Avoid generating LLVM-IR for the stable sorting-network for types that don't qualify.
+trait StableSortTypeImpl: Sized {
+    /// Takes a range as denoted by start and end, that is already sorted and extends it to the right if
+    /// necessary with sorts optimized for smaller ranges such as insertion sort.
+    fn provide_sorted_batch<F>(v: &mut [Self], start: usize, end: usize, is_less: &mut F) -> usize
+    where
+        F: FnMut(&Self, &Self) -> bool;
 }
 
-// Slices of up to this length get sorted using optimized sorting for small slices.
-fn max_len_small_sort_stable<T>() -> usize {
-    if qualifies_for_stable_sort_network::<T>() { 40 } else { 20 }
+impl<T> StableSortTypeImpl for T {
+    default fn provide_sorted_batch<F>(
+        v: &mut [Self],
+        start: usize,
+        end: usize,
+        is_less: &mut F,
+    ) -> usize
+    where
+        F: FnMut(&Self, &Self) -> bool,
+    {
+        provide_sorted_batch_default(v, start, end, is_less)
+    }
 }
 
-// Slices of up to this length always get sorted with insertion sort, directly inlined as part of
-// the hot path.
-const fn max_len_always_insertion_sort<T>() -> usize {
-    15
-}
-
-/// Takes a range as denoted by start and end, that is already sorted and extends it to the right if
-/// necessary with sorts optimized for smaller ranges such as insertion sort.
-fn provide_sorted_batch<T, F>(v: &mut [T], start: usize, mut end: usize, is_less: &mut F) -> usize
+fn provide_sorted_batch_default<T, F>(
+    v: &mut [T],
+    start: usize,
+    mut end: usize,
+    is_less: &mut F,
+) -> usize
 where
     F: FnMut(&T, &T) -> bool,
 {
@@ -1512,37 +1458,10 @@ where
     // merge sort on short sequences, so this significantly improves performance.
     let start_end_diff = end - start;
 
-    // This value is a balance between least comparisons and best performance, as
-    // influenced by for example cache locality.
-    const MAX_IGNORE_PRE_SORTED: usize = 6;
-    const FAST_SORT_SIZE: usize = 32;
-
     // Reduce the border conditions where new runs are created that don't fit FAST_SORT_SIZE.
     let min_insertion_run = if qualifies_for_stable_sort_network::<T>() { 20 } else { 10 };
 
-    if qualifies_for_stable_sort_network::<T>()
-        && (start + FAST_SORT_SIZE) <= len
-        && start_end_diff <= MAX_IGNORE_PRE_SORTED
-    {
-        // For random inputs on average how many elements are naturally already sorted
-        // (start_end_diff) will be relatively small. And it's faster to avoid a merge operation
-        // between the newly sorted elements by the sort network and the already sorted
-        // elements. Instead just run the sort network and ignore the already sorted streak.
-        //
-        // Note, this optimization significantly reduces comparison count, versus just always using
-        // insertion_sort_shift_left. Insertion sort is faster than calling merge here, and this is
-        // yet faster starting at FAST_SORT_SIZE 20.
-        end = start + FAST_SORT_SIZE;
-
-        // Use a straight-line sorting network here instead of some hybrid network with early
-        // exit. If the input is already sorted the previous adaptive analysis path of TimSort
-        // ought to have found it. So we prefer minimizing the total amount of comparisons,
-        // which are user provided and may be of arbitrary cost.
-        sort32_stable(&mut v[start..(start + FAST_SORT_SIZE)], is_less);
-    } else if start_end_diff < min_insertion_run && end < len {
-        // v[start_found..end] are elements that are already sorted in the input. We want to extend
-        // the sorted region to the left, so we push up min_insertion_run - 1 to the right. Which is
-        // more efficient that trying to push those already sorted elements to the left.
+    if start_end_diff < min_insertion_run && end < len {
         end = cmp::min(start + min_insertion_run, len);
         let presorted_start = cmp::max(start_end_diff, 1);
 
@@ -1550,6 +1469,54 @@ where
     }
 
     end
+}
+
+// Limit this code-gen to Copy types, to limit emitted LLVM-IR.
+impl<T: IsCopyMarker> StableSortTypeImpl for T {
+    fn provide_sorted_batch<F>(
+        v: &mut [Self],
+        start: usize,
+        mut end: usize,
+        is_less: &mut F,
+    ) -> usize
+    where
+        F: FnMut(&Self, &Self) -> bool,
+    {
+        const MAX_IGNORE_PRE_SORTED: usize = 6;
+        const FAST_SORT_SIZE: usize = 32;
+
+        let len = v.len();
+        assert!(end >= start && end <= len);
+
+        // Insert some more elements into the run if it's too short. Insertion sort is faster than
+        // merge sort on short sequences, so this significantly improves performance.
+        let start_end_diff = end - start;
+
+        if qualifies_for_stable_sort_network::<T>()
+            && (start + FAST_SORT_SIZE) <= len
+            && start_end_diff <= MAX_IGNORE_PRE_SORTED
+        {
+            // For random inputs on average how many elements are naturally already sorted
+            // (start_end_diff) will be relatively small. And it's faster to avoid a merge operation
+            // between the newly sorted elements by the sort network and the already sorted
+            // elements. Instead just run the sort network and ignore the already sorted streak.
+            //
+            // Note, this optimization significantly reduces comparison count, versus just always
+            // using insertion_sort_shift_left. Insertion sort is faster than calling merge here,
+            // and this is yet faster starting at FAST_SORT_SIZE 20.
+            end = start + FAST_SORT_SIZE;
+
+            // Use a straight-line sorting network here instead of some hybrid network with early
+            // exit. If the input is already sorted the previous adaptive analysis path of TimSort
+            // ought to have found it. So we prefer minimizing the total amount of comparisons,
+            // which are user provided and may be of arbitrary cost.
+            sort32_stable(&mut v[start..end], is_less);
+        } else {
+            end = provide_sorted_batch_default(v, start, end, is_less);
+        }
+
+        end
+    }
 }
 
 /// Merges non-decreasing runs `v[..mid]` and `v[mid..]` using `buf` as temporary storage, and
@@ -1763,7 +1730,7 @@ fn qualifies_for_stable_sort_network<T>() -> bool {
     // This is only a heuristic but, generally for expensive to compare types, it's not worth it to
     // use the stable sorting-network. Which is great at extracting instruction-level parallelism
     // (ILP) for types like integers, but not for a complex type with indirection.
-    is_cheap_to_move::<T>() && T::is_copy()
+    is_cheap_to_move::<T>() && T::is_copy() && !has_direct_iterior_mutability::<T>()
 }
 
 #[inline(always)]
@@ -2171,32 +2138,6 @@ where
         swap_next_if_less(arr_ptr.add(1), is_less);
         swap_next_if_less(arr_ptr.add(3), is_less);
         swap_next_if_less(arr_ptr.add(5), is_less);
-    }
-}
-
-/// Sort 16 elements
-///
-/// Never inline this function to avoid code bloat. It still optimizes nicely and has practically no
-/// performance impact.
-#[inline(never)]
-fn sort16_stable<T, F>(v: &mut [T], is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    assert!(v.len() == 16 && !has_direct_iterior_mutability::<T>());
-
-    sort8_stable(&mut v[0..8], is_less);
-    sort8_stable(&mut v[8..16], is_less);
-
-    let mut swap = mem::MaybeUninit::<[T; 16]>::uninit();
-    let swap_ptr = swap.as_mut_ptr() as *mut T;
-
-    // SAFETY: We checked that T is Copy and thus observation safe. Should is_less panic v
-    // was not modified in bi_directional_merge_even and retains it's original input. swap
-    // and v must not alias and swap has v.len() space.
-    unsafe {
-        bi_directional_merge_even(v, swap_ptr, is_less);
-        ptr::copy_nonoverlapping(swap_ptr, v.as_mut_ptr(), 16);
     }
 }
 
