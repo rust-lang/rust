@@ -12,7 +12,7 @@ SOURCE_FILE
       STMT_LIST
         L_CURLY "{"
         WHITESPACE "\n    "
-        EXPR_STMT
+        BIN_EXPR
           PATH_EXPR
             PATH
               PATH_SEGMENT
@@ -41,13 +41,14 @@ SOURCE_FILE
                         COLON2 "::"
                         ERROR
                           L_ANGLE "<"
-        BIN_EXPR
-          PATH_EXPR
-            PATH
-              PATH_SEGMENT
-                NAME_REF
-                  IDENT "nope"
-          SHR ">>"
+                  TYPE_ARG
+                    PATH_TYPE
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "nope"
+                  R_ANGLE ">"
+          R_ANGLE ">"
           ERROR
             SEMICOLON ";"
         WHITESPACE "\n"
@@ -114,8 +115,6 @@ SOURCE_FILE
   WHITESPACE "\n"
 error 30: expected identifier
 error 31: expected COMMA
-error 31: expected R_ANGLE
-error 31: expected SEMICOLON
 error 37: expected expression
 error 75: expected identifier
 error 76: expected SEMICOLON

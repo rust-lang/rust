@@ -2,9 +2,10 @@
 
 use std::sync::Arc;
 
-use crate::tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 use base_db::CrateId;
+use cfg::CfgOptions;
 use either::Either;
+
 use hir_expand::{
     name::{AsName, Name},
     HirFileId, InFile,
@@ -24,12 +25,12 @@ use crate::{
     src::HasChildSource,
     src::HasSource,
     trace::Trace,
+    tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree},
     type_ref::TypeRef,
     visibility::RawVisibility,
     EnumId, LocalEnumVariantId, LocalFieldId, LocalModuleId, Lookup, ModuleId, StructId, UnionId,
     VariantId,
 };
-use cfg::CfgOptions;
 
 /// Note that we use `StructData` for unions as well!
 #[derive(Debug, Clone, PartialEq, Eq)]

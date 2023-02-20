@@ -15,6 +15,7 @@ use crate::{LexedStr, TopEntryPoint};
 #[test]
 fn lex_ok() {
     for case in TestCase::list("lexer/ok") {
+        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
         let actual = lex(&case.text);
         expect_file![case.rast].assert_eq(&actual)
     }
@@ -23,6 +24,7 @@ fn lex_ok() {
 #[test]
 fn lex_err() {
     for case in TestCase::list("lexer/err") {
+        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
         let actual = lex(&case.text);
         expect_file![case.rast].assert_eq(&actual)
     }
@@ -46,6 +48,7 @@ fn lex(text: &str) -> String {
 #[test]
 fn parse_ok() {
     for case in TestCase::list("parser/ok") {
+        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
         let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
         assert!(!errors, "errors in an OK file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual);
@@ -55,6 +58,7 @@ fn parse_ok() {
 #[test]
 fn parse_inline_ok() {
     for case in TestCase::list("parser/inline/ok") {
+        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
         let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
         assert!(!errors, "errors in an OK file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual);
@@ -64,6 +68,7 @@ fn parse_inline_ok() {
 #[test]
 fn parse_err() {
     for case in TestCase::list("parser/err") {
+        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
         let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
         assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual)
@@ -73,6 +78,7 @@ fn parse_err() {
 #[test]
 fn parse_inline_err() {
     for case in TestCase::list("parser/inline/err") {
+        let _guard = stdx::panic_context::enter(format!("{:?}", case.rs));
         let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
         assert!(errors, "no errors in an ERR file {}:\n{actual}", case.rs.display());
         expect_file![case.rast].assert_eq(&actual)

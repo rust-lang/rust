@@ -33,7 +33,7 @@ use crate::{
     caps::completion_item_edit_resolve,
     diagnostics::DiagnosticsMapConfig,
     line_index::PositionEncoding,
-    lsp_ext::{self, supports_utf8, WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
+    lsp_ext::{self, negotiated_encoding, WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 
 mod patch_old_style;
@@ -999,11 +999,7 @@ impl Config {
     }
 
     pub fn position_encoding(&self) -> PositionEncoding {
-        if supports_utf8(&self.caps) {
-            PositionEncoding::Utf8
-        } else {
-            PositionEncoding::Utf16
-        }
+        negotiated_encoding(&self.caps)
     }
 
     fn experimental(&self, index: &'static str) -> bool {

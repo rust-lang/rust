@@ -145,27 +145,29 @@ SOURCE_FILE
 error 16: expected expression
 error 17: expected R_BRACK
 error 17: expected SEMICOLON
-error 17: expected expression
+error 17: expected expression, item or let statement
 error 25: expected a name
 error 26: expected `;`, `{`, or `(`
 error 30: expected pattern
 error 31: expected SEMICOLON
 error 53: expected expression
+error 54: expected R_PAREN
 error 54: expected SEMICOLON
-error 54: expected expression
+error 54: expected expression, item or let statement
 error 60: expected type
 error 60: expected `{`
-error 60: expected expression
+error 60: expected expression, item or let statement
 error 65: expected pattern
 error 65: expected SEMICOLON
-error 65: expected expression
+error 65: expected expression, item or let statement
 error 92: expected expression
+error 93: expected R_PAREN
 error 93: expected SEMICOLON
-error 93: expected expression
-error 95: expected expression
-error 96: expected expression
+error 93: expected expression, item or let statement
+error 95: expected expression, item or let statement
+error 96: expected expression, item or let statement
 error 103: expected a name
 error 104: expected `{`
 error 108: expected pattern
 error 108: expected SEMICOLON
-error 108: expected expression
+error 108: expected expression, item or let statement

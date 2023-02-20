@@ -711,6 +711,7 @@ dependencies = [
  "limit",
  "memchr",
  "once_cell",
+ "oorandom",
  "parser",
  "profile",
  "rayon",
@@ -932,9 +933,9 @@ dependencies = [
 
 [[package]]
 name = "lsp-types"
-version = "0.93.2"
+version = "0.94.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9be6e9c7e2d18f651974370d7aff703f9513e0df6e464fd795660edc77e6ca51"
+checksum = "0b63735a13a1f9cd4f4835223d828ed9c2e35c8c5e61837774399f558b6a1237"
 dependencies = [
  "bitflags",
  "serde",
@@ -1173,6 +1174,7 @@ dependencies = [
  "limit",
  "rustc-ap-rustc_lexer",
  "sourcegen",
+ "stdx",
 ]
 
 [[package]]

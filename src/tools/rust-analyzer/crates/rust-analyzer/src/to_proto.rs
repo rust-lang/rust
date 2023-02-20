@@ -31,8 +31,8 @@ pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::P
     let line_col = line_index.index.line_col(offset);
     match line_index.encoding {
         PositionEncoding::Utf8 => lsp_types::Position::new(line_col.line, line_col.col),
-        PositionEncoding::Utf16 => {
-            let line_col = line_index.index.to_utf16(line_col);
+        PositionEncoding::Wide(enc) => {
+            let line_col = line_index.index.to_wide(enc, line_col);
             lsp_types::Position::new(line_col.line, line_col.col)
         }
     }
@@ -212,7 +212,7 @@ pub(crate) fn completion_items(
     tdpp: lsp_types::TextDocumentPositionParams,
     items: Vec<CompletionItem>,
 ) -> Vec<lsp_types::CompletionItem> {
-    let max_relevance = items.iter().map(|it| it.relevance().score()).max().unwrap_or_default();
+    let max_relevance = items.iter().map(|it| it.relevance.score()).max().unwrap_or_default();
     let mut res = Vec::with_capacity(items.len());
     for item in items {
         completion_item(&mut res, config, line_index, &tdpp, max_relevance, item);
@@ -235,22 +235,26 @@ fn completion_item(
     item: CompletionItem,
 ) {
     let insert_replace_support = config.insert_replace_support().then_some(tdpp.position);
+    let ref_match = item.ref_match();
+    let lookup = item.lookup().to_string();
+
     let mut additional_text_edits = Vec::new();
 
     // LSP does not allow arbitrary edits in completion, so we have to do a
     // non-trivial mapping here.
     let text_edit = {
         let mut text_edit = None;
-        let source_range = item.source_range();
-        for indel in item.text_edit().iter() {
+        let source_range = item.source_range;
+        for indel in item.text_edit {
             if indel.delete.contains_range(source_range) {
+                // Extract this indel as the main edit
                 text_edit = Some(if indel.delete == source_range {
                     self::completion_text_edit(line_index, insert_replace_support, indel.clone())
                 } else {
                     assert!(source_range.end() == indel.delete.end());
                     let range1 = TextRange::new(indel.delete.start(), source_range.start());
                     let range2 = source_range;
-                    let indel1 = Indel::replace(range1, String::new());
+                    let indel1 = Indel::delete(range1);
                     let indel2 = Indel::replace(range2, indel.insert.clone());
                     additional_text_edits.push(self::text_edit(line_index, indel1));
                     self::completion_text_edit(line_index, insert_replace_support, indel2)
@@ -264,23 +268,23 @@ fn completion_item(
         text_edit.unwrap()
     };
 
-    let insert_text_format = item.is_snippet().then_some(lsp_types::InsertTextFormat::SNIPPET);
-    let tags = item.deprecated().then(|| vec![lsp_types::CompletionItemTag::DEPRECATED]);
-    let command = if item.trigger_call_info() && config.client_commands().trigger_parameter_hints {
+    let insert_text_format = item.is_snippet.then_some(lsp_types::InsertTextFormat::SNIPPET);
+    let tags = item.deprecated.then(|| vec![lsp_types::CompletionItemTag::DEPRECATED]);
+    let command = if item.trigger_call_info && config.client_commands().trigger_parameter_hints {
         Some(command::trigger_parameter_hints())
     } else {
         None
     };
 
     let mut lsp_item = lsp_types::CompletionItem {
-        label: item.label().to_string(),
-        detail: item.detail().map(|it| it.to_string()),
-        filter_text: Some(item.lookup().to_string()),
-        kind: Some(completion_item_kind(item.kind())),
+        label: item.label.to_string(),
+        detail: item.detail.map(|it| it.to_string()),
+        filter_text: Some(lookup),
+        kind: Some(completion_item_kind(item.kind)),
         text_edit: Some(text_edit),
         additional_text_edits: Some(additional_text_edits),
-        documentation: item.documentation().map(documentation),
-        deprecated: Some(item.deprecated()),
+        documentation: item.documentation.map(documentation),
+        deprecated: Some(item.deprecated),
         tags,
         command,
         insert_text_format,
@@ -294,12 +298,13 @@ fn completion_item(
         });
     }
 
-    set_score(&mut lsp_item, max_relevance, item.relevance());
+    set_score(&mut lsp_item, max_relevance, item.relevance);
 
     if config.completion().enable_imports_on_the_fly {
-        if let imports @ [_, ..] = item.imports_to_add() {
-            let imports: Vec<_> = imports
-                .iter()
+        if !item.import_to_add.is_empty() {
+            let imports: Vec<_> = item
+                .import_to_add
+                .into_iter()
                 .filter_map(|import_edit| {
                     let import_path = &import_edit.import_path;
                     let import_name = import_path.segments().last()?;
@@ -316,18 +321,13 @@ fn completion_item(
         }
     }
 
-    if let Some((mutability, offset, relevance)) = item.ref_match() {
-        let mut lsp_item_with_ref = lsp_item.clone();
+    if let Some((label, indel, relevance)) = ref_match {
+        let mut lsp_item_with_ref = lsp_types::CompletionItem { label, ..lsp_item.clone() };
+        lsp_item_with_ref
+            .additional_text_edits
+            .get_or_insert_with(Default::default)
+            .push(self::text_edit(line_index, indel));
         set_score(&mut lsp_item_with_ref, max_relevance, relevance);
-        lsp_item_with_ref.label =
-            format!("&{}{}", mutability.as_keyword_for_ref(), lsp_item_with_ref.label);
-        lsp_item_with_ref.additional_text_edits.get_or_insert_with(Default::default).push(
-            self::text_edit(
-                line_index,
-                Indel::insert(offset, format!("&{}", mutability.as_keyword_for_ref())),
-            ),
-        );
-
         acc.push(lsp_item_with_ref);
     };
 
@@ -766,6 +766,7 @@ pub(crate) fn folding_range(
             end_line,
             end_character: None,
             kind,
+            collapsed_text: None,
         }
     } else {
         lsp_types::FoldingRange {
@@ -774,6 +775,7 @@ pub(crate) fn folding_range(
             end_line: range.end.line,
             end_character: Some(range.end.character),
             kind,
+            collapsed_text: None,
         }
     }
 }
@@ -1360,7 +1362,7 @@ pub(crate) mod command {
     pub(crate) fn trigger_parameter_hints() -> lsp_types::Command {
         lsp_types::Command {
             title: "triggerParameterHints".into(),
-            command: "editor.action.triggerParameterHints".into(),
+            command: "rust-analyzer.triggerParameterHints".into(),
             arguments: None,
         }
     }
@@ -1429,7 +1431,7 @@ fn main() {
         let line_index = LineIndex {
             index: Arc::new(ide::LineIndex::new(text)),
             endings: LineEndings::Unix,
-            encoding: PositionEncoding::Utf16,
+            encoding: PositionEncoding::Utf8,
         };
         let converted: Vec<lsp_types::FoldingRange> =
             folds.into_iter().map(|it| folding_range(text, &line_index, true, it)).collect();

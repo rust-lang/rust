@@ -268,7 +268,10 @@ impl GlobalState {
                             ]
                         })
                     })
-                    .map(|glob_pattern| lsp_types::FileSystemWatcher { glob_pattern, kind: None })
+                    .map(|glob_pattern| lsp_types::FileSystemWatcher {
+                        glob_pattern: lsp_types::GlobPattern::String(glob_pattern),
+                        kind: None,
+                    })
                     .collect(),
             };
             let registration = lsp_types::Registration {

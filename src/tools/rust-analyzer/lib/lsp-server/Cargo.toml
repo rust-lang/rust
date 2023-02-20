@@ -13,4 +13,4 @@ serde = { version = "1.0.144", features = ["derive"] }
 crossbeam-channel = "0.5.6"
 
 [dev-dependencies]
-lsp-types = "=0.93.2"
+lsp-types = "=0.94"
