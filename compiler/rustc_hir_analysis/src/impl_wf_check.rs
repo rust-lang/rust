@@ -12,7 +12,7 @@ use crate::constrained_generic_params as cgp;
 use min_specialization::check_min_specialization;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::query::Providers;
@@ -181,6 +181,15 @@ fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: Symbol
         name
     );
     err.span_label(span, format!("unconstrained {} parameter", kind));
+    err.span_suggestion(
+        span,
+        format!(
+            "Either remove the type parameter '{}' or make use of it, for example ` for S<{}>`.",
+            name, name
+        ),
+        "",
+        Applicability::MaybeIncorrect,
+    );
     if kind == "const" {
         err.note(
             "expressions using a const parameter must map each value to a distinct output value",
