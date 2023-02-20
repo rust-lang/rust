@@ -3,18 +3,8 @@ use std::ffi::{OsStr, OsString};
 
 use rand::distributions::{Alphanumeric, DistString};
 
-/// Copied from `std::test_helpers::test_rng`, since these tests rely on the
-/// seed not being the same for every RNG invocation too.
-#[track_caller]
-pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
-    use core::hash::{BuildHasher, Hash, Hasher};
-    let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
-    core::panic::Location::caller().hash(&mut hasher);
-    let hc64 = hasher.finish();
-    let seed_vec = hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<Vec<u8>>();
-    let seed: [u8; 16] = seed_vec.as_slice().try_into().unwrap();
-    rand::SeedableRng::from_seed(seed)
-}
+mod common;
+use common::test_rng;
 
 #[track_caller]
 fn make_rand_name() -> OsString {
