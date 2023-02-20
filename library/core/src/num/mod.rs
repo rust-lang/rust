@@ -226,64 +226,192 @@ macro_rules! widening_impl {
 }
 
 impl i8 {
-    int_impl! { i8, i8, u8, 8, 7, -128, 127, 2, "-0x7e", "0xa", "0x12", "0x12", "0x48",
-    "[0x12]", "[0x12]", "", "", "" }
+    int_impl! {
+        Self = i8,
+        ActualT = i8,
+        UnsignedT = u8,
+        BITS = 8,
+        BITS_MINUS_ONE = 7,
+        Min = -128,
+        Max = 127,
+        rot = 2,
+        rot_op = "-0x7e",
+        rot_result = "0xa",
+        swap_op = "0x12",
+        swapped = "0x12",
+        reversed = "0x48",
+        le_bytes = "[0x12]",
+        be_bytes = "[0x12]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
 }
 
 impl i16 {
-    int_impl! { i16, i16, u16, 16, 15, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234", "0x3412",
-    "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]", "", "", "" }
+    int_impl! {
+        Self = i16,
+        ActualT = i16,
+        UnsignedT = u16,
+        BITS = 16,
+        BITS_MINUS_ONE = 15,
+        Min = -32768,
+        Max = 32767,
+        rot = 4,
+        rot_op = "-0x5ffd",
+        rot_result = "0x3a",
+        swap_op = "0x1234",
+        swapped = "0x3412",
+        reversed = "0x2c48",
+        le_bytes = "[0x34, 0x12]",
+        be_bytes = "[0x12, 0x34]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
 }
 
 impl i32 {
-    int_impl! { i32, i32, u32, 32, 31, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
-    "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78]", "", "", "" }
+    int_impl! {
+        Self = i32,
+        ActualT = i32,
+        UnsignedT = u32,
+        BITS = 32,
+        BITS_MINUS_ONE = 31,
+        Min = -2147483648,
+        Max = 2147483647,
+        rot = 8,
+        rot_op = "0x10000b3",
+        rot_result = "0xb301",
+        swap_op = "0x12345678",
+        swapped = "0x78563412",
+        reversed = "0x1e6a2c48",
+        le_bytes = "[0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
 }
 
 impl i64 {
-    int_impl! { i64, i64, u64, 64, 63, -9223372036854775808, 9223372036854775807, 12,
-    "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
-    "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]", "", "", "" }
+    int_impl! {
+        Self = i64,
+        ActualT = i64,
+        UnsignedT = u64,
+        BITS = 64,
+        BITS_MINUS_ONE = 63,
+        Min = -9223372036854775808,
+        Max = 9223372036854775807,
+        rot = 12,
+        rot_op = "0xaa00000000006e1",
+        rot_result = "0x6e10aa",
+        swap_op = "0x1234567890123456",
+        swapped = "0x5634129078563412",
+        reversed = "0x6a2c48091e6a2c48",
+        le_bytes = "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
 }
 
 impl i128 {
-    int_impl! { i128, i128, u128, 128, 127, -170141183460469231731687303715884105728,
-    170141183460469231731687303715884105727, 16,
-    "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
-    "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
-    "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
-      0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
-      0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]", "", "", "" }
+    int_impl! {
+        Self = i128,
+        ActualT = i128,
+        UnsignedT = u128,
+        BITS = 128,
+        BITS_MINUS_ONE = 127,
+        Min = -170141183460469231731687303715884105728,
+        Max = 170141183460469231731687303715884105727,
+        rot = 16,
+        rot_op = "0x13f40000000000000000000000004f76",
+        rot_result = "0x4f7613f4",
+        swap_op = "0x12345678901234567890123456789012",
+        swapped = "0x12907856341290785634129078563412",
+        reversed = "0x48091e6a2c48091e6a2c48091e6a2c48",
+        le_bytes = "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
+            0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
+            0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]",
+        to_xe_bytes_doc = "",
+        from_xe_bytes_doc = "",
+        bound_condition = "",
+    }
 }
 
 #[cfg(target_pointer_width = "16")]
 impl isize {
-    int_impl! { isize, i16, usize, 16, 15, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234",
-    "0x3412", "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
-    " on 16-bit targets" }
+    int_impl! {
+        Self = isize,
+        ActualT = i16,
+        UnsignedT = usize,
+        BITS = 16,
+        BITS_MINUS_ONE = 15,
+        Min = -32768,
+        Max = 32767,
+        rot = 4,
+        rot_op = "-0x5ffd",
+        rot_result = "0x3a",
+        swap_op = "0x1234",
+        swapped = "0x3412",
+        reversed = "0x2c48",
+        le_bytes = "[0x34, 0x12]",
+        be_bytes = "[0x12, 0x34]",
+        to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
+        from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
+        bound_condition = " on 16-bit targets",
+    }
 }
 
 #[cfg(target_pointer_width = "32")]
 impl isize {
-    int_impl! { isize, i32, usize, 32, 31, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
-    "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
-    " on 32-bit targets" }
+    int_impl! {
+        Self = isize,
+        ActualT = i32,
+        UnsignedT = usize,
+        BITS = 32,
+        BITS_MINUS_ONE = 31,
+        Min = -2147483648,
+        Max = 2147483647,
+        rot = 8,
+        rot_op = "0x10000b3",
+        rot_result = "0xb301",
+        swap_op = "0x12345678",
+        swapped = "0x78563412",
+        reversed = "0x1e6a2c48",
+        le_bytes = "[0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78]",
+        to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
+        from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
+        bound_condition = " on 32-bit targets",
+    }
 }
 
 #[cfg(target_pointer_width = "64")]
 impl isize {
-    int_impl! { isize, i64, usize, 64, 63, -9223372036854775808, 9223372036854775807,
-    12, "0xaa00000000006e1", "0x6e10aa",  "0x1234567890123456", "0x5634129078563412",
-    "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!(),
-    " on 64-bit targets" }
+    int_impl! {
+        Self = isize,
+        ActualT = i64,
+        UnsignedT = usize,
+        BITS = 64,
+        BITS_MINUS_ONE = 63,
+        Min = -9223372036854775808,
+        Max = 9223372036854775807,
+        rot = 12,
+        rot_op = "0xaa00000000006e1",
+        rot_result = "0x6e10aa",
+        swap_op = "0x1234567890123456",
+        swapped = "0x5634129078563412",
+        reversed = "0x6a2c48091e6a2c48",
+        le_bytes = "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+        be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+        to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
+        from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
+        bound_condition = " on 64-bit targets",
+    }
 }
 
 /// If 6th bit set ascii is upper case.
