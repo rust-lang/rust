@@ -2530,7 +2530,7 @@ impl<'tcx> ConstantKind<'tcx> {
         {
             InternalSubsts::identity_for_item(tcx, parent_did.to_def_id())
         } else {
-            tcx.mk_substs(&[])
+            List::empty()
         };
         debug!(?parent_substs);
 
