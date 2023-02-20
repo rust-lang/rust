@@ -9,7 +9,7 @@ edition = "2021"
 arrayvec = { version = "0.7", default-features = false }
 bitflags = "1.2.1"
 cfg-if = "1.0"
-ena = "0.14"
+ena = "0.14.1"
 indexmap = { version = "1.9.1" }
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 libc = "0.2"
