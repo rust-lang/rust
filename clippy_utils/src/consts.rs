@@ -237,7 +237,7 @@ pub fn constant<'tcx>(
         typeck_results,
         param_env: lcx.param_env,
         needed_resolution: false,
-        substs: lcx.tcx.mk_substs(&[]),
+        substs: ty::List::empty(),
     };
     cx.expr(e).map(|cst| (cst, cx.needed_resolution))
 }
@@ -306,7 +306,7 @@ pub fn constant_context<'a, 'tcx>(
         typeck_results,
         param_env: lcx.param_env,
         needed_resolution: false,
-        substs: lcx.tcx.mk_substs(&[]),
+        substs: ty::List::empty(),
     }
 }
 
