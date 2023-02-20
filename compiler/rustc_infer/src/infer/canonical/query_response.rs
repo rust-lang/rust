@@ -318,11 +318,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 // Screen out `'a: 'a` cases.
                 let ty::OutlivesPredicate(k1, r2) = r_c.0;
-                if k1 != r2.into() {
-                    Some(r_c)
-                } else {
-                    None
-                }
+                if k1 != r2.into() { Some(r_c) } else { None }
             }),
         );
 

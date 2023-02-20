@@ -62,14 +62,12 @@ pub(crate) enum RegionCtxt {
     LateBound(BoundRegionInfo),
     Existential(Option<Symbol>),
     Placeholder(BoundRegionInfo),
-    #[cfg(debug_assertions)]
     Unknown,
 }
 
 impl RegionCtxt {
     /// Used to determine the representative of a component in the strongly connected
     /// constraint graph
-    #[cfg(debug_assertions)]
     pub(crate) fn preference_value(self) -> usize {
         let _anon = Symbol::intern("anon");
 

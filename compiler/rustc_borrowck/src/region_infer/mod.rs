@@ -244,7 +244,6 @@ pub enum ExtraConstraintInfo {
     PlaceholderFromPredicate(Span),
 }
 
-#[cfg(debug_assertions)]
 #[instrument(skip(infcx, sccs), level = "debug")]
 fn sccs_info<'cx, 'tcx>(
     infcx: &'cx BorrowckInferCtxt<'cx, 'tcx>,
@@ -271,10 +270,10 @@ fn sccs_info<'cx, 'tcx>(
         components[scc_idx.as_usize()].insert((reg_var, *origin));
     }
 
-    let mut components_str = "strongly connected components:";
+    let mut components_str = "strongly connected components:".to_string();
     for (scc_idx, reg_vars_origins) in components.iter().enumerate() {
         let regions_info = reg_vars_origins.clone().into_iter().collect::<Vec<_>>();
-        components_str.push(&format(
+        components_str.push_str(&format!(
             "{:?}: {:?})",
             ConstraintSccIndex::from_usize(scc_idx),
             regions_info,
@@ -346,8 +345,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let fr_static = universal_regions.fr_static;
         let constraint_sccs = Rc::new(constraints.compute_sccs(&constraint_graph, fr_static));
 
-        #[cfg(debug_assertions)]
-        sccs_info(_infcx, constraint_sccs.clone());
+        if cfg!(debug_assertions) {
+            sccs_info(_infcx, constraint_sccs.clone());
+        }
 
         let mut scc_values =
             RegionValues::new(elements, universal_regions.len(), &placeholder_indices);
