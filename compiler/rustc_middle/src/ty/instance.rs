@@ -115,7 +115,7 @@ impl<'tcx> Instance<'tcx> {
     /// lifetimes erased, allowing a `ParamEnv` to be specified for use during normalization.
     pub fn ty(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
-        tcx.subst_and_normalize_erasing_regions(self.substs, param_env, ty.skip_binder())
+        tcx.subst_and_normalize_erasing_regions(self.substs, param_env, ty)
     }
 
     /// Finds a crate that contains a monomorphization of this instance that
@@ -600,7 +600,7 @@ impl<'tcx> Instance<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>> + Clone,
     {
         if let Some(substs) = self.substs_for_mir_body() {
-            tcx.subst_and_normalize_erasing_regions(substs, param_env, v)
+            tcx.subst_and_normalize_erasing_regions(substs, param_env, ty::EarlyBinder(v))
         } else {
             tcx.normalize_erasing_regions(param_env, v)
         }
@@ -617,7 +617,7 @@ impl<'tcx> Instance<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>> + Clone,
     {
         if let Some(substs) = self.substs_for_mir_body() {
-            tcx.try_subst_and_normalize_erasing_regions(substs, param_env, v)
+            tcx.try_subst_and_normalize_erasing_regions(substs, param_env, ty::EarlyBinder(v))
         } else {
             tcx.try_normalize_erasing_regions(param_env, v)
         }
