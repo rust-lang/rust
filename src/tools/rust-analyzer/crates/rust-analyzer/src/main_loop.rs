@@ -831,6 +831,7 @@ impl GlobalState {
                     let vfs = &mut this.vfs.write().0;
                     let file_id = vfs.file_id(&path).unwrap();
                     let text = apply_document_changes(
+                        this.config.position_encoding(),
                         || std::str::from_utf8(vfs.file_contents(file_id)).unwrap().into(),
                         params.content_changes,
                     );

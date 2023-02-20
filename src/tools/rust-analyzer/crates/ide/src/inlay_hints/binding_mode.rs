@@ -29,8 +29,17 @@ pub(super) fn hints(
             _ => None,
         })
         .last();
-    let range =
-        outer_paren_pat.as_ref().map_or_else(|| pat.syntax(), |it| it.syntax()).text_range();
+    let range = outer_paren_pat.as_ref().map_or_else(
+        || match pat {
+            // for ident patterns that @ bind a name, render the un-ref patterns in front of the inner pattern
+            // instead of the name as that makes it more clear and doesn't really change the outcome
+            ast::Pat::IdentPat(it) => {
+                it.pat().map_or_else(|| it.syntax().text_range(), |it| it.syntax().text_range())
+            }
+            it => it.syntax().text_range(),
+        },
+        |it| it.syntax().text_range(),
+    );
     let pattern_adjustments = sema.pattern_adjustments(pat);
     pattern_adjustments.iter().for_each(|ty| {
         let reference = ty.is_reference();
@@ -121,6 +130,22 @@ fn __(
        //^ ref mut
     }
 }"#,
+        );
+    }
+
+    #[test]
+    fn hints_binding_modes_complex_ident_pat() {
+        check_with_config(
+            InlayHintsConfig { binding_mode_hints: true, ..DISABLED_CONFIG },
+            r#"
+struct Struct {
+    field: &'static str,
+}
+fn foo(s @ Struct { field, .. }: &Struct) {}
+     //^^^^^^^^^^^^^^^^^^^^^^^^ref
+         //^^^^^^^^^^^^^^^^^^^^&
+                  //^^^^^ref
+"#,
         );
     }
 }

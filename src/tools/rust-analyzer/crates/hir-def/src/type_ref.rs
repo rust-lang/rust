@@ -292,7 +292,7 @@ impl TypeRef {
             }
             for segment in path.segments().iter() {
                 if let Some(args_and_bindings) = segment.args_and_bindings {
-                    for arg in &args_and_bindings.args {
+                    for arg in args_and_bindings.args.iter() {
                         match arg {
                             crate::path::GenericArg::Type(type_ref) => {
                                 go(type_ref, f);
@@ -301,11 +301,11 @@ impl TypeRef {
                             | crate::path::GenericArg::Lifetime(_) => {}
                         }
                     }
-                    for binding in &args_and_bindings.bindings {
+                    for binding in args_and_bindings.bindings.iter() {
                         if let Some(type_ref) = &binding.type_ref {
                             go(type_ref, f);
                         }
-                        for bound in &binding.bounds {
+                        for bound in binding.bounds.iter() {
                             match bound.as_ref() {
                                 TypeBound::Path(path, _) | TypeBound::ForLifetime(_, path) => {
                                     go_path(path, f)

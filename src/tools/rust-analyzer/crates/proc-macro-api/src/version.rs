@@ -120,17 +120,20 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     let version = u32::from_be_bytes([dot_rustc[4], dot_rustc[5], dot_rustc[6], dot_rustc[7]]);
     // Last supported version is:
     // https://github.com/rust-lang/rust/commit/0696e79f2740ad89309269b460579e548a5cd632
-    match version {
-        5 | 6 => {}
+    let snappy_portion = match version {
+        5 | 6 => &dot_rustc[8..],
+        7 => {
+            let len_bytes = &dot_rustc[8..12];
+            let data_len = u32::from_be_bytes(len_bytes.try_into().unwrap()) as usize;
+            &dot_rustc[12..data_len + 12]
+        }
         _ => {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("unsupported metadata version {version}"),
             ));
         }
-    }
-
-    let snappy_portion = &dot_rustc[8..];
+    };
 
     let mut snappy_decoder = SnapDecoder::new(snappy_portion);
 

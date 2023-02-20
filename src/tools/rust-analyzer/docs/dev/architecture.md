@@ -119,7 +119,7 @@ See [#93](https://github.com/rust-lang/rust-analyzer/pull/93) for an example PR 
 **Architecture Invariant:** `syntax` crate is completely independent from the rest of rust-analyzer. It knows nothing about salsa or LSP.
 This is important because it is possible to make useful tooling using only the syntax tree.
 Without semantic information, you don't need to be able to _build_ code, which makes the tooling more robust.
-See also https://web.stanford.edu/~mlfbrown/paper.pdf.
+See also https://mlfbrown.com/paper.pdf.
 You can view the `syntax` crate as an entry point to rust-analyzer.
 `syntax` crate is an **API Boundary**.
 

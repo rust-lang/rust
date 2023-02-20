@@ -156,8 +156,7 @@ SOURCE_FILE
                             PATH_SEGMENT
                               NAME_REF
                                 IDENT "i32"
-                      WHITESPACE " "
-                      ERROR
+                  WHITESPACE " "
                   ERROR
                     L_CURLY "{"
                     R_CURLY "}"
@@ -199,10 +198,8 @@ error 95: expected type
 error 95: expected COMMA
 error 96: expected field
 error 98: expected field declaration
+error 371: expected R_PAREN
 error 371: expected COMMA
-error 372: expected a type
-error 372: expected R_PAREN
-error 372: expected COMMA
 error 372: expected enum variant
 error 374: expected enum variant
 error 494: expected pattern

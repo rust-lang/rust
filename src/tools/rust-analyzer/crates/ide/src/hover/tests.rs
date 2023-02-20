@@ -5612,3 +5612,38 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn hover_call_parens() {
+    check(
+        r#"
+fn foo() -> i32 {}
+fn main() {
+    foo($0);
+}
+"#,
+        expect![[r#"
+            *)*
+            ```rust
+            i32
+            ```
+        "#]],
+    );
+    check(
+        r#"
+struct S;
+impl S {
+    fn foo(self) -> i32 {}
+}
+fn main() {
+    S.foo($0);
+}
+"#,
+        expect![[r#"
+            *)*
+            ```rust
+            i32
+            ```
+        "#]],
+    );
+}

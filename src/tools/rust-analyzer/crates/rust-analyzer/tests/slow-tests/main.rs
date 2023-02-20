@@ -22,7 +22,7 @@ use lsp_types::{
     notification::DidOpenTextDocument,
     request::{
         CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest,
-        WillRenameFiles, WorkspaceSymbol,
+        WillRenameFiles, WorkspaceSymbolRequest,
     },
     CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
     DocumentFormattingParams, FileRename, FormattingOptions, GotoDefinitionParams, HoverParams,
@@ -1095,5 +1095,5 @@ pub fn bar() {}
     .server()
     .wait_until_workspace_is_loaded();
 
-    server.request::<WorkspaceSymbol>(Default::default(), json!([]));
+    server.request::<WorkspaceSymbolRequest>(Default::default(), json!([]));
 }
