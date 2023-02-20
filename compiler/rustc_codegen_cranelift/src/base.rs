@@ -347,7 +347,12 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             }
             TerminatorKind::Assert { cond, expected, msg, target, cleanup: _ } => {
                 if !fx.tcx.sess.overflow_checks() {
-                    if let mir::AssertKind::OverflowNeg(_) = *msg {
+                    let overflow_not_to_check = match msg {
+                        AssertKind::OverflowNeg(..) => true,
+                        AssertKind::Overflow(op, ..) => op.is_checkable(),
+                        _ => false,
+                    };
+                    if overflow_not_to_check {
                         let target = fx.get_block(*target);
                         fx.bcx.ins().jump(target, &[]);
                         continue;
@@ -567,15 +572,7 @@ fn codegen_stmt<'tcx>(
                     let lhs = codegen_operand(fx, &lhs_rhs.0);
                     let rhs = codegen_operand(fx, &lhs_rhs.1);
 
-                    let res = if !fx.tcx.sess.overflow_checks() {
-                        let val =
-                            crate::num::codegen_int_binop(fx, bin_op, lhs, rhs).load_scalar(fx);
-                        let is_overflow = fx.bcx.ins().iconst(types::I8, 0);
-                        CValue::by_val_pair(val, is_overflow, lval.layout())
-                    } else {
-                        crate::num::codegen_checked_int_binop(fx, bin_op, lhs, rhs)
-                    };
-
+                    let res = crate::num::codegen_checked_int_binop(fx, bin_op, lhs, rhs);
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::UnaryOp(un_op, ref operand) => {

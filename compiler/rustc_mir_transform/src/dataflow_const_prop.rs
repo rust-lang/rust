@@ -180,12 +180,7 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                         let overflow = match overflow {
                             FlatSet::Top => FlatSet::Top,
                             FlatSet::Elem(overflow) => {
-                                if overflow {
-                                    // Overflow cannot be reliably propagated. See: https://github.com/rust-lang/rust/pull/101168#issuecomment-1288091446
-                                    FlatSet::Top
-                                } else {
-                                    self.wrap_scalar(Scalar::from_bool(false), self.tcx.types.bool)
-                                }
+                                self.wrap_scalar(Scalar::from_bool(overflow), self.tcx.types.bool)
                             }
                             FlatSet::Bottom => FlatSet::Bottom,
                         };

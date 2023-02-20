@@ -329,7 +329,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     ) -> &'a Type {
         // HACK(eddyb) special-case fat pointers until LLVM removes
         // pointee types, to avoid bitcasting every `OperandRef::deref`.
-        match self.ty.kind() {
+        match *self.ty.kind() {
             ty::Ref(..) | ty::RawPtr(_) => {
                 return self.field(cx, index).llvm_type(cx);
             }
@@ -337,6 +337,11 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             // thin pointer boxes with scalar allocators are handled by the general logic below
             ty::Adt(def, substs) if def.is_box() && cx.layout_of(substs.type_at(1)).is_zst() => {
                 let ptr_ty = cx.tcx.mk_mut_ptr(self.ty.boxed_ty());
+                return cx.layout_of(ptr_ty).scalar_pair_element_llvm_type(cx, index, immediate);
+            }
+            // `dyn* Trait` has the same ABI as `*mut dyn Trait`
+            ty::Dynamic(bounds, region, ty::DynStar) => {
+                let ptr_ty = cx.tcx.mk_mut_ptr(cx.tcx.mk_dynamic(bounds, region, ty::Dyn));
                 return cx.layout_of(ptr_ty).scalar_pair_element_llvm_type(cx, index, immediate);
             }
             _ => {}

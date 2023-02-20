@@ -29,8 +29,8 @@ pub mod subone {
 // @has - '//section[@id="main-content"]/details/div[@class="docblock"]//a[@href="../fn.foo.html"]' 'foo'
 // @has - '//section[@id="main-content"]/details/div[@class="docblock"]//a[@href="../fn.bar.html"]' 'bar'
 // Though there should be such links later
-// @has - '//section[@id="main-content"]/div[@class="item-table"]//div[@class="item-left"]/a[@class="fn"][@href="fn.foo.html"]' 'foo'
-// @has - '//section[@id="main-content"]/div[@class="item-table"]//div[@class="item-left"]/a[@class="fn"][@href="fn.bar.html"]' 'bar'
+// @has - '//section[@id="main-content"]/ul[@class="item-table"]//div[@class="item-name"]/a[@class="fn"][@href="fn.foo.html"]' 'foo'
+// @has - '//section[@id="main-content"]/ul[@class="item-table"]//div[@class="item-name"]/a[@class="fn"][@href="fn.bar.html"]' 'bar'
 /// See either [foo] or [bar].
 pub mod subtwo {
 
@@ -68,8 +68,8 @@ pub mod subthree {
 // Next we go *deeper* - In order to ensure it's not just "this or parent"
 // we test `crate::` and a `super::super::...` chain
 // @has issue_55364/subfour/subfive/subsix/subseven/subeight/index.html
-// @has - '//section[@id="main-content"]/div[@class="item-table"]//div[@class="item-right docblock-short"]//a[@href="../../../../../subone/fn.foo.html"]' 'other foo'
-// @has - '//section[@id="main-content"]/div[@class="item-table"]//div[@class="item-right docblock-short"]//a[@href="../../../../../subtwo/fn.bar.html"]' 'other bar'
+// @has - '//section[@id="main-content"]/ul[@class="item-table"]//div[@class="desc docblock-short"]//a[@href="../../../../../subone/fn.foo.html"]' 'other foo'
+// @has - '//section[@id="main-content"]/ul[@class="item-table"]//div[@class="desc docblock-short"]//a[@href="../../../../../subtwo/fn.bar.html"]' 'other bar'
 pub mod subfour {
     pub mod subfive {
         pub mod subsix {

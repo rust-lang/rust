@@ -2,7 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeIndex};
+use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeIndex, DepNodeParams};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
@@ -408,10 +408,27 @@ where
 
     // Fast path for when incr. comp. is off.
     if !dep_graph.is_fully_enabled() {
+        // Fingerprint the key, just to assert that it doesn't
+        // have anything we don't consider hashable
+        if cfg!(debug_assertions) {
+            let _ = key.to_fingerprint(*qcx.dep_context());
+        }
+
         let prof_timer = qcx.dep_context().profiler().query_provider();
         let result = qcx.start_query(job_id, Q::DEPTH_LIMIT, None, || Q::compute(qcx, key));
         let dep_node_index = dep_graph.next_virtual_depnode_index();
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
+
+        // Similarly, fingerprint the result to assert that
+        // it doesn't have anything not considered hashable.
+        if cfg!(debug_assertions)
+            && let Some(hash_result) = Q::HASH_RESULT
+        {
+            qcx.dep_context().with_stable_hashing_context(|mut hcx| {
+                hash_result(&mut hcx, &result);
+            });
+        }
+
         return (result, dep_node_index);
     }
 

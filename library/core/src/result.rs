@@ -525,8 +525,6 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let x: Result<i32, &str> = Ok(-3);
     /// assert_eq!(x.is_ok(), true);
@@ -571,8 +569,6 @@ impl<T, E> Result<T, E> {
     /// Returns `true` if the result is [`Err`].
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let x: Result<i32, &str> = Ok(-3);
@@ -627,8 +623,6 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
     /// assert_eq!(x.ok(), Some(2));
@@ -657,8 +651,6 @@ impl<T, E> Result<T, E> {
     /// and discarding the success value, if any.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
@@ -693,8 +685,6 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
     /// assert_eq!(x.as_ref(), Ok(&2));
@@ -715,8 +705,6 @@ impl<T, E> Result<T, E> {
     /// Converts from `&mut Result<T, E>` to `Result<&mut T, &mut E>`.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// fn mutate(r: &mut Result<i32, i32>) {
@@ -812,8 +800,6 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let k = 21;
     ///
@@ -840,8 +826,6 @@ impl<T, E> Result<T, E> {
     ///
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// fn stringify(x: u32) -> String { format!("error code: {x}") }
@@ -968,8 +952,6 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let x: Result<u32, &str> = Ok(7);
     /// assert_eq!(x.iter().next(), Some(&7));
@@ -988,8 +970,6 @@ impl<T, E> Result<T, E> {
     /// The iterator yields one value if the result is [`Result::Ok`], otherwise none.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let mut x: Result<u32, &str> = Ok(7);
@@ -1030,8 +1010,6 @@ impl<T, E> Result<T, E> {
     ///
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```should_panic
     /// let x: Result<u32, &str> = Err("emergency failure");
@@ -1160,8 +1138,6 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```should_panic
     /// let x: Result<u32, &str> = Ok(10);
     /// x.expect_err("Testing expect_err"); // panics with `Testing expect_err: 10`
@@ -1222,8 +1198,6 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// # #![feature(never_type)]
     /// # #![feature(unwrap_infallible)]
@@ -1258,8 +1232,6 @@ impl<T, E> Result<T, E> {
     /// [`unwrap_err`]: Result::unwrap_err
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// # #![feature(never_type)]
@@ -1297,8 +1269,6 @@ impl<T, E> Result<T, E> {
     /// [`and_then`]: Result::and_then
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
@@ -1383,8 +1353,6 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
     /// let y: Result<u32, &str> = Err("late error");
@@ -1426,8 +1394,6 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// fn sq(x: u32) -> Result<u32, u32> { Ok(x * x) }
     /// fn err(x: u32) -> Result<u32, u32> { Err(x) }
@@ -1455,8 +1421,6 @@ impl<T, E> Result<T, E> {
     /// [`unwrap_or_else`]: Result::unwrap_or_else
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let default = 2;
@@ -1486,8 +1450,6 @@ impl<T, E> Result<T, E> {
     ///
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// fn count(x: &str) -> usize { x.len() }
@@ -1752,8 +1714,6 @@ impl<T, E> Result<Result<T, E>, E> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// #![feature(result_flattening)]
     /// let x: Result<Result<&'static str, u32>, u32> = Ok(Ok("hello"));
@@ -1841,8 +1801,6 @@ impl<T, E> IntoIterator for Result<T, E> {
     /// The iterator yields one value if the result is [`Result::Ok`], otherwise none.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let x: Result<u32, &str> = Ok(5);

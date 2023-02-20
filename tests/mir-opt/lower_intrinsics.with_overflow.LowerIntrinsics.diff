@@ -1,0 +1,83 @@
+- // MIR for `with_overflow` before LowerIntrinsics
++ // MIR for `with_overflow` after LowerIntrinsics
+  
+  fn with_overflow(_1: i32, _2: i32) -> () {
+      debug a => _1;                       // in scope 0 at $DIR/lower_intrinsics.rs:+0:22: +0:23
+      debug b => _2;                       // in scope 0 at $DIR/lower_intrinsics.rs:+0:30: +0:31
+      let mut _0: ();                      // return place in scope 0 at $DIR/lower_intrinsics.rs:+0:38: +0:38
+      let _3: (i32, bool);                 // in scope 0 at $DIR/lower_intrinsics.rs:+1:9: +1:11
+      let mut _4: i32;                     // in scope 0 at $DIR/lower_intrinsics.rs:+1:50: +1:51
+      let mut _5: i32;                     // in scope 0 at $DIR/lower_intrinsics.rs:+1:53: +1:54
+      let mut _7: i32;                     // in scope 0 at $DIR/lower_intrinsics.rs:+2:50: +2:51
+      let mut _8: i32;                     // in scope 0 at $DIR/lower_intrinsics.rs:+2:53: +2:54
+      let mut _10: i32;                    // in scope 0 at $DIR/lower_intrinsics.rs:+3:50: +3:51
+      let mut _11: i32;                    // in scope 0 at $DIR/lower_intrinsics.rs:+3:53: +3:54
+      scope 1 {
+          debug _x => _3;                  // in scope 1 at $DIR/lower_intrinsics.rs:+1:9: +1:11
+          let _6: (i32, bool);             // in scope 1 at $DIR/lower_intrinsics.rs:+2:9: +2:11
+          scope 2 {
+              debug _y => _6;              // in scope 2 at $DIR/lower_intrinsics.rs:+2:9: +2:11
+              let _9: (i32, bool);         // in scope 2 at $DIR/lower_intrinsics.rs:+3:9: +3:11
+              scope 3 {
+                  debug _z => _9;          // in scope 3 at $DIR/lower_intrinsics.rs:+3:9: +3:11
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:9: +1:11
+          StorageLive(_4);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:50: +1:51
+          _4 = _1;                         // scope 0 at $DIR/lower_intrinsics.rs:+1:50: +1:51
+          StorageLive(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:53: +1:54
+          _5 = _2;                         // scope 0 at $DIR/lower_intrinsics.rs:+1:53: +1:54
+-         _3 = add_with_overflow::<i32>(move _4, move _5) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:55
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:78:14: 78:49
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn(i32, i32) -> (i32, bool) {add_with_overflow::<i32>}, val: Value(<ZST>) }
++         _3 = CheckedAdd(move _4, move _5); // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:55
++         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:+1:14: +1:55
+      }
+  
+      bb1: {
+          StorageDead(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:54: +1:55
+          StorageDead(_4);                 // scope 0 at $DIR/lower_intrinsics.rs:+1:54: +1:55
+          StorageLive(_6);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:9: +2:11
+          StorageLive(_7);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:50: +2:51
+          _7 = _1;                         // scope 1 at $DIR/lower_intrinsics.rs:+2:50: +2:51
+          StorageLive(_8);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:53: +2:54
+          _8 = _2;                         // scope 1 at $DIR/lower_intrinsics.rs:+2:53: +2:54
+-         _6 = sub_with_overflow::<i32>(move _7, move _8) -> bb2; // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:55
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:79:14: 79:49
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn(i32, i32) -> (i32, bool) {sub_with_overflow::<i32>}, val: Value(<ZST>) }
++         _6 = CheckedSub(move _7, move _8); // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:55
++         goto -> bb2;                     // scope 1 at $DIR/lower_intrinsics.rs:+2:14: +2:55
+      }
+  
+      bb2: {
+          StorageDead(_8);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:54: +2:55
+          StorageDead(_7);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:54: +2:55
+          StorageLive(_9);                 // scope 2 at $DIR/lower_intrinsics.rs:+3:9: +3:11
+          StorageLive(_10);                // scope 2 at $DIR/lower_intrinsics.rs:+3:50: +3:51
+          _10 = _1;                        // scope 2 at $DIR/lower_intrinsics.rs:+3:50: +3:51
+          StorageLive(_11);                // scope 2 at $DIR/lower_intrinsics.rs:+3:53: +3:54
+          _11 = _2;                        // scope 2 at $DIR/lower_intrinsics.rs:+3:53: +3:54
+-         _9 = mul_with_overflow::<i32>(move _10, move _11) -> bb3; // scope 2 at $DIR/lower_intrinsics.rs:+3:14: +3:55
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:80:14: 80:49
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn(i32, i32) -> (i32, bool) {mul_with_overflow::<i32>}, val: Value(<ZST>) }
++         _9 = CheckedMul(move _10, move _11); // scope 2 at $DIR/lower_intrinsics.rs:+3:14: +3:55
++         goto -> bb3;                     // scope 2 at $DIR/lower_intrinsics.rs:+3:14: +3:55
+      }
+  
+      bb3: {
+          StorageDead(_11);                // scope 2 at $DIR/lower_intrinsics.rs:+3:54: +3:55
+          StorageDead(_10);                // scope 2 at $DIR/lower_intrinsics.rs:+3:54: +3:55
+          _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:+0:38: +4:2
+          StorageDead(_9);                 // scope 2 at $DIR/lower_intrinsics.rs:+4:1: +4:2
+          StorageDead(_6);                 // scope 1 at $DIR/lower_intrinsics.rs:+4:1: +4:2
+          StorageDead(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:+4:1: +4:2
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:+4:2: +4:2
+      }
+  }
+  

@@ -4,7 +4,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
-    self, ir::TypeFolder, DefIdTree, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable,
+    self, ir::TypeFolder, DefIdTree, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable,
     TypeSuperFoldable,
 };
 use crate::ty::{GenericArgKind, SubstsRef};
@@ -864,6 +864,26 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
             }
         }
         t
+    }
+
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if let ty::PredicateKind::Clause(clause) = p.kind().skip_binder()
+            && let ty::Clause::Projection(projection_pred) = clause
+        {
+            p.kind()
+                .rebind(ty::ProjectionPredicate {
+                    projection_ty: projection_pred.projection_ty.fold_with(self),
+                    // Don't fold the term on the RHS of the projection predicate.
+                    // This is because for default trait methods with RPITITs, we
+                    // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
+                    // predicate, which would trivially cause a cycle when we do
+                    // anything that requires `ParamEnv::with_reveal_all_normalized`.
+                    term: projection_pred.term,
+                })
+                .to_predicate(self.tcx)
+        } else {
+            p.super_fold_with(self)
+        }
     }
 }
 

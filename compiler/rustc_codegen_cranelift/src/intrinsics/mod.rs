@@ -493,20 +493,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let res = crate::num::codegen_int_binop(fx, bin_op, x, y);
             ret.write_cvalue(fx, res);
         }
-        sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
-            intrinsic_args!(fx, args => (x, y); intrinsic);
-
-            assert_eq!(x.layout().ty, y.layout().ty);
-            let bin_op = match intrinsic {
-                sym::add_with_overflow => BinOp::Add,
-                sym::sub_with_overflow => BinOp::Sub,
-                sym::mul_with_overflow => BinOp::Mul,
-                _ => unreachable!(),
-            };
-
-            let res = crate::num::codegen_checked_int_binop(fx, bin_op, x, y);
-            ret.write_cvalue(fx, res);
-        }
         sym::saturating_add | sym::saturating_sub => {
             intrinsic_args!(fx, args => (lhs, rhs); intrinsic);
 
