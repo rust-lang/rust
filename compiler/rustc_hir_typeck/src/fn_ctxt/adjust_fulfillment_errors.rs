@@ -549,6 +549,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Err(expr);
         };
 
+        if let (
+            hir::ExprKind::AddrOf(_borrow_kind, _borrow_mutability, borrowed_expr),
+            ty::Ref(_ty_region, ty_ref_type, _ty_mutability),
+        ) = (&expr.kind, in_ty.kind())
+        {
+            // We can "drill into" the borrowed expression.
+            return self.blame_specific_part_of_expr_corresponding_to_generic_param(
+                param,
+                borrowed_expr,
+                (*ty_ref_type).into(),
+            );
+        }
+
         if let (hir::ExprKind::Tup(expr_elements), ty::Tuple(in_ty_elements)) =
             (&expr.kind, in_ty.kind())
         {
