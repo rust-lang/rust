@@ -28,3 +28,4 @@ LL |     where 'a: 'b, 'b: 'static { t }
    = help: you can use the `'static` lifetime directly, in place of `'b`
 
 warning: 3 warnings emitted
+

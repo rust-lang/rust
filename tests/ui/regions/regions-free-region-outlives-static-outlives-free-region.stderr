@@ -12,3 +12,4 @@ LL | #![warn(unused_lifetimes)]
    |         ^^^^^^^^^^^^^^^^
 
 warning: 1 warning emitted
+
