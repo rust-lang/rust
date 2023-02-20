@@ -195,14 +195,13 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
 //
 // Provides a sneak peek of all tests where the current item is used.
 //
-// The simplest way to use this feature is via the context menu:
-//  - Right-click on the selected item. The context menu opens.
-//  - Select **Peek related tests**
+// The simplest way to use this feature is via the context menu. Right-click on
+// the selected item. The context menu opens. Select **Peek Related Tests**.
 //
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **rust-analyzer: Peek related tests**
+// | VS Code | **rust-analyzer: Peek Related Tests**
 // |===
 pub(crate) fn related_tests(
     db: &RootDatabase,

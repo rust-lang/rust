@@ -107,7 +107,18 @@ pub(crate) fn remove_links(markdown: &str) -> String {
     out
 }
 
-/// Retrieve a link to documentation for the given symbol.
+// Feature: Open Docs
+//
+// Retrieve a link to documentation for the given symbol.
+//
+// The simplest way to use this feature is via the context menu. Right-click on
+// the selected item. The context menu opens. Select **Open Docs**.
+//
+// |===
+// | Editor  | Action Name
+//
+// | VS Code | **rust-analyzer: Open Docs**
+// |===
 pub(crate) fn external_docs(
     db: &RootDatabase,
     position: &FilePosition,
