@@ -78,9 +78,10 @@ pub(crate) fn generate_body(token: TokenStream, item: &AutoDiffItem) -> (TokenSt
         ReturnType::Type(_, _) => quote!(unsafe { std::mem::zeroed() }),
         _ => quote!(),
     };
+    let tmp = fn_args_name.clone();
 
     (quote!(
-        std::hint::black_box((#fn_name(#( #fn_args_name, )*), #( #add_args_name, )*));
+        std::hint::black_box((#fn_name(#( #fn_args_name, )*), #( #add_args_name, )* #( #tmp, )*));
 
         #ret
     ), quote!(#fnc_source))
