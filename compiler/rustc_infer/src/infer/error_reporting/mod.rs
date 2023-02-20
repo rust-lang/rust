@@ -129,21 +129,16 @@ pub(super) fn note_and_explain_region<'tcx>(
     alt_span: Option<Span>,
 ) {
     let (description, span) = match *region {
-        ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
-            msg_span_from_free_region(tcx, region, alt_span)
+        ty::ReEarlyBound(_) | ty::ReFree(_) | ty::RePlaceholder(_) | ty::ReStatic => {
+            msg_span_from_named_region(tcx, region, alt_span)
         }
-
-        ty::RePlaceholder(_) => return,
 
         ty::ReError(_) => return,
 
-        // FIXME(#13998) RePlaceholder should probably print like
-        // ReFree rather than dumping Debug output on the user.
-        //
         // We shouldn't really be having unification failures with ReVar
         // and ReLateBound though.
         ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
-            (format!("lifetime {:?}", region), alt_span)
+            (format!("lifetime `{region}`"), alt_span)
         }
     };
 
@@ -157,12 +152,12 @@ fn explain_free_region<'tcx>(
     region: ty::Region<'tcx>,
     suffix: &str,
 ) {
-    let (description, span) = msg_span_from_free_region(tcx, region, None);
+    let (description, span) = msg_span_from_named_region(tcx, region, None);
 
     label_msg_span(err, prefix, description, span, suffix);
 }
 
-fn msg_span_from_free_region<'tcx>(
+fn msg_span_from_named_region<'tcx>(
     tcx: TyCtxt<'tcx>,
     region: ty::Region<'tcx>,
     alt_span: Option<Span>,
@@ -173,6 +168,18 @@ fn msg_span_from_free_region<'tcx>(
             (msg, Some(span))
         }
         ty::ReStatic => ("the static lifetime".to_owned(), alt_span),
+        ty::RePlaceholder(ty::PlaceholderRegion {
+            name: ty::BoundRegionKind::BrNamed(def_id, name),
+            ..
+        }) => (format!("the lifetime `{name}` as defined here"), Some(tcx.def_span(def_id))),
+        ty::RePlaceholder(ty::PlaceholderRegion {
+            name: ty::BoundRegionKind::BrAnon(_, Some(span)),
+            ..
+        }) => (format!("the anonymous lifetime defined here"), Some(span)),
+        ty::RePlaceholder(ty::PlaceholderRegion {
+            name: ty::BoundRegionKind::BrAnon(_, None),
+            ..
+        }) => (format!("an anonymous lifetime"), None),
         _ => bug!("{:?}", region),
     }
 }
