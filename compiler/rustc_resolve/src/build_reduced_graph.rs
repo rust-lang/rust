@@ -133,8 +133,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some(self.new_module(
                         parent,
                         ModuleKind::Def(def_kind, def_id, name),
-                        self.cstore().module_expansion_untracked(def_id, &self.session),
-                        self.cstore().get_span_untracked(def_id, &self.session),
+                        self.cstore().module_expansion_untracked(def_id, &self.tcx.sess),
+                        self.cstore().get_span_untracked(def_id, &self.tcx.sess),
                         // FIXME: Account for `#[no_implicit_prelude]` attributes.
                         parent.map_or(false, |module| module.no_implicit_prelude),
                     ))
@@ -179,7 +179,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             return macro_data.clone();
         }
 
-        let (ext, macro_rules) = match self.cstore().load_macro_untracked(def_id, &self.session) {
+        let (ext, macro_rules) = match self.cstore().load_macro_untracked(def_id, &self.tcx.sess) {
             LoadedMacro::MacroDef(item, edition) => (
                 Lrc::new(self.compile_macro(&item, edition).0),
                 matches!(item.kind, ItemKind::MacroDef(def) if def.macro_rules),
@@ -205,7 +205,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     pub(crate) fn build_reduced_graph_external(&mut self, module: Module<'a>) {
         for child in
-            Vec::from_iter(self.cstore().module_children_untracked(module.def_id(), self.session))
+            Vec::from_iter(self.cstore().module_children_untracked(module.def_id(), self.tcx.sess))
         {
             let parent_scope = ParentScope::module(module, self);
             BuildReducedGraphVisitor { r: self, parent_scope }
@@ -346,7 +346,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
     fn insert_field_names_extern(&mut self, def_id: DefId) {
         let field_names =
-            self.r.cstore().struct_field_names_untracked(def_id, self.r.session).collect();
+            self.r.cstore().struct_field_names_untracked(def_id, self.r.tcx.sess).collect();
         self.r.field_names.insert(def_id, field_names);
     }
 
@@ -539,14 +539,15 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                         }
 
                         self.r
-                            .session
+                            .tcx
+                            .sess
                             .struct_span_err(item.span, "`$crate` may not be imported")
                             .emit();
                     }
                 }
 
                 if ident.name == kw::Crate {
-                    self.r.session.span_err(
+                    self.r.tcx.sess.span_err(
                         ident.span,
                         "crate root imports need to be explicitly named: \
                          `use crate as name;`",
@@ -575,7 +576,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
             ast::UseTreeKind::Glob => {
                 let kind = ImportKind::Glob {
-                    is_prelude: self.r.session.contains_name(&item.attrs, sym::prelude_import),
+                    is_prelude: self.r.tcx.sess.contains_name(&item.attrs, sym::prelude_import),
                     max_vis: Cell::new(None),
                     id,
                 };
@@ -690,7 +691,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     expansion.to_expn_id(),
                     item.span,
                     parent.no_implicit_prelude
-                        || self.r.session.contains_name(&item.attrs, sym::no_implicit_prelude),
+                        || self.r.tcx.sess.contains_name(&item.attrs, sym::no_implicit_prelude),
                 );
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
 
@@ -755,7 +756,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     // If the structure is marked as non_exhaustive then lower the visibility
                     // to within the crate.
                     let mut ctor_vis = if vis.is_public()
-                        && self.r.session.contains_name(&item.attrs, sym::non_exhaustive)
+                        && self.r.tcx.sess.contains_name(&item.attrs, sym::non_exhaustive)
                     {
                         ty::Visibility::Restricted(CRATE_DEF_ID)
                     } else {
@@ -837,7 +838,8 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
         let (used, module, binding) = if orig_name.is_none() && ident.name == kw::SelfLower {
             self.r
-                .session
+                .tcx
+                .sess
                 .struct_span_err(item.span, "`extern crate self;` requires renaming")
                 .span_suggestion(
                     item.span,
@@ -887,7 +889,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 {
                     let msg = "macro-expanded `extern crate` items cannot \
                                        shadow names passed with `--extern`";
-                    self.r.session.span_err(item.span, msg);
+                    self.r.tcx.sess.span_err(item.span, msg);
                 }
             }
             let entry = self.r.extern_prelude.entry(ident.normalize_to_macros_2_0()).or_insert(
@@ -1014,7 +1016,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
             Res::Def(DefKind::Union, def_id) => self.insert_field_names_extern(def_id),
             Res::Def(DefKind::AssocFn, def_id) => {
-                if cstore.fn_has_self_parameter_untracked(def_id, self.r.session) {
+                if cstore.fn_has_self_parameter_untracked(def_id, self.r.tcx.sess) {
                     self.r.has_self.insert(def_id);
                 }
             }
@@ -1033,7 +1035,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             let msg = format!("`{}` is already in scope", name);
             let note =
                 "macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)";
-            self.r.session.struct_span_err(span, &msg).note(note).emit();
+            self.r.tcx.sess.struct_span_err(span, &msg).note(note).emit();
         }
     }
 
@@ -1045,7 +1047,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             if attr.has_name(sym::macro_use) {
                 if self.parent_scope.module.parent.is_some() {
                     struct_span_err!(
-                        self.r.session,
+                        self.r.tcx.sess,
                         item.span,
                         E0468,
                         "an `extern crate` loading macros must be at the crate root"
@@ -1055,7 +1057,8 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 if let ItemKind::ExternCrate(Some(orig_name)) = item.kind {
                     if orig_name == kw::SelfLower {
                         self.r
-                            .session
+                            .tcx
+                            .sess
                             .struct_span_err(
                                 attr.span,
                                 "`#[macro_use]` is not supported on `extern crate self`",
@@ -1064,7 +1067,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     }
                 }
                 let ill_formed = |span| {
-                    struct_span_err!(self.r.session, span, E0466, "bad macro import").emit();
+                    struct_span_err!(self.r.tcx.sess, span, E0466, "bad macro import").emit();
                 };
                 match attr.meta() {
                     Some(meta) => match meta.kind {
@@ -1135,8 +1138,13 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                         allow_shadowing,
                     );
                 } else {
-                    struct_span_err!(self.r.session, ident.span, E0469, "imported macro not found")
-                        .emit();
+                    struct_span_err!(
+                        self.r.tcx.sess,
+                        ident.span,
+                        E0469,
+                        "imported macro not found"
+                    )
+                    .emit();
                 }
             }
         }
@@ -1148,7 +1156,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         for attr in attrs {
             if attr.has_name(sym::macro_escape) {
                 let msg = "`#[macro_escape]` is a deprecated synonym for `#[macro_use]`";
-                let mut err = self.r.session.struct_span_warn(attr.span, msg);
+                let mut err = self.r.tcx.sess.struct_span_warn(attr.span, msg);
                 if let ast::AttrStyle::Inner = attr.style {
                     err.help("try an outer attribute: `#[macro_use]`").emit();
                 } else {
@@ -1159,7 +1167,10 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
 
             if !attr.is_word() {
-                self.r.session.span_err(attr.span, "arguments to `macro_use` are not allowed here");
+                self.r
+                    .tcx
+                    .sess
+                    .span_err(attr.span, "arguments to `macro_use` are not allowed here");
             }
             return true;
         }
@@ -1183,11 +1194,11 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     }
 
     fn proc_macro_stub(&self, item: &ast::Item) -> Option<(MacroKind, Ident, Span)> {
-        if self.r.session.contains_name(&item.attrs, sym::proc_macro) {
+        if self.r.tcx.sess.contains_name(&item.attrs, sym::proc_macro) {
             return Some((MacroKind::Bang, item.ident, item.span));
-        } else if self.r.session.contains_name(&item.attrs, sym::proc_macro_attribute) {
+        } else if self.r.tcx.sess.contains_name(&item.attrs, sym::proc_macro_attribute) {
             return Some((MacroKind::Attr, item.ident, item.span));
-        } else if let Some(attr) = self.r.session.find_by_name(&item.attrs, sym::proc_macro_derive)
+        } else if let Some(attr) = self.r.tcx.sess.find_by_name(&item.attrs, sym::proc_macro_derive)
         {
             if let Some(nested_meta) = attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
                 if let Some(ident) = nested_meta.ident() {
@@ -1222,7 +1233,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         let def_id = self.r.local_def_id(item.id);
         let (ext, ident, span, macro_rules, rule_spans) = match &item.kind {
             ItemKind::MacroDef(def) => {
-                let (ext, rule_spans) = self.r.compile_macro(item, self.r.session.edition());
+                let (ext, rule_spans) = self.r.compile_macro(item, self.r.tcx.sess.edition());
                 let ext = Lrc::new(ext);
                 (ext, item.ident, item.span, def.macro_rules, rule_spans)
             }
@@ -1243,7 +1254,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         if macro_rules {
             let ident = ident.normalize_to_macros_2_0();
             self.r.macro_names.insert(ident);
-            let is_macro_export = self.r.session.contains_name(&item.attrs, sym::macro_export);
+            let is_macro_export = self.r.tcx.sess.contains_name(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {
                 ty::Visibility::Public
             } else {
@@ -1507,7 +1518,7 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
         // If the variant is marked as non_exhaustive then lower the visibility to within the crate.
         let ctor_vis = if vis.is_public()
-            && self.r.session.contains_name(&variant.attrs, sym::non_exhaustive)
+            && self.r.tcx.sess.contains_name(&variant.attrs, sym::non_exhaustive)
         {
             ty::Visibility::Restricted(CRATE_DEF_ID)
         } else {

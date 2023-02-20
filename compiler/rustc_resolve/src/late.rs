@@ -682,7 +682,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                 // Elided lifetime in reference: we resolve as if there was some lifetime `'_` with
                 // NodeId `ty.id`.
                 // This span will be used in case of elision failure.
-                let span = self.r.session.source_map().start_point(ty.span);
+                let span = self.r.tcx.sess.source_map().start_point(ty.span);
                 self.resolve_elided_lifetime(ty.id, span);
                 visit::walk_ty(self, ty);
             }
@@ -1571,7 +1571,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         ("`'_` cannot be used here", "`'_` is a reserved lifetime name")
                     };
                     let mut diag = rustc_errors::struct_span_err!(
-                        self.r.session,
+                        self.r.tcx.sess,
                         lifetime.ident.span,
                         E0637,
                         "{}",
@@ -1748,7 +1748,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     //     impl Foo for std::cell::Ref<u32> // note lack of '_
                     //     async fn foo(_: std::cell::Ref<u32>) { ... }
                     LifetimeRibKind::AnonymousCreateParameter { report_in_path: true, .. } => {
-                        let sess = self.r.session;
+                        let sess = self.r.tcx.sess;
                         let mut err = rustc_errors::struct_span_err!(
                             sess,
                             path_span,
@@ -2194,7 +2194,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 let what = if ns == TypeNS { "type parameters" } else { "local variables" };
                 if this.should_report_errs() {
                     this.r
-                        .session
+                        .tcx
+                        .sess
                         .span_err(ident.span, &format!("imports cannot refer to {}", what));
                 }
             };
@@ -2438,7 +2439,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             if let GenericParamKind::Lifetime = param.kind
                 && let Some(&original) = seen_lifetimes.get(&ident)
             {
-                diagnostics::signal_lifetime_shadowing(self.r.session, original, param.ident);
+                diagnostics::signal_lifetime_shadowing(self.r.tcx.sess, original, param.ident);
                 // Record lifetime res, so lowering knows there is something fishy.
                 self.record_lifetime_param(param.id, LifetimeRes::Error);
                 continue;
@@ -2462,7 +2463,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             if param.ident.name == kw::UnderscoreLifetime {
                 rustc_errors::struct_span_err!(
-                    self.r.session,
+                    self.r.tcx.sess,
                     param.ident.span,
                     E0637,
                     "`'_` cannot be used here"
@@ -2476,7 +2477,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             if param.ident.name == kw::StaticLifetime {
                 rustc_errors::struct_span_err!(
-                    self.r.session,
+                    self.r.tcx.sess,
                     param.ident.span,
                     E0262,
                     "invalid lifetime parameter name: `{}`",
@@ -2506,7 +2507,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             let res = match kind {
                 ItemRibKind(..) | AssocItemRibKind => Res::Def(def_kind, def_id.to_def_id()),
                 NormalRibKind => {
-                    if self.r.session.features_untracked().non_lifetime_binders {
+                    if self.r.tcx.sess.features_untracked().non_lifetime_binders {
                         Res::Def(def_kind, def_id.to_def_id())
                     } else {
                         Res::Err
@@ -3384,7 +3385,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             Res::SelfCtor(_) => {
                 // We resolve `Self` in pattern position as an ident sometimes during recovery,
                 // so delay a bug instead of ICEing.
-                self.r.session.delay_span_bug(
+                self.r.tcx.sess.delay_span_bug(
                     ident.span,
                     "unexpected `SelfCtor` in pattern, expected identifier"
                 );
@@ -3664,7 +3665,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     #[inline]
     /// If we're actually rustdoc then avoid giving a name resolution error for `cfg()` items.
     fn should_report_errs(&self) -> bool {
-        !(self.r.session.opts.actually_rustdoc && self.in_func_body)
+        !(self.r.tcx.sess.opts.actually_rustdoc && self.in_func_body)
     }
 
     // Resolve in alternative namespaces if resolution in the primary namespace fails.
@@ -3829,7 +3830,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
 
             if let Ok((_, orig_span)) = self.resolve_label(label.ident) {
-                diagnostics::signal_label_shadowing(self.r.session, orig_span, label.ident)
+                diagnostics::signal_label_shadowing(self.r.tcx.sess, orig_span, label.ident)
             }
 
             self.with_label_rib(NormalRibKind, |this| {
@@ -4211,8 +4212,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 if let Some(res) = res
                     && let Some(def_id) = res.opt_def_id()
                     && !def_id.is_local()
-                    && self.r.session.crate_types().contains(&CrateType::ProcMacro)
-                    && matches!(self.r.session.opts.resolve_doc_links, ResolveDocLinks::ExportedMetadata) {
+                    && self.r.tcx.sess.crate_types().contains(&CrateType::ProcMacro)
+                    && matches!(self.r.tcx.sess.opts.resolve_doc_links, ResolveDocLinks::ExportedMetadata) {
                     // Encoding foreign def ids in proc macro crate metadata will ICE.
                     return None;
                 }
@@ -4224,10 +4225,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     fn resolve_doc_links(&mut self, attrs: &[Attribute], maybe_exported: MaybeExported<'_>) {
-        match self.r.session.opts.resolve_doc_links {
+        match self.r.tcx.sess.opts.resolve_doc_links {
             ResolveDocLinks::None => return,
             ResolveDocLinks::ExportedMetadata
-                if !self.r.session.crate_types().iter().copied().any(CrateType::has_metadata)
+                if !self.r.tcx.sess.crate_types().iter().copied().any(CrateType::has_metadata)
                     || !maybe_exported.eval(self.r) =>
             {
                 return;
@@ -4281,9 +4282,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         .into_iter()
                         .filter_map(|tr| {
                             if !tr.def_id.is_local()
-                                && self.r.session.crate_types().contains(&CrateType::ProcMacro)
+                                && self.r.tcx.sess.crate_types().contains(&CrateType::ProcMacro)
                                 && matches!(
-                                    self.r.session.opts.resolve_doc_links,
+                                    self.r.tcx.sess.opts.resolve_doc_links,
                                     ResolveDocLinks::ExportedMetadata
                                 )
                             {

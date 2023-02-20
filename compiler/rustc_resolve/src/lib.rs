@@ -861,11 +861,15 @@ struct MacroData {
     macro_rules: bool,
 }
 
+struct TyCtxt<'tcx> {
+    sess: &'tcx Session,
+}
+
 /// The main resolver class.
 ///
 /// This is the visitor that walks the whole crate.
 pub struct Resolver<'a, 'tcx> {
-    session: &'tcx Session,
+    tcx: TyCtxt<'tcx>,
 
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
@@ -1195,7 +1199,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         if let Some(def_id) = def_id.as_local() {
             self.item_generics_num_lifetimes[&def_id]
         } else {
-            self.cstore().item_generics_num_lifetimes(def_id, self.session)
+            self.cstore().item_generics_num_lifetimes(def_id, self.tcx.sess)
         }
     }
 }
@@ -1208,6 +1212,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         metadata_loader: Box<MetadataLoaderDyn>,
         arenas: &'a ResolverArenas<'a>,
     ) -> Resolver<'a, 'tcx> {
+        let tcx = TyCtxt { sess: session };
+
         let root_def_id = CRATE_DEF_ID.to_def_id();
         let mut module_map = FxHashMap::default();
         let graph_root = arenas.new_module(
@@ -1264,7 +1270,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let features = session.features_untracked();
 
         let mut resolver = Resolver {
-            session,
+            tcx,
 
             expn_that_defined: Default::default(),
 
@@ -1473,12 +1479,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
-        StableHashingContext::new(self.session, &self.untracked)
+        StableHashingContext::new(self.tcx.sess, &self.untracked)
     }
 
     fn crate_loader(&mut self) -> CrateLoader<'_> {
         CrateLoader::new(
-            &self.session,
+            &self.tcx.sess,
             &*self.metadata_loader,
             self.local_crate_name,
             &mut *self.untracked.cstore.untracked_as_any().downcast_mut().unwrap(),
@@ -1521,17 +1527,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
-        self.session.time("resolve_crate", || {
-            self.session.time("finalize_imports", || ImportResolver { r: self }.finalize_imports());
-            self.session.time("compute_effective_visibilities", || {
+        self.tcx.sess.time("resolve_crate", || {
+            self.tcx
+                .sess
+                .time("finalize_imports", || ImportResolver { r: self }.finalize_imports());
+            self.tcx.sess.time("compute_effective_visibilities", || {
                 EffectiveVisibilitiesVisitor::compute_effective_visibilities(self, krate)
             });
-            self.session.time("finalize_macro_resolutions", || self.finalize_macro_resolutions());
-            self.session.time("late_resolve_crate", || self.late_resolve_crate(krate));
-            self.session.time("resolve_main", || self.resolve_main());
-            self.session.time("resolve_check_unused", || self.check_unused(krate));
-            self.session.time("resolve_report_errors", || self.report_errors(krate));
-            self.session.time("resolve_postprocess", || self.crate_loader().postprocess(krate));
+            self.tcx.sess.time("finalize_macro_resolutions", || self.finalize_macro_resolutions());
+            self.tcx.sess.time("late_resolve_crate", || self.late_resolve_crate(krate));
+            self.tcx.sess.time("resolve_main", || self.resolve_main());
+            self.tcx.sess.time("resolve_check_unused", || self.check_unused(krate));
+            self.tcx.sess.time("resolve_report_errors", || self.report_errors(krate));
+            self.tcx.sess.time("resolve_postprocess", || self.crate_loader().postprocess(krate));
         });
     }
 
@@ -1961,7 +1969,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 let attr = self
                     .cstore()
-                    .item_attrs_untracked(def_id, self.session)
+                    .item_attrs_untracked(def_id, self.tcx.sess)
                     .find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
                 let mut ret = Vec::new();
                 for meta in attr.meta_item_list()? {
