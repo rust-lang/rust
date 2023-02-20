@@ -68,6 +68,7 @@ pub use iter::SplitAsciiWhitespace;
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use iter::SplitInclusive;
 
+pub(crate) use validations::next_code_point_reverse;
 #[unstable(feature = "str_internals", issue = "none")]
 pub use validations::{
     next_code_point, try_next_code_point, try_next_code_point_reverse, utf8_char_width,

@@ -20,11 +20,15 @@
 #![unstable(feature = "str_internals", issue = "none")]
 
 use crate::cmp;
+use crate::marker::PhantomData;
 use crate::mem::take;
 use crate::ops;
 use crate::pattern;
-use crate::pattern::{Haystack, MatchOnly, RejectOnly, SearchStep, Searcher};
-use crate::str::{try_next_code_point, try_next_code_point_reverse};
+use crate::pattern::{Haystack, MatchOnly, Pattern, RejectOnly, SearchStep};
+use crate::str::{
+    next_code_point, next_code_point_reverse, try_next_code_point, try_next_code_point_reverse,
+    utf8_char_width,
+};
 
 type OptRange = Option<(usize, usize)>;
 type Range = ops::Range<usize>;
@@ -40,10 +44,29 @@ type Range = ops::Range<usize>;
 /// sequences.  This is in a sense a generalisation of a `&str` which allows
 /// portions of the buffer to be ill-formed while preserving correctness of
 /// existing well-formed parts.
+///
+/// The `F` generic argument tags the slice with a [flavour][Flavour] which
+/// specifies structure of the data.
 #[derive(Copy, Clone, Debug)]
-pub struct Bytes<'a>(&'a [u8]);
+pub struct Bytes<'a, F>(&'a [u8], PhantomData<F>);
 
-impl<'a> Bytes<'a> {
+impl<'a, F: Flavour> Bytes<'a, F> {
+    /// Creates a new `Bytes` wrapper around bytes slice.
+    ///
+    /// # Safety
+    ///
+    /// Caller must guarantee that the bytes adhere to the requirements for the
+    /// flavour `F`.  E.g. for [`Wtf8`] flavour, the bytes must be well-formed
+    /// WTF-8 encoded string.
+    ///
+    /// It may be more convenient to use `Bytes::From` implementations which are
+    /// provided for `&str`, `&OsStr` and `&[u8]`.
+    pub unsafe fn new(bytes: &'a [u8]) -> Bytes<'a, F> {
+        Self(bytes, PhantomData)
+    }
+}
+
+impl<'a, F: Flavour> Bytes<'a, F> {
     pub fn as_bytes(self) -> &'a [u8] {
         self.0
     }
@@ -68,11 +91,7 @@ impl<'a> Bytes<'a> {
     /// advance position byte at a time.  If you need to be able to advance
     /// position byte at a time use `advance_range_start` instead.
     fn adjust_position_fwd(self, range: Range) -> usize {
-        range.start
-            + self.as_bytes()[range.clone()]
-                .iter()
-                .take_while(|chr| !chr.is_utf8_char_boundary())
-                .count()
+        F::adjust_position_fwd(self.as_bytes(), range)
     }
 
     /// Adjusts position backward so that it points at the closest potential
@@ -87,12 +106,7 @@ impl<'a> Bytes<'a> {
     /// advance position byte at a time.  If you need to be able to advance
     /// position character at a time use `advance_range_end` instead.
     fn adjust_position_bwd(self, range: Range) -> usize {
-        range.end
-            - self.as_bytes()[range.start..range.end + 1]
-                .iter()
-                .rev()
-                .take_while(|chr| !chr.is_utf8_char_boundary())
-                .count()
+        F::adjust_position_bwd(self.as_bytes(), range)
     }
 
     /// Given a valid range update it’s start so it falls on the next character
@@ -103,11 +117,7 @@ impl<'a> Bytes<'a> {
     /// `range.start + 1`.  In other words, well-formed WTF-8 bytes sequence are
     /// skipped in one go while ill-formed sequences are skipped byte-by-byte.
     fn advance_range_start(self, range: Range) -> usize {
-        assert!(!range.is_empty());
-        match try_next_code_point(&self.0[range.clone()]) {
-            Some((_, len)) => range.start + len,
-            None => range.end.min(range.start + 1),
-        }
+        range.start + F::advance_range_start(&self.as_bytes()[range])
     }
 
     /// Given a valid range update it’s end so it falls on the previous
@@ -119,11 +129,7 @@ impl<'a> Bytes<'a> {
     /// sequence are skipped in one go while ill-formed sequences are skipped
     /// byte-by-byte.
     fn advance_range_end(self, range: Range) -> usize {
-        assert!(!range.is_empty());
-        match try_next_code_point_reverse(&self.0[range.clone()]) {
-            Some((_, len)) => range.end - len,
-            None => range.end - 1,
-        }
+        range.start + F::advance_range_end(&self.as_bytes()[range])
     }
 
     /// Returns valid UTF-8 character at the front of the slice.
@@ -132,7 +138,7 @@ impl<'a> Bytes<'a> {
     /// Otherwise returns decoded character and it’s UTF-8 encoding’s length.
     /// WTF-8 sequences which encode surrogates are considered invalid.
     fn get_first_code_point(self) -> Option<(char, usize)> {
-        try_next_code_point(&self.0)
+        F::get_first_code_point(self.as_bytes())
     }
 
     /// Returns valid UTF-8 character at the end of the slice.
@@ -140,8 +146,8 @@ impl<'a> Bytes<'a> {
     /// If slice doesn’t end with a valid UTF-8 sequence, returns `None`.
     /// Otherwise returns decoded character and it’s UTF-8 encoding’s length.
     /// WTF-8 sequences which encode surrogates are considered invalid.
-    fn get_last_code_point(&self) -> Option<(char, usize)> {
-        try_next_code_point_reverse(&self.0)
+    fn get_last_code_point(self) -> Option<(char, usize)> {
+        F::get_last_code_point(self.as_bytes())
     }
 
     /// Looks for the next UTF-8-encoded character in the slice.
@@ -151,13 +157,8 @@ impl<'a> Bytes<'a> {
     /// Returns position of the match, decoded character and UTF-8 length of
     /// that character.
     fn find_code_point_fwd(self, range: Range) -> Option<(usize, char, usize)> {
-        let bytes = &self.as_bytes()[range.clone()];
-        (0..bytes.len())
-            .filter_map(|pos| {
-                let (chr, len) = try_next_code_point(&bytes[pos..])?;
-                Some((range.start + pos, chr, len))
-            })
-            .next()
+        F::find_code_point_fwd(&self.as_bytes()[range.clone()])
+            .map(|(pos, chr, len)| (range.start + pos, chr, len))
     }
 
     /// Looks backwards for the next UTF-8 encoded character in the slice.
@@ -167,28 +168,301 @@ impl<'a> Bytes<'a> {
     /// Returns position of the match, decoded character and UTF-8 length of
     /// that character.
     fn find_code_point_bwd(&self, range: Range) -> Option<(usize, char, usize)> {
-        let bytes = &self.as_bytes()[range.clone()];
-        (0..bytes.len())
-            .rev()
-            .filter_map(|pos| {
-                let (chr, len) = try_next_code_point(&bytes[pos..])?;
-                Some((range.start + pos, chr, len))
-            })
-            .next()
+        F::find_code_point_bwd(&self.as_bytes()[range.clone()])
+            .map(|(pos, chr, len)| (range.start + pos, chr, len))
     }
 }
 
-impl<'a> From<&'a [u8]> for Bytes<'a> {
+impl<'a> From<&'a [u8]> for Bytes<'a, Unstructured> {
     #[inline]
     fn from(val: &'a [u8]) -> Self {
-        Self(val)
+        Self(val, PhantomData)
     }
 }
 
-impl<'a> From<&'a str> for Bytes<'a> {
+impl<'a> From<&'a str> for Bytes<'a, Utf8> {
     #[inline]
     fn from(val: &'a str) -> Self {
-        Self(val.as_bytes())
+        // SAFETY: `str`’s bytes ares guaranteed to be UTF-8 so `Utf8` flavour
+        // is correct.
+        unsafe { Bytes::new(val.as_bytes()) }
+    }
+}
+
+impl<'a> From<Bytes<'a, Utf8>> for &'a str {
+    #[inline]
+    fn from(bytes: Bytes<'a, Utf8>) -> &'a str {
+        if cfg!(debug_assertions) {
+            crate::str::from_utf8(bytes.as_bytes()).unwrap()
+        } else {
+            // SAFETY: Bytes has been created from &str and we’ve been
+            // maintaining UTF-8 format.
+            unsafe { crate::str::from_utf8_unchecked(bytes.as_bytes()) }
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Unstructured {}
+#[derive(Clone, Copy, Debug)]
+pub enum Wtf8 {}
+#[derive(Clone, Copy, Debug)]
+pub enum Utf8 {}
+
+/// A marker trait indicating ‘flavour’ of data referred by [`Bytes`] type.
+///
+/// The trait abstracts away operations related to identifying and decoding
+/// ‘characters’ from a bytes slice.  A valid WTF-8 byte sequence is always
+/// treated as indivisible ‘character’ but depending on the flavour code can
+/// make different assumption about contents of the bytes slice:
+/// - [`Unstructured`] flavoured bytes slice may contain ill-formed bytes
+///   sequences and in those each byte is treated as separate ‘character’,
+/// - [`Wtf8`] flavoured bytes slice is a well-formed WTF-8-encoded string (that
+///   is some of the byte sequences may encode surrogate code points) and
+/// - [`Utf8`] flavoured bytes slice is a well-formed UTF-8-encoded string (that
+///   is all byte sequences encode valid Unicode code points).
+pub trait Flavour: private::Flavour {}
+
+impl Flavour for Unstructured {}
+impl Flavour for Wtf8 {}
+impl Flavour for Utf8 {}
+
+mod private {
+    use super::*;
+
+    /// Private methods of the [`super::Flavour`] trait.
+    pub trait Flavour: Copy + core::fmt::Debug {
+        const IS_WTF8: bool;
+        fn adjust_position_fwd(bytes: &[u8], range: Range) -> usize;
+        fn adjust_position_bwd(bytes: &[u8], range: Range) -> usize;
+        fn advance_range_start(bytes: &[u8]) -> usize;
+        fn advance_range_end(bytes: &[u8]) -> usize;
+        fn get_first_code_point(bytes: &[u8]) -> Option<(char, usize)>;
+        fn get_last_code_point(bytes: &[u8]) -> Option<(char, usize)>;
+        fn find_code_point_fwd(bytes: &[u8]) -> Option<(usize, char, usize)>;
+        fn find_code_point_bwd(bytes: &[u8]) -> Option<(usize, char, usize)>;
+    }
+
+    impl Flavour for super::Unstructured {
+        const IS_WTF8: bool = false;
+
+        fn adjust_position_fwd(bytes: &[u8], range: Range) -> usize {
+            range.start
+                + bytes[range.clone()].iter().take_while(|chr| !chr.is_utf8_char_boundary()).count()
+        }
+
+        fn adjust_position_bwd(bytes: &[u8], range: Range) -> usize {
+            range.end
+                - bytes[range.start..range.end + 1]
+                    .iter()
+                    .rev()
+                    .take_while(|chr| !chr.is_utf8_char_boundary())
+                    .count()
+        }
+
+        fn advance_range_start(bytes: &[u8]) -> usize {
+            assert!(!bytes.is_empty());
+            try_next_code_point(bytes).map_or(1, |(_, len)| len)
+        }
+
+        fn advance_range_end(bytes: &[u8]) -> usize {
+            assert!(!bytes.is_empty());
+            bytes.len() - try_next_code_point_reverse(bytes).map_or(1, |(_, len)| len)
+        }
+
+        fn get_first_code_point(bytes: &[u8]) -> Option<(char, usize)> {
+            try_next_code_point(bytes)
+        }
+
+        fn get_last_code_point(bytes: &[u8]) -> Option<(char, usize)> {
+            try_next_code_point_reverse(bytes)
+        }
+
+        fn find_code_point_fwd(bytes: &[u8]) -> Option<(usize, char, usize)> {
+            (0..bytes.len())
+                .filter_map(|pos| {
+                    let (chr, len) = try_next_code_point(&bytes[pos..])?;
+                    Some((pos, chr, len))
+                })
+                .next()
+        }
+
+        fn find_code_point_bwd(bytes: &[u8]) -> Option<(usize, char, usize)> {
+            (0..bytes.len())
+                .rev()
+                .filter_map(|pos| {
+                    let (chr, len) = try_next_code_point(&bytes[pos..])?;
+                    Some((pos, chr, len))
+                })
+                .next()
+        }
+    }
+
+    impl Flavour for Wtf8 {
+        const IS_WTF8: bool = true;
+
+        fn adjust_position_fwd(bytes: &[u8], range: Range) -> usize {
+            let mut pos = range.start;
+            // Input is WTF-8 so we will never need to move more than three
+            // positions.  This happens when we’re at pointing at the first
+            // continuation byte of a four-byte sequence.  Unroll the loop.
+            for _ in 0..3 {
+                // We’re not checking pos against _end because we know that _end
+                // == bytes.len() or falls on a character boundary.  We can
+                // therefore compare against bytes.len() and eliminate that
+                // comparison.
+                if bytes.get(pos).map_or(true, |b: &u8| b.is_utf8_char_boundary()) {
+                    break;
+                }
+                pos += 1;
+            }
+            pos
+        }
+
+        fn adjust_position_bwd(bytes: &[u8], range: Range) -> usize {
+            let mut pos = range.end;
+            // Input is WTF-8 so we will never need to move more than three
+            // positions.  This happens when we’re at pointing at the first
+            // continuation byte of a four-byte sequence.  Unroll the loop.
+            for _ in 0..3 {
+                // SAFETY: `bytes` is well-formed WTF-8 sequence and at function
+                // start `pos` is index within `bytes`.  Therefore, `bytes[pos]`
+                // is valid and a) if it’s a character boundary we exit the
+                // function or b) otherwise we know that `pos > 0` (because
+                // otherwise `bytes` wouldn’t be well-formed WTF-8).
+                if unsafe { bytes.get_unchecked(pos) }.is_utf8_char_boundary() {
+                    break;
+                }
+                pos -= 1;
+            }
+            pos
+        }
+
+        fn advance_range_start(bytes: &[u8]) -> usize {
+            // Input is valid WTF-8 so we can just deduce length of next
+            // sequence to skip from the frist byte.
+            utf8_char_width(*bytes.get(0).unwrap())
+        }
+
+        fn advance_range_end(bytes: &[u8]) -> usize {
+            let end = bytes.len().checked_sub(1).unwrap();
+            Self::adjust_position_bwd(bytes, 0..end)
+        }
+
+        fn get_first_code_point(bytes: &[u8]) -> Option<(char, usize)> {
+            // SAFETY: We’re Wtf8 flavour.  Client promises that bytes are
+            // well-formed WTF-8.
+            let cp = unsafe { next_code_point(&mut bytes.iter())? };
+            // WTF-8 might produce surrogate code points so we still need to
+            // verify that we got a valid character.
+            char::from_u32(cp).map(|chr| (chr, len_utf8(cp)))
+        }
+
+        fn get_last_code_point(bytes: &[u8]) -> Option<(char, usize)> {
+            // SAFETY: We’re Wtf8 flavour.  Client promises that bytes are
+            // well-formed WTF-8.
+            let cp = unsafe { next_code_point_reverse(&mut bytes.iter().rev())? };
+            // WTF-8 might produce surrogate code points so we still need to
+            // verify that we got a valid character.
+            char::from_u32(cp).map(|chr| (chr, len_utf8(cp)))
+        }
+
+        fn find_code_point_fwd(bytes: &[u8]) -> Option<(usize, char, usize)> {
+            let mut iter = bytes.iter();
+            let mut pos = 0;
+            loop {
+                // SAFETY: We’re Wtf8 flavour.  Client promises that bytes are
+                // well-formed WTF-8.
+                let cp = unsafe { next_code_point(&mut iter)? };
+                let len = len_utf8(cp);
+                if let Some(chr) = char::from_u32(cp) {
+                    return Some((pos, chr, len));
+                }
+                pos += len;
+            }
+        }
+
+        fn find_code_point_bwd(bytes: &[u8]) -> Option<(usize, char, usize)> {
+            let mut iter = bytes.iter().rev();
+            let mut pos = bytes.len();
+            loop {
+                // SAFETY: We’re Wtf8 flavour.  Client promises that bytes are
+                // well-formed WTF-8.
+                let cp = unsafe { next_code_point_reverse(&mut iter)? };
+                let len = len_utf8(cp);
+                pos -= len;
+                if let Some(chr) = char::from_u32(cp) {
+                    return Some((pos, chr, len));
+                }
+            }
+        }
+    }
+
+    impl Flavour for Utf8 {
+        const IS_WTF8: bool = true;
+
+        fn adjust_position_fwd(bytes: &[u8], range: Range) -> usize {
+            Wtf8::adjust_position_fwd(bytes, range)
+        }
+
+        fn adjust_position_bwd(bytes: &[u8], range: Range) -> usize {
+            Wtf8::adjust_position_bwd(bytes, range)
+        }
+
+        fn advance_range_start(bytes: &[u8]) -> usize {
+            Wtf8::advance_range_start(bytes)
+        }
+
+        fn advance_range_end(bytes: &[u8]) -> usize {
+            Wtf8::advance_range_end(bytes)
+        }
+
+        fn get_first_code_point(bytes: &[u8]) -> Option<(char, usize)> {
+            let (_, chr, len) = Self::find_code_point_fwd(bytes)?;
+            Some((chr, len))
+        }
+
+        fn get_last_code_point(bytes: &[u8]) -> Option<(char, usize)> {
+            let (_, chr, len) = Self::find_code_point_bwd(bytes)?;
+            Some((chr, len))
+        }
+
+        fn find_code_point_fwd(bytes: &[u8]) -> Option<(usize, char, usize)> {
+            // SAFETY: We’re Utf8 flavour.  Client promises that bytes are
+            // well-formed UTF-8.  We can not only assume well-formed byte
+            // sequence but also that produced code points are valid.
+            let chr = unsafe { char::from_u32_unchecked(next_code_point(&mut bytes.iter())?) };
+            let len = chr.len_utf8();
+            Some((0, chr, len))
+        }
+
+        fn find_code_point_bwd(bytes: &[u8]) -> Option<(usize, char, usize)> {
+            // SAFETY: We’re Utf8 flavour.  Client promises that bytes are
+            // well-formed UTF-8.  We can not only assume well-formed byte
+            // sequence but also that produced code points are valid.
+            let chr = unsafe {
+                let code = next_code_point_reverse(&mut bytes.iter().rev())?;
+                char::from_u32_unchecked(code)
+            };
+            let len = chr.len_utf8();
+            Some((bytes.len() - len, chr, len))
+        }
+    }
+
+    // Copied from src/chars/methods.rs.  We need it because it’s not public
+    // there and char::len_utf8 requires us to have a char and we need this to
+    // work on surrogate code points as well.
+    #[inline]
+    const fn len_utf8(code: u32) -> usize {
+        if code < 0x80 {
+            1
+        } else if code < 0x800 {
+            2
+        } else if code < 0x10000 {
+            3
+        } else {
+            4
+        }
     }
 }
 
@@ -198,25 +472,45 @@ trait SearchResult: crate::pattern::SearchResult<usize> {
     ///
     /// Doesn’t move the start position past `begin`.  If position was adjusted,
     /// updates `*out` as well.
-    fn adjust_reject_start_bwd(self, bytes: Bytes<'_>, begin: usize, out: &mut usize) -> Self;
+    fn adjust_reject_start_bwd<F: Flavour>(
+        self,
+        bytes: Bytes<'_, F>,
+        begin: usize,
+        out: &mut usize,
+    ) -> Self;
 
     /// Adjusts reject’s end position forwards to make sure it doesn’t fall
     /// withing well-formed WTF-8 sequence.
     ///
     /// Doesn’t move the end position past `len`.  If position was adjusted,
     /// updates `*out` as well.
-    fn adjust_reject_end_fwd(self, bytes: Bytes<'_>, len: usize, out: &mut usize) -> Self;
+    fn adjust_reject_end_fwd<F: Flavour>(
+        self,
+        bytes: Bytes<'_, F>,
+        len: usize,
+        out: &mut usize,
+    ) -> Self;
 }
 
 impl SearchResult for SearchStep {
-    fn adjust_reject_start_bwd(mut self, bytes: Bytes<'_>, begin: usize, out: &mut usize) -> Self {
+    fn adjust_reject_start_bwd<F: Flavour>(
+        mut self,
+        bytes: Bytes<'_, F>,
+        begin: usize,
+        out: &mut usize,
+    ) -> Self {
         if let SearchStep::Reject(ref mut start, _) = self {
             *start = bytes.adjust_position_bwd(begin..*start);
             *out = *start;
         }
         self
     }
-    fn adjust_reject_end_fwd(mut self, bytes: Bytes<'_>, len: usize, out: &mut usize) -> Self {
+    fn adjust_reject_end_fwd<F: Flavour>(
+        mut self,
+        bytes: Bytes<'_, F>,
+        len: usize,
+        out: &mut usize,
+    ) -> Self {
         if let SearchStep::Reject(_, ref mut end) = self {
             *end = bytes.adjust_position_fwd(*end..len);
             *out = *end;
@@ -226,23 +520,43 @@ impl SearchResult for SearchStep {
 }
 
 impl SearchResult for MatchOnly {
-    fn adjust_reject_start_bwd(self, _bytes: Bytes<'_>, _begin: usize, _out: &mut usize) -> Self {
+    fn adjust_reject_start_bwd<F: Flavour>(
+        self,
+        _bytes: Bytes<'_, F>,
+        _begin: usize,
+        _out: &mut usize,
+    ) -> Self {
         self
     }
-    fn adjust_reject_end_fwd(self, _bytes: Bytes<'_>, _end: usize, _out: &mut usize) -> Self {
+    fn adjust_reject_end_fwd<F: Flavour>(
+        self,
+        _bytes: Bytes<'_, F>,
+        _end: usize,
+        _out: &mut usize,
+    ) -> Self {
         self
     }
 }
 
 impl SearchResult for RejectOnly {
-    fn adjust_reject_start_bwd(mut self, bytes: Bytes<'_>, begin: usize, out: &mut usize) -> Self {
+    fn adjust_reject_start_bwd<F: Flavour>(
+        mut self,
+        bytes: Bytes<'_, F>,
+        begin: usize,
+        out: &mut usize,
+    ) -> Self {
         if let RejectOnly(Some((ref mut start, _))) = self {
             *start = bytes.adjust_position_bwd(begin..*start);
             *out = *start;
         }
         self
     }
-    fn adjust_reject_end_fwd(mut self, bytes: Bytes<'_>, len: usize, out: &mut usize) -> Self {
+    fn adjust_reject_end_fwd<F: Flavour>(
+        mut self,
+        bytes: Bytes<'_, F>,
+        len: usize,
+        out: &mut usize,
+    ) -> Self {
         if let RejectOnly(Some((_, ref mut end))) = self {
             *end = bytes.adjust_position_fwd(*end..len);
             *out = *end;
@@ -255,7 +569,7 @@ impl SearchResult for RejectOnly {
 // Impl for Haystack
 ////////////////////////////////////////////////////////////////////////////////
 
-impl Haystack for Bytes<'_> {
+impl<'hs, F: Flavour> Haystack for Bytes<'hs, F> {
     type Cursor = usize;
 
     fn cursor_at_front(self) -> Self::Cursor {
@@ -267,13 +581,17 @@ impl Haystack for Bytes<'_> {
     fn is_empty(self) -> bool {
         self.0.is_empty()
     }
+
     unsafe fn get_unchecked(self, range: Range) -> Self {
-        Self(if cfg!(debug_assertions) {
-            self.0.get(range).unwrap()
-        } else {
-            // SAFETY: Caller promises cursor is a valid split position.
-            unsafe { self.0.get_unchecked(range) }
-        })
+        Self(
+            if cfg!(debug_assertions) {
+                self.0.get(range).unwrap()
+            } else {
+                // SAFETY: Caller promises cursor is a valid split position.
+                unsafe { self.0.get_unchecked(range) }
+            },
+            PhantomData,
+        )
     }
 }
 
@@ -281,32 +599,32 @@ impl Haystack for Bytes<'_> {
 // Impl Pattern for char
 ////////////////////////////////////////////////////////////////////////////////
 
-impl<'hs> pattern::Pattern<Bytes<'hs>> for char {
-    type Searcher = CharSearcher<'hs>;
+impl<'hs, F: Flavour> Pattern<Bytes<'hs, F>> for char {
+    type Searcher = CharSearcher<'hs, F>;
 
-    fn into_searcher(self, haystack: Bytes<'hs>) -> Self::Searcher {
+    fn into_searcher(self, haystack: Bytes<'hs, F>) -> Self::Searcher {
         Self::Searcher::new(haystack, self)
     }
 
-    fn is_contained_in(self, haystack: Bytes<'hs>) -> bool {
+    fn is_contained_in(self, haystack: Bytes<'hs, F>) -> bool {
         let mut buf = [0; 4];
         encode_utf8(self, &mut buf).is_contained_in(haystack)
     }
 
-    fn is_prefix_of(self, haystack: Bytes<'hs>) -> bool {
+    fn is_prefix_of(self, haystack: Bytes<'hs, F>) -> bool {
         let mut buf = [0; 4];
         encode_utf8(self, &mut buf).is_prefix_of(haystack)
     }
-    fn strip_prefix_of(self, haystack: Bytes<'hs>) -> Option<Bytes<'hs>> {
+    fn strip_prefix_of(self, haystack: Bytes<'hs, F>) -> Option<Bytes<'hs, F>> {
         let mut buf = [0; 4];
         encode_utf8(self, &mut buf).strip_prefix_of(haystack)
     }
 
-    fn is_suffix_of(self, haystack: Bytes<'hs>) -> bool {
+    fn is_suffix_of(self, haystack: Bytes<'hs, F>) -> bool {
         let mut buf = [0; 4];
         encode_utf8(self, &mut buf).is_suffix_of(haystack)
     }
-    fn strip_suffix_of(self, haystack: Bytes<'hs>) -> Option<Bytes<'hs>> {
+    fn strip_suffix_of(self, haystack: Bytes<'hs, F>) -> Option<Bytes<'hs, F>> {
         let mut buf = [0; 4];
         encode_utf8(self, &mut buf).strip_suffix_of(haystack)
     }
@@ -320,8 +638,8 @@ fn encode_utf8(chr: char, buf: &mut [u8; 4]) -> &str {
 }
 
 #[derive(Clone, Debug)]
-pub struct CharSearcher<'hs> {
-    haystack: Bytes<'hs>,
+pub struct CharSearcher<'hs, F> {
+    haystack: Bytes<'hs, F>,
     state: CharSearcherState,
 }
 
@@ -339,15 +657,15 @@ struct CharSearcherState {
     is_match_bwd: bool,
 }
 
-impl<'hs> CharSearcher<'hs> {
+impl<'hs, F: Flavour> CharSearcher<'hs, F> {
     #[inline]
-    pub fn new(haystack: Bytes<'hs>, chr: char) -> Self {
+    pub fn new(haystack: Bytes<'hs, F>, chr: char) -> Self {
         Self { haystack, state: CharSearcherState::new(haystack.len(), chr) }
     }
 }
 
-unsafe impl<'hs> pattern::Searcher<Bytes<'hs>> for CharSearcher<'hs> {
-    fn haystack(&self) -> Bytes<'hs> {
+unsafe impl<'hs, F: Flavour> pattern::Searcher<Bytes<'hs, F>> for CharSearcher<'hs, F> {
+    fn haystack(&self) -> Bytes<'hs, F> {
         self.haystack
     }
 
@@ -355,26 +673,26 @@ unsafe impl<'hs> pattern::Searcher<Bytes<'hs>> for CharSearcher<'hs> {
         self.state.next_fwd(self.haystack)
     }
     fn next_match(&mut self) -> OptRange {
-        self.state.next_fwd::<MatchOnly>(self.haystack).0
+        self.state.next_fwd::<MatchOnly, F>(self.haystack).0
     }
     fn next_reject(&mut self) -> OptRange {
-        self.state.next_fwd::<RejectOnly>(self.haystack).0
+        self.state.next_fwd::<RejectOnly, F>(self.haystack).0
     }
 }
 
-unsafe impl<'hs> pattern::ReverseSearcher<Bytes<'hs>> for CharSearcher<'hs> {
+unsafe impl<'hs, F: Flavour> pattern::ReverseSearcher<Bytes<'hs, F>> for CharSearcher<'hs, F> {
     fn next_back(&mut self) -> SearchStep {
         self.state.next_bwd(self.haystack)
     }
     fn next_match_back(&mut self) -> OptRange {
-        self.state.next_bwd::<MatchOnly>(self.haystack).0
+        self.state.next_bwd::<MatchOnly, F>(self.haystack).0
     }
     fn next_reject_back(&mut self) -> OptRange {
-        self.state.next_bwd::<RejectOnly>(self.haystack).0
+        self.state.next_bwd::<RejectOnly, F>(self.haystack).0
     }
 }
 
-impl<'hs> pattern::DoubleEndedSearcher<Bytes<'hs>> for CharSearcher<'hs> {}
+impl<'hs, F: Flavour> pattern::DoubleEndedSearcher<Bytes<'hs, F>> for CharSearcher<'hs, F> {}
 
 impl CharSearcherState {
     fn new(haystack_len: usize, chr: char) -> Self {
@@ -386,7 +704,7 @@ impl CharSearcherState {
         }
     }
 
-    fn find_match_fwd(&mut self, haystack: Bytes<'_>) -> OptRange {
+    fn find_match_fwd<F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> OptRange {
         let start = if take(&mut self.is_match_fwd) {
             (!self.range.is_empty()).then_some(self.range.start)
         } else {
@@ -399,7 +717,7 @@ impl CharSearcherState {
         Some((start, start + self.needle.len()))
     }
 
-    fn next_reject_fwd(&mut self, haystack: Bytes<'_>) -> OptRange {
+    fn next_reject_fwd<F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> OptRange {
         if take(&mut self.is_match_fwd) {
             if self.range.is_empty() {
                 return None;
@@ -419,7 +737,7 @@ impl CharSearcherState {
         }
     }
 
-    fn next_fwd<R: SearchResult>(&mut self, haystack: Bytes<'_>) -> R {
+    fn next_fwd<R: SearchResult, F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> R {
         if R::USE_EARLY_REJECT {
             match self.next_reject_fwd(haystack) {
                 Some((start, end)) => R::rejecting(start, end).unwrap(),
@@ -444,7 +762,7 @@ impl CharSearcherState {
         }
     }
 
-    fn find_match_bwd(&mut self, haystack: Bytes<'_>) -> OptRange {
+    fn find_match_bwd<F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> OptRange {
         let start = if take(&mut self.is_match_bwd) {
             (!self.range.is_empty()).then(|| self.range.end - self.needle.len())
         } else {
@@ -457,7 +775,7 @@ impl CharSearcherState {
         Some((start, start + self.needle.len()))
     }
 
-    fn next_reject_bwd(&mut self, haystack: Bytes<'_>) -> OptRange {
+    fn next_reject_bwd<F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> OptRange {
         if take(&mut self.is_match_bwd) {
             if self.range.is_empty() {
                 return None;
@@ -477,7 +795,7 @@ impl CharSearcherState {
         }
     }
 
-    fn next_bwd<R: SearchResult>(&mut self, haystack: Bytes<'_>) -> R {
+    fn next_bwd<R: SearchResult, F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> R {
         if R::USE_EARLY_REJECT {
             match self.next_reject_bwd(haystack) {
                 Some((start, end)) => R::rejecting(start, end).unwrap(),
@@ -614,27 +932,27 @@ mod naive {
 // Impl Pattern for FnMut(char) and FnMut(Result<char, Bytes>)
 ////////////////////////////////////////////////////////////////////////////////
 
-impl<'hs, F: FnMut(char) -> bool> pattern::Pattern<Bytes<'hs>> for F {
-    type Searcher = PredicateSearcher<'hs, F>;
+impl<'hs, F: Flavour, P: FnMut(char) -> bool> Pattern<Bytes<'hs, F>> for P {
+    type Searcher = PredicateSearcher<'hs, F, P>;
 
-    fn into_searcher(self, haystack: Bytes<'hs>) -> Self::Searcher {
+    fn into_searcher(self, haystack: Bytes<'hs, F>) -> Self::Searcher {
         Self::Searcher::new(haystack, self)
     }
 
-    fn is_prefix_of(mut self, haystack: Bytes<'hs>) -> bool {
+    fn is_prefix_of(mut self, haystack: Bytes<'hs, F>) -> bool {
         haystack.get_first_code_point().map_or(false, |(chr, _)| self(chr))
     }
-    fn strip_prefix_of(mut self, haystack: Bytes<'hs>) -> Option<Bytes<'hs>> {
+    fn strip_prefix_of(mut self, haystack: Bytes<'hs, F>) -> Option<Bytes<'hs, F>> {
         let (chr, len) = haystack.get_first_code_point()?;
         // SAFETY: We’ve just checked slice starts with len-byte long
         // well-formed sequence.
         self(chr).then(|| unsafe { haystack.get_unchecked(len..haystack.len()) })
     }
 
-    fn is_suffix_of(mut self, haystack: Bytes<'hs>) -> bool {
+    fn is_suffix_of(mut self, haystack: Bytes<'hs, F>) -> bool {
         haystack.get_last_code_point().map_or(false, |(chr, _)| self(chr))
     }
-    fn strip_suffix_of(mut self, haystack: Bytes<'hs>) -> Option<Bytes<'hs>> {
+    fn strip_suffix_of(mut self, haystack: Bytes<'hs, F>) -> Option<Bytes<'hs, F>> {
         let (chr, len) = haystack.get_last_code_point()?;
         let len = haystack.len() - len;
         // SAFETY: We’ve just checked slice ends with len-byte long well-formed
@@ -644,22 +962,23 @@ impl<'hs, F: FnMut(char) -> bool> pattern::Pattern<Bytes<'hs>> for F {
 }
 
 #[derive(Clone, Debug)]
-pub struct PredicateSearcher<'hs, F> {
-    haystack: Bytes<'hs>,
-    pred: F,
+pub struct PredicateSearcher<'hs, F, P> {
+    haystack: Bytes<'hs, F>,
+    pred: P,
     start: usize,
     end: usize,
     fwd_match_len: u8,
     bwd_match_len: u8,
 }
 
-impl<'hs, F> PredicateSearcher<'hs, F> {
-    fn new(haystack: Bytes<'hs>, pred: F) -> Self {
+impl<'hs, F: Flavour, P> PredicateSearcher<'hs, F, P> {
+    #[inline]
+    pub fn new(haystack: Bytes<'hs, F>, pred: P) -> Self {
         Self { haystack, pred, start: 0, end: haystack.len(), fwd_match_len: 0, bwd_match_len: 0 }
     }
 }
 
-impl<'hs, F: FnMut(char) -> bool> PredicateSearcher<'hs, F> {
+impl<'hs, F: Flavour, P: FnMut(char) -> bool> PredicateSearcher<'hs, F, P> {
     fn find_match_fwd(&mut self) -> Option<(usize, usize)> {
         let mut start = self.start;
         while start < self.end {
@@ -736,8 +1055,12 @@ impl<'hs, F: FnMut(char) -> bool> PredicateSearcher<'hs, F> {
     }
 }
 
-unsafe impl<'hs, F: FnMut(char) -> bool> Searcher<Bytes<'hs>> for PredicateSearcher<'hs, F> {
-    fn haystack(&self) -> Bytes<'hs> {
+unsafe impl<'hs, F, P> pattern::Searcher<Bytes<'hs, F>> for PredicateSearcher<'hs, F, P>
+where
+    F: Flavour,
+    P: FnMut(char) -> bool,
+{
+    fn haystack(&self) -> Bytes<'hs, F> {
         self.haystack
     }
     fn next(&mut self) -> SearchStep {
@@ -751,8 +1074,10 @@ unsafe impl<'hs, F: FnMut(char) -> bool> Searcher<Bytes<'hs>> for PredicateSearc
     }
 }
 
-unsafe impl<'hs, F: FnMut(char) -> bool> pattern::ReverseSearcher<Bytes<'hs>>
-    for PredicateSearcher<'hs, F>
+unsafe impl<'hs, F, P> pattern::ReverseSearcher<Bytes<'hs, F>> for PredicateSearcher<'hs, F, P>
+where
+    F: Flavour,
+    P: FnMut(char) -> bool,
 {
     fn next_back(&mut self) -> SearchStep {
         self.next_bwd()
@@ -765,8 +1090,10 @@ unsafe impl<'hs, F: FnMut(char) -> bool> pattern::ReverseSearcher<Bytes<'hs>>
     }
 }
 
-impl<'hs, F: FnMut(char) -> bool> pattern::DoubleEndedSearcher<Bytes<'hs>>
-    for PredicateSearcher<'hs, F>
+impl<'hs, F, P> pattern::DoubleEndedSearcher<Bytes<'hs, F>> for PredicateSearcher<'hs, F, P>
+where
+    F: Flavour,
+    P: FnMut(char) -> bool,
 {
 }
 
@@ -774,65 +1101,67 @@ impl<'hs, F: FnMut(char) -> bool> pattern::DoubleEndedSearcher<Bytes<'hs>>
 // Impl Pattern for &str
 ////////////////////////////////////////////////////////////////////////////////
 
-impl<'hs, 'p> pattern::Pattern<Bytes<'hs>> for &'p str {
-    type Searcher = StrSearcher<'hs, 'p>;
+impl<'hs, 'p, F: Flavour> Pattern<Bytes<'hs, F>> for &'p str {
+    type Searcher = StrSearcher<'hs, 'p, F>;
 
-    fn into_searcher(self, haystack: Bytes<'hs>) -> Self::Searcher {
+    fn into_searcher(self, haystack: Bytes<'hs, F>) -> Self::Searcher {
         Self::Searcher::new(haystack, self)
     }
 
-    fn is_prefix_of(self, haystack: Bytes<'hs>) -> bool {
+    fn is_prefix_of(self, haystack: Bytes<'hs, F>) -> bool {
         haystack.as_bytes().starts_with(self.as_bytes())
     }
-    fn strip_prefix_of(self, haystack: Bytes<'hs>) -> Option<Bytes<'hs>> {
-        haystack.as_bytes().strip_prefix(self.as_bytes()).map(Bytes)
+    fn strip_prefix_of(self, haystack: Bytes<'hs, F>) -> Option<Bytes<'hs, F>> {
+        haystack.as_bytes().strip_prefix(self.as_bytes()).map(|bytes| Bytes(bytes, PhantomData))
     }
 
-    fn is_suffix_of(self, haystack: Bytes<'hs>) -> bool {
+    fn is_suffix_of(self, haystack: Bytes<'hs, F>) -> bool {
         haystack.as_bytes().ends_with(self.as_bytes())
     }
-    fn strip_suffix_of(self, haystack: Bytes<'hs>) -> Option<Bytes<'hs>> {
-        haystack.as_bytes().strip_suffix(self.as_bytes()).map(Bytes)
+    fn strip_suffix_of(self, haystack: Bytes<'hs, F>) -> Option<Bytes<'hs, F>> {
+        haystack.as_bytes().strip_suffix(self.as_bytes()).map(|bytes| Bytes(bytes, PhantomData))
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct StrSearcher<'hs, 'p> {
-    haystack: Bytes<'hs>,
-    state: StrSearcherInner<'p>,
+pub struct StrSearcher<'hs, 'p, F> {
+    haystack: Bytes<'hs, F>,
+    inner: StrSearcherInner<'p>,
 }
 
-impl<'hs, 'p> StrSearcher<'hs, 'p> {
-    pub fn new(haystack: Bytes<'hs>, needle: &'p str) -> Self {
-        let state = StrSearcherInner::new(haystack, needle);
-        Self { haystack, state }
+impl<'hs, 'p, F: Flavour> StrSearcher<'hs, 'p, F> {
+    pub fn new(haystack: Bytes<'hs, F>, needle: &'p str) -> Self {
+        let inner = StrSearcherInner::new(haystack, needle);
+        Self { haystack, inner }
     }
 }
 
-unsafe impl<'hs, 'p> Searcher<Bytes<'hs>> for StrSearcher<'hs, 'p> {
-    fn haystack(&self) -> Bytes<'hs> {
+unsafe impl<'hs, 'p, F: Flavour> pattern::Searcher<Bytes<'hs, F>> for StrSearcher<'hs, 'p, F> {
+    fn haystack(&self) -> Bytes<'hs, F> {
         self.haystack
     }
     fn next(&mut self) -> SearchStep {
-        self.state.next_fwd(self.haystack)
+        self.inner.next_fwd(self.haystack)
     }
     fn next_match(&mut self) -> OptRange {
-        self.state.next_fwd::<MatchOnly>(self.haystack).0
+        self.inner.next_fwd::<MatchOnly, _>(self.haystack).0
     }
     fn next_reject(&mut self) -> OptRange {
-        self.state.next_fwd::<RejectOnly>(self.haystack).0
+        self.inner.next_fwd::<RejectOnly, _>(self.haystack).0
     }
 }
 
-unsafe impl<'hs, 'p> pattern::ReverseSearcher<Bytes<'hs>> for StrSearcher<'hs, 'p> {
+unsafe impl<'hs, 'p, F: Flavour> pattern::ReverseSearcher<Bytes<'hs, F>>
+    for StrSearcher<'hs, 'p, F>
+{
     fn next_back(&mut self) -> SearchStep {
-        self.state.next_bwd(self.haystack)
+        self.inner.next_bwd(self.haystack)
     }
     fn next_match_back(&mut self) -> OptRange {
-        self.state.next_bwd::<MatchOnly>(self.haystack).0
+        self.inner.next_bwd::<MatchOnly, _>(self.haystack).0
     }
     fn next_reject_back(&mut self) -> OptRange {
-        self.state.next_bwd::<RejectOnly>(self.haystack).0
+        self.inner.next_bwd::<RejectOnly, _>(self.haystack).0
     }
 }
 
@@ -844,7 +1173,7 @@ enum StrSearcherInner<'p> {
 }
 
 impl<'p> StrSearcherInner<'p> {
-    fn new(haystack: Bytes<'_>, needle: &'p str) -> Self {
+    fn new<F: Flavour>(haystack: Bytes<'_, F>, needle: &'p str) -> Self {
         let mut chars = needle.chars();
         let chr = match chars.next() {
             Some(chr) => chr,
@@ -857,19 +1186,19 @@ impl<'p> StrSearcherInner<'p> {
         }
     }
 
-    fn next_fwd<R: SearchResult>(&mut self, haystack: Bytes<'_>) -> R {
+    fn next_fwd<R: SearchResult, F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> R {
         match self {
-            Self::Empty(state) => state.next_fwd::<R>(haystack),
-            Self::Char(state) => state.next_fwd::<R>(haystack),
-            Self::Str(state) => state.next_fwd::<R>(haystack),
+            Self::Empty(state) => state.next_fwd::<R, F>(haystack),
+            Self::Char(state) => state.next_fwd::<R, F>(haystack),
+            Self::Str(state) => state.next_fwd::<R, F>(haystack),
         }
     }
 
-    fn next_bwd<R: SearchResult>(&mut self, haystack: Bytes<'_>) -> R {
+    fn next_bwd<R: SearchResult, F: Flavour>(&mut self, haystack: Bytes<'_, F>) -> R {
         match self {
-            Self::Empty(state) => state.next_bwd::<R>(haystack),
-            Self::Char(state) => state.next_bwd::<R>(haystack),
-            Self::Str(state) => state.next_bwd::<R>(haystack),
+            Self::Empty(state) => state.next_bwd::<R, F>(haystack),
+            Self::Char(state) => state.next_bwd::<R, F>(haystack),
+            Self::Str(state) => state.next_bwd::<R, F>(haystack),
         }
     }
 }
@@ -886,15 +1215,15 @@ impl<'p> StrSearcherInner<'p> {
 struct EmptySearcherState(pattern::EmptyNeedleSearcher<usize>);
 
 impl EmptySearcherState {
-    fn new(haystack: Bytes<'_>) -> Self {
+    fn new<F: Flavour>(haystack: Bytes<'_, F>) -> Self {
         Self(pattern::EmptyNeedleSearcher::new(haystack))
     }
 
-    fn next_fwd<R: pattern::SearchResult>(&mut self, bytes: Bytes<'_>) -> R {
+    fn next_fwd<R: pattern::SearchResult, F: Flavour>(&mut self, bytes: Bytes<'_, F>) -> R {
         self.0.next_fwd(|range| bytes.advance_range_start(range))
     }
 
-    fn next_bwd<R: pattern::SearchResult>(&mut self, bytes: Bytes<'_>) -> R {
+    fn next_bwd<R: pattern::SearchResult, F: Flavour>(&mut self, bytes: Bytes<'_, F>) -> R {
         self.0.next_bwd(|range| bytes.advance_range_end(range))
     }
 }
@@ -911,12 +1240,12 @@ struct StrSearcherState<'p> {
 }
 
 impl<'p> StrSearcherState<'p> {
-    fn new(haystack: Bytes<'_>, needle: &'p str) -> Self {
+    fn new<F: Flavour>(haystack: Bytes<'_, F>, needle: &'p str) -> Self {
         let searcher = TwoWaySearcher::new(haystack.len(), needle.as_bytes());
         Self { needle, searcher }
     }
 
-    fn next_fwd<R: SearchResult>(&mut self, bytes: Bytes<'_>) -> R {
+    fn next_fwd<R: SearchResult, F: Flavour>(&mut self, bytes: Bytes<'_, F>) -> R {
         if self.searcher.position >= bytes.len() {
             return R::DONE;
         }
@@ -928,7 +1257,7 @@ impl<'p> StrSearcherState<'p> {
         .adjust_reject_end_fwd(bytes, bytes.len(), &mut self.searcher.position)
     }
 
-    fn next_bwd<R: SearchResult>(&mut self, bytes: Bytes<'_>) -> R {
+    fn next_bwd<R: SearchResult, F: Flavour>(&mut self, bytes: Bytes<'_, F>) -> R {
         if self.searcher.end == 0 {
             return R::DONE;
         }

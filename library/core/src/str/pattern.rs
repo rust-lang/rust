@@ -91,7 +91,7 @@ impl<'a> Haystack for &'a str {
 
 /// Associated type for `<char as Pattern<H>>::Searcher`.
 #[derive(Clone, Debug)]
-pub struct CharSearcher<'a>(str_bytes::CharSearcher<'a>);
+pub struct CharSearcher<'a>(str_bytes::CharSearcher<'a, str_bytes::Utf8>);
 
 impl<'a> CharSearcher<'a> {
     fn new(haystack: &'a str, chr: char) -> Self {
@@ -102,9 +102,7 @@ impl<'a> CharSearcher<'a> {
 unsafe impl<'a> Searcher<&'a str> for CharSearcher<'a> {
     #[inline]
     fn haystack(&self) -> &'a str {
-        // SAFETY: self.0’s haystack was created from &str thus it is valid
-        // UTF-8.
-        unsafe { super::from_utf8_unchecked(self.0.haystack().as_bytes()) }
+        self.0.haystack().into()
     }
     #[inline]
     fn next(&mut self) -> SearchStep {
@@ -165,12 +163,7 @@ impl<'a> Pattern<&'a str> for char {
 
     #[inline]
     fn strip_prefix_of(self, haystack: &'a str) -> Option<&'a str> {
-        self.strip_prefix_of(str_bytes::Bytes::from(haystack)).map(|bytes| {
-            // SAFETY: Bytes were created from &str and Bytes never splits
-            // inside of UTF-8 bytes sequences thus `bytes` is still valid
-            // UTF-8.
-            unsafe { super::from_utf8_unchecked(bytes.as_bytes()) }
-        })
+        self.strip_prefix_of(str_bytes::Bytes::from(haystack)).map(<&str>::from)
     }
 
     #[inline]
@@ -180,12 +173,7 @@ impl<'a> Pattern<&'a str> for char {
 
     #[inline]
     fn strip_suffix_of(self, haystack: &'a str) -> Option<&'a str> {
-        self.strip_suffix_of(str_bytes::Bytes::from(haystack)).map(|bytes| {
-            // SAFETY: Bytes were created from &str and Bytes never splits
-            // inside of UTF-8 bytes sequences thus `bytes` is still valid
-            // UTF-8.
-            unsafe { super::from_utf8_unchecked(bytes.as_bytes()) }
-        })
+        self.strip_suffix_of(str_bytes::Bytes::from(haystack)).map(<&str>::from)
     }
 }
 
@@ -613,7 +601,7 @@ impl<'a, 'b> Pattern<&'a str> for &'b str {
 
 #[derive(Clone, Debug)]
 /// Associated type for `<&str as Pattern<&'a str>>::Searcher`.
-pub struct StrSearcher<'a, 'b>(crate::str_bytes::StrSearcher<'a, 'b>);
+pub struct StrSearcher<'a, 'b>(crate::str_bytes::StrSearcher<'a, 'b, crate::str_bytes::Utf8>);
 
 impl<'a, 'b> StrSearcher<'a, 'b> {
     fn new(haystack: &'a str, needle: &'b str) -> StrSearcher<'a, 'b> {
@@ -625,9 +613,7 @@ impl<'a, 'b> StrSearcher<'a, 'b> {
 unsafe impl<'a, 'b> Searcher<&'a str> for StrSearcher<'a, 'b> {
     #[inline]
     fn haystack(&self) -> &'a str {
-        let bytes = self.0.haystack().as_bytes();
-        // SAFETY: self.0.haystack() was created from a &str.
-        unsafe { crate::str::from_utf8_unchecked(bytes) }
+        self.0.haystack().into()
     }
 
     #[inline]
