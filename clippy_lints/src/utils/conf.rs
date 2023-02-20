@@ -454,6 +454,11 @@ define_Conf! {
     /// configuration will cause restriction lints to trigger even
     /// if no suggestion can be made.
     (suppress_restriction_lint_in_const: bool = false),
+    /// Lint: MISSING_DOCS_IN_PRIVATE_ITEMS.
+    ///
+    /// Whether to **only** check for missing documentation in items visible within the current
+    /// crate. For example, `pub(crate)` items.
+    (missing_docs_in_crate_items: bool = false),
 }
 
 /// Search for the configuration file.
