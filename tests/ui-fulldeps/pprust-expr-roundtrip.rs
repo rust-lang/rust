@@ -41,7 +41,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::source_map::{FileName, Spanned, DUMMY_SP};
 use rustc_span::symbol::Ident;
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 
 fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {
     let src_as_string = src.to_string();
@@ -111,7 +111,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
             }
             10 => {
                 let block = P(Block {
-                    stmts: Vec::new(),
+                    stmts: ThinVec::new(),
                     id: DUMMY_NODE_ID,
                     rules: BlockCheckMode::Default,
                     span: DUMMY_SP,
@@ -165,7 +165,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                 g(ExprKind::Struct(P(StructExpr {
                     qself: None,
                     path,
-                    fields: vec![],
+                    fields: thin_vec![],
                     rest: StructRest::Base(make_x()),
                 })));
             }
