@@ -624,6 +624,10 @@ impl ExprCollector<'_> {
                         krate: *krate,
                     });
                 }
+                Some(ExpandError::RecursionOverflowPosioned) => {
+                    // Recursion limit has been reached in the macro expansion tree, but not in
+                    // this very macro call. Don't add diagnostics to avoid duplication.
+                }
                 Some(err) => {
                     self.source_map.diagnostics.push(BodyDiagnostic::MacroError {
                         node: InFile::new(outer_file, syntax_ptr),
@@ -636,6 +640,8 @@ impl ExprCollector<'_> {
 
         match res.value {
             Some((mark, expansion)) => {
+                // Keep collecting even with expansion errors so we can provide completions and
+                // other services in incomplete macro expressions.
                 self.source_map.expansions.insert(macro_call_ptr, self.expander.current_file_id);
                 let prev_ast_id_map = mem::replace(
                     &mut self.ast_id_map,

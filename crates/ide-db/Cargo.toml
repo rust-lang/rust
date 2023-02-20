@@ -37,8 +37,9 @@ text-edit.workspace = true
 hir.workspace = true
 
 [dev-dependencies]
-xshell = "0.2.2"
 expect-test = "1.4.0"
+oorandom = "11.1.3"
+xshell = "0.2.2"
 
 # local deps
 test-utils.workspace = true

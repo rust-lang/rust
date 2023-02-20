@@ -1,5 +1,7 @@
 //! Transforms syntax into `Path` objects, ideally with accounting for hygiene
 
+use std::iter;
+
 use crate::type_ref::ConstScalarOrPath;
 
 use either::Either;
@@ -45,8 +47,11 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
                                 )
                             })
                             .map(Interned::new);
+                        if let Some(_) = args {
+                            generic_args.resize(segments.len(), None);
+                            generic_args.push(args);
+                        }
                         segments.push(name);
-                        generic_args.push(args)
                     }
                     Either::Right(crate_id) => {
                         kind = PathKind::DollarCrate(crate_id);
@@ -56,7 +61,6 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
             }
             ast::PathSegmentKind::SelfTypeKw => {
                 segments.push(name![Self]);
-                generic_args.push(None)
             }
             ast::PathSegmentKind::Type { type_ref, trait_ref } => {
                 assert!(path.qualifier().is_none()); // this can only occur at the first segment
@@ -77,18 +81,33 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
                         kind = mod_path.kind;
 
                         segments.extend(mod_path.segments().iter().cloned().rev());
-                        generic_args.extend(Vec::from(path_generic_args).into_iter().rev());
+                        if let Some(path_generic_args) = path_generic_args {
+                            generic_args.resize(segments.len() - num_segments, None);
+                            generic_args.extend(Vec::from(path_generic_args).into_iter().rev());
+                        } else {
+                            generic_args.resize(segments.len(), None);
+                        }
+
+                        let self_type = GenericArg::Type(self_type);
 
                         // Insert the type reference (T in the above example) as Self parameter for the trait
-                        let last_segment =
-                            generic_args.iter_mut().rev().nth(num_segments.saturating_sub(1))?;
-                        let mut args_inner = match last_segment {
-                            Some(it) => it.as_ref().clone(),
-                            None => GenericArgs::empty(),
-                        };
-                        args_inner.has_self_type = true;
-                        args_inner.args.insert(0, GenericArg::Type(self_type));
-                        *last_segment = Some(Interned::new(args_inner));
+                        let last_segment = generic_args.get_mut(segments.len() - num_segments)?;
+                        *last_segment = Some(Interned::new(match last_segment.take() {
+                            Some(it) => GenericArgs {
+                                args: iter::once(self_type)
+                                    .chain(it.args.iter().cloned())
+                                    .collect(),
+
+                                has_self_type: true,
+                                bindings: it.bindings.clone(),
+                                desugared_from_fn: it.desugared_from_fn,
+                            },
+                            None => GenericArgs {
+                                args: Box::new([self_type]),
+                                has_self_type: true,
+                                ..GenericArgs::empty()
+                            },
+                        }));
                     }
                 }
             }
@@ -115,7 +134,10 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
         };
     }
     segments.reverse();
-    generic_args.reverse();
+    if !generic_args.is_empty() {
+        generic_args.resize(segments.len(), None);
+        generic_args.reverse();
+    }
 
     if segments.is_empty() && kind == PathKind::Plain && type_anchor.is_none() {
         // plain empty paths don't exist, this means we got a single `self` segment as our path
@@ -135,7 +157,11 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
     }
 
     let mod_path = Interned::new(ModPath::from_segments(kind, segments));
-    return Some(Path { type_anchor, mod_path, generic_args: generic_args.into() });
+    return Some(Path {
+        type_anchor,
+        mod_path,
+        generic_args: if generic_args.is_empty() { None } else { Some(generic_args.into()) },
+    });
 
     fn qualifier(path: &ast::Path) -> Option<ast::Path> {
         if let Some(q) = path.qualifier() {
@@ -174,7 +200,7 @@ pub(super) fn lower_generic_args(
                             .map(|it| Interned::new(TypeBound::from_ast(lower_ctx, it)))
                             .collect()
                     } else {
-                        Vec::new()
+                        Box::default()
                     };
                     bindings.push(AssociatedTypeBinding { name, args, type_ref, bounds });
                 }
@@ -195,7 +221,12 @@ pub(super) fn lower_generic_args(
     if args.is_empty() && bindings.is_empty() {
         return None;
     }
-    Some(GenericArgs { args, has_self_type: false, bindings, desugared_from_fn: false })
+    Some(GenericArgs {
+        args: args.into_boxed_slice(),
+        has_self_type: false,
+        bindings: bindings.into_boxed_slice(),
+        desugared_from_fn: false,
+    })
 }
 
 /// Collect `GenericArgs` from the parts of a fn-like path, i.e. `Fn(X, Y)
@@ -205,33 +236,30 @@ fn lower_generic_args_from_fn_path(
     params: Option<ast::ParamList>,
     ret_type: Option<ast::RetType>,
 ) -> Option<GenericArgs> {
-    let mut args = Vec::new();
-    let mut bindings = Vec::new();
     let params = params?;
     let mut param_types = Vec::new();
     for param in params.params() {
         let type_ref = TypeRef::from_ast_opt(ctx, param.ty());
         param_types.push(type_ref);
     }
-    let arg = GenericArg::Type(TypeRef::Tuple(param_types));
-    args.push(arg);
-    if let Some(ret_type) = ret_type {
+    let args = Box::new([GenericArg::Type(TypeRef::Tuple(param_types))]);
+    let bindings = if let Some(ret_type) = ret_type {
         let type_ref = TypeRef::from_ast_opt(ctx, ret_type.ty());
-        bindings.push(AssociatedTypeBinding {
+        Box::new([AssociatedTypeBinding {
             name: name![Output],
             args: None,
             type_ref: Some(type_ref),
-            bounds: Vec::new(),
-        });
+            bounds: Box::default(),
+        }])
     } else {
         // -> ()
         let type_ref = TypeRef::Tuple(Vec::new());
-        bindings.push(AssociatedTypeBinding {
+        Box::new([AssociatedTypeBinding {
             name: name![Output],
             args: None,
             type_ref: Some(type_ref),
-            bounds: Vec::new(),
-        });
-    }
+            bounds: Box::default(),
+        }])
+    };
     Some(GenericArgs { args, has_self_type: false, bindings, desugared_from_fn: true })
 }

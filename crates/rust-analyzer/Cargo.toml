@@ -24,7 +24,7 @@ crossbeam-channel = "0.5.5"
 dissimilar = "1.0.4"
 itertools = "0.10.5"
 scip = "0.1.1"
-lsp-types = { version = "=0.93.2", features = ["proposed"] }
+lsp-types = { version = "=0.94", features = ["proposed"] }
 parking_lot = "0.12.1"
 xflags = "0.3.0"
 oorandom = "11.1.3"

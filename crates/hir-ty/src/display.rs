@@ -1419,7 +1419,7 @@ impl HirDisplay for Path {
 
                 write!(f, "<")?;
                 let mut first = true;
-                for arg in &generic_args.args {
+                for arg in generic_args.args.iter() {
                     if first {
                         first = false;
                         if generic_args.has_self_type {
@@ -1431,7 +1431,7 @@ impl HirDisplay for Path {
                     }
                     arg.hir_fmt(f)?;
                 }
-                for binding in &generic_args.bindings {
+                for binding in generic_args.bindings.iter() {
                     if first {
                         first = false;
                     } else {
@@ -1445,7 +1445,7 @@ impl HirDisplay for Path {
                         }
                         None => {
                             write!(f, ": ")?;
-                            f.write_joined(&binding.bounds, " + ")?;
+                            f.write_joined(binding.bounds.iter(), " + ")?;
                         }
                     }
                 }

@@ -1025,7 +1025,7 @@ impl<'a> TyLoweringContext<'a> {
         last_segment
             .into_iter()
             .filter_map(|segment| segment.args_and_bindings)
-            .flat_map(|args_and_bindings| &args_and_bindings.bindings)
+            .flat_map(|args_and_bindings| args_and_bindings.bindings.iter())
             .flat_map(move |binding| {
                 let found = associated_type_by_name_including_super_traits(
                     self.db,
@@ -1068,7 +1068,7 @@ impl<'a> TyLoweringContext<'a> {
                         AliasEq { alias: AliasTy::Projection(projection_ty.clone()), ty };
                     preds.push(crate::wrap_empty_binders(WhereClause::AliasEq(alias_eq)));
                 }
-                for bound in &binding.bounds {
+                for bound in binding.bounds.iter() {
                     preds.extend(self.lower_type_bound(
                         bound,
                         TyKind::Alias(AliasTy::Projection(projection_ty.clone())).intern(Interner),

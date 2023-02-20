@@ -72,4 +72,4 @@ SOURCE_FILE
 error 24: expected existential, fn, trait or impl
 error 41: expected existential, fn, trait or impl
 error 56: expected a block
-error 75: expected a loop
+error 75: expected a loop or block

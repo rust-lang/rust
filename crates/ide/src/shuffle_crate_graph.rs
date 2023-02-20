@@ -18,7 +18,9 @@ pub(crate) fn shuffle_crate_graph(db: &mut RootDatabase) {
     let crate_graph = db.crate_graph();
 
     let mut shuffled_ids = crate_graph.iter().collect::<Vec<_>>();
-    shuffle(&mut shuffled_ids);
+
+    let mut rng = oorandom::Rand32::new(stdx::rand::seed());
+    stdx::rand::shuffle(&mut shuffled_ids, |i| rng.rand_range(0..i as u32) as usize);
 
     let mut new_graph = CrateGraph::default();
 
@@ -51,22 +53,4 @@ pub(crate) fn shuffle_crate_graph(db: &mut RootDatabase) {
     }
 
     db.set_crate_graph_with_durability(Arc::new(new_graph), Durability::HIGH);
-}
-
-fn shuffle<T>(slice: &mut [T]) {
-    let mut rng = oorandom::Rand32::new(seed());
-
-    let mut remaining = slice.len() - 1;
-    while remaining > 0 {
-        let index = rng.rand_range(0..remaining as u32);
-        slice.swap(remaining, index as usize);
-        remaining -= 1;
-    }
-}
-
-fn seed() -> u64 {
-    use std::collections::hash_map::RandomState;
-    use std::hash::{BuildHasher, Hasher};
-
-    RandomState::new().build_hasher().finish()
 }
