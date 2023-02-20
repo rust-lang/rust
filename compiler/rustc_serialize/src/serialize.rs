@@ -430,11 +430,6 @@ impl<D: Decoder, T: Decodable<D> + Copy> Decodable<D> for Cell<T> {
     }
 }
 
-// FIXME: #15036
-// Should use `try_borrow`, returning an
-// `encoder.error("attempting to Encode borrowed RefCell")`
-// from `encode` when `try_borrow` returns `None`.
-
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for RefCell<T> {
     fn encode(&self, s: &mut S) {
         self.borrow().encode(s);
