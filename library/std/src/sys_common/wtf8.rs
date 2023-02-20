@@ -496,6 +496,7 @@ impl Extend<CodePoint> for Wtf8Buf {
 /// Similar to `&str`, but can additionally contain surrogate code points
 /// if they’re not in a surrogate pair.
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub(crate) struct Wtf8 {
     bytes: [u8],
 }
@@ -781,6 +782,14 @@ impl Wtf8 {
     pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.bytes.eq_ignore_ascii_case(&other.bytes)
     }
+
+    #[inline]
+    pub(crate) unsafe fn get_unchecked(&self, range: core::ops::Range<usize>) -> &Self {
+        // SAFETY: Caller promises `range` is valid.
+        let bytes = unsafe { self.bytes.get_unchecked(range) };
+        // SAFETY: We’re just a transparent wrapper around [u8].
+        unsafe { mem::transmute(bytes) }
+    }
 }
 
 /// Returns a slice of the given string for the byte range \[`begin`..`end`).
@@ -982,5 +991,22 @@ impl Hash for Wtf8 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write(&self.bytes);
         0xfeu8.hash(state)
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'a> From<&'a Wtf8> for core::str_bytes::Bytes<'a, core::str_bytes::Wtf8> {
+    fn from(wtf8: &'a Wtf8) -> Self {
+        // SAFETY: As name implies, `Wtf8`’s bytes ares guaranteed to be WTF-8
+        // so `Wtf8` flavour is correct.
+        unsafe { core::str_bytes::Bytes::new(&wtf8.bytes) }
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'a> From<core::str_bytes::Bytes<'a, core::str_bytes::Wtf8>> for &'a Wtf8 {
+    fn from(bytes: core::str_bytes::Bytes<'a, core::str_bytes::Wtf8>) -> Self {
+        // SAFETY: Bytes<'_, Wtf8> are guaranteed to be well-formed WTF-8.
+        unsafe { Wtf8::from_bytes_unchecked(bytes.as_bytes()) }
     }
 }
