@@ -39,10 +39,10 @@ use crate::html::{highlight, static_files};
 use askama::Template;
 use itertools::Itertools;
 
-const ITEM_TABLE_OPEN: &str = "<div class=\"item-table\">";
-const ITEM_TABLE_CLOSE: &str = "</div>";
-const ITEM_TABLE_ROW_OPEN: &str = "<div class=\"item-row\">";
-const ITEM_TABLE_ROW_CLOSE: &str = "</div>";
+const ITEM_TABLE_OPEN: &str = "<ul class=\"item-table\">";
+const ITEM_TABLE_CLOSE: &str = "</ul>";
+const ITEM_TABLE_ROW_OPEN: &str = "<li>";
+const ITEM_TABLE_ROW_CLOSE: &str = "</li>";
 
 // A component in a `use` path, like `string` in std::string::ToString
 struct PathComponent {
@@ -338,14 +338,14 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 match *src {
                     Some(src) => write!(
                         w,
-                        "<div class=\"item-left\"><code>{}extern crate {} as {};",
+                        "<div class=\"item-name\"><code>{}extern crate {} as {};",
                         visibility_print_with_space(myitem.visibility(tcx), myitem.item_id, cx),
                         anchor(myitem.item_id.expect_def_id(), src, cx),
                         myitem.name.unwrap(),
                     ),
                     None => write!(
                         w,
-                        "<div class=\"item-left\"><code>{}extern crate {};",
+                        "<div class=\"item-name\"><code>{}extern crate {};",
                         visibility_print_with_space(myitem.visibility(tcx), myitem.item_id, cx),
                         anchor(myitem.item_id.expect_def_id(), myitem.name.unwrap(), cx),
                     ),
@@ -384,11 +384,11 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 let (stab_tags_before, stab_tags_after) = if stab_tags.is_empty() {
                     ("", "")
                 } else {
-                    ("<div class=\"item-right docblock-short\">", "</div>")
+                    ("<div class=\"desc docblock-short\">", "</div>")
                 };
                 write!(
                     w,
-                    "<div class=\"item-left\"{id}>\
+                    "<div class=\"item-name\"{id}>\
                          <code>{vis}{imp}</code>\
                      </div>\
                      {stab_tags_before}{stab_tags}{stab_tags_after}",
@@ -426,11 +426,11 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
                 let (docs_before, docs_after) = if docs.is_empty() {
                     ("", "")
                 } else {
-                    ("<div class=\"item-right docblock-short\">", "</div>")
+                    ("<div class=\"desc docblock-short\">", "</div>")
                 };
                 write!(
                     w,
-                    "<div class=\"item-left\">\
+                    "<div class=\"item-name\">\
                         <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
                         {visibility_emoji}\
                         {unsafety_flag}\

@@ -15,7 +15,7 @@ use rustc_middle::mir::visit::{
 };
 use rustc_middle::mir::{
     BasicBlock, BinOp, Body, Constant, ConstantKind, Local, LocalDecl, LocalKind, Location,
-    Operand, Place, Rvalue, SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnOp,
+    Operand, Place, Rvalue, SourceInfo, Statement, StatementKind, Terminator, TerminatorKind,
     RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
@@ -503,55 +503,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    fn check_unary_op(&mut self, op: UnOp, arg: &Operand<'tcx>) -> Option<()> {
-        if self.use_ecx(|this| {
-            let val = this.ecx.read_immediate(&this.ecx.eval_operand(arg, None)?)?;
-            let (_res, overflow, _ty) = this.ecx.overflowing_unary_op(op, &val)?;
-            Ok(overflow)
-        })? {
-            // `AssertKind` only has an `OverflowNeg` variant, so make sure that is
-            // appropriate to use.
-            assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
-            return None;
-        }
-
-        Some(())
-    }
-
-    fn check_binary_op(
-        &mut self,
-        op: BinOp,
-        left: &Operand<'tcx>,
-        right: &Operand<'tcx>,
-    ) -> Option<()> {
-        let r = self.use_ecx(|this| this.ecx.read_immediate(&this.ecx.eval_operand(right, None)?));
-        let l = self.use_ecx(|this| this.ecx.read_immediate(&this.ecx.eval_operand(left, None)?));
-        // Check for exceeding shifts *even if* we cannot evaluate the LHS.
-        if matches!(op, BinOp::Shr | BinOp::Shl) {
-            let r = r.clone()?;
-            // We need the type of the LHS. We cannot use `place_layout` as that is the type
-            // of the result, which for checked binops is not the same!
-            let left_ty = left.ty(self.local_decls, self.tcx);
-            let left_size = self.ecx.layout_of(left_ty).ok()?.size;
-            let right_size = r.layout.size;
-            let r_bits = r.to_scalar().to_bits(right_size).ok();
-            if r_bits.map_or(false, |b| b >= left_size.bits() as u128) {
-                return None;
-            }
-        }
-
-        if let (Some(l), Some(r)) = (&l, &r) {
-            // The remaining operators are handled through `overflowing_binary_op`.
-            if self.use_ecx(|this| {
-                let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
-                Ok(overflow)
-            })? {
-                return None;
-            }
-        }
-        Some(())
-    }
-
     fn propagate_operand(&mut self, operand: &mut Operand<'tcx>) {
         match *operand {
             Operand::Copy(l) | Operand::Move(l) => {
@@ -587,28 +538,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         //   2. Working around bugs in other parts of the compiler
         //        - In this case, we'll return `None` from this function to stop evaluation.
         match rvalue {
-            // Additional checking: give lints to the user if an overflow would occur.
-            // We do this here and not in the `Assert` terminator as that terminator is
-            // only sometimes emitted (overflow checks can be disabled), but we want to always
-            // lint.
-            Rvalue::UnaryOp(op, arg) => {
-                trace!("checking UnaryOp(op = {:?}, arg = {:?})", op, arg);
-                self.check_unary_op(*op, arg)?;
-            }
-            Rvalue::BinaryOp(op, box (left, right)) => {
-                trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
-                self.check_binary_op(*op, left, right)?;
-            }
-            Rvalue::CheckedBinaryOp(op, box (left, right)) => {
-                trace!(
-                    "checking CheckedBinaryOp(op = {:?}, left = {:?}, right = {:?})",
-                    op,
-                    left,
-                    right
-                );
-                self.check_binary_op(*op, left, right)?;
-            }
-
             // Do not try creating references (#67862)
             Rvalue::AddressOf(_, place) | Rvalue::Ref(_, _, place) => {
                 trace!("skipping AddressOf | Ref for {:?}", place);
@@ -638,7 +567,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::Discriminant(..)
-            | Rvalue::NullaryOp(..) => {}
+            | Rvalue::NullaryOp(..)
+            | Rvalue::UnaryOp(..)
+            | Rvalue::BinaryOp(..)
+            | Rvalue::CheckedBinaryOp(..) => {}
         }
 
         // FIXME we need to revisit this for #67176
@@ -1079,31 +1011,18 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
         // Do NOT early return in this function, it does some crucial fixup of the state at the end!
         match &mut terminator.kind {
             TerminatorKind::Assert { expected, ref mut cond, .. } => {
-                if let Some(ref value) = self.eval_operand(&cond) {
-                    trace!("assertion on {:?} should be {:?}", value, expected);
-                    let expected = Scalar::from_bool(*expected);
+                if let Some(ref value) = self.eval_operand(&cond)
                     // FIXME should be used use_ecx rather than a local match... but we have
                     // quite a few of these read_scalar/read_immediate that need fixing.
-                    if let Ok(value_const) = self.ecx.read_scalar(&value) {
-                        if expected != value_const {
-                            // Poison all places this operand references so that further code
-                            // doesn't use the invalid value
-                            match cond {
-                                Operand::Move(ref place) | Operand::Copy(ref place) => {
-                                    Self::remove_const(&mut self.ecx, place.local);
-                                }
-                                Operand::Constant(_) => {}
-                            }
-                        } else {
-                            if self.should_const_prop(value) {
-                                *cond = self.operand_from_scalar(
-                                    value_const,
-                                    self.tcx.types.bool,
-                                    source_info.span,
-                                );
-                            }
-                        }
-                    }
+                    && let Ok(value_const) = self.ecx.read_scalar(&value)
+                    && self.should_const_prop(value)
+                {
+                    trace!("assertion on {:?} should be {:?}", value, expected);
+                    *cond = self.operand_from_scalar(
+                        value_const,
+                        self.tcx.types.bool,
+                        source_info.span,
+                    );
                 }
             }
             TerminatorKind::SwitchInt { ref mut discr, .. } => {

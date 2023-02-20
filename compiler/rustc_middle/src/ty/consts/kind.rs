@@ -217,23 +217,21 @@ impl<'tcx> ConstKind<'tcx> {
             // Note that we erase regions *before* calling `with_reveal_all_normalized`,
             // so that we don't try to invoke this query with
             // any region variables.
-            let param_env_and = tcx
-                .erase_regions(param_env)
-                .with_reveal_all_normalized(tcx)
-                .and(tcx.erase_regions(unevaluated));
 
             // HACK(eddyb) when the query key would contain inference variables,
             // attempt using identity substs and `ParamEnv` instead, that will succeed
             // when the expression doesn't depend on any parameters.
             // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
             // we can call `infcx.const_eval_resolve` which handles inference variables.
-            let param_env_and = if param_env_and.needs_infer() {
+            let param_env_and = if (param_env, unevaluated).has_non_region_infer() {
                 tcx.param_env(unevaluated.def.did).and(ty::UnevaluatedConst {
                     def: unevaluated.def,
                     substs: InternalSubsts::identity_for_item(tcx, unevaluated.def.did),
                 })
             } else {
-                param_env_and
+                tcx.erase_regions(param_env)
+                    .with_reveal_all_normalized(tcx)
+                    .and(tcx.erase_regions(unevaluated))
             };
 
             // FIXME(eddyb) maybe the `const_eval_*` methods should take

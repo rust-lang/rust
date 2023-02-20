@@ -29,6 +29,7 @@ pub enum Profile {
 static SETTINGS_HASHES: &[&str] = &[
     "ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8",
     "56e7bf011c71c5d81e0bf42e84938111847a810eee69d906bba494ea90b51922",
+    "af1b5efe196aed007577899db9dae15d6dbc923d6fa42fa0934e68617ba9bbe0",
 ];
 static VSCODE_SETTINGS: &str = include_str!("../etc/vscode_settings.json");
 

@@ -6,6 +6,7 @@ use super::assembly;
 use super::infcx_ext::InferCtxtExt;
 use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItem;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::supertraits;
@@ -61,10 +62,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         })
     }
 
-    fn consider_assumption(
+    fn consider_implied_clause(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
+        requirements: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
     ) -> QueryResult<'tcx> {
         if let Some(poly_trait_pred) = assumption.to_opt_poly_trait_pred()
             && poly_trait_pred.def_id() == goal.predicate.def_id()
@@ -73,11 +75,12 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             ecx.infcx.probe(|_| {
                 let assumption_trait_pred =
                     ecx.infcx.instantiate_binder_with_infer(poly_trait_pred);
-                let nested_goals = ecx.infcx.eq(
+                let mut nested_goals = ecx.infcx.eq(
                     goal.param_env,
                     goal.predicate.trait_ref,
                     assumption_trait_pred.trait_ref,
                 )?;
+                nested_goals.extend(requirements);
                 ecx.evaluate_all_and_make_canonical_response(nested_goals)
             })
         } else {
@@ -173,23 +176,26 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
         goal_kind: ty::ClosureKind,
     ) -> QueryResult<'tcx> {
-        if let Some(tupled_inputs_and_output) =
+        let tcx = ecx.tcx();
+        let Some(tupled_inputs_and_output) =
             structural_traits::extract_tupled_inputs_and_output_from_callable(
-                ecx.tcx(),
+                tcx,
                 goal.predicate.self_ty(),
                 goal_kind,
-            )?
-        {
-            let pred = tupled_inputs_and_output
-                .map_bound(|(inputs, _)| {
-                    ecx.tcx()
-                        .mk_trait_ref(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
-                })
-                .to_predicate(ecx.tcx());
-            Self::consider_assumption(ecx, goal, pred)
-        } else {
-            ecx.make_canonical_response(Certainty::AMBIGUOUS)
-        }
+            )? else {
+            return ecx.make_canonical_response(Certainty::AMBIGUOUS);
+        };
+        let output_is_sized_pred = tupled_inputs_and_output
+            .map_bound(|(_, output)| tcx.at(DUMMY_SP).mk_trait_ref(LangItem::Sized, [output]));
+
+        let pred = tupled_inputs_and_output
+            .map_bound(|(inputs, _)| {
+                tcx.mk_trait_ref(goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
+            })
+            .to_predicate(tcx);
+        // A built-in `Fn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
+        Self::consider_implied_clause(ecx, goal, pred, [goal.with(tcx, output_is_sized_pred)])
     }
 
     fn consider_builtin_tuple_candidate(
@@ -225,6 +231,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         }
 
         // Async generator unconditionally implement `Future`
+        // Technically, we need to check that the future output type is Sized,
+        // but that's already proven by the generator being WF.
         ecx.make_canonical_response(Certainty::Yes)
     }
 
@@ -244,13 +252,16 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         }
 
         let generator = substs.as_generator();
-        Self::consider_assumption(
+        Self::consider_implied_clause(
             ecx,
             goal,
             ty::Binder::dummy(
                 tcx.mk_trait_ref(goal.predicate.def_id(), [self_ty, generator.resume_ty()]),
             )
             .to_predicate(tcx),
+            // Technically, we need to check that the generator types are Sized,
+            // but that's already proven by the generator being WF.
+            [],
         )
     }
 

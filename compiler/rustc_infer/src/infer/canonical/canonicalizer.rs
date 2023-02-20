@@ -418,10 +418,15 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 bug!("encountered a fresh type during canonicalization")
             }
 
-            ty::Placeholder(placeholder) => self.canonicalize_ty_var(
-                CanonicalVarInfo { kind: CanonicalVarKind::PlaceholderTy(placeholder) },
-                t,
-            ),
+            ty::Placeholder(mut placeholder) => {
+                if !self.canonicalize_mode.preserve_universes() {
+                    placeholder.universe = ty::UniverseIndex::ROOT;
+                }
+                self.canonicalize_ty_var(
+                    CanonicalVarInfo { kind: CanonicalVarKind::PlaceholderTy(placeholder) },
+                    t,
+                )
+            }
 
             ty::Bound(debruijn, _) => {
                 if debruijn >= self.binder_index {

@@ -9,12 +9,11 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
+use rustc_hir_analysis::astconv::InferCtxtExt as _;
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::AssocItem;
@@ -1939,33 +1938,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         impl_def_id: DefId,
     ) -> (ty::EarlyBinder<Ty<'tcx>>, SubstsRef<'tcx>) {
         (self.tcx.type_of(impl_def_id), self.fresh_item_substs(impl_def_id))
-    }
-
-    fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx> {
-        InternalSubsts::for_item(self.tcx, def_id, |param, _| match param.kind {
-            GenericParamDefKind::Lifetime => self.tcx.lifetimes.re_erased.into(),
-            GenericParamDefKind::Type { .. } => self
-                .next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::SubstitutionPlaceholder,
-                    span: self.tcx.def_span(def_id),
-                })
-                .into(),
-            GenericParamDefKind::Const { .. } => {
-                let span = self.tcx.def_span(def_id);
-                let origin = ConstVariableOrigin {
-                    kind: ConstVariableOriginKind::SubstitutionPlaceholder,
-                    span,
-                };
-                self.next_const_var(
-                    self.tcx
-                        .type_of(param.def_id)
-                        .no_bound_vars()
-                        .expect("const parameter types cannot be generic"),
-                    origin,
-                )
-                .into()
-            }
-        })
     }
 
     /// Replaces late-bound-regions bound by `value` with `'static` using

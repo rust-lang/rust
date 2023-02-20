@@ -28,7 +28,7 @@ use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::FormatRenderer;
-use crate::json::conversions::{from_item_id, from_item_id_with_name, IntoWithTcx};
+use crate::json::conversions::{id_from_item, id_from_item_default, IntoWithTcx};
 use crate::{clean, try_err};
 
 #[derive(Clone)]
@@ -58,7 +58,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                     .map(|i| {
                         let item = &i.impl_item;
                         self.item(item.clone()).unwrap();
-                        from_item_id_with_name(item.item_id, self.tcx, item.name)
+                        id_from_item(&item, self.tcx)
                     })
                     .collect()
             })
@@ -89,7 +89,7 @@ impl<'tcx> JsonRenderer<'tcx> {
 
                         if item.item_id.is_local() || is_primitive_impl {
                             self.item(item.clone()).unwrap();
-                            Some(from_item_id_with_name(item.item_id, self.tcx, item.name))
+                            Some(id_from_item(&item, self.tcx))
                         } else {
                             None
                         }
@@ -150,7 +150,6 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         // Flatten items that recursively store other items
         item.kind.inner_items().for_each(|i| self.item(i.clone()).unwrap());
 
-        let name = item.name;
         let item_id = item.item_id;
         if let Some(mut new_item) = self.convert_item(item) {
             let can_be_ignored = match new_item.inner {
@@ -193,10 +192,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 | types::ItemEnum::Macro(_)
                 | types::ItemEnum::ProcMacro(_) => false,
             };
-            let removed = self
-                .index
-                .borrow_mut()
-                .insert(from_item_id_with_name(item_id, self.tcx, name), new_item.clone());
+            let removed = self.index.borrow_mut().insert(new_item.id.clone(), new_item.clone());
 
             // FIXME(adotinthevoid): Currently, the index is duplicated. This is a sanity check
             // to make sure the items are unique. The main place this happens is when an item, is
@@ -207,6 +203,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 if !can_be_ignored {
                     assert_eq!(old_item, new_item);
                 }
+                trace!("replaced {:?}\nwith {:?}", old_item, new_item);
             }
         }
 
@@ -246,7 +243,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .chain(&self.cache.external_paths)
                 .map(|(&k, &(ref path, kind))| {
                     (
-                        from_item_id(k.into(), self.tcx),
+                        id_from_item_default(k.into(), self.tcx),
                         types::ItemSummary {
                             crate_id: k.krate.as_u32(),
                             path: path.iter().map(|s| s.to_string()).collect(),

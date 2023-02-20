@@ -1,5 +1,5 @@
-use core::fmt;
 use core::iter::{FusedIterator, TrustedLen};
+use core::{array, fmt, mem::MaybeUninit, ops::Try, ptr};
 
 use crate::alloc::{Allocator, Global};
 
@@ -52,6 +52,126 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         let len = self.inner.len();
         (len, Some(len))
     }
+
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        if self.inner.len < n {
+            let len = self.inner.len;
+            self.inner.clear();
+            Err(len)
+        } else {
+            self.inner.drain(..n);
+            Ok(())
+        }
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.inner.len
+    }
+
+    fn try_fold<B, F, R>(&mut self, mut init: B, mut f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        struct Guard<'a, T, A: Allocator> {
+            deque: &'a mut VecDeque<T, A>,
+            // `consumed <= deque.len` always holds.
+            consumed: usize,
+        }
+
+        impl<'a, T, A: Allocator> Drop for Guard<'a, T, A> {
+            fn drop(&mut self) {
+                self.deque.len -= self.consumed;
+                self.deque.head = self.deque.to_physical_idx(self.consumed);
+            }
+        }
+
+        let mut guard = Guard { deque: &mut self.inner, consumed: 0 };
+
+        let (head, tail) = guard.deque.as_slices();
+
+        init = head
+            .iter()
+            .map(|elem| {
+                guard.consumed += 1;
+                // SAFETY: Because we incremented `guard.consumed`, the
+                // deque effectively forgot the element, so we can take
+                // ownership
+                unsafe { ptr::read(elem) }
+            })
+            .try_fold(init, &mut f)?;
+
+        tail.iter()
+            .map(|elem| {
+                guard.consumed += 1;
+                // SAFETY: Same as above.
+                unsafe { ptr::read(elem) }
+            })
+            .try_fold(init, &mut f)
+    }
+
+    #[inline]
+    fn fold<B, F>(mut self, init: B, mut f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        match self.try_fold(init, |b, item| Ok::<B, !>(f(b, item))) {
+            Ok(b) => b,
+            Err(e) => match e {},
+        }
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<Self::Item> {
+        self.inner.pop_back()
+    }
+
+    fn next_chunk<const N: usize>(
+        &mut self,
+    ) -> Result<[Self::Item; N], array::IntoIter<Self::Item, N>> {
+        let mut raw_arr = MaybeUninit::uninit_array();
+        let raw_arr_ptr = raw_arr.as_mut_ptr().cast();
+        let (head, tail) = self.inner.as_slices();
+
+        if head.len() >= N {
+            // SAFETY: By manually adjusting the head and length of the deque, we effectively
+            // make it forget the first `N` elements, so taking ownership of them is safe.
+            unsafe { ptr::copy_nonoverlapping(head.as_ptr(), raw_arr_ptr, N) };
+            self.inner.head = self.inner.to_physical_idx(N);
+            self.inner.len -= N;
+            // SAFETY: We initialized the entire array with items from `head`
+            return Ok(unsafe { raw_arr.transpose().assume_init() });
+        }
+
+        // SAFETY: Same argument as above.
+        unsafe { ptr::copy_nonoverlapping(head.as_ptr(), raw_arr_ptr, head.len()) };
+        let remaining = N - head.len();
+
+        if tail.len() >= remaining {
+            // SAFETY: Same argument as above.
+            unsafe {
+                ptr::copy_nonoverlapping(tail.as_ptr(), raw_arr_ptr.add(head.len()), remaining)
+            };
+            self.inner.head = self.inner.to_physical_idx(N);
+            self.inner.len -= N;
+            // SAFETY: We initialized the entire array with items from `head` and `tail`
+            Ok(unsafe { raw_arr.transpose().assume_init() })
+        } else {
+            // SAFETY: Same argument as above.
+            unsafe {
+                ptr::copy_nonoverlapping(tail.as_ptr(), raw_arr_ptr.add(head.len()), tail.len())
+            };
+            let init = head.len() + tail.len();
+            // We completely drained all the deques elements.
+            self.inner.head = 0;
+            self.inner.len = 0;
+            // SAFETY: We copied all elements from both slices to the beginning of the array, so
+            // the given range is initialized.
+            Err(unsafe { array::IntoIter::new_unchecked(raw_arr, 0..init) })
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -60,10 +180,73 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     fn next_back(&mut self) -> Option<T> {
         self.inner.pop_back()
     }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        let len = self.inner.len;
+        if len >= n {
+            self.inner.truncate(len - n);
+            Ok(())
+        } else {
+            self.inner.clear();
+            Err(len)
+        }
+    }
+
+    fn try_rfold<B, F, R>(&mut self, mut init: B, mut f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        struct Guard<'a, T, A: Allocator> {
+            deque: &'a mut VecDeque<T, A>,
+            // `consumed <= deque.len` always holds.
+            consumed: usize,
+        }
+
+        impl<'a, T, A: Allocator> Drop for Guard<'a, T, A> {
+            fn drop(&mut self) {
+                self.deque.len -= self.consumed;
+            }
+        }
+
+        let mut guard = Guard { deque: &mut self.inner, consumed: 0 };
+
+        let (head, tail) = guard.deque.as_slices();
+
+        init = tail
+            .iter()
+            .map(|elem| {
+                guard.consumed += 1;
+                // SAFETY: See `try_fold`'s safety comment.
+                unsafe { ptr::read(elem) }
+            })
+            .try_rfold(init, &mut f)?;
+
+        head.iter()
+            .map(|elem| {
+                guard.consumed += 1;
+                // SAFETY: Same as above.
+                unsafe { ptr::read(elem) }
+            })
+            .try_rfold(init, &mut f)
+    }
+
+    #[inline]
+    fn rfold<B, F>(mut self, init: B, mut f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        match self.try_rfold(init, |b, item| Ok::<B, !>(f(b, item))) {
+            Ok(b) => b,
+            Err(e) => match e {},
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
+    #[inline]
     fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }

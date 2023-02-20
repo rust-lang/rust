@@ -38,7 +38,7 @@ impl JsonRenderer<'_> {
                     Some(UrlFragment::UserWritten(_)) | None => *page_id,
                 };
 
-                (link.clone(), from_item_id(id.into(), self.tcx))
+                (link.clone(), id_from_item_default(id.into(), self.tcx))
             })
             .collect();
         let docs = item.attrs.collapsed_doc_value();
@@ -50,7 +50,8 @@ impl JsonRenderer<'_> {
             .collect();
         let span = item.span(self.tcx);
         let visibility = item.visibility(self.tcx);
-        let clean::Item { name, attrs: _, kind: _, item_id, cfg: _, .. } = item;
+        let clean::Item { name, item_id, .. } = item;
+        let id = id_from_item(&item, self.tcx);
         let inner = match *item.kind {
             clean::KeywordItem => return None,
             clean::StrippedItem(ref inner) => {
@@ -69,7 +70,7 @@ impl JsonRenderer<'_> {
             _ => from_clean_item(item, self.tcx),
         };
         Some(Item {
-            id: from_item_id_with_name(item_id, self.tcx, name),
+            id,
             crate_id: item_id.krate().as_u32(),
             name: name.map(|sym| sym.to_string()),
             span: span.and_then(|span| self.convert_span(span)),
@@ -107,7 +108,7 @@ impl JsonRenderer<'_> {
             Some(ty::Visibility::Public) => Visibility::Public,
             Some(ty::Visibility::Restricted(did)) if did.is_crate_root() => Visibility::Crate,
             Some(ty::Visibility::Restricted(did)) => Visibility::Restricted {
-                parent: from_item_id(did.into(), self.tcx),
+                parent: id_from_item_default(did.into(), self.tcx),
                 path: self.tcx.def_path(did).to_string_no_crate_verbose(),
             },
         }
@@ -204,21 +205,42 @@ impl FromWithTcx<clean::TypeBindingKind> for TypeBindingKind {
     }
 }
 
-/// It generates an ID as follows:
-///
-/// `CRATE_ID:ITEM_ID[:NAME_ID]` (if there is no name, NAME_ID is not generated).
-pub(crate) fn from_item_id(item_id: ItemId, tcx: TyCtxt<'_>) -> Id {
-    from_item_id_with_name(item_id, tcx, None)
+#[inline]
+pub(crate) fn id_from_item_default(item_id: ItemId, tcx: TyCtxt<'_>) -> Id {
+    id_from_item_inner(item_id, tcx, None, None)
 }
 
-// FIXME: this function (and appending the name at the end of the ID) should be removed when
-// reexports are not inlined anymore for json format. It should be done in #93518.
-pub(crate) fn from_item_id_with_name(item_id: ItemId, tcx: TyCtxt<'_>, name: Option<Symbol>) -> Id {
-    struct DisplayDefId<'a>(DefId, TyCtxt<'a>, Option<Symbol>);
+/// It generates an ID as follows:
+///
+/// `CRATE_ID:ITEM_ID[:NAME_ID][-EXTRA]`:
+///   * If there is no `name`, `NAME_ID` is not generated.
+///   * If there is no `extra`, `EXTRA` is not generated.
+///
+/// * `name` is the item's name if available (it's not for impl blocks for example).
+/// * `extra` is used for reexports: it contains the ID of the reexported item. It is used to allow
+///   to have items with the same name but different types to both appear in the generated JSON.
+pub(crate) fn id_from_item_inner(
+    item_id: ItemId,
+    tcx: TyCtxt<'_>,
+    name: Option<Symbol>,
+    extra: Option<&Id>,
+) -> Id {
+    struct DisplayDefId<'a, 'b>(DefId, TyCtxt<'a>, Option<&'b Id>, Option<Symbol>);
 
-    impl<'a> fmt::Display for DisplayDefId<'a> {
+    impl<'a, 'b> fmt::Display for DisplayDefId<'a, 'b> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let DisplayDefId(def_id, tcx, name) = self;
+            let DisplayDefId(def_id, tcx, extra, name) = self;
+            // We need this workaround because primitive types' DefId actually refers to
+            // their parent module, which isn't present in the output JSON items. So
+            // instead, we directly get the primitive symbol and convert it to u32 to
+            // generate the ID.
+            let s;
+            let extra = if let Some(e) = extra {
+                s = format!("-{}", e.0);
+                &s
+            } else {
+                ""
+            };
             let name = match name {
                 Some(name) => format!(":{}", name.as_u32()),
                 None => {
@@ -240,18 +262,33 @@ pub(crate) fn from_item_id_with_name(item_id: ItemId, tcx: TyCtxt<'_>, name: Opt
                     }
                 }
             };
-            write!(f, "{}:{}{}", self.0.krate.as_u32(), u32::from(self.0.index), name)
+            write!(f, "{}:{}{name}{extra}", def_id.krate.as_u32(), u32::from(def_id.index))
         }
     }
 
     match item_id {
-        ItemId::DefId(did) => Id(format!("{}", DisplayDefId(did, tcx, name))),
-        ItemId::Blanket { for_, impl_id } => {
-            Id(format!("b:{}-{}", DisplayDefId(impl_id, tcx, None), DisplayDefId(for_, tcx, name)))
+        ItemId::DefId(did) => Id(format!("{}", DisplayDefId(did, tcx, extra, name))),
+        ItemId::Blanket { for_, impl_id } => Id(format!(
+            "b:{}-{}",
+            DisplayDefId(impl_id, tcx, None, None),
+            DisplayDefId(for_, tcx, extra, name)
+        )),
+        ItemId::Auto { for_, trait_ } => Id(format!(
+            "a:{}-{}",
+            DisplayDefId(trait_, tcx, None, None),
+            DisplayDefId(for_, tcx, extra, name)
+        )),
+    }
+}
+
+pub(crate) fn id_from_item(item: &clean::Item, tcx: TyCtxt<'_>) -> Id {
+    match *item.kind {
+        clean::ItemKind::ImportItem(ref import) => {
+            let extra =
+                import.source.did.map(ItemId::from).map(|i| id_from_item_inner(i, tcx, None, None));
+            id_from_item_inner(item.item_id, tcx, item.name, extra.as_ref())
         }
-        ItemId::Auto { for_, trait_ } => {
-            Id(format!("a:{}-{}", DisplayDefId(trait_, tcx, None), DisplayDefId(for_, tcx, name)))
-        }
+        _ => id_from_item_inner(item.item_id, tcx, item.name, None),
     }
 }
 
@@ -525,7 +562,7 @@ impl FromWithTcx<clean::Path> for Path {
     fn from_tcx(path: clean::Path, tcx: TyCtxt<'_>) -> Path {
         Path {
             name: path.whole_name(),
-            id: from_item_id(path.def_id().into(), tcx),
+            id: id_from_item_default(path.def_id().into(), tcx),
             args: path.segments.last().map(|args| Box::new(args.clone().args.into_tcx(tcx))),
         }
     }
@@ -702,7 +739,7 @@ impl FromWithTcx<clean::Import> for Import {
         Import {
             source: import.source.path.whole_name(),
             name,
-            id: import.source.did.map(ItemId::from).map(|i| from_item_id(i, tcx)),
+            id: import.source.did.map(ItemId::from).map(|i| id_from_item_default(i, tcx)),
             glob,
         }
     }
@@ -791,7 +828,7 @@ fn ids(items: impl IntoIterator<Item = clean::Item>, tcx: TyCtxt<'_>) -> Vec<Id>
     items
         .into_iter()
         .filter(|x| !x.is_stripped() && !x.is_keyword())
-        .map(|i| from_item_id_with_name(i.item_id, tcx, i.name))
+        .map(|i| id_from_item(&i, tcx))
         .collect()
 }
 
@@ -801,12 +838,10 @@ fn ids_keeping_stripped(
 ) -> Vec<Option<Id>> {
     items
         .into_iter()
-        .map(|i| {
-            if !i.is_stripped() && !i.is_keyword() {
-                Some(from_item_id_with_name(i.item_id, tcx, i.name))
-            } else {
-                None
-            }
-        })
+        .map(
+            |i| {
+                if !i.is_stripped() && !i.is_keyword() { Some(id_from_item(&i, tcx)) } else { None }
+            },
+        )
         .collect()
 }

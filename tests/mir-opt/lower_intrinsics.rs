@@ -72,3 +72,10 @@ pub fn assume() {
         std::intrinsics::assume(true);
     }
 }
+
+// EMIT_MIR lower_intrinsics.with_overflow.LowerIntrinsics.diff
+pub fn with_overflow(a: i32, b: i32) {
+    let _x = core::intrinsics::add_with_overflow(a, b);
+    let _y = core::intrinsics::sub_with_overflow(a, b);
+    let _z = core::intrinsics::mul_with_overflow(a, b);
+}

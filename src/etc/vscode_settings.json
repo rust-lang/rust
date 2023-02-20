@@ -1,7 +1,7 @@
 {
     "rust-analyzer.check.invocationLocation": "root",
     "rust-analyzer.check.invocationStrategy": "once",
-    "rust-analyzer.checkOnSave.overrideCommand": [
+    "rust-analyzer.check.overrideCommand": [
         "python3",
         "x.py",
         "check",
@@ -23,6 +23,6 @@
         "check",
         "--json-output"
     ],
-    "rust-analyzer.cargo.sysroot": "./build/host/stage0-sysroot",
+    "rust-analyzer.cargo.sysrootSrc": "./library",
     "rust-analyzer.rustc.source": "./Cargo.toml"
 }

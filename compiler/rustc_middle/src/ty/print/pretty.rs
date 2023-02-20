@@ -735,7 +735,10 @@ pub trait PrettyPrinter<'tcx>:
                     p!(print(data))
                 }
             }
-            ty::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
+            ty::Placeholder(placeholder) => match placeholder.name {
+                ty::BoundTyKind::Anon(_) => p!(write("Placeholder({:?})", placeholder)),
+                ty::BoundTyKind::Param(_, name) => p!(write("{}", name)),
+            },
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                 // We use verbose printing in 'NO_QUERIES' mode, to
                 // avoid needing to call `predicates_of`. This should
