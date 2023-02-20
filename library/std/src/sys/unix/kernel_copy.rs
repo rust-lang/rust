@@ -17,11 +17,9 @@
 //! Once it has obtained all necessary pieces and brought any wrapper types into a state where they
 //! can be safely bypassed it will attempt to use the `copy_file_range(2)`,
 //! `sendfile(2)` or `splice(2)` syscalls to move data directly between file descriptors.
-//! Since those syscalls have requirements that cannot be fully checked in advance and
-//! gathering additional information about file descriptors would require additional syscalls
-//! anyway it simply attempts to use them one after another (guided by inaccurate hints) to
-//! figure out which one works and falls back to the generic read-write copy loop if none of them
-//! does.
+//! Since those syscalls have requirements that cannot be fully checked in advance it attempts
+//! to use them one after another (guided by hints) to figure out which one works and
+//! falls back to the generic read-write copy loop if none of them does.
 //! Once a working syscall is found for a pair of file descriptors it will be called in a loop
 //! until the copy operation is completed.
 //!
@@ -84,14 +82,10 @@ pub(crate) fn copy_spec<R: Read + ?Sized, W: Write + ?Sized>(
 /// The methods on this type only provide hints, due to `AsRawFd` and `FromRawFd` the inferred
 /// type may be wrong.
 enum FdMeta {
-    /// We obtained the FD from a type that can contain any type of `FileType` and queried the metadata
-    /// because it is cheaper than probing all possible syscalls (reader side)
     Metadata(Metadata),
     Socket,
     Pipe,
-    /// We don't have any metadata, e.g. because the original type was `File` which can represent
-    /// any `FileType` and we did not query the metadata either since it did not seem beneficial
-    /// (writer side)
+    /// We don't have any metadata because the stat syscall failed
     NoneObtained,
 }
 
@@ -128,6 +122,39 @@ impl FdMeta {
             FdMeta::NoneObtained => true,
             _ => false,
         }
+    }
+}
+
+/// Returns true either if changes made to the source after a sendfile/splice call won't become
+/// visible in the sink or the source has explicitly opted into such behavior (e.g. by splicing
+/// a file into a pipe, the pipe being the source in this case).
+///
+/// This will prevent File -> Pipe and File -> Socket splicing/sendfile optimizations to uphold
+/// the Read/Write API semantics of io::copy.
+///
+/// Note: This is not 100% airtight, the caller can use the RawFd conversion methods to turn a
+/// regular file into a TcpSocket which will be treated as a socket here without checking.
+fn safe_kernel_copy(source: &FdMeta, sink: &FdMeta) -> bool {
+    match (source, sink) {
+        // Data arriving from a socket is safe because the sender can't modify the socket buffer.
+        // Data arriving from a pipe is safe(-ish) because either the sender *copied*
+        // the bytes into the pipe OR explicitly performed an operation that enables zero-copy,
+        // thus promising not to modify the data later.
+        (FdMeta::Socket, _) => true,
+        (FdMeta::Pipe, _) => true,
+        (FdMeta::Metadata(meta), _)
+            if meta.file_type().is_fifo() || meta.file_type().is_socket() =>
+        {
+            true
+        }
+        // Data going into non-pipes/non-sockets is safe because the "later changes may become visible" issue
+        // only happens for pages sitting in send buffers or pipes.
+        (_, FdMeta::Metadata(meta))
+            if !meta.file_type().is_fifo() && !meta.file_type().is_socket() =>
+        {
+            true
+        }
+        _ => false,
     }
 }
 
@@ -186,7 +213,8 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
             // So we just try and fallback if needed.
             // If current file offsets + write sizes overflow it may also fail, we do not try to fix that and instead
             // fall back to the generic copy loop.
-            if input_meta.potential_sendfile_source() {
+            if input_meta.potential_sendfile_source() && safe_kernel_copy(&input_meta, &output_meta)
+            {
                 let result = sendfile_splice(SpliceMode::Sendfile, readfd, writefd, max_write);
                 result.update_take(reader);
 
@@ -197,7 +225,9 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
                 }
             }
 
-            if input_meta.maybe_fifo() || output_meta.maybe_fifo() {
+            if (input_meta.maybe_fifo() || output_meta.maybe_fifo())
+                && safe_kernel_copy(&input_meta, &output_meta)
+            {
                 let result = sendfile_splice(SpliceMode::Splice, readfd, writefd, max_write);
                 result.update_take(reader);
 
@@ -298,13 +328,13 @@ impl CopyRead for &File {
 
 impl CopyWrite for File {
     fn properties(&self) -> CopyParams {
-        CopyParams(FdMeta::NoneObtained, Some(self.as_raw_fd()))
+        CopyParams(fd_to_meta(self), Some(self.as_raw_fd()))
     }
 }
 
 impl CopyWrite for &File {
     fn properties(&self) -> CopyParams {
-        CopyParams(FdMeta::NoneObtained, Some(self.as_raw_fd()))
+        CopyParams(fd_to_meta(*self), Some(self.as_raw_fd()))
     }
 }
 
@@ -401,13 +431,13 @@ impl CopyRead for StdinLock<'_> {
 
 impl CopyWrite for StdoutLock<'_> {
     fn properties(&self) -> CopyParams {
-        CopyParams(FdMeta::NoneObtained, Some(self.as_raw_fd()))
+        CopyParams(fd_to_meta(self), Some(self.as_raw_fd()))
     }
 }
 
 impl CopyWrite for StderrLock<'_> {
     fn properties(&self) -> CopyParams {
-        CopyParams(FdMeta::NoneObtained, Some(self.as_raw_fd()))
+        CopyParams(fd_to_meta(self), Some(self.as_raw_fd()))
     }
 }
 
