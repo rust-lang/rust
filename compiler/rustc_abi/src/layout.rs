@@ -729,34 +729,43 @@ pub trait LayoutCalculator {
             align = align.max(AbiAndPrefAlign::new(repr_align));
         }
 
-        let mut optimize = !repr.inhibit_union_abi_opt();
+        // If all the non-ZST fields have the same ABI and union ABI optimizations aren't
+        // disabled, we can use that common ABI for the union as a whole.
+        struct AbiMismatch;
+        let mut common_non_zst_abi_and_align = if repr.inhibit_union_abi_opt() {
+            // Can't optimize
+            Err(AbiMismatch)
+        } else {
+            Ok(None)
+        };
+
         let mut size = Size::ZERO;
-        let mut common_non_zst_abi_and_align: Option<(Abi, AbiAndPrefAlign)> = None;
         let only_variant = &variants[FIRST_VARIANT];
         for field in only_variant {
             assert!(field.0.is_sized());
 
-            if !field.0.is_zst() && optimize {
+            if !field.0.is_zst() && !common_non_zst_abi_and_align.is_err() {
                 // Discard valid range information and allow undef
                 let field_abi = field.abi().to_union();
 
-                if let Some((abi, align)) = &mut common_non_zst_abi_and_align {
-                    if *abi != field_abi {
+                if let Ok(Some((common_abi, common_align))) = &mut common_non_zst_abi_and_align {
+                    if *common_abi != field_abi {
                         // Different fields have different ABI: disable opt
-                        optimize = false;
+                        common_non_zst_abi_and_align = Err(AbiMismatch);
                     } else {
                         // Fields with the same non-Aggregate ABI should also
                         // have the same alignment
-                        if !matches!(abi, Abi::Aggregate { .. }) {
+                        if !matches!(common_abi, Abi::Aggregate { .. }) {
                             assert_eq!(
-                                align.abi,
+                                *common_align,
                                 field.align().abi,
                                 "non-Aggregate field with matching ABI but differing alignment"
                             );
                         }
                     }
                 } else {
-                    common_non_zst_abi_and_align = Some((field_abi, field.align()));
+                    // First non-ZST field: record its ABI and alignment
+                    common_non_zst_abi_and_align = Ok(Some((field_abi, field.align().abi)));
                 }
             }
 
@@ -770,11 +779,11 @@ pub trait LayoutCalculator {
 
         // If all non-ZST fields have the same ABI, we may forward that ABI
         // for the union as a whole, unless otherwise inhibited.
-        let abi = match (optimize, common_non_zst_abi_and_align) {
-            (false, _) | (_, None) => Abi::Aggregate { sized: true },
-            (true, Some((abi, _))) => {
+        let abi = match common_non_zst_abi_and_align {
+            Err(AbiMismatch) | Ok(None) => Abi::Aggregate { sized: true },
+            Ok(Some((abi, _))) => {
                 if abi.inherent_align(dl).map(|a| a.abi) != Some(align.abi) {
-                    // Mismatched alignment: disable opt
+                    // Mismatched alignment (e.g. union is #[repr(packed)]): disable opt
                     Abi::Aggregate { sized: true }
                 } else {
                     abi

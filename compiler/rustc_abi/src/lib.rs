@@ -1306,7 +1306,7 @@ impl Abi {
         })
     }
 
-    /// Discard valid range information and allow undef
+    /// Discard validity range information and allow undef.
     pub fn to_union(&self) -> Self {
         assert!(self.is_sized());
         match *self {
