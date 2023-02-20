@@ -3,30 +3,60 @@ error[E0207]: the type parameter `U` is not constrained by the impl trait, self 
    |
 LL | impl<T,U> Foo<T> for [isize;1] {
    |        ^ unconstrained type parameter
+   |
+help: Either remove the type parameter 'U' or make use of it, for example ` for S<U>`.
+   |
+LL - impl<T,U> Foo<T> for [isize;1] {
+LL + impl<T,> Foo<T> for [isize;1] {
+   |
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
   --> $DIR/impl-unused-tps.rs:30:8
    |
 LL | impl<T,U> Bar for T {
    |        ^ unconstrained type parameter
+   |
+help: Either remove the type parameter 'U' or make use of it, for example ` for S<U>`.
+   |
+LL - impl<T,U> Bar for T {
+LL + impl<T,> Bar for T {
+   |
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
   --> $DIR/impl-unused-tps.rs:38:8
    |
 LL | impl<T,U> Bar for T
    |        ^ unconstrained type parameter
+   |
+help: Either remove the type parameter 'U' or make use of it, for example ` for S<U>`.
+   |
+LL - impl<T,U> Bar for T
+LL + impl<T,> Bar for T
+   |
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
   --> $DIR/impl-unused-tps.rs:46:8
    |
 LL | impl<T,U,V> Foo<T> for T
    |        ^ unconstrained type parameter
+   |
+help: Either remove the type parameter 'U' or make use of it, for example ` for S<U>`.
+   |
+LL - impl<T,U,V> Foo<T> for T
+LL + impl<T,,V> Foo<T> for T
+   |
 
 error[E0207]: the type parameter `V` is not constrained by the impl trait, self type, or predicates
   --> $DIR/impl-unused-tps.rs:46:10
    |
 LL | impl<T,U,V> Foo<T> for T
    |          ^ unconstrained type parameter
+   |
+help: Either remove the type parameter 'V' or make use of it, for example ` for S<V>`.
+   |
+LL - impl<T,U,V> Foo<T> for T
+LL + impl<T,U,> Foo<T> for T
+   |
 
 error: aborting due to 5 previous errors
 

@@ -3,6 +3,12 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<'a, T: Deserializable> Deserializable for &'a str {
    |          ^ unconstrained type parameter
+   |
+help: Either remove the type parameter 'T' or make use of it, for example ` for S<T>`.
+   |
+LL - impl<'a, T: Deserializable> Deserializable for &'a str {
+LL + impl<'a, : Deserializable> Deserializable for &'a str {
+   |
 
 error: aborting due to previous error
 

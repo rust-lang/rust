@@ -3,6 +3,12 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
    |
 LL | impl<'a, I> UnwrapItemsExt for I {
    |      ^^ unconstrained lifetime parameter
+   |
+help: Either remove the type parameter ''a' or make use of it, for example ` for S<'a>`.
+   |
+LL - impl<'a, I> UnwrapItemsExt for I {
+LL + impl<, I> UnwrapItemsExt for I {
+   |
 
 error: aborting due to previous error
 

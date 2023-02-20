@@ -12,6 +12,11 @@ LL | impl<const H: feature> Foo {
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
+help: Either remove the type parameter 'H' or make use of it, for example ` for S<H>`.
+   |
+LL - impl<const H: feature> Foo {
+LL + impl<> Foo {
+   |
 
 error: aborting due to 2 previous errors
 

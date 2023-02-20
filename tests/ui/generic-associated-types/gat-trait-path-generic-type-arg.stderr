@@ -18,6 +18,12 @@ error[E0207]: the type parameter `T1` is not constrained by the impl trait, self
    |
 LL | impl <T, T1> Foo for T {
    |          ^^ unconstrained type parameter
+   |
+help: Either remove the type parameter 'T1' or make use of it, for example ` for S<T1>`.
+   |
+LL - impl <T, T1> Foo for T {
+LL + impl <T, > Foo for T {
+   |
 
 error: aborting due to 3 previous errors
 
