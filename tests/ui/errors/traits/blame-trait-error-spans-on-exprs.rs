@@ -71,6 +71,8 @@ struct DoubleWrapper<T> {
 
 impl<T: T1> T1 for DoubleWrapper<T> {}
 
+impl<'a, T: T2> T1 for &'a T {}
+
 fn example<Q>(q: Q) {
     // In each of the following examples, we expect the error span to point at the 'q' variable,
     // since the missing constraint is `Q: T3`.
@@ -126,6 +128,10 @@ fn example<Q>(q: Q) {
         Two { a: Two { a: (), b: Two { a: Two { a: (), b: q }, b: () } }, b: () },
         //~^ ERROR the trait bound `Q: T1` is not satisfied [E0277]
     );
+
+    // Verifies for reference:
+    want(&Burrito { spicy: false, filling: q });
+    //~^ ERROR the trait bound `Q: T3` is not satisfied [E0277]
 }
 
 fn main() {}
