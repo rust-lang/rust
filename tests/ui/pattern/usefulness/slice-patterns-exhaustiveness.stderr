@@ -5,10 +5,10 @@ LL |     match s2 {
    |           ^^ pattern `&[false, _]` not covered
    |
    = note: the matched value is of type `&[bool; 2]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[false, _]` case
    |
-LL ~         [true, .., true] => {}
-LL +         &[false, _] => todo!()
+LL ~         [true, .., true] => {},
+LL +         &[false, _] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -18,10 +18,10 @@ LL |     match s3 {
    |           ^^ pattern `&[false, ..]` not covered
    |
    = note: the matched value is of type `&[bool; 3]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[false, ..]` case
    |
-LL ~         [true, .., true] => {}
-LL +         &[false, ..] => todo!()
+LL ~         [true, .., true] => {},
+LL +         &[false, ..] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -31,10 +31,10 @@ LL |     match s10 {
    |           ^^^ pattern `&[false, ..]` not covered
    |
    = note: the matched value is of type `&[bool; 10]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[false, ..]` case
    |
-LL ~         [true, .., true] => {}
-LL +         &[false, ..] => todo!()
+LL ~         [true, .., true] => {},
+LL +         &[false, ..] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -44,10 +44,10 @@ LL |     match s2 {
    |           ^^ pattern `&[false, true]` not covered
    |
    = note: the matched value is of type `&[bool; 2]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[false, true]` case
    |
 LL ~         [.., false] => {}
-LL +         &[false, true] => todo!()
+LL +         &[false, true] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -57,10 +57,10 @@ LL |     match s3 {
    |           ^^ pattern `&[false, .., true]` not covered
    |
    = note: the matched value is of type `&[bool; 3]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[false, .., true]` case
    |
 LL ~         [.., false] => {}
-LL +         &[false, .., true] => todo!()
+LL +         &[false, .., true] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -70,10 +70,10 @@ LL |     match s {
    |           ^ pattern `&[false, .., true]` not covered
    |
    = note: the matched value is of type `&[bool]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[false, .., true]` case
    |
 LL ~         [.., false] => {}
-LL +         &[false, .., true] => todo!()
+LL +         &[false, .., true] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -83,10 +83,10 @@ LL |     match s {
    |           ^ pattern `&[_, ..]` not covered
    |
    = note: the matched value is of type `&[bool]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[_, ..]` case
    |
-LL ~         [] => {}
-LL +         &[_, ..] => todo!()
+LL ~         [] => {},
+LL +         &[_, ..] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -96,10 +96,10 @@ LL |     match s {
    |           ^ pattern `&[_, _, ..]` not covered
    |
    = note: the matched value is of type `&[bool]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[_, _, ..]` case
    |
 LL ~         [_] => {}
-LL +         &[_, _, ..] => todo!()
+LL +         &[_, _, ..] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -109,10 +109,10 @@ LL |     match s {
    |           ^ pattern `&[false, ..]` not covered
    |
    = note: the matched value is of type `&[bool]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[false, ..]` case
    |
 LL ~         [true, ..] => {}
-LL +         &[false, ..] => todo!()
+LL +         &[false, ..] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -122,10 +122,10 @@ LL |     match s {
    |           ^ pattern `&[false, _, ..]` not covered
    |
    = note: the matched value is of type `&[bool]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[false, _, ..]` case
    |
 LL ~         [true, ..] => {}
-LL +         &[false, _, ..] => todo!()
+LL +         &[false, _, ..] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -135,10 +135,10 @@ LL |     match s {
    |           ^ pattern `&[_, .., false]` not covered
    |
    = note: the matched value is of type `&[bool]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[_, .., false]` case
    |
 LL ~         [.., true] => {}
-LL +         &[_, .., false] => todo!()
+LL +         &[_, .., false] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -148,10 +148,10 @@ LL |     match s {
    |           ^ pattern `&[_, _, .., true]` not covered
    |
    = note: the matched value is of type `&[bool]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[_, _, .., true]` case
    |
 LL ~         [.., false] => {}
-LL +         &[_, _, .., true] => todo!()
+LL +         &[_, _, .., true] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -161,10 +161,10 @@ LL |     match s {
    |           ^ pattern `&[true, _, .., _]` not covered
    |
    = note: the matched value is of type `&[bool]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[true, _, .., _]` case
    |
 LL ~         [false, .., false] => {}
-LL +         &[true, _, .., _] => todo!()
+LL +         &[true, _, .., _] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -174,10 +174,11 @@ LL |     match s {
    |           ^ patterns `&[]` and `&[_, _, ..]` not covered
    |
    = note: the matched value is of type `&[bool]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~         &[true] => {}
-LL +         &[] | &[_, _, ..] => todo!()
+LL ~         &[true] => {},
+LL +         &[] => { todo!() },
+LL +         &[_, _, ..] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -187,10 +188,11 @@ LL |     match s {
    |           ^ patterns `&[]` and `&[_, _, ..]` not covered
    |
    = note: the matched value is of type `&[bool]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~         CONST => {}
-LL +         &[] | &[_, _, ..] => todo!()
+LL ~         CONST => {},
+LL +         &[] => { todo!() },
+LL +         &[_, _, ..] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -200,10 +202,11 @@ LL |     match s {
    |           ^ patterns `&[]` and `&[_, _, ..]` not covered
    |
    = note: the matched value is of type `&[bool]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~         &[false] => {}
-LL +         &[] | &[_, _, ..] => todo!()
+LL +         &[] => { todo!() },
+LL +         &[_, _, ..] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -213,10 +216,11 @@ LL |     match s {
    |           ^ patterns `&[]` and `&[_, _, ..]` not covered
    |
    = note: the matched value is of type `&[bool]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~         CONST => {}
-LL +         &[] | &[_, _, ..] => todo!()
+LL +         &[] => { todo!() },
+LL +         &[_, _, ..] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -226,10 +230,10 @@ LL |     match s {
    |           ^ pattern `&[_, _, ..]` not covered
    |
    = note: the matched value is of type `&[bool]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[_, _, ..]` case
    |
 LL ~         CONST => {}
-LL +         &[_, _, ..] => todo!()
+LL +         &[_, _, ..] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -239,10 +243,10 @@ LL |     match s {
    |           ^ pattern `&[false]` not covered
    |
    = note: the matched value is of type `&[bool]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[false]` case
    |
 LL ~         &[_, _, ..] => {}
-LL +         &[false] => todo!()
+LL +         &[false] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -252,10 +256,10 @@ LL |     match s1 {
    |           ^^ pattern `&[false]` not covered
    |
    = note: the matched value is of type `&[bool; 1]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[false]` case
    |
-LL ~         CONST1 => {}
-LL +         &[false] => todo!()
+LL ~         CONST1 => {},
+LL +         &[false] => { todo!() },
    |
 
 error: aborting due to 20 previous errors

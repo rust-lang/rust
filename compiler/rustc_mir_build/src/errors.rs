@@ -957,6 +957,8 @@ pub(crate) struct NonExhaustivePatterns<'tcx> {
     pub ppsm: Option<SuggestPrecisePointerSizeMatching<'tcx>>,
     #[subdiagnostic]
     pub ref_note: Option<RefNote>,
+    #[subdiagnostic]
+    pub suggest_arms: ArmSuggestions<'tcx>,
 }
 
 #[derive(Subdiagnostic)]
@@ -979,6 +981,16 @@ impl<'tcx> TypeNote<'tcx> {
 }
 
 #[derive(Subdiagnostic)]
+pub enum AddArmKind<'tcx> {
+    #[help(mir_build_suggest_wildcard_arm)]
+    Wildcard,
+    #[help(mir_build_suggest_single_arm)]
+    Single { pat: Pat<'tcx> },
+    #[help(mir_build_suggest_multiple_arms)]
+    Multiple,
+}
+
+#[derive(Subdiagnostic)]
 #[note(mir_build_no_fixed_maximum_value)]
 pub struct NoFixedMaxValue<'tcx> {
     pub scrut_ty: Ty<'tcx>,
@@ -993,3 +1005,97 @@ pub struct SuggestPrecisePointerSizeMatching<'tcx> {
 #[derive(Subdiagnostic)]
 #[note(mir_build_ref_note)]
 pub struct RefNote;
+
+pub enum ArmSuggestions<'tcx> {
+    OneLiner {
+        suggest_msg: AddArmKind<'tcx>,
+        pattern: Pat<'tcx>,
+        span: Span,
+    },
+    MultipleLines {
+        span: Span,
+        prefix: String,
+        indentation: String,
+        postfix: String,
+        arm_suggestions: Vec<Pat<'tcx>>,
+        suggest_msg: AddArmKind<'tcx>,
+    },
+    Help {
+        suggest_msg: AddArmKind<'tcx>,
+    },
+}
+
+impl<'tcx> AddToDiagnostic for ArmSuggestions<'tcx> {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, f: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        use std::fmt::Write;
+
+        match self {
+            ArmSuggestions::OneLiner { suggest_msg, span, pattern } => {
+                let suggestion = format!(", {pattern} => {{ todo!() }}");
+                let suggest_msg = match suggest_msg {
+                    AddArmKind::Wildcard => rustc_errors::fluent::mir_build_suggest_wildcard_arm,
+                    AddArmKind::Single { pat } => {
+                        diag.set_arg("pat", pat);
+                        rustc_errors::fluent::mir_build_suggest_single_arm
+                    }
+                    AddArmKind::Multiple => rustc_errors::fluent::mir_build_suggest_multiple_arms,
+                };
+                diag.span_suggestion_verbose(
+                    span,
+                    suggest_msg,
+                    suggestion,
+                    Applicability::HasPlaceholders,
+                );
+            }
+            ArmSuggestions::MultipleLines {
+                suggest_msg,
+                span,
+                prefix,
+                indentation,
+                postfix,
+                arm_suggestions,
+            } => {
+                let suggest_msg = match suggest_msg {
+                    AddArmKind::Wildcard => rustc_errors::fluent::mir_build_suggest_wildcard_arm,
+                    AddArmKind::Single { pat } => {
+                        diag.set_arg("pat", pat);
+                        rustc_errors::fluent::mir_build_suggest_single_arm
+                    }
+                    AddArmKind::Multiple => rustc_errors::fluent::mir_build_suggest_multiple_arms,
+                };
+
+                let mut suggestion = String::new();
+
+                // Set the correct position to start writing arms
+                suggestion.push_str(&prefix);
+
+                let (truncate_at, need_wildcard) = match arm_suggestions.len() {
+                    // Avoid writing a wildcard for one remaining arm
+                    4 => (4, false),
+                    // Otherwise, limit it at 3 arms + wildcard
+                    n @ 0..=3 => (n, false),
+                    _ => (3, true),
+                };
+
+                for pattern in arm_suggestions.iter().take(truncate_at) {
+                    writeln!(&mut suggestion, "{indentation}{pattern} => {{ todo!() }},").unwrap();
+                }
+                if need_wildcard {
+                    writeln!(&mut suggestion, "{indentation}_ => {{ todo!() }},").unwrap();
+                }
+                suggestion.push_str(&postfix);
+
+                diag.span_suggestion_verbose(
+                    span,
+                    suggest_msg,
+                    suggestion,
+                    Applicability::HasPlaceholders,
+                );
+            }
+            ArmSuggestions::Help { suggest_msg } => suggest_msg.add_to_diagnostic_with(diag, f),
+        }
+    }
+}

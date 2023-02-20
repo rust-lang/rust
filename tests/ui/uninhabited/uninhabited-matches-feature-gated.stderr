@@ -5,10 +5,10 @@ LL |     let _ = match x {
    |                   ^ pattern `Err(_)` not covered
    |
    = note: the matched value is of type `Result<u32, &Void>`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `Err(_)` case
    |
 LL ~         Ok(n) => n,
-LL ~         Err(_) => todo!(),
+LL +         Err(_) => { todo!() },
    |
 
 error[E0004]: non-exhaustive patterns: type `&Void` is non-empty
@@ -66,10 +66,10 @@ LL |     let _ = match x {
    |                   ^ pattern `&[_, ..]` not covered
    |
    = note: the matched value is of type `&[Void]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `&[_, ..]` case
    |
 LL ~         &[] => (),
-LL ~         &[_, ..] => todo!(),
+LL +         &[_, ..] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -79,10 +79,10 @@ LL |     let _ = match x {
    |                   ^ pattern `Err(_)` not covered
    |
    = note: the matched value is of type `Result<u32, Void>`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `Err(_)` case
    |
 LL ~         Ok(x) => x,
-LL ~         Err(_) => todo!(),
+LL +         Err(_) => { todo!() },
    |
 
 error[E0005]: refutable pattern in local binding

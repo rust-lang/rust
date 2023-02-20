@@ -119,7 +119,7 @@ LL | enum NonEmptyEnum1 {
 LL |     Foo(bool),
    |     --- not covered
    = note: the matched value is of type `NonEmptyEnum1`
-   = help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern
+   = help: ensure that all possible cases are being handled by adding an arm to handle the `NonEmptyEnum1::Foo(_)` case
 
 error[E0004]: match is non-exhaustive
   --> $DIR/empty-match.rs:84:20
@@ -137,7 +137,7 @@ LL |     Foo(bool),
 LL |     Bar,
    |     --- not covered
    = note: the matched value is of type `NonEmptyEnum2`
-   = help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or multiple match arms
+   = help: ensure that all possible cases are being handled by adding more match arms
 
 error[E0004]: match is non-exhaustive
   --> $DIR/empty-match.rs:85:20
@@ -158,7 +158,7 @@ LL |     V1, V2, V3, V4, V5,
    |     |   not covered
    |     not covered
    = note: the matched value is of type `NonEmptyEnum5`
-   = help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or multiple match arms
+   = help: ensure that all possible cases are being handled by adding more match arms
 
 error[E0004]: match is non-exhaustive
   --> $DIR/empty-match.rs:87:24
@@ -167,10 +167,10 @@ LL |     match_guarded_arm!(0u8);
    |                        ^^^ pattern `_` not covered
    |
    = note: the matched value is of type `u8`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding a wildcard arm
    |
-LL ~             _ if false => {}
-LL +             _ => todo!()
+LL ~             _ if false => {},
+LL +             _ => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -185,10 +185,10 @@ note: `NonEmptyStruct1` defined here
 LL | struct NonEmptyStruct1;
    |        ^^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyStruct1`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `NonEmptyStruct1` case
    |
-LL ~             _ if false => {}
-LL +             NonEmptyStruct1 => todo!()
+LL ~             _ if false => {},
+LL +             NonEmptyStruct1 => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -203,10 +203,10 @@ note: `NonEmptyStruct2` defined here
 LL | struct NonEmptyStruct2(bool);
    |        ^^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyStruct2`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `NonEmptyStruct2(_)` case
    |
-LL ~             _ if false => {}
-LL +             NonEmptyStruct2(_) => todo!()
+LL ~             _ if false => {},
+LL +             NonEmptyStruct2(_) => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -221,10 +221,10 @@ note: `NonEmptyUnion1` defined here
 LL | union NonEmptyUnion1 {
    |       ^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyUnion1`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `NonEmptyUnion1 { .. }` case
    |
-LL ~             _ if false => {}
-LL +             NonEmptyUnion1 { .. } => todo!()
+LL ~             _ if false => {},
+LL +             NonEmptyUnion1 { .. } => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -239,10 +239,10 @@ note: `NonEmptyUnion2` defined here
 LL | union NonEmptyUnion2 {
    |       ^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyUnion2`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `NonEmptyUnion2 { .. }` case
    |
-LL ~             _ if false => {}
-LL +             NonEmptyUnion2 { .. } => todo!()
+LL ~             _ if false => {},
+LL +             NonEmptyUnion2 { .. } => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -259,10 +259,10 @@ LL | enum NonEmptyEnum1 {
 LL |     Foo(bool),
    |     --- not covered
    = note: the matched value is of type `NonEmptyEnum1`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `NonEmptyEnum1::Foo(_)` case
    |
-LL ~             _ if false => {}
-LL +             NonEmptyEnum1::Foo(_) => todo!()
+LL ~             _ if false => {},
+LL +             NonEmptyEnum1::Foo(_) => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -281,10 +281,11 @@ LL |     Foo(bool),
 LL |     Bar,
    |     --- not covered
    = note: the matched value is of type `NonEmptyEnum2`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~             _ if false => {}
-LL +             NonEmptyEnum2::Foo(_) | NonEmptyEnum2::Bar => todo!()
+LL ~             _ if false => {},
+LL +             NonEmptyEnum2::Foo(_) => { todo!() },
+LL +             NonEmptyEnum2::Bar => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -306,10 +307,13 @@ LL |     V1, V2, V3, V4, V5,
    |     |   not covered
    |     not covered
    = note: the matched value is of type `NonEmptyEnum5`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~             _ if false => {}
-LL +             _ => todo!()
+LL ~             _ if false => {},
+LL +             NonEmptyEnum5::V1 => { todo!() },
+LL +             NonEmptyEnum5::V2 => { todo!() },
+LL +             NonEmptyEnum5::V3 => { todo!() },
+LL +             _ => { todo!() },
    |
 
 error: aborting due to 22 previous errors

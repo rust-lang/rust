@@ -10,10 +10,10 @@ note: `Foo` defined here
 LL | struct Foo {
    |        ^^^
    = note: the matched value is of type `Foo`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `Foo { first: false, second: Some([_, _, _, _]) }` case
    |
 LL ~         Foo { first: false, second: Some([1, 2, 3, 4]) } => (),
-LL +         Foo { first: false, second: Some([_, _, _, _]) } => todo!()
+LL +         Foo { first: false, second: Some([_, _, _, _]) } => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -30,10 +30,10 @@ LL | enum Color {
 LL |     Red,
    |     --- not covered
    = note: the matched value is of type `Color`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `Color::Red` case
    |
 LL ~         Color::Green => (),
-LL +         Color::Red => todo!()
+LL +         Color::Red => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -53,10 +53,12 @@ LL |     North, East, South, West
    |            |     not covered
    |            not covered
    = note: the matched value is of type `Direction`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~         Direction::North => (),
-LL +         Direction::East | Direction::South | Direction::West => todo!()
+LL +         Direction::East => { todo!() },
+LL +         Direction::South => { todo!() },
+LL +         Direction::West => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -78,10 +80,13 @@ LL |     First, Second, Third, Fourth, Fifth, Sixth, Seventh, Eighth, Ninth, Ten
    |            |       not covered
    |            not covered
    = note: the matched value is of type `ExcessiveEnum`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~         ExcessiveEnum::First => (),
-LL +         _ => todo!()
+LL +         ExcessiveEnum::Second => { todo!() },
+LL +         ExcessiveEnum::Third => { todo!() },
+LL +         ExcessiveEnum::Fourth => { todo!() },
+LL +         _ => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -99,10 +104,10 @@ LL | enum Color {
 LL |     CustomRGBA { a: bool, r: u8, g: u8, b: u8 }
    |     ---------- not covered
    = note: the matched value is of type `Color`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `Color::CustomRGBA { a: true, .. }` case
    |
 LL ~         Color::CustomRGBA { a: false, r: _, g: _, b: _ } => (),
-LL +         Color::CustomRGBA { a: true, .. } => todo!()
+LL +         Color::CustomRGBA { a: true, .. } => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -112,10 +117,10 @@ LL |     match *x {
    |           ^^ pattern `[Enum::Second(true), Enum::Second(false)]` not covered
    |
    = note: the matched value is of type `[Enum]`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `[Enum::Second(true), Enum::Second(false)]` case
    |
 LL ~         [_, _, ref tail @ .., _] => (),
-LL +         [Enum::Second(true), Enum::Second(false)] => todo!()
+LL +         [Enum::Second(true), Enum::Second(false)] => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -125,10 +130,10 @@ LL |     match ((), false) {
    |           ^^^^^^^^^^^ pattern `((), false)` not covered
    |
    = note: the matched value is of type `((), bool)`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `((), false)` case
    |
 LL ~         ((), true) => (),
-LL +         ((), false) => todo!()
+LL +         ((), false) => { todo!() },
    |
 
 error: aborting due to 7 previous errors

@@ -5,10 +5,13 @@ LL |     match (A, ()) {
    |           ^^^^^^^ patterns `(Enum::B, _)`, `(Enum::C, _)`, `(Enum::D, _)` and 2 more not covered
    |
    = note: the matched value is of type `(Enum, ())`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~         (A, _) => {}
-LL +         _ => todo!()
+LL ~         (A, _) => {},
+LL +         (Enum::B, _) => { todo!() },
+LL +         (Enum::C, _) => { todo!() },
+LL +         (Enum::D, _) => { todo!() },
+LL +         _ => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -18,10 +21,13 @@ LL |     match (A, A) {
    |           ^^^^^^ patterns `(_, Enum::B)`, `(_, Enum::C)`, `(_, Enum::D)` and 2 more not covered
    |
    = note: the matched value is of type `(Enum, Enum)`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~         (_, A) => {}
-LL +         _ => todo!()
+LL ~         (_, A) => {},
+LL +         (_, Enum::B) => { todo!() },
+LL +         (_, Enum::C) => { todo!() },
+LL +         (_, Enum::D) => { todo!() },
+LL +         _ => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -31,10 +37,13 @@ LL |     match ((A, ()), ()) {
    |           ^^^^^^^^^^^^^ patterns `((Enum::B, _), _)`, `((Enum::C, _), _)`, `((Enum::D, _), _)` and 2 more not covered
    |
    = note: the matched value is of type `((Enum, ()), ())`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~         ((A, ()), _) => {}
-LL +         _ => todo!()
+LL ~         ((A, ()), _) => {},
+LL +         ((Enum::B, _), _) => { todo!() },
+LL +         ((Enum::C, _), _) => { todo!() },
+LL +         ((Enum::D, _), _) => { todo!() },
+LL +         _ => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -44,10 +53,13 @@ LL |     match ((A, ()), A) {
    |           ^^^^^^^^^^^^ patterns `((Enum::B, _), _)`, `((Enum::C, _), _)`, `((Enum::D, _), _)` and 2 more not covered
    |
    = note: the matched value is of type `((Enum, ()), Enum)`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~         ((A, ()), _) => {}
-LL +         _ => todo!()
+LL ~         ((A, ()), _) => {},
+LL +         ((Enum::B, _), _) => { todo!() },
+LL +         ((Enum::C, _), _) => { todo!() },
+LL +         ((Enum::D, _), _) => { todo!() },
+LL +         _ => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -57,10 +69,13 @@ LL |     match ((A, ()), ()) {
    |           ^^^^^^^^^^^^^ patterns `((Enum::B, _), _)`, `((Enum::C, _), _)`, `((Enum::D, _), _)` and 2 more not covered
    |
    = note: the matched value is of type `((Enum, ()), ())`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~         ((A, _), _) => {}
-LL +         _ => todo!()
+LL ~         ((A, _), _) => {},
+LL +         ((Enum::B, _), _) => { todo!() },
+LL +         ((Enum::C, _), _) => { todo!() },
+LL +         ((Enum::D, _), _) => { todo!() },
+LL +         _ => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -75,10 +90,13 @@ note: `S` defined here
 LL | struct S(Enum, ());
    |        ^
    = note: the matched value is of type `S`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~         S(A, _) => {}
-LL +         _ => todo!()
+LL ~         S(A, _) => {},
+LL +         S(Enum::B, _) => { todo!() },
+LL +         S(Enum::C, _) => { todo!() },
+LL +         S(Enum::D, _) => { todo!() },
+LL +         _ => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -93,10 +111,13 @@ note: `Sd` defined here
 LL | struct Sd { x: Enum, y: () }
    |        ^^
    = note: the matched value is of type `Sd`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~         Sd { x: A, y: _ } => {}
-LL +         _ => todo!()
+LL ~         Sd { x: A, y: _ } => {},
+LL +         Sd { x: Enum::B, .. } => { todo!() },
+LL +         Sd { x: Enum::C, .. } => { todo!() },
+LL +         Sd { x: Enum::D, .. } => { todo!() },
+LL +         _ => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -106,10 +127,13 @@ LL |     match Some(A) {
    |           ^^^^^^^ patterns `Some(Enum::B)`, `Some(Enum::C)`, `Some(Enum::D)` and 2 more not covered
    |
    = note: the matched value is of type `Option<Enum>`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~         None => (),
-LL +         _ => todo!()
+LL +         Some(Enum::B) => { todo!() },
+LL +         Some(Enum::C) => { todo!() },
+LL +         Some(Enum::D) => { todo!() },
+LL +         _ => { todo!() },
    |
 
 error: aborting due to 8 previous errors

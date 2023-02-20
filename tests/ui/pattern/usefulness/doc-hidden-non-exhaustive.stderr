@@ -5,10 +5,10 @@ LL |     match HiddenEnum::A {
    |           ^^^^^^^^^^^^^ pattern `_` not covered
    |
    = note: the matched value is of type `HiddenEnum`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding a wildcard arm
    |
 LL ~         HiddenEnum::B => {}
-LL +         _ => todo!()
+LL +         _ => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -18,10 +18,10 @@ LL |     match HiddenEnum::A {
    |           ^^^^^^^^^^^^^ pattern `HiddenEnum::B` not covered
    |
    = note: the matched value is of type `HiddenEnum`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `HiddenEnum::B` case
    |
 LL ~         HiddenEnum::C => {}
-LL +         HiddenEnum::B => todo!()
+LL +         HiddenEnum::B => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -31,10 +31,11 @@ LL |     match HiddenEnum::A {
    |           ^^^^^^^^^^^^^ patterns `HiddenEnum::B` and `_` not covered
    |
    = note: the matched value is of type `HiddenEnum`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~         HiddenEnum::A => {}
-LL +         HiddenEnum::B | _ => todo!()
+LL ~         HiddenEnum::A => {},
+LL +         HiddenEnum::B => { todo!() },
+LL +         _ => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -44,10 +45,11 @@ LL |     match None {
    |           ^^^^ patterns `Some(HiddenEnum::B)` and `Some(_)` not covered
    |
    = note: the matched value is of type `Option<HiddenEnum>`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~         Some(HiddenEnum::A) => {}
-LL +         Some(HiddenEnum::B) | Some(_) => todo!()
+LL +         Some(HiddenEnum::B) => { todo!() },
+LL +         Some(_) => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -65,10 +67,10 @@ LL | enum InCrate {
 LL |     C,
    |     - not covered
    = note: the matched value is of type `InCrate`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `InCrate::C` case
    |
 LL ~         InCrate::B => {}
-LL +         InCrate::C => todo!()
+LL +         InCrate::C => { todo!() },
    |
 
 error: aborting due to 5 previous errors

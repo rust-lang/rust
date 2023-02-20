@@ -5,10 +5,11 @@ LL |     match UnstableEnum::Stable {
    |           ^^^^^^^^^^^^^^^^^^^^ patterns `UnstableEnum::Stable2` and `_` not covered
    |
    = note: the matched value is of type `UnstableEnum`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~         UnstableEnum::Stable => {}
-LL +         UnstableEnum::Stable2 | _ => todo!()
+LL ~         UnstableEnum::Stable => {},
+LL +         UnstableEnum::Stable2 => { todo!() },
+LL +         _ => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -18,10 +19,10 @@ LL |     match UnstableEnum::Stable {
    |           ^^^^^^^^^^^^^^^^^^^^ pattern `_` not covered
    |
    = note: the matched value is of type `UnstableEnum`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding a wildcard arm
    |
 LL ~         UnstableEnum::Stable2 => {}
-LL +         _ => todo!()
+LL +         _ => { todo!() },
    |
 
 error: aborting due to 2 previous errors

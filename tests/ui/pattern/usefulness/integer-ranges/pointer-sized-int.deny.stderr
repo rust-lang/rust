@@ -7,10 +7,10 @@ LL |     match 0usize {
    = note: the matched value is of type `usize`
    = note: `usize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding a wildcard arm
    |
-LL ~         0 ..= usize::MAX => {}
-LL +         _ => todo!()
+LL ~         0 ..= usize::MAX => {},
+LL +         _ => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -22,10 +22,10 @@ LL |     match 0isize {
    = note: the matched value is of type `isize`
    = note: `isize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding a wildcard arm
    |
-LL ~         isize::MIN ..= isize::MAX => {}
-LL +         _ => todo!()
+LL ~         isize::MIN ..= isize::MAX => {},
+LL +         _ => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -37,10 +37,10 @@ LL |     m!(0usize, 0..=usize::MAX);
    = note: the matched value is of type `usize`
    = note: `usize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding a wildcard arm
    |
-LL |         match $s { $($t)+ => {}, _ => todo!() }
-   |                                ++++++++++++++
+LL |         match $s { $($t)+ => {}, _ => { todo!() } }
+   |                                ++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/pointer-sized-int.rs:24:8
@@ -51,10 +51,10 @@ LL |     m!(0usize, 0..5 | 5..=usize::MAX);
    = note: the matched value is of type `usize`
    = note: `usize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding a wildcard arm
    |
-LL |         match $s { $($t)+ => {}, _ => todo!() }
-   |                                ++++++++++++++
+LL |         match $s { $($t)+ => {}, _ => { todo!() } }
+   |                                ++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/pointer-sized-int.rs:26:8
@@ -65,10 +65,10 @@ LL |     m!(0usize, 0..usize::MAX | usize::MAX);
    = note: the matched value is of type `usize`
    = note: `usize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `usize` matching
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding a wildcard arm
    |
-LL |         match $s { $($t)+ => {}, _ => todo!() }
-   |                                ++++++++++++++
+LL |         match $s { $($t)+ => {}, _ => { todo!() } }
+   |                                ++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/pointer-sized-int.rs:28:8
@@ -77,10 +77,10 @@ LL |     m!((0usize, true), (0..5, true) | (5..=usize::MAX, true) | (0..=usize::
    |        ^^^^^^^^^^^^^^ pattern `(_, _)` not covered
    |
    = note: the matched value is of type `(usize, bool)`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `(_, _)` case
    |
-LL |         match $s { $($t)+ => {}, (_, _) => todo!() }
-   |                                +++++++++++++++++++
+LL |         match $s { $($t)+ => {}, (_, _) => { todo!() } }
+   |                                +++++++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/pointer-sized-int.rs:31:8
@@ -91,10 +91,10 @@ LL |     m!(0isize, isize::MIN..=isize::MAX);
    = note: the matched value is of type `isize`
    = note: `isize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding a wildcard arm
    |
-LL |         match $s { $($t)+ => {}, _ => todo!() }
-   |                                ++++++++++++++
+LL |         match $s { $($t)+ => {}, _ => { todo!() } }
+   |                                ++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/pointer-sized-int.rs:33:8
@@ -105,10 +105,10 @@ LL |     m!(0isize, isize::MIN..5 | 5..=isize::MAX);
    = note: the matched value is of type `isize`
    = note: `isize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding a wildcard arm
    |
-LL |         match $s { $($t)+ => {}, _ => todo!() }
-   |                                ++++++++++++++
+LL |         match $s { $($t)+ => {}, _ => { todo!() } }
+   |                                ++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/pointer-sized-int.rs:35:8
@@ -119,10 +119,10 @@ LL |     m!(0isize, isize::MIN..isize::MAX | isize::MAX);
    = note: the matched value is of type `isize`
    = note: `isize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding a wildcard arm
    |
-LL |         match $s { $($t)+ => {}, _ => todo!() }
-   |                                ++++++++++++++
+LL |         match $s { $($t)+ => {}, _ => { todo!() } }
+   |                                ++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/pointer-sized-int.rs:37:8
@@ -131,10 +131,10 @@ LL |     m!((0isize, true), (isize::MIN..5, true)
    |        ^^^^^^^^^^^^^^ pattern `(_, _)` not covered
    |
    = note: the matched value is of type `(isize, bool)`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `(_, _)` case
    |
-LL |         match $s { $($t)+ => {}, (_, _) => todo!() }
-   |                                +++++++++++++++++++
+LL |         match $s { $($t)+ => {}, (_, _) => { todo!() } }
+   |                                +++++++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/pointer-sized-int.rs:41:11
@@ -145,10 +145,10 @@ LL |     match 0isize {
    = note: the matched value is of type `isize`
    = note: `isize` does not have a fixed maximum value, so a wildcard `_` is necessary to match exhaustively
    = help: add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `isize` matching
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding a wildcard arm
    |
 LL ~         1 ..= isize::MAX => {}
-LL +         _ => todo!()
+LL +         _ => { todo!() },
    |
 
 error[E0004]: non-exhaustive patterns: type `usize` is non-empty

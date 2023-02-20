@@ -30,10 +30,12 @@ LL |
 LL |     Struct { field: u32 }
    |     ------ not covered
    = note: the matched value is of type `NonExhaustiveEnum`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~     match NonExhaustiveEnum::Unit {
-LL +         NonExhaustiveEnum::Unit | NonExhaustiveEnum::Tuple(_) | NonExhaustiveEnum::Struct { .. } => todo!(),
+LL +         NonExhaustiveEnum::Unit => { todo!() },
+LL +         NonExhaustiveEnum::Tuple(_) => { todo!() },
+LL +         NonExhaustiveEnum::Struct { .. } => { todo!() },
 LL +     }
    |
 
@@ -57,10 +59,12 @@ LL |
 LL |     Struct { field: u32 }
    |     ------ not covered
    = note: the matched value is of type `NormalEnum`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~     match NormalEnum::Unit {
-LL +         NormalEnum::Unit | NormalEnum::Tuple(_) | NormalEnum::Struct { .. } => todo!(),
+LL +         NormalEnum::Unit => { todo!() },
+LL +         NormalEnum::Tuple(_) => { todo!() },
+LL +         NormalEnum::Struct { .. } => { todo!() },
 LL +     }
    |
 

@@ -388,3 +388,9 @@ mir_build_no_fixed_maximum_value = `{$scrut_ty}` does not have a fixed maximum v
 mir_build_suggest_precise_pointer_size_matching = add `#![feature(precise_pointer_size_matching)]` to the crate attributes to enable precise `{$scrut_ty}` matching
 
 mir_build_ref_note = references are always considered inhabited
+
+mir_build_suggest_wildcard_arm = ensure that all possible cases are being handled by adding a wildcard arm
+
+mir_build_suggest_single_arm = ensure that all possible cases are being handled by adding an arm to handle the `{$pat}` case
+
+mir_build_suggest_multiple_arms = ensure that all possible cases are being handled by adding more match arms

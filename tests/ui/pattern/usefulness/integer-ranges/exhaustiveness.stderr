@@ -5,10 +5,10 @@ LL |     m!(0u8, 0..255);
    |        ^^^ pattern `u8::MAX` not covered
    |
    = note: the matched value is of type `u8`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `u8::MAX` case
    |
-LL |         match $s { $($t)+ => {}, u8::MAX => todo!() }
-   |                                ++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, u8::MAX => { todo!() } }
+   |                                ++++++++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/exhaustiveness.rs:48:8
@@ -17,10 +17,10 @@ LL |     m!(0u8, 0..=254);
    |        ^^^ pattern `u8::MAX` not covered
    |
    = note: the matched value is of type `u8`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `u8::MAX` case
    |
-LL |         match $s { $($t)+ => {}, u8::MAX => todo!() }
-   |                                ++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, u8::MAX => { todo!() } }
+   |                                ++++++++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/exhaustiveness.rs:49:8
@@ -29,10 +29,10 @@ LL |     m!(0u8, 1..=255);
    |        ^^^ pattern `0_u8` not covered
    |
    = note: the matched value is of type `u8`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `0_u8` case
    |
-LL |         match $s { $($t)+ => {}, 0_u8 => todo!() }
-   |                                +++++++++++++++++
+LL |         match $s { $($t)+ => {}, 0_u8 => { todo!() } }
+   |                                +++++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/exhaustiveness.rs:50:8
@@ -41,10 +41,10 @@ LL |     m!(0u8, 0..42 | 43..=255);
    |        ^^^ pattern `42_u8` not covered
    |
    = note: the matched value is of type `u8`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `42_u8` case
    |
-LL |         match $s { $($t)+ => {}, 42_u8 => todo!() }
-   |                                ++++++++++++++++++
+LL |         match $s { $($t)+ => {}, 42_u8 => { todo!() } }
+   |                                ++++++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/exhaustiveness.rs:51:8
@@ -53,10 +53,10 @@ LL |     m!(0i8, -128..127);
    |        ^^^ pattern `i8::MAX` not covered
    |
    = note: the matched value is of type `i8`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `i8::MAX` case
    |
-LL |         match $s { $($t)+ => {}, i8::MAX => todo!() }
-   |                                ++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, i8::MAX => { todo!() } }
+   |                                ++++++++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/exhaustiveness.rs:52:8
@@ -65,10 +65,10 @@ LL |     m!(0i8, -128..=126);
    |        ^^^ pattern `i8::MAX` not covered
    |
    = note: the matched value is of type `i8`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `i8::MAX` case
    |
-LL |         match $s { $($t)+ => {}, i8::MAX => todo!() }
-   |                                ++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, i8::MAX => { todo!() } }
+   |                                ++++++++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/exhaustiveness.rs:53:8
@@ -77,10 +77,10 @@ LL |     m!(0i8, -127..=127);
    |        ^^^ pattern `i8::MIN` not covered
    |
    = note: the matched value is of type `i8`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `i8::MIN` case
    |
-LL |         match $s { $($t)+ => {}, i8::MIN => todo!() }
-   |                                ++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, i8::MIN => { todo!() } }
+   |                                ++++++++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/exhaustiveness.rs:54:11
@@ -89,10 +89,10 @@ LL |     match 0i8 {
    |           ^^^ pattern `0_i8` not covered
    |
    = note: the matched value is of type `i8`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `0_i8` case
    |
 LL ~         1 ..= i8::MAX => {}
-LL +         0_i8 => todo!()
+LL +         0_i8 => { todo!() },
    |
 
 error[E0004]: match is non-exhaustive
@@ -102,10 +102,10 @@ LL |     m!(0u128, 0..=ALMOST_MAX);
    |        ^^^^^ pattern `u128::MAX` not covered
    |
    = note: the matched value is of type `u128`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `u128::MAX` case
    |
-LL |         match $s { $($t)+ => {}, u128::MAX => todo!() }
-   |                                ++++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, u128::MAX => { todo!() } }
+   |                                ++++++++++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/exhaustiveness.rs:60:8
@@ -114,10 +114,10 @@ LL |     m!(0u128, 0..=4);
    |        ^^^^^ pattern `5_u128..=u128::MAX` not covered
    |
    = note: the matched value is of type `u128`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `5_u128..=u128::MAX` case
    |
-LL |         match $s { $($t)+ => {}, 5_u128..=u128::MAX => todo!() }
-   |                                +++++++++++++++++++++++++++++++
+LL |         match $s { $($t)+ => {}, 5_u128..=u128::MAX => { todo!() } }
+   |                                +++++++++++++++++++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/exhaustiveness.rs:61:8
@@ -126,10 +126,10 @@ LL |     m!(0u128, 1..=u128::MAX);
    |        ^^^^^ pattern `0_u128` not covered
    |
    = note: the matched value is of type `u128`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `0_u128` case
    |
-LL |         match $s { $($t)+ => {}, 0_u128 => todo!() }
-   |                                +++++++++++++++++++
+LL |         match $s { $($t)+ => {}, 0_u128 => { todo!() } }
+   |                                +++++++++++++++++++++++
 
 error[E0004]: match is non-exhaustive
   --> $DIR/exhaustiveness.rs:69:11
@@ -138,10 +138,10 @@ LL |     match (0u8, true) {
    |           ^^^^^^^^^^^ pattern `(126_u8..=127_u8, false)` not covered
    |
    = note: the matched value is of type `(u8, bool)`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+help: ensure that all possible cases are being handled by adding an arm to handle the `(126_u8..=127_u8, false)` case
    |
 LL ~         (0 ..= 255, true) => {}
-LL +         (126_u8..=127_u8, false) => todo!()
+LL +         (126_u8..=127_u8, false) => { todo!() },
    |
 
 error: aborting due to 12 previous errors

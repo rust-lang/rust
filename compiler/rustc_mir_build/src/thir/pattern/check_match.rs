@@ -9,15 +9,14 @@ use crate::errors;
 use hir::{ExprKind, PatKind};
 use rustc_arena::TypedArena;
 use rustc_ast::{LitKind, Mutability};
-use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Pat};
+use rustc_middle::thir;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-
 use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };
@@ -615,16 +614,86 @@ fn non_exhaustive_match<'p, 'tcx>(
         return;
     }
 
-    let patterns_len = witnesses.len();
-    let pattern = if witnesses.len() < 4 {
-        witnesses
-            .iter()
-            .map(|witness| witness.to_pat(cx).to_string())
-            .collect::<Vec<String>>()
-            .join(" | ")
-    } else {
-        "_".to_string()
+    let arm_suggestions: Vec<_> = witnesses.iter().map(|witness| witness.to_pat(cx)).collect();
+
+    let suggest_msg = match &*arm_suggestions {
+        [thir::Pat { kind: thir::PatKind::Wild, .. }] => errors::AddArmKind::Wildcard,
+        [pat] => errors::AddArmKind::Single { pat: pat.clone() },
+        _ => errors::AddArmKind::Multiple,
     };
+
+    let mut prefix = String::new();
+    let mut postfix = String::new();
+    let mut indentation = String::new();
+    let mut suggestion_span = None;
+
+    // If the user wrote something like `match x { 1 => 2 }`, we suggest something that stays a one-liner
+    let mut do_oneliner = false;
+
+    let sm = cx.tcx.sess.source_map();
+    match arms {
+        // The user wrote `<-- indentation -->match {}`
+        [] if span.eq_ctxt(expr_span) && let Some(indent) = sm.indentation_before(span) => {
+            prefix.push_str(" {\n");
+
+            indentation.push_str(&indent);
+            indentation.push_str("    ");
+
+            postfix.push_str(&indent);
+            postfix.push_str("}");
+            suggestion_span = Some(span.shrink_to_hi().with_hi(expr_span.hi()));
+        }
+        [hir::Arm {span,  ..}] => {
+            if let Some(indent) = sm.indentation_before(*span)
+                && let Ok(with_trailing) = sm.span_extend_while(*span, |c| c.is_whitespace() || c == ',')
+                && sm.is_multiline(with_trailing) {
+                prefix.push_str(",\n");
+                indentation.push_str(&indent);
+            } else {
+                do_oneliner = true;
+            };
+            suggestion_span = Some(span.shrink_to_hi());
+         }
+        [.., prev, last] if prev.span.eq_ctxt(last.span) => {
+            if !(matches!(last.body.kind, hir::ExprKind::Block(..)) && last.span.eq_ctxt(last.body.span)){
+                prefix.push_str(",");
+            }
+            if sm.is_multiline(prev.span.between(last.span)) && let Some(indent) =  sm.indentation_before(last.span) {
+                prefix.push_str("\n");
+                indentation.push_str(&indent);
+            } else {
+                do_oneliner = true;
+            };
+            suggestion_span = Some(last.span.shrink_to_hi());
+        }
+        _ => {}
+    }
+
+    let suggest_arms = if let Some(span) = suggestion_span {
+        if do_oneliner {
+            errors::ArmSuggestions::OneLiner {
+                span,
+                pattern: if let [pat] = &*arm_suggestions {
+                    pat.clone()
+                } else {
+                    thir::Pat::wildcard_from_ty(scrut_ty)
+                },
+                suggest_msg,
+            }
+        } else {
+            errors::ArmSuggestions::MultipleLines {
+                span,
+                prefix,
+                indentation,
+                postfix,
+                arm_suggestions,
+                suggest_msg,
+            }
+        }
+    } else {
+        errors::ArmSuggestions::Help { suggest_msg }
+    };
+
     let mut err = errors::NonExhaustivePatterns {
         span,
         uncovered: errors::Uncovered::new(span, &cx, &witnesses),
@@ -633,6 +702,7 @@ fn non_exhaustive_match<'p, 'tcx>(
         no_fixed_max_value: None,
         ppsm: None,
         ref_note,
+        suggest_arms,
     };
 
     if (scrut_ty == cx.tcx.types.usize || scrut_ty == cx.tcx.types.isize)
@@ -647,98 +717,7 @@ fn non_exhaustive_match<'p, 'tcx>(
         }
     }
 
-    let mut err = cx.tcx.sess.create_err(err);
-
-    let mut suggestion = None;
-    let sm = cx.tcx.sess.source_map();
-    match arms {
-        [] if span.eq_ctxt(expr_span) => {
-            // Get the span for the empty match body `{}`.
-            let (indentation, more) = if let Some(snippet) = sm.indentation_before(span) {
-                (format!("\n{}", snippet), "    ")
-            } else {
-                (" ".to_string(), "")
-            };
-            suggestion = Some((
-                span.shrink_to_hi().with_hi(expr_span.hi()),
-                format!(
-                    " {{{indentation}{more}{pattern} => todo!(),{indentation}}}",
-                    indentation = indentation,
-                    more = more,
-                    pattern = pattern,
-                ),
-            ));
-        }
-        [only] => {
-            let (pre_indentation, is_multiline) = if let Some(snippet) = sm.indentation_before(only.span)
-                && let Ok(with_trailing) = sm.span_extend_while(only.span, |c| c.is_whitespace() || c == ',')
-                && sm.is_multiline(with_trailing)
-            {
-                (format!("\n{}", snippet), true)
-            } else {
-                (" ".to_string(), false)
-            };
-            let comma = if matches!(only.body.kind, hir::ExprKind::Block(..))
-                && only.span.eq_ctxt(only.body.span)
-                && is_multiline
-            {
-                ""
-            } else {
-                ","
-            };
-            suggestion = Some((
-                only.span.shrink_to_hi(),
-                format!("{}{}{} => todo!()", comma, pre_indentation, pattern),
-            ));
-        }
-        [.., prev, last] if prev.span.eq_ctxt(last.span) => {
-            let comma = if matches!(last.body.kind, hir::ExprKind::Block(..))
-                && last.span.eq_ctxt(last.body.span)
-            {
-                ""
-            } else {
-                ","
-            };
-            let spacing = if sm.is_multiline(prev.span.between(last.span)) {
-                sm.indentation_before(last.span).map(|indent| format!("\n{indent}"))
-            } else {
-                Some(" ".to_string())
-            };
-            if let Some(spacing) = spacing {
-                suggestion = Some((
-                    last.span.shrink_to_hi(),
-                    format!("{}{}{} => todo!()", comma, spacing, pattern),
-                ));
-            }
-        }
-        _ => {}
-    }
-
-    let msg = format!(
-        "ensure that all possible cases are being handled by adding a match arm with a wildcard \
-         pattern{}{}",
-        if patterns_len > 1 && patterns_len < 4 && suggestion.is_some() {
-            ", a match arm with multiple or-patterns"
-        } else {
-            // we are either not suggesting anything, or suggesting `_`
-            ""
-        },
-        match patterns_len {
-            // non-exhaustive enum case
-            0 if suggestion.is_some() => " as shown",
-            0 => "",
-            1 if suggestion.is_some() => " or an explicit pattern as shown",
-            1 => " or an explicit pattern",
-            _ if suggestion.is_some() => " as shown, or multiple match arms",
-            _ => " or multiple match arms",
-        },
-    );
-    if let Some((span, sugg)) = suggestion {
-        err.span_suggestion_verbose(span, &msg, sugg, Applicability::HasPlaceholders);
-    } else {
-        err.help(&msg);
-    }
-    err.emit();
+    cx.tcx.sess.emit_err(err);
 }
 
 /// Check if a by-value binding is by-value. That is, check if the binding's type is not `Copy`.

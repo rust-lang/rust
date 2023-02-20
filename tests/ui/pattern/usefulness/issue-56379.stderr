@@ -16,10 +16,12 @@ LL |     B(bool),
 LL |     C(bool),
    |     - not covered
    = note: the matched value is of type `Foo`
-help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~         Foo::C(true) => {}
-LL +         Foo::A(false) | Foo::B(false) | Foo::C(false) => todo!()
+LL +         Foo::A(false) => { todo!() },
+LL +         Foo::B(false) => { todo!() },
+LL +         Foo::C(false) => { todo!() },
    |
 
 error: aborting due to previous error
