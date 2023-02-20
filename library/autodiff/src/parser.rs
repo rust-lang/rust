@@ -134,7 +134,7 @@ impl Header {
     }
 }
 
-fn strip_sig_attributes(args: Vec<&FnArg>) -> (Vec<FnArg>, Vec<Activity>) {
+pub(crate) fn strip_sig_attributes(args: Vec<&FnArg>) -> (Vec<FnArg>, Vec<Activity>) {
     let mut args = args.into_iter().cloned().collect::<Vec<_>>();
     let acts = args.iter_mut().map(|x| {
         match x {
@@ -268,12 +268,12 @@ fn create_target_signature_reverse(mut sig: Signature, act: &Vec<Activity>, ret_
         if !is_output {
             inputs.push(p.clone());
 
-            if *a != Activity::Const {
-                inputs.push(dup_arg_with_name_mut(&p, "d", true));
-            }
-            
-            if *ret_act != Activity::Const {
-                outputs.push(ret_arg(&p));
+            match a {
+                Activity::Active => {
+                    outputs.push(ret_arg(&p));
+                },
+                Activity::Duplicated | Activity::DuplicatedNoNeed => inputs.push(dup_arg_with_name_mut(&p, "d", true)),
+                _ => {}
             }
         } else {
             inputs.push(p.clone());
@@ -286,24 +286,15 @@ fn create_target_signature_reverse(mut sig: Signature, act: &Vec<Activity>, ret_
 
     sig.inputs = inputs.into_iter().collect();
 
-    if *ret_act != Activity::Const {
-        let ret_ty = match sig.output {
-            ReturnType::Type(_, t) => t,
-            _ => {
-                abort!(
-                    sig.output,
-                    "no return type";
-                    help = "`#[autodiff]` specified duplicated activity but function has not return"
-                );
-            }
-        };
-
-        sig.output = if *ret_act == Activity::Duplicated {
-            parse_quote!(-> (#ret_ty, #( #outputs, )*))
-        } else {
-            parse_quote!(-> (#( #outputs, )*))
-        };
-    }
+    sig.output = if *ret_act == Activity::Active {
+        match outputs.len() {
+            0 => parse_quote!(),
+            1 => parse_quote!(-> #( #outputs )*),
+            _ => parse_quote!(-> (#( #outputs, )*))
+        }
+    } else {
+        parse_quote!()
+    };
         
     sig
 }

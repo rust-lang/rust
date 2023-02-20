@@ -9,7 +9,7 @@ mod gen;
 #[proc_macro_error]
 pub fn autodiff(args: TokenStream, input: TokenStream) -> TokenStream {
     let mut params = parser::parse(args.into(), input.clone().into());
-    let (body, fnc_source) = gen::generate_body(&params);
+    let (body, fnc_source) = gen::generate_body(input.into(), &params);
     let header = gen::generate_header(&params);
 
     // generate function
@@ -28,11 +28,10 @@ pub fn autodiff(args: TokenStream, input: TokenStream) -> TokenStream {
     } else {
         params.sig.ident = params.header.name.get_ident().unwrap().clone();
         let sig = &params.sig;
-        let input: proc_macro2::TokenStream = input.into();
 
         quote!(
             #[autodiff_into]
-            #input
+            #fnc_source
 
             #header
             #sig {

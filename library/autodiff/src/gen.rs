@@ -1,7 +1,8 @@
 use quote::{quote, format_ident};
-use syn::{FnArg, ReturnType};
+use syn::{FnArg, ReturnType, ItemFn};
 use crate::parser::{AutoDiffItem, Activity, Mode};
 use proc_macro2::TokenStream;
+use crate::parser;
 
 pub(crate) fn generate_header(item: &AutoDiffItem) -> TokenStream {
     let mode = match item.header.mode {
@@ -14,7 +15,7 @@ pub(crate) fn generate_header(item: &AutoDiffItem) -> TokenStream {
     quote!(#[autodiff_into(#mode, #ret_act, #( #param_act, )*)])
 }
 
-pub(crate) fn generate_body(item: &AutoDiffItem) -> (TokenStream, TokenStream) {
+pub(crate) fn generate_body(token: TokenStream, item: &AutoDiffItem) -> (TokenStream, TokenStream) {
     let mut fn_args = Vec::new();
     let mut add_args = Vec::new();
 
@@ -65,8 +66,12 @@ pub(crate) fn generate_body(item: &AutoDiffItem) -> (TokenStream, TokenStream) {
             fn_name_call
         )
     } else {
+        let mut item = syn::parse2::<ItemFn>(token).unwrap();
+        let (params, _) = parser::strip_sig_attributes(item.sig.inputs.iter().collect());
+        item.sig.inputs = params.into_iter().collect();
+
         let fn_name = &item.sig.ident;
-        (quote!(), quote!(#fn_name))
+        (quote!(#item), quote!(#fn_name))
     };
 
     let ret = match item.sig.output {
