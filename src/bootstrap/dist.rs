@@ -234,6 +234,7 @@ fn make_win_dist(
         "libkernel32.a",
         "libmsimg32.a",
         "libmsvcrt.a",
+        "libntdll.a",
         "libodbc32.a",
         "libole32.a",
         "liboleaut32.a",
