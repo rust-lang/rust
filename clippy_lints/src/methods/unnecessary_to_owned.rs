@@ -435,7 +435,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                         let output_ty = fn_sig.output();
                         if output_ty.contains(*param_ty) {
                             if let Ok(new_ty)  = cx.tcx.try_subst_and_normalize_erasing_regions(
-                                new_subst, cx.param_env, output_ty) {
+                                new_subst, cx.param_env, EarlyBinder(output_ty)) {
                                 expr = parent_expr;
                                 ty = new_ty;
                                 continue;
