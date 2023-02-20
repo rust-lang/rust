@@ -33,6 +33,44 @@ struct ToolBuild {
     allow_features: &'static str,
 }
 
+fn tooling_output(
+    mode: Mode,
+    tool: &str,
+    build_stage: u32,
+    host: &TargetSelection,
+    target: &TargetSelection,
+) -> String {
+    match mode {
+        // depends on compiler stage, different to host compiler
+        Mode::ToolRustc => {
+            if host == target {
+                format!("Building tool {} (stage{} -> stage{})", tool, build_stage, build_stage + 1)
+            } else {
+                format!(
+                    "Building tool {} (stage{}:{} -> stage{}:{})",
+                    tool,
+                    build_stage,
+                    host,
+                    build_stage + 1,
+                    target
+                )
+            }
+        }
+        // doesn't depend on compiler, same as host compiler
+        Mode::ToolStd => {
+            if host == target {
+                format!("Building tool {} (stage{})", tool, build_stage)
+            } else {
+                format!(
+                    "Building tool {} (stage{}:{} -> stage{}:{})",
+                    tool, build_stage, host, build_stage, target
+                )
+            }
+        }
+        _ => format!("Building tool {} (stage{})", tool, build_stage),
+    }
+}
+
 impl Step for ToolBuild {
     type Output = Option<PathBuf>;
 
@@ -74,8 +112,14 @@ impl Step for ToolBuild {
         if !self.allow_features.is_empty() {
             cargo.allow_features(self.allow_features);
         }
-
-        builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
+        let msg = tooling_output(
+            self.mode,
+            self.tool,
+            self.compiler.stage,
+            &self.compiler.host,
+            &self.target,
+        );
+        builder.info(&msg);
         let mut duplicates = Vec::new();
         let is_expected = compile::stream_cargo(builder, cargo, vec![], &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
@@ -562,10 +606,14 @@ impl Step for Rustdoc {
             features.as_slice(),
         );
 
-        builder.info(&format!(
-            "Building rustdoc for stage{} ({})",
-            target_compiler.stage, target_compiler.host
-        ));
+        let msg = tooling_output(
+            Mode::ToolRustc,
+            "rustdoc",
+            build_compiler.stage,
+            &self.compiler.host,
+            &target,
+        );
+        builder.info(&msg);
         builder.run(&mut cargo.into());
 
         // Cargo adds a number of paths to the dylib search path on windows, which results in
