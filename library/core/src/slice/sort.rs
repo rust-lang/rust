@@ -2156,10 +2156,10 @@ where
     unsafe {
         sort8_stable(&mut v[0..8], is_less);
         sort8_stable(&mut v[8..16], is_less);
-        bi_directional_merge_even(&v[0..16], swap_ptr, is_less);
-
         sort8_stable(&mut v[16..24], is_less);
         sort8_stable(&mut v[24..32], is_less);
+
+        bi_directional_merge_even(&v[0..16], swap_ptr, is_less);
         bi_directional_merge_even(&v[16..32], swap_ptr.add(16), is_less);
 
         let arr_ptr = v.as_mut_ptr();
