@@ -342,7 +342,13 @@ impl Config {
         #[cfg(not(windows))]
         {
             let legacy_rustfmt = self.initial_rustc.with_file_name(exe("rustfmt", host));
-            if !legacy_rustfmt.exists() {
+
+            // Note: we check here whether the symlink itself exists. `Path::exists` would follow
+            // the symlink and return whether the linked file exists instead. If `rustfmt_path` does
+            // not exist but the `legacy_rustfmt` link does, we would recreate it. This was one of
+            // the perf.rlo errors related to issue #108258.
+            let symlink_exists = std::fs::read_link(&legacy_rustfmt).is_ok();
+            if !symlink_exists {
                 t!(self.symlink_file(&rustfmt_path, &legacy_rustfmt));
             }
         }
