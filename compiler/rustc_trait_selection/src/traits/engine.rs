@@ -11,7 +11,7 @@ use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, QueryResponse,
 };
-use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_infer::infer::{DefiningAnchor, InferCtxt, InferOk};
 use rustc_infer::traits::query::Fallible;
 use rustc_infer::traits::{
     FulfillmentError, Obligation, ObligationCause, PredicateObligation, TraitEngineExt as _,
@@ -52,15 +52,24 @@ impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
 pub struct ObligationCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
     engine: RefCell<Box<dyn TraitEngine<'tcx>>>,
+    defining_use_anchor: DefiningAnchor,
 }
 
 impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'tcx>) -> Self {
-        Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new(infcx.tcx)) }
+        Self {
+            infcx,
+            engine: RefCell::new(<dyn TraitEngine<'_>>::new(infcx.tcx)),
+            defining_use_anchor: infcx.old_defining_use_anchor,
+        }
     }
 
     pub fn new_in_snapshot(infcx: &'a InferCtxt<'tcx>) -> Self {
-        Self { infcx, engine: RefCell::new(<dyn TraitEngine<'_>>::new_in_snapshot(infcx.tcx)) }
+        Self {
+            infcx,
+            engine: RefCell::new(<dyn TraitEngine<'_>>::new_in_snapshot(infcx.tcx)),
+            defining_use_anchor: infcx.old_defining_use_anchor,
+        }
     }
 
     pub fn register_obligation(&self, obligation: PredicateObligation<'tcx>) {
@@ -128,7 +137,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     {
         self.infcx
             .at(cause, param_env)
-            .define_opaque_types(self.infcx.defining_use_anchor)
+            .define_opaque_types(self.defining_use_anchor)
             .eq_exp(a_is_expected, a, b)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
@@ -142,7 +151,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
             .at(cause, param_env)
-            .define_opaque_types(self.infcx.defining_use_anchor)
+            .define_opaque_types(self.defining_use_anchor)
             .eq(expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
@@ -157,7 +166,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
             .at(cause, param_env)
-            .define_opaque_types(self.infcx.defining_use_anchor)
+            .define_opaque_types(self.defining_use_anchor)
             .sup(expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
@@ -172,7 +181,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
             .at(cause, param_env)
-            .define_opaque_types(self.infcx.defining_use_anchor)
+            .define_opaque_types(self.defining_use_anchor)
             .sup(expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }

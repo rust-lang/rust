@@ -5,6 +5,7 @@
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::vec::IndexVec;
+use rustc_infer::infer::DefiningAnchor;
 use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
 use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
@@ -167,6 +168,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
     borrow_set: &BorrowSet<'tcx>,
     upvars: &[Upvar<'tcx>],
     use_polonius: bool,
+    defining_use_anchor: DefiningAnchor,
 ) -> NllOutput<'tcx> {
     let mut all_facts =
         (use_polonius || AllFacts::enabled(infcx.tcx)).then_some(AllFacts::default());
@@ -191,6 +193,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
             elements,
             upvars,
             use_polonius,
+            defining_use_anchor,
         );
 
     if let Some(all_facts) = &mut all_facts {

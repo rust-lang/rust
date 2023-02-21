@@ -21,7 +21,8 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{
-    InferCtxt, InferOk, LateBoundRegion, LateBoundRegionConversionTime, NllRegionVariableOrigin,
+    DefiningAnchor, InferCtxt, InferOk, LateBoundRegion, LateBoundRegionConversionTime,
+    NllRegionVariableOrigin,
 };
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
@@ -136,6 +137,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     elements: &Rc<RegionValueElements>,
     upvars: &[Upvar<'tcx>],
     use_polonius: bool,
+    defining_use_anchor: DefiningAnchor,
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = infcx.tcx.mk_re_var(universal_regions.fr_fn_body);
     let mut constraints = MirTypeckRegionConstraints {
@@ -182,6 +184,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         &region_bound_pairs,
         implicit_region_bound,
         &mut borrowck_context,
+        defining_use_anchor,
     );
 
     let errors_reported = {
@@ -877,6 +880,7 @@ struct TypeChecker<'a, 'tcx> {
     implicit_region_bound: ty::Region<'tcx>,
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
+    defining_use_anchor: DefiningAnchor,
 }
 
 struct BorrowCheckContext<'a, 'tcx> {
@@ -1025,6 +1029,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: ty::Region<'tcx>,
         borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
+        defining_use_anchor: DefiningAnchor,
     ) -> Self {
         let mut checker = Self {
             infcx,
@@ -1036,6 +1041,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             implicit_region_bound,
             borrowck_context,
             reported_errors: Default::default(),
+            defining_use_anchor,
         };
         checker.check_user_type_annotations();
         checker

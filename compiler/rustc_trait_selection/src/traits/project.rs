@@ -283,14 +283,14 @@ fn project_and_unify_type<'cx, 'tcx>(
             obligation.cause.body_id,
             obligation.cause.span,
             obligation.param_env,
-            infcx.defining_use_anchor,
+            selcx.defining_use_anchor(),
         );
     obligations.extend(new);
 
     match infcx
         .at(&obligation.cause, obligation.param_env)
         // This is needed to support nested opaque types like `impl Fn() -> impl Trait`
-        .define_opaque_types(infcx.defining_use_anchor)
+        .define_opaque_types(selcx.defining_use_anchor())
         .eq(normalized, actual)
     {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {

@@ -501,7 +501,7 @@ impl<'tcx> InferCtxt<'tcx> {
             debug!(?a, ?b, "constrain opaque type");
             obligations.extend(
                 self.at(cause, param_env)
-                    .define_opaque_types(self.defining_use_anchor)
+                    .define_opaque_types(self.old_defining_use_anchor)
                     .eq(a, b)?
                     .obligations,
             );

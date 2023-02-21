@@ -242,7 +242,7 @@ pub struct InferCtxt<'tcx> {
     ///
     /// Its default value is `DefiningAnchor::Error`, this way it is easier to catch errors that
     /// might come up during inference or typeck.
-    pub defining_use_anchor: DefiningAnchor,
+    pub old_defining_use_anchor: DefiningAnchor,
 
     /// Whether this inference context should care about region obligations in
     /// the root universe. Most notably, this is used during hir typeck as region
@@ -604,7 +604,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         let InferCtxtBuilder { tcx, defining_use_anchor, considering_regions, intercrate } = *self;
         InferCtxt {
             tcx,
-            defining_use_anchor,
+            old_defining_use_anchor: defining_use_anchor,
             considering_regions,
             inner: RefCell::new(InferCtxtInner::new()),
             lexical_region_resolutions: RefCell::new(None),
@@ -1318,7 +1318,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     #[instrument(level = "debug", skip(self), ret)]
     pub fn take_opaque_types(&self) -> opaque_types::OpaqueTypeMap<'tcx> {
-        debug_assert_ne!(self.defining_use_anchor, DefiningAnchor::Error);
+        debug_assert_ne!(self.old_defining_use_anchor, DefiningAnchor::Error);
         std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
     }
 

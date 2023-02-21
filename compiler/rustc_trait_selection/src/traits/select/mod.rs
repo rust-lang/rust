@@ -38,6 +38,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::DefiningAnchor;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::traits::TraitEngine;
 use rustc_infer::traits::TraitEngineExt;
@@ -127,6 +128,8 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// policy. In essence, canonicalized queries need their errors propagated
     /// rather than immediately reported because we do not have accurate spans.
     query_mode: TraitQueryMode,
+
+    defining_use_anchor: DefiningAnchor,
 }
 
 // A stack that walks back up the stack frame.
@@ -214,6 +217,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             freshener: infcx.freshener_keep_static(),
             intercrate_ambiguity_causes: None,
             query_mode: TraitQueryMode::Standard,
+            defining_use_anchor: infcx.old_defining_use_anchor,
         }
     }
 
@@ -2678,6 +2682,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         obligations
+    }
+
+    pub fn defining_use_anchor(&self) -> DefiningAnchor {
+        self.defining_use_anchor
     }
 }
 
