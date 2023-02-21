@@ -1129,6 +1129,11 @@ fn should_encode_trait_impl_trait_tys(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     })
 }
 
+// Return `false` to avoid encoding impl trait in trait, while we don't use the query.
+fn should_encode_fn_impl_trait_in_trait<'tcx>(_tcx: TyCtxt<'tcx>, _def_id: DefId) -> bool {
+    false
+}
+
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
@@ -1137,8 +1142,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             is_doc_hidden: false,
         };
         let attr_iter = tcx
-            .hir()
-            .attrs(tcx.hir().local_def_id_to_hir_id(def_id))
+            .opt_local_def_id_to_hir_id(def_id)
+            .map_or(Default::default(), |hir_id| tcx.hir().attrs(hir_id))
             .iter()
             .filter(|attr| analyze_attr(attr, &mut state));
 
@@ -1210,6 +1215,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
             {
                 record!(self.tables.trait_impl_trait_tys[def_id] <- table);
+            }
+            if should_encode_fn_impl_trait_in_trait(tcx, def_id) {
+                let table = tcx.associated_items_for_impl_trait_in_trait(def_id);
+                record_defaulted_array!(self.tables.associated_items_for_impl_trait_in_trait[def_id] <- table);
             }
         }
 
