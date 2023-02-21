@@ -6,6 +6,7 @@
 //! println!("sup");
 //! ```
 
+#![deny(rustdoc::missing_doc_code_examples)]
 #![deny(rustdoc::all)]
 
 /// what up, let's make an [error]

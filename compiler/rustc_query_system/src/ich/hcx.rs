@@ -90,7 +90,7 @@ impl<'a> StableHashingContext<'a> {
         if let Some(def_id) = def_id.as_local() {
             self.local_def_path_hash(def_id)
         } else {
-            self.untracked.cstore.def_path_hash(def_id)
+            self.untracked.cstore.read().def_path_hash(def_id)
         }
     }
 
@@ -146,7 +146,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
 
     #[inline]
     fn def_span(&self, def_id: LocalDefId) -> Span {
-        *self.untracked.source_span.get(def_id).unwrap_or(&DUMMY_SP)
+        *self.untracked.source_span.read().get(def_id).unwrap_or(&DUMMY_SP)
     }
 
     #[inline]

@@ -830,8 +830,7 @@ macro_rules! rgb_color {
 /* parse error: expected COMMA */
 /* parse error: expected R_ANGLE */
 /* parse error: expected SEMICOLON */
-/* parse error: expected SEMICOLON */
-/* parse error: expected expression */
+/* parse error: expected expression, item or let statement */
 pub fn new() {
     let _ = 0as u32<<(8+8);
 }
@@ -848,21 +847,21 @@ pub fn new() {
 //     BLOCK_EXPR@10..31
 //       STMT_LIST@10..31
 //         L_CURLY@10..11 "{"
-//         LET_STMT@11..27
+//         LET_STMT@11..28
 //           LET_KW@11..14 "let"
 //           WILDCARD_PAT@14..15
 //             UNDERSCORE@14..15 "_"
 //           EQ@15..16 "="
-//           CAST_EXPR@16..27
+//           CAST_EXPR@16..28
 //             LITERAL@16..17
 //               INT_NUMBER@16..17 "0"
 //             AS_KW@17..19 "as"
-//             PATH_TYPE@19..27
-//               PATH@19..27
-//                 PATH_SEGMENT@19..27
+//             PATH_TYPE@19..28
+//               PATH@19..28
+//                 PATH_SEGMENT@19..28
 //                   NAME_REF@19..22
 //                     IDENT@19..22 "u32"
-//                   GENERIC_ARG_LIST@22..27
+//                   GENERIC_ARG_LIST@22..28
 //                     L_ANGLE@22..23 "<"
 //                     TYPE_ARG@23..27
 //                       DYN_TRAIT_TYPE@23..27
@@ -877,9 +876,9 @@ pub fn new() {
 //                                     ERROR@25..26
 //                                       INT_NUMBER@25..26 "8"
 //                           PLUS@26..27 "+"
-//         EXPR_STMT@27..28
-//           LITERAL@27..28
-//             INT_NUMBER@27..28 "8"
+//                     CONST_ARG@27..28
+//                       LITERAL@27..28
+//                         INT_NUMBER@27..28 "8"
 //         ERROR@28..29
 //           R_PAREN@28..29 ")"
 //         SEMICOLON@29..30 ";"

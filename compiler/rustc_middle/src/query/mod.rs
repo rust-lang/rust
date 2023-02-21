@@ -33,7 +33,7 @@ rustc_queries! {
     }
 
     query resolver_for_lowering(_: ()) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
-        feedable
+        eval_always
         no_hash
         desc { "getting the resolver for lowering" }
     }
@@ -2075,6 +2075,18 @@ rustc_queries! {
     query features_query(_: ()) -> &'tcx rustc_feature::Features {
         feedable
         desc { "looking up enabled feature gates" }
+    }
+
+    query metadata_loader((): ()) -> &'tcx Steal<Box<rustc_session::cstore::MetadataLoaderDyn>> {
+        feedable
+        no_hash
+        desc { "raw operations for metadata file access" }
+    }
+
+    query crate_for_resolver((): ()) -> &'tcx Steal<rustc_ast::ast::Crate> {
+        feedable
+        no_hash
+        desc { "the ast before macro expansion and name resolution" }
     }
 
     /// Attempt to resolve the given `DefId` to an `Instance`, for the

@@ -534,7 +534,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     return PlaceTy::from_ty(self.tcx().ty_error());
                 }
             }
-            place_ty = self.sanitize_projection(place_ty, elem, place, location);
+            place_ty = self.sanitize_projection(place_ty, elem, place, location, context);
         }
 
         if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
@@ -630,12 +630,14 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn sanitize_projection(
         &mut self,
         base: PlaceTy<'tcx>,
         pi: PlaceElem<'tcx>,
         place: &Place<'tcx>,
         location: Location,
+        context: PlaceContext,
     ) -> PlaceTy<'tcx> {
         debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, place);
         let tcx = self.tcx();
@@ -713,8 +715,11 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 match self.field_ty(place, base, field, location) {
                     Ok(ty) => {
                         let ty = self.cx.normalize(ty, location);
-                        if let Err(terr) = self.cx.eq_types(
+                        debug!(?fty, ?ty);
+
+                        if let Err(terr) = self.cx.relate_types(
                             ty,
+                            self.get_ambient_variance(context),
                             fty,
                             location.to_locations(),
                             ConstraintCategory::Boring,
@@ -743,9 +748,10 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 let ty = self.sanitize_type(place, ty);
                 let ty = self.cx.normalize(ty, location);
                 self.cx
-                    .eq_types(
-                        base.ty,
+                    .relate_types(
                         ty,
+                        self.get_ambient_variance(context),
+                        base.ty,
                         location.to_locations(),
                         ConstraintCategory::TypeAnnotation,
                     )
@@ -758,6 +764,21 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
     fn error(&mut self) -> Ty<'tcx> {
         self.errors_reported = true;
         self.tcx().ty_error()
+    }
+
+    fn get_ambient_variance(&self, context: PlaceContext) -> ty::Variance {
+        use rustc_middle::mir::visit::NonMutatingUseContext::*;
+        use rustc_middle::mir::visit::NonUseContext::*;
+
+        match context {
+            PlaceContext::MutatingUse(_) => ty::Invariant,
+            PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
+            PlaceContext::NonMutatingUse(
+                Inspect | Copy | Move | SharedBorrow | ShallowBorrow | UniqueBorrow | AddressOf
+                | Projection,
+            ) => ty::Covariant,
+            PlaceContext::NonUse(AscribeUserTy) => ty::Covariant,
+        }
     }
 
     fn field_ty(

@@ -2,9 +2,10 @@
 
 use either::Either;
 use hir::{Semantics, Type};
+use parser::T;
 use syntax::{
     ast::{self, HasArgList, HasName},
-    AstNode, SyntaxToken,
+    match_ast, AstNode, NodeOrToken, SyntaxToken,
 };
 
 use crate::RootDatabase;
@@ -58,7 +59,7 @@ pub fn callable_for_node(
     calling_node: &ast::CallableExpr,
     token: &SyntaxToken,
 ) -> Option<(hir::Callable, Option<usize>)> {
-    let callable = match &calling_node {
+    let callable = match calling_node {
         ast::CallableExpr::Call(call) => {
             let expr = call.expr()?;
             sema.type_of_expr(&expr)?.adjusted().as_callable(sema.db)
@@ -66,13 +67,78 @@ pub fn callable_for_node(
         ast::CallableExpr::MethodCall(call) => sema.resolve_method_call_as_callable(call),
     }?;
     let active_param = if let Some(arg_list) = calling_node.arg_list() {
-        let param = arg_list
-            .args()
-            .take_while(|arg| arg.syntax().text_range().end() <= token.text_range().start())
-            .count();
-        Some(param)
+        Some(
+            arg_list
+                .syntax()
+                .children_with_tokens()
+                .filter_map(NodeOrToken::into_token)
+                .filter(|t| t.kind() == T![,])
+                .take_while(|t| t.text_range().start() <= token.text_range().start())
+                .count(),
+        )
     } else {
         None
     };
     Some((callable, active_param))
+}
+
+pub fn generic_def_for_node(
+    sema: &Semantics<'_, RootDatabase>,
+    generic_arg_list: &ast::GenericArgList,
+    token: &SyntaxToken,
+) -> Option<(hir::GenericDef, usize, bool)> {
+    let parent = generic_arg_list.syntax().parent()?;
+    let def = match_ast! {
+        match parent {
+            ast::PathSegment(ps) => {
+                let res = sema.resolve_path(&ps.parent_path())?;
+                let generic_def: hir::GenericDef = match res {
+                    hir::PathResolution::Def(hir::ModuleDef::Adt(it)) => it.into(),
+                    hir::PathResolution::Def(hir::ModuleDef::Function(it)) => it.into(),
+                    hir::PathResolution::Def(hir::ModuleDef::Trait(it)) => it.into(),
+                    hir::PathResolution::Def(hir::ModuleDef::TypeAlias(it)) => it.into(),
+                    hir::PathResolution::Def(hir::ModuleDef::Variant(it)) => it.into(),
+                    hir::PathResolution::Def(hir::ModuleDef::BuiltinType(_))
+                    | hir::PathResolution::Def(hir::ModuleDef::Const(_))
+                    | hir::PathResolution::Def(hir::ModuleDef::Macro(_))
+                    | hir::PathResolution::Def(hir::ModuleDef::Module(_))
+                    | hir::PathResolution::Def(hir::ModuleDef::Static(_)) => return None,
+                    hir::PathResolution::BuiltinAttr(_)
+                    | hir::PathResolution::ToolModule(_)
+                    | hir::PathResolution::Local(_)
+                    | hir::PathResolution::TypeParam(_)
+                    | hir::PathResolution::ConstParam(_)
+                    | hir::PathResolution::SelfType(_)
+                    | hir::PathResolution::DeriveHelper(_) => return None,
+                };
+
+                generic_def
+            },
+            ast::AssocTypeArg(_) => {
+                // FIXME: We don't record the resolutions for this anywhere atm
+                return None;
+            },
+            ast::MethodCallExpr(mcall) => {
+                // recv.method::<$0>()
+                let method = sema.resolve_method_call(&mcall)?;
+                method.into()
+            },
+            _ => return None,
+        }
+    };
+
+    let active_param = generic_arg_list
+        .syntax()
+        .children_with_tokens()
+        .filter_map(NodeOrToken::into_token)
+        .filter(|t| t.kind() == T![,])
+        .take_while(|t| t.text_range().start() <= token.text_range().start())
+        .count();
+
+    let first_arg_is_non_lifetime = generic_arg_list
+        .generic_args()
+        .next()
+        .map_or(false, |arg| !matches!(arg, ast::GenericArg::LifetimeArg(_)));
+
+    Some((def, active_param, first_arg_is_non_lifetime))
 }

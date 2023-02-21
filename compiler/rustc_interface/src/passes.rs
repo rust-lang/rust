@@ -8,11 +8,12 @@ use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
-use rustc_errors::{ErrorGuaranteed, PResult};
+use rustc_errors::PResult;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
-use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore};
+use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
@@ -171,14 +172,12 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
-pub fn configure_and_expand(
-    sess: &Session,
-    lint_store: &LintStore,
-    mut krate: ast::Crate,
-    crate_name: Symbol,
-    resolver: &mut Resolver<'_, '_>,
-) -> Result<ast::Crate> {
-    trace!("configure_and_expand");
+#[instrument(level = "trace", skip(krate, resolver))]
+fn configure_and_expand(mut krate: ast::Crate, resolver: &mut Resolver<'_, '_>) -> ast::Crate {
+    let tcx = resolver.tcx();
+    let sess = tcx.sess;
+    let lint_store = unerased_lint_store(tcx);
+    let crate_name = tcx.crate_name(LOCAL_CRATE);
     pre_expansion_lint(sess, lint_store, resolver.registered_tools(), &krate, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
@@ -249,20 +248,19 @@ pub fn configure_and_expand(
             ecx.check_unused_macros();
         });
 
-        let recursion_limit_hit = ecx.reduced_recursion_limit.is_some();
+        // If we hit a recursion limit, exit early to avoid later passes getting overwhelmed
+        // with a large AST
+        if ecx.reduced_recursion_limit.is_some() {
+            sess.abort_if_errors();
+            unreachable!();
+        }
 
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
         }
 
-        if recursion_limit_hit {
-            // If we hit a recursion limit, exit early to avoid later passes getting overwhelmed
-            // with a large AST
-            Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
-        } else {
-            Ok(krate)
-        }
-    })?;
+        krate
+    });
 
     sess.time("maybe_building_test_harness", || {
         rustc_builtin_macros::test_harness::inject(sess, resolver, &mut krate)
@@ -365,7 +363,7 @@ pub fn configure_and_expand(
         )
     });
 
-    Ok(krate)
+    krate
 }
 
 // Returns all the paths that correspond to generated files.
@@ -564,6 +562,28 @@ fn write_out_deps(
     }
 }
 
+fn resolver_for_lowering<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (): (),
+) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
+    let arenas = Resolver::arenas();
+    let krate = tcx.crate_for_resolver(()).steal();
+    let mut resolver = Resolver::new(tcx, &krate, &arenas);
+    let krate = configure_and_expand(krate, &mut resolver);
+
+    // Make sure we don't mutate the cstore from here on.
+    tcx.untracked().cstore.leak();
+
+    let ty::ResolverOutputs {
+        global_ctxt: untracked_resolutions,
+        ast_lowering: untracked_resolver_for_lowering,
+    } = resolver.into_outputs();
+
+    let feed = tcx.feed_unit_query();
+    feed.resolutions(tcx.arena.alloc(untracked_resolutions));
+    tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Lrc::new(krate))))
+}
+
 fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
     let sess = tcx.sess;
     let _timer = sess.timer("prepare_outputs");
@@ -597,7 +617,7 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
         }
     }
 
-    write_out_deps(sess, tcx.cstore_untracked(), &outputs, &output_paths);
+    write_out_deps(sess, &*tcx.cstore_untracked(), &outputs, &output_paths);
 
     let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
         && sess.opts.output_types.len() == 1;
@@ -618,6 +638,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.analysis = analysis;
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
     providers.output_filenames = output_filenames;
+    providers.resolver_for_lowering = resolver_for_lowering;
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);

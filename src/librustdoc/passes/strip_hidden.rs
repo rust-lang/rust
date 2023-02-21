@@ -62,7 +62,7 @@ impl<'a, 'tcx> Stripper<'a, 'tcx> {
 
     /// In case `i` is a non-hidden impl block, then we special-case it by changing the value
     /// of `is_in_hidden_item` to `true` because the impl children inherit its visibility.
-    fn recurse_in_impl(&mut self, i: Item) -> Item {
+    fn recurse_in_impl_or_exported_macro(&mut self, i: Item) -> Item {
         let prev = mem::replace(&mut self.is_in_hidden_item, false);
         let ret = self.fold_item_recur(i);
         self.is_in_hidden_item = prev;
@@ -73,9 +73,17 @@ impl<'a, 'tcx> Stripper<'a, 'tcx> {
 impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         let has_doc_hidden = i.attrs.lists(sym::doc).has_word(sym::hidden);
-        let is_impl = matches!(*i.kind, clean::ImplItem(..));
+        let is_impl_or_exported_macro = match *i.kind {
+            clean::ImplItem(..) => true,
+            // If the macro has the `#[macro_export]` attribute, it means it's accessible at the
+            // crate level so it should be handled differently.
+            clean::MacroItem(..) => {
+                i.attrs.other_attrs.iter().any(|attr| attr.has_name(sym::macro_export))
+            }
+            _ => false,
+        };
         let mut is_hidden = has_doc_hidden;
-        if !is_impl {
+        if !is_impl_or_exported_macro {
             is_hidden = self.is_in_hidden_item || has_doc_hidden;
             if !is_hidden && i.inline_stmt_id.is_none() {
                 // We don't need to check if it's coming from a reexport since the reexport itself was
@@ -92,8 +100,8 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
             if self.update_retained {
                 self.retained.insert(i.item_id);
             }
-            return Some(if is_impl {
-                self.recurse_in_impl(i)
+            return Some(if is_impl_or_exported_macro {
+                self.recurse_in_impl_or_exported_macro(i)
             } else {
                 self.set_is_in_hidden_item_and_fold(false, i)
             });

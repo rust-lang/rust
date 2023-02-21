@@ -57,9 +57,7 @@ impl<'tcx> InferCtxt<'tcx> {
         }
         let mut obligations = vec![];
         let replace_opaque_type = |def_id: DefId| {
-            def_id
-                .as_local()
-                .map_or(false, |def_id| self.opaque_type_origin(def_id, span).is_some())
+            def_id.as_local().map_or(false, |def_id| self.opaque_type_origin(def_id).is_some())
         };
         let value = value.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,
@@ -144,9 +142,9 @@ impl<'tcx> InferCtxt<'tcx> {
                         //     let x = || foo(); // returns the Opaque assoc with `foo`
                         // }
                         // ```
-                        self.opaque_type_origin(def_id, cause.span)?
+                        self.opaque_type_origin(def_id)?
                     }
-                    DefiningAnchor::Bubble => self.opaque_ty_origin_unchecked(def_id, cause.span),
+                    DefiningAnchor::Bubble => self.opaque_type_origin_unchecked(def_id),
                     DefiningAnchor::Error => return None,
                 };
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {
@@ -155,9 +153,8 @@ impl<'tcx> InferCtxt<'tcx> {
                     // no one encounters it in practice.
                     // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
                     // where it is of no concern, so we only check for TAITs.
-                    if let Some(OpaqueTyOrigin::TyAlias) = b_def_id
-                        .as_local()
-                        .and_then(|b_def_id| self.opaque_type_origin(b_def_id, cause.span))
+                    if let Some(OpaqueTyOrigin::TyAlias) =
+                        b_def_id.as_local().and_then(|b_def_id| self.opaque_type_origin(b_def_id))
                     {
                         self.tcx.sess.emit_err(OpaqueHiddenTypeDiag {
                             span: cause.span,
@@ -371,24 +368,18 @@ impl<'tcx> InferCtxt<'tcx> {
         });
     }
 
+    /// Returns the origin of the opaque type `def_id` if we're currently
+    /// in its defining scope.
     #[instrument(skip(self), level = "trace", ret)]
-    pub fn opaque_type_origin(&self, def_id: LocalDefId, span: Span) -> Option<OpaqueTyOrigin> {
+    pub fn opaque_type_origin(&self, def_id: LocalDefId) -> Option<OpaqueTyOrigin> {
         let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let parent_def_id = match self.defining_use_anchor {
             DefiningAnchor::Bubble | DefiningAnchor::Error => return None,
             DefiningAnchor::Bind(bind) => bind,
         };
-        let item_kind = &self.tcx.hir().expect_item(def_id).kind;
 
-        let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) = item_kind else {
-            span_bug!(
-                span,
-                "weird opaque type: {:#?}, {:#?}",
-                def_id,
-                item_kind
-            )
-        };
-        let in_definition_scope = match *origin {
+        let origin = self.opaque_type_origin_unchecked(def_id);
+        let in_definition_scope = match origin {
             // Async `impl Trait`
             hir::OpaqueTyOrigin::AsyncFn(parent) => parent == parent_def_id,
             // Anonymous `impl Trait`
@@ -398,16 +389,17 @@ impl<'tcx> InferCtxt<'tcx> {
                 may_define_opaque_type(self.tcx, parent_def_id, opaque_hir_id)
             }
         };
-        trace!(?origin);
-        in_definition_scope.then_some(*origin)
+        in_definition_scope.then_some(origin)
     }
 
+    /// Returns the origin of the opaque type `def_id` even if we are not in its
+    /// defining scope.
     #[instrument(skip(self), level = "trace", ret)]
-    fn opaque_ty_origin_unchecked(&self, def_id: LocalDefId, span: Span) -> OpaqueTyOrigin {
+    fn opaque_type_origin_unchecked(&self, def_id: LocalDefId) -> OpaqueTyOrigin {
         match self.tcx.hir().expect_item(def_id).kind {
             hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => origin,
             ref itemkind => {
-                span_bug!(span, "weird opaque type: {:?}, {:#?}", def_id, itemkind)
+                bug!("weird opaque type: {:?}, {:#?}", def_id, itemkind)
             }
         }
     }

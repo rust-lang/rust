@@ -33,6 +33,7 @@ use rustc_target::spec::{RelocModel, Target};
 /// <dt>dylib</dt>
 /// <dd>The metadata can be found in the `.rustc` section of the shared library.</dd>
 /// </dl>
+#[derive(Debug)]
 pub struct DefaultMetadataLoader;
 
 fn load_metadata_with(
