@@ -37,6 +37,7 @@ mod handlers {
     pub(crate) mod missing_fields;
     pub(crate) mod missing_match_arms;
     pub(crate) mod missing_unsafe;
+    pub(crate) mod mutability_errors;
     pub(crate) mod no_such_field;
     pub(crate) mod private_assoc_item;
     pub(crate) mod private_field;
@@ -273,7 +274,8 @@ pub fn diagnostics(
             AnyDiagnostic::InvalidDeriveTarget(d) => handlers::invalid_derive_target::invalid_derive_target(&ctx, &d),
             AnyDiagnostic::UnresolvedField(d) => handlers::unresolved_field::unresolved_field(&ctx, &d),
             AnyDiagnostic::UnresolvedMethodCall(d) => handlers::unresolved_method::unresolved_method(&ctx, &d),
-
+            AnyDiagnostic::NeedMut(d) => handlers::mutability_errors::need_mut(&ctx, &d),
+            AnyDiagnostic::UnusedMut(d) => handlers::mutability_errors::unused_mut(&ctx, &d),
             AnyDiagnostic::InactiveCode(d) => match handlers::inactive_code::inactive_code(&ctx, &d) {
                 Some(it) => it,
                 None => continue,

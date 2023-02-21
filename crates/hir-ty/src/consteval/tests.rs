@@ -103,6 +103,22 @@ fn references() {
     "#,
         5,
     );
+    check_number(
+        r#"
+    struct Foo(i32);
+    impl Foo {
+        fn method(&mut self, x: i32) {
+            self.0 = 2 * self.0 + x;
+        }
+    }
+    const GOAL: i32 = {
+        let mut x = Foo(3);
+        x.method(5);
+        x.0
+    };
+    "#,
+        11,
+    );
 }
 
 #[test]
@@ -358,7 +374,7 @@ fn ifs() {
         if a < b { b } else { a }
     }
 
-    const GOAL: u8 = max(max(1, max(10, 3)), 0-122);
+    const GOAL: i32 = max(max(1, max(10, 3)), 0-122);
         "#,
         10,
     );
@@ -366,7 +382,7 @@ fn ifs() {
     check_number(
         r#"
     const fn max(a: &i32, b: &i32) -> &i32 {
-        if a < b { b } else { a }
+        if *a < *b { b } else { a }
     }
 
     const GOAL: i32 = *max(max(&1, max(&10, &3)), &5);
@@ -466,6 +482,16 @@ fn tuples() {
     );
     check_number(
         r#"
+    const GOAL: u8 = {
+        let mut a = (10, 20, 3, 15);
+        a.1 = 2;
+        a.0 + a.1 + a.2 + a.3
+    };
+        "#,
+        30,
+    );
+    check_number(
+        r#"
     struct TupleLike(i32, u8, i64, u16);
     const GOAL: u8 = {
         let a = TupleLike(10, 20, 3, 15);
@@ -539,7 +565,7 @@ fn let_else() {
         let Some(x) = x else { return 10 };
         2 * x
     }
-    const GOAL: u8 = f(Some(1000)) + f(None);
+    const GOAL: i32 = f(Some(1000)) + f(None);
         "#,
         2010,
     );
@@ -615,7 +641,7 @@ fn options() {
             0
         }
     }
-    const GOAL: u8 = f(Some(Some(10))) + f(Some(None)) + f(None);
+    const GOAL: i32 = f(Some(Some(10))) + f(Some(None)) + f(None);
         "#,
         11,
     );
@@ -746,24 +772,24 @@ fn enums() {
         r#"
     enum E {
         F1 = 1,
-        F2 = 2 * E::F1 as u8,
-        F3 = 3 * E::F2 as u8,
+        F2 = 2 * E::F1 as isize, // Rustc expects an isize here
+        F3 = 3 * E::F2 as isize,
     }
-    const GOAL: i32 = E::F3 as u8;
+    const GOAL: u8 = E::F3 as u8;
     "#,
         6,
     );
     check_number(
         r#"
     enum E { F1 = 1, F2, }
-    const GOAL: i32 = E::F2 as u8;
+    const GOAL: u8 = E::F2 as u8;
     "#,
         2,
     );
     check_number(
         r#"
     enum E { F1, }
-    const GOAL: i32 = E::F1 as u8;
+    const GOAL: u8 = E::F1 as u8;
     "#,
         0,
     );
@@ -894,8 +920,22 @@ fn exec_limits() {
         }
         sum
     }
-    const GOAL: usize = f(10000);
+    const GOAL: i32 = f(10000);
     "#,
         10000 * 10000,
     );
+}
+
+#[test]
+fn type_error() {
+    let e = eval_goal(
+        r#"
+    const GOAL: u8 = {
+        let x: u16 = 2;
+        let y: (u8, u8) = x;
+        y.0
+    };
+    "#,
+    );
+    assert!(matches!(e, Err(ConstEvalError::MirLowerError(MirLowerError::TypeMismatch(_)))));
 }

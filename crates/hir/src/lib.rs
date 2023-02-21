@@ -63,7 +63,7 @@ use hir_ty::{
     display::HexifiedConst,
     layout::layout_of_ty,
     method_resolution::{self, TyFingerprint},
-    mir::interpret_mir,
+    mir::{self, interpret_mir},
     primitive::UintTy,
     traits::FnTrait,
     AliasTy, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId,
@@ -85,12 +85,12 @@ use crate::db::{DefDatabase, HirDatabase};
 pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
-        AnyDiagnostic, BreakOutsideOfLoop, ExpectedFunction, InactiveCode, IncorrectCase,
-        InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount, MissingFields,
-        MissingMatchArms, MissingUnsafe, NoSuchField, PrivateAssocItem, PrivateField,
+        AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase, InvalidDeriveTarget,
+        MacroError, MalformedDerive, MismatchedArgCount, MissingFields, MissingMatchArms,
+        MissingUnsafe, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
         ReplaceFilterMapNextWithFindMap, TypeMismatch, UnimplementedBuiltinMacro,
-        UnresolvedExternCrate, UnresolvedField, UnresolvedImport, UnresolvedMacroCall,
-        UnresolvedMethodCall, UnresolvedModule, UnresolvedProcMacro,
+        UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall, UnresolvedModule,
+        UnresolvedProcMacro, UnusedMut,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -1500,6 +1500,38 @@ impl DefWithBody {
             }
         }
 
+        let hir_body = db.body(self.into());
+
+        if let Ok(mir_body) = db.mir_body(self.into()) {
+            let mol = mir::borrowck::mutability_of_locals(&mir_body);
+            for (binding_id, _) in hir_body.bindings.iter() {
+                let need_mut = &mol[mir_body.binding_locals[binding_id]];
+                let local = Local { parent: self.into(), binding_id };
+                match (need_mut, local.is_mut(db)) {
+                    (mir::borrowck::Mutability::Mut { .. }, true)
+                    | (mir::borrowck::Mutability::Not, false) => (),
+                    (mir::borrowck::Mutability::Mut { span }, false) => {
+                        let span: InFile<SyntaxNodePtr> = match span {
+                            mir::MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
+                                Ok(s) => s.map(|x| x.into()),
+                                Err(_) => continue,
+                            },
+                            mir::MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
+                                Ok(s) => s.map(|x| match x {
+                                    Either::Left(e) => e.into(),
+                                    Either::Right(e) => e.into(),
+                                }),
+                                Err(_) => continue,
+                            },
+                            mir::MirSpan::Unknown => continue,
+                        };
+                        acc.push(NeedMut { local, span }.into());
+                    }
+                    (mir::borrowck::Mutability::Not, true) => acc.push(UnusedMut { local }.into()),
+                }
+            }
+        }
+
         for diagnostic in BodyValidationDiagnostic::collect(db, self.into()) {
             match diagnostic {
                 BodyValidationDiagnostic::RecordMissingFields {
@@ -2489,6 +2521,10 @@ impl LocalSource {
 
     pub fn syntax(&self) -> &SyntaxNode {
         self.source.value.syntax()
+    }
+
+    pub fn syntax_ptr(self) -> InFile<SyntaxNodePtr> {
+        self.source.map(|x| SyntaxNodePtr::new(x.syntax()))
     }
 }
 

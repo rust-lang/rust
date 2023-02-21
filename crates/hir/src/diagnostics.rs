@@ -10,7 +10,7 @@ use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 
-use crate::{AssocItem, Field, MacroKind, Type};
+use crate::{AssocItem, Field, Local, MacroKind, Type};
 
 macro_rules! diagnostics {
     ($($diag:ident,)*) => {
@@ -41,6 +41,7 @@ diagnostics![
     MissingFields,
     MissingMatchArms,
     MissingUnsafe,
+    NeedMut,
     NoSuchField,
     PrivateAssocItem,
     PrivateField,
@@ -54,6 +55,7 @@ diagnostics![
     UnresolvedMethodCall,
     UnresolvedModule,
     UnresolvedProcMacro,
+    UnusedMut,
 ];
 
 #[derive(Debug)]
@@ -207,6 +209,17 @@ pub struct TypeMismatch {
     pub expr_or_pat: Either<InFile<AstPtr<ast::Expr>>, InFile<AstPtr<ast::Pat>>>,
     pub expected: Type,
     pub actual: Type,
+}
+
+#[derive(Debug)]
+pub struct NeedMut {
+    pub local: Local,
+    pub span: InFile<SyntaxNodePtr>,
+}
+
+#[derive(Debug)]
+pub struct UnusedMut {
+    pub local: Local,
 }
 
 pub use hir_ty::diagnostics::IncorrectCase;

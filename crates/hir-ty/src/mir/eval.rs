@@ -29,7 +29,7 @@ use crate::{
 
 use super::{
     const_as_usize, return_slot, AggregateKind, BinOp, CastKind, LocalId, MirBody, MirLowerError,
-    Operand, Place, ProjectionElem, Rvalue, Statement, Terminator, UnOp,
+    Operand, Place, ProjectionElem, Rvalue, StatementKind, Terminator, UnOp,
 };
 
 pub struct Evaluator<'a> {
@@ -395,7 +395,8 @@ impl Evaluator<'_> {
                 .locals
                 .iter()
                 .map(|(id, x)| {
-                    let size = self.size_of_sized(&x.ty, &locals, "no unsized local")?;
+                    let size =
+                        self.size_of_sized(&x.ty, &locals, "no unsized local in extending stack")?;
                     let my_ptr = stack_ptr;
                     stack_ptr += size;
                     Ok((id, Stack(my_ptr)))
@@ -425,16 +426,16 @@ impl Evaluator<'_> {
                 return Err(MirEvalError::ExecutionLimitExceeded);
             }
             for statement in &current_block.statements {
-                match statement {
-                    Statement::Assign(l, r) => {
+                match &statement.kind {
+                    StatementKind::Assign(l, r) => {
                         let addr = self.place_addr(l, &locals)?;
                         let result = self.eval_rvalue(r, &locals)?.to_vec(&self)?;
                         self.write_memory(addr, &result)?;
                     }
-                    Statement::Deinit(_) => not_supported!("de-init statement"),
-                    Statement::StorageLive(_) => not_supported!("storage-live statement"),
-                    Statement::StorageDead(_) => not_supported!("storage-dead statement"),
-                    Statement::Nop => (),
+                    StatementKind::Deinit(_) => not_supported!("de-init statement"),
+                    StatementKind::StorageLive(_)
+                    | StatementKind::StorageDead(_)
+                    | StatementKind::Nop => (),
                 }
             }
             let Some(terminator) = current_block.terminator.as_ref() else {
