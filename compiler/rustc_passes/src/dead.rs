@@ -395,6 +395,9 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                     self.mark_as_used_if_union(*adt, fields);
                 }
             }
+            hir::ExprKind::Closure(cls) => {
+                self.insert_def_id(cls.def_id.to_def_id());
+            }
             _ => (),
         }
 
