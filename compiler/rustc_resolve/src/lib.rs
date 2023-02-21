@@ -1906,10 +1906,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     return v.clone();
                 }
 
-                let attr = self
-                    .cstore()
-                    .item_attrs_untracked(def_id, self.tcx.sess)
-                    .find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
+                let attr = self.tcx.get_attr(def_id, sym::rustc_legacy_const_generics)?;
                 let mut ret = Vec::new();
                 for meta in attr.meta_item_list()? {
                     match meta.lit()?.kind {

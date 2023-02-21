@@ -576,14 +576,6 @@ impl CStore {
         self.get_crate_data(cnum).num_def_ids()
     }
 
-    pub fn item_attrs_untracked<'a>(
-        &'a self,
-        def_id: DefId,
-        sess: &'a Session,
-    ) -> impl Iterator<Item = ast::Attribute> + 'a {
-        self.get_crate_data(def_id.krate).get_item_attrs(def_id.index, sess)
-    }
-
     pub fn get_proc_macro_quoted_span_untracked(
         &self,
         cnum: CrateNum,
