@@ -8,7 +8,7 @@ note: required by a bound in `Foo::<T, N>::unsatisfied`
   --> $DIR/ct-var-in-collect_all_mismatches.rs:15:12
    |
 LL |     fn unsatisfied(self)
-   |        ----------- required by a bound in this
+   |        ----------- required by a bound in this associated function
 LL |     where
 LL |         T: Bar<N>,
    |            ^^^^^^ required by this bound in `Foo::<T, N>::unsatisfied`

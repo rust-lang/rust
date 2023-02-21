@@ -25,7 +25,7 @@ note: required by a bound in `T1::m`
   --> $DIR/issue-62203-hrtb-ice.rs:27:51
    |
 LL |     fn m<'a, B: Ty<'a>, F>(&self, f: F) -> Unit1
-   |        - required by a bound in this
+   |        - required by a bound in this associated function
 LL |     where
 LL |         F: for<'r> T0<'r, (<Self as Ty<'r>>::V,), O = <B as Ty<'r>>::V>,
    |                                                   ^^^^^^^^^^^^^^^^^^^^ required by this bound in `T1::m`
@@ -56,7 +56,7 @@ note: required by a bound in `T1::m`
   --> $DIR/issue-62203-hrtb-ice.rs:27:12
    |
 LL |     fn m<'a, B: Ty<'a>, F>(&self, f: F) -> Unit1
-   |        - required by a bound in this
+   |        - required by a bound in this associated function
 LL |     where
 LL |         F: for<'r> T0<'r, (<Self as Ty<'r>>::V,), O = <B as Ty<'r>>::V>,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `T1::m`
