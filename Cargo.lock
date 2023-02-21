@@ -894,7 +894,7 @@ dependencies = [
  "lazy_static",
  "lazycell",
  "libc",
- "miow 0.3.7",
+ "miow 0.5.0",
  "miropt-test-tools",
  "regex",
  "rustfix",
