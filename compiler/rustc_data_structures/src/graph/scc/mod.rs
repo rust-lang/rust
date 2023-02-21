@@ -21,26 +21,34 @@ mod tests;
 pub struct Sccs<N: Idx, S: Idx> {
     /// For each node, what is the SCC index of the SCC to which it
     /// belongs.
-    pub scc_indices: IndexVec<N, S>,
+    scc_indices: IndexVec<N, S>,
 
     /// Data about each SCC.
-    pub scc_data: SccData<S>,
+    scc_data: SccData<S>,
 }
 
 pub struct SccData<S: Idx> {
     /// For each SCC, the range of `all_successors` where its
     /// successors can be found.
-    pub ranges: IndexVec<S, Range<usize>>,
+    ranges: IndexVec<S, Range<usize>>,
 
     /// Contains the successors for all the Sccs, concatenated. The
     /// range of indices corresponding to a given SCC is found in its
     /// SccData.
-    pub all_successors: Vec<S>,
+    all_successors: Vec<S>,
 }
 
 impl<N: Idx, S: Idx + Ord> Sccs<N, S> {
     pub fn new(graph: &(impl DirectedGraph<Node = N> + WithNumNodes + WithSuccessors)) -> Self {
         SccsConstruction::construct(graph)
+    }
+
+    pub fn scc_indices(&self) -> &IndexVec<N, S> {
+        &self.scc_indices
+    }
+
+    pub fn scc_data(&self) -> &SccData<S> {
+        &self.scc_data
     }
 
     /// Returns the number of SCCs in the graph.
@@ -113,6 +121,14 @@ impl<S: Idx> SccData<S> {
     /// Number of SCCs,
     fn len(&self) -> usize {
         self.ranges.len()
+    }
+
+    pub fn ranges(&self) -> &IndexVec<S, Range<usize>> {
+        &self.ranges
+    }
+
+    pub fn all_successors(&self) -> &Vec<S> {
+        &self.all_successors
     }
 
     /// Returns the successors of the given SCC.

@@ -261,10 +261,10 @@ fn sccs_info<'cx, 'tcx>(
     }
     debug!(debug_str);
 
-    let num_components = sccs.scc_data.ranges.len();
+    let num_components = sccs.scc_data().ranges().len();
     let mut components = vec![FxHashSet::default(); num_components];
 
-    for (reg_var_idx, scc_idx) in sccs.scc_indices.iter().enumerate() {
+    for (reg_var_idx, scc_idx) in sccs.scc_indices().iter().enumerate() {
         let reg_var = ty::RegionVid::from_usize(reg_var_idx);
         let origin = var_to_origin.get(&reg_var).unwrap_or_else(|| &RegionCtxt::Unknown);
         components[scc_idx.as_usize()].insert((reg_var, *origin));
@@ -298,8 +298,8 @@ fn sccs_info<'cx, 'tcx>(
 
     let mut scc_node_to_edges = FxHashMap::default();
     for (scc_idx, repr) in components_representatives.iter() {
-        let edges_range = sccs.scc_data.ranges[*scc_idx].clone();
-        let edges = &sccs.scc_data.all_successors[edges_range];
+        let edges_range = sccs.scc_data().ranges()[*scc_idx].clone();
+        let edges = &sccs.scc_data().all_successors()[edges_range];
         let edge_representatives =
             edges.iter().map(|scc_idx| components_representatives[scc_idx]).collect::<Vec<_>>();
         scc_node_to_edges.insert((scc_idx, repr), edge_representatives);
