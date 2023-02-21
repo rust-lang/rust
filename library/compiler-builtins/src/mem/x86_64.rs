@@ -179,24 +179,25 @@ pub unsafe fn c_string_length(s: *const core::ffi::c_char) -> usize {
 
     asm!(
         // search for a zero byte
-        "xor al, al",
+        "xor %eax, %eax",
 
         // unbounded memory region
-        "xor rcx, rcx",
-        "not rcx",
+        "xor %ecx, %ecx",
+        "not %rcx",
 
         // forward direction
-        "cld",
+        // (already set thanks to abi)
+        //"cld",
 
         // perform search
-        "repne scasb",
+        "repne scasb (%rdi), %al",
 
         // extract length
-        "not rcx",
-        "dec rcx",
+        "not %rcx",
+        "dec %rcx",
         inout("rdi") s => _,
         out("rcx") n,
-        options(nostack),
+        options(att_syntax, nostack),
     );
 
     n
