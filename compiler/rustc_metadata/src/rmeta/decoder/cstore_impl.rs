@@ -526,10 +526,6 @@ impl CStore {
         self.get_crate_data(def.krate).get_ctor(def.index)
     }
 
-    pub fn visibility_untracked(&self, def: DefId) -> Visibility<DefId> {
-        self.get_crate_data(def.krate).get_visibility(def.index)
-    }
-
     pub fn module_children_untracked<'a>(
         &'a self,
         def_id: DefId,
