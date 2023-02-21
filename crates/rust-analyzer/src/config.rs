@@ -456,7 +456,10 @@ config_data! {
         /// Additional arguments to `rustfmt`.
         rustfmt_extraArgs: Vec<String>               = "[]",
         /// Advanced option, fully override the command rust-analyzer uses for
-        /// formatting.
+        /// formatting. This should be the equivalent of `rustfmt` here, and
+        /// not that of `cargo fmt`. The file contents will be passed on the
+        /// standard input and the formatted result will be read from the
+        /// standard output.
         rustfmt_overrideCommand: Option<Vec<String>> = "null",
         /// Enables the use of rustfmt's unstable range formatting command for the
         /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
