@@ -32,23 +32,33 @@ LL |     async fn owo(x: ()) {}
    = note: expected signature `fn(()) -> _`
               found signature `fn(u8) -> _`
 
-error[E0050]: method `calm_down_please` has 3 parameters but the declaration in trait `TooMuch::calm_down_please` has 0
-  --> $DIR/method-signature-matches.rs:29:28
+error[E0053]: method `calm_down_please` has an incompatible type for trait
+  --> $DIR/method-signature-matches.rs:29:46
+   |
+LL |     fn calm_down_please(_: (), _: (), _: ()) {}
+   |                                              ^ incorrect number of function parameters
+   |
+note: type in trait
+  --> $DIR/method-signature-matches.rs:25:5
    |
 LL |     fn calm_down_please() -> impl Sized;
-   |     ------------------------------------ trait requires 0 parameters
-...
-LL |     fn calm_down_please(_: (), _: (), _: ()) {}
-   |                            ^^^^^^^^^^^^^^^^ expected 0 parameters, found 3
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature `fn()`
+              found signature `fn((), (), ())`
 
-error[E0050]: method `come_on_a_little_more_effort` has 0 parameters but the declaration in trait `TooLittle::come_on_a_little_more_effort` has 3
-  --> $DIR/method-signature-matches.rs:38:5
+error[E0053]: method `come_on_a_little_more_effort` has an incompatible type for trait
+  --> $DIR/method-signature-matches.rs:38:39
+   |
+LL |     fn come_on_a_little_more_effort() {}
+   |                                       ^ incorrect number of function parameters
+   |
+note: type in trait
+  --> $DIR/method-signature-matches.rs:34:5
    |
 LL |     fn come_on_a_little_more_effort(_: (), _: (), _: ()) -> impl Sized;
-   |                                        ---------------- trait requires 3 parameters
-...
-LL |     fn come_on_a_little_more_effort() {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 3 parameters, found 0
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature `fn((), (), ())`
+              found signature `fn()`
 
 error[E0053]: method `early` has an incompatible type for trait
   --> $DIR/method-signature-matches.rs:47:27
@@ -70,5 +80,4 @@ LL |     fn early<'early, T>(x: &'early T) -> impl Sized;
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0050, E0053.
-For more information about an error, try `rustc --explain E0050`.
+For more information about this error, try `rustc --explain E0053`.

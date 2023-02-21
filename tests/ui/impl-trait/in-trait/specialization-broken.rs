@@ -1,5 +1,4 @@
-// FIXME(compiler-errors): I'm not exactly sure if this is expected to pass or not.
-// But we fixed an ICE anyways.
+// check-pass
 
 #![feature(specialization)]
 #![feature(return_position_impl_trait_in_trait)]
@@ -14,7 +13,6 @@ where
     U: Copy,
 {
     fn bar(&self) -> U {
-        //~^ ERROR method `bar` has an incompatible type for trait
         *self
     }
 }

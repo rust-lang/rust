@@ -1,7 +1,8 @@
 // edition: 2021
-// known-bug: #108309
+// check-pass
 
 #![feature(async_fn_in_trait)]
+//~^ WARN the feature `async_fn_in_trait` is incomplete
 #![feature(min_specialization)]
 
 struct MyStruct;

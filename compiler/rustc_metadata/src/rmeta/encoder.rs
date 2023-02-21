@@ -1101,34 +1101,6 @@ fn should_encode_const(def_kind: DefKind) -> bool {
     }
 }
 
-fn should_encode_trait_impl_trait_tys(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    if tcx.def_kind(def_id) != DefKind::AssocFn {
-        return false;
-    }
-
-    let Some(item) = tcx.opt_associated_item(def_id) else { return false; };
-    if item.container != ty::AssocItemContainer::ImplContainer {
-        return false;
-    }
-
-    let Some(trait_item_def_id) = item.trait_item_def_id else { return false; };
-
-    // FIXME(RPITIT): This does a somewhat manual walk through the signature
-    // of the trait fn to look for any RPITITs, but that's kinda doing a lot
-    // of work. We can probably remove this when we refactor RPITITs to be
-    // associated types.
-    tcx.fn_sig(trait_item_def_id).subst_identity().skip_binder().output().walk().any(|arg| {
-        if let ty::GenericArgKind::Type(ty) = arg.unpack()
-            && let ty::Alias(ty::Projection, data) = ty.kind()
-            && tcx.def_kind(data.def_id) == DefKind::ImplTraitPlaceholder
-        {
-            true
-        } else {
-            false
-        }
-    })
-}
-
 // Return `false` to avoid encoding impl trait in trait, while we don't use the query.
 fn should_encode_fn_impl_trait_in_trait<'tcx>(_tcx: TyCtxt<'tcx>, _def_id: DefId) -> bool {
     false
@@ -1211,7 +1183,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(def_id);
             }
-            if should_encode_trait_impl_trait_tys(tcx, def_id)
+            if tcx.impl_method_has_trait_impl_trait_tys(def_id)
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
             {
                 record!(self.tables.trait_impl_trait_tys[def_id] <- table);

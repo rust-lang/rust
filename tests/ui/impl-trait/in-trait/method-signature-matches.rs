@@ -27,7 +27,7 @@ trait TooMuch {
 
 impl TooMuch for () {
     fn calm_down_please(_: (), _: (), _: ()) {}
-    //~^ ERROR method `calm_down_please` has 3 parameters but the declaration in trait `TooMuch::calm_down_please` has 0
+    //~^ ERROR method `calm_down_please` has an incompatible type for trait
 }
 
 trait TooLittle {
@@ -36,7 +36,7 @@ trait TooLittle {
 
 impl TooLittle for () {
     fn come_on_a_little_more_effort() {}
-    //~^ ERROR method `come_on_a_little_more_effort` has 0 parameters but the declaration in trait `TooLittle::come_on_a_little_more_effort` has 3
+    //~^ ERROR method `come_on_a_little_more_effort` has an incompatible type for trait
 }
 
 trait Lifetimes {

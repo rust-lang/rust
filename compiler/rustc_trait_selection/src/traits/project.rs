@@ -1246,12 +1246,12 @@ fn project<'cx, 'tcx>(
 
     let mut candidates = ProjectionCandidateSet::None;
 
-    assemble_candidate_for_impl_trait_in_trait(selcx, obligation, &mut candidates);
-
     // Make sure that the following procedures are kept in order. ParamEnv
     // needs to be first because it has highest priority, and Select checks
     // the return value of push_candidate which assumes it's ran at last.
     assemble_candidates_from_param_env(selcx, obligation, &mut candidates);
+
+    assemble_candidate_for_impl_trait_in_trait(selcx, obligation, &mut candidates);
 
     assemble_candidates_from_trait_def(selcx, obligation, &mut candidates);
 

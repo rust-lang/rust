@@ -50,7 +50,7 @@ pub(super) fn compare_impl_method<'tcx>(
         compare_generic_param_kinds(tcx, impl_m, trait_m, false)?;
         compare_number_of_method_arguments(tcx, impl_m, trait_m)?;
         compare_synthetic_generics(tcx, impl_m, trait_m)?;
-        compare_asyncness(tcx, impl_m, trait_m)?;
+        compare_asyncness(tcx, impl_m, trait_m, false)?;
         compare_method_predicate_entailment(
             tcx,
             impl_m,
@@ -190,6 +190,11 @@ fn compare_method_predicate_entailment<'tcx>(
             .instantiate_own(tcx, trait_to_placeholder_substs)
             .map(|(predicate, _)| predicate),
     );
+
+    // Additionally, we are allowed to assume that we can project RPITITs to their
+    // associated hidden types within method signatures. This is to allow us to support
+    // specialization with `impl Trait` in traits.
+    hybrid_preds.predicates.extend(tcx.additional_method_assumptions(impl_m_def_id));
 
     // Construct trait parameter environment and then shift it into the placeholder viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
@@ -526,6 +531,7 @@ fn compare_asyncness<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: ty::AssocItem,
     trait_m: ty::AssocItem,
+    delay: bool,
 ) -> Result<(), ErrorGuaranteed> {
     if tcx.asyncness(trait_m.def_id) == hir::IsAsync::Async {
         match tcx.fn_sig(impl_m.def_id).skip_binder().skip_binder().output().kind() {
@@ -536,11 +542,14 @@ fn compare_asyncness<'tcx>(
                 // We don't know if it's ok, but at least it's already an error.
             }
             _ => {
-                return Err(tcx.sess.emit_err(crate::errors::AsyncTraitImplShouldBeAsync {
-                    span: tcx.def_span(impl_m.def_id),
-                    method_name: trait_m.name,
-                    trait_item_span: tcx.hir().span_if_local(trait_m.def_id),
-                }));
+                return Err(tcx
+                    .sess
+                    .create_err(crate::errors::AsyncTraitImplShouldBeAsync {
+                        span: tcx.def_span(impl_m.def_id),
+                        method_name: trait_m.name,
+                        trait_item_span: tcx.hir().span_if_local(trait_m.def_id),
+                    })
+                    .emit_unless(delay));
             }
         };
     }
@@ -590,10 +599,15 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
     let impl_trait_ref =
         tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap().subst_identity();
-    let param_env = tcx.param_env(def_id);
+
+    // We use the RPITIT values computed in this method to construct the param-env,
+    // so to avoid cycles, we do computations in this function without assuming anything
+    // about RPITIT projection.
+    let param_env = tcx.param_env_no_assumptions(def_id);
 
     // First, check a few of the same things as `compare_impl_method`,
     // just so we don't ICE during substitution later.
+    compare_asyncness(tcx, impl_m, trait_m, true)?;
     compare_number_of_generics(tcx, impl_m, trait_m, true)?;
     compare_generic_param_kinds(tcx, impl_m, trait_m, true)?;
     check_region_bounds_on_impl_item(tcx, impl_m, trait_m, true)?;

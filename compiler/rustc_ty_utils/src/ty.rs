@@ -116,7 +116,7 @@ fn adt_sized_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &[Ty<'_>] {
 }
 
 /// See `ParamEnv` struct definition for details.
-fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
+fn param_env(tcx: TyCtxt<'_>, def_id: DefId, add_assumptions: bool) -> ty::ParamEnv<'_> {
     // Compute the bounds on Self and the type parameters.
     let ty::InstantiatedPredicates { mut predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
@@ -138,17 +138,8 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         predicates.extend(environment);
     }
 
-    if tcx.def_kind(def_id) == DefKind::AssocFn
-        && tcx.associated_item(def_id).container == ty::AssocItemContainer::TraitContainer
-    {
-        let sig = tcx.fn_sig(def_id).subst_identity();
-        sig.visit_with(&mut ImplTraitInTraitFinder {
-            tcx,
-            fn_def_id: def_id,
-            bound_vars: sig.bound_vars(),
-            predicates: &mut predicates,
-            seen: FxHashSet::default(),
-        });
+    if add_assumptions && tcx.def_kind(def_id) == DefKind::AssocFn {
+        predicates.extend(tcx.additional_method_assumptions(def_id))
     }
 
     let local_did = def_id.as_local();
@@ -237,19 +228,83 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
 }
 
+fn additional_method_assumptions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> &'tcx ty::List<Predicate<'tcx>> {
+    let assoc_item = tcx.associated_item(def_id);
+    let mut predicates = vec![];
+
+    match assoc_item.container {
+        ty::AssocItemContainer::TraitContainer => {
+            let sig = tcx.fn_sig(def_id).subst_identity();
+            sig.visit_with(&mut ImplTraitInTraitFinder {
+                tcx,
+                fn_def_id: def_id,
+                bound_vars: sig.bound_vars(),
+                predicates: &mut predicates,
+                seen: FxHashSet::default(),
+                hidden_ty: |alias_ty| tcx.mk_alias(ty::Opaque, alias_ty),
+            });
+        }
+        ty::AssocItemContainer::ImplContainer => {
+            if tcx.impl_method_has_trait_impl_trait_tys(def_id)
+                && let Ok(table)
+                    = tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
+            {
+                let impl_def_id = assoc_item.container_id(tcx);
+                let trait_to_impl_substs =
+                    tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity().substs;
+                // Create mapping from impl to placeholder.
+                let impl_to_placeholder_substs = ty::InternalSubsts::identity_for_item(tcx, def_id);
+                // Create mapping from trait to placeholder.
+                let trait_to_placeholder_substs =
+                    impl_to_placeholder_substs.rebase_onto(tcx, impl_def_id, trait_to_impl_substs);
+
+                let trait_fn_def_id = assoc_item.trait_item_def_id.unwrap();
+                let trait_fn_sig =
+                    tcx.fn_sig(trait_fn_def_id).subst(tcx, trait_to_placeholder_substs);
+                trait_fn_sig.visit_with(&mut ImplTraitInTraitFinder {
+                    tcx,
+                    fn_def_id: trait_fn_def_id,
+                    bound_vars: trait_fn_sig.bound_vars(),
+                    predicates: &mut predicates,
+                    seen: FxHashSet::default(),
+                    hidden_ty: |alias_ty| {
+                        EarlyBinder(*table.get(&alias_ty.def_id).unwrap()).subst(
+                            tcx,
+                            alias_ty.substs.rebase_onto(
+                                tcx,
+                                trait_fn_def_id,
+                                impl_to_placeholder_substs,
+                            ),
+                        )
+                    },
+                });
+            }
+        }
+    }
+
+    tcx.intern_predicates(&predicates)
+}
+
 /// Walk through a function type, gathering all RPITITs and installing a
 /// `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))` predicate into the
 /// predicates list. This allows us to observe that an RPITIT projects to
 /// its corresponding opaque within the body of a default-body trait method.
-struct ImplTraitInTraitFinder<'a, 'tcx> {
+struct ImplTraitInTraitFinder<'a, 'tcx, F: Fn(ty::AliasTy<'tcx>) -> Ty<'tcx>> {
     tcx: TyCtxt<'tcx>,
     predicates: &'a mut Vec<Predicate<'tcx>>,
     fn_def_id: DefId,
     bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
     seen: FxHashSet<DefId>,
+    hidden_ty: F,
 }
 
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
+impl<'tcx, F> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx, F>
+where
+    F: Fn(ty::AliasTy<'tcx>) -> Ty<'tcx>,
+{
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> std::ops::ControlFlow<Self::BreakTy> {
         if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
             && self.tcx.def_kind(alias_ty.def_id) == DefKind::ImplTraitPlaceholder
@@ -260,7 +315,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
                         projection_ty: alias_ty,
-                        term: self.tcx.mk_alias(ty::Opaque, alias_ty).into(),
+                        term: (self.hidden_ty)(alias_ty).into(),
                     },
                     self.bound_vars,
                 )
@@ -514,7 +569,9 @@ pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         asyncness,
         adt_sized_constraint,
-        param_env,
+        param_env: |tcx, def_id| param_env(tcx, def_id, true),
+        param_env_no_assumptions: |tcx, def_id| param_env(tcx, def_id, false),
+        additional_method_assumptions,
         param_env_reveal_all_normalized,
         instance_def_size_estimate,
         issue33140_self_ty,
