@@ -52,19 +52,6 @@ fn align_of<'tcx>(
     Ok(alignment)
 }
 
-// Invert a bijective mapping, i.e. `invert(map)[y] = x` if `map[x] = y`.
-// This is used to go between `memory_index` (source field order to memory order)
-// and `inverse_memory_index` (memory order to source field order).
-// See also `FieldsShape::Arbitrary::memory_index` for more details.
-// FIXME(eddyb) build a better abstraction for permutations, if possible.
-fn invert_mapping(map: &[u32]) -> Vec<u32> {
-    let mut inverse = vec![0; map.len()];
-    for i in 0..map.len() {
-        inverse[map[i] as usize] = i as u32;
-    }
-    inverse
-}
-
 fn univariant_uninterned<'tcx>(
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     ty: Ty<'tcx>,
@@ -109,7 +96,7 @@ fn align_of_uncached<'tcx>(
         ty::FnPtr(_) => Pointer(dl.instruction_address_space).align(cx),
 
         // The never type.
-        ty::Never => tcx.intern_layout(cx.layout_of_never_type()).align(),
+        ty::Never => dl.i8_align,
 
         // Potentially-wide pointers.
         ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
@@ -171,7 +158,7 @@ fn align_of_uncached<'tcx>(
                 .align
         }
 
-        ty::Generator(def_id, substs, _) => generator_layout(cx, ty, def_id, substs)?.align(),
+        ty::Generator(def_id, substs, _) => generator_align(cx, ty, def_id, substs)?,
 
         ty::Closure(_, ref substs) => {
             let tys = substs.as_closure().upvar_tys();
@@ -503,12 +490,12 @@ fn generator_saved_local_eligibility(
 }
 
 /// Compute the full generator layout.
-fn generator_layout<'tcx>(
+fn generator_align<'tcx>(
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
     ty: Ty<'tcx>,
     def_id: hir::def_id::DefId,
     substs: SubstsRef<'tcx>,
-) -> Result<Layout<'tcx>, LayoutError<'tcx>> {
+) -> Result<AbiAndPrefAlign, LayoutError<'tcx>> {
     use SavedLocalEligibility::*;
     let tcx = cx.tcx;
     let subst_field = |ty: Ty<'tcx>| EarlyBinder(ty).subst(tcx, substs);
@@ -517,11 +504,6 @@ fn generator_layout<'tcx>(
         return Err(LayoutError::Unknown(ty));
     };
     let (ineligible_locals, assignments) = generator_saved_local_eligibility(&info);
-
-    // Build a prefix layout, including "promoting" all ineligible
-    // locals as part of the prefix. We compute the layout of all of
-    // these fields at once to get optimal packing.
-    let tag_index = substs.as_generator().prefix_tys().count();
 
     // `info.variant_fields` already accounts for the reserved variants, so no need to add them.
     let max_discr = (info.variant_fields.len() - 1) as u128;
@@ -554,143 +536,30 @@ fn generator_layout<'tcx>(
 
     let (prefix_size, prefix_align) = (prefix.size, prefix.align);
 
-    // Split the prefix layout into the "outer" fields (upvars and
-    // discriminant) and the "promoted" fields. Promoted fields will
-    // get included in each variant that requested them in
-    // GeneratorLayout.
-    debug!("prefix = {:#?}", prefix);
-    let (outer_fields, promoted_offsets, promoted_memory_index) = match prefix.fields {
-        FieldsShape::Arbitrary { mut offsets, memory_index } => {
-            let mut inverse_memory_index = invert_mapping(&memory_index);
-
-            // "a" (`0..b_start`) and "b" (`b_start..`) correspond to
-            // "outer" and "promoted" fields respectively.
-            let b_start = (tag_index + 1) as u32;
-            let offsets_b = offsets.split_off(b_start as usize);
-            let offsets_a = offsets;
-
-            // Disentangle the "a" and "b" components of `inverse_memory_index`
-            // by preserving the order but keeping only one disjoint "half" each.
-            // FIXME(eddyb) build a better abstraction for permutations, if possible.
-            let inverse_memory_index_b: Vec<_> =
-                inverse_memory_index.iter().filter_map(|&i| i.checked_sub(b_start)).collect();
-            inverse_memory_index.retain(|&i| i < b_start);
-            let inverse_memory_index_a = inverse_memory_index;
-
-            // Since `inverse_memory_index_{a,b}` each only refer to their
-            // respective fields, they can be safely inverted
-            let memory_index_a = invert_mapping(&inverse_memory_index_a);
-            let memory_index_b = invert_mapping(&inverse_memory_index_b);
-
-            let outer_fields =
-                FieldsShape::Arbitrary { offsets: offsets_a, memory_index: memory_index_a };
-            (outer_fields, offsets_b, memory_index_b)
-        }
-        _ => bug!(),
-    };
-
-    let mut size = prefix.size;
     let mut align = prefix.align;
-    let variants = info
-        .variant_fields
-        .iter_enumerated()
-        .map(|(index, variant_fields)| {
-            // Only include overlap-eligible fields when we compute our variant layout.
-            let variant_only_tys = variant_fields
-                .iter()
-                .filter(|local| match assignments[**local] {
-                    Unassigned => bug!(),
-                    Assigned(v) if v == index => true,
-                    Assigned(_) => bug!("assignment does not match variant"),
-                    Ineligible(_) => false,
-                })
-                .map(|local| subst_field(info.field_tys[*local].ty));
+    for (index, variant_fields) in info.variant_fields.iter_enumerated() {
+        // Only include overlap-eligible fields when we compute our variant layout.
+        let variant_only_tys = variant_fields
+            .iter()
+            .filter(|local| match assignments[**local] {
+                Unassigned => bug!(),
+                Assigned(v) if v == index => true,
+                Assigned(_) => bug!("assignment does not match variant"),
+                Ineligible(_) => false,
+            })
+            .map(|local| subst_field(info.field_tys[*local].ty));
 
-            let mut variant = univariant_uninterned(
-                cx,
-                ty,
-                &variant_only_tys
-                    .map(|ty| Ok(cx.layout_of(ty)?.layout))
-                    .collect::<Result<Vec<_>, _>>()?,
-                &ReprOptions::default(),
-                StructKind::Prefixed(prefix_size, prefix_align.abi),
-            )?;
-            variant.variants = Variants::Single { index };
+        let variant = univariant_uninterned(
+            cx,
+            ty,
+            &variant_only_tys
+                .map(|ty| Ok(cx.layout_of(ty)?.layout))
+                .collect::<Result<Vec<_>, _>>()?,
+            &ReprOptions::default(),
+            StructKind::Prefixed(prefix_size, prefix_align.abi),
+        )?;
 
-            let FieldsShape::Arbitrary { offsets, memory_index } = variant.fields else {
-                bug!();
-            };
-
-            // Now, stitch the promoted and variant-only fields back together in
-            // the order they are mentioned by our GeneratorLayout.
-            // Because we only use some subset (that can differ between variants)
-            // of the promoted fields, we can't just pick those elements of the
-            // `promoted_memory_index` (as we'd end up with gaps).
-            // So instead, we build an "inverse memory_index", as if all of the
-            // promoted fields were being used, but leave the elements not in the
-            // subset as `INVALID_FIELD_IDX`, which we can filter out later to
-            // obtain a valid (bijective) mapping.
-            const INVALID_FIELD_IDX: u32 = !0;
-            let mut combined_inverse_memory_index =
-                vec![INVALID_FIELD_IDX; promoted_memory_index.len() + memory_index.len()];
-            let mut offsets_and_memory_index = iter::zip(offsets, memory_index);
-            let combined_offsets = variant_fields
-                .iter()
-                .enumerate()
-                .map(|(i, local)| {
-                    let (offset, memory_index) = match assignments[*local] {
-                        Unassigned => bug!(),
-                        Assigned(_) => {
-                            let (offset, memory_index) = offsets_and_memory_index.next().unwrap();
-                            (offset, promoted_memory_index.len() as u32 + memory_index)
-                        }
-                        Ineligible(field_idx) => {
-                            let field_idx = field_idx.unwrap() as usize;
-                            (promoted_offsets[field_idx], promoted_memory_index[field_idx])
-                        }
-                    };
-                    combined_inverse_memory_index[memory_index as usize] = i as u32;
-                    offset
-                })
-                .collect();
-
-            // Remove the unused slots and invert the mapping to obtain the
-            // combined `memory_index` (also see previous comment).
-            combined_inverse_memory_index.retain(|&i| i != INVALID_FIELD_IDX);
-            let combined_memory_index = invert_mapping(&combined_inverse_memory_index);
-
-            variant.fields = FieldsShape::Arbitrary {
-                offsets: combined_offsets,
-                memory_index: combined_memory_index,
-            };
-
-            size = size.max(variant.size);
-            align = align.max(variant.align);
-            Ok(variant)
-        })
-        .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
-
-    size = size.align_to(align.abi);
-
-    let abi = if prefix.abi.is_uninhabited() || variants.iter().all(|v| v.abi.is_uninhabited()) {
-        Abi::Uninhabited
-    } else {
-        Abi::Aggregate { sized: true }
-    };
-
-    let layout = tcx.intern_layout(LayoutS {
-        variants: Variants::Multiple {
-            tag,
-            tag_encoding: TagEncoding::Direct,
-            tag_field: tag_index,
-            variants,
-        },
-        fields: outer_fields,
-        abi,
-        largest_niche: prefix.largest_niche,
-        size,
-        align,
-    });
-    debug!("generator layout ({:?}): {:#?}", ty, layout);
-    Ok(layout)
+        align = align.max(variant.align);
+    }
+    Ok(align)
 }
