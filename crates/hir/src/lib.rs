@@ -42,7 +42,7 @@ use hir_def::{
     adt::VariantData,
     body::{BodyDiagnostic, SyntheticSyntax},
     expr::{BindingAnnotation, ExprOrPatId, LabelId, Pat, PatId},
-    generics::{TypeOrConstParamData, TypeParamProvenance, LifetimeParamData},
+    generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     item_tree::ItemTreeNode,
     lang_item::{LangItem, LangItemTarget},
     layout::{Layout, LayoutError, ReprOptions},
@@ -1177,13 +1177,16 @@ impl Adt {
             Adt::Union(u) => u.id.resolver(db.upcast()),
             Adt::Enum(e) => e.id.resolver(db.upcast()),
         };
-        resolver.generic_params().and_then(|gp| {
-            (&gp.lifetimes)
-            .iter()
-            // there should only be a single lifetime
-            // but `Arena` requires to use an iterator
-            .nth(0)
-        }).map(|arena| arena.1.clone())
+        resolver
+            .generic_params()
+            .and_then(|gp| {
+                (&gp.lifetimes)
+                    .iter()
+                    // there should only be a single lifetime
+                    // but `Arena` requires to use an iterator
+                    .nth(0)
+            })
+            .map(|arena| arena.1.clone())
     }
 
     pub fn as_enum(&self) -> Option<Enum> {
@@ -3355,23 +3358,15 @@ impl Type {
             .map(move |ty| self.derived(ty))
     }
 
-    /// Combines lifetime indicators and type arguments into a single `Vec<SmolStr>`
-    pub fn lifetime_and_type_arguments<'a>(&'a self, db: &'a dyn HirDatabase) -> Vec<SmolStr> {
-        let mut names = if let Some(lt) = self
-            .as_adt()
-            .and_then(|a| {
-                a.lifetime(db)
-                .and_then(|lt| Some((&lt.name).to_smol_str().clone()))
-            }) {
-                vec![lt]
-            } else {
-                vec![]
-            };
-
-        for ty in self.type_arguments() {
-            names.push(SmolStr::new(ty.display(db).to_string()))
-        }
-        names
+    /// Combines lifetime indicators and type arguments into a single `Iterator`
+    pub fn lifetime_and_type_arguments<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+    ) -> impl Iterator<Item = SmolStr> + 'a {
+        self.as_adt()
+            .and_then(|a| a.lifetime(db).and_then(|lt| Some((&lt.name).to_smol_str())))
+            .into_iter()
+            .chain(self.type_arguments().map(|ty| SmolStr::new(ty.display(db).to_string())))
     }
 
     pub fn iterate_method_candidates_with_traits<T>(
