@@ -174,7 +174,7 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
 }
 
 #[inline(always)]
-pub unsafe fn c_string_length(s: *const std::ffi::c_char) -> usize {
+pub unsafe fn c_string_length(s: *const core::ffi::c_char) -> usize {
     let mut n: usize;
 
     asm!(
