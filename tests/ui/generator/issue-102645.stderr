@@ -4,7 +4,7 @@ error[E0061]: this method takes 1 argument but 0 arguments were supplied
 LL |     Pin::new(&mut b).resume();
    |                      ^^^^^^-- an argument of type `()` is missing
    |
-note: associated function defined here
+note: method defined here
   --> $SRC_DIR/core/src/ops/generator.rs:LL:COL
 help: provide the argument
    |

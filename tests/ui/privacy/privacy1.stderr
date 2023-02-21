@@ -190,14 +190,14 @@ LL |             fn bar() {}
 LL |         ::bar::baz::A::bar();
    |                        ^^^ private associated function
 
-error[E0624]: associated function `bar2` is private
+error[E0624]: method `bar2` is private
   --> $DIR/privacy1.rs:108:23
    |
 LL |             fn bar2(&self) {}
-   |             -------------- private associated function defined here
+   |             -------------- private method defined here
 ...
 LL |         ::bar::baz::A.bar2();
-   |                       ^^^^ private associated function
+   |                       ^^^^ private method
 
 error: aborting due to 18 previous errors
 

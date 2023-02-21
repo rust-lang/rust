@@ -21,7 +21,7 @@ LL |     <F as FnOnce(&mut u8)>::call_once(f, 1)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^
    |                                          |
    |                                          this argument influences the return type of `FnOnce`
-note: associated function defined here
+note: method defined here
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: aborting due to 2 previous errors

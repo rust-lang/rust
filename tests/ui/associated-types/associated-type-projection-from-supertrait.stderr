@@ -34,7 +34,7 @@ LL | fn f() { ModelT.chip_paint(Blue); }
    |                 |
    |                 arguments to this method are incorrect
    |
-note: associated function defined here
+note: method defined here
   --> $DIR/associated-type-projection-from-supertrait.rs:12:8
    |
 LL |     fn chip_paint(&self, c: Self::Color) { }
@@ -48,7 +48,7 @@ LL | fn g() { ModelU.chip_paint(Black); }
    |                 |
    |                 arguments to this method are incorrect
    |
-note: associated function defined here
+note: method defined here
   --> $DIR/associated-type-projection-from-supertrait.rs:12:8
    |
 LL |     fn chip_paint(&self, c: Self::Color) { }

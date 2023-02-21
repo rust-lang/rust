@@ -1,4 +1,4 @@
-error: use of deprecated associated function `Foo::foo`: text
+error: use of deprecated method `Foo::foo`: text
   --> $DIR/issue-17337.rs:16:6
    |
 LL |     .foo();

@@ -50,8 +50,10 @@ trait B {
 }
 
 pub trait C { //~ ERROR: missing documentation for a trait
-    fn foo(&self); //~ ERROR: missing documentation for an associated function
-    fn foo_with_impl(&self) {} //~ ERROR: missing documentation for an associated function
+    fn foo(&self); //~ ERROR: missing documentation for a method
+    fn foo_with_impl(&self) {} //~ ERROR: missing documentation for a method
+    fn foo_no_self(); //~ ERROR: missing documentation for an associated function
+    fn foo_no_self_with_impl() {} //~ ERROR: missing documentation for an associated function
 }
 
 #[allow(missing_docs)]

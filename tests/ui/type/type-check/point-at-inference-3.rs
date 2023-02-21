@@ -7,6 +7,6 @@ fn main() {
     v.push(1u32); //~ ERROR mismatched types
     //~^ NOTE expected `i32`, found `u32`
     //~| NOTE arguments to this method are incorrect
-    //~| NOTE associated function defined here
+    //~| NOTE method defined here
     //~| HELP change the type of the numeric literal from `u32` to `i32`
 }

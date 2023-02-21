@@ -1,11 +1,11 @@
-error[E0624]: associated function `foo` is private
+error[E0624]: method `foo` is private
   --> $DIR/private-impl-method.rs:20:7
    |
 LL |         fn foo(&self) {}
-   |         ------------- private associated function defined here
+   |         ------------- private method defined here
 ...
 LL |     s.foo();
-   |       ^^^ private associated function
+   |       ^^^ private method
 
 error: aborting due to previous error
 

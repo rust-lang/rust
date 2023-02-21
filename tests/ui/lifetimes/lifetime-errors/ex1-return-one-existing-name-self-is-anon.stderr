@@ -7,7 +7,7 @@ LL |     fn foo<'a>(&self, x: &'a Foo) -> &'a Foo {
    |            lifetime `'a` defined here
 LL |
 LL |         if true { x } else { self }
-   |                              ^^^^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
+   |                              ^^^^ method was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
 
 error: aborting due to previous error
 

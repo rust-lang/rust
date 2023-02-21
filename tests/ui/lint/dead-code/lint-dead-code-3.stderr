@@ -34,7 +34,7 @@ error: function `blah` is never used
 LL |         fn blah() {}
    |            ^^^^
 
-error: associated function `foo` is never used
+error: method `foo` is never used
   --> $DIR/lint-dead-code-3.rs:16:8
    |
 LL |     fn foo(&self) {

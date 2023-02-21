@@ -28,7 +28,7 @@ LL |     <i32 as Add<i32>>::add(1u32, 2);
    |     ^^^^^^^^^^^^^^^^^^^^^^^----^^^^
    |                            |
    |                            this argument influences the return type of `Add`
-note: associated function defined here
+note: method defined here
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: change the type of the numeric literal from `u32` to `i32`
    |
@@ -50,7 +50,7 @@ LL |     <i32 as Add<i32>>::add(1, 2u32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^----^
    |                               |
    |                               this argument influences the return type of `Add`
-note: associated function defined here
+note: method defined here
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: change the type of the numeric literal from `u32` to `i32`
    |

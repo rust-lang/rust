@@ -95,7 +95,7 @@ LL |     let x: u16 = (S {}).method(0u32);
    |                  ^^^^^^^^^^^^^^----^
    |                                |
    |                                this argument influences the return type of `method`
-note: associated function defined here
+note: method defined here
   --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:7:8
    |
 LL |     fn method<T>(&self, x: T) -> T {

@@ -65,7 +65,7 @@ error[E0061]: this method takes 1 argument but 0 arguments were supplied
 LL |     S.baz();
    |       ^^^-- an argument of type `()` is missing
    |
-note: associated function defined here
+note: method defined here
   --> $DIR/missing-unit-argument.rs:6:8
    |
 LL |     fn baz(self, (): ()) { }
@@ -81,7 +81,7 @@ error[E0061]: this method takes 1 argument but 0 arguments were supplied
 LL |     S.generic::<()>();
    |       ^^^^^^^^^^^^^-- an argument of type `()` is missing
    |
-note: associated function defined here
+note: method defined here
   --> $DIR/missing-unit-argument.rs:7:8
    |
 LL |     fn generic<T>(self, _: T) { }

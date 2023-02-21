@@ -90,7 +90,7 @@ LL |     fn func(&self) -> Self::A;
 LL |     fn funk(&self, _: Self::A);
 LL |     fn funq(&self) -> Self::A {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ consider calling `Trait::funq`
-note: associated function defined here
+note: method defined here
   --> $DIR/trait-with-missing-associated-type-restriction.rs:9:8
    |
 LL |     fn funk(&self, _: Self::A);

@@ -1,13 +1,13 @@
-error[E0624]: associated function `nap` is private
+error[E0624]: method `nap` is private
   --> $DIR/private-method-cross-crate.rs:7:8
    |
 LL |   nyan.nap();
-   |        ^^^ private associated function
+   |        ^^^ private method
    |
   ::: $DIR/auxiliary/cci_class_5.rs:8:9
    |
 LL |         fn nap(&self) {}
-   |         ------------- private associated function defined here
+   |         ------------- private method defined here
 
 error: aborting due to previous error
 
