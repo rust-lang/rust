@@ -2,7 +2,9 @@ use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::{GeneratorLayout, GeneratorSavedLocal};
-use rustc_middle::ty::layout::{IntegerExt, LayoutCx, LayoutError, LayoutOf, MAX_SIMD_LANES};
+use rustc_middle::ty::layout::{
+    AlignOf, IntegerExt, LayoutCx, LayoutError, LayoutOf, MAX_SIMD_LANES,
+};
 use rustc_middle::ty::{
     self, subst::SubstsRef, EarlyBinder, ReprOptions, Ty, TyCtxt, TypeVisitable,
 };
@@ -158,21 +160,8 @@ fn align_of_uncached<'tcx>(
         }
 
         // Arrays and slices.
-        ty::Array(element, mut count) => {
-            if count.has_projections() {
-                count = tcx.normalize_erasing_regions(param_env, count);
-                if count.has_projections() {
-                    return Err(LayoutError::Unknown(ty));
-                }
-            }
-            let element = cx.layout_of(element)?;
-            element.align
-        }
-        ty::Slice(element) => {
-            let element = cx.layout_of(element)?;
-            element.align
-        }
-
+        ty::Array(element, _) => cx.align_of(element)?,
+        ty::Slice(element) => cx.align_of(element)?,
         ty::Str => dl.i8_align,
 
         // Odd unit types.

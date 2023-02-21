@@ -560,6 +560,17 @@ impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
     }
 }
 
+pub trait AlignOf<'tcx>: LayoutOf<'tcx> {
+    #[inline]
+    fn align_of(&self, ty: Ty<'tcx>) -> Result<AbiAndPrefAlign, LayoutError<'tcx>> {
+        let span = self.layout_tcx_at_span();
+        let tcx = self.tcx().at(span);
+        tcx.align_of(self.param_env().and(ty))
+    }
+}
+
+impl<'tcx, C: LayoutOf<'tcx>> AlignOf<'tcx> for C {}
+
 impl<'tcx, C> TyAbiInterface<'tcx, C> for Ty<'tcx>
 where
     C: HasTyCtxt<'tcx> + HasParamEnv<'tcx>,
