@@ -279,3 +279,13 @@ pub unsafe fn compare_bytes(s1: *const u8, s2: *const u8, n: usize) -> i32 {
     }
     0
 }
+
+#[inline(always)]
+pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
+    let mut n = 0;
+    while *s != 0 {
+        n += 1;
+        s = s.add(1);
+    }
+    n
+}

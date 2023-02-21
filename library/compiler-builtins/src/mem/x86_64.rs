@@ -173,6 +173,35 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
     c16(a.cast(), b.cast(), n)
 }
 
+#[inline(always)]
+pub unsafe fn c_string_length(s: *const std::ffi::c_char) -> usize {
+    let mut n: usize;
+
+    std::arch::asm!(
+        // search for a zero byte
+        "xor al, al",
+
+        // unbounded memory region
+        "xor rcx, rcx",
+        "not rcx",
+
+        // forward direction
+        "cld",
+
+        // perform search
+        "repne scasb",
+
+        // extract length
+        "not rcx",
+        "dec rcx",
+        inout("rdi") s => _,
+        out("rcx") n,
+        options(nostack),
+    );
+
+    n
+}
+
 /// Determine optimal parameters for a `rep` instruction.
 fn rep_param(dest: *mut u8, mut count: usize) -> (usize, usize, usize) {
     // Unaligned writes are still slow on modern processors, so align the destination address.
