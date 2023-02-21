@@ -1113,7 +1113,7 @@ rustc_queries! {
         desc { "checking for private elements in public interfaces" }
     }
 
-    query reachable_set(_: ()) -> &'tcx FxHashSet<LocalDefId> {
+    query reachable_set(_: ()) -> &'tcx LocalDefIdSet {
         arena_cache
         desc { "reachability" }
     }
