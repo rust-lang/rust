@@ -305,10 +305,33 @@ fn and_then_or_clear<T, U>(opt: &mut Option<T>, f: impl FnOnce(&mut T) -> Option
     x
 }
 
+/// Marks the two generic parameters of Chain as sufficiently equal that their values can be swapped
+///
+/// # Safety
+///
+/// This would be trivially safe if both types were identical, including lifetimes.
+/// However we can't specify bounds like that and it would be overly restrictive since it's not
+/// uncommon for borrowing iterators to have slightly different lifetimes.
+///
+/// We can relax this by only requiring that the base struct type is the same while ignoring
+/// lifetime parameters as long as
+/// * the actual runtime lifespan of the values is capped by the shorter of the two lifetimes
+/// * all invoked trait methods (and drop code) monomorphize down to the same code
 #[rustc_unsafe_specialization_marker]
-trait SymmetricalArms {}
+unsafe trait SymmetricalModuloLifetimes {}
 
-impl<A> SymmetricalArms for Chain<A, A> {}
+/// Safety:
+/// * <A, A> ensures that the basic type is the same
+/// * actual lifespan of the values is capped by the combined lifetime of Chain's fields as long as
+///   there is no way to destructure Chain into. I.e. Chain must not implement `SourceIter`,
+///   `into_parts(self)` or similar methods.
+/// * we rely on the language currently having no mechanism that would allow lifetime-dependent
+///   code paths. Specialization forbids `where T: 'static` and similar bounds (modulo the exposed
+///   `#[rustc_unsafe_specialization_marker]` traits).
+///   And any trait depending on `Any` would have to be 'static in *both* arms to make a useful Chain.
+///   This is only true as long as *all* impls on  `Chain` have the same bounds for A and B,
+///   which currently is the case.
+unsafe impl<A> SymmetricalModuloLifetimes for Chain<A, A> {}
 
 trait SpecChain: Iterator {
     fn next(&mut self) -> Option<Self::Item>;
@@ -329,13 +352,13 @@ impl<A, B> SpecChain for Chain<A, B>
 where
     A: Iterator,
     B: Iterator<Item = A::Item>,
-    Self: SymmetricalArms,
+    Self: SymmetricalModuloLifetimes,
 {
     #[inline]
     fn next(&mut self) -> Option<A::Item> {
         let mut result = and_then_or_clear(&mut self.a, Iterator::next);
         if result.is_none() {
-            // SAFETY: SymmetricalArms guarantees that A and B are the same type.
+            // SAFETY: SymmetricalModuloLifetimes guarantees that A and B are safe to swap
             unsafe { mem::swap(&mut self.a, &mut *(&mut self.b as *mut _ as *mut Option<A>)) };
             result = and_then_or_clear(&mut self.a, Iterator::next);
         }
