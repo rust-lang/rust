@@ -899,8 +899,8 @@ rustc_queries! {
     /// The second return value maps from ADTs to ignored derived traits (e.g. Debug and Clone) and
     /// their respective impl (i.e., part of the derive macro)
     query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx (
-        FxHashSet<LocalDefId>,
-        FxHashMap<LocalDefId, Vec<(DefId, DefId)>>
+        LocalDefIdSet,
+        LocalDefIdMap<Vec<(DefId, DefId)>>
     ) {
         arena_cache
         desc { "finding live symbols in crate" }
