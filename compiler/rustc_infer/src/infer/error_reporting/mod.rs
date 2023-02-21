@@ -49,6 +49,7 @@ use super::lexical_region_resolve::RegionResolutionError;
 use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 
+use crate::errors;
 use crate::infer;
 use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::infer::ExpectedFound;
@@ -283,17 +284,11 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
     hidden_region: ty::Region<'tcx>,
     opaque_ty_key: ty::OpaqueTypeKey<'tcx>,
 ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-    let opaque_ty = tcx.mk_opaque(opaque_ty_key.def_id.to_def_id(), opaque_ty_key.substs);
-
-    let mut err = struct_span_err!(
-        tcx.sess,
+    let mut err = tcx.sess.create_err(errors::OpaqueCapturesLifetime {
         span,
-        E0700,
-        "hidden type for `{opaque_ty}` captures lifetime that does not appear in bounds",
-    );
-
-    let opaque_ty_span = tcx.def_span(opaque_ty_key.def_id);
-    err.span_label(opaque_ty_span, "opaque type defined here");
+        opaque_ty: tcx.mk_opaque(opaque_ty_key.def_id.to_def_id(), opaque_ty_key.substs),
+        opaque_ty_span: tcx.def_span(opaque_ty_key.def_id),
+    });
 
     // Explain the region we are capturing.
     match *hidden_region {
