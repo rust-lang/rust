@@ -565,10 +565,6 @@ impl CStore {
         self.get_crate_data(def.krate).def_kind(def.index)
     }
 
-    pub fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
-        self.get_crate_data(def_id.krate).get_generics(def_id.index, sess).own_counts().lifetimes
-    }
-
     pub fn module_expansion_untracked(&self, def_id: DefId, sess: &Session) -> ExpnId {
         self.get_crate_data(def_id.krate).module_expansion(def_id.index, sess)
     }

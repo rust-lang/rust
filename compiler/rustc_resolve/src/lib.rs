@@ -1168,7 +1168,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         if let Some(def_id) = def_id.as_local() {
             self.item_generics_num_lifetimes[&def_id]
         } else {
-            self.cstore().item_generics_num_lifetimes(def_id, self.tcx.sess)
+            self.tcx.generics_of(def_id).own_counts().lifetimes
         }
     }
 
