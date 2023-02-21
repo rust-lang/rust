@@ -252,7 +252,6 @@ pub trait CrateStore: std::fmt::Debug {
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync + sync::Send;
 
-#[derive(Debug)]
 pub struct Untracked {
     pub cstore: RwLock<Box<CrateStoreDyn>>,
     /// Reference span for definitions.
