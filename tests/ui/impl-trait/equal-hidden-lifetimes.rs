@@ -5,7 +5,6 @@
 
 // `'a == 'static` so `&'a i32` is fine as the return type
 fn equal_regions_static<'a: 'static>(x: &'a i32) -> impl Sized {
-    //~^ WARNING unnecessary lifetime parameter `'a`
     x
 }
 
