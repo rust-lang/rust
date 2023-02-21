@@ -120,11 +120,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     .tcx
                     .opt_parent(def_id)
                     .map(|parent_id| self.get_nearest_non_block_module(parent_id));
-                let expn_id = self.cstore().module_expansion_untracked(def_id, &self.tcx.sess);
                 return Some(self.new_module(
                     parent,
                     ModuleKind::Def(def_kind, def_id, self.tcx.item_name(def_id)),
-                    expn_id,
+                    self.tcx.expn_that_defined(def_id),
                     self.def_span(def_id),
                     // FIXME: Account for `#[no_implicit_prelude]` attributes.
                     parent.map_or(false, |module| module.no_implicit_prelude),

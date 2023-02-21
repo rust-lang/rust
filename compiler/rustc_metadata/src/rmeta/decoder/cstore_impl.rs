@@ -533,10 +533,6 @@ impl CStore {
         self.get_crate_data(def.krate).def_kind(def.index)
     }
 
-    pub fn module_expansion_untracked(&self, def_id: DefId, sess: &Session) -> ExpnId {
-        self.get_crate_data(def_id.krate).module_expansion(def_id.index, sess)
-    }
-
     /// Only public-facing way to traverse all the definitions in a non-local crate.
     /// Critically useful for this third-party project: <https://github.com/hacspec/hacspec>.
     /// See <https://github.com/rust-lang/rust/pull/85889> for context.
