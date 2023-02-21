@@ -1196,10 +1196,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Fn(box Fn { defaultness, ref sig, ref generics, ref body }) => {
                 self.check_defaultness(item.span, defaultness);
 
-                // allow empty function body for autodiff functions
-                let autodiff_item = item.attrs.iter().any(|attr| attr.value_str().map(|x| x == sym::autodiff_into).unwrap_or(false));
-
-                if !autodiff_item && body.is_none() {
+                if body.is_none() {
                     let msg = "free function without a body";
                     self.error_item_without_body(item.span, "function", msg, " { <body> }");
                 }

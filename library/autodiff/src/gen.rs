@@ -29,6 +29,8 @@ pub(crate) fn generate_body(token: TokenStream, item: &AutoDiffItem) -> (TokenSt
         }
     }
 
+    fn_args.extend(it_args);
+
     let fn_args_name = fn_args.iter().map(|x| match x {
         FnArg::Receiver(_) => quote!(self),
         FnArg::Typed(t) => {
@@ -60,14 +62,14 @@ pub(crate) fn generate_body(token: TokenStream, item: &AutoDiffItem) -> (TokenSt
         (
             quote!(
                 fn #fn_name_wrapper(#( #fn_args, )*) {
-                    #fn_name(#( #fn_args_name, )*)
+                    #fn_name(#( #fn_args_name, )*);
                 }
             ),
             fn_name_call
         )
     } else {
         let mut item = syn::parse2::<ItemFn>(token).unwrap();
-        let (params, _) = parser::strip_sig_attributes(item.sig.inputs.iter().collect());
+        let (params, _) = parser::strip_sig_attributes(item.sig.inputs.iter().collect(), false);
         item.sig.inputs = params.into_iter().collect();
 
         let fn_name = &item.sig.ident;
@@ -81,7 +83,7 @@ pub(crate) fn generate_body(token: TokenStream, item: &AutoDiffItem) -> (TokenSt
     let tmp = fn_args_name.clone();
 
     (quote!(
-        std::hint::black_box((#fn_name(#( #fn_args_name, )*), #( #add_args_name, )* #( #tmp, )*));
+        std::hint::black_box((#fn_name(#( #fn_args_name, )*), #( &#add_args_name, )* #( &#tmp, )*));
 
         #ret
     ), quote!(#fnc_source))

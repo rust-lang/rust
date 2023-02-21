@@ -14,3 +14,7 @@ quote = "1.0"
 proc-macro2 = "1"
 proc-macro-error = "1"
 syn = { version = "1", features = ["extra-traits", "full", "visit", "visit-mut"]}
+
+[dev-dependencies]
+macrotest = "1"
+trybuild = "1"

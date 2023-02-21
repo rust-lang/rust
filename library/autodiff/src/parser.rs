@@ -134,14 +134,29 @@ impl Header {
     }
 }
 
-pub(crate) fn strip_sig_attributes(args: Vec<&FnArg>) -> (Vec<FnArg>, Vec<Activity>) {
+pub(crate) fn strip_sig_attributes(args: Vec<&FnArg>, do_skip: bool) -> (Vec<FnArg>, Vec<Activity>) {
     let mut args = args.into_iter().cloned().collect::<Vec<_>>();
-    let acts = args.iter_mut().map(|x| {
-        match x {
+    let mut arg_it = args.iter_mut();
+    let mut acts = Vec::new();
+    let mut skip = false;
+
+    while let Some(arg) = arg_it.next() {
+        if skip && do_skip {
+            skip = false;
+            continue;
+        }
+
+        let mut attrs = match arg {
             FnArg::Typed(pat) => pat.attrs.drain(..),
             FnArg::Receiver(pat) => pat.attrs.drain(..),
+        };
+        let act = attrs.next().map(Activity::from_inline).unwrap_or(Activity::Const);
+        match act {
+            Activity::Duplicated | Activity::DuplicatedNoNeed => { skip = true; }
+            _ => {}
         }
-    }).flatten().map(|x| Activity::from_inline(x)).collect();
+        acts.push(act);
+    }
 
     (args, acts)
 }
@@ -315,17 +330,17 @@ pub(crate) fn parse(args: TokenStream, input: TokenStream) -> AutoDiffItem {
                 help = "`#[autodiff]` can only be used on functions"
             )
         },
-        Err(err) => panic!("Could not parse item {}", err)
+        Err(err) => panic!("Could not parse item: {}", err)
     };
 
     // then parse attributes
     let (header, param_attrs) = Header::parse(args);
 
     // strip the function parameters from attribute macros
-    let (params, param_attrs2) = strip_sig_attributes(sig.inputs.iter().collect());
+    let (params, param_attrs2) = strip_sig_attributes(sig.inputs.iter().collect(), !block.is_some());
     sig.inputs = params.into_iter().collect();
 
-    let params = match (param_attrs, param_attrs2) {
+    let mut params = match (param_attrs, param_attrs2) {
         (a, b) if b.is_empty() => a,
         (a, b) if a.is_empty() => b,
         (a, b) if a.is_empty() && b.is_empty() => Vec::new(),
@@ -341,6 +356,13 @@ pub(crate) fn parse(args: TokenStream, input: TokenStream) -> AutoDiffItem {
         },
         false => sig,
     };
+
+    let rem_params = sig.inputs.len() - params.iter().map(|x| match x {
+        Activity::Const | Activity::Active => 1,
+        Activity::Duplicated | Activity::DuplicatedNoNeed => 2,
+    }).sum::<usize>();
+
+    params.extend((0..rem_params).map(|_| Activity::Const));
 
     AutoDiffItem {
         header,

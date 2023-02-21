@@ -42,3 +42,8 @@ pub fn autodiff(args: TokenStream, input: TokenStream) -> TokenStream {
 
     out.into()
 }
+
+#[test]
+pub fn expandtest() {
+    macrotest::expand("tests/expand/*.rs");
+}
