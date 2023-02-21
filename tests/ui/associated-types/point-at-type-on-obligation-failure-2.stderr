@@ -23,7 +23,7 @@ LL |     Self::Assoc: Bar,
    |                  ^^^ required by this bound in `Baz::Assoc`
 LL | {
 LL |     type Assoc;
-   |          ----- required by a bound in this
+   |          ----- required by a bound in this associated type
 
 error[E0277]: the trait bound `bool: Bar` is not satisfied
   --> $DIR/point-at-type-on-obligation-failure-2.rs:30:18
@@ -38,7 +38,7 @@ LL |     <Self as Bat>::Assoc: Bar,
    |                           ^^^ required by this bound in `Bat::Assoc`
 LL | {
 LL |     type Assoc;
-   |          ----- required by a bound in this
+   |          ----- required by a bound in this associated type
 
 error: aborting due to 3 previous errors
 

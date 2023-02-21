@@ -10,7 +10,7 @@ note: required by a bound in `UnsafeCopy`
   --> $DIR/hr-associated-type-projection-1.rs:3:64
    |
 LL | trait UnsafeCopy<'a, T: Copy>
-   |       ---------- required by a bound in this
+   |       ---------- required by a bound in this trait
 LL | where
 LL |     for<'b> <Self as UnsafeCopy<'b, T>>::Item: std::ops::Deref<Target = T>,
    |                                                                ^^^^^^^^^^ required by this bound in `UnsafeCopy`

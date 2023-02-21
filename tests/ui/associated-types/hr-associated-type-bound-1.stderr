@@ -9,7 +9,7 @@ note: required by a bound in `X`
   --> $DIR/hr-associated-type-bound-1.rs:3:33
    |
 LL | trait X<'a>
-   |       - required by a bound in this
+   |       - required by a bound in this trait
 LL | where
 LL |     for<'b> <Self as X<'b>>::U: Clone,
    |                                 ^^^^^ required by this bound in `X`

@@ -23,7 +23,7 @@ note: required by a bound in `WhereClause`
   --> $DIR/wfness.rs:8:9
    |
 LL | struct WhereClause<const N: u8 = 2>
-   |        ----------- required by a bound in this
+   |        ----------- required by a bound in this struct
 LL | where
 LL |     (): Trait<N>;
    |         ^^^^^^^^ required by this bound in `WhereClause`
