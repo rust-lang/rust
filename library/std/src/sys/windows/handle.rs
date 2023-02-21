@@ -327,7 +327,16 @@ impl<'a> Read for &'a Handle {
         (**self).read(buf)
     }
 
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf(buf)
+    }
+
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         (**self).read_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        (**self).is_read_vectored()
     }
 }

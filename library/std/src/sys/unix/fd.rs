@@ -469,6 +469,15 @@ impl<'a> Read for &'a FileDesc {
     fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         (**self).read_buf(cursor)
     }
+
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        (**self).read_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        (**self).is_read_vectored()
+    }
 }
 
 impl AsInner<OwnedFd> for FileDesc {
