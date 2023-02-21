@@ -146,7 +146,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
 
     #[inline]
     fn def_span(&self, def_id: LocalDefId) -> Span {
-        *self.untracked.source_span.read().get(def_id).unwrap_or(&DUMMY_SP)
+        self.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP)
     }
 
     #[inline]
