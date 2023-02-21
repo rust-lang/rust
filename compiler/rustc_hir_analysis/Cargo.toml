@@ -26,5 +26,5 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_lint = { path = "../rustc_lint" }
 rustc_type_ir = { path = "../rustc_type_ir" }
 rustc_feature = { path = "../rustc_feature" }
-thin-vec = "0.2.12"
+thin-vec = { git = "https://github.com/nnethercote/thin-vec", branch = "u32-len-cap", features = ["u32-len-cap"] }
 tracing = "0.1"
