@@ -1216,15 +1216,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // a note about editions
                             let note = if let Some(did) = did {
                                 let requires_note = !did.is_local()
-                                    && this.cstore().item_attrs_untracked(did, this.tcx.sess).any(
+                                    && this.tcx.get_attrs(did, sym::rustc_diagnostic_item).any(
                                         |attr| {
-                                            if attr.has_name(sym::rustc_diagnostic_item) {
-                                                [sym::TryInto, sym::TryFrom, sym::FromIterator]
-                                                    .map(|x| Some(x))
-                                                    .contains(&attr.value_str())
-                                            } else {
-                                                false
-                                            }
+                                            [sym::TryInto, sym::TryFrom, sym::FromIterator]
+                                                .map(|x| Some(x))
+                                                .contains(&attr.value_str())
                                         },
                                     );
 
