@@ -11,9 +11,6 @@
 #![feature(let_chains)]
 #![recursion_limit = "256"]
 
-#[macro_use]
-extern crate tracing;
-
 pub mod ast_validation;
 mod errors;
 pub mod feature_gate;

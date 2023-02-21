@@ -5,7 +5,7 @@ use rustc_ast::{attr, token, util::literal};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
-use thin_vec::ThinVec;
+use thin_vec::{thin_vec, ThinVec};
 
 impl<'a> ExtCtxt<'a> {
     pub fn path(&self, span: Span, strs: Vec<Ident>) -> ast::Path {
@@ -125,7 +125,7 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef {
         ast::PolyTraitRef {
-            bound_generic_params: Vec::new(),
+            bound_generic_params: ThinVec::new(),
             trait_ref: self.trait_ref(path),
             span,
         }
@@ -221,14 +221,14 @@ impl<'a> ExtCtxt<'a> {
     pub fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
         self.block(
             expr.span,
-            vec![ast::Stmt {
+            thin_vec![ast::Stmt {
                 id: ast::DUMMY_NODE_ID,
                 span: expr.span,
                 kind: ast::StmtKind::Expr(expr),
             }],
         )
     }
-    pub fn block(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block> {
+    pub fn block(&self, span: Span, stmts: ThinVec<ast::Stmt>) -> P<ast::Block> {
         P(ast::Block {
             stmts,
             id: ast::DUMMY_NODE_ID,
@@ -284,18 +284,23 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         expr: P<ast::Expr>,
-        args: Vec<P<ast::Expr>>,
+        args: ThinVec<P<ast::Expr>>,
     ) -> P<ast::Expr> {
         self.expr(span, ast::ExprKind::Call(expr, args))
     }
-    pub fn expr_call_ident(&self, span: Span, id: Ident, args: Vec<P<ast::Expr>>) -> P<ast::Expr> {
+    pub fn expr_call_ident(
+        &self,
+        span: Span,
+        id: Ident,
+        args: ThinVec<P<ast::Expr>>,
+    ) -> P<ast::Expr> {
         self.expr(span, ast::ExprKind::Call(self.expr_ident(span, id), args))
     }
     pub fn expr_call_global(
         &self,
         sp: Span,
         fn_path: Vec<Ident>,
-        args: Vec<P<ast::Expr>>,
+        args: ThinVec<P<ast::Expr>>,
     ) -> P<ast::Expr> {
         let pathexpr = self.expr_path(self.path_global(sp, fn_path));
         self.expr_call(sp, pathexpr, args)
@@ -318,7 +323,7 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         path: ast::Path,
-        fields: Vec<ast::ExprField>,
+        fields: ThinVec<ast::ExprField>,
     ) -> P<ast::Expr> {
         self.expr(
             span,
@@ -334,7 +339,7 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         id: Ident,
-        fields: Vec<ast::ExprField>,
+        fields: ThinVec<ast::ExprField>,
     ) -> P<ast::Expr> {
         self.expr_struct(span, self.path_ident(span, id), fields)
     }
@@ -372,12 +377,12 @@ impl<'a> ExtCtxt<'a> {
     }
 
     /// `[expr1, expr2, ...]`
-    pub fn expr_array(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr> {
+    pub fn expr_array(&self, sp: Span, exprs: ThinVec<P<ast::Expr>>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprKind::Array(exprs))
     }
 
     /// `&[expr1, expr2, ...]`
-    pub fn expr_array_ref(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr> {
+    pub fn expr_array_ref(&self, sp: Span, exprs: ThinVec<P<ast::Expr>>) -> P<ast::Expr> {
         self.expr_addr_of(sp, self.expr_array(sp, exprs))
     }
 
@@ -387,14 +392,14 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn expr_some(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
         let some = self.std_path(&[sym::option, sym::Option, sym::Some]);
-        self.expr_call_global(sp, some, vec![expr])
+        self.expr_call_global(sp, some, thin_vec![expr])
     }
 
     pub fn expr_none(&self, sp: Span) -> P<ast::Expr> {
         let none = self.std_path(&[sym::option, sym::Option, sym::None]);
         self.expr_path(self.path_global(sp, none))
     }
-    pub fn expr_tuple(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr> {
+    pub fn expr_tuple(&self, sp: Span, exprs: ThinVec<P<ast::Expr>>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprKind::Tup(exprs))
     }
 
@@ -402,7 +407,7 @@ impl<'a> ExtCtxt<'a> {
         self.expr_call_global(
             span,
             [sym::std, sym::rt, sym::begin_panic].iter().map(|s| Ident::new(*s, span)).collect(),
-            vec![self.expr_str(span, msg)],
+            thin_vec![self.expr_str(span, msg)],
         )
     }
 
@@ -412,7 +417,7 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn expr_ok(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
         let ok = self.std_path(&[sym::result, sym::Result, sym::Ok]);
-        self.expr_call_global(sp, ok, vec![expr])
+        self.expr_call_global(sp, ok, thin_vec![expr])
     }
 
     pub fn expr_try(&self, sp: Span, head: P<ast::Expr>) -> P<ast::Expr> {
@@ -426,12 +431,12 @@ impl<'a> ExtCtxt<'a> {
         let binding_expr = self.expr_ident(sp, binding_variable);
 
         // `Ok(__try_var)` pattern
-        let ok_pat = self.pat_tuple_struct(sp, ok_path, vec![binding_pat.clone()]);
+        let ok_pat = self.pat_tuple_struct(sp, ok_path, thin_vec![binding_pat.clone()]);
 
         // `Err(__try_var)` (pattern and expression respectively)
-        let err_pat = self.pat_tuple_struct(sp, err_path.clone(), vec![binding_pat]);
+        let err_pat = self.pat_tuple_struct(sp, err_path.clone(), thin_vec![binding_pat]);
         let err_inner_expr =
-            self.expr_call(sp, self.expr_path(err_path), vec![binding_expr.clone()]);
+            self.expr_call(sp, self.expr_path(err_path), thin_vec![binding_expr.clone()]);
         // `return Err(__try_var)`
         let err_expr = self.expr(sp, ast::ExprKind::Ret(Some(err_inner_expr)));
 
@@ -441,7 +446,7 @@ impl<'a> ExtCtxt<'a> {
         let err_arm = self.arm(sp, err_pat, err_expr);
 
         // `match head { Ok() => ..., Err() => ... }`
-        self.expr_match(sp, head, vec![ok_arm, err_arm])
+        self.expr_match(sp, head, thin_vec![ok_arm, err_arm])
     }
 
     pub fn pat(&self, span: Span, kind: PatKind) -> P<ast::Pat> {
@@ -473,7 +478,7 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         path: ast::Path,
-        subpats: Vec<P<ast::Pat>>,
+        subpats: ThinVec<P<ast::Pat>>,
     ) -> P<ast::Pat> {
         self.pat(span, PatKind::TupleStruct(None, path, subpats))
     }
@@ -481,18 +486,18 @@ impl<'a> ExtCtxt<'a> {
         &self,
         span: Span,
         path: ast::Path,
-        field_pats: Vec<ast::PatField>,
+        field_pats: ThinVec<ast::PatField>,
     ) -> P<ast::Pat> {
         self.pat(span, PatKind::Struct(None, path, field_pats, false))
     }
-    pub fn pat_tuple(&self, span: Span, pats: Vec<P<ast::Pat>>) -> P<ast::Pat> {
+    pub fn pat_tuple(&self, span: Span, pats: ThinVec<P<ast::Pat>>) -> P<ast::Pat> {
         self.pat(span, PatKind::Tuple(pats))
     }
 
     pub fn pat_some(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat> {
         let some = self.std_path(&[sym::option, sym::Option, sym::Some]);
         let path = self.path_global(span, some);
-        self.pat_tuple_struct(span, path, vec![pat])
+        self.pat_tuple_struct(span, path, thin_vec![pat])
     }
 
     pub fn arm(&self, span: Span, pat: P<ast::Pat>, expr: P<ast::Expr>) -> ast::Arm {
@@ -511,7 +516,7 @@ impl<'a> ExtCtxt<'a> {
         self.arm(span, self.pat_wild(span), self.expr_unreachable(span))
     }
 
-    pub fn expr_match(&self, span: Span, arg: P<ast::Expr>, arms: Vec<ast::Arm>) -> P<Expr> {
+    pub fn expr_match(&self, span: Span, arg: P<ast::Expr>, arms: ThinVec<ast::Arm>) -> P<Expr> {
         self.expr(span, ast::ExprKind::Match(arg, arms))
     }
 
@@ -562,7 +567,12 @@ impl<'a> ExtCtxt<'a> {
         self.lambda(span, vec![ident], body)
     }
 
-    pub fn lambda_stmts_1(&self, span: Span, stmts: Vec<ast::Stmt>, ident: Ident) -> P<ast::Expr> {
+    pub fn lambda_stmts_1(
+        &self,
+        span: Span,
+        stmts: ThinVec<ast::Stmt>,
+        ident: Ident,
+    ) -> P<ast::Expr> {
         self.lambda1(span, self.expr_block(self.block(span, stmts)), ident)
     }
 
@@ -579,7 +589,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     // `self` is unused but keep it as method for the convenience use.
-    pub fn fn_decl(&self, inputs: Vec<ast::Param>, output: ast::FnRetTy) -> P<ast::FnDecl> {
+    pub fn fn_decl(&self, inputs: ThinVec<ast::Param>, output: ast::FnRetTy) -> P<ast::FnDecl> {
         P(ast::FnDecl { inputs, output })
     }
 

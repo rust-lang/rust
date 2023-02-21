@@ -31,6 +31,7 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos};
+use thin_vec::{thin_vec, ThinVec};
 
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
 /// dropped into the token stream, which happens while parsing the result of
@@ -124,7 +125,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a sequence of expressions delimited by parentheses.
-    fn parse_paren_expr_seq(&mut self) -> PResult<'a, Vec<P<Expr>>> {
+    fn parse_paren_expr_seq(&mut self) -> PResult<'a, ThinVec<P<Expr>>> {
         self.parse_paren_comma_seq(|p| p.parse_expr_catch_underscore()).map(|(r, _)| r)
     }
 
@@ -1450,7 +1451,7 @@ impl<'a> Parser<'a> {
         let close = &token::CloseDelim(close_delim);
         let kind = if self.eat(close) {
             // Empty vector
-            ExprKind::Array(Vec::new())
+            ExprKind::Array(ThinVec::new())
         } else {
             // Non-empty vector
             let first_expr = self.parse_expr()?;
@@ -1468,7 +1469,7 @@ impl<'a> Parser<'a> {
             } else {
                 // Vector with one element
                 self.expect(close)?;
-                ExprKind::Array(vec![first_expr])
+                ExprKind::Array(thin_vec![first_expr])
             }
         };
         let expr = self.mk_expr(lo.to(self.prev_token.span), kind);
@@ -1600,7 +1601,7 @@ impl<'a> Parser<'a> {
 
                 // Replace `'label: non_block_expr` with `'label: {non_block_expr}` in order to suppress future errors about `break 'label`.
                 let stmt = self.mk_stmt(span, StmtKind::Expr(expr));
-                let blk = self.mk_block(vec![stmt], BlockCheckMode::Default, span);
+                let blk = self.mk_block(thin_vec![stmt], BlockCheckMode::Default, span);
                 self.mk_expr(span, ExprKind::Block(blk, label))
             });
 
@@ -2095,7 +2096,7 @@ impl<'a> Parser<'a> {
 
             self.sess.gated_spans.gate(sym::closure_lifetime_binder, span);
 
-            ClosureBinder::For { span, generic_params: P::from_vec(lifetime_defs) }
+            ClosureBinder::For { span, generic_params: lifetime_defs }
         } else {
             ClosureBinder::NotPresent
         };
@@ -2187,7 +2188,7 @@ impl<'a> Parser<'a> {
         let arg_start = self.token.span.lo();
 
         let inputs = if self.eat(&token::OrOr) {
-            Vec::new()
+            ThinVec::new()
         } else {
             self.expect(&token::BinOp(token::Or))?;
             let args = self
@@ -2480,7 +2481,7 @@ impl<'a> Parser<'a> {
             self.sess
                 .emit_err(errors::MissingExpressionInForLoop { span: expr.span.shrink_to_lo() });
             let err_expr = self.mk_expr(expr.span, ExprKind::Err);
-            let block = self.mk_block(vec![], BlockCheckMode::Default, self.prev_token.span);
+            let block = self.mk_block(thin_vec![], BlockCheckMode::Default, self.prev_token.span);
             return Ok(self.mk_expr(
                 lo.to(self.prev_token.span),
                 ExprKind::ForLoop(pat, err_expr, block, opt_label),
@@ -2565,7 +2566,7 @@ impl<'a> Parser<'a> {
         }
         let attrs = self.parse_inner_attributes()?;
 
-        let mut arms: Vec<Arm> = Vec::new();
+        let mut arms = ThinVec::new();
         while self.token != token::CloseDelim(Delimiter::Brace) {
             match self.parse_arm() {
                 Ok(arm) => arms.push(arm),
@@ -2934,8 +2935,8 @@ impl<'a> Parser<'a> {
         pth: ast::Path,
         recover: bool,
         close_delim: Delimiter,
-    ) -> PResult<'a, (Vec<ExprField>, ast::StructRest, bool)> {
-        let mut fields = Vec::new();
+    ) -> PResult<'a, (ThinVec<ExprField>, ast::StructRest, bool)> {
+        let mut fields = ThinVec::new();
         let mut base = ast::StructRest::None;
         let mut recover_async = false;
 
@@ -3211,7 +3212,7 @@ impl<'a> Parser<'a> {
         ExprKind::Index(expr, idx)
     }
 
-    fn mk_call(&self, f: P<Expr>, args: Vec<P<Expr>>) -> ExprKind {
+    fn mk_call(&self, f: P<Expr>, args: ThinVec<P<Expr>>) -> ExprKind {
         ExprKind::Call(f, args)
     }
 

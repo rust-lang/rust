@@ -6,6 +6,9 @@ use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
 use rustc_errors::{error_code, fluent, Diagnostic, IntoDiagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
+use std::convert::TryInto;
+use thin_vec::ThinVec;
+use tracing::debug;
 
 // Public for rustfmt usage
 #[derive(Debug)]
@@ -346,9 +349,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches `COMMASEP(meta_item_inner)`.
-    pub(crate) fn parse_meta_seq_top(&mut self) -> PResult<'a, Vec<ast::NestedMetaItem>> {
+    pub(crate) fn parse_meta_seq_top(&mut self) -> PResult<'a, ThinVec<ast::NestedMetaItem>> {
         // Presumably, the majority of the time there will only be one attr.
-        let mut nmis = Vec::with_capacity(1);
+        let mut nmis = ThinVec::with_capacity(1);
         while self.token.kind != token::Eof {
             nmis.push(self.parse_meta_item_inner()?);
             if !self.eat(&token::Comma) {

@@ -20,7 +20,7 @@ use std::iter;
 use std::ops::BitXor;
 #[cfg(debug_assertions)]
 use std::sync::atomic::{AtomicU32, Ordering};
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 
 pub struct MarkedAttrs(GrowableBitSet<AttrId>);
 
@@ -135,7 +135,7 @@ impl Attribute {
         }
     }
 
-    pub fn meta_item_list(&self) -> Option<Vec<NestedMetaItem>> {
+    pub fn meta_item_list(&self) -> Option<ThinVec<NestedMetaItem>> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_item_list(),
             AttrKind::DocComment(..) => None,
@@ -216,7 +216,7 @@ impl AttrItem {
         self.args.span().map_or(self.path.span, |args_span| self.path.span.to(args_span))
     }
 
-    fn meta_item_list(&self) -> Option<Vec<NestedMetaItem>> {
+    fn meta_item_list(&self) -> Option<ThinVec<NestedMetaItem>> {
         match &self.args {
             AttrArgs::Delimited(args) if args.delim == MacDelimiter::Parenthesis => {
                 MetaItemKind::list_from_tokens(args.tokens.clone())
@@ -375,9 +375,9 @@ impl MetaItemKind {
         }
     }
 
-    fn list_from_tokens(tokens: TokenStream) -> Option<Vec<NestedMetaItem>> {
+    fn list_from_tokens(tokens: TokenStream) -> Option<ThinVec<NestedMetaItem>> {
         let mut tokens = tokens.into_trees().peekable();
-        let mut result = Vec::new();
+        let mut result = ThinVec::new();
         while tokens.peek().is_some() {
             let item = NestedMetaItem::from_tokens(&mut tokens)?;
             result.push(item);

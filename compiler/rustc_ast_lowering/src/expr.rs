@@ -18,7 +18,7 @@ use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -367,7 +367,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_legacy_const_generics(
         &mut self,
         mut f: Expr,
-        args: Vec<AstP<Expr>>,
+        args: ThinVec<AstP<Expr>>,
         legacy_args_idx: &[usize],
     ) -> hir::ExprKind<'hir> {
         let ExprKind::Path(None, path) = &mut f.kind else {
@@ -376,7 +376,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Split the arguments into const generics and normal arguments
         let mut real_args = vec![];
-        let mut generic_args = vec![];
+        let mut generic_args = ThinVec::new();
         for (idx, arg) in args.into_iter().enumerate() {
             if legacy_args_idx.contains(&idx) {
                 let parent_def_id = self.current_hir_id_owner;

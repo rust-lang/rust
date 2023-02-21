@@ -21,7 +21,7 @@ use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 
 /// Any `?` or `~const` modifiers that appear at the start of a bound.
 struct BoundModifiers {
@@ -273,7 +273,7 @@ impl<'a> Parser<'a> {
             TyKind::Infer
         } else if self.check_fn_front_matter(false, Case::Sensitive) {
             // Function pointer type
-            self.parse_ty_bare_fn(lo, Vec::new(), None, recover_return_sign)?
+            self.parse_ty_bare_fn(lo, ThinVec::new(), None, recover_return_sign)?
         } else if self.check_keyword(kw::For) {
             // Function pointer type or bound list (trait object type) starting with a poly-trait.
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
@@ -352,7 +352,7 @@ impl<'a> Parser<'a> {
             match ty.kind {
                 // `(TY_BOUND_NOPAREN) + BOUND + ...`.
                 TyKind::Path(None, path) if maybe_bounds => {
-                    self.parse_remaining_bounds_path(Vec::new(), path, lo, true)
+                    self.parse_remaining_bounds_path(ThinVec::new(), path, lo, true)
                 }
                 TyKind::TraitObject(bounds, TraitObjectSyntax::None)
                     if maybe_bounds && bounds.len() == 1 && !trailing_plus =>
@@ -378,7 +378,7 @@ impl<'a> Parser<'a> {
 
     fn parse_remaining_bounds_path(
         &mut self,
-        generic_params: Vec<GenericParam>,
+        generic_params: ThinVec<GenericParam>,
         path: ast::Path,
         lo: Span,
         parse_plus: bool,
@@ -511,7 +511,7 @@ impl<'a> Parser<'a> {
     fn parse_ty_bare_fn(
         &mut self,
         lo: Span,
-        mut params: Vec<GenericParam>,
+        mut params: ThinVec<GenericParam>,
         param_insertion_point: Option<Span>,
         recover_return_sign: RecoverReturnSign,
     ) -> PResult<'a, TyKind> {
@@ -545,13 +545,13 @@ impl<'a> Parser<'a> {
     fn recover_fn_ptr_with_generics(
         &mut self,
         lo: Span,
-        params: &mut Vec<GenericParam>,
+        params: &mut ThinVec<GenericParam>,
         param_insertion_point: Option<Span>,
     ) -> PResult<'a, ()> {
         let generics = self.parse_generics()?;
         let arity = generics.params.len();
 
-        let mut lifetimes: Vec<_> = generics
+        let mut lifetimes: ThinVec<_> = generics
             .params
             .into_iter()
             .filter(|param| matches!(param.kind, ast::GenericParamKind::Lifetime))
@@ -662,7 +662,7 @@ impl<'a> Parser<'a> {
             })))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {
             // `Trait1 + Trait2 + 'a`
-            self.parse_remaining_bounds_path(Vec::new(), path, lo, true)
+            self.parse_remaining_bounds_path(ThinVec::new(), path, lo, true)
         } else {
             // Just a type path.
             Ok(TyKind::Path(None, path))
@@ -993,7 +993,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Optionally parses `for<$generic_params>`.
-    pub(super) fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, Vec<GenericParam>> {
+    pub(super) fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, ThinVec<GenericParam>> {
         if self.eat_keyword(kw::For) {
             self.expect_lt()?;
             let params = self.parse_generic_params()?;
@@ -1002,7 +1002,7 @@ impl<'a> Parser<'a> {
             // parameters, and the lifetime parameters must not have bounds.
             Ok(params)
         } else {
-            Ok(Vec::new())
+            Ok(ThinVec::new())
         }
     }
 
@@ -1012,7 +1012,7 @@ impl<'a> Parser<'a> {
     fn recover_fn_trait_with_lifetime_params(
         &mut self,
         fn_path: &mut ast::Path,
-        lifetime_defs: &mut Vec<GenericParam>,
+        lifetime_defs: &mut ThinVec<GenericParam>,
     ) -> PResult<'a, ()> {
         let fn_path_segment = fn_path.segments.last_mut().unwrap();
         let generic_args = if let Some(p_args) = &fn_path_segment.args {
@@ -1046,7 +1046,7 @@ impl<'a> Parser<'a> {
 
         // Parse `(T, U) -> R`.
         let inputs_lo = self.token.span;
-        let inputs: Vec<_> =
+        let inputs: ThinVec<_> =
             self.parse_fn_params(|_| false)?.into_iter().map(|input| input.ty).collect();
         let inputs_span = inputs_lo.to(self.prev_token.span);
         let output = self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)?;
@@ -1072,7 +1072,7 @@ impl<'a> Parser<'a> {
                 kind: ast::GenericParamKind::Lifetime,
                 colon_span: None,
             })
-            .collect::<Vec<GenericParam>>();
+            .collect::<ThinVec<GenericParam>>();
         lifetime_defs.append(&mut generic_params);
 
         let generic_args_span = generic_args.span();

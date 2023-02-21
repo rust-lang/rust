@@ -6,6 +6,7 @@ use rustc_ast::{GenericArg, Impl, ItemKind, MetaItem};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
+use thin_vec::{thin_vec, ThinVec};
 
 macro path_local($x:ident) {
     generic::ty::Path::new_local(sym::$x)
@@ -92,7 +93,7 @@ fn call_intrinsic(
     cx: &ExtCtxt<'_>,
     span: Span,
     intrinsic: Symbol,
-    args: Vec<P<ast::Expr>>,
+    args: ThinVec<P<ast::Expr>>,
 ) -> P<ast::Expr> {
     let span = cx.with_def_site_ctxt(span);
     let path = cx.std_path(&[sym::intrinsics, intrinsic]);
@@ -103,10 +104,10 @@ fn call_intrinsic(
 fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> P<ast::Expr> {
     let span = cx.with_def_site_ctxt(span);
     let path = cx.std_path(&[sym::intrinsics, sym::unreachable]);
-    let call = cx.expr_call_global(span, path, vec![]);
+    let call = cx.expr_call_global(span, path, ThinVec::new());
 
     cx.expr_block(P(ast::Block {
-        stmts: vec![cx.stmt_expr(call)],
+        stmts: thin_vec![cx.stmt_expr(call)],
         id: ast::DUMMY_NODE_ID,
         rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
         span,
@@ -202,7 +203,7 @@ fn inject_impl_of_structural_trait(
             generics,
             of_trait: Some(trait_ref),
             self_ty: self_type,
-            items: Vec::new(),
+            items: ThinVec::new(),
         })),
     );
 
@@ -211,7 +212,7 @@ fn inject_impl_of_structural_trait(
 
 fn assert_ty_bounds(
     cx: &mut ExtCtxt<'_>,
-    stmts: &mut Vec<ast::Stmt>,
+    stmts: &mut ThinVec<ast::Stmt>,
     ty: P<ast::Ty>,
     span: Span,
     assert_path: &[Symbol],
