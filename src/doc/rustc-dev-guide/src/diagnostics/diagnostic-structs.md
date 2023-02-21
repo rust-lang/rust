@@ -82,7 +82,7 @@ these attributes can also take a value that is the attribute name to look for
 
 Other types have special behavior when used in a `Diagnostic` derive:
 
-- Any attribute applied to an `Option<T>` and will only emit a
+- Any attribute applied to an `Option<T>` will only emit a
   subdiagnostic if the option is `Some(..)`.
 - Any attribute applied to a `Vec<T>` will be repeated for each element of the
   vector.
