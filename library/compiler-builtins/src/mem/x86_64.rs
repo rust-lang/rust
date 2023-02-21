@@ -185,10 +185,6 @@ pub unsafe fn c_string_length(s: *const core::ffi::c_char) -> usize {
         "xor %ecx, %ecx",
         "not %rcx",
 
-        // forward direction
-        // (already set thanks to abi)
-        //"cld",
-
         // perform search
         "repne scasb (%rdi), %al",
 
