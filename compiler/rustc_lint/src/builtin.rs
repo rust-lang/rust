@@ -2635,7 +2635,13 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 cx.emit_spanned_lint(
                     INVALID_VALUE,
                     expr.span,
-                    BuiltinUnpermittedTypeInit { msg, ty: conjured_ty, label: expr.span, sub },
+                    BuiltinUnpermittedTypeInit {
+                        msg,
+                        ty: conjured_ty,
+                        label: expr.span,
+                        sub,
+                        tcx: cx.tcx,
+                    },
                 );
             }
         }

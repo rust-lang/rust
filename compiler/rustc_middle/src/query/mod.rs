@@ -85,11 +85,10 @@ rustc_queries! {
         desc { |tcx| "getting HIR owner of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
-    /// Gives access to the HIR ID for the given `LocalDefId` owner `key`.
+    /// Gives access to the HIR ID for the given `LocalDefId` owner `key` if any.
     ///
-    /// This can be conveniently accessed by methods on `tcx.hir()`.
-    /// Avoid calling this query directly.
-    query local_def_id_to_hir_id(key: LocalDefId) -> hir::HirId {
+    /// Definitions that were generated with no HIR, would be feeded to return `None`.
+    query opt_local_def_id_to_hir_id(key: LocalDefId) -> Option<hir::HirId>{
         desc { |tcx| "getting HIR ID of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
@@ -765,6 +764,26 @@ rustc_queries! {
     query impl_item_implementor_ids(impl_id: DefId) -> &'tcx FxHashMap<DefId, DefId> {
         arena_cache
         desc { |tcx| "comparing impl items against trait for `{}`", tcx.def_path_str(impl_id) }
+    }
+
+    /// Given `fn_def_id` of a trait or of an impl that implements a given trait:
+    /// if `fn_def_id` is the def id of a function defined inside a trait, then it creates and returns
+    /// the associated items that correspond to each impl trait in return position for that trait.
+    /// if `fn_def_id` is the def id of a function defined inside an impl that implements a trait, then it
+    /// creates and returns the associated items that correspond to each impl trait in return position
+    /// of the implemented trait.
+    query associated_items_for_impl_trait_in_trait(fn_def_id: DefId) -> &'tcx [DefId] {
+        desc { |tcx| "creating associated items for impl trait in trait returned by `{}`", tcx.def_path_str(fn_def_id) }
+        cache_on_disk_if { fn_def_id.is_local() }
+        separate_provide_extern
+    }
+
+    /// Given an impl trait in trait `opaque_ty_def_id`, create and return the corresponding
+    /// associated item.
+    query associated_item_for_impl_trait_in_trait(opaque_ty_def_id: LocalDefId) -> LocalDefId {
+        desc { |tcx| "creates the associated item corresponding to the opaque type `{}`", tcx.def_path_str(opaque_ty_def_id.to_def_id()) }
+        cache_on_disk_if { true }
+        separate_provide_extern
     }
 
     /// Given an `impl_id`, return the trait it implements.
