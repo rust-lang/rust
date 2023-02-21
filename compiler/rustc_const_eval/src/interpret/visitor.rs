@@ -284,7 +284,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
         &self,
         ecx: &InterpCx<'mir, 'tcx, M>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        // We `force_allocation` here so that `from_op` below can work.
+        // No need for `force_allocation` since we are just going to read from this.
         ecx.place_to_op(self)
     }
 
@@ -421,15 +421,25 @@ macro_rules! make_value_visitor {
                 // Special treatment for special types, where the (static) layout is not sufficient.
                 match *ty.kind() {
                     // If it is a trait object, switch to the real type that was used to create it.
-                    ty::Dynamic(..) => {
+                    ty::Dynamic(_, _, ty::Dyn) => {
+                        // Dyn types. This is unsized, and the actual dynamic type of the data is given by the
+                        // vtable stored in the place metadata.
                         // unsized values are never immediate, so we can assert_mem_place
                         let op = v.to_op_for_read(self.ecx())?;
                         let dest = op.assert_mem_place();
-                        let inner_mplace = self.ecx().unpack_dyn_trait(&dest)?;
+                        let inner_mplace = self.ecx().unpack_dyn_trait(&dest)?.0;
                         trace!("walk_value: dyn object layout: {:#?}", inner_mplace.layout);
                         // recurse with the inner type
                         return self.visit_field(&v, 0, &$value_trait::from_op(&inner_mplace.into()));
                     },
+                    ty::Dynamic(_, _, ty::DynStar) => {
+                        // DynStar types. Very different from a dyn type (but strangely part of the
+                        // same variant in `TyKind`): These are pairs where the 2nd component is the
+                        // vtable, and the first component is the data (which must be ptr-sized).
+                        let op = v.to_op_for_proj(self.ecx())?;
+                        let data = self.ecx().unpack_dyn_star(&op)?.0;
+                        return self.visit_field(&v, 0, &$value_trait::from_op(&data));
+                    }
                     // Slices do not need special handling here: they have `Array` field
                     // placement with length 0, so we enter the `Array` case below which
                     // indirectly uses the metadata to determine the actual length.

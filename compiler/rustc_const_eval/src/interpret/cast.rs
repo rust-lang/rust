@@ -312,6 +312,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    /// `src` is a *pointer to* a `source_ty`, and in `dest` we should store a pointer to th same
+    /// data at type `cast_ty`.
     fn unsize_into_ptr(
         &mut self,
         src: &OpTy<'tcx, M::Provenance>,
@@ -335,7 +337,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 );
                 self.write_immediate(val, dest)
             }
-            (ty::Dynamic(data_a, ..), ty::Dynamic(data_b, ..)) => {
+            (ty::Dynamic(data_a, _, ty::Dyn), ty::Dynamic(data_b, _, ty::Dyn)) => {
                 let val = self.read_immediate(src)?;
                 if data_a.principal() == data_b.principal() {
                     // A NOP cast that doesn't actually change anything, should be allowed even with mismatching vtables.
@@ -359,7 +361,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             _ => {
-                span_bug!(self.cur_span(), "invalid unsizing {:?} -> {:?}", src.layout.ty, cast_ty)
+                span_bug!(
+                    self.cur_span(),
+                    "invalid pointer unsizing {:?} -> {:?}",
+                    src.layout.ty,
+                    cast_ty
+                )
             }
         }
     }
