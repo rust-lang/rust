@@ -1938,8 +1938,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 spans.push_span_label(param.span, "");
             }
 
-            let def_kind = self.tcx.def_kind(def_id);
-            err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
+            err.span_note(spans, &format!("{} defined here", self.tcx.def_descr(def_id)));
         } else if let Some(hir::Node::Expr(e)) = self.tcx.hir().get_if_local(def_id)
             && let hir::ExprKind::Closure(hir::Closure { body, .. }) = &e.kind
         {
@@ -1952,10 +1951,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             err.span_note(span, &format!("{} defined here", kind));
         } else {
-            let def_kind = self.tcx.def_kind(def_id);
             err.span_note(
                 self.tcx.def_span(def_id),
-                &format!("{} defined here", def_kind.descr(def_id)),
+                &format!("{} defined here", self.tcx.def_descr(def_id)),
             );
         }
     }

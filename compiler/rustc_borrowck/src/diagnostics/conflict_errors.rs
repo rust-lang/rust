@@ -2135,7 +2135,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         let tcx = self.infcx.tcx;
 
-        let (_, escapes_from) = tcx.article_and_description(self.mir_def_id().to_def_id());
+        let escapes_from = tcx.def_descr(self.mir_def_id().to_def_id());
 
         let mut err =
             borrowck_errors::borrowed_data_escapes_closure(tcx, escape_span, escapes_from);

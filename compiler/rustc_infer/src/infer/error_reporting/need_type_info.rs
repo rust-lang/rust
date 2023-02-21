@@ -122,7 +122,7 @@ impl InferenceDiagnosticsParentData {
             tcx.def_key(parent_def_id).disambiguated_data.data.get_opt_name()?.to_string();
 
         Some(InferenceDiagnosticsParentData {
-            prefix: tcx.def_kind(parent_def_id).descr(parent_def_id),
+            prefix: tcx.def_descr(parent_def_id),
             name: parent_name,
         })
     }

@@ -2448,7 +2448,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         return_ty: Option<Ty<'tcx>>,
     ) {
         let struct_path = self.tcx().def_path_str(base_did);
-        let kind_name = self.tcx().def_kind(base_did).descr(base_did);
+        let kind_name = self.tcx().def_descr(base_did);
         let mut err = struct_span_err!(
             self.tcx().sess,
             field.span,
