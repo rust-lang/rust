@@ -87,11 +87,6 @@ fn align_of_uncached<'tcx>(
     let tcx = cx.tcx;
     let param_env = cx.param_env;
     let dl = cx.data_layout();
-    let scalar_unit = |value: Primitive| {
-        let size = value.size(dl);
-        assert!(size.bits() <= 128);
-        Scalar::Initialized { value, valid_range: WrappingRange::full(size) }
-    };
 
     let univariant = |fields: &[Layout<'_>], repr: &ReprOptions, kind| {
         Ok(tcx.intern_layout(univariant_uninterned(cx, ty, fields, repr, kind)?))
@@ -157,11 +152,9 @@ fn align_of_uncached<'tcx>(
         }
 
         ty::Dynamic(_, _, ty::DynStar) => {
-            let mut data = scalar_unit(Int(dl.ptr_sized_integer(), false));
-            data.valid_range_mut().start = 0;
-            let mut vtable = scalar_unit(Pointer(AddressSpace::DATA));
-            vtable.valid_range_mut().start = 1;
-            tcx.intern_layout(cx.scalar_pair(data, vtable)).align()
+            let data_align = dl.ptr_sized_integer().align(cx);
+            let vtable_align = Pointer(AddressSpace::DATA).align(cx);
+            data_align.max(vtable_align).max(dl.aggregate_align)
         }
 
         // Arrays and slices.
