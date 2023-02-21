@@ -371,7 +371,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             }
             if tcx.visibility(def_id).is_public() { Some(def_id) } else { None }
         });
-        Extend::extend(&mut self.live_symbols, live_fields);
+        self.live_symbols.extend(live_fields);
 
         intravisit::walk_struct_def(self, def);
     }
