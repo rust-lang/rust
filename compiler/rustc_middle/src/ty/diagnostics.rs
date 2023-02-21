@@ -117,7 +117,7 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
     }
 
     let param_name = trait_pred.skip_binder().self_ty().to_string();
-    let mut constraint = trait_pred.print_modifiers_and_trait_path().to_string();
+    let mut constraint = trait_pred.to_string();
 
     if let Some((name, term)) = associated_ty {
         // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
@@ -144,7 +144,7 @@ pub fn suggest_arbitrary_trait_bound<'tcx>(
              this requirement",
             if generics.where_clause_span.is_empty() { "introducing a" } else { "extending the" },
         ),
-        format!("{} {}: {}", generics.add_where_or_trailing_comma(), param_name, constraint),
+        format!("{} {constraint}", generics.add_where_or_trailing_comma()),
         Applicability::MaybeIncorrect,
     );
     true
