@@ -201,10 +201,7 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
 }
 
 impl<'tcx> ObligationEmittingRelation<'tcx> for Equate<'_, '_, 'tcx> {
-    fn register_predicates(
-        &mut self,
-        obligations: impl IntoIterator<Item = impl ty::ToPredicate<'tcx>>,
-    ) {
+    fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ty::ToPredicate<'tcx>>) {
         self.fields.register_predicates(obligations);
     }
 

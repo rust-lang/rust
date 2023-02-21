@@ -148,10 +148,7 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 
 }
 
 impl<'tcx> ObligationEmittingRelation<'tcx> for Glb<'_, '_, 'tcx> {
-    fn register_predicates(
-        &mut self,
-        obligations: impl IntoIterator<Item = impl ty::ToPredicate<'tcx>>,
-    ) {
+    fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ty::ToPredicate<'tcx>>) {
         self.fields.register_predicates(obligations);
     }
 
