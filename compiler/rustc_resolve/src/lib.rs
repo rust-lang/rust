@@ -35,7 +35,7 @@ use rustc_errors::{
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, LocalDefIdSet};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::TraitCandidate;
@@ -881,7 +881,7 @@ pub struct Resolver<'a, 'tcx> {
     extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
-    has_self: FxHashSet<DefId>,
+    has_self: LocalDefIdSet,
 
     /// Names of fields of an item `DefId` accessible with dot syntax.
     /// Used for hints during error reporting.
@@ -1249,7 +1249,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             prelude: None,
             extern_prelude,
 
-            has_self: FxHashSet::default(),
+            has_self: Default::default(),
             field_names: FxHashMap::default(),
             field_visibility_spans: FxHashMap::default(),
 

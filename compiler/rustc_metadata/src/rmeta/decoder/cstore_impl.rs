@@ -555,10 +555,6 @@ impl CStore {
         )
     }
 
-    pub fn fn_has_self_parameter_untracked(&self, def: DefId, sess: &Session) -> bool {
-        self.get_crate_data(def.krate).get_fn_has_self_parameter(def.index, sess)
-    }
-
     pub fn crate_source_untracked(&self, cnum: CrateNum) -> Lrc<CrateSource> {
         self.get_crate_data(cnum).source.clone()
     }

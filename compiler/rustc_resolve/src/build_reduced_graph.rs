@@ -1008,11 +1008,6 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         match res {
             Res::Def(DefKind::Struct, def_id) => self.insert_field_names_extern(def_id),
             Res::Def(DefKind::Union, def_id) => self.insert_field_names_extern(def_id),
-            Res::Def(DefKind::AssocFn, def_id) => {
-                if self.r.cstore().fn_has_self_parameter_untracked(def_id, self.r.tcx.sess) {
-                    self.r.has_self.insert(def_id);
-                }
-            }
             _ => {}
         }
     }
@@ -1411,7 +1406,7 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 AssocItemKind::Const(..) => (DefKind::AssocConst, ValueNS),
                 AssocItemKind::Fn(box Fn { ref sig, .. }) => {
                     if sig.decl.has_self() {
-                        self.r.has_self.insert(def_id);
+                        self.r.has_self.insert(local_def_id);
                     }
                     (DefKind::AssocFn, ValueNS)
                 }

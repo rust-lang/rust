@@ -1649,7 +1649,17 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             ) {
                 let res = binding.res();
                 if filter_fn(res) {
-                    if self.r.has_self.contains(&res.def_id()) {
+                    let def_id = res.def_id();
+                    let has_self = match def_id.as_local() {
+                        Some(def_id) => self.r.has_self.contains(&def_id),
+                        None => self
+                            .r
+                            .tcx
+                            .fn_arg_names(def_id)
+                            .first()
+                            .map_or(false, |ident| ident.name == kw::SelfLower),
+                    };
+                    if has_self {
                         return Some(AssocSuggestion::MethodWithSelf { called });
                     } else {
                         match res {
