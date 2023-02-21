@@ -1,9 +1,10 @@
-use crate::thir::pattern::deconstruct_pat::DeconstructedPat;
-use crate::thir::pattern::MatchCheckCtxt;
-use rustc_errors::Handler;
+use crate::{
+    fluent_generated as fluent,
+    thir::pattern::{deconstruct_pat::DeconstructedPat, MatchCheckCtxt},
+};
 use rustc_errors::{
     error_code, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    IntoDiagnostic, MultiSpan, SubdiagnosticMessage,
+    Handler, IntoDiagnostic, MultiSpan, SubdiagnosticMessage,
 };
 use rustc_hir::def::Res;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -358,7 +359,7 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut diag = handler.struct_span_err_with_code(
             self.span,
-            rustc_errors::fluent::mir_build_non_exhaustive_patterns_type_not_empty,
+            fluent::mir_build_non_exhaustive_patterns_type_not_empty,
             error_code!(E0004),
         );
 
@@ -380,7 +381,7 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
             let mut span: MultiSpan = def_span.into();
             span.push_span_label(def_span, "");
 
-            diag.span_note(span, rustc_errors::fluent::def_note);
+            diag.span_note(span, fluent::mir_build_def_note);
         }
 
         let is_variant_list_non_exhaustive = match self.ty.kind() {
@@ -391,14 +392,14 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
         };
 
         if is_variant_list_non_exhaustive {
-            diag.note(rustc_errors::fluent::non_exhaustive_type_note);
+            diag.note(fluent::mir_build_non_exhaustive_type_note);
         } else {
-            diag.note(rustc_errors::fluent::type_note);
+            diag.note(fluent::mir_build_type_note);
         }
 
         if let ty::Ref(_, sub_ty, _) = self.ty.kind() {
             if !sub_ty.is_inhabited_from(self.cx.tcx, self.cx.module, self.cx.param_env) {
-                diag.note(rustc_errors::fluent::reference_note);
+                diag.note(fluent::mir_build_reference_note);
             }
         }
 
@@ -424,12 +425,12 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
         if let Some((span, sugg)) = suggestion {
             diag.span_suggestion_verbose(
                 span,
-                rustc_errors::fluent::suggestion,
+                fluent::mir_build_suggestion,
                 sugg,
                 Applicability::HasPlaceholders,
             );
         } else {
-            diag.help(rustc_errors::fluent::help);
+            diag.help(fluent::mir_build_help);
         }
 
         diag
@@ -469,7 +470,7 @@ pub struct NonConstPath {
 pub struct UnreachablePattern {
     #[label]
     pub span: Option<Span>,
-    #[label(catchall_label)]
+    #[label(mir_build_catchall_label)]
     pub catchall: Option<Span>,
 }
 
@@ -493,7 +494,7 @@ pub struct LowerRangeBoundMustBeLessThanOrEqualToUpper {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[note(teach_note)]
+    #[note(mir_build_teach_note)]
     pub teach: Option<()>,
 }
 
@@ -585,9 +586,9 @@ pub struct BorrowOfMovedValue<'tcx> {
     #[primary_span]
     pub span: Span,
     #[label]
-    #[label(occurs_because_label)]
+    #[label(mir_build_occurs_because_label)]
     pub binding_span: Span,
-    #[label(value_borrowed_label)]
+    #[label(mir_build_value_borrowed_label)]
     pub conflicts_ref: Vec<Span>,
     pub name: Ident,
     pub ty: Ty<'tcx>,
@@ -708,7 +709,7 @@ pub struct NontrivialStructuralMatch<'tcx> {
 #[diag(mir_build_overlapping_range_endpoints)]
 #[note]
 pub struct OverlappingRangeEndpoints<'tcx> {
-    #[label(range)]
+    #[label(mir_build_range)]
     pub range: Span,
     #[subdiagnostic]
     pub overlap: Vec<Overlap<'tcx>>,
@@ -788,7 +789,7 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     pub interpreted_as_const: Option<InterpretedAsConst>,
     #[subdiagnostic]
     pub adt_defined_here: Option<AdtDefinedHere<'tcx>>,
-    #[note(pattern_ty)]
+    #[note(mir_build_pattern_ty)]
     pub _p: (),
     pub pattern_ty: Ty<'tcx>,
     #[subdiagnostic]
@@ -823,10 +824,10 @@ impl<'tcx> AddToDiagnostic for AdtDefinedHere<'tcx> {
         let mut spans = MultiSpan::from(self.adt_def_span);
 
         for Variant { span } in self.variants {
-            spans.push_span_label(span, rustc_errors::fluent::mir_build_variant_defined_here);
+            spans.push_span_label(span, fluent::mir_build_variant_defined_here);
         }
 
-        diag.span_note(spans, rustc_errors::fluent::mir_build_adt_defined_here);
+        diag.span_note(spans, fluent::mir_build_adt_defined_here);
     }
 }
 

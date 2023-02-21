@@ -27,6 +27,8 @@ use std::any::Any;
 struct TheBackend;
 
 impl CodegenBackend for TheBackend {
+    fn locale_resource(&self) -> &'static str { "" }
+
     fn codegen_crate<'a, 'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,

@@ -9,12 +9,12 @@ pub(crate) struct UnstableInStable {
     #[primary_span]
     pub span: Span,
     #[suggestion(
-        unstable_sugg,
+        const_eval_unstable_sugg,
         code = "#[rustc_const_unstable(feature = \"...\", issue = \"...\")]\n",
         applicability = "has-placeholders"
     )]
     #[suggestion(
-        bypass_sugg,
+        const_eval_bypass_sugg,
         code = "#[rustc_allow_const_fn_unstable({gate})]\n",
         applicability = "has-placeholders"
     )]
@@ -35,15 +35,15 @@ pub(crate) struct StaticAccessErr {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
-    #[note(teach_note)]
-    #[help(teach_help)]
+    #[note(const_eval_teach_note)]
+    #[help(const_eval_teach_help)]
     pub teach: Option<()>,
 }
 
 #[derive(Diagnostic)]
 #[diag(const_eval_raw_ptr_to_int)]
 #[note]
-#[note(note2)]
+#[note(const_eval_note2)]
 pub(crate) struct RawPtrToIntErr {
     #[primary_span]
     pub span: Span,
@@ -118,7 +118,7 @@ pub(crate) struct UnallowedMutableRefs {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
-    #[note(teach_note)]
+    #[note(const_eval_teach_note)]
     pub teach: Option<()>,
 }
 
@@ -128,7 +128,7 @@ pub(crate) struct UnallowedMutableRefsRaw {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
-    #[note(teach_note)]
+    #[note(const_eval_teach_note)]
     pub teach: Option<()>,
 }
 #[derive(Diagnostic)]
@@ -163,7 +163,7 @@ pub(crate) struct UnallowedHeapAllocations {
     #[label]
     pub span: Span,
     pub kind: ConstContext,
-    #[note(teach_note)]
+    #[note(const_eval_teach_note)]
     pub teach: Option<()>,
 }
 
@@ -184,7 +184,7 @@ pub(crate) struct InteriorMutableDataRefer {
     #[help]
     pub opt_help: Option<()>,
     pub kind: ConstContext,
-    #[note(teach_note)]
+    #[note(const_eval_teach_note)]
     pub teach: Option<()>,
 }
 

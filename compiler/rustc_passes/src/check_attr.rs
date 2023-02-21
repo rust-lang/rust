@@ -4,10 +4,10 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::errors;
+use crate::{errors, fluent_generated as fluent};
 use rustc_ast::{ast, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{fluent, Applicability, IntoDiagnosticArg, MultiSpan};
+use rustc_errors::{Applicability, IntoDiagnosticArg, MultiSpan};
 use rustc_expand::base::resolve_path;
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
@@ -935,15 +935,15 @@ impl CheckAttrVisitor<'_> {
                             src.insert(1, '!');
                             err.span_suggestion_verbose(
                                 attr.span,
-                                fluent::suggestion,
+                                fluent::passes_suggestion,
                                 src,
                                 Applicability::MaybeIncorrect,
                             );
                         } else {
-                            err.span_help(attr.span, fluent::help);
+                            err.span_help(attr.span, fluent::passes_help);
                         }
                     }
-                    err.note(fluent::note);
+                    err.note(fluent::passes_note);
                     err
                 },
             );

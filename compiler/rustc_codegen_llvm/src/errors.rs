@@ -2,9 +2,10 @@ use std::borrow::Cow;
 use std::ffi::CString;
 use std::path::Path;
 
+use crate::fluent_generated as fluent;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{
-    fluent, DiagnosticBuilder, EmissionGuarantee, ErrorGuaranteed, Handler, IntoDiagnostic,
+    DiagnosticBuilder, EmissionGuarantee, ErrorGuaranteed, Handler, IntoDiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -27,9 +28,9 @@ pub(crate) struct UnknownCTargetFeature<'a> {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum PossibleFeature<'a> {
-    #[help(possible_feature)]
+    #[help(codegen_llvm_possible_feature)]
     Some { rust_feature: &'a str },
-    #[help(consider_filing_feature_request)]
+    #[help(codegen_llvm_consider_filing_feature_request)]
     None,
 }
 

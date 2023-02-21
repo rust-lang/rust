@@ -65,7 +65,7 @@ pub(crate) struct MacroConstStability {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(label2)]
+    #[label(expand_label2)]
     pub head_span: Span,
 }
 
@@ -75,7 +75,7 @@ pub(crate) struct MacroBodyStability {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(label2)]
+    #[label(expand_label2)]
     pub head_span: Span,
 }
 
@@ -188,7 +188,7 @@ pub(crate) struct FeatureRemoved<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[note(reason)]
+#[note(expand_reason)]
 pub(crate) struct FeatureRemovedReason<'a> {
     pub reason: &'a str,
 }
@@ -223,12 +223,12 @@ pub(crate) struct MalformedFeatureAttribute {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum MalformedFeatureAttributeHelp {
-    #[label(expected)]
+    #[label(expand_expected)]
     Label {
         #[primary_span]
         span: Span,
     },
-    #[suggestion(expected, code = "{suggestion}", applicability = "maybe-incorrect")]
+    #[suggestion(expand_expected, code = "{suggestion}", applicability = "maybe-incorrect")]
     Suggestion {
         #[primary_span]
         span: Span,
@@ -306,7 +306,7 @@ pub(crate) struct IncompleteParse<'a> {
     pub kind_name: &'a str,
 
     #[suggestion(
-        suggestion_add_semi,
+        expand_suggestion_add_semi,
         style = "verbose",
         code = ";",
         applicability = "maybe-incorrect"
@@ -340,7 +340,7 @@ pub(crate) struct ModuleInBlock {
 }
 
 #[derive(Subdiagnostic)]
-#[note(note)]
+#[note(expand_note)]
 pub(crate) struct ModuleInBlockName {
     #[primary_span]
     pub span: Span,

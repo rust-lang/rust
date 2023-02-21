@@ -57,6 +57,10 @@ impl<'tcx, T> Backend<'tcx> for T where
 }
 
 pub trait CodegenBackend {
+    /// Locale resources for diagnostic messages - a string the content of the Fluent resource.
+    /// Called before `init` so that all other functions are able to emit translatable diagnostics.
+    fn locale_resource(&self) -> &'static str;
+
     fn init(&self, _sess: &Session) {}
     fn print(&self, _req: PrintRequest, _sess: &Session) {}
     fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<Symbol> {

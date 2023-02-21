@@ -61,9 +61,7 @@ pub fn newtype_index(input: TokenStream) -> TokenStream {
 /// For example, given the following invocation of the macro..
 ///
 /// ```ignore (rust)
-/// fluent_messages! {
-///     typeck => "./typeck.ftl",
-/// }
+/// fluent_messages! { "./typeck.ftl" }
 /// ```
 /// ..where `typeck.ftl` has the following contents..
 ///
@@ -77,9 +75,7 @@ pub fn newtype_index(input: TokenStream) -> TokenStream {
 /// will generate the following code:
 ///
 /// ```ignore (rust)
-/// pub static DEFAULT_LOCALE_RESOURCES: &'static [&'static str] = &[
-///     include_str!("./typeck.ftl"),
-/// ];
+/// pub static DEFAULT_LOCALE_RESOURCE: &'static [&'static str] = include_str!("./typeck.ftl");
 ///
 /// mod fluent_generated {
 ///     mod typeck {

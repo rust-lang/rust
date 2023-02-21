@@ -50,7 +50,7 @@ pub struct InvalidLabel {
 pub struct InvalidVisibility {
     #[primary_span]
     pub span: Span,
-    #[label(implied)]
+    #[label(ast_passes_implied)]
     pub implied: Option<Span>,
     #[subdiagnostic]
     pub note: Option<InvalidVisibilityNote>,
@@ -58,9 +58,9 @@ pub struct InvalidVisibility {
 
 #[derive(Subdiagnostic)]
 pub enum InvalidVisibilityNote {
-    #[note(individual_impl_items)]
+    #[note(ast_passes_individual_impl_items)]
     IndividualImplItems,
-    #[note(individual_foreign_items)]
+    #[note(ast_passes_individual_foreign_items)]
     IndividualForeignItems,
 }
 

@@ -34,7 +34,10 @@ where
 
 /// Maps a string to tts, using a made-up filename.
 pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
-    let ps = ParseSess::new(FilePathMapping::empty());
+    let ps = ParseSess::new(
+        vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
+        FilePathMapping::empty(),
+    );
     source_file_to_stream(
         &ps,
         ps.source_map().new_source_file(PathBuf::from("bogofile").into(), source_str),
@@ -45,7 +48,10 @@ pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
 
 /// Parses a string, returns a crate.
 pub(crate) fn string_to_crate(source_str: String) -> ast::Crate {
-    let ps = ParseSess::new(FilePathMapping::empty());
+    let ps = ParseSess::new(
+        vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
+        FilePathMapping::empty(),
+    );
     with_error_checking_parse(source_str, &ps, |p| p.parse_crate_mod())
 }
 
@@ -127,8 +133,10 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
     create_default_session_if_not_set_then(|_| {
         let output = Arc::new(Mutex::new(Vec::new()));
 
-        let fallback_bundle =
-            rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+        let fallback_bundle = rustc_errors::fallback_fluent_bundle(
+            vec![crate::DEFAULT_LOCALE_RESOURCE, rustc_parse::DEFAULT_LOCALE_RESOURCE],
+            false,
+        );
         let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         source_map.new_source_file(Path::new("test.rs").to_owned().into(), file_text.to_owned());
 

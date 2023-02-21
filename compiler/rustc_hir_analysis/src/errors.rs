@@ -1,7 +1,10 @@
 //! Errors emitted by `rustc_hir_analysis`.
 
-use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler};
-use rustc_errors::{IntoDiagnostic, MultiSpan};
+use crate::fluent_generated as fluent;
+use rustc_errors::{
+    error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
+    MultiSpan,
+};
 use rustc_macros::{Diagnostic, LintDiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
@@ -41,11 +44,11 @@ pub struct LifetimesOrBoundsMismatchOnTrait {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(generics_label)]
+    #[label(hir_analysis_generics_label)]
     pub generics_span: Option<Span>,
-    #[label(where_label)]
+    #[label(hir_analysis_where_label)]
     pub where_span: Option<Span>,
-    #[label(bounds_label)]
+    #[label(hir_analysis_bounds_label)]
     pub bounds_span: Vec<Span>,
     pub item_kind: &'static str,
     pub ident: Ident,
@@ -57,7 +60,7 @@ pub struct AsyncTraitImplShouldBeAsync {
     #[primary_span]
     // #[label]
     pub span: Span,
-    #[label(trait_item_label)]
+    #[label(hir_analysis_trait_item_label)]
     pub trait_item_span: Option<Span>,
     pub method_name: Symbol,
 }
@@ -77,7 +80,7 @@ pub struct FieldAlreadyDeclared {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(previous_decl_label)]
+    #[label(hir_analysis_previous_decl_label)]
     pub prev_span: Span,
 }
 
@@ -109,7 +112,7 @@ pub struct CopyImplOnNonAdt {
 pub struct TraitObjectDeclaredWithNoTraits {
     #[primary_span]
     pub span: Span,
-    #[label(alias_span)]
+    #[label(hir_analysis_alias_span)]
     pub trait_alias_span: Option<Span>,
 }
 
@@ -145,7 +148,7 @@ pub struct ValueOfAssociatedStructAlreadySpecified {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(previous_bound_label)]
+    #[label(hir_analysis_previous_bound_label)]
     pub prev_span: Span,
     pub item_name: Ident,
     pub def_path: String,
@@ -175,7 +178,7 @@ impl<'a> IntoDiagnostic<'a> for MissingTypeParams {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = handler.struct_span_err_with_code(
             self.span,
-            rustc_errors::fluent::hir_analysis_missing_type_params,
+            fluent::hir_analysis_missing_type_params,
             error_code!(E0393),
         );
         err.set_arg("parameterCount", self.missing_type_params.len());
@@ -188,7 +191,7 @@ impl<'a> IntoDiagnostic<'a> for MissingTypeParams {
                 .join(", "),
         );
 
-        err.span_label(self.def_span, rustc_errors::fluent::label);
+        err.span_label(self.def_span, fluent::hir_analysis_label);
 
         let mut suggested = false;
         // Don't suggest setting the type params if there are some already: the order is
@@ -203,7 +206,7 @@ impl<'a> IntoDiagnostic<'a> for MissingTypeParams {
                 // least we can clue them to the correct syntax `Iterator<Type>`.
                 err.span_suggestion(
                     self.span,
-                    rustc_errors::fluent::suggestion,
+                    fluent::hir_analysis_suggestion,
                     format!(
                         "{}<{}>",
                         snippet,
@@ -219,10 +222,10 @@ impl<'a> IntoDiagnostic<'a> for MissingTypeParams {
             }
         }
         if !suggested {
-            err.span_label(self.span, rustc_errors::fluent::no_suggestion_label);
+            err.span_label(self.span, fluent::hir_analysis_no_suggestion_label);
         }
 
-        err.note(rustc_errors::fluent::note);
+        err.note(fluent::hir_analysis_note);
         err
     }
 }
@@ -274,7 +277,7 @@ pub struct ConstImplForNonConstTrait {
     pub local_trait_span: Option<Span>,
     #[note]
     pub marking: (),
-    #[note(adding)]
+    #[note(hir_analysis_adding)]
     pub adding: (),
 }
 

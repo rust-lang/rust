@@ -157,7 +157,7 @@ impl<'a> PostExpansionVisitor<'a> {
                 &self.sess.parse_sess,
                 sym::non_lifetime_binders,
                 non_lt_param_spans,
-                rustc_errors::fluent::ast_passes_forbidden_non_lifetime_param,
+                crate::fluent_generated::ast_passes_forbidden_non_lifetime_param,
             )
             .emit();
         }
