@@ -789,7 +789,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
                     self.r
                         .struct_constructors
-                        .insert(def_id, (ctor_res, ctor_vis.to_def_id(), ret_fields));
+                        .insert(local_def_id, (ctor_res, ctor_vis.to_def_id(), ret_fields));
                 }
             }
 
@@ -1006,19 +1006,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         }
         // Record some extra data for better diagnostics.
         match res {
-            Res::Def(DefKind::Struct, def_id) => {
-                let ctor = self.r.cstore().ctor_untracked(def_id);
-                if let Some((ctor_kind, ctor_def_id)) = ctor {
-                    let ctor_res = Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
-                    let ctor_vis = self.r.tcx.visibility(ctor_def_id);
-                    let field_visibilities =
-                        self.r.cstore().struct_field_visibilities_untracked(def_id).collect();
-                    self.r
-                        .struct_constructors
-                        .insert(def_id, (ctor_res, ctor_vis, field_visibilities));
-                }
-                self.insert_field_names_extern(def_id)
-            }
+            Res::Def(DefKind::Struct, def_id) => self.insert_field_names_extern(def_id),
             Res::Def(DefKind::Union, def_id) => self.insert_field_names_extern(def_id),
             Res::Def(DefKind::AssocFn, def_id) => {
                 if self.r.cstore().fn_has_self_parameter_untracked(def_id, self.r.tcx.sess) {

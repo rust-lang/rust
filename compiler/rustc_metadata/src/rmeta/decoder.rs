@@ -930,7 +930,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.generics_of.get(self, item_id).unwrap().decode((self, sess))
     }
 
-    fn get_visibility(self, id: DefIndex) -> ty::Visibility<DefId> {
+    fn get_visibility(self, id: DefIndex) -> Visibility<DefId> {
         self.root
             .tables
             .visibility
@@ -1146,19 +1146,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .expect("fields not encoded for a struct")
             .decode(self)
             .map(move |index| respan(self.get_span(index, sess), self.item_name(index)))
-    }
-
-    fn get_struct_field_visibilities(
-        self,
-        id: DefIndex,
-    ) -> impl Iterator<Item = Visibility<DefId>> + 'a {
-        self.root
-            .tables
-            .children
-            .get(self, id)
-            .expect("fields not encoded for a struct")
-            .decode(self)
-            .map(move |field_index| self.get_visibility(field_index))
     }
 
     fn get_inherent_implementations_for_type(

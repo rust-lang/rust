@@ -1408,19 +1408,38 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 self.suggest_using_enum_variant(err, source, def_id, span);
             }
             (Res::Def(DefKind::Struct, def_id), source) if ns == ValueNS => {
-                let (ctor_def, ctor_vis, fields) =
-                    if let Some(struct_ctor) = self.r.struct_constructors.get(&def_id).cloned() {
-                        if let PathSource::Expr(Some(parent)) = source {
-                            if let ExprKind::Field(..) | ExprKind::MethodCall(..) = parent.kind {
-                                bad_struct_syntax_suggestion(def_id);
-                                return true;
-                            }
+                let struct_ctor = match def_id.as_local() {
+                    Some(def_id) => self.r.struct_constructors.get(&def_id).cloned(),
+                    None => {
+                        let ctor = self.r.cstore().ctor_untracked(def_id);
+                        ctor.map(|(ctor_kind, ctor_def_id)| {
+                            let ctor_res =
+                                Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
+                            let ctor_vis = self.r.tcx.visibility(ctor_def_id);
+                            let field_visibilities = self
+                                .r
+                                .tcx
+                                .associated_item_def_ids(def_id)
+                                .iter()
+                                .map(|field_id| self.r.tcx.visibility(field_id))
+                                .collect();
+                            (ctor_res, ctor_vis, field_visibilities)
+                        })
+                    }
+                };
+
+                let (ctor_def, ctor_vis, fields) = if let Some(struct_ctor) = struct_ctor {
+                    if let PathSource::Expr(Some(parent)) = source {
+                        if let ExprKind::Field(..) | ExprKind::MethodCall(..) = parent.kind {
+                            bad_struct_syntax_suggestion(def_id);
+                            return true;
                         }
-                        struct_ctor
-                    } else {
-                        bad_struct_syntax_suggestion(def_id);
-                        return true;
-                    };
+                    }
+                    struct_ctor
+                } else {
+                    bad_struct_syntax_suggestion(def_id);
+                    return true;
+                };
 
                 let is_accessible = self.r.is_accessible_from(ctor_vis, self.parent_scope.module);
                 if !is_expected(ctor_def) || is_accessible {

@@ -15,7 +15,7 @@ use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::{ExternProviders, Providers};
-use rustc_middle::ty::{self, TyCtxt, Visibility};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::cstore::{CrateSource, CrateStore};
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
@@ -513,13 +513,6 @@ impl CStore {
         sess: &'a Session,
     ) -> impl Iterator<Item = Spanned<Symbol>> + 'a {
         self.get_crate_data(def.krate).get_struct_field_names(def.index, sess)
-    }
-
-    pub fn struct_field_visibilities_untracked(
-        &self,
-        def: DefId,
-    ) -> impl Iterator<Item = Visibility<DefId>> + '_ {
-        self.get_crate_data(def.krate).get_struct_field_visibilities(def.index)
     }
 
     pub fn ctor_untracked(&self, def: DefId) -> Option<(CtorKind, DefId)> {
