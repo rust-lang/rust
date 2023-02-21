@@ -1212,7 +1212,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query asm_target_features(def_id: DefId) -> &'tcx FxHashSet<Symbol> {
+    query asm_target_features(def_id: DefId) -> &'tcx FxIndexSet<Symbol> {
         desc { |tcx| "computing target features for inline asm of `{}`", tcx.def_path_str(def_id) }
     }
 

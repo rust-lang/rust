@@ -1,7 +1,7 @@
 use rustc_ast::ast;
 use rustc_attr::InstructionSetAttr;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -418,7 +418,7 @@ pub fn from_target_feature(
 
 /// Computes the set of target features used in a function for the purposes of
 /// inline assembly.
-fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxHashSet<Symbol> {
+fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
     let mut target_features = tcx.sess.unstable_target_features.clone();
     if tcx.def_kind(did).has_codegen_attrs() {
         let attrs = tcx.codegen_fn_attrs(did);
