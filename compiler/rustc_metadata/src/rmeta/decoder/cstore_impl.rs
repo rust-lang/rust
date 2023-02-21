@@ -529,10 +529,6 @@ impl CStore {
         )
     }
 
-    pub fn get_span_untracked(&self, def_id: DefId, sess: &Session) -> Span {
-        self.get_crate_data(def_id.krate).get_span(def_id.index, sess)
-    }
-
     pub fn def_kind(&self, def: DefId) -> DefKind {
         self.get_crate_data(def.krate).def_kind(def.index)
     }

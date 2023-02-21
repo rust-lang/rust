@@ -1871,7 +1871,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn def_span(&self, def_id: DefId) -> Span {
         match def_id.as_local() {
             Some(def_id) => self.tcx.source_span(def_id),
-            None => self.cstore().get_span_untracked(def_id, self.tcx.sess),
+            None => self.tcx.def_span(def_id),
         }
     }
 
