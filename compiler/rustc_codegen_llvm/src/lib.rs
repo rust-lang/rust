@@ -448,20 +448,7 @@ pub fn get_enzyme_typetree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str, tcx: TyCt
         let inner_id = id.builtin_deref(true).unwrap().ty;
         let inner_tt = get_enzyme_typetree(inner_id, llvm_data_layout, tcx, llcx, depth+1);
 
-        let param_env_and = ParamEnvAnd {
-            param_env: ParamEnv::empty(),
-            value: inner_id,
-        };
-        let size = tcx.layout_of(param_env_and).unwrap().size.bytes();
-
-        let tt = if id.is_unsafe_ptr() {
-            tt.merge(inner_tt).only(-1)
-        } else {
-            // shift to single position instead (-1) as this is just a reference
-            let shifted = inner_tt.shift(llvm_data_layout, 0, size as isize, 0);
-            tt.merge(shifted).only(-1)
-        };
-
+        tt.merge(inner_tt).only(-1)
         println!("{:depth$} add indirection {}", "", tt);
 
         return tt;

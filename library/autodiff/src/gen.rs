@@ -29,7 +29,13 @@ pub(crate) fn generate_body(token: TokenStream, item: &AutoDiffItem) -> (TokenSt
         }
     }
 
-    fn_args.extend(it_args);
+    if item.header.mode == Mode::Reverse && item.header.ret_act == Activity::Active {
+        let rem_args = it_args.collect::<Vec<_>>();
+
+        if rem_args.len() > 0 {
+            add_args.push(rem_args[0]);
+        }
+    }
 
     let fn_args_name = fn_args.iter().map(|x| match x {
         FnArg::Receiver(_) => quote!(self),

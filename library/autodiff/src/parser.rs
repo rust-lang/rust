@@ -11,7 +11,7 @@ pub struct AutoDiffItem {
     pub(crate) block: Option<Box<Block>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) enum Mode {
     Forward,
     Reverse
@@ -299,6 +299,13 @@ fn create_target_signature_reverse(mut sig: Signature, act: &Vec<Activity>, ret_
         }
     }
 
+    match sig.output {
+        ReturnType::Type(_, typ) => {
+            inputs.push(parse_quote!(ret_adj: #typ));
+        },
+        _ => {}
+    }
+
     sig.inputs = inputs.into_iter().collect();
 
     sig.output = if *ret_act == Activity::Active {
@@ -357,10 +364,15 @@ pub(crate) fn parse(args: TokenStream, input: TokenStream) -> AutoDiffItem {
         false => sig,
     };
 
-    let rem_params = sig.inputs.len() - params.iter().map(|x| match x {
+    let mut rem_params = sig.inputs.len() - params.iter().map(|x| match x {
         Activity::Const | Activity::Active => 1,
         Activity::Duplicated | Activity::DuplicatedNoNeed => 2,
     }).sum::<usize>();
+
+    // don't add const for return adjoint variable
+    if header.ret_act == Activity::Active && header.mode == Mode::Reverse {
+        rem_params -= 1;
+    }
 
     params.extend((0..rem_params).map(|_| Activity::Const));
 
