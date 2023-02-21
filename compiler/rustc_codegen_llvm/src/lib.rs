@@ -557,16 +557,20 @@ pub fn get_enzyme_typetree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str, tcx: TyCt
         assert!(byte_stride * *count as usize == byte_max_size);
         assert!(*count > 0); // return empty TT for empty?
         let sub_id = id.builtin_index().unwrap();
-        let mut tt = get_enzyme_typetree(sub_id, llvm_data_layout, tcx, llcx, depth+1);
+        let subtt = get_enzyme_typetree(sub_id, llvm_data_layout, tcx, llcx, depth+1);
 
-        dbg!(&tt);
+        // calculate size of subtree
+        let param_env_and = ParamEnvAnd {
+            param_env: ParamEnv::empty(),
+            value: sub_id,
+        };
+        let size = tcx.layout_of(param_env_and).unwrap().size.bytes();
+
+        let mut tt = TypeTree::new();
 
         //dbg!(&sub_tt, isize_count);
         for i in 0..isize_count {
-            dbg!(&0, byte_max_size, i*byte_stride);
-            tt = tt.merge(tt.clone().shift(llvm_data_layout, i * (byte_stride as usize), byte_max_size as isize, 0));
-            //tt = tt.shift(llvm_data_layout, (i * (byte_stride as usize)) as isize, 4, 0);
-            //tt = sub.shift(llvm_data_layout, 0, size, offset.bytes_usize() as usize);
+            tt = tt.merge(subtt.clone().shift(llvm_data_layout, 0, size as isize, i * (byte_stride as usize)));
         }
         println!("{:depth$} repeated array into {}", "", tt);
 

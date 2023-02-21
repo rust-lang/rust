@@ -642,8 +642,6 @@ pub(crate) unsafe fn extract_return_type<'a>(
 #[allow(unused_variables)]
 #[allow(unused)]
 pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item: AutoDiffItem, typetree: DiffTypeTree) -> Result<(), FatalError> {
-
-
     let autodiff_mode = item.attrs.mode;
     let rust_name = item.source;
     let rust_name2 = &item.target;
@@ -657,7 +655,6 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item:
     let target_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name2.as_ptr());
     assert!(src_fnc_tmp.is_some());
     assert!(target_fnc_tmp.is_some());
-    dbg!("let there be Dragons (and Enzyme)");
     let fnc_todiff = src_fnc_tmp.unwrap();
     let target_fnc = target_fnc_tmp.unwrap();
 
@@ -671,7 +668,6 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item:
         DiffMode::Reverse => enzyme_rust_reverse_diff(logic_ref, type_analysis, fnc_todiff, args_activity, ret_activity, ret_primary_ret, diff_primary_ret, typetree),
         _ => unreachable!(),
     };
-    dbg!(res);
     let f_type = LLVMTypeOf(res);
     let f_return_type = LLVMGetReturnType(LLVMGetElementType(f_type));
     let void_type = LLVMVoidTypeInContext(llcx);
@@ -687,8 +683,6 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item:
             res = extract_return_type(llmod, res, u_type, rust_name2.clone());// TODO: check if name or name2
         }
     }
-    dbg!(target_fnc);
-    dbg!(res);
     LLVMReplaceAllUsesWith(target_fnc, res);
     LLVMDeleteFunction(target_fnc);
     LLVMSetValueName2(
@@ -696,8 +690,6 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item:
         name2.as_ptr(),
         rust_name2.len(),
         );
-
-    dbg!("after-ad");
 
     Ok(())
 }
@@ -718,8 +710,6 @@ pub(crate) unsafe fn differentiate(
         llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintType), 1);
         llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrint), 1);
     }
-
-    dbg!(&diff_items);
 
     for item in diff_items {
         let tt = typetrees.get(&item.source).unwrap().clone();
