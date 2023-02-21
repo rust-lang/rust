@@ -36,6 +36,7 @@ use std::fmt::Debug;
 use std::ops::ControlFlow;
 
 use super::combine::ObligationEmittingRelation;
+use super::DefiningAnchor;
 
 pub struct TypeRelating<'me, 'tcx, D>
 where
@@ -74,6 +75,7 @@ where
 
 pub trait TypeRelatingDelegate<'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
+    fn defining_use_anchor(&self) -> DefiningAnchor;
     fn span(&self) -> Span;
 
     /// Push a constraint `sup: sub` -- this constraint must be
@@ -373,7 +375,14 @@ where
         let cause = ObligationCause::dummy_with_span(self.delegate.span());
         let obligations = self
             .infcx
-            .handle_opaque_type(a, b, true, &cause, self.delegate.param_env())?
+            .handle_opaque_type(
+                a,
+                b,
+                true,
+                &cause,
+                self.delegate.param_env(),
+                self.delegate.defining_use_anchor(),
+            )?
             .obligations;
         self.delegate.register_obligations(obligations);
         trace!(a = ?a.kind(), b = ?b.kind(), "opaque type instantiated");

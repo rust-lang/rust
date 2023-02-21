@@ -726,7 +726,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &'a self,
         trace: TypeTrace<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        define_opaque_types: bool,
+        define_opaque_types: DefiningAnchor,
     ) -> CombineFields<'a, 'tcx> {
         CombineFields {
             infcx: self,

@@ -19,7 +19,7 @@
 
 use super::combine::ObligationEmittingRelation;
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use super::InferCtxt;
+use super::{DefiningAnchor, InferCtxt};
 
 use crate::traits::ObligationCause;
 use rustc_middle::ty::relate::RelateResult;
@@ -36,7 +36,7 @@ pub trait LatticeDir<'f, 'tcx>: ObligationEmittingRelation<'tcx> {
 
     fn cause(&self) -> &ObligationCause<'tcx>;
 
-    fn define_opaque_types(&self) -> bool;
+    fn define_opaque_types(&self) -> DefiningAnchor;
 
     // Relates the type `v` to `a` and `b` such that `v` represents
     // the LUB/GLB of `a` and `b` as appropriate.
@@ -110,11 +110,18 @@ where
         ) if a_def_id == b_def_id => infcx.super_combine_tys(this, a, b),
         (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
         | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
-            if this.define_opaque_types() && def_id.is_local() =>
+            if def_id.is_local() =>
         {
             this.register_obligations(
                 infcx
-                    .handle_opaque_type(a, b, this.a_is_expected(), this.cause(), this.param_env())?
+                    .handle_opaque_type(
+                        a,
+                        b,
+                        this.a_is_expected(),
+                        this.cause(),
+                        this.param_env(),
+                        this.define_opaque_types(),
+                    )?
                     .obligations,
             );
             Ok(a)

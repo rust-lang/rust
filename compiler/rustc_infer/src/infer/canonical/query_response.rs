@@ -14,7 +14,7 @@ use crate::infer::canonical::{
 };
 use crate::infer::nll_relate::{TypeRelating, TypeRelatingDelegate};
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::infer::{InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
+use crate::infer::{DefiningAnchor, InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use crate::traits::{PredicateObligations, TraitEngine, TraitEngineExt};
@@ -499,8 +499,12 @@ impl<'tcx> InferCtxt<'tcx> {
             let a = substitute_value(self.tcx, &result_subst, a);
             let b = substitute_value(self.tcx, &result_subst, b);
             debug!(?a, ?b, "constrain opaque type");
-            obligations
-                .extend(self.at(cause, param_env).define_opaque_types(true).eq(a, b)?.obligations);
+            obligations.extend(
+                self.at(cause, param_env)
+                    .define_opaque_types(self.defining_use_anchor)
+                    .eq(a, b)?
+                    .obligations,
+            );
         }
 
         Ok(InferOk { value: result_subst, obligations })
@@ -675,6 +679,10 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
+    }
+
+    fn defining_use_anchor(&self) -> DefiningAnchor {
+        DefiningAnchor::Bubble
     }
 
     fn create_next_universe(&mut self) -> ty::UniverseIndex {

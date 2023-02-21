@@ -110,7 +110,7 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
             }
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
-                if self.fields.define_opaque_types && def_id.is_local() =>
+                if def_id.is_local() =>
             {
                 self.fields.obligations.extend(
                     infcx
@@ -120,6 +120,7 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
                             self.a_is_expected(),
                             &self.fields.trace.cause,
                             self.param_env(),
+                            self.fields.define_opaque_types,
                         )?
                         .obligations,
                 );

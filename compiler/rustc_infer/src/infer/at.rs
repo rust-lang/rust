@@ -36,10 +36,7 @@ pub struct At<'a, 'tcx> {
     pub param_env: ty::ParamEnv<'tcx>,
     /// Whether we should define opaque types
     /// or just treat them opaquely.
-    /// Currently only used to prevent predicate
-    /// matching from matching anything against opaque
-    /// types.
-    pub define_opaque_types: bool,
+    pub define_opaque_types: DefiningAnchor,
 }
 
 pub struct Trace<'a, 'tcx> {
@@ -55,7 +52,7 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &'a ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> At<'a, 'tcx> {
-        At { infcx: self, cause, param_env, define_opaque_types: false }
+        At { infcx: self, cause, param_env, define_opaque_types: DefiningAnchor::Error }
     }
 
     /// Forks the inference context, creating a new inference context with the same inference
@@ -93,7 +90,7 @@ pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
 }
 
 impl<'a, 'tcx> At<'a, 'tcx> {
-    pub fn define_opaque_types(self, define_opaque_types: bool) -> Self {
+    pub fn define_opaque_types(self, define_opaque_types: DefiningAnchor) -> Self {
         Self { define_opaque_types, ..self }
     }
 

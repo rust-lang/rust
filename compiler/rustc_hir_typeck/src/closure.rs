@@ -565,7 +565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let cause = self.misc(hir_ty.span);
                 let InferOk { value: (), obligations } = self
                     .at(&cause, self.param_env)
-                    .define_opaque_types(true)
+                    .define_opaque_types(self.defining_use_anchor)
                     .eq(*expected_ty, supplied_ty)?;
                 all_obligations.extend(obligations);
             }
@@ -578,7 +578,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let cause = &self.misc(decl.output.span());
             let InferOk { value: (), obligations } = self
                 .at(cause, self.param_env)
-                .define_opaque_types(true)
+                .define_opaque_types(self.defining_use_anchor)
                 .eq(expected_sigs.liberated_sig.output(), supplied_output_ty)?;
             all_obligations.extend(obligations);
 
@@ -735,6 +735,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 body_def_id,
                 self.tcx.def_span(expr_def_id),
                 self.param_env,
+                self.defining_use_anchor,
             );
         self.register_predicates(obligations);
 

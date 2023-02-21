@@ -87,6 +87,10 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
         self.locations.span(self.type_checker.body)
     }
 
+    fn defining_use_anchor(&self) -> rustc_infer::infer::DefiningAnchor {
+        self.type_checker.infcx.defining_use_anchor
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.type_checker.param_env
     }

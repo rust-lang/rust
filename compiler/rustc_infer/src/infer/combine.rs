@@ -27,7 +27,7 @@ use super::glb::Glb;
 use super::lub::Lub;
 use super::sub::Sub;
 use super::type_variable::TypeVariableValue;
-use super::{InferCtxt, MiscVariable, TypeTrace};
+use super::{DefiningAnchor, InferCtxt, MiscVariable, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
@@ -55,10 +55,7 @@ pub struct CombineFields<'infcx, 'tcx> {
     pub obligations: PredicateObligations<'tcx>,
     /// Whether we should define opaque types
     /// or just treat them opaquely.
-    /// Currently only used to prevent predicate
-    /// matching from matching anything against opaque
-    /// types.
-    pub define_opaque_types: bool,
+    pub define_opaque_types: DefiningAnchor,
 }
 
 #[derive(Copy, Clone, Debug)]
