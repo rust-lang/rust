@@ -68,7 +68,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         Self {
             infcx,
             engine: RefCell::new(<dyn TraitEngine<'_>>::new_in_snapshot(infcx.tcx)),
-            defining_use_anchor: infcx.old_defining_use_anchor,
+            defining_use_anchor: DefiningAnchor::Error,
         }
     }
 
