@@ -312,3 +312,12 @@ pub struct AutoDerefReachedRecursionLimit<'a> {
     pub suggested_limit: rustc_session::Limit,
     pub crate_name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_track_caller_on_main)]
+pub(crate) struct TrackCallerOnMain {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub annotated: Span,
+}
