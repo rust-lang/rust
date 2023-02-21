@@ -447,6 +447,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_local_crate(self) -> TyCtxtFeed<'tcx, CrateNum> {
         TyCtxtFeed { tcx: self, key: LOCAL_CRATE }
     }
+    pub fn feed_stable_crate_id(self, key: rustc_span::def_id::StableCrateId, cnum: CrateNum) {
+        TyCtxtFeed { tcx: self, key }.stable_crate_id_to_crate_num_raw(cnum);
+    }
 }
 
 impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
@@ -880,7 +883,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if stable_crate_id == self.sess.local_stable_crate_id() {
             LOCAL_CRATE
         } else {
-            self.cstore_untracked().stable_crate_id_to_crate_num(stable_crate_id)
+            self.dep_graph.with_ignore(|| self.stable_crate_id_to_crate_num_raw(stable_crate_id))
         }
     }
 
@@ -900,7 +903,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // If this is a DefPathHash from an upstream crate, let the CrateStore map
             // it to a DefId.
             let cstore = &*self.cstore_untracked();
-            let cnum = cstore.stable_crate_id_to_crate_num(stable_crate_id);
+            let cnum = self.stable_crate_id_to_crate_num(stable_crate_id);
             cstore.def_path_hash_to_def_id(cnum, hash)
         }
     }

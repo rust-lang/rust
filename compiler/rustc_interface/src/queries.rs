@@ -192,7 +192,7 @@ impl<'tcx> Queries<'tcx> {
 
             let sess = self.session();
 
-            let cstore = RwLock::new(Box::new(CStore::new(sess)) as _);
+            let cstore = RwLock::new(Box::new(CStore::new()) as _);
             let definitions = RwLock::new(Definitions::new(sess.local_stable_crate_id()));
             let source_span = AppendOnlyVec::new();
             let _id = source_span.push(krate.spans.inner_span);

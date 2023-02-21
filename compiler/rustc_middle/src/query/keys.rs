@@ -9,6 +9,7 @@ use crate::ty::{self, layout::TyAndLayout, Ty, TyCtxt};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::hir_id::{HirId, OwnerId};
 use rustc_query_system::query::{DefaultCacheSelector, SingleCacheSelector, VecCacheSelector};
+use rustc_session::StableCrateId;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -128,6 +129,18 @@ impl Key for CrateNum {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         *self == LOCAL_CRATE
+    }
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
+impl Key for StableCrateId {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
     }
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP

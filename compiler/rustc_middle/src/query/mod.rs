@@ -1611,6 +1611,14 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Maps a StableCrateId to the corresponding CrateNum. This method assumes
+    /// that the crate in question has already been loaded by the CrateStore.
+    query stable_crate_id_to_crate_num_raw(_: rustc_span::def_id::StableCrateId) -> CrateNum {
+        feedable
+        no_hash
+        desc { "looking up the CrateNum for a crate's stable hash" }
+    }
+
     /// Gets the hash for the host proc macro. Used to support -Z dual-proc-macro.
     query crate_host_hash(_: CrateNum) -> Option<Svh> {
         eval_always

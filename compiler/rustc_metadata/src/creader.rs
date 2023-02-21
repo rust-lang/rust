@@ -6,7 +6,7 @@ use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob
 
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::{self as ast, *};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MappedReadGuard;
 use rustc_expand::base::SyntaxExtension;
@@ -45,10 +45,6 @@ pub struct CStore {
     has_global_allocator: bool,
     /// This crate has a `#[alloc_error_handler]` item.
     has_alloc_error_handler: bool,
-
-    /// This map is used to verify we get no hash conflicts between
-    /// `StableCrateId` values.
-    pub(crate) stable_crate_ids: FxHashMap<StableCrateId, CrateNum>,
 
     /// Unused externs of the crate
     unused_externs: Vec<Symbol>,
@@ -240,9 +236,7 @@ impl CStore {
         }
     }
 
-    pub fn new(sess: &Session) -> CStore {
-        let mut stable_crate_ids = FxHashMap::default();
-        stable_crate_ids.insert(sess.local_stable_crate_id(), LOCAL_CRATE);
+    pub fn new() -> CStore {
         CStore {
             // We add an empty entry for LOCAL_CRATE (which maps to zero) in
             // order to make array indices in `metas` match with the
@@ -254,7 +248,6 @@ impl CStore {
             alloc_error_handler_kind: None,
             has_global_allocator: false,
             has_alloc_error_handler: false,
-            stable_crate_ids,
             unused_externs: Vec::new(),
         }
     }
@@ -361,20 +354,6 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         Ok(())
     }
 
-    fn verify_no_stable_crate_id_hash_conflicts(
-        &mut self,
-        root: &CrateRoot,
-        cnum: CrateNum,
-    ) -> Result<(), CrateError> {
-        if let Some(existing) = self.cstore.stable_crate_ids.insert(root.stable_crate_id(), cnum) {
-            let crate_name0 = root.name();
-            let crate_name1 = self.cstore.get_crate_data(existing).name();
-            return Err(CrateError::StableCrateIdCollision(crate_name0, crate_name1));
-        }
-
-        Ok(())
-    }
-
     fn register_crate(
         &mut self,
         host_lib: Option<Library>,
@@ -435,7 +414,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // and dependency resolution and the verification code would produce
         // ICEs in that case (see #83045).
         self.verify_no_symbol_conflicts(&crate_root)?;
-        self.verify_no_stable_crate_id_hash_conflicts(&crate_root, cnum)?;
+        self.tcx.feed_stable_crate_id(crate_root.stable_crate_id(), cnum);
 
         let crate_metadata = CrateMetadata::new(
             self.sess,
