@@ -23,7 +23,7 @@ pub struct FieldAlreadyDeclared {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(hir_analysis_previous_decl_label)]
+    #[label(previous_decl_label)]
     pub prev_span: Span,
 }
 ```
