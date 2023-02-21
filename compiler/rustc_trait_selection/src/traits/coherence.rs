@@ -217,6 +217,7 @@ fn equate_impl_headers<'cx, 'tcx>(
     selcx
         .infcx
         .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+        .define_opaque_types(true)
         .eq_impl_headers(impl1_header, impl2_header)
         .map(|infer_ok| infer_ok.obligations)
         .ok()

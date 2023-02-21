@@ -545,8 +545,11 @@ impl<'tcx> InferCtxt<'tcx> {
             origin,
         );
         if let Some(prev) = prev {
-            obligations =
-                self.at(&cause, param_env).eq_exp(a_is_expected, prev, hidden_ty)?.obligations;
+            obligations = self
+                .at(&cause, param_env)
+                .define_opaque_types(true)
+                .eq_exp(a_is_expected, prev, hidden_ty)?
+                .obligations;
         }
 
         let item_bounds = tcx.bound_explicit_item_bounds(def_id.to_def_id());
