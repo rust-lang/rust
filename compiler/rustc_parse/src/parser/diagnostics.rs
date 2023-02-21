@@ -19,9 +19,9 @@ use crate::errors::{
 };
 
 use crate::fluent_generated as fluent;
-use crate::lexer::UnmatchedBrace;
-use crate::parser;
 use rustc_ast as ast;
+use crate::parser;
+use crate::lexer::UnmatchedDelim;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, TokenKind};
 use rustc_ast::util::parser::AssocOp;
@@ -222,7 +222,7 @@ impl MultiSugg {
 /// is dropped.
 pub struct SnapshotParser<'a> {
     parser: Parser<'a>,
-    unclosed_delims: Vec<UnmatchedBrace>,
+    unclosed_delims: Vec<UnmatchedDelim>,
 }
 
 impl<'a> Deref for SnapshotParser<'a> {
@@ -264,7 +264,7 @@ impl<'a> Parser<'a> {
         self.unclosed_delims.extend(snapshot.unclosed_delims);
     }
 
-    pub fn unclosed_delims(&self) -> &[UnmatchedBrace] {
+    pub fn unclosed_delims(&self) -> &[UnmatchedDelim] {
         &self.unclosed_delims
     }
 

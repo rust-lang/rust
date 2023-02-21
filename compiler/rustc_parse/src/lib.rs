@@ -182,7 +182,7 @@ pub fn source_file_to_stream(
     sess: &ParseSess,
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
-) -> (TokenStream, Vec<lexer::UnmatchedBrace>) {
+) -> (TokenStream, Vec<lexer::UnmatchedDelim>) {
     panictry_buffer!(&sess.span_diagnostic, maybe_file_to_stream(sess, source_file, override_span))
 }
 
@@ -192,7 +192,7 @@ pub fn maybe_file_to_stream(
     sess: &ParseSess,
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
-) -> Result<(TokenStream, Vec<lexer::UnmatchedBrace>), Vec<Diagnostic>> {
+) -> Result<(TokenStream, Vec<lexer::UnmatchedDelim>), Vec<Diagnostic>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {
         sess.span_diagnostic.bug(&format!(
             "cannot lex `source_file` without source: {}",
@@ -200,11 +200,11 @@ pub fn maybe_file_to_stream(
         ));
     });
 
-    let (token_trees, unmatched_braces) =
+    let (token_trees, unmatched_delims) =
         lexer::parse_token_trees(sess, src.as_str(), source_file.start_pos, override_span);
 
     match token_trees {
-        Ok(stream) if unmatched_braces.is_empty() => Ok((stream, unmatched_braces)),
+        Ok(stream) if unmatched_delims.is_empty() => Ok((stream, unmatched_delims)),
         _ => {
             // Return error if there are unmatched delimiters or unclosng delimiters.
             // We emit delimiter mismatch errors first, then emit the unclosing delimiter mismatch
@@ -212,7 +212,7 @@ pub fn maybe_file_to_stream(
 
             let mut buffer = Vec::with_capacity(1);
             // Not using `emit_unclosed_delims` to use `db.buffer`
-            for unmatched in unmatched_braces {
+            for unmatched in unmatched_delims {
                 if let Some(err) = make_unclosed_delims_error(unmatched, &sess) {
                     err.buffer(&mut buffer);
                 }

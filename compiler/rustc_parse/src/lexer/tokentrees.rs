@@ -1,7 +1,7 @@
 use super::diagnostics::report_suspicious_mismatch_block;
 use super::diagnostics::same_identation_level;
 use super::diagnostics::TokenTreeDiagInfo;
-use super::{StringReader, UnmatchedBrace};
+use super::{StringReader, UnmatchedDelim};
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::token_to_string;
@@ -18,14 +18,14 @@ pub(super) struct TokenTreesReader<'a> {
 impl<'a> TokenTreesReader<'a> {
     pub(super) fn parse_all_token_trees(
         string_reader: StringReader<'a>,
-    ) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
+    ) -> (PResult<'a, TokenStream>, Vec<UnmatchedDelim>) {
         let mut tt_reader = TokenTreesReader {
             string_reader,
             token: Token::dummy(),
             diag_info: TokenTreeDiagInfo::default(),
         };
         let res = tt_reader.parse_token_trees(/* is_delimited */ false);
-        (res, tt_reader.diag_info.unmatched_braces)
+        (res, tt_reader.diag_info.unmatched_delims)
     }
 
     // Parse a stream of tokens into a list of `TokenTree`s.
@@ -79,7 +79,7 @@ impl<'a> TokenTreesReader<'a> {
         let mut err = self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, msg);
         for &(_, sp) in &self.diag_info.open_braces {
             err.span_label(sp, "unclosed delimiter");
-            self.diag_info.unmatched_braces.push(UnmatchedBrace {
+            self.diag_info.unmatched_delims.push(UnmatchedDelim {
                 expected_delim: Delimiter::Brace,
                 found_delim: None,
                 found_span: self.token.span,
@@ -161,7 +161,8 @@ impl<'a> TokenTreesReader<'a> {
                         }
                     }
                     let (tok, _) = self.diag_info.open_braces.pop().unwrap();
-                    self.diag_info.unmatched_braces.push(UnmatchedBrace {
+                    debug!("anan now: open {:#?} close {:#?}", open_delim, close_delim);
+                    self.diag_info.unmatched_delims.push(UnmatchedDelim {
                         expected_delim: tok,
                         found_delim: Some(close_delim),
                         found_span: self.token.span,

@@ -10,7 +10,7 @@ mod path;
 mod stmt;
 mod ty;
 
-use crate::lexer::UnmatchedBrace;
+use crate::lexer::UnmatchedDelim;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use item::FnParseMode;
@@ -149,7 +149,7 @@ pub struct Parser<'a> {
     /// A list of all unclosed delimiters found by the lexer. If an entry is used for error recovery
     /// it gets removed from here. Every entry left at the end gets emitted as an independent
     /// error.
-    pub(super) unclosed_delims: Vec<UnmatchedBrace>,
+    pub(super) unclosed_delims: Vec<UnmatchedDelim>,
     last_unexpected_token_span: Option<Span>,
     /// Span pointing at the `:` for the last type ascription the parser has seen, and whether it
     /// looked like it could have been a mistyped path or literal `Option:Some(42)`).
@@ -1521,11 +1521,11 @@ impl<'a> Parser<'a> {
 }
 
 pub(crate) fn make_unclosed_delims_error(
-    unmatched: UnmatchedBrace,
+    unmatched: UnmatchedDelim,
     sess: &ParseSess,
 ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
     // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
-    // `unmatched_braces` only for error recovery in the `Parser`.
+    // `unmatched_delims` only for error recovery in the `Parser`.
     let found_delim = unmatched.found_delim?;
     let mut spans = vec![unmatched.found_span];
     if let Some(sp) = unmatched.unclosed_span {
@@ -1542,7 +1542,7 @@ pub(crate) fn make_unclosed_delims_error(
     Some(err)
 }
 
-pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, sess: &ParseSess) {
+pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedDelim>, sess: &ParseSess) {
     *sess.reached_eof.borrow_mut() |=
         unclosed_delims.iter().any(|unmatched_delim| unmatched_delim.found_delim.is_none());
     for unmatched in unclosed_delims.drain(..) {

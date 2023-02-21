@@ -31,7 +31,7 @@ use unescape_error_reporting::{emit_unescape_error, escaped_char};
 rustc_data_structures::static_assert_size!(rustc_lexer::Token, 12);
 
 #[derive(Clone, Debug)]
-pub struct UnmatchedBrace {
+pub struct UnmatchedDelim {
     pub expected_delim: Delimiter,
     pub found_delim: Option<Delimiter>,
     pub found_span: Span,
@@ -44,7 +44,7 @@ pub(crate) fn parse_token_trees<'a>(
     mut src: &'a str,
     mut start_pos: BytePos,
     override_span: Option<Span>,
-) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
+) -> (PResult<'a, TokenStream>, Vec<UnmatchedDelim>) {
     // Skip `#!`, if present.
     if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
         src = &src[shebang_len..];
