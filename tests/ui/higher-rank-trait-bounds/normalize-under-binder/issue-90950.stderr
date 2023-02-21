@@ -11,7 +11,7 @@ note: required by a bound in `upcast`
   --> $DIR/issue-90950.rs:27:42
    |
 LL | fn upcast<Y>(x: Yoke<Y>) -> Yoke<Box<dyn IsCovariant<'static> + 'static>> where
-   |    ------ required by a bound in this
+   |    ------ required by a bound in this function
 LL |     Y: for<'a> Yokeable<'a>,
 LL |     for<'a> <Y as Yokeable<'a>>::Output: IsCovariant<'a>
    |                                          ^^^^^^^^^^^^^^^ required by this bound in `upcast`

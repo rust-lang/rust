@@ -9,7 +9,7 @@ note: required by a bound in `Y`
   --> $DIR/hr-associated-type-bound-param-1.rs:4:36
    |
 LL | trait Y<'a, T: ?Sized>
-   |       - required by a bound in this
+   |       - required by a bound in this trait
 ...
 LL |     for<'b> <Self as Y<'b, T>>::V: Clone,
    |                                    ^^^^^ required by this bound in `Y`
