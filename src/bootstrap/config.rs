@@ -25,6 +25,7 @@ use crate::flags::{Color, Flags};
 use crate::util::{exe, output, t};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Deserializer};
+use serde_derive::Deserialize;
 
 macro_rules! check_ci_llvm {
     ($name:expr) => {
