@@ -548,8 +548,7 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
             if let Some(candidates) = &err.candidates {
                 match &import.kind {
                     ImportKind::Single { nested: false, source, target, .. } => import_candidates(
-                        self.r.tcx.sess,
-                        &self.r.tcx.untracked().source_span.read(),
+                        self.r.tcx,
                         &mut diag,
                         Some(err.span),
                         &candidates,
@@ -561,8 +560,7 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
                     ),
                     ImportKind::Single { nested: true, source, target, .. } => {
                         import_candidates(
-                            self.r.tcx.sess,
-                            &self.r.tcx.untracked().source_span.read(),
+                            self.r.tcx,
                             &mut diag,
                             None,
                             &candidates,
