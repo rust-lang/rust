@@ -2,7 +2,9 @@ error[E0700]: hidden type for `impl IntoIterator<Item = impl Cap<'a> + Cap<'b>>`
   --> $DIR/nested-impl-trait-fail.rs:17:5
    |
 LL | fn fail_early_bound<'s, 'a, 'b>(a: &'s u8) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b>>
-   |                     -- hidden type `[&'s u8; 1]` captures the lifetime `'s` as defined here
+   |                     --                        ------------------------------------------------ opaque type defined here
+   |                     |
+   |                     hidden type `[&'s u8; 1]` captures the lifetime `'s` as defined here
 ...
 LL |     [a]
    |     ^^^
@@ -20,7 +22,9 @@ error[E0700]: hidden type for `impl Cap<'a> + Cap<'b>` captures lifetime that do
   --> $DIR/nested-impl-trait-fail.rs:17:5
    |
 LL | fn fail_early_bound<'s, 'a, 'b>(a: &'s u8) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b>>
-   |                     -- hidden type `&'s u8` captures the lifetime `'s` as defined here
+   |                     --                                                 ---------------------- opaque type defined here
+   |                     |
+   |                     hidden type `&'s u8` captures the lifetime `'s` as defined here
 ...
 LL |     [a]
    |     ^^^
@@ -40,6 +44,8 @@ error[E0700]: hidden type for `impl IntoIterator<Item = impl Cap<'a> + Cap<'b>>`
 LL | fn fail_late_bound<'s, 'a, 'b>(
    |                    -- hidden type `[&'s u8; 1]` captures the lifetime `'s` as defined here
 ...
+LL | ) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b>> {
+   |      ------------------------------------------------ opaque type defined here
 LL |     [a]
    |     ^^^
    |
@@ -58,6 +64,8 @@ error[E0700]: hidden type for `impl Cap<'a> + Cap<'b>` captures lifetime that do
 LL | fn fail_late_bound<'s, 'a, 'b>(
    |                    -- hidden type `&'s u8` captures the lifetime `'s` as defined here
 ...
+LL | ) -> impl IntoIterator<Item = impl Cap<'a> + Cap<'b>> {
+   |                               ---------------------- opaque type defined here
 LL |     [a]
    |     ^^^
    |

@@ -24,7 +24,9 @@ error[E0700]: hidden type for `impl Cap<'b> + Cap<'c>` captures lifetime that do
   --> $DIR/min-choice-reject-ambiguous.rs:39:5
    |
 LL | fn test_ambiguous<'a, 'b, 'c>(s: &'a u8) -> impl Cap<'b> + Cap<'c>
-   |                   -- hidden type `&'a u8` captures the lifetime `'a` as defined here
+   |                   --                        ---------------------- opaque type defined here
+   |                   |
+   |                   hidden type `&'a u8` captures the lifetime `'a` as defined here
 ...
 LL |     s
    |     ^

@@ -281,15 +281,19 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
     span: Span,
     hidden_ty: Ty<'tcx>,
     hidden_region: ty::Region<'tcx>,
-    opaque_ty: ty::OpaqueTypeKey<'tcx>,
+    opaque_ty_key: ty::OpaqueTypeKey<'tcx>,
 ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-    let opaque_ty = tcx.mk_opaque(opaque_ty.def_id.to_def_id(), opaque_ty.substs);
+    let opaque_ty = tcx.mk_opaque(opaque_ty_key.def_id.to_def_id(), opaque_ty_key.substs);
+
     let mut err = struct_span_err!(
         tcx.sess,
         span,
         E0700,
         "hidden type for `{opaque_ty}` captures lifetime that does not appear in bounds",
     );
+
+    let opaque_ty_span = tcx.def_span(opaque_ty_key.def_id);
+    err.span_label(opaque_ty_span, "opaque type defined here");
 
     // Explain the region we are capturing.
     match *hidden_region {
