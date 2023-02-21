@@ -1,0 +1,18 @@
+error: failed to find an overloaded call trait for closure call
+  --> $DIR/fn-fn_mut-call-ill-formed.rs:39:5
+   |
+LL |     a();
+   |     ^^^
+   |
+   = help: make sure the `fn`/`fn_mut`/`fn_once` lang items are defined and have correctly defined `call`/`call_mut`/`call_once` methods
+
+error: failed to find an overloaded call trait for closure call
+  --> $DIR/fn-fn_mut-call-ill-formed.rs:43:5
+   |
+LL |     b();
+   |     ^^^
+   |
+   = help: make sure the `fn`/`fn_mut`/`fn_once` lang items are defined and have correctly defined `call`/`call_mut`/`call_once` methods
+
+error: aborting due to 2 previous errors
+

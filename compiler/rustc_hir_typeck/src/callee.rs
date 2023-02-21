@@ -247,6 +247,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 adjusted_ty,
                 opt_input_type.as_ref().map(slice::from_ref),
             ) {
+                // Check for `self` receiver on the method, otherwise we can't use this as a `Fn*` trait.
+                if !self.tcx.associated_item(ok.value.def_id).fn_has_self_parameter {
+                    self.tcx.sess.delay_span_bug(
+                        call_expr.span,
+                        "input to overloaded call fn is not a self receiver",
+                    );
+                    return None;
+                }
+
                 let method = self.register_infer_ok_obligations(ok);
                 let mut autoref = None;
                 if borrow {
@@ -257,7 +266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // caused an error elsewhere.
                         self.tcx
                             .sess
-                            .delay_span_bug(call_expr.span, "input to call/call_mut is not a ref?");
+                            .delay_span_bug(call_expr.span, "input to call/call_mut is not a ref");
                         return None;
                     };
 
@@ -271,6 +280,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         target: method.sig.inputs()[0],
                     });
                 }
+
                 return Some((autoref, method));
             }
         }
@@ -823,7 +833,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
                 );
                 err.help(
                     "make sure the `fn`/`fn_mut`/`fn_once` lang items are defined \
-                     and have associated `call`/`call_mut`/`call_once` functions",
+                     and have correctly defined `call`/`call_mut`/`call_once` methods",
                 );
                 err.emit();
             }
