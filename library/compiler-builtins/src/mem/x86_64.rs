@@ -177,7 +177,7 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
 pub unsafe fn c_string_length(s: *const std::ffi::c_char) -> usize {
     let mut n: usize;
 
-    std::arch::asm!(
+    asm!(
         // search for a zero byte
         "xor al, al",
 
