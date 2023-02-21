@@ -320,7 +320,7 @@ fn run_compiler(
             }
 
             // Make sure name resolution and macro expansion is run.
-            queries.global_ctxt()?;
+            queries.global_ctxt()?.enter(|tcx| tcx.resolver_for_lowering(()));
 
             if callbacks.after_expansion(compiler, queries) == Compilation::Stop {
                 return early_exit();

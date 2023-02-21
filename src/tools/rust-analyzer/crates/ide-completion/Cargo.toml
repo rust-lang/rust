@@ -16,7 +16,7 @@ cov-mark = "2.0.0-pre.1"
 itertools = "0.10.5"
 
 once_cell = "1.17.0"
-smallvec = "1.10.0"
+smallvec.workspace = true
 
 
 # local deps

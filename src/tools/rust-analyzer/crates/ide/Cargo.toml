@@ -22,7 +22,7 @@ pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.1", default-features = false }
 url = "2.3.1"
 dot = "0.1.4"
-smallvec = "1.10.0"
+smallvec.workspace = true
 
 # local deps
 cfg.workspace = true

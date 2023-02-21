@@ -113,7 +113,7 @@ fn render(
     item.detail(rendered.detail);
 
     match snippet_cap {
-        Some(snippet_cap) => item.insert_snippet(snippet_cap, rendered.literal),
+        Some(snippet_cap) => item.insert_snippet(snippet_cap, rendered.literal).trigger_call_info(),
         None => item.insert_text(rendered.literal),
     };
 

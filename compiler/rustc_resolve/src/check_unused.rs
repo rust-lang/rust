@@ -290,7 +290,7 @@ impl Resolver<'_, '_> {
             let ms = MultiSpan::from_spans(spans.clone());
             let mut span_snippets = spans
                 .iter()
-                .filter_map(|s| match visitor.r.session.source_map().span_to_snippet(*s) {
+                .filter_map(|s| match visitor.r.tcx.sess.source_map().span_to_snippet(*s) {
                     Ok(s) => Some(format!("`{}`", s)),
                     _ => None,
                 })
@@ -317,7 +317,7 @@ impl Resolver<'_, '_> {
             // If we are in the `--test` mode, suppress a help that adds the `#[cfg(test)]`
             // attribute; however, if not, suggest adding the attribute. There is no way to
             // retrieve attributes here because we do not have a `TyCtxt` yet.
-            let test_module_span = if visitor.r.session.opts.test {
+            let test_module_span = if visitor.r.tcx.sess.opts.test {
                 None
             } else {
                 let parent_module = visitor.r.get_nearest_non_block_module(

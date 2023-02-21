@@ -194,7 +194,11 @@ pub(crate) fn register_lints(_sess: &Session, lint_store: &mut LintStore) {
         true,
         "rustdoc::all",
         Some("rustdoc"),
-        RUSTDOC_LINTS.iter().map(|&lint| LintId::of(lint)).collect(),
+        RUSTDOC_LINTS
+            .iter()
+            .filter(|lint| lint.feature_gate.is_none()) // only include stable lints
+            .map(|&lint| LintId::of(lint))
+            .collect(),
     );
     for lint in &*RUSTDOC_LINTS {
         let name = lint.name_lower();

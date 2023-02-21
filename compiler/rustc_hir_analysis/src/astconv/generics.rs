@@ -6,7 +6,7 @@ use crate::astconv::{
 use crate::errors::AssocTypeBindingNotAllowed;
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, MultiSpan};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -26,7 +26,7 @@ fn generic_arg_mismatch_err(
     param: &GenericParamDef,
     possible_ordering_error: bool,
     help: Option<&str>,
-) {
+) -> ErrorGuaranteed {
     let sess = tcx.sess;
     let mut err = struct_span_err!(
         sess,
@@ -70,9 +70,9 @@ fn generic_arg_mismatch_err(
         ) => match path.res {
             Res::Err => {
                 add_braces_suggestion(arg, &mut err);
-                err.set_primary_message("unresolved item provided when a constant was expected")
+                return err
+                    .set_primary_message("unresolved item provided when a constant was expected")
                     .emit();
-                return;
             }
             Res::Def(DefKind::TyParam, src_def_id) => {
                 if let Some(param_local_id) = param.def_id.as_local() {
@@ -81,7 +81,7 @@ fn generic_arg_mismatch_err(
                     if param_type.is_suggestable(tcx, false) {
                         err.span_suggestion(
                             tcx.def_span(src_def_id),
-                            "consider changing this type parameter to be a `const` generic",
+                            "consider changing this type parameter to a const parameter",
                             format!("const {}: {}", param_name, param_type),
                             Applicability::MaybeIncorrect,
                         );
@@ -137,7 +137,7 @@ fn generic_arg_mismatch_err(
         }
     }
 
-    err.emit();
+    err.emit()
 }
 
 /// Creates the relevant generic argument substitutions

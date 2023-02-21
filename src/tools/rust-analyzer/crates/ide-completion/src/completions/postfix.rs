@@ -747,4 +747,16 @@ fn main() {
             "#,
         );
     }
+
+    #[test]
+    fn no_postfix_completions_in_if_block_that_has_an_else() {
+        check(
+            r#"
+fn test() {
+    if true {}.$0 else {}
+}
+"#,
+            expect![[r#""#]],
+        );
+    }
 }

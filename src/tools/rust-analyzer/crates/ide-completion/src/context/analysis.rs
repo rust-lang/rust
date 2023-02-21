@@ -29,6 +29,7 @@ pub(super) struct AnalysisResult {
     pub(super) analysis: CompletionAnalysis,
     pub(super) expected: (Option<Type>, Option<ast::NameOrNameRef>),
     pub(super) qualifier_ctx: QualifierCtx,
+    /// the original token of the expanded file
     pub(super) token: SyntaxToken,
     pub(super) offset: TextSize,
 }
@@ -213,15 +214,6 @@ fn analyze(
     let _p = profile::span("CompletionContext::analyze");
     let ExpansionResult { original_file, speculative_file, offset, fake_ident_token, derive_ctx } =
         expansion_result;
-    let syntax_element = NodeOrToken::Token(fake_ident_token);
-    if is_in_token_of_for_loop(syntax_element.clone()) {
-        // for pat $0
-        // there is nothing to complete here except `in` keyword
-        // don't bother populating the context
-        // FIXME: the completion calculations should end up good enough
-        // such that this special case becomes unnecessary
-        return None;
-    }
 
     // Overwrite the path kind for derives
     if let Some((original_file, file_with_fake_ident, offset, origin_attr)) = derive_ctx {
@@ -249,37 +241,35 @@ fn analyze(
         return None;
     }
 
-    let name_like = match find_node_at_offset(&speculative_file, offset) {
-        Some(it) => it,
-        None => {
-            let analysis = if let Some(original) = ast::String::cast(original_token.clone()) {
-                CompletionAnalysis::String {
-                    original,
-                    expanded: ast::String::cast(self_token.clone()),
+    let Some(name_like) = find_node_at_offset(&speculative_file, offset) else {
+        let analysis = if let Some(original) = ast::String::cast(original_token.clone()) {
+            CompletionAnalysis::String {
+                original,
+                expanded: ast::String::cast(self_token.clone()),
+            }
+        } else {
+            // Fix up trailing whitespace problem
+            // #[attr(foo = $0
+            let token = syntax::algo::skip_trivia_token(self_token.clone(), Direction::Prev)?;
+            let p = token.parent()?;
+            if p.kind() == SyntaxKind::TOKEN_TREE
+                && p.ancestors().any(|it| it.kind() == SyntaxKind::META)
+            {
+                let colon_prefix = previous_non_trivia_token(self_token.clone())
+                    .map_or(false, |it| T![:] == it.kind());
+                CompletionAnalysis::UnexpandedAttrTT {
+                    fake_attribute_under_caret: fake_ident_token
+                        .parent_ancestors()
+                        .find_map(ast::Attr::cast),
+                    colon_prefix,
                 }
             } else {
-                // Fix up trailing whitespace problem
-                // #[attr(foo = $0
-                let token = syntax::algo::skip_trivia_token(self_token.clone(), Direction::Prev)?;
-                let p = token.parent()?;
-                if p.kind() == SyntaxKind::TOKEN_TREE
-                    && p.ancestors().any(|it| it.kind() == SyntaxKind::META)
-                {
-                    let colon_prefix = previous_non_trivia_token(self_token.clone())
-                        .map_or(false, |it| T![:] == it.kind());
-                    CompletionAnalysis::UnexpandedAttrTT {
-                        fake_attribute_under_caret: syntax_element
-                            .ancestors()
-                            .find_map(ast::Attr::cast),
-                        colon_prefix,
-                    }
-                } else {
-                    return None;
-                }
-            };
-            return Some((analysis, (None, None), QualifierCtx::default()));
-        }
+                return None;
+            }
+        };
+        return Some((analysis, (None, None), QualifierCtx::default()));
     };
+
     let expected = expected_type_and_name(sema, self_token, &name_like);
     let mut qual_ctx = QualifierCtx::default();
     let analysis = match name_like {
@@ -290,6 +280,22 @@ fn analyze(
             let parent = name_ref.syntax().parent()?;
             let (nameref_ctx, qualifier_ctx) =
                 classify_name_ref(sema, &original_file, name_ref, parent)?;
+
+            if let NameRefContext {
+                kind:
+                    NameRefKind::Path(PathCompletionCtx { kind: PathKind::Expr { .. }, path, .. }, ..),
+                ..
+            } = &nameref_ctx
+            {
+                if is_in_token_of_for_loop(path) {
+                    // for pat $0
+                    // there is nothing to complete here except `in` keyword
+                    // don't bother populating the context
+                    // Ideally this special casing wouldn't be needed, but the parser recovers
+                    return None;
+                }
+            }
+
             qual_ctx = qualifier_ctx;
             CompletionAnalysis::NameRef(nameref_ctx)
         }
@@ -323,16 +329,14 @@ fn expected_type_and_name(
                     ast::FieldExpr(e) => e
                         .syntax()
                         .ancestors()
-                        .map_while(ast::FieldExpr::cast)
-                        .last()
-                        .map(|it| it.syntax().clone()),
+                        .take_while(|it| ast::FieldExpr::can_cast(it.kind()))
+                        .last(),
                     ast::PathSegment(e) => e
                         .syntax()
                         .ancestors()
                         .skip(1)
                         .take_while(|it| ast::Path::can_cast(it.kind()) || ast::PathExpr::can_cast(it.kind()))
-                        .find_map(ast::PathExpr::cast)
-                        .map(|it| it.syntax().clone()),
+                        .find(|it| ast::PathExpr::can_cast(it.kind())),
                     _ => None
                 }
             };
@@ -605,6 +609,18 @@ fn classify_name_ref(
                     },
                     _ => false,
                 };
+
+                let reciever_is_part_of_indivisible_expression = match &receiver {
+                    Some(ast::Expr::IfExpr(_)) => {
+                        let next_token_kind = next_non_trivia_token(name_ref.syntax().clone()).map(|t| t.kind());
+                        next_token_kind == Some(SyntaxKind::ELSE_KW)
+                    },
+                    _ => false
+                };
+                if reciever_is_part_of_indivisible_expression {
+                    return None;
+                }
+
                 let kind = NameRefKind::DotAccess(DotAccess {
                     receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
                     kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal },
@@ -656,8 +672,15 @@ fn classify_name_ref(
     };
     let after_if_expr = |node: SyntaxNode| {
         let prev_expr = (|| {
+            let node = match node.parent().and_then(ast::ExprStmt::cast) {
+                Some(stmt) => stmt.syntax().clone(),
+                None => node,
+            };
             let prev_sibling = non_trivia_sibling(node.into(), Direction::Prev)?.into_node()?;
-            ast::ExprStmt::cast(prev_sibling)?.expr()
+
+            ast::ExprStmt::cast(prev_sibling.clone())
+                .and_then(|it| it.expr())
+                .or_else(|| ast::Expr::cast(prev_sibling))
         })();
         matches!(prev_expr, Some(ast::Expr::IfExpr(_)))
     };
@@ -1251,40 +1274,29 @@ fn path_or_use_tree_qualifier(path: &ast::Path) -> Option<(ast::Path, bool)> {
     Some((use_tree.path()?, true))
 }
 
-pub(crate) fn is_in_token_of_for_loop(element: SyntaxElement) -> bool {
+fn is_in_token_of_for_loop(path: &ast::Path) -> bool {
     // oh my ...
     (|| {
-        let syntax_token = element.into_token()?;
-        let range = syntax_token.text_range();
-        let for_expr = syntax_token.parent_ancestors().find_map(ast::ForExpr::cast)?;
-
-        // check if the current token is the `in` token of a for loop
-        if let Some(token) = for_expr.in_token() {
-            return Some(syntax_token == token);
+        let expr = path.syntax().parent().and_then(ast::PathExpr::cast)?;
+        let for_expr = expr.syntax().parent().and_then(ast::ForExpr::cast)?;
+        if for_expr.in_token().is_some() {
+            return Some(false);
         }
         let pat = for_expr.pat()?;
-        if range.end() < pat.syntax().text_range().end() {
-            // if we are inside or before the pattern we can't be at the `in` token position
-            return None;
-        }
         let next_sibl = next_non_trivia_sibling(pat.syntax().clone().into())?;
         Some(match next_sibl {
-            // the loop body is some node, if our token is at the start we are at the `in` position,
-            // otherwise we could be in a recovered expression, we don't wanna ruin completions there
-            syntax::NodeOrToken::Node(n) => n.text_range().start() == range.start(),
-            // the loop body consists of a single token, if we are this we are certainly at the `in` token position
-            syntax::NodeOrToken::Token(t) => t == syntax_token,
+            syntax::NodeOrToken::Node(n) => {
+                n.text_range().start() == path.syntax().text_range().start()
+            }
+            syntax::NodeOrToken::Token(t) => {
+                t.text_range().start() == path.syntax().text_range().start()
+            }
         })
     })()
     .unwrap_or(false)
 }
 
-#[test]
-fn test_for_is_prev2() {
-    crate::tests::check_pattern_is_applicable(r"fn __() { for i i$0 }", is_in_token_of_for_loop);
-}
-
-pub(crate) fn is_in_loop_body(node: &SyntaxNode) -> bool {
+fn is_in_loop_body(node: &SyntaxNode) -> bool {
     node.ancestors()
         .take_while(|it| it.kind() != SyntaxKind::FN && it.kind() != SyntaxKind::CLOSURE_EXPR)
         .find_map(|it| {
@@ -1312,6 +1324,22 @@ fn previous_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken>
             return Some(inner);
         } else {
             token = inner.prev_token();
+        }
+    }
+    None
+}
+
+fn next_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken> {
+    let mut token = match e.into() {
+        SyntaxElement::Node(n) => n.last_token()?,
+        SyntaxElement::Token(t) => t,
+    }
+    .next_token();
+    while let Some(inner) = token {
+        if !inner.kind().is_trivia() {
+            return Some(inner);
+        } else {
+            token = inner.next_token();
         }
     }
     None

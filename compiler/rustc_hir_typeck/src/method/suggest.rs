@@ -31,7 +31,7 @@ use rustc_middle::ty::{self, DefIdTree, GenericArgKind, Ty, TyCtxt, TypeVisitabl
 use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
-use rustc_span::{lev_distance, source_map, ExpnKind, FileName, MacroKind, Span};
+use rustc_span::{edit_distance, source_map, ExpnKind, FileName, MacroKind, Span};
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedNote;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -1014,7 +1014,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // that had unsatisfied trait bounds
         if unsatisfied_predicates.is_empty() && rcvr_ty.is_enum() {
             let adt_def = rcvr_ty.ty_adt_def().expect("enum is not an ADT");
-            if let Some(suggestion) = lev_distance::find_best_match_for_name(
+            if let Some(suggestion) = edit_distance::find_best_match_for_name(
                 &adt_def.variants().iter().map(|s| s.name).collect::<Vec<_>>(),
                 item_name.name,
                 None,
