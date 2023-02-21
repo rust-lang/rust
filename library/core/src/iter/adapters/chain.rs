@@ -179,7 +179,7 @@ where
 {
     #[inline]
     fn next_back(&mut self) -> Option<A::Item> {
-        and_then_or_clear(&mut self.b, |b| b.next_back()).or_else(|| self.a.as_mut()?.next_back())
+        SpecChainBack::next_back(self)
     }
 
     #[inline]
@@ -337,6 +337,10 @@ trait SpecChain: Iterator {
     fn next(&mut self) -> Option<Self::Item>;
 }
 
+trait SpecChainBack: DoubleEndedIterator {
+    fn next_back(&mut self) -> Option<Self::Item>;
+}
+
 impl<A, B> SpecChain for Chain<A, B>
 where
     A: Iterator,
@@ -345,6 +349,17 @@ where
     #[inline]
     default fn next(&mut self) -> Option<A::Item> {
         and_then_or_clear(&mut self.a, Iterator::next).or_else(|| self.b.as_mut()?.next())
+    }
+}
+
+impl<A, B> SpecChainBack for Chain<A, B>
+where
+    A: DoubleEndedIterator,
+    B: DoubleEndedIterator<Item = A::Item>,
+{
+    #[inline]
+    default fn next_back(&mut self) -> Option<Self::Item> {
+        and_then_or_clear(&mut self.b, |b| b.next_back()).or_else(|| self.a.as_mut()?.next_back())
     }
 }
 
@@ -361,6 +376,24 @@ where
             // SAFETY: SymmetricalModuloLifetimes guarantees that A and B are safe to swap
             unsafe { mem::swap(&mut self.a, &mut *(&mut self.b as *mut _ as *mut Option<A>)) };
             result = and_then_or_clear(&mut self.a, Iterator::next);
+        }
+        result
+    }
+}
+
+impl<A, B> SpecChainBack for Chain<A, B>
+where
+    A: DoubleEndedIterator,
+    B: DoubleEndedIterator<Item = A::Item>,
+    Self: SymmetricalModuloLifetimes,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let mut result = and_then_or_clear(&mut self.b, DoubleEndedIterator::next_back);
+        if result.is_none() {
+            // SAFETY: SymmetricalModuloLifetimes guarantees that A and B are safe to swap
+            unsafe { mem::swap(&mut self.a, &mut *(&mut self.b as *mut _ as *mut Option<A>)) };
+            result = and_then_or_clear(&mut self.b, DoubleEndedIterator::next_back);
         }
         result
     }
