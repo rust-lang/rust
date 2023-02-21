@@ -1307,21 +1307,38 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
         let _ = selcx.infcx.commit_if_ok(|_| {
             match selcx.select(&obligation.with(tcx, trait_predicate)) {
                 Ok(Some(super::ImplSource::UserDefined(data))) => {
-                    candidate_set.push_candidate(ProjectionCandidate::ImplTraitInTrait(data));
-                    Ok(())
+                    let Ok(leaf_def) = specialization_graph::assoc_def(tcx, data.impl_def_id, trait_fn_def_id) else {
+                        return Err(());
+                    };
+                    // Only reveal a specializable default if we're past type-checking
+                    // and the obligation is monomorphic, otherwise passes such as
+                    // transmute checking and polymorphic MIR optimizations could
+                    // get a result which isn't correct for all monomorphizations.
+                    if leaf_def.is_final()
+                        || (obligation.param_env.reveal() == Reveal::All
+                            && !selcx
+                                .infcx
+                                .resolve_vars_if_possible(obligation.predicate.trait_ref(tcx))
+                                .still_further_specializable())
+                    {
+                        candidate_set.push_candidate(ProjectionCandidate::ImplTraitInTrait(data));
+                        Ok(())
+                    } else {
+                        Err(())
+                    }
                 }
                 Ok(None) => {
                     candidate_set.mark_ambiguous();
-                    return Err(());
+                    Err(())
                 }
                 Ok(Some(_)) => {
                     // Don't know enough about the impl to provide a useful signature
-                    return Err(());
+                    Err(())
                 }
                 Err(e) => {
                     debug!(error = ?e, "selection error");
                     candidate_set.mark_error(e);
-                    return Err(());
+                    Err(())
                 }
             }
         });
