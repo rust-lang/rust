@@ -112,10 +112,11 @@ Here are a few examples:
 - Dead code: this is a lint. While the user probably doesn't want dead code in
   their crate, making this a hard error would make refactoring and development
   very painful.
-- [safe_packed_borrows future compatibility warning][safe_packed_borrows]:
-  this is a silencable lint related to safety. It was judged that the making
-  this a hard (fixed) error would cause too much breakage, so instead a
-  warning is emitted that eventually will be turned into a hard error.
+- [future-incompatible lints]:
+  these are silencable lints.
+  It was decided that making them fixed errors would cause too much breakage,
+  so warnings are instead emitted,
+  and will eventually be turned into fixed (hard) errors.
 
 Hard-coded warnings (those using the `span_warn` methods) should be avoided
 for normal code, preferring to use lints instead. Some cases, such as warnings
@@ -124,7 +125,7 @@ with CLI flags, will require the use of hard-coded warnings.
 See the `deny` [lint level](#diagnostic-levels) below for guidelines when to
 use an error-level lint instead of a fixed error.
 
-[safe_packed_borrows]: https://github.com/rust-lang/rust/issues/46043
+[future-incompatible lints]: #future-incompatible-lints
 
 ## Diagnostic output style guide
 
