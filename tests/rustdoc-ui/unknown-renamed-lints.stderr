@@ -58,7 +58,5 @@ error: unknown lint: `rustdoc::intra_doc_link_resolution_failure`
 LL | #![deny(rustdoc::intra_doc_link_resolution_failure)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Compilation failed, aborting rustdoc
-
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 

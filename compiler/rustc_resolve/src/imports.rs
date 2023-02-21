@@ -526,7 +526,7 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
             .collect::<Vec<_>>();
         let msg = format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
 
-        let mut diag = struct_span_err!(self.r.session, span, E0432, "{}", &msg);
+        let mut diag = struct_span_err!(self.r.tcx.sess, span, E0432, "{}", &msg);
 
         if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.iter().last() {
             diag.note(note);
@@ -548,8 +548,8 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
             if let Some(candidates) = &err.candidates {
                 match &import.kind {
                     ImportKind::Single { nested: false, source, target, .. } => import_candidates(
-                        self.r.session,
-                        &self.r.untracked.source_span,
+                        self.r.tcx.sess,
+                        &self.r.tcx.untracked().source_span.read(),
                         &mut diag,
                         Some(err.span),
                         &candidates,
@@ -561,8 +561,8 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
                     ),
                     ImportKind::Single { nested: true, source, target, .. } => {
                         import_candidates(
-                            self.r.session,
-                            &self.r.untracked.source_span,
+                            self.r.tcx.sess,
+                            &self.r.tcx.untracked().source_span.read(),
                             &mut diag,
                             None,
                             &candidates,
@@ -658,7 +658,7 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
                     source_binding @ (Ok(..) | Err(Determined)) => {
                         if source_binding.is_ok() {
                             let msg = format!("`{}` is not directly importable", target);
-                            struct_span_err!(this.session, import.span, E0253, "{}", &msg)
+                            struct_span_err!(this.tcx.sess, import.span, E0253, "{}", &msg)
                                 .span_label(import.span, "cannot be imported directly")
                                 .emit();
                         }
@@ -706,7 +706,7 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
                 } else if self.r.privacy_errors.is_empty() {
                     let msg = "cannot determine resolution for the import";
                     let msg_note = "import resolution is stuck, try simplifying other imports";
-                    self.r.session.struct_span_err(import.span, msg).note(msg_note).emit();
+                    self.r.tcx.sess.struct_span_err(import.span, msg).note(msg_note).emit();
                 }
 
                 module
@@ -859,7 +859,7 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
                             let msg = "cannot determine resolution for the import";
                             let msg_note =
                                 "import resolution is stuck, try simplifying other imports";
-                            this.session.struct_span_err(import.span, msg).note(msg_note).emit();
+                            this.tcx.sess.struct_span_err(import.span, msg).note(msg_note).emit();
                         }
                     }
                     Err(..) => {
@@ -1035,13 +1035,13 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
                         format!("re-export of private `{}`", ident)
                     };
 
-                    struct_span_err!(self.r.session, import.span, E0365, "{}", error_msg)
+                    struct_span_err!(self.r.tcx.sess, import.span, E0365, "{}", error_msg)
                         .span_label(import.span, label_msg)
                         .note(&format!("consider declaring type or module `{}` with `pub`", ident))
                         .emit();
                 } else {
                     let mut err =
-                        struct_span_err!(self.r.session, import.span, E0364, "{error_msg}");
+                        struct_span_err!(self.r.tcx.sess, import.span, E0364, "{error_msg}");
                     match binding.kind {
                         NameBindingKind::Res(Res::Def(DefKind::Macro(_), def_id))
                             // exclude decl_macro
@@ -1164,12 +1164,12 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
         let ImportKind::Glob { id, is_prelude, .. } = import.kind else { unreachable!() };
 
         let ModuleOrUniformRoot::Module(module) = import.imported_module.get().unwrap() else {
-            self.r.session.span_err(import.span, "cannot glob-import all possible crates");
+            self.r.tcx.sess.span_err(import.span, "cannot glob-import all possible crates");
             return;
         };
 
         if module.is_trait() {
-            self.r.session.span_err(import.span, "items in traits are not importable");
+            self.r.tcx.sess.span_err(import.span, "items in traits are not importable");
             return;
         } else if ptr::eq(module, import.parent_scope.module) {
             return;

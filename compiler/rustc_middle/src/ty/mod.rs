@@ -43,7 +43,6 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
-use rustc_session::cstore::Untracked;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, ExpnKind, Span};
@@ -157,7 +156,6 @@ pub type RegisteredTools = FxHashSet<Ident>;
 pub struct ResolverOutputs {
     pub global_ctxt: ResolverGlobalCtxt,
     pub ast_lowering: ResolverAstLowering,
-    pub untracked: Untracked,
 }
 
 #[derive(Debug)]

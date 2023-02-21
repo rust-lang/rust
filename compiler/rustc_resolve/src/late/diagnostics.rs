@@ -170,7 +170,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     fn def_span(&self, def_id: DefId) -> Option<Span> {
         match def_id.krate {
             LOCAL_CRATE => self.r.opt_span(def_id),
-            _ => Some(self.r.cstore().get_span_untracked(def_id, self.r.session)),
+            _ => Some(self.r.cstore().get_span_untracked(def_id, self.r.tcx.sess)),
         }
     }
 
@@ -200,7 +200,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     Res::Def(DefKind::Fn, _) => {
                         // Verify whether this is a fn call or an Fn used as a type.
                         self.r
-                            .session
+                            .tcx
+                            .sess
                             .source_map()
                             .span_to_snippet(span)
                             .map(|snippet| snippet.ends_with(')'))
@@ -255,7 +256,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 };
                 (String::new(), "this scope".to_string(), suggestion)
             } else if path.len() == 2 && path[0].ident.name == kw::PathRoot {
-                if self.r.session.edition() > Edition::Edition2015 {
+                if self.r.tcx.sess.edition() > Edition::Edition2015 {
                     // In edition 2018 onwards, the `::foo` syntax may only pull from the extern prelude
                     // which overrides all other expectations of item type
                     expected = "crate";
@@ -323,7 +324,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let base_error = self.make_base_error(path, span, source, res);
         let code = source.error_code(res.is_some());
         let mut err =
-            self.r.session.struct_span_err_with_code(base_error.span, &base_error.msg, code);
+            self.r.tcx.sess.struct_span_err_with_code(base_error.span, &base_error.msg, code);
 
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
 
@@ -432,7 +433,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     } else {
                         (
                             self.r
-                                .session
+                                .tcx
+                                .sess
                                 .source_map()
                                 .span_through_char(*fn_span, '(')
                                 .shrink_to_hi(),
@@ -505,7 +507,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 {
                     if self
                         .r
-                        .session
+                        .tcx
+                        .sess
                         .parse_sess
                         .type_ascription_path_suggestions
                         .borrow()
@@ -596,7 +599,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             if let Some((call_span, args_span)) = self.call_has_self_arg(source) {
                 let mut args_snippet = String::new();
                 if let Some(args_span) = args_span {
-                    if let Ok(snippet) = self.r.session.source_map().span_to_snippet(args_span) {
+                    if let Ok(snippet) = self.r.tcx.sess.source_map().span_to_snippet(args_span) {
                         args_snippet = snippet;
                     }
                 }
@@ -732,7 +735,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let typo_sugg = self.lookup_typo_candidate(path, source.namespace(), is_expected);
         let is_in_same_file = &|sp1, sp2| {
-            let source_map = self.r.session.source_map();
+            let source_map = self.r.tcx.sess.source_map();
             let file1 = source_map.span_to_filename(sp1);
             let file2 = source_map.span_to_filename(sp2);
             file1 == file2
@@ -895,7 +898,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 .map_or(*span, |ident| span.with_lo(ident.span.hi()));
                             (
                                 self.r
-                                    .session
+                                    .tcx
+                                    .sess
                                     .source_map()
                                     .span_through_char(span, '(')
                                     .shrink_to_hi(),
@@ -949,9 +953,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             && let PathSource::Trait(_) = source
             && let Some(Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, _)) = res
             && let Ok(self_ty_str) =
-                self.r.session.source_map().span_to_snippet(self_ty.span)
+                self.r.tcx.sess.source_map().span_to_snippet(self_ty.span)
             && let Ok(trait_ref_str) =
-                self.r.session.source_map().span_to_snippet(trait_ref.path.span)
+                self.r.tcx.sess.source_map().span_to_snippet(trait_ref.path.span)
         {
                 err.multipart_suggestion(
                     "`impl` items mention the trait being implemented first and the type it is being implemented for second",
@@ -1095,7 +1099,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             format!(
                                 "{}: {}<{} = {}>",
                                 self.r
-                                    .session
+                                    .tcx
+                                    .sess
                                     .source_map()
                                     .span_to_snippet(ty.span) // Account for `<&'a T as Foo>::Bar`.
                                     .unwrap_or_else(|_| constrain_ident.to_string()),
@@ -1164,7 +1169,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         // parser issue where a struct literal is being used on an expression
         // where a brace being opened means a block is being started. Look
         // ahead for the next text to see if `span` is followed by a `{`.
-        let sm = self.r.session.source_map();
+        let sm = self.r.tcx.sess.source_map();
         let sp = sm.span_look_ahead(span, None, Some(50));
         let followed_by_brace = matches!(sm.span_to_snippet(sp), Ok(ref snippet) if snippet == "{");
         // In case this could be a struct literal that needs to be surrounded
@@ -1212,7 +1217,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 true
             } else if kind == DefKind::Struct
             && let Some(lhs_source_span) = lhs_span.find_ancestor_inside(expr.span)
-            && let Ok(snippet) = self.r.session.source_map().span_to_snippet(lhs_source_span)
+            && let Ok(snippet) = self.r.tcx.sess.source_map().span_to_snippet(lhs_source_span)
             {
                 // The LHS is a type that originates from a macro call.
                 // We have to add angle brackets around it.
@@ -1352,11 +1357,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
             (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
-                if self.r.session.is_nightly_build() {
+                if self.r.tcx.sess.is_nightly_build() {
                     let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
                                `type` alias";
                     if let Some(span) = self.def_span(def_id) {
-                        if let Ok(snip) = self.r.session.source_map().span_to_snippet(span) {
+                        if let Ok(snip) = self.r.tcx.sess.source_map().span_to_snippet(span) {
                             // The span contains a type alias so we should be able to
                             // replace `type` with `trait`.
                             let snip = snip.replacen("type", "trait", 1);
@@ -1387,7 +1392,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     .last()
                     .map(|sp| {
                         self.r
-                            .session
+                            .tcx
+                            .sess
                             .parse_sess
                             .type_ascription_path_suggestions
                             .borrow()
@@ -1694,8 +1700,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             let extern_prelude = self.r.extern_prelude.clone();
                             names.extend(extern_prelude.iter().flat_map(|(ident, _)| {
                                 self.r
-                                    .crate_loader()
-                                    .maybe_process_path_extern(ident.name)
+                                    .crate_loader(|c| c.maybe_process_path_extern(ident.name))
                                     .and_then(|crate_id| {
                                         let crate_mod =
                                             Res::Def(DefKind::Mod, crate_id.as_def_id());
@@ -1774,12 +1779,12 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     /// Only used in a specific case of type ascription suggestions
     fn get_colon_suggestion_span(&self, start: Span) -> Span {
-        let sm = self.r.session.source_map();
+        let sm = self.r.tcx.sess.source_map();
         start.to(sm.next_point(start))
     }
 
     fn type_ascription_suggestion(&self, err: &mut Diagnostic, base_span: Span) -> bool {
-        let sm = self.r.session.source_map();
+        let sm = self.r.tcx.sess.source_map();
         let base_snippet = sm.span_to_snippet(base_span);
         if let Some(&sp) = self.diagnostic_metadata.current_type_ascription.last() {
             if let Ok(snippet) = sm.span_to_snippet(sp) {
@@ -1809,7 +1814,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             show_label = false;
                             if !self
                                 .r
-                                .session
+                                .tcx
+                                .sess
                                 .parse_sess
                                 .type_ascription_path_suggestions
                                 .borrow_mut()
@@ -2272,7 +2278,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         debug_assert_ne!(lifetime_ref.ident.name, kw::UnderscoreLifetime);
         let mut err = if let Some(outer) = outer_lifetime_ref {
             let mut err = struct_span_err!(
-                self.r.session,
+                self.r.tcx.sess,
                 lifetime_ref.ident.span,
                 E0401,
                 "can't use generic parameters from outer item",
@@ -2282,7 +2288,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             err
         } else {
             let mut err = struct_span_err!(
-                self.r.session,
+                self.r.tcx.sess,
                 lifetime_ref.ident.span,
                 E0261,
                 "use of undeclared lifetime name `{}`",
@@ -2340,8 +2346,13 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         );
                         (span, sugg)
                     } else {
-                        let span =
-                            self.r.session.source_map().span_through_char(span, '<').shrink_to_hi();
+                        let span = self
+                            .r
+                            .tcx
+                            .sess
+                            .source_map()
+                            .span_through_char(span, '<')
+                            .shrink_to_hi();
                         let sugg = format!("{}, ", name.unwrap_or("'a"));
                         (span, sugg)
                     };
@@ -2375,7 +2386,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     pub(crate) fn emit_non_static_lt_in_const_generic_error(&self, lifetime_ref: &ast::Lifetime) {
         struct_span_err!(
-            self.r.session,
+            self.r.tcx.sess,
             lifetime_ref.ident.span,
             E0771,
             "use of non-static lifetime `{}` in const generic",
@@ -2395,10 +2406,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         &self,
         lifetime_ref: &ast::Lifetime,
     ) {
-        let feature_active = self.r.session.features_untracked().generic_const_exprs;
+        let feature_active = self.r.tcx.sess.features_untracked().generic_const_exprs;
         if !feature_active {
             feature_err(
-                &self.r.session.parse_sess,
+                &self.r.tcx.sess.parse_sess,
                 sym::generic_const_exprs,
                 lifetime_ref.ident.span,
                 "a non-static lifetime is not allowed in a `const`",
@@ -2416,7 +2427,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let spans: Vec<_> = lifetime_refs.iter().map(|lt| lt.span).collect();
 
         let mut err = struct_span_err!(
-            self.r.session,
+            self.r.tcx.sess,
             spans,
             E0106,
             "missing lifetime specifier{}",
