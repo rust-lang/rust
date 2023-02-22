@@ -3,7 +3,7 @@ use std::fmt::Write;
 use gccjit::{Struct, Type};
 use crate::rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods};
 use rustc_middle::bug;
-use rustc_middle::ty::{self, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_target::abi::{self, Abi, F32, F64, FieldsShape, Int, Integer, Pointer, PointeeInfo, Size, TyAbiInterface, Variants};

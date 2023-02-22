@@ -1,7 +1,7 @@
 #[cfg(feature="master")]
 use gccjit::{FnAttribute, Visibility};
 use gccjit::{FunctionType, Function};
-use rustc_middle::ty::{self, Instance, TypeVisitable};
+use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 
 use crate::attributes;
