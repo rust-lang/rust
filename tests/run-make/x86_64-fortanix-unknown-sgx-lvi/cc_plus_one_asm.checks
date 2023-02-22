@@ -1,8 +1,7 @@
 CHECK: cc_plus_one_asm
 CHECK-NEXT: movl
 CHECK-NEXT: lfence
-CHECK-NEXT: inc
-CHECK-NEXT: notq (%rsp)
-CHECK-NEXT: notq (%rsp)
+CHECK-NEXT: incl
+CHECK-NEXT: shlq $0, (%rsp)
 CHECK-NEXT: lfence
 CHECK-NEXT: retq
