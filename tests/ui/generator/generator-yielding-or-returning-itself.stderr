@@ -19,7 +19,7 @@ note: required by a bound in `want_cyclic_generator_return`
   --> $DIR/generator-yielding-or-returning-itself.rs:10:36
    |
 LL | pub fn want_cyclic_generator_return<T>(_: T)
-   |        ---------------------------- required by a bound in this
+   |        ---------------------------- required by a bound in this function
 LL |     where T: Generator<Yield = (), Return = T>
    |                                    ^^^^^^^^^^ required by this bound in `want_cyclic_generator_return`
 
@@ -44,7 +44,7 @@ note: required by a bound in `want_cyclic_generator_yield`
   --> $DIR/generator-yielding-or-returning-itself.rs:23:24
    |
 LL | pub fn want_cyclic_generator_yield<T>(_: T)
-   |        --------------------------- required by a bound in this
+   |        --------------------------- required by a bound in this function
 LL |     where T: Generator<Yield = T, Return = ()>
    |                        ^^^^^^^^^ required by this bound in `want_cyclic_generator_yield`
 

@@ -24,9 +24,10 @@
           StorageLive(_3);                 // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:18: +2:19
 -         _3 = _1;                         // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:18: +2:19
 -         _4 = Eq(_3, const 0_i32);        // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
+-         assert(!move _4, "attempt to divide `{}` by zero", const 1_i32) -> bb1; // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
 +         _3 = const 0_i32;                // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:18: +2:19
 +         _4 = const true;                 // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
-          assert(!move _4, "attempt to divide `{}` by zero", const 1_i32) -> bb1; // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
++         assert(!const true, "attempt to divide `{}` by zero", const 1_i32) -> bb1; // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
       }
   
       bb1: {

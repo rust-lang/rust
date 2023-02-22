@@ -1,76 +1,76 @@
-    -Z                          allow-features=val -- only allow the listed language features to be enabled in code (comma separated)
-    -Z                       always-encode-mir=val -- encode MIR of all functions into the crate metadata (default: no)
-    -Z                            asm-comments=val -- generate comments into the assembly (may change behavior) (default: no)
-    -Z                       assert-incr-state=val -- assert that the incremental cache is in given state: either `loaded` or `not-loaded`.
-    -Z               assume-incomplete-release=val -- make cfg(version) treat the current version as incomplete (default: no)
-    -Z                      binary-dep-depinfo=val -- include artifacts (sysroot, crate dependencies) used during compilation in dep-info (default: no)
-    -Z                             box-noalias=val -- emit noalias metadata for box (default: yes)
-    -Z                       branch-protection=val -- set options for branch target identification and pointer authentication on AArch64
-    -Z                           cf-protection=val -- instrument control-flow architecture protection
-    -Z               cgu-partitioning-strategy=val -- the codegen unit partitioning strategy to use
-    -Z                         codegen-backend=val -- the backend to use
-    -Z                             combine-cgu=val -- combine CGUs into a single one
-    -Z                              crate-attr=val -- inject the given attribute in the crate
-    -Z                debug-info-for-profiling=val -- emit discriminators and other data necessary for AutoFDO
-    -Z                            debug-macros=val -- emit line numbers debug info inside macros (default: no)
-    -Z                 deduplicate-diagnostics=val -- deduplicate identical diagnostics (default: yes)
-    -Z                  dep-info-omit-d-target=val -- in dep-info output, omit targets for tracking dependencies of the dep-info files themselves (default: no)
-    -Z                               dep-tasks=val -- print tasks that execute and the color their dep node gets (requires debug build) (default: no)
-    -Z                        diagnostic-width=val -- set the current output width for diagnostic truncation
-    -Z                                 dlltool=val -- import library generation tool (windows-gnu only)
-    -Z                 dont-buffer-diagnostics=val -- emit diagnostics rather than buffering (breaks NLL error downgrading, sorting) (default: no)
-    -Z                           drop-tracking=val -- enables drop tracking in generators (default: no)
-    -Z                       drop-tracking-mir=val -- enables drop tracking on MIR in generators (default: no)
-    -Z                        dual-proc-macros=val -- load proc macros for both target and host, but only link to the target (default: no)
-    -Z                          dump-dep-graph=val -- dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv) (default: no)
-    -Z                  dump-drop-tracking-cfg=val -- dump drop-tracking control-flow graph as a `.dot` file (default: no)
-    -Z                                dump-mir=val -- dump MIR state to file.
+    -Z                        allow-features=val -- only allow the listed language features to be enabled in code (comma separated)
+    -Z                     always-encode-mir=val -- encode MIR of all functions into the crate metadata (default: no)
+    -Z                          asm-comments=val -- generate comments into the assembly (may change behavior) (default: no)
+    -Z                     assert-incr-state=val -- assert that the incremental cache is in given state: either `loaded` or `not-loaded`.
+    -Z             assume-incomplete-release=val -- make cfg(version) treat the current version as incomplete (default: no)
+    -Z                    binary-dep-depinfo=val -- include artifacts (sysroot, crate dependencies) used during compilation in dep-info (default: no)
+    -Z                           box-noalias=val -- emit noalias metadata for box (default: yes)
+    -Z                     branch-protection=val -- set options for branch target identification and pointer authentication on AArch64
+    -Z                         cf-protection=val -- instrument control-flow architecture protection
+    -Z             cgu-partitioning-strategy=val -- the codegen unit partitioning strategy to use
+    -Z                       codegen-backend=val -- the backend to use
+    -Z                           combine-cgu=val -- combine CGUs into a single one
+    -Z                            crate-attr=val -- inject the given attribute in the crate
+    -Z              debug-info-for-profiling=val -- emit discriminators and other data necessary for AutoFDO
+    -Z                          debug-macros=val -- emit line numbers debug info inside macros (default: no)
+    -Z               deduplicate-diagnostics=val -- deduplicate identical diagnostics (default: yes)
+    -Z                dep-info-omit-d-target=val -- in dep-info output, omit targets for tracking dependencies of the dep-info files themselves (default: no)
+    -Z                             dep-tasks=val -- print tasks that execute and the color their dep node gets (requires debug build) (default: no)
+    -Z                      diagnostic-width=val -- set the current output width for diagnostic truncation
+    -Z                               dlltool=val -- import library generation tool (windows-gnu only)
+    -Z               dont-buffer-diagnostics=val -- emit diagnostics rather than buffering (breaks NLL error downgrading, sorting) (default: no)
+    -Z                         drop-tracking=val -- enables drop tracking in generators (default: no)
+    -Z                     drop-tracking-mir=val -- enables drop tracking on MIR in generators (default: no)
+    -Z                      dual-proc-macros=val -- load proc macros for both target and host, but only link to the target (default: no)
+    -Z                        dump-dep-graph=val -- dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv) (default: no)
+    -Z                dump-drop-tracking-cfg=val -- dump drop-tracking control-flow graph as a `.dot` file (default: no)
+    -Z                              dump-mir=val -- dump MIR state to file.
         `val` is used to select which passes and functions to dump. For example:
         `all` matches all passes and functions,
         `foo` matches all passes for functions whose name contains 'foo',
         `foo & ConstProp` only the 'ConstProp' pass for function names containing 'foo',
         `foo | bar` all passes for function names containing 'foo' or 'bar'.
-    -Z                       dump-mir-dataflow=val -- in addition to `.mir` files, create graphviz `.dot` files with dataflow results (default: no)
-    -Z                            dump-mir-dir=val -- the directory the MIR is dumped into (default: `mir_dump`)
-    -Z            dump-mir-exclude-pass-number=val -- exclude the pass number when dumping MIR (used in tests) (default: no)
-    -Z                       dump-mir-graphviz=val -- in addition to `.mir` files, create graphviz `.dot` files (and with `-Z instrument-coverage`, also create a `.dot` file for the MIR-derived coverage graph) (default: no)
-    -Z                       dump-mir-spanview=val -- in addition to `.mir` files, create `.html` files to view spans for all `statement`s (including terminators), only `terminator` spans, or computed `block` spans (one span encompassing a block's terminator and all statements). If `-Z instrument-coverage` is also enabled, create an additional `.html` file showing the computed coverage spans.
-    -Z                         dump-mono-stats=val -- output statistics about monomorphization collection
-    -Z                  dump-mono-stats-format=val -- the format to use for -Z dump-mono-stats (`markdown` (default) or `json`)
-    -Z                           dwarf-version=val -- version of DWARF debug information to emit (default: 2 or 4, depending on platform)
-    -Z                               dylib-lto=val -- enables LTO for dylib crate type
-    -Z                        emit-stack-sizes=val -- emit a section containing stack size metadata (default: no)
-    -Z                           emit-thin-lto=val -- emit the bc module with thin LTO info (default: yes)
-    -Z               export-executable-symbols=val -- export symbols from executables, as if they were dynamic libraries
-    -Z                   extra-const-ub-checks=val -- turns on more checks to detect const UB, which can be slow (default: no)
-    -Z                             fewer-names=val -- reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) (default: no)
-    -Z              force-unstable-if-unmarked=val -- force all crates to be `rustc_private` unstable (default: no)
-    -Z                                    fuel=val -- set the optimization fuel quota for a crate
-    -Z                       function-sections=val -- whether each function should go in its own section
-    -Z                    future-incompat-test=val -- forces all lints to be future incompatible, used for internal testing (default: no)
-    -Z                                  gcc-ld=val -- implementation of ld used by cc
-    -Z                      graphviz-dark-mode=val -- use dark-themed colors in graphviz output (default: no)
-    -Z                           graphviz-font=val -- use the given `fontname` in graphviz output; can be overridden by setting environment variable `RUSTC_GRAPHVIZ_FONT` (default: `Courier, monospace`)
-    -Z                               hir-stats=val -- print some statistics about AST and HIR (default: no)
-    -Z                human-readable-cgu-names=val -- generate human-readable, predictable names for codegen units (default: no)
-    -Z                        identify-regions=val -- display unnamed regions as `'<id>`, using a non-ident unique id (default: no)
-    -Z                incremental-ignore-spans=val -- ignore spans during ICH computation -- used for testing (default: no)
-    -Z                        incremental-info=val -- print high-level information about incremental reuse (or the lack thereof) (default: no)
-    -Z              incremental-relative-spans=val -- hash spans relative to their parent item for incr. comp. (default: no)
-    -Z                  incremental-verify-ich=val -- verify incr. comp. hashes of green query instances (default: no)
-    -Z                      inline-in-all-cgus=val -- control whether `#[inline]` functions are in all CGUs
-    -Z                             inline-llvm=val -- enable LLVM inlining (default: yes)
-    -Z                              inline-mir=val -- enable MIR inlining (default: no)
-    -Z               inline-mir-hint-threshold=val -- inlining threshold for functions with inline hint (default: 100)
-    -Z                    inline-mir-threshold=val -- a default MIR inlining threshold (default: 50)
-    -Z                             input-stats=val -- gather statistics about the input (default: no)
-    -Z                     instrument-coverage=val -- instrument the generated code to support LLVM source-based code coverage reports (note, the compiler build config must include `profiler = true`); implies `-C symbol-mangling-version=v0`. Optional values are:
+    -Z                     dump-mir-dataflow=val -- in addition to `.mir` files, create graphviz `.dot` files with dataflow results (default: no)
+    -Z                          dump-mir-dir=val -- the directory the MIR is dumped into (default: `mir_dump`)
+    -Z          dump-mir-exclude-pass-number=val -- exclude the pass number when dumping MIR (used in tests) (default: no)
+    -Z                     dump-mir-graphviz=val -- in addition to `.mir` files, create graphviz `.dot` files (and with `-Z instrument-coverage`, also create a `.dot` file for the MIR-derived coverage graph) (default: no)
+    -Z                     dump-mir-spanview=val -- in addition to `.mir` files, create `.html` files to view spans for all `statement`s (including terminators), only `terminator` spans, or computed `block` spans (one span encompassing a block's terminator and all statements). If `-Z instrument-coverage` is also enabled, create an additional `.html` file showing the computed coverage spans.
+    -Z                       dump-mono-stats=val -- output statistics about monomorphization collection
+    -Z                dump-mono-stats-format=val -- the format to use for -Z dump-mono-stats (`markdown` (default) or `json`)
+    -Z                         dwarf-version=val -- version of DWARF debug information to emit (default: 2 or 4, depending on platform)
+    -Z                             dylib-lto=val -- enables LTO for dylib crate type
+    -Z                      emit-stack-sizes=val -- emit a section containing stack size metadata (default: no)
+    -Z                         emit-thin-lto=val -- emit the bc module with thin LTO info (default: yes)
+    -Z             export-executable-symbols=val -- export symbols from executables, as if they were dynamic libraries
+    -Z                 extra-const-ub-checks=val -- turns on more checks to detect const UB, which can be slow (default: no)
+    -Z                           fewer-names=val -- reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) (default: no)
+    -Z            force-unstable-if-unmarked=val -- force all crates to be `rustc_private` unstable (default: no)
+    -Z                                  fuel=val -- set the optimization fuel quota for a crate
+    -Z                     function-sections=val -- whether each function should go in its own section
+    -Z                  future-incompat-test=val -- forces all lints to be future incompatible, used for internal testing (default: no)
+    -Z                                gcc-ld=val -- implementation of ld used by cc
+    -Z                    graphviz-dark-mode=val -- use dark-themed colors in graphviz output (default: no)
+    -Z                         graphviz-font=val -- use the given `fontname` in graphviz output; can be overridden by setting environment variable `RUSTC_GRAPHVIZ_FONT` (default: `Courier, monospace`)
+    -Z                             hir-stats=val -- print some statistics about AST and HIR (default: no)
+    -Z              human-readable-cgu-names=val -- generate human-readable, predictable names for codegen units (default: no)
+    -Z                      identify-regions=val -- display unnamed regions as `'<id>`, using a non-ident unique id (default: no)
+    -Z              incremental-ignore-spans=val -- ignore spans during ICH computation -- used for testing (default: no)
+    -Z                      incremental-info=val -- print high-level information about incremental reuse (or the lack thereof) (default: no)
+    -Z            incremental-relative-spans=val -- hash spans relative to their parent item for incr. comp. (default: no)
+    -Z                incremental-verify-ich=val -- verify incr. comp. hashes of green query instances (default: no)
+    -Z                    inline-in-all-cgus=val -- control whether `#[inline]` functions are in all CGUs
+    -Z                           inline-llvm=val -- enable LLVM inlining (default: yes)
+    -Z                            inline-mir=val -- enable MIR inlining (default: no)
+    -Z             inline-mir-hint-threshold=val -- inlining threshold for functions with inline hint (default: 100)
+    -Z                  inline-mir-threshold=val -- a default MIR inlining threshold (default: 50)
+    -Z                           input-stats=val -- gather statistics about the input (default: no)
+    -Z                   instrument-coverage=val -- instrument the generated code to support LLVM source-based code coverage reports (note, the compiler build config must include `profiler = true`); implies `-C symbol-mangling-version=v0`. Optional values are:
         `=all` (implicit value)
         `=except-unused-generics`
         `=except-unused-functions`
         `=off` (default)
-    -Z                       instrument-mcount=val -- insert function instrument code for mcount-based tracing (default: no)
-    -Z                         instrument-xray=val -- insert function instrument code for XRay-based tracing (default: no)
+    -Z                     instrument-mcount=val -- insert function instrument code for mcount-based tracing (default: no)
+    -Z                       instrument-xray=val -- insert function instrument code for XRay-based tracing (default: no)
          Optional extra settings:
          `=always`
          `=never`
@@ -79,125 +79,124 @@
          `=skip-entry`
          `=skip-exit`
          Multiple options can be combined with commas.
-    -Z                       keep-hygiene-data=val -- keep hygiene data after analysis (default: no)
-    -Z                             layout-seed=val -- seed layout randomization
-    -Z                   link-native-libraries=val -- link native libraries in the linker invocation (default: yes)
-    -Z                               link-only=val -- link the `.rlink` file generated by `-Z no-link` (default: no)
-    -Z                            llvm-plugins=val -- a list LLVM plugins to enable (space separated)
-    -Z                         llvm-time-trace=val -- generate JSON tracing data file from LLVM data (default: no)
-    -Z                         location-detail=val -- what location details should be tracked when using caller_location, either `none`, or a comma separated list of location details, for which valid options are `file`, `line`, and `column` (default: `file,line,column`)
-    -Z                                      ls=val -- list the symbols defined by a library crate (default: no)
-    -Z                         macro-backtrace=val -- show macro backtraces (default: no)
-    -Z             maximal-hir-to-mir-coverage=val -- save as much information as possible about the correspondence between MIR and HIR as source scopes (default: no)
-    -Z                         merge-functions=val -- control the operation of the MergeFunctions LLVM pass, taking the same values as the target option of the same name
-    -Z                              meta-stats=val -- gather metadata statistics (default: no)
-    -Z                          mir-emit-retag=val -- emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 (default: no)
-    -Z                       mir-enable-passes=val -- use like `-Zmir-enable-passes=+DestProp,-InstCombine`. Forces the specified passes to be enabled, overriding all other checks. Passes that are not specified are enabled or disabled by other flags as usual.
-    -Z                           mir-opt-level=val -- MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)
-    -Z        mir-pretty-relative-line-numbers=val -- use line numbers relative to the function in mir pretty printing
-    -Z                         move-size-limit=val -- the size at which the `large_assignments` lint starts to be emitted
-    -Z                         mutable-noalias=val -- emit noalias metadata for mutable references (default: yes)
-    -Z                               nll-facts=val -- dump facts from NLL analysis into side files (default: no)
-    -Z                           nll-facts-dir=val -- the directory the NLL facts are dumped into (default: `nll-facts`)
-    -Z                             no-analysis=val -- parse and expand the source, but run no analysis
-    -Z                              no-codegen=val -- run all passes except codegen; no output
-    -Z              no-generate-arange-section=val -- omit DWARF address ranges that give faster lookups
-    -Z                          no-jump-tables=val -- disable the jump tables and lookup tables that can be generated from a switch case lowering
-    -Z                           no-leak-check=val -- disable the 'leak check' for subtyping; unsound, but useful for tests
-    -Z                                 no-link=val -- compile without linking
-    -Z                        no-parallel-llvm=val -- run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)
-    -Z                     no-profiler-runtime=val -- prevent automatic injection of the profiler_builtins crate
-    -Z                 no-unique-section-names=val -- do not use unique names for text and data sections when -Z function-sections is used
-    -Z                          normalize-docs=val -- normalize associated items in rustdoc when generating documentation
-    -Z                                     oom=val -- panic strategy for out-of-memory handling
-    -Z                  osx-rpath-install-name=val -- pass `-install_name @rpath/...` to the macOS linker (default: no)
-    -Z                     packed-bundled-libs=val -- change rlib format to store native libraries as archives
-    -Z                       panic-abort-tests=val -- support compiling tests with panic=abort (default: no)
-    -Z                           panic-in-drop=val -- panic strategy for panics in drops
-    -Z                              parse-only=val -- parse only; do not compile, assemble, or link (default: no)
-    -Z                              perf-stats=val -- print some performance-related statistics (default: no)
-    -Z pick-stable-methods-before-any-unstable=val -- try to pick stable methods first before picking any unstable methods (default: yes)
-    -Z                                     plt=val -- whether to use the PLT when calling into shared libraries;
+    -Z                     keep-hygiene-data=val -- keep hygiene data after analysis (default: no)
+    -Z                           layout-seed=val -- seed layout randomization
+    -Z                 link-native-libraries=val -- link native libraries in the linker invocation (default: yes)
+    -Z                             link-only=val -- link the `.rlink` file generated by `-Z no-link` (default: no)
+    -Z                          llvm-plugins=val -- a list LLVM plugins to enable (space separated)
+    -Z                       llvm-time-trace=val -- generate JSON tracing data file from LLVM data (default: no)
+    -Z                       location-detail=val -- what location details should be tracked when using caller_location, either `none`, or a comma separated list of location details, for which valid options are `file`, `line`, and `column` (default: `file,line,column`)
+    -Z                                    ls=val -- list the symbols defined by a library crate (default: no)
+    -Z                       macro-backtrace=val -- show macro backtraces (default: no)
+    -Z           maximal-hir-to-mir-coverage=val -- save as much information as possible about the correspondence between MIR and HIR as source scopes (default: no)
+    -Z                       merge-functions=val -- control the operation of the MergeFunctions LLVM pass, taking the same values as the target option of the same name
+    -Z                            meta-stats=val -- gather metadata statistics (default: no)
+    -Z                        mir-emit-retag=val -- emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 (default: no)
+    -Z                     mir-enable-passes=val -- use like `-Zmir-enable-passes=+DestProp,-InstCombine`. Forces the specified passes to be enabled, overriding all other checks. Passes that are not specified are enabled or disabled by other flags as usual.
+    -Z                         mir-opt-level=val -- MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)
+    -Z      mir-pretty-relative-line-numbers=val -- use line numbers relative to the function in mir pretty printing
+    -Z                       move-size-limit=val -- the size at which the `large_assignments` lint starts to be emitted
+    -Z                       mutable-noalias=val -- emit noalias metadata for mutable references (default: yes)
+    -Z                             nll-facts=val -- dump facts from NLL analysis into side files (default: no)
+    -Z                         nll-facts-dir=val -- the directory the NLL facts are dumped into (default: `nll-facts`)
+    -Z                           no-analysis=val -- parse and expand the source, but run no analysis
+    -Z                            no-codegen=val -- run all passes except codegen; no output
+    -Z            no-generate-arange-section=val -- omit DWARF address ranges that give faster lookups
+    -Z                        no-jump-tables=val -- disable the jump tables and lookup tables that can be generated from a switch case lowering
+    -Z                         no-leak-check=val -- disable the 'leak check' for subtyping; unsound, but useful for tests
+    -Z                               no-link=val -- compile without linking
+    -Z                      no-parallel-llvm=val -- run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)
+    -Z                   no-profiler-runtime=val -- prevent automatic injection of the profiler_builtins crate
+    -Z               no-unique-section-names=val -- do not use unique names for text and data sections when -Z function-sections is used
+    -Z                        normalize-docs=val -- normalize associated items in rustdoc when generating documentation
+    -Z                                   oom=val -- panic strategy for out-of-memory handling
+    -Z                osx-rpath-install-name=val -- pass `-install_name @rpath/...` to the macOS linker (default: no)
+    -Z                   packed-bundled-libs=val -- change rlib format to store native libraries as archives
+    -Z                     panic-abort-tests=val -- support compiling tests with panic=abort (default: no)
+    -Z                         panic-in-drop=val -- panic strategy for panics in drops
+    -Z                            parse-only=val -- parse only; do not compile, assemble, or link (default: no)
+    -Z                            perf-stats=val -- print some performance-related statistics (default: no)
+    -Z                                   plt=val -- whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
         (default: PLT is disabled if full relro is enabled)
-    -Z                                polonius=val -- enable polonius-based borrow-checker (default: no)
-    -Z                            polymorphize=val -- perform polymorphization analysis
-    -Z                            pre-link-arg=val -- a single extra argument to prepend the linker invocation (can be used several times)
-    -Z                           pre-link-args=val -- extra arguments to prepend to the linker invocation (space separated)
-    -Z           precise-enum-drop-elaboration=val -- use a more precise version of drop elaboration for matches on enums (default: yes). This results in better codegen, but has caused miscompilations on some tier 2 platforms. See #77382 and #74551.
-    -Z                              print-fuel=val -- make rustc print the total optimization fuel used by a crate
-    -Z                       print-llvm-passes=val -- print the LLVM optimization passes being run (default: no)
-    -Z                        print-mono-items=val -- print the result of the monomorphization collection pass
-    -Z                        print-type-sizes=val -- print layout information for each type encountered (default: no)
-    -Z                    proc-macro-backtrace=val -- show backtraces for panics during proc-macro execution (default: no)
-    -Z           proc-macro-execution-strategy=val -- how to run proc-macro code (default: same-thread)
-    -Z                                 profile=val -- insert profiling code (default: no)
-    -Z                        profile-closures=val -- profile size of closures
-    -Z                            profile-emit=val -- file path to emit profiling data at runtime when using 'profile' (default based on relative source path)
-    -Z                      profile-sample-use=val -- use the given `.prof` file for sampled profile-guided optimization (also known as AutoFDO)
-    -Z                        profiler-runtime=val -- name of the profiler runtime crate to automatically inject (default: `profiler_builtins`)
-    -Z                         query-dep-graph=val -- enable queries of the dependency graph for regression testing (default: no)
-    -Z                        randomize-layout=val -- randomize the layout of types (default: no)
-    -Z                   relax-elf-relocations=val -- whether ELF relocations can be relaxed
-    -Z                             relro-level=val -- choose which RELRO level to use
-    -Z                        remap-cwd-prefix=val -- remap paths under the current working directory to this path prefix
-    -Z                     report-delayed-bugs=val -- immediately print bugs registered with `delay_span_bug` (default: no)
-    -Z                               sanitizer=val -- use a sanitizer
-    -Z          sanitizer-memory-track-origins=val -- enable origins tracking in MemorySanitizer
-    -Z                       sanitizer-recover=val -- enable recovery for selected sanitizers
-    -Z                  saturating-float-casts=val -- make float->int casts UB-free: numbers outside the integer type's range are clipped to the max/min integer respectively, and NaN is mapped to 0 (default: yes)
-    -Z                            self-profile=val -- run the self profiler and output the raw event data
-    -Z                    self-profile-counter=val -- counter used by the self profiler (default: `wall-time`), one of:
+    -Z                              polonius=val -- enable polonius-based borrow-checker (default: no)
+    -Z                          polymorphize=val -- perform polymorphization analysis
+    -Z                          pre-link-arg=val -- a single extra argument to prepend the linker invocation (can be used several times)
+    -Z                         pre-link-args=val -- extra arguments to prepend to the linker invocation (space separated)
+    -Z         precise-enum-drop-elaboration=val -- use a more precise version of drop elaboration for matches on enums (default: yes). This results in better codegen, but has caused miscompilations on some tier 2 platforms. See #77382 and #74551.
+    -Z                            print-fuel=val -- make rustc print the total optimization fuel used by a crate
+    -Z                     print-llvm-passes=val -- print the LLVM optimization passes being run (default: no)
+    -Z                      print-mono-items=val -- print the result of the monomorphization collection pass
+    -Z                      print-type-sizes=val -- print layout information for each type encountered (default: no)
+    -Z                  proc-macro-backtrace=val -- show backtraces for panics during proc-macro execution (default: no)
+    -Z         proc-macro-execution-strategy=val -- how to run proc-macro code (default: same-thread)
+    -Z                               profile=val -- insert profiling code (default: no)
+    -Z                      profile-closures=val -- profile size of closures
+    -Z                          profile-emit=val -- file path to emit profiling data at runtime when using 'profile' (default based on relative source path)
+    -Z                    profile-sample-use=val -- use the given `.prof` file for sampled profile-guided optimization (also known as AutoFDO)
+    -Z                      profiler-runtime=val -- name of the profiler runtime crate to automatically inject (default: `profiler_builtins`)
+    -Z                       query-dep-graph=val -- enable queries of the dependency graph for regression testing (default: no)
+    -Z                      randomize-layout=val -- randomize the layout of types (default: no)
+    -Z                 relax-elf-relocations=val -- whether ELF relocations can be relaxed
+    -Z                           relro-level=val -- choose which RELRO level to use
+    -Z                      remap-cwd-prefix=val -- remap paths under the current working directory to this path prefix
+    -Z                   report-delayed-bugs=val -- immediately print bugs registered with `delay_span_bug` (default: no)
+    -Z                             sanitizer=val -- use a sanitizer
+    -Z        sanitizer-memory-track-origins=val -- enable origins tracking in MemorySanitizer
+    -Z                     sanitizer-recover=val -- enable recovery for selected sanitizers
+    -Z                saturating-float-casts=val -- make float->int casts UB-free: numbers outside the integer type's range are clipped to the max/min integer respectively, and NaN is mapped to 0 (default: yes)
+    -Z                          self-profile=val -- run the self profiler and output the raw event data
+    -Z                  self-profile-counter=val -- counter used by the self profiler (default: `wall-time`), one of:
         `wall-time` (monotonic clock, i.e. `std::time::Instant`)
         `instructions:u` (retired instructions, userspace-only)
         `instructions-minus-irqs:u` (subtracting hardware interrupt counts for extra accuracy)
-    -Z                     self-profile-events=val -- specify the events recorded by the self profiler;
+    -Z                   self-profile-events=val -- specify the events recorded by the self profiler;
         for example: `-Z self-profile-events=default,query-keys`
         all options: none, all, default, generic-activity, query-provider, query-cache-hit
                      query-blocked, incr-cache-load, incr-result-hashing, query-keys, function-args, args, llvm, artifact-sizes
-    -Z                          share-generics=val -- make the current crate share its generic instantiations
-    -Z                               show-span=val -- show spans for compiler debugging (expr|pat|ty)
-    -Z         simulate-remapped-rust-src-base=val -- simulate the effect of remap-debuginfo = true at bootstrapping by remapping path to rust's source base directory. only meant for testing purposes
-    -Z                              span-debug=val -- forward proc_macro::Span's `Debug` impl to `Span`
-    -Z                       span-free-formats=val -- exclude spans when debug-printing compiler state (default: no)
-    -Z                    split-dwarf-inlining=val -- provide minimal debug info in the object/executable to facilitate online symbolication/stack traces in the absence of .dwo/.dwp files when using Split DWARF
-    -Z                        split-dwarf-kind=val -- split dwarf variant (only if -Csplit-debuginfo is enabled and on relevant platform)
+    -Z                        share-generics=val -- make the current crate share its generic instantiations
+    -Z                             show-span=val -- show spans for compiler debugging (expr|pat|ty)
+    -Z       simulate-remapped-rust-src-base=val -- simulate the effect of remap-debuginfo = true at bootstrapping by remapping path to rust's source base directory. only meant for testing purposes
+    -Z                            span-debug=val -- forward proc_macro::Span's `Debug` impl to `Span`
+    -Z                     span-free-formats=val -- exclude spans when debug-printing compiler state (default: no)
+    -Z                  split-dwarf-inlining=val -- provide minimal debug info in the object/executable to facilitate online symbolication/stack traces in the absence of .dwo/.dwp files when using Split DWARF
+    -Z                      split-dwarf-kind=val -- split dwarf variant (only if -Csplit-debuginfo is enabled and on relevant platform)
         (default: `split`)
 
         `split`: sections which do not require relocation are written into a DWARF object (`.dwo`)
                  file which is ignored by the linker
         `single`: sections which do not require relocation are written into object file but ignored
                   by the linker
-    -Z                      src-hash-algorithm=val -- hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)
-    -Z                         stack-protector=val -- control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)
-    -Z                      strict-init-checks=val -- control if mem::uninitialized and mem::zeroed panic on more UB
-    -Z                                   strip=val -- tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)
-    -Z                 symbol-mangling-version=val -- which mangling version to use for symbol names ('legacy' (default) or 'v0')
-    -Z                                   teach=val -- show extended diagnostic help (default: no)
-    -Z                               temps-dir=val -- the directory the intermediate files are written to
-    -Z                           terminal-urls=val -- use the OSC 8 hyperlink terminal specification to print hyperlinks in the compiler output
-    -Z                                 thinlto=val -- enable ThinLTO when possible
-    -Z                           thir-unsafeck=val -- use the THIR unsafety checker (default: no)
-    -Z                                 threads=val -- use a thread pool with N threads
-    -Z                        time-llvm-passes=val -- measure time of each LLVM pass (default: no)
-    -Z                             time-passes=val -- measure time of each rustc pass (default: no)
-    -Z                   tiny-const-eval-limit=val -- sets a tiny, non-configurable limit for const eval; useful for compiler tests
-    -Z                               tls-model=val -- choose the TLS model to use (`rustc --print tls-models` for details)
-    -Z                            trace-macros=val -- for every macro invocation, print its name and arguments (default: no)
-    -Z                       track-diagnostics=val -- tracks where in rustc a diagnostic was emitted
-    -Z                            trait-solver=val -- specify the trait solver mode used by rustc (default: classic)
-    -Z                translate-additional-ftl=val -- additional fluent translation to preferentially use (for testing translation)
-    -Z        translate-directionality-markers=val -- emit directionality isolation markers in translated diagnostics
-    -Z                          translate-lang=val -- language identifier for diagnostic output
-    -Z   translate-remapped-path-to-local-path=val -- translate remapped paths into local paths when possible (default: yes)
-    -Z                        trap-unreachable=val -- generate trap instructions for unreachable intrinsics (default: use target setting, usually yes)
-    -Z                        treat-err-as-bug=val -- treat error number `val` that occurs as bug
-    -Z                   trim-diagnostic-paths=val -- in diagnostics, use heuristics to shorten paths referring to items
-    -Z                                tune-cpu=val -- select processor to schedule for (`rustc --print target-cpus` for details)
-    -Z                              ui-testing=val -- emit compiler diagnostics in a form suitable for UI testing (default: no)
-    -Z            uninit-const-chunk-threshold=val -- allow generating const initializers with mixed init/uninit chunks, and set the maximum number of chunks for which this is allowed (default: 16)
-    -Z          unleash-the-miri-inside-of-you=val -- take the brakes off const evaluation. NOTE: this is unsound (default: no)
-    -Z                                unpretty=val -- present the input source, unstable (and less-pretty) variants;
+    -Z                    src-hash-algorithm=val -- hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)
+    -Z                       stack-protector=val -- control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)
+    -Z                    strict-init-checks=val -- control if mem::uninitialized and mem::zeroed panic on more UB
+    -Z                                 strip=val -- tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)
+    -Z               symbol-mangling-version=val -- which mangling version to use for symbol names ('legacy' (default) or 'v0')
+    -Z                                 teach=val -- show extended diagnostic help (default: no)
+    -Z                             temps-dir=val -- the directory the intermediate files are written to
+    -Z                         terminal-urls=val -- use the OSC 8 hyperlink terminal specification to print hyperlinks in the compiler output
+    -Z                               thinlto=val -- enable ThinLTO when possible
+    -Z                         thir-unsafeck=val -- use the THIR unsafety checker (default: no)
+    -Z                               threads=val -- use a thread pool with N threads
+    -Z                      time-llvm-passes=val -- measure time of each LLVM pass (default: no)
+    -Z                           time-passes=val -- measure time of each rustc pass (default: no)
+    -Z                 tiny-const-eval-limit=val -- sets a tiny, non-configurable limit for const eval; useful for compiler tests
+    -Z                             tls-model=val -- choose the TLS model to use (`rustc --print tls-models` for details)
+    -Z                          trace-macros=val -- for every macro invocation, print its name and arguments (default: no)
+    -Z                     track-diagnostics=val -- tracks where in rustc a diagnostic was emitted
+    -Z                          trait-solver=val -- specify the trait solver mode used by rustc (default: classic)
+    -Z              translate-additional-ftl=val -- additional fluent translation to preferentially use (for testing translation)
+    -Z      translate-directionality-markers=val -- emit directionality isolation markers in translated diagnostics
+    -Z                        translate-lang=val -- language identifier for diagnostic output
+    -Z translate-remapped-path-to-local-path=val -- translate remapped paths into local paths when possible (default: yes)
+    -Z                      trap-unreachable=val -- generate trap instructions for unreachable intrinsics (default: use target setting, usually yes)
+    -Z                      treat-err-as-bug=val -- treat error number `val` that occurs as bug
+    -Z                 trim-diagnostic-paths=val -- in diagnostics, use heuristics to shorten paths referring to items
+    -Z                              tune-cpu=val -- select processor to schedule for (`rustc --print target-cpus` for details)
+    -Z                            ui-testing=val -- emit compiler diagnostics in a form suitable for UI testing (default: no)
+    -Z          uninit-const-chunk-threshold=val -- allow generating const initializers with mixed init/uninit chunks, and set the maximum number of chunks for which this is allowed (default: 16)
+    -Z        unleash-the-miri-inside-of-you=val -- take the brakes off const evaluation. NOTE: this is unsound (default: no)
+    -Z                              unpretty=val -- present the input source, unstable (and less-pretty) variants;
         `normal`, `identified`,
         `expanded`, `expanded,identified`,
         `expanded,hygiene` (with internal representations),
@@ -207,11 +206,11 @@
         `hir,typed` (HIR with types for each node),
         `hir-tree` (dump the raw HIR),
         `mir` (the MIR), or `mir-cfg` (graphviz formatted MIR)
-    -Z                        unsound-mir-opts=val -- enable unsound and buggy MIR optimizations (default: no)
-    -Z                        unstable-options=val -- adds unstable command line options to rustc interface (default: no)
-    -Z                       use-ctors-section=val -- use legacy .ctors section for initializers rather than .init_array
-    -Z                            validate-mir=val -- validate MIR after each transformation
-    -Z                                 verbose=val -- in general, enable more debug printouts (default: no)
-    -Z                          verify-llvm-ir=val -- verify LLVM IR (default: no)
-    -Z            virtual-function-elimination=val -- enables dead virtual function elimination optimization. Requires `-Clto[=[fat,yes]]`
-    -Z                         wasi-exec-model=val -- whether to build a wasi command or reactor
+    -Z                      unsound-mir-opts=val -- enable unsound and buggy MIR optimizations (default: no)
+    -Z                      unstable-options=val -- adds unstable command line options to rustc interface (default: no)
+    -Z                     use-ctors-section=val -- use legacy .ctors section for initializers rather than .init_array
+    -Z                          validate-mir=val -- validate MIR after each transformation
+    -Z                               verbose=val -- in general, enable more debug printouts (default: no)
+    -Z                        verify-llvm-ir=val -- verify LLVM IR (default: no)
+    -Z          virtual-function-elimination=val -- enables dead virtual function elimination optimization. Requires `-Clto[=[fat,yes]]`
+    -Z                       wasi-exec-model=val -- whether to build a wasi command or reactor

@@ -14,10 +14,11 @@ use rustc_ast::{
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
+use thin_vec::ThinVec;
 
 enum PredicateOrStructBody {
     Predicate(ast::WherePredicate),
-    StructBody(Vec<ast::FieldDef>),
+    StructBody(ThinVec<ast::FieldDef>),
 }
 
 impl<'a> Parser<'a> {
@@ -121,8 +122,8 @@ impl<'a> Parser<'a> {
 
     /// Parses a (possibly empty) list of lifetime and type parameters, possibly including
     /// a trailing comma and erroneous trailing attributes.
-    pub(super) fn parse_generic_params(&mut self) -> PResult<'a, Vec<ast::GenericParam>> {
-        let mut params = Vec::new();
+    pub(super) fn parse_generic_params(&mut self) -> PResult<'a, ThinVec<ast::GenericParam>> {
+        let mut params = ThinVec::new();
         let mut done = false;
         while !done {
             let attrs = self.parse_outer_attributes()?;
@@ -251,13 +252,13 @@ impl<'a> Parser<'a> {
             self.expect_gt()?;
             (params, span_lo.to(self.prev_token.span))
         } else {
-            (vec![], self.prev_token.span.shrink_to_hi())
+            (ThinVec::new(), self.prev_token.span.shrink_to_hi())
         };
         Ok(ast::Generics {
             params,
             where_clause: WhereClause {
                 has_where_token: false,
-                predicates: Vec::new(),
+                predicates: ThinVec::new(),
                 span: self.prev_token.span.shrink_to_hi(),
             },
             span,
@@ -277,17 +278,17 @@ impl<'a> Parser<'a> {
         &mut self,
         struct_name: Ident,
         body_insertion_point: Span,
-    ) -> PResult<'a, (WhereClause, Option<Vec<ast::FieldDef>>)> {
+    ) -> PResult<'a, (WhereClause, Option<ThinVec<ast::FieldDef>>)> {
         self.parse_where_clause_common(Some((struct_name, body_insertion_point)))
     }
 
     fn parse_where_clause_common(
         &mut self,
         struct_: Option<(Ident, Span)>,
-    ) -> PResult<'a, (WhereClause, Option<Vec<ast::FieldDef>>)> {
+    ) -> PResult<'a, (WhereClause, Option<ThinVec<ast::FieldDef>>)> {
         let mut where_clause = WhereClause {
             has_where_token: false,
-            predicates: Vec::new(),
+            predicates: ThinVec::new(),
             span: self.prev_token.span.shrink_to_hi(),
         };
         let mut tuple_struct_body = None;

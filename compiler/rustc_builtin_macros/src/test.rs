@@ -10,7 +10,7 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 use std::iter;
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 
 /// #[test_case] is used by custom test authors to mark tests
 /// When building for test, it needs to make the item public and gensym the name
@@ -179,19 +179,19 @@ pub fn expand_test_or_bench(
         cx.expr_call(
             sp,
             cx.expr_path(test_path("StaticBenchFn")),
-            vec![
+            thin_vec![
                 // |b| self::test::assert_test_result(
                 cx.lambda1(
                     sp,
                     cx.expr_call(
                         sp,
                         cx.expr_path(test_path("assert_test_result")),
-                        vec![
+                        thin_vec![
                             // super::$test_fn(b)
                             cx.expr_call(
                                 ret_ty_sp,
                                 cx.expr_path(cx.path(sp, vec![item.ident])),
-                                vec![cx.expr_ident(sp, b)],
+                                thin_vec![cx.expr_ident(sp, b)],
                             ),
                         ],
                     ),
@@ -203,7 +203,7 @@ pub fn expand_test_or_bench(
         cx.expr_call(
             sp,
             cx.expr_path(test_path("StaticTestFn")),
-            vec![
+            thin_vec![
                 // || {
                 cx.lambda0(
                     sp,
@@ -211,12 +211,12 @@ pub fn expand_test_or_bench(
                     cx.expr_call(
                         sp,
                         cx.expr_path(test_path("assert_test_result")),
-                        vec![
+                        thin_vec![
                             // $test_fn()
                             cx.expr_call(
                                 ret_ty_sp,
                                 cx.expr_path(cx.path(sp, vec![item.ident])),
-                                vec![],
+                                ThinVec::new(),
                             ), // )
                         ],
                     ), // }
@@ -249,21 +249,21 @@ pub fn expand_test_or_bench(
                 cx.expr_struct(
                     sp,
                     test_path("TestDescAndFn"),
-                    vec![
+                    thin_vec![
                         // desc: test::TestDesc {
                         field(
                             "desc",
                             cx.expr_struct(
                                 sp,
                                 test_path("TestDesc"),
-                                vec![
+                                thin_vec![
                                     // name: "path::to::test"
                                     field(
                                         "name",
                                         cx.expr_call(
                                             sp,
                                             cx.expr_path(test_path("StaticTestName")),
-                                            vec![cx.expr_str(sp, test_path_symbol)],
+                                            thin_vec![cx.expr_str(sp, test_path_symbol)],
                                         ),
                                     ),
                                     // ignore: true | false
@@ -300,7 +300,7 @@ pub fn expand_test_or_bench(
                                             ShouldPanic::Yes(Some(sym)) => cx.expr_call(
                                                 sp,
                                                 cx.expr_path(should_panic_path("YesWithMessage")),
-                                                vec![cx.expr_str(sp, sym)],
+                                                thin_vec![cx.expr_str(sp, sym)],
                                             ),
                                         },
                                     ),

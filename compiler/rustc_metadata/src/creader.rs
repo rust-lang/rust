@@ -8,15 +8,15 @@ use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::ReadGuard;
+use rustc_data_structures::sync::MappedReadGuard;
 use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, ExternLocation};
+use rustc_session::cstore::ExternCrateSource;
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate};
-use rustc_session::cstore::{ExternCrateSource, MetadataLoaderDyn};
 use rustc_session::lint;
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
@@ -60,15 +60,20 @@ impl std::fmt::Debug for CStore {
     }
 }
 
-pub struct CrateLoader<'a> {
+pub struct CrateLoader<'a, 'tcx: 'a> {
     // Immutable configuration.
-    sess: &'a Session,
-    metadata_loader: &'a MetadataLoaderDyn,
-    definitions: ReadGuard<'a, Definitions>,
-    local_crate_name: Symbol,
+    tcx: TyCtxt<'tcx>,
     // Mutable output.
     cstore: &'a mut CStore,
     used_extern_options: &'a mut FxHashSet<Symbol>,
+}
+
+impl<'a, 'tcx> std::ops::Deref for CrateLoader<'a, 'tcx> {
+    type Target = TyCtxt<'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.tcx
+    }
 }
 
 pub enum LoadedMacro {
@@ -127,11 +132,10 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
 }
 
 impl CStore {
-    pub fn from_tcx(tcx: TyCtxt<'_>) -> &CStore {
-        tcx.cstore_untracked()
-            .as_any()
-            .downcast_ref::<CStore>()
-            .expect("`tcx.cstore` is not a `CStore`")
+    pub fn from_tcx(tcx: TyCtxt<'_>) -> MappedReadGuard<'_, CStore> {
+        MappedReadGuard::map(tcx.cstore_untracked(), |c| {
+            c.as_any().downcast_ref::<CStore>().expect("`tcx.cstore` is not a `CStore`")
+        })
     }
 
     fn alloc_new_crate_num(&mut self) -> CrateNum {
@@ -256,23 +260,13 @@ impl CStore {
     }
 }
 
-impl<'a> CrateLoader<'a> {
+impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     pub fn new(
-        sess: &'a Session,
-        metadata_loader: &'a MetadataLoaderDyn,
-        local_crate_name: Symbol,
+        tcx: TyCtxt<'tcx>,
         cstore: &'a mut CStore,
-        definitions: ReadGuard<'a, Definitions>,
         used_extern_options: &'a mut FxHashSet<Symbol>,
     ) -> Self {
-        CrateLoader {
-            sess,
-            metadata_loader,
-            local_crate_name,
-            cstore,
-            used_extern_options,
-            definitions,
-        }
+        CrateLoader { tcx, cstore, used_extern_options }
     }
     pub fn cstore(&self) -> &CStore {
         &self.cstore
@@ -563,9 +557,10 @@ impl<'a> CrateLoader<'a> {
             (LoadResult::Previous(cnum), None)
         } else {
             info!("falling back to a load");
+            let metadata_loader = self.tcx.metadata_loader(()).borrow();
             let mut locator = CrateLocator::new(
                 self.sess,
-                &*self.metadata_loader,
+                &**metadata_loader,
                 name,
                 hash,
                 extra_filename,
@@ -970,7 +965,7 @@ impl<'a> CrateLoader<'a> {
                     &format!(
                         "external crate `{}` unused in `{}`: remove the dependency or add `use {} as _;`",
                         name,
-                        self.local_crate_name,
+                        self.tcx.crate_name(LOCAL_CRATE),
                         name),
                 );
         }
@@ -990,6 +985,7 @@ impl<'a> CrateLoader<'a> {
         &mut self,
         item: &ast::Item,
         def_id: LocalDefId,
+        definitions: &Definitions,
     ) -> Option<CrateNum> {
         match item.kind {
             ast::ItemKind::ExternCrate(orig_name) => {
@@ -1012,7 +1008,7 @@ impl<'a> CrateLoader<'a> {
 
                 let cnum = self.resolve_crate(name, item.span, dep_kind)?;
 
-                let path_len = self.definitions.def_path(def_id).data.len();
+                let path_len = definitions.def_path(def_id).data.len();
                 self.update_extern_crate(
                     cnum,
                     ExternCrate {

@@ -63,7 +63,8 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
     let snippet = source_map.span_to_snippet(span).ok()?;
 
     // Create a Parser.
-    let sess = ParseSess::new(FilePathMapping::empty());
+    let sess =
+        ParseSess::new(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(), FilePathMapping::empty());
     let file_name = source_map.span_to_filename(span);
     let mut parser =
         match rustc_parse::maybe_new_parser_from_source_str(&sess, file_name, snippet.clone()) {

@@ -16,7 +16,7 @@ note: required by a bound in `foo`
   --> $DIR/enforce-supertrait-projection.rs:15:8
    |
 LL | fn foo<A, B, T: ?Sized>(x: T::A) -> B
-   |    --- required by a bound in this
+   |    --- required by a bound in this function
 LL | where
 LL |     T: Trait<B = B>,
    |        ^^^^^^^^^^^^ required by this bound in `foo`

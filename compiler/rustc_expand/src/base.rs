@@ -5,6 +5,7 @@ use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirOwnership;
 
 use rustc_ast::attr::MarkedAttrs;
+use rustc_ast::mut_visit::DummyAstNode;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::TokenStream;
@@ -28,10 +29,11 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
-
+use std::default::Default;
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use thin_vec::ThinVec;
 
 pub(crate) use rustc_span::hygiene::MacroKind;
 
@@ -553,7 +555,7 @@ impl DummyResult {
     pub fn raw_expr(sp: Span, is_error: bool) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            kind: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
+            kind: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(ThinVec::new()) },
             span: sp,
             attrs: ast::AttrVec::new(),
             tokens: None,
@@ -569,7 +571,7 @@ impl DummyResult {
     pub fn raw_ty(sp: Span, is_error: bool) -> P<ast::Ty> {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
-            kind: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(Vec::new()) },
+            kind: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(ThinVec::new()) },
             span: sp,
             tokens: None,
         })
@@ -639,6 +641,10 @@ impl MacResult for DummyResult {
 
     fn make_variants(self: Box<DummyResult>) -> Option<SmallVec<[ast::Variant; 1]>> {
         Some(SmallVec::new())
+    }
+
+    fn make_crate(self: Box<DummyResult>) -> Option<ast::Crate> {
+        Some(DummyAstNode::dummy())
     }
 }
 

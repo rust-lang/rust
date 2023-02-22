@@ -932,25 +932,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     labels
                         .push((provided_span, format!("unexpected argument{}", provided_ty_name)));
                     let mut span = provided_span;
-                    if arg_idx.index() > 0
+                    if span.can_be_used_for_suggestions() {
+                        if arg_idx.index() > 0
                         && let Some((_, prev)) = provided_arg_tys
                             .get(ProvidedIdx::from_usize(arg_idx.index() - 1)
                     ) {
                         // Include previous comma
-                        span = span.with_lo(prev.hi());
-                    } else if let Some((_, next)) = provided_arg_tys.get(
-                        ProvidedIdx::from_usize(arg_idx.index() + 1),
-                    ) {
-                        // Include next comma
-                        span = span.until(*next);
+                        span = prev.shrink_to_hi().to(span);
                     }
-                    suggestions.push((span, String::new()));
+                        suggestions.push((span, String::new()));
 
-                    suggestion_text = match suggestion_text {
-                        SuggestionText::None => SuggestionText::Remove(false),
-                        SuggestionText::Remove(_) => SuggestionText::Remove(true),
-                        _ => SuggestionText::DidYouMean,
-                    };
+                        suggestion_text = match suggestion_text {
+                            SuggestionText::None => SuggestionText::Remove(false),
+                            SuggestionText::Remove(_) => SuggestionText::Remove(true),
+                            _ => SuggestionText::DidYouMean,
+                        };
+                    }
                 }
                 Error::Missing(expected_idx) => {
                     // If there are multiple missing arguments adjacent to each other,

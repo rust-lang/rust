@@ -1,1 +1,1 @@
-slug_with_hyphens_this-slug-has-hyphens = hi
+no_crate_this-slug-has-hyphens = hi

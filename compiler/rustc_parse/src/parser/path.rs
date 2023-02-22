@@ -332,7 +332,7 @@ impl<'a> Parser<'a> {
         style: PathStyle,
         lo: Span,
         ty_generics: Option<&Generics>,
-    ) -> PResult<'a, Vec<AngleBracketedArg>> {
+    ) -> PResult<'a, ThinVec<AngleBracketedArg>> {
         // We need to detect whether there are extra leading left angle brackets and produce an
         // appropriate error and suggestion. This cannot be implemented by looking ahead at
         // upcoming tokens for a matching `>` character - if there are unmatched `<` tokens
@@ -472,8 +472,8 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_angle_args(
         &mut self,
         ty_generics: Option<&Generics>,
-    ) -> PResult<'a, Vec<AngleBracketedArg>> {
-        let mut args = Vec::new();
+    ) -> PResult<'a, ThinVec<AngleBracketedArg>> {
+        let mut args = ThinVec::new();
         while let Some(arg) = self.parse_angle_arg(ty_generics)? {
             args.push(arg);
             if !self.eat(&token::Comma) {

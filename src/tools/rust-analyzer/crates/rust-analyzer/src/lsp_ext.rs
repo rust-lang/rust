@@ -2,6 +2,7 @@
 
 use std::{collections::HashMap, path::PathBuf};
 
+use ide_db::line_index::WideEncoding;
 use lsp_types::request::Request;
 use lsp_types::PositionEncodingKind;
 use lsp_types::{
@@ -9,6 +10,8 @@ use lsp_types::{
     PartialResultParams, Position, Range, TextDocumentIdentifier, WorkDoneProgressParams,
 };
 use serde::{Deserialize, Serialize};
+
+use crate::line_index::PositionEncoding;
 
 pub enum AnalyzerStatus {}
 
@@ -481,16 +484,22 @@ pub(crate) enum CodeLensResolveData {
     References(lsp_types::TextDocumentPositionParams),
 }
 
-pub fn supports_utf8(caps: &lsp_types::ClientCapabilities) -> bool {
-    match &caps.general {
-        Some(general) => general
-            .position_encodings
-            .as_deref()
-            .unwrap_or_default()
-            .iter()
-            .any(|it| it == &PositionEncodingKind::UTF8),
-        _ => false,
+pub fn negotiated_encoding(caps: &lsp_types::ClientCapabilities) -> PositionEncoding {
+    let client_encodings = match &caps.general {
+        Some(general) => general.position_encodings.as_deref().unwrap_or_default(),
+        None => &[],
+    };
+
+    for enc in client_encodings {
+        if enc == &PositionEncodingKind::UTF8 {
+            return PositionEncoding::Utf8;
+        } else if enc == &PositionEncodingKind::UTF32 {
+            return PositionEncoding::Wide(WideEncoding::Utf32);
+        }
+        // NB: intentionally prefer just about anything else to utf-16.
     }
+
+    PositionEncoding::Wide(WideEncoding::Utf16)
 }
 
 pub enum MoveItem {}

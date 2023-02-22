@@ -380,6 +380,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             return None;
         };
+
+        if method_item.kind != ty::AssocKind::Fn {
+            self.tcx.sess.delay_span_bug(tcx.def_span(method_item.def_id), "not a method");
+            return None;
+        }
+
         let def_id = method_item.def_id;
         let generics = tcx.generics_of(def_id);
 

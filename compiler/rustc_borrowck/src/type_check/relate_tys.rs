@@ -4,11 +4,12 @@ use rustc_infer::traits::PredicateObligations;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use rustc_trait_selection::traits::query::Fallible;
 
 use crate::constraints::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
+use crate::renumber::{BoundRegionInfo, RegionCtxt};
 use crate::type_check::{InstantiateOpaqueType, Locations, TypeChecker};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
@@ -100,23 +101,65 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
         universe
     }
 
-    fn next_existential_region_var(&mut self, from_forall: bool) -> ty::Region<'tcx> {
+    #[instrument(skip(self), level = "debug")]
+    fn next_existential_region_var(
+        &mut self,
+        from_forall: bool,
+        _name: Option<Symbol>,
+    ) -> ty::Region<'tcx> {
         let origin = NllRegionVariableOrigin::Existential { from_forall };
-        self.type_checker.infcx.next_nll_region_var(origin)
+
+        let reg_var =
+            self.type_checker.infcx.next_nll_region_var(origin, || RegionCtxt::Existential(_name));
+
+        reg_var
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx> {
-        self.type_checker
+        let reg = self
+            .type_checker
             .borrowck_context
             .constraints
-            .placeholder_region(self.type_checker.infcx, placeholder)
+            .placeholder_region(self.type_checker.infcx, placeholder);
+
+        let reg_info = match placeholder.name {
+            ty::BoundRegionKind::BrAnon(_, Some(span)) => BoundRegionInfo::Span(span),
+            ty::BoundRegionKind::BrAnon(..) => BoundRegionInfo::Name(Symbol::intern("anon")),
+            ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
+            ty::BoundRegionKind::BrEnv => BoundRegionInfo::Name(Symbol::intern("env")),
+        };
+
+        let reg_var =
+            reg.as_var().unwrap_or_else(|| bug!("expected region {:?} to be of kind ReVar", reg));
+        let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
+        let prev = var_to_origin.insert(reg_var, RegionCtxt::Placeholder(reg_info));
+        assert!(matches!(prev, None));
+
+        reg
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
-        self.type_checker.infcx.next_nll_region_var_in_universe(
+        let reg = self.type_checker.infcx.next_nll_region_var_in_universe(
             NllRegionVariableOrigin::Existential { from_forall: false },
             universe,
-        )
+        );
+
+        let reg_var =
+            reg.as_var().unwrap_or_else(|| bug!("expected region {:?} to be of kind ReVar", reg));
+
+        if cfg!(debug_assertions) {
+            let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
+            let prev = var_to_origin.insert(reg_var, RegionCtxt::Existential(None));
+
+            // It only makes sense to track region vars in non-canonicalization contexts. If this
+            // ever changes we either want to get rid of `BorrowckInferContext::reg_var_to_origin`
+            // or modify how we track nll region vars for that map.
+            assert!(matches!(prev, None));
+        }
+
+        reg
     }
 
     fn push_outlives(

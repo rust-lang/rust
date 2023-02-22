@@ -29,7 +29,7 @@ note: required by a bound in `test`
   --> $DIR/multidispatch-convert-ambig-dest.rs:21:11
    |
 LL | fn test<T,U>(_: T, _: U)
-   |    ---- required by a bound in this
+   |    ---- required by a bound in this function
 LL | where T : Convert<U>
    |           ^^^^^^^^^^ required by this bound in `test`
 help: consider specifying the generic arguments

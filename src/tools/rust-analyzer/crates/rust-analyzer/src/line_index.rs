@@ -7,9 +7,12 @@
 
 use std::sync::Arc;
 
+use ide_db::line_index::WideEncoding;
+
+#[derive(Clone, Copy)]
 pub enum PositionEncoding {
     Utf8,
-    Utf16,
+    Wide(WideEncoding),
 }
 
 pub(crate) struct LineIndex {

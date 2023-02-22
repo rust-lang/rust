@@ -1,9 +1,24 @@
 macro_rules! int_impl {
-    ($SelfT:ty, $ActualT:ident, $UnsignedT:ty, $BITS:expr, $BITS_MINUS_ONE:expr, $Min:expr, $Max:expr,
-     $rot:expr, $rot_op:expr, $rot_result:expr, $swap_op:expr, $swapped:expr,
-     $reversed:expr, $le_bytes:expr, $be_bytes:expr,
-     $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr,
-     $bound_condition:expr) => {
+    (
+        Self = $SelfT:ty,
+        ActualT = $ActualT:ident,
+        UnsignedT = $UnsignedT:ty,
+        BITS = $BITS:expr,
+        BITS_MINUS_ONE = $BITS_MINUS_ONE:expr,
+        Min = $Min:expr,
+        Max = $Max:expr,
+        rot = $rot:expr,
+        rot_op = $rot_op:expr,
+        rot_result = $rot_result:expr,
+        swap_op = $swap_op:expr,
+        swapped = $swapped:expr,
+        reversed = $reversed:expr,
+        le_bytes = $le_bytes:expr,
+        be_bytes = $be_bytes:expr,
+        to_xe_bytes_doc = $to_xe_bytes_doc:expr,
+        from_xe_bytes_doc = $from_xe_bytes_doc:expr,
+        bound_condition = $bound_condition:expr,
+    ) => {
         /// The smallest value that can be represented by this integer type
         #[doc = concat!("(&minus;2<sup>", $BITS_MINUS_ONE, "</sup>", $bound_condition, ").")]
         ///

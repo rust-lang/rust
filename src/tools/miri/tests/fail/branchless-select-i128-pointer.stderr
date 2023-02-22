@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered a dangling reference (address $HEX is unallocated)
+error: Undefined Behavior: constructing invalid value: encountered a dangling reference ($HEX[noalloc] has no provenance)
   --> $DIR/branchless-select-i128-pointer.rs:LL:CC
    |
 LL | /             transmute::<_, &str>(
@@ -6,7 +6,7 @@ LL | |
 LL | |                 !mask & transmute::<_, TwoPtrs>("false !")
 LL | |                     | mask & transmute::<_, TwoPtrs>("true !"),
 LL | |             )
-   | |_____________^ constructing invalid value: encountered a dangling reference (address $HEX is unallocated)
+   | |_____________^ constructing invalid value: encountered a dangling reference ($HEX[noalloc] has no provenance)
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

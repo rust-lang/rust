@@ -8,7 +8,7 @@ note: required by a bound in `bar`
   --> $DIR/unify_with_nested_expr.rs:14:10
    |
 LL | fn bar<const N: usize>()
-   |    --- required by a bound in this
+   |    --- required by a bound in this function
 LL | where
 LL |     [(); N + 1]:,
    |          ^^^^^ required by this bound in `bar`

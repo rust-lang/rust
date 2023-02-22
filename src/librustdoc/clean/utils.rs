@@ -470,6 +470,12 @@ pub(crate) fn get_auto_trait_and_blanket_impls(
     cx: &mut DocContext<'_>,
     item_def_id: DefId,
 ) -> impl Iterator<Item = Item> {
+    // FIXME: To be removed once `parallel_compiler` bugs are fixed!
+    // More information in <https://github.com/rust-lang/rust/pull/106930>.
+    if cfg!(parallel_compiler) {
+        return vec![].into_iter().chain(vec![].into_iter());
+    }
+
     let auto_impls = cx
         .sess()
         .prof

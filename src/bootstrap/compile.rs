@@ -111,10 +111,18 @@ impl Step for Std {
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         if compiler_to_use != compiler {
             builder.ensure(Std::new(compiler_to_use, target));
-            builder.info(&format!(
-                "Uplifting stage1 library ({} -> {})",
-                compiler_to_use.host, target
-            ));
+            let msg = if compiler_to_use.host == target {
+                format!(
+                    "Uplifting library (stage{} -> stage{})",
+                    compiler_to_use.stage, compiler.stage
+                )
+            } else {
+                format!(
+                    "Uplifting library (stage{}:{} -> stage{}:{})",
+                    compiler_to_use.stage, compiler_to_use.host, compiler.stage, target
+                )
+            };
+            builder.info(&msg);
 
             // Even if we're not building std this stage, the new sysroot must
             // still contain the third party objects needed by various targets.
@@ -134,13 +142,23 @@ impl Step for Std {
             cargo.arg("-p").arg(krate);
         }
 
-        builder.info(&format!(
-            "Building{} stage{} library artifacts ({} -> {})",
-            crate_description(&self.crates),
-            compiler.stage,
-            &compiler.host,
-            target,
-        ));
+        let msg = if compiler.host == target {
+            format!(
+                "Building{} stage{} library artifacts ({}) ",
+                crate_description(&self.crates),
+                compiler.stage,
+                compiler.host
+            )
+        } else {
+            format!(
+                "Building{} stage{} library artifacts ({} -> {})",
+                crate_description(&self.crates),
+                compiler.stage,
+                compiler.host,
+                target,
+            )
+        };
+        builder.info(&msg);
         run_cargo(
             builder,
             cargo,
@@ -438,79 +456,9 @@ impl Step for StdLink {
         let compiler = self.compiler;
         let target_compiler = self.target_compiler;
         let target = self.target;
-        builder.info(&format!(
-            "Copying stage{} library from stage{} ({} -> {} / {})",
-            target_compiler.stage, compiler.stage, &compiler.host, target_compiler.host, target
-        ));
         let libdir = builder.sysroot_libdir(target_compiler, target);
         let hostdir = builder.sysroot_libdir(target_compiler, compiler.host);
         add_to_sysroot(builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
-
-        if compiler.stage == 0 {
-            // special handling for stage0, to make `rustup toolchain link` and `x dist --stage 0`
-            // work for stage0-sysroot
-            let sysroot = builder.out.join(&compiler.host.triple).join("stage0-sysroot");
-
-            let host_lib_dir = builder.initial_rustc.ancestors().nth(2).unwrap().join("lib");
-            let host_bin_dir = builder.out.join(&builder.initial_rustc.parent().unwrap());
-            let host_codegen_backends =
-                host_lib_dir.join("rustlib").join(&compiler.host.triple).join("codegen-backends");
-            let sysroot_bin_dir = sysroot.join("bin");
-            let sysroot_lib_dir = sysroot.join("lib");
-            let sysroot_codegen_backends = builder.sysroot_codegen_backends(compiler);
-
-            // Create the `bin` directory in stage0-sysroot
-            t!(fs::create_dir_all(&sysroot_bin_dir));
-
-            // copy bin files from `builder.initial_rustc/./` to `stage0-sysroot/bin`
-            if let Ok(files) = fs::read_dir(&host_bin_dir) {
-                for file in files {
-                    let file = t!(file);
-                    if file.file_name() == "rustfmt" {
-                        // This is when `rustc` and `cargo` are set in `config.toml`
-                        if !file.path().starts_with(&builder.out) {
-                            builder.copy(
-                                &file.path().into_boxed_path(),
-                                &sysroot_bin_dir.join(file.file_name()),
-                            );
-                        } else {
-                            builder.copy(
-                                &builder
-                                    .out
-                                    .join(&compiler.host.triple)
-                                    .join("rustfmt/bin/rustfmt"),
-                                &sysroot_bin_dir.join(file.file_name()),
-                            );
-                        }
-                    } else {
-                        builder.copy(
-                            &file.path().into_boxed_path(),
-                            &sysroot_bin_dir.join(file.file_name()),
-                        );
-                    }
-                }
-            }
-
-            // copy dylib files from `builder.initial_rustc/../lib/*` while excluding the `rustlib` directory to `stage0-sysroot/lib`
-            if let Ok(files) = fs::read_dir(&host_lib_dir) {
-                for file in files {
-                    let file = t!(file);
-                    let path = file.path();
-                    if path.is_file()
-                        && is_dylib(&file.file_name().into_string().unwrap())
-                        && !path.starts_with(sysroot_lib_dir.join("rustlib").into_boxed_path())
-                    {
-                        builder.copy(&path, &sysroot_lib_dir.join(path.file_name().unwrap()));
-                    }
-                }
-            }
-
-            t!(fs::create_dir_all(&sysroot_codegen_backends));
-            // copy `codegen-backends` from `host_lib_dir/rustlib/codegen_backends` to `stage0-sysroot/lib/rustlib/host-triple/codegen-backends` if it exists.
-            if host_codegen_backends.exists() {
-                builder.cp_r(&host_codegen_backends, &sysroot_codegen_backends);
-            }
-        }
     }
 }
 
@@ -715,8 +663,22 @@ impl Step for Rustc {
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         if compiler_to_use != compiler {
             builder.ensure(Rustc::new(compiler_to_use, target));
-            builder
-                .info(&format!("Uplifting stage1 rustc ({} -> {})", builder.config.build, target));
+            let msg = if compiler_to_use.host == target {
+                format!(
+                    "Uplifting rustc (stage{} -> stage{})",
+                    compiler_to_use.stage,
+                    compiler.stage + 1
+                )
+            } else {
+                format!(
+                    "Uplifting rustc (stage{}:{} -> stage{}:{})",
+                    compiler_to_use.stage,
+                    compiler_to_use.host,
+                    compiler.stage + 1,
+                    target
+                )
+            };
+            builder.info(&msg);
             builder.ensure(RustcLink::from_rustc(self, compiler_to_use));
             return;
         }
@@ -810,13 +772,24 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate);
         }
 
-        builder.info(&format!(
-            "Building{} stage{} compiler artifacts ({} -> {})",
-            crate_description(&self.crates),
-            compiler.stage,
-            &compiler.host,
-            target,
-        ));
+        let msg = if compiler.host == target {
+            format!(
+                "Building{} compiler artifacts (stage{} -> stage{})",
+                crate_description(&self.crates),
+                compiler.stage,
+                compiler.stage + 1
+            )
+        } else {
+            format!(
+                "Building{} compiler artifacts (stage{}:{} -> stage{}:{})",
+                crate_description(&self.crates),
+                compiler.stage,
+                compiler.host,
+                compiler.stage + 1,
+                target,
+            )
+        };
+        builder.info(&msg);
         run_cargo(
             builder,
             cargo,
@@ -1000,10 +973,6 @@ impl Step for RustcLink {
         let compiler = self.compiler;
         let target_compiler = self.target_compiler;
         let target = self.target;
-        builder.info(&format!(
-            "Copying stage{} rustc from stage{} ({} -> {} / {})",
-            target_compiler.stage, compiler.stage, &compiler.host, target_compiler.host, target
-        ));
         add_to_sysroot(
             builder,
             &builder.sysroot_libdir(target_compiler, target),
@@ -1077,10 +1046,15 @@ impl Step for CodegenBackend {
 
         let tmp_stamp = out_dir.join(".tmp.stamp");
 
-        builder.info(&format!(
-            "Building stage{} codegen backend {} ({} -> {})",
-            compiler.stage, backend, &compiler.host, target
-        ));
+        let msg = if compiler.host == target {
+            format!("Building stage{} codegen backend {}", compiler.stage, backend)
+        } else {
+            format!(
+                "Building stage{} codegen backend {} ({} -> {})",
+                compiler.stage, backend, compiler.host, target
+            )
+        };
+        builder.info(&msg);
         let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false, false);
         if builder.config.dry_run() {
             return;
@@ -1386,7 +1360,12 @@ impl Step for Assemble {
 
         let stage = target_compiler.stage;
         let host = target_compiler.host;
-        builder.info(&format!("Assembling stage{} compiler ({})", stage, host));
+        let msg = if build_compiler.host == host {
+            format!("Assembling stage{} compiler", stage)
+        } else {
+            format!("Assembling stage{} compiler ({})", stage, host)
+        };
+        builder.info(&msg);
 
         // Link in all dylibs to the libdir
         let stamp = librustc_stamp(builder, build_compiler, target_compiler.host);

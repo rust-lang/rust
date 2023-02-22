@@ -1,5 +1,7 @@
 // run-pass
 
+#![warn(unused_lifetimes)]
+
 fn invariant_id<'a,'b>(t: &'b mut &'static ()) -> &'b mut &'a ()
     where 'a: 'static { t }
 //~^ WARN unnecessary lifetime parameter `'a`

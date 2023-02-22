@@ -18,7 +18,7 @@ note: required by a bound in `foo`
   --> $DIR/bad-sized-cond.rs:6:15
    |
 LL | pub fn foo()
-   |        --- required by a bound in this
+   |        --- required by a bound in this function
 LL | where
 LL |     for<V> V: Sized,
    |               ^^^^^ required by this bound in `foo`
@@ -35,7 +35,7 @@ note: required by a bound in `bar`
   --> $DIR/bad-sized-cond.rs:12:15
    |
 LL | pub fn bar()
-   |        --- required by a bound in this
+   |        --- required by a bound in this function
 LL | where
 LL |     for<V> V: IntoIterator,
    |               ^^^^^^^^^^^^ required by this bound in `bar`
@@ -52,7 +52,7 @@ note: required by a bound in `bar`
   --> $DIR/bad-sized-cond.rs:12:15
    |
 LL | pub fn bar()
-   |        --- required by a bound in this
+   |        --- required by a bound in this function
 LL | where
 LL |     for<V> V: IntoIterator,
    |               ^^^^^^^^^^^^ required by this bound in `bar`

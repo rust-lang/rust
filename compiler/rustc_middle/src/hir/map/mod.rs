@@ -849,6 +849,13 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn get_fn_output(self, def_id: LocalDefId) -> Option<&'hir FnRetTy<'hir>> {
+        match self.tcx.hir_owner(OwnerId { def_id }) {
+            Some(Owner { node, .. }) => node.fn_decl().map(|fn_decl| &fn_decl.output),
+            _ => None,
+        }
+    }
+
     pub fn expect_variant(self, id: HirId) -> &'hir Variant<'hir> {
         match self.find(id) {
             Some(Node::Variant(variant)) => variant,

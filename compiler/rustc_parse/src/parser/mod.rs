@@ -36,9 +36,10 @@ use rustc_errors::{
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-
 use std::ops::Range;
 use std::{cmp, mem, slice};
+use thin_vec::ThinVec;
+use tracing::debug;
 
 use crate::errors::{
     DocCommentDoesNotDocumentAnything, IncorrectVisibilityRestriction, MismatchedClosingDelimiter,
@@ -853,11 +854,11 @@ impl<'a> Parser<'a> {
         sep: SeqSep,
         expect: TokenExpectType,
         mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (Vec<T>, bool /* trailing */, bool /* recovered */)> {
+    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */, bool /* recovered */)> {
         let mut first = true;
         let mut recovered = false;
         let mut trailing = false;
-        let mut v = vec![];
+        let mut v = ThinVec::new();
         let unclosed_delims = !self.unclosed_delims.is_empty();
 
         while !self.expect_any_with_type(kets, expect) {
@@ -1037,7 +1038,7 @@ impl<'a> Parser<'a> {
         ket: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (Vec<T>, bool, bool)> {
+    ) -> PResult<'a, (ThinVec<T>, bool, bool)> {
         self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f)
     }
 
@@ -1049,7 +1050,7 @@ impl<'a> Parser<'a> {
         ket: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (Vec<T>, bool /* trailing */)> {
+    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
         let (val, trailing, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
         if !recovered {
             self.eat(ket);
@@ -1066,7 +1067,7 @@ impl<'a> Parser<'a> {
         ket: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (Vec<T>, bool)> {
+    ) -> PResult<'a, (ThinVec<T>, bool)> {
         self.expect(bra)?;
         self.parse_seq_to_end(ket, sep, f)
     }
@@ -1075,7 +1076,7 @@ impl<'a> Parser<'a> {
         &mut self,
         delim: Delimiter,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (Vec<T>, bool)> {
+    ) -> PResult<'a, (ThinVec<T>, bool)> {
         self.parse_unspanned_seq(
             &token::OpenDelim(delim),
             &token::CloseDelim(delim),
@@ -1087,7 +1088,7 @@ impl<'a> Parser<'a> {
     fn parse_paren_comma_seq<T>(
         &mut self,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (Vec<T>, bool)> {
+    ) -> PResult<'a, (ThinVec<T>, bool)> {
         self.parse_delim_comma_seq(Delimiter::Parenthesis, f)
     }
 

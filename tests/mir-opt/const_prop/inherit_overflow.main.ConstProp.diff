@@ -1,0 +1,39 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/inherit_overflow.rs:+0:11: +0:11
+      let mut _1: u8;                      // in scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
+      let mut _2: u8;                      // in scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
+      let mut _3: u8;                      // in scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
+      scope 1 {
+      }
+      scope 2 (inlined <u8 as Add>::add) { // at $DIR/inherit_overflow.rs:8:13: 8:47
+          debug self => _2;                // in scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
+          debug other => _3;               // in scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
+          let mut _4: (u8, bool);          // in scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
+          StorageLive(_2);                 // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
+          _2 = const u8::MAX;              // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
+          StorageLive(_3);                 // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
+          _3 = const 1_u8;                 // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
+-         _4 = CheckedAdd(_2, _3);         // scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
+-         assert(!move (_4.1: bool), "attempt to compute `{} + {}`, which would overflow", _2, _3) -> bb1; // scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
++         _4 = const (0_u8, true);         // scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
++         assert(!const true, "attempt to compute `{} + {}`, which would overflow", _2, _3) -> bb1; // scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
+      }
+  
+      bb1: {
+-         _1 = move (_4.0: u8);            // scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
++         _1 = const 0_u8;                 // scope 2 at $SRC_DIR/core/src/ops/arith.rs:LL:COL
+          StorageDead(_3);                 // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
+          StorageDead(_2);                 // scope 0 at $DIR/inherit_overflow.rs:+3:13: +3:47
+          StorageDead(_1);                 // scope 0 at $DIR/inherit_overflow.rs:+3:47: +3:48
+          _0 = const ();                   // scope 0 at $DIR/inherit_overflow.rs:+0:11: +4:2
+          return;                          // scope 0 at $DIR/inherit_overflow.rs:+4:2: +4:2
+      }
+  }
+  

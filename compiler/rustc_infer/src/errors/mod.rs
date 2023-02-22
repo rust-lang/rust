@@ -1,6 +1,6 @@
 use hir::GenericParamKind;
 use rustc_errors::{
-    fluent, AddToDiagnostic, Applicability, Diagnostic, DiagnosticMessage, DiagnosticStyledString,
+    AddToDiagnostic, Applicability, Diagnostic, DiagnosticMessage, DiagnosticStyledString,
     IntoDiagnosticArg, MultiSpan, SubdiagnosticMessage,
 };
 use rustc_hir as hir;
@@ -12,9 +12,10 @@ use rustc_span::symbol::kw;
 use rustc_span::Symbol;
 use rustc_span::{symbol::Ident, BytePos, Span};
 
-use crate::infer::error_reporting::nice_region_error::placeholder_error::Highlighted;
+use crate::fluent_generated as fluent;
 use crate::infer::error_reporting::{
     need_type_info::{GeneratorKindAsDiagArg, UnderspecifiedArgKind},
+    nice_region_error::placeholder_error::Highlighted,
     ObligationCauseAsDiagArg,
 };
 
@@ -26,9 +27,9 @@ pub struct OpaqueHiddenTypeDiag {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[note(opaque_type)]
+    #[note(infer_opaque_type)]
     pub opaque_type: Span,
-    #[note(hidden_type)]
+    #[note(infer_hidden_type)]
     pub hidden_type: Span,
 }
 
@@ -768,11 +769,11 @@ impl<'tcx> ActualImplExplNotes<'tcx> {
 pub struct TraitPlaceholderMismatch<'tcx> {
     #[primary_span]
     pub span: Span,
-    #[label(label_satisfy)]
+    #[label(infer_label_satisfy)]
     pub satisfy_span: Option<Span>,
-    #[label(label_where)]
+    #[label(infer_label_where)]
     pub where_span: Option<Span>,
-    #[label(label_dup)]
+    #[label(infer_label_dup)]
     pub dup_span: Option<Span>,
     pub def_id: String,
     pub trait_def_id: String,
@@ -808,11 +809,11 @@ pub struct RelationshipHelp;
 #[diag(infer_trait_impl_diff)]
 pub struct TraitImplDiff {
     #[primary_span]
-    #[label(found)]
+    #[label(infer_found)]
     pub sp: Span,
-    #[label(expected)]
+    #[label(infer_expected)]
     pub trait_sp: Span,
-    #[note(expected_found)]
+    #[note(infer_expected_found)]
     pub note: (),
     #[subdiagnostic]
     pub param_help: ConsiderBorrowingParamHelp,
@@ -852,10 +853,10 @@ impl AddToDiagnostic for DynTraitConstraintSuggestion {
 #[derive(Diagnostic)]
 #[diag(infer_but_calling_introduces, code = "E0772")]
 pub struct ButCallingIntroduces {
-    #[label(label1)]
+    #[label(infer_label1)]
     pub param_ty_span: Span,
     #[primary_span]
-    #[label(label2)]
+    #[label(infer_label2)]
     pub cause_span: Span,
 
     pub has_param_name: bool,
@@ -913,15 +914,15 @@ impl AddToDiagnostic for MoreTargeted {
 pub struct ButNeedsToSatisfy {
     #[primary_span]
     pub sp: Span,
-    #[label(influencer)]
+    #[label(infer_influencer)]
     pub influencer_point: Span,
-    #[label(used_here)]
+    #[label(infer_used_here)]
     pub spans: Vec<Span>,
-    #[label(require)]
+    #[label(infer_require)]
     pub require_span_as_label: Option<Span>,
-    #[note(require)]
+    #[note(infer_require)]
     pub require_span_as_note: Option<Span>,
-    #[note(introduced_by_bound)]
+    #[note(infer_introduced_by_bound)]
     pub bound: Option<Span>,
 
     #[subdiagnostic]

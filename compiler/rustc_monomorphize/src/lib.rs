@@ -9,7 +9,9 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_hir::lang_items::LangItem;
+use rustc_macros::fluent_messages;
 use rustc_middle::traits;
 use rustc_middle::ty::adjustment::CustomCoerceUnsized;
 use rustc_middle::ty::query::{Providers, TyCtxtAt};
@@ -20,6 +22,8 @@ mod errors;
 mod partitioning;
 mod polymorphize;
 mod util;
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 fn custom_coerce_unsize_info<'tcx>(
     tcx: TyCtxtAt<'tcx>,

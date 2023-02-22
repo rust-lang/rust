@@ -2104,7 +2104,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Ignore automatically derived impls and `!Trait` impls.
                 .filter(|&def_id| {
                     self.tcx.impl_polarity(def_id) != ty::ImplPolarity::Negative
-                        || self.tcx.is_builtin_derive(def_id)
+                        || self.tcx.is_automatically_derived(def_id)
                 })
                 .filter_map(|def_id| self.tcx.impl_trait_ref(def_id))
                 .map(ty::EarlyBinder::subst_identity)

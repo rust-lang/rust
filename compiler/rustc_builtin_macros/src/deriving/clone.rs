@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 
 pub fn expand_deriving_clone(
     cx: &mut ExtCtxt<'_>,
@@ -100,7 +100,7 @@ fn cs_clone_simple(
     substr: &Substructure<'_>,
     is_union: bool,
 ) -> BlockOrExpr {
-    let mut stmts = Vec::new();
+    let mut stmts = ThinVec::new();
     let mut seen_type_names = FxHashSet::default();
     let mut process_variant = |variant: &VariantData| {
         for field in variant.fields() {
@@ -162,7 +162,7 @@ fn cs_clone(
     let all_fields;
     let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
     let subcall = |cx: &mut ExtCtxt<'_>, field: &FieldInfo| {
-        let args = vec![field.self_expr.clone()];
+        let args = thin_vec![field.self_expr.clone()];
         cx.expr_call_global(field.span, fn_path.clone(), args)
     };
 
@@ -200,7 +200,7 @@ fn cs_clone(
                     let call = subcall(cx, field);
                     cx.field_imm(field.span, ident, call)
                 })
-                .collect::<Vec<_>>();
+                .collect::<ThinVec<_>>();
 
             cx.expr_struct(trait_span, ctor_path, fields)
         }

@@ -31,7 +31,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::{ir::TypeVisitor, TypeSuperVisitable, TypeVisitable};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use std::fmt::Debug;
 use std::ops::ControlFlow;
 
@@ -100,7 +100,11 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// we will invoke this method to instantiate `'a` with an
     /// inference variable (though `'b` would be instantiated first,
     /// as a placeholder).
-    fn next_existential_region_var(&mut self, was_placeholder: bool) -> ty::Region<'tcx>;
+    fn next_existential_region_var(
+        &mut self,
+        was_placeholder: bool,
+        name: Option<Symbol>,
+    ) -> ty::Region<'tcx>;
 
     /// Creates a new region variable representing a
     /// higher-ranked region that is instantiated universally.
@@ -188,7 +192,7 @@ where
                     let placeholder = ty::PlaceholderRegion { universe, name: br.kind };
                     delegate.next_placeholder_region(placeholder)
                 } else {
-                    delegate.next_existential_region_var(true)
+                    delegate.next_existential_region_var(true, br.kind.get_name())
                 }
             }
         };

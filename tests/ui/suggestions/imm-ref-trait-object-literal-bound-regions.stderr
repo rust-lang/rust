@@ -12,7 +12,7 @@ note: required by a bound in `foo`
   --> $DIR/imm-ref-trait-object-literal-bound-regions.rs:11:20
    |
 LL | fn foo<X>(_: X)
-   |    --- required by a bound in this
+   |    --- required by a bound in this function
 LL | where
 LL |     for<'b> &'b X: Trait,
    |                    ^^^^^ required by this bound in `foo`

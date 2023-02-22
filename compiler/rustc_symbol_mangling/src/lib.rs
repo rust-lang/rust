@@ -100,8 +100,10 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate tracing;
 
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc_macros::fluent_messages;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
@@ -116,6 +118,8 @@ mod v0;
 pub mod errors;
 pub mod test;
 pub mod typeid;
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 /// This function computes the symbol name for the given `instance` and the
 /// given instantiating crate. That is, if you know that instance X is

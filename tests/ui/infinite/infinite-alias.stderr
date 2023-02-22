@@ -1,0 +1,14 @@
+error[E0072]: recursive type `Rec` has infinite size
+  --> $DIR/infinite-alias.rs:7:1
+   |
+LL | struct Rec(Wrapper<Rec>);
+   | ^^^^^^^^^^ ------------ recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL | struct Rec(Box<Wrapper<Rec>>);
+   |            ++++            +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0072`.

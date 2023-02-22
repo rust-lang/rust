@@ -1,17 +1,9 @@
-warning: unnecessary lifetime parameter `'z`
-  --> $DIR/issue-30438-c.rs:7:74
-   |
-LL | fn silly<'y, 'z>(_s: &'y Test<'z>) -> &'y <Test<'z> as Trait>::Out where 'z: 'static {
-   |                                                                          ^^
-   |
-   = help: you can use the `'static` lifetime directly, in place of `'z`
-
 error[E0515]: cannot return reference to local variable `x`
-  --> $DIR/issue-30438-c.rs:10:5
+  --> $DIR/issue-30438-c.rs:9:5
    |
 LL |     &x
    |     ^^ returns a reference to data owned by the current function
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0515`.

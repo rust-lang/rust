@@ -1179,7 +1179,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
 
                         ConstantItemRibKind(trivial, _) => {
-                            let features = self.session.features_untracked();
+                            let features = self.tcx.sess.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
                             if !(trivial == ConstantHasGenerics::Yes
                                 || features.generic_const_exprs)
@@ -1208,7 +1208,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                 is_type: true,
                                             },
                                         );
-                                        self.session.delay_span_bug(span, CG_BUG_STR);
+                                        self.tcx.sess.delay_span_bug(span, CG_BUG_STR);
                                     }
 
                                     return Res::Err;
@@ -1255,7 +1255,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         | ForwardGenericParamBanRibKind => continue,
 
                         ConstantItemRibKind(trivial, _) => {
-                            let features = self.session.features_untracked();
+                            let features = self.tcx.sess.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
                             if !(trivial == ConstantHasGenerics::Yes
                                 || features.generic_const_exprs)
@@ -1268,7 +1268,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                             is_type: false,
                                         },
                                     );
-                                    self.session.delay_span_bug(span, CG_BUG_STR);
+                                    self.tcx.sess.delay_span_bug(span, CG_BUG_STR);
                                 }
 
                                 return Res::Err;
@@ -1397,7 +1397,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         module = Some(ModuleOrUniformRoot::ExternPrelude);
                         continue;
                     }
-                    if name == kw::PathRoot && ident.span.is_rust_2015() && self.session.rust_2018()
+                    if name == kw::PathRoot
+                        && ident.span.is_rust_2015()
+                        && self.tcx.sess.rust_2018()
                     {
                         // `::a::b` from 2015 macro on 2018 global edition
                         module = Some(ModuleOrUniformRoot::CrateRootAndExternPrelude);
@@ -1494,7 +1496,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         record_segment_res(self, res);
                     } else if res == Res::ToolMod && i + 1 != path.len() {
                         if binding.is_import() {
-                            self.session
+                            self.tcx
+                                .sess
                                 .struct_span_err(
                                     ident.span,
                                     "cannot use a tool module through an import",

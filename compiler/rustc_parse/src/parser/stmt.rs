@@ -20,8 +20,8 @@ use rustc_ast::{StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym};
-
 use std::mem;
+use thin_vec::{thin_vec, ThinVec};
 
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
@@ -544,7 +544,7 @@ impl<'a> Parser<'a> {
         s: BlockCheckMode,
         recover: AttemptLocalParseRecovery,
     ) -> PResult<'a, P<Block>> {
-        let mut stmts = vec![];
+        let mut stmts = ThinVec::new();
         let mut snapshot = None;
         while !self.eat(&token::CloseDelim(Delimiter::Brace)) {
             if self.token == token::Eof {
@@ -662,7 +662,12 @@ impl<'a> Parser<'a> {
         Ok(Some(stmt))
     }
 
-    pub(super) fn mk_block(&self, stmts: Vec<Stmt>, rules: BlockCheckMode, span: Span) -> P<Block> {
+    pub(super) fn mk_block(
+        &self,
+        stmts: ThinVec<Stmt>,
+        rules: BlockCheckMode,
+        span: Span,
+    ) -> P<Block> {
         P(Block {
             stmts,
             id: DUMMY_NODE_ID,
@@ -682,6 +687,6 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn mk_block_err(&self, span: Span) -> P<Block> {
-        self.mk_block(vec![self.mk_stmt_err(span)], BlockCheckMode::Default, span)
+        self.mk_block(thin_vec![self.mk_stmt_err(span)], BlockCheckMode::Default, span)
     }
 }

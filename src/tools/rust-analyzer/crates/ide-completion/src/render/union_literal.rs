@@ -72,7 +72,7 @@ pub(crate) fn render_union_literal(
         .set_relevance(ctx.completion_relevance());
 
     match ctx.snippet_cap() {
-        Some(snippet_cap) => item.insert_snippet(snippet_cap, literal),
+        Some(snippet_cap) => item.insert_snippet(snippet_cap, literal).trigger_call_info(),
         None => item.insert_text(literal),
     };
 
