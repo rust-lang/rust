@@ -6,7 +6,6 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
-use rustc_middle::ty::DefIdTree;
 use rustc_span::symbol::sym;
 
 use super::OPTION_MAP_OR_NONE;
