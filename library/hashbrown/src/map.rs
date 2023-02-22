@@ -2125,15 +2125,15 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
 
     /// Returns a reference to the [`RawTable`] used underneath [`HashMap`].
     /// This function is only available if the `raw` feature of the crate is enabled.
-    /// 
+    ///
     /// See [`raw_table_mut`] for more.
-    /// 
+    ///
     /// [`raw_table_mut`]: Self::raw_table_mut
     #[cfg(feature = "raw")]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn raw_table(&self) -> &RawTable<(K, V), A> {
         &self.table
-    }    
+    }
 
     /// Returns a mutable reference to the [`RawTable`] used underneath [`HashMap`].
     /// This function is only available if the `raw` feature of the crate is enabled.

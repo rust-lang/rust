@@ -1240,7 +1240,7 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn raw_table(&self) -> &RawTable<(T, ()), A> {
         self.map.raw_table()
-    }    
+    }
 
     /// Returns a mutable reference to the [`RawTable`] used underneath [`HashSet`].
     /// This function is only available if the `raw` feature of the crate is enabled.
