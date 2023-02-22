@@ -43,12 +43,12 @@ mod zero;
 use crate::fmt;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::time::{Duration, Instant};
-pub use error::*;
+pub(crate) use error::*;
 
 /// Creates a channel of unbounded capacity.
 ///
 /// This channel has a growable buffer that can hold any number of messages at a time.
-pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
+pub(crate) fn channel<T>() -> (Sender<T>, Receiver<T>) {
     let (s, r) = counter::new(list::Channel::new());
     let s = Sender { flavor: SenderFlavor::List(s) };
     let r = Receiver { flavor: ReceiverFlavor::List(r) };
@@ -61,7 +61,7 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 ///
 /// A special case is zero-capacity channel, which cannot hold any messages. Instead, send and
 /// receive operations must appear at the same time in order to pair up and pass the message over.
-pub fn sync_channel<T>(cap: usize) -> (Sender<T>, Receiver<T>) {
+pub(crate) fn sync_channel<T>(cap: usize) -> (Sender<T>, Receiver<T>) {
     if cap == 0 {
         let (s, r) = counter::new(zero::Channel::new());
         let s = Sender { flavor: SenderFlavor::Zero(s) };
@@ -76,7 +76,7 @@ pub fn sync_channel<T>(cap: usize) -> (Sender<T>, Receiver<T>) {
 }
 
 /// The sending side of a channel.
-pub struct Sender<T> {
+pub(crate) struct Sender<T> {
     flavor: SenderFlavor<T>,
 }
 
@@ -106,7 +106,7 @@ impl<T> Sender<T> {
     ///
     /// If called on a zero-capacity channel, this method will send the message only if there
     /// happens to be a receive operation on the other side of the channel at the same time.
-    pub fn try_send(&self, msg: T) -> Result<(), TrySendError<T>> {
+    pub(crate) fn try_send(&self, msg: T) -> Result<(), TrySendError<T>> {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.try_send(msg),
             SenderFlavor::List(chan) => chan.try_send(msg),
@@ -122,7 +122,7 @@ impl<T> Sender<T> {
     ///
     /// If called on a zero-capacity channel, this method will wait for a receive operation to
     /// appear on the other side of the channel.
-    pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
+    pub(crate) fn send(&self, msg: T) -> Result<(), SendError<T>> {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.send(msg, None),
             SenderFlavor::List(chan) => chan.send(msg, None),
@@ -148,7 +148,11 @@ impl<T> Sender<T> {
     ///
     /// If called on a zero-capacity channel, this method will wait for a receive operation to
     /// appear on the other side of the channel.
-    pub fn send_timeout(&self, msg: T, timeout: Duration) -> Result<(), SendTimeoutError<T>> {
+    pub(crate) fn send_timeout(
+        &self,
+        msg: T,
+        timeout: Duration,
+    ) -> Result<(), SendTimeoutError<T>> {
         match Instant::now().checked_add(timeout) {
             Some(deadline) => self.send_deadline(msg, deadline),
             // So far in the future that it's practically the same as waiting indefinitely.
@@ -164,7 +168,11 @@ impl<T> Sender<T> {
     ///
     /// If called on a zero-capacity channel, this method will wait for a receive operation to
     /// appear on the other side of the channel.
-    pub fn send_deadline(&self, msg: T, deadline: Instant) -> Result<(), SendTimeoutError<T>> {
+    pub(crate) fn send_deadline(
+        &self,
+        msg: T,
+        deadline: Instant,
+    ) -> Result<(), SendTimeoutError<T>> {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.send(msg, Some(deadline)),
             SenderFlavor::List(chan) => chan.send(msg, Some(deadline)),
@@ -175,7 +183,7 @@ impl<T> Sender<T> {
     /// Returns `true` if the channel is empty.
     ///
     /// Note: Zero-capacity channels are always empty.
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.is_empty(),
             SenderFlavor::List(chan) => chan.is_empty(),
@@ -186,7 +194,7 @@ impl<T> Sender<T> {
     /// Returns `true` if the channel is full.
     ///
     /// Note: Zero-capacity channels are always full.
-    pub fn is_full(&self) -> bool {
+    pub(crate) fn is_full(&self) -> bool {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.is_full(),
             SenderFlavor::List(chan) => chan.is_full(),
@@ -195,7 +203,7 @@ impl<T> Sender<T> {
     }
 
     /// Returns the number of messages in the channel.
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.len(),
             SenderFlavor::List(chan) => chan.len(),
@@ -204,7 +212,7 @@ impl<T> Sender<T> {
     }
 
     /// If the channel is bounded, returns its capacity.
-    pub fn capacity(&self) -> Option<usize> {
+    pub(crate) fn capacity(&self) -> Option<usize> {
         match &self.flavor {
             SenderFlavor::Array(chan) => chan.capacity(),
             SenderFlavor::List(chan) => chan.capacity(),
@@ -213,7 +221,7 @@ impl<T> Sender<T> {
     }
 
     /// Returns `true` if senders belong to the same channel.
-    pub fn same_channel(&self, other: &Sender<T>) -> bool {
+    pub(crate) fn same_channel(&self, other: &Sender<T>) -> bool {
         match (&self.flavor, &other.flavor) {
             (SenderFlavor::Array(ref a), SenderFlavor::Array(ref b)) => a == b,
             (SenderFlavor::List(ref a), SenderFlavor::List(ref b)) => a == b,
@@ -254,7 +262,7 @@ impl<T> fmt::Debug for Sender<T> {
 }
 
 /// The receiving side of a channel.
-pub struct Receiver<T> {
+pub(crate) struct Receiver<T> {
     flavor: ReceiverFlavor<T>,
 }
 
@@ -284,7 +292,7 @@ impl<T> Receiver<T> {
     ///
     /// If called on a zero-capacity channel, this method will receive a message only if there
     /// happens to be a send operation on the other side of the channel at the same time.
-    pub fn try_recv(&self) -> Result<T, TryRecvError> {
+    pub(crate) fn try_recv(&self) -> Result<T, TryRecvError> {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.try_recv(),
             ReceiverFlavor::List(chan) => chan.try_recv(),
@@ -301,7 +309,7 @@ impl<T> Receiver<T> {
     ///
     /// If called on a zero-capacity channel, this method will wait for a send operation to appear
     /// on the other side of the channel.
-    pub fn recv(&self) -> Result<T, RecvError> {
+    pub(crate) fn recv(&self) -> Result<T, RecvError> {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.recv(None),
             ReceiverFlavor::List(chan) => chan.recv(None),
@@ -318,7 +326,7 @@ impl<T> Receiver<T> {
     ///
     /// If called on a zero-capacity channel, this method will wait for a send operation to appear
     /// on the other side of the channel.
-    pub fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {
+    pub(crate) fn recv_timeout(&self, timeout: Duration) -> Result<T, RecvTimeoutError> {
         match Instant::now().checked_add(timeout) {
             Some(deadline) => self.recv_deadline(deadline),
             // So far in the future that it's practically the same as waiting indefinitely.
@@ -334,7 +342,7 @@ impl<T> Receiver<T> {
     ///
     /// If called on a zero-capacity channel, this method will wait for a send operation to appear
     /// on the other side of the channel.
-    pub fn recv_deadline(&self, deadline: Instant) -> Result<T, RecvTimeoutError> {
+    pub(crate) fn recv_deadline(&self, deadline: Instant) -> Result<T, RecvTimeoutError> {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.recv(Some(deadline)),
             ReceiverFlavor::List(chan) => chan.recv(Some(deadline)),
@@ -351,7 +359,7 @@ impl<T> Receiver<T> {
     /// Returns `true` if the channel is empty.
     ///
     /// Note: Zero-capacity channels are always empty.
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.is_empty(),
             ReceiverFlavor::List(chan) => chan.is_empty(),
@@ -362,7 +370,7 @@ impl<T> Receiver<T> {
     /// Returns `true` if the channel is full.
     ///
     /// Note: Zero-capacity channels are always full.
-    pub fn is_full(&self) -> bool {
+    pub(crate) fn is_full(&self) -> bool {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.is_full(),
             ReceiverFlavor::List(chan) => chan.is_full(),
@@ -371,7 +379,7 @@ impl<T> Receiver<T> {
     }
 
     /// Returns the number of messages in the channel.
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.len(),
             ReceiverFlavor::List(chan) => chan.len(),
@@ -380,7 +388,7 @@ impl<T> Receiver<T> {
     }
 
     /// If the channel is bounded, returns its capacity.
-    pub fn capacity(&self) -> Option<usize> {
+    pub(crate) fn capacity(&self) -> Option<usize> {
         match &self.flavor {
             ReceiverFlavor::Array(chan) => chan.capacity(),
             ReceiverFlavor::List(chan) => chan.capacity(),
@@ -389,7 +397,7 @@ impl<T> Receiver<T> {
     }
 
     /// Returns `true` if receivers belong to the same channel.
-    pub fn same_channel(&self, other: &Receiver<T>) -> bool {
+    pub(crate) fn same_channel(&self, other: &Receiver<T>) -> bool {
         match (&self.flavor, &other.flavor) {
             (ReceiverFlavor::Array(a), ReceiverFlavor::Array(b)) => a == b,
             (ReceiverFlavor::List(a), ReceiverFlavor::List(b)) => a == b,

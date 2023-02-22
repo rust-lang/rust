@@ -12,13 +12,13 @@ use crate::sync::{Mutex, PoisonError};
 /// Max number of frames to print.
 const MAX_NB_FRAMES: usize = 100;
 
-pub fn lock() -> impl Drop {
+pub(crate) fn lock() -> impl Drop {
     static LOCK: Mutex<()> = Mutex::new(());
     LOCK.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// Prints the current backtrace.
-pub fn print(w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
+pub(crate) fn print(w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
     // There are issues currently linking libbacktrace into tests, and in
     // general during std's own unit tests we're not testing this path. In
     // test mode immediately return here to optimize away any references to the
@@ -114,7 +114,7 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
 /// this is only inline(never) when backtraces in std are enabled, otherwise
 /// it's fine to optimize away.
 #[cfg_attr(feature = "backtrace", inline(never))]
-pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
+pub(crate) fn __rust_begin_short_backtrace<F, T>(f: F) -> T
 where
     F: FnOnce() -> T,
 {
@@ -130,7 +130,7 @@ where
 /// this is only inline(never) when backtraces in std are enabled, otherwise
 /// it's fine to optimize away.
 #[cfg_attr(feature = "backtrace", inline(never))]
-pub fn __rust_end_short_backtrace<F, T>(f: F) -> T
+pub(crate) fn __rust_end_short_backtrace<F, T>(f: F) -> T
 where
     F: FnOnce() -> T,
 {
@@ -145,7 +145,7 @@ where
 /// Prints the filename of the backtrace frame.
 ///
 /// See also `output`.
-pub fn output_filename(
+pub(crate) fn output_filename(
     fmt: &mut fmt::Formatter<'_>,
     bows: BytesOrWideString<'_>,
     print_fmt: PrintFmt,

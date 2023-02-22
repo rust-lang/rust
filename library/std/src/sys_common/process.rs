@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code)] // not used on all platforms
 #![unstable(feature = "process_internals", issue = "none")]
 
 use crate::collections::BTreeMap;

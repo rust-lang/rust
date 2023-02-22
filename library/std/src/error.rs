@@ -15,7 +15,7 @@ mod private {
     // implementations, since that can enable unsound downcasting.
     #[unstable(feature = "error_type_id", issue = "60784")]
     #[derive(Debug)]
-    pub struct Internal;
+    pub(crate) struct Internal;
 }
 
 /// An error reporter that prints an error and its sources.

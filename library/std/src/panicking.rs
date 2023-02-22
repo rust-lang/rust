@@ -404,7 +404,7 @@ pub mod panic_count {
 pub use realstd::rt::panic_count;
 
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
-pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
+pub(crate) unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
     union Data<F, R> {
         f: ManuallyDrop<F>,
         r: ManuallyDrop<R>,
@@ -517,14 +517,14 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
 
 /// Determines whether the current thread is unwinding because of panic.
 #[inline]
-pub fn panicking() -> bool {
+pub(crate) fn panicking() -> bool {
     !panic_count::count_is_zero()
 }
 
 /// Entry point of panics from the core crate (`panic_impl` lang item).
 #[cfg(not(test))]
 #[panic_handler]
-pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
+pub(crate) fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     struct PanicPayload<'a> {
         inner: &'a fmt::Arguments<'a>,
         string: Option<String>,
@@ -716,7 +716,7 @@ fn rust_panic_with_hook(
 
 /// This is the entry point for `resume_unwind`.
 /// It just forwards the payload to the panic runtime.
-pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
+pub(crate) fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
     panic_count::increase();
 
     struct RewrapBox(Box<dyn Any + Send>);

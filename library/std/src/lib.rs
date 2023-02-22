@@ -221,6 +221,7 @@
 #![allow(unused_lifetimes)]
 #![deny(rustc::existing_doc_keyword)]
 #![deny(fuzzy_provenance_casts)]
+#![cfg_attr(not(test), warn(unreachable_pub))]
 // Ensure that std can be linked against panic_abort despite compiled with `-C panic=unwind`
 #![deny(ffi_unwind_calls)]
 // std may use features in a platform-specific way
@@ -518,6 +519,8 @@ pub mod fs;
 pub mod io;
 pub mod net;
 pub mod num;
+// os-specific code may be incorrectly detected as unreachable
+#[allow(unreachable_pub)]
 pub mod os;
 pub mod panic;
 pub mod path;
@@ -582,7 +585,10 @@ pub mod arch {
 pub use std_detect::is_x86_feature_detected;
 
 // Platform-abstraction modules
+// platform-specific code may be incorrectly detected as unreachable
+#[allow(unreachable_pub)]
 mod sys;
+#[allow(unreachable_pub)]
 mod sys_common;
 
 pub mod alloc;
@@ -592,7 +598,7 @@ mod panicking;
 mod personality;
 
 #[path = "../../backtrace/src/lib.rs"]
-#[allow(dead_code, unused_attributes, fuzzy_provenance_casts)]
+#[allow(dead_code, unused_attributes, fuzzy_provenance_casts, unreachable_pub)]
 mod backtrace_rs;
 
 // Re-export macros defined in core.

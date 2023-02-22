@@ -15,44 +15,47 @@ use super::DwarfReader;
 use core::mem;
 use core::ptr;
 
-pub const DW_EH_PE_omit: u8 = 0xFF;
-pub const DW_EH_PE_absptr: u8 = 0x00;
+pub(crate) const DW_EH_PE_omit: u8 = 0xFF;
+pub(crate) const DW_EH_PE_absptr: u8 = 0x00;
 
-pub const DW_EH_PE_uleb128: u8 = 0x01;
-pub const DW_EH_PE_udata2: u8 = 0x02;
-pub const DW_EH_PE_udata4: u8 = 0x03;
-pub const DW_EH_PE_udata8: u8 = 0x04;
-pub const DW_EH_PE_sleb128: u8 = 0x09;
-pub const DW_EH_PE_sdata2: u8 = 0x0A;
-pub const DW_EH_PE_sdata4: u8 = 0x0B;
-pub const DW_EH_PE_sdata8: u8 = 0x0C;
+pub(crate) const DW_EH_PE_uleb128: u8 = 0x01;
+pub(crate) const DW_EH_PE_udata2: u8 = 0x02;
+pub(crate) const DW_EH_PE_udata4: u8 = 0x03;
+pub(crate) const DW_EH_PE_udata8: u8 = 0x04;
+pub(crate) const DW_EH_PE_sleb128: u8 = 0x09;
+pub(crate) const DW_EH_PE_sdata2: u8 = 0x0A;
+pub(crate) const DW_EH_PE_sdata4: u8 = 0x0B;
+pub(crate) const DW_EH_PE_sdata8: u8 = 0x0C;
 
-pub const DW_EH_PE_pcrel: u8 = 0x10;
-pub const DW_EH_PE_textrel: u8 = 0x20;
-pub const DW_EH_PE_datarel: u8 = 0x30;
-pub const DW_EH_PE_funcrel: u8 = 0x40;
-pub const DW_EH_PE_aligned: u8 = 0x50;
+pub(crate) const DW_EH_PE_pcrel: u8 = 0x10;
+pub(crate) const DW_EH_PE_textrel: u8 = 0x20;
+pub(crate) const DW_EH_PE_datarel: u8 = 0x30;
+pub(crate) const DW_EH_PE_funcrel: u8 = 0x40;
+pub(crate) const DW_EH_PE_aligned: u8 = 0x50;
 
-pub const DW_EH_PE_indirect: u8 = 0x80;
+pub(crate) const DW_EH_PE_indirect: u8 = 0x80;
 
 #[derive(Copy, Clone)]
-pub struct EHContext<'a> {
-    pub ip: usize,                             // Current instruction pointer
-    pub func_start: usize,                     // Address of the current function
-    pub get_text_start: &'a dyn Fn() -> usize, // Get address of the code section
-    pub get_data_start: &'a dyn Fn() -> usize, // Get address of the data section
+pub(crate) struct EHContext<'a> {
+    pub(crate) ip: usize,                             // Current instruction pointer
+    pub(crate) func_start: usize,                     // Address of the current function
+    pub(crate) get_text_start: &'a dyn Fn() -> usize, // Get address of the code section
+    pub(crate) get_data_start: &'a dyn Fn() -> usize, // Get address of the data section
 }
 
-pub enum EHAction {
+pub(crate) enum EHAction {
     None,
     Cleanup(usize),
     Catch(usize),
     Terminate,
 }
 
-pub const USING_SJLJ_EXCEPTIONS: bool = cfg!(all(target_os = "ios", target_arch = "arm"));
+pub(crate) const USING_SJLJ_EXCEPTIONS: bool = cfg!(all(target_os = "ios", target_arch = "arm"));
 
-pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result<EHAction, ()> {
+pub(crate) unsafe fn find_eh_action(
+    lsda: *const u8,
+    context: &EHContext<'_>,
+) -> Result<EHAction, ()> {
     if lsda.is_null() {
         return Ok(EHAction::None);
     }

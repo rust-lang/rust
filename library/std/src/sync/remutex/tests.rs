@@ -52,7 +52,7 @@ fn trylock_works() {
     let _lock3 = m.try_lock();
 }
 
-pub struct Answer<'a>(pub ReentrantMutexGuard<'a, RefCell<u32>>);
+pub(crate) struct Answer<'a>(pub(crate) ReentrantMutexGuard<'a, RefCell<u32>>);
 impl Drop for Answer<'_> {
     fn drop(&mut self) {
         *self.0.borrow_mut() = 42;

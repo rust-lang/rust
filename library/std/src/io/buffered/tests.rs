@@ -8,7 +8,7 @@ use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::thread;
 
 /// A dummy reader intended at testing short-reads propagation.
-pub struct ShortReader {
+pub(crate) struct ShortReader {
     lengths: Vec<usize>,
 }
 
@@ -541,25 +541,25 @@ fn bench_buffered_writer(b: &mut test::Bencher) {
 #[derive(Default, Clone)]
 struct ProgrammableSink {
     // Writes append to this slice
-    pub buffer: Vec<u8>,
+    pub(crate) buffer: Vec<u8>,
 
     // If true, writes will always be an error
-    pub always_write_error: bool,
+    pub(crate) always_write_error: bool,
 
     // If true, flushes will always be an error
-    pub always_flush_error: bool,
+    pub(crate) always_flush_error: bool,
 
     // If set, only up to this number of bytes will be written in a single
     // call to `write`
-    pub accept_prefix: Option<usize>,
+    pub(crate) accept_prefix: Option<usize>,
 
     // If set, counts down with each write, and writes return an error
     // when it hits 0
-    pub max_writes: Option<usize>,
+    pub(crate) max_writes: Option<usize>,
 
     // If set, attempting to write when max_writes == Some(0) will be an
     // error; otherwise, it will return Ok(0).
-    pub error_after_max_writes: bool,
+    pub(crate) error_after_max_writes: bool,
 }
 
 impl Write for ProgrammableSink {
@@ -1006,7 +1006,7 @@ enum RecordedEvent {
 
 #[derive(Debug, Clone, Default)]
 struct WriteRecorder {
-    pub events: Vec<RecordedEvent>,
+    pub(crate) events: Vec<RecordedEvent>,
 }
 
 impl Write for WriteRecorder {

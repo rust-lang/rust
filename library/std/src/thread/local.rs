@@ -785,16 +785,16 @@ mod lazy {
     use crate::hint;
     use crate::mem;
 
-    pub struct LazyKeyInner<T> {
+    pub(crate) struct LazyKeyInner<T> {
         inner: UnsafeCell<Option<T>>,
     }
 
     impl<T> LazyKeyInner<T> {
-        pub const fn new() -> LazyKeyInner<T> {
+        pub(crate) const fn new() -> LazyKeyInner<T> {
             LazyKeyInner { inner: UnsafeCell::new(None) }
         }
 
-        pub unsafe fn get(&self) -> Option<&'static T> {
+        pub(crate) unsafe fn get(&self) -> Option<&'static T> {
             // SAFETY: The caller must ensure no reference is ever handed out to
             // the inner cell nor mutable reference to the Option<T> inside said
             // cell. This make it safe to hand a reference, though the lifetime
@@ -804,7 +804,7 @@ mod lazy {
 
         /// The caller must ensure that no reference is active: this method
         /// needs unique access.
-        pub unsafe fn initialize<F: FnOnce() -> T>(&self, init: F) -> &'static T {
+        pub(crate) unsafe fn initialize<F: FnOnce() -> T>(&self, init: F) -> &'static T {
             // Execute the initialization up front, *then* move it into our slot,
             // just in case initialization fails.
             let value = init();
@@ -851,7 +851,7 @@ mod lazy {
         /// As such, callers of this method must ensure no `&` and `&mut` are
         /// available and used at the same time.
         #[allow(unused)]
-        pub unsafe fn take(&mut self) -> Option<T> {
+        pub(crate) unsafe fn take(&mut self) -> Option<T> {
             // SAFETY: See doc comment for this method.
             unsafe { (*self.inner.get()).take() }
         }
@@ -902,7 +902,7 @@ pub mod statik {
 
 #[doc(hidden)]
 #[cfg(all(target_thread_local, not(all(target_family = "wasm", not(target_feature = "atomics"))),))]
-pub mod fast {
+pub(crate) mod fast {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;
     use crate::sys::thread_local_dtor::register_dtor;
@@ -1045,7 +1045,7 @@ pub mod fast {
     not(target_thread_local),
     not(all(target_family = "wasm", not(target_feature = "atomics"))),
 ))]
-pub mod os {
+pub(crate) mod os {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;
     use crate::sys_common::thread_local_key::StaticKey as OsStaticKey;

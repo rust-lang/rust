@@ -131,7 +131,7 @@ fn into() {
 
 #[test]
 #[cfg(unix)]
-pub fn test_decompositions_unix() {
+pub(crate) fn test_decompositions_unix() {
     t!("",
     iter: [],
     has_root: false,
@@ -465,7 +465,7 @@ pub fn test_decompositions_unix() {
 
 #[test]
 #[cfg(windows)]
-pub fn test_decompositions_windows() {
+pub(crate) fn test_decompositions_windows() {
     t!("",
     iter: [],
     has_root: false,
@@ -1095,7 +1095,7 @@ pub fn test_decompositions_windows() {
 }
 
 #[test]
-pub fn test_stem_ext() {
+pub(crate) fn test_stem_ext() {
     t!("foo",
     file_stem: Some("foo"),
     extension: None
@@ -1138,7 +1138,7 @@ pub fn test_stem_ext() {
 }
 
 #[test]
-pub fn test_prefix_ext() {
+pub(crate) fn test_prefix_ext() {
     t!("foo",
     file_prefix: Some("foo"),
     extension: None
@@ -1181,7 +1181,7 @@ pub fn test_prefix_ext() {
 }
 
 #[test]
-pub fn test_push() {
+pub(crate) fn test_push() {
     macro_rules! tp (
         ($path:expr, $push:expr, $expected:expr) => ( {
             let mut actual = PathBuf::from($path);
@@ -1279,7 +1279,7 @@ pub fn test_push() {
 }
 
 #[test]
-pub fn test_pop() {
+pub(crate) fn test_pop() {
     macro_rules! tp (
         ($path:expr, $expected:expr, $output:expr) => ( {
             let mut actual = PathBuf::from($path);
@@ -1333,7 +1333,7 @@ pub fn test_pop() {
 }
 
 #[test]
-pub fn test_set_file_name() {
+pub(crate) fn test_set_file_name() {
     macro_rules! tfn (
             ($path:expr, $file:expr, $expected:expr) => ( {
             let mut p = PathBuf::from($path);
@@ -1367,7 +1367,7 @@ pub fn test_set_file_name() {
 }
 
 #[test]
-pub fn test_set_extension() {
+pub(crate) fn test_set_extension() {
     macro_rules! tfe (
             ($path:expr, $ext:expr, $expected:expr, $output:expr) => ( {
             let mut p = PathBuf::from($path);
@@ -1420,7 +1420,7 @@ fn test_eq_receivers() {
 }
 
 #[test]
-pub fn test_compare() {
+pub(crate) fn test_compare() {
     use crate::collections::hash_map::DefaultHasher;
     use crate::hash::{Hash, Hasher};
 

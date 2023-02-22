@@ -60,7 +60,7 @@ mod platform {
     #[cfg(target_os = "l4re")]
     pub use crate::os::l4re::*;
     #[cfg(target_os = "linux")]
-    pub use crate::os::linux::*;
+    pub(crate) use crate::os::linux::*;
     #[cfg(target_os = "macos")]
     pub use crate::os::macos::*;
     #[cfg(target_os = "netbsd")]

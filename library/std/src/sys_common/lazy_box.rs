@@ -40,7 +40,7 @@ pub(crate) trait LazyInit {
 
 impl<T: LazyInit> LazyBox<T> {
     #[inline]
-    pub const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self { ptr: AtomicPtr::new(null_mut()), _phantom: PhantomData }
     }
 

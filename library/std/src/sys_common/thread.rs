@@ -2,7 +2,7 @@ use crate::env;
 use crate::sync::atomic::{self, Ordering};
 use crate::sys::thread as imp;
 
-pub fn min_stack() -> usize {
+pub(crate) fn min_stack() -> usize {
     static MIN: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
     match MIN.load(Ordering::Relaxed) {
         0 => {}

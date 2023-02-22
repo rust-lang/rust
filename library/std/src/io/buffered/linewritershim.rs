@@ -11,12 +11,12 @@ use crate::sys_common::memchr;
 /// `BufWriters` to be temporarily given line-buffering logic; this is what
 /// enables Stdout to be alternately in line-buffered or block-buffered mode.
 #[derive(Debug)]
-pub struct LineWriterShim<'a, W: Write> {
+pub(crate) struct LineWriterShim<'a, W: Write> {
     buffer: &'a mut BufWriter<W>,
 }
 
 impl<'a, W: Write> LineWriterShim<'a, W> {
-    pub fn new(buffer: &'a mut BufWriter<W>) -> Self {
+    pub(crate) fn new(buffer: &'a mut BufWriter<W>) -> Self {
         Self { buffer }
     }
 

@@ -16,7 +16,7 @@
 use crate::ptr;
 use crate::sys_common::thread_local_key::StaticKey;
 
-pub unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
+pub(crate) unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     // The fallback implementation uses a vanilla OS-based TLS key to track
     // the list of destructors that need to be run for this thread. The key
     // then has its own destructor which runs all the other destructors.

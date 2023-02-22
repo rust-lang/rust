@@ -9,19 +9,19 @@
 #[cfg(test)]
 mod tests;
 
-pub mod eh;
+pub(crate) mod eh;
 
 use core::mem;
 
-pub struct DwarfReader {
-    pub ptr: *const u8,
+pub(crate) struct DwarfReader {
+    pub(crate) ptr: *const u8,
 }
 
 #[repr(C, packed)]
 struct Unaligned<T>(T);
 
 impl DwarfReader {
-    pub fn new(ptr: *const u8) -> DwarfReader {
+    pub(crate) fn new(ptr: *const u8) -> DwarfReader {
         DwarfReader { ptr }
     }
 
@@ -29,7 +29,7 @@ impl DwarfReader {
     // on a 4-byte boundary. This may cause problems on platforms with strict
     // alignment requirements. By wrapping data in a "packed" struct, we are
     // telling the backend to generate "misalignment-safe" code.
-    pub unsafe fn read<T: Copy>(&mut self) -> T {
+    pub(crate) unsafe fn read<T: Copy>(&mut self) -> T {
         let Unaligned(result) = *(self.ptr as *const Unaligned<T>);
         self.ptr = self.ptr.add(mem::size_of::<T>());
         result
@@ -37,7 +37,7 @@ impl DwarfReader {
 
     // ULEB128 and SLEB128 encodings are defined in Section 7.6 - "Variable
     // Length Data".
-    pub unsafe fn read_uleb128(&mut self) -> u64 {
+    pub(crate) unsafe fn read_uleb128(&mut self) -> u64 {
         let mut shift: usize = 0;
         let mut result: u64 = 0;
         let mut byte: u8;
@@ -52,7 +52,7 @@ impl DwarfReader {
         result
     }
 
-    pub unsafe fn read_sleb128(&mut self) -> i64 {
+    pub(crate) unsafe fn read_sleb128(&mut self) -> i64 {
         let mut shift: u32 = 0;
         let mut result: u64 = 0;
         let mut byte: u8;

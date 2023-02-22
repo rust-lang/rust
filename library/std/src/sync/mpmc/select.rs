@@ -3,7 +3,7 @@
 ///
 /// Each field contains data associated with a specific channel flavor.
 #[derive(Debug, Default)]
-pub struct Token {
+pub(crate) struct Token {
     pub(crate) array: super::array::ArrayToken,
     pub(crate) list: super::list::ListToken,
     #[allow(dead_code)]
@@ -12,7 +12,7 @@ pub struct Token {
 
 /// Identifier associated with an operation by a specific thread on a specific channel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Operation(usize);
+pub(crate) struct Operation(usize);
 
 impl Operation {
     /// Creates an operation identifier from a mutable reference.
@@ -21,7 +21,7 @@ impl Operation {
     /// reference should point to a variable that is specific to the thread and the operation,
     /// and is alive for the entire duration of a blocking operation.
     #[inline]
-    pub fn hook<T>(r: &mut T) -> Operation {
+    pub(crate) fn hook<T>(r: &mut T) -> Operation {
         let val = r as *mut T as usize;
         // Make sure that the pointer address doesn't equal the numerical representation of
         // `Selected::{Waiting, Aborted, Disconnected}`.
@@ -32,7 +32,7 @@ impl Operation {
 
 /// Current state of a blocking operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Selected {
+pub(crate) enum Selected {
     /// Still waiting for an operation.
     Waiting,
 

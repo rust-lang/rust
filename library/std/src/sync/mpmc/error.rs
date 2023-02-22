@@ -1,7 +1,9 @@
 use crate::error;
 use crate::fmt;
 
-pub use crate::sync::mpsc::{RecvError, RecvTimeoutError, SendError, TryRecvError, TrySendError};
+pub(crate) use crate::sync::mpsc::{
+    RecvError, RecvTimeoutError, SendError, TryRecvError, TrySendError,
+};
 
 /// An error returned from the [`send_timeout`] method.
 ///
@@ -9,7 +11,7 @@ pub use crate::sync::mpsc::{RecvError, RecvTimeoutError, SendError, TryRecvError
 ///
 /// [`send_timeout`]: super::Sender::send_timeout
 #[derive(PartialEq, Eq, Clone, Copy)]
-pub enum SendTimeoutError<T> {
+pub(crate) enum SendTimeoutError<T> {
     /// The message could not be sent because the channel is full and the operation timed out.
     ///
     /// If this is a zero-capacity channel, then the error indicates that there was no receiver

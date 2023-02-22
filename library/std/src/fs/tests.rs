@@ -72,7 +72,7 @@ macro_rules! error_contains {
 // have permission, and return otherwise. This way, we still don't run these
 // tests most of the time, but at least we do if the user has the right
 // permissions.
-pub fn got_symlink_permission(tmpdir: &TempDir) -> bool {
+pub(crate) fn got_symlink_permission(tmpdir: &TempDir) -> bool {
     if cfg!(unix) {
         return true;
     }

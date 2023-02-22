@@ -30,15 +30,15 @@ impl ThreadInfo {
     }
 }
 
-pub fn current_thread() -> Option<Thread> {
+pub(crate) fn current_thread() -> Option<Thread> {
     ThreadInfo::with(|info| info.thread.clone())
 }
 
-pub fn stack_guard() -> Option<Guard> {
+pub(crate) fn stack_guard() -> Option<Guard> {
     ThreadInfo::with(|info| info.stack_guard.clone()).and_then(|o| o)
 }
 
-pub fn set(stack_guard: Option<Guard>, thread: Thread) {
+pub(crate) fn set(stack_guard: Option<Guard>, thread: Thread) {
     THREAD_INFO.with(move |thread_info| {
         let mut thread_info = thread_info.borrow_mut();
         rtassert!(thread_info.is_none());

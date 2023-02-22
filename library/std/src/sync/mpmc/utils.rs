@@ -65,13 +65,13 @@ use crate::ops::{Deref, DerefMut};
     )),
     repr(align(64))
 )]
-pub struct CachePadded<T> {
+pub(crate) struct CachePadded<T> {
     value: T,
 }
 
 impl<T> CachePadded<T> {
     /// Pads and aligns a value to the length of a cache line.
-    pub fn new(value: T) -> CachePadded<T> {
+    pub(crate) fn new(value: T) -> CachePadded<T> {
         CachePadded::<T> { value }
     }
 }
@@ -93,13 +93,13 @@ impl<T> DerefMut for CachePadded<T> {
 const SPIN_LIMIT: u32 = 6;
 
 /// Performs quadratic backoff in spin loops.
-pub struct Backoff {
+pub(crate) struct Backoff {
     step: Cell<u32>,
 }
 
 impl Backoff {
     /// Creates a new `Backoff`.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Backoff { step: Cell::new(0) }
     }
 
@@ -108,7 +108,7 @@ impl Backoff {
     /// This method should be used for retrying an operation because another thread made
     /// progress. i.e. on CAS failure.
     #[inline]
-    pub fn spin_light(&self) {
+    pub(crate) fn spin_light(&self) {
         let step = self.step.get().min(SPIN_LIMIT);
         for _ in 0..step.pow(2) {
             crate::hint::spin_loop();
@@ -121,7 +121,7 @@ impl Backoff {
     ///
     /// This method should be used in blocking loops where parking the thread is not an option.
     #[inline]
-    pub fn spin_heavy(&self) {
+    pub(crate) fn spin_heavy(&self) {
         if self.step.get() <= SPIN_LIMIT {
             for _ in 0..self.step.get().pow(2) {
                 crate::hint::spin_loop()

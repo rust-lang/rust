@@ -3,7 +3,7 @@ use crate::fmt;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::thread;
 
-pub struct Flag {
+pub(crate) struct Flag {
     failed: AtomicBool,
 }
 
@@ -20,42 +20,42 @@ pub struct Flag {
 
 impl Flag {
     #[inline]
-    pub const fn new() -> Flag {
+    pub(crate) const fn new() -> Flag {
         Flag { failed: AtomicBool::new(false) }
     }
 
     /// Check the flag for an unguarded borrow, where we only care about existing poison.
     #[inline]
-    pub fn borrow(&self) -> LockResult<()> {
+    pub(crate) fn borrow(&self) -> LockResult<()> {
         if self.get() { Err(PoisonError::new(())) } else { Ok(()) }
     }
 
     /// Check the flag for a guarded borrow, where we may also set poison when `done`.
     #[inline]
-    pub fn guard(&self) -> LockResult<Guard> {
+    pub(crate) fn guard(&self) -> LockResult<Guard> {
         let ret = Guard { panicking: thread::panicking() };
         if self.get() { Err(PoisonError::new(ret)) } else { Ok(ret) }
     }
 
     #[inline]
-    pub fn done(&self, guard: &Guard) {
+    pub(crate) fn done(&self, guard: &Guard) {
         if !guard.panicking && thread::panicking() {
             self.failed.store(true, Ordering::Relaxed);
         }
     }
 
     #[inline]
-    pub fn get(&self) -> bool {
+    pub(crate) fn get(&self) -> bool {
         self.failed.load(Ordering::Relaxed)
     }
 
     #[inline]
-    pub fn clear(&self) {
+    pub(crate) fn clear(&self) {
         self.failed.store(false, Ordering::Relaxed)
     }
 }
 
-pub struct Guard {
+pub(crate) struct Guard {
     panicking: bool,
 }
 
@@ -261,7 +261,7 @@ impl<T> Error for TryLockError<T> {
     }
 }
 
-pub fn map_result<T, U, F>(result: LockResult<T>, f: F) -> LockResult<U>
+pub(crate) fn map_result<T, U, F>(result: LockResult<T>, f: F) -> LockResult<U>
 where
     F: FnOnce(T) -> U,
 {

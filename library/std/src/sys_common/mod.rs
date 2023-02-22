@@ -20,25 +20,25 @@
 #[cfg(test)]
 mod tests;
 
-pub mod backtrace;
-pub mod fs;
-pub mod io;
-pub mod lazy_box;
-pub mod memchr;
-pub mod once;
-pub mod process;
-pub mod thread;
-pub mod thread_info;
-pub mod thread_local_dtor;
-pub mod thread_parking;
-pub mod wstr;
-pub mod wtf8;
+pub(crate) mod backtrace;
+pub(crate) mod fs;
+pub(crate) mod io;
+pub(crate) mod lazy_box;
+pub(crate) mod memchr;
+pub(crate) mod once;
+pub(crate) mod process;
+pub(crate) mod thread;
+pub(crate) mod thread_info;
+pub(crate) mod thread_local_dtor;
+pub(crate) mod thread_parking;
+pub(crate) mod wstr;
+pub(crate) mod wtf8;
 
 cfg_if::cfg_if! {
     if #[cfg(target_os = "windows")] {
         pub use crate::sys::thread_local_key;
     } else {
-        pub mod thread_local_key;
+        pub(crate) mod thread_local_key;
     }
 }
 
@@ -50,7 +50,7 @@ cfg_if::cfg_if! {
                  all(target_vendor = "fortanix", target_env = "sgx")))] {
         pub use crate::sys::net;
     } else {
-        pub mod net;
+        pub(crate) mod net;
     }
 }
 
@@ -58,25 +58,25 @@ cfg_if::cfg_if! {
 
 /// A trait for viewing representations from std types
 #[doc(hidden)]
-pub trait AsInner<Inner: ?Sized> {
+pub(crate) trait AsInner<Inner: ?Sized> {
     fn as_inner(&self) -> &Inner;
 }
 
 /// A trait for viewing representations from std types
 #[doc(hidden)]
-pub trait AsInnerMut<Inner: ?Sized> {
+pub(crate) trait AsInnerMut<Inner: ?Sized> {
     fn as_inner_mut(&mut self) -> &mut Inner;
 }
 
 /// A trait for extracting representations from std types
 #[doc(hidden)]
-pub trait IntoInner<Inner> {
+pub(crate) trait IntoInner<Inner> {
     fn into_inner(self) -> Inner;
 }
 
 /// A trait for creating std types from internal representations
 #[doc(hidden)]
-pub trait FromInner<Inner> {
+pub(crate) trait FromInner<Inner> {
     fn from_inner(inner: Inner) -> Self;
 }
 
@@ -84,7 +84,7 @@ pub trait FromInner<Inner> {
 // (numer*denom) and the overall result fit into i64 (which is the case
 // for our time conversions).
 #[allow(dead_code)] // not used on all platforms
-pub fn mul_div_u64(value: u64, numer: u64, denom: u64) -> u64 {
+pub(crate) fn mul_div_u64(value: u64, numer: u64, denom: u64) -> u64 {
     let q = value / denom;
     let r = value % denom;
     // Decompose value as (value/denom*denom + value%denom),

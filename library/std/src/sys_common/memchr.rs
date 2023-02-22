@@ -26,7 +26,7 @@ mod tests;
 /// assert_eq!(memchr(b'k', haystack), Some(8));
 /// ```
 #[inline]
-pub fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
+pub(crate) fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
     sys::memchr(needle, haystack)
 }
 
@@ -46,6 +46,6 @@ pub fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
 /// assert_eq!(memrchr(b'o', haystack), Some(17));
 /// ```
 #[inline]
-pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
+pub(crate) fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
     sys::memrchr(needle, haystack)
 }

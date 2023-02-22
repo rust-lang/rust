@@ -38,7 +38,7 @@ use crate::sys::locks as sys;
 /// since we're not dealing with multiple threads. If it compares unequal,
 /// synchronization is left to the mutex, making relaxed memory ordering for
 /// the `owner` field fine in all cases.
-pub struct ReentrantMutex<T> {
+pub(crate) struct ReentrantMutex<T> {
     mutex: sys::Mutex,
     owner: AtomicUsize,
     lock_count: UnsafeCell<u32>,
@@ -64,7 +64,7 @@ impl<T> RefUnwindSafe for ReentrantMutex<T> {}
 /// rules. Use interior mutability (usually `RefCell`) in order to mutate the
 /// guarded data.
 #[must_use = "if unused the ReentrantMutex will immediately unlock"]
-pub struct ReentrantMutexGuard<'a, T: 'a> {
+pub(crate) struct ReentrantMutexGuard<'a, T: 'a> {
     lock: &'a ReentrantMutex<T>,
 }
 
@@ -72,7 +72,7 @@ impl<T> !Send for ReentrantMutexGuard<'_, T> {}
 
 impl<T> ReentrantMutex<T> {
     /// Creates a new reentrant mutex in an unlocked state.
-    pub const fn new(t: T) -> ReentrantMutex<T> {
+    pub(crate) const fn new(t: T) -> ReentrantMutex<T> {
         ReentrantMutex {
             mutex: sys::Mutex::new(),
             owner: AtomicUsize::new(0),
@@ -93,7 +93,7 @@ impl<T> ReentrantMutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    pub fn lock(&self) -> ReentrantMutexGuard<'_, T> {
+    pub(crate) fn lock(&self) -> ReentrantMutexGuard<'_, T> {
         let this_thread = current_thread_unique_ptr();
         // Safety: We only touch lock_count when we own the lock.
         unsafe {
@@ -121,7 +121,7 @@ impl<T> ReentrantMutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    pub fn try_lock(&self) -> Option<ReentrantMutexGuard<'_, T>> {
+    pub(crate) fn try_lock(&self) -> Option<ReentrantMutexGuard<'_, T>> {
         let this_thread = current_thread_unique_ptr();
         // Safety: We only touch lock_count when we own the lock.
         unsafe {
@@ -171,7 +171,7 @@ impl<T> Drop for ReentrantMutexGuard<'_, T> {
 /// Get an address that is unique per running thread.
 ///
 /// This can be used as a non-null usize-sized ID.
-pub fn current_thread_unique_ptr() -> usize {
+pub(crate) fn current_thread_unique_ptr() -> usize {
     // Use a non-drop type to make sure it's still available during thread destruction.
     thread_local! { static X: u8 = const { 0 } }
     X.with(|x| <*const _>::addr(x))

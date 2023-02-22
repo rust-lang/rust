@@ -610,7 +610,7 @@ pub fn stdout() -> Stdout {
 // Flush the data and disable buffering during shutdown
 // by replacing the line writer by one with zero
 // buffering capacity.
-pub fn cleanup() {
+pub(crate) fn cleanup() {
     let mut initialized = false;
     let stdout = STDOUT.get_or_init(|| {
         initialized = true;

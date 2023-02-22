@@ -10,7 +10,7 @@ cfg_if::cfg_if! {
         target_os = "hermit",
     ))] {
         mod futex;
-        pub use futex::Parker;
+        pub(crate) use futex::Parker;
     } else if #[cfg(any(
         target_os = "netbsd",
         all(target_vendor = "fortanix", target_env = "sgx"),

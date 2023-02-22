@@ -29,19 +29,19 @@ const COMPLETE: u32 = 4;
 // variable. When the running thread finishes, it will wake all waiting threads using
 // `futex_wake_all`.
 
-pub struct OnceState {
+pub(crate) struct OnceState {
     poisoned: bool,
     set_state_to: Cell<u32>,
 }
 
 impl OnceState {
     #[inline]
-    pub fn is_poisoned(&self) -> bool {
+    pub(crate) fn is_poisoned(&self) -> bool {
         self.poisoned
     }
 
     #[inline]
-    pub fn poison(&self) {
+    pub(crate) fn poison(&self) {
         self.set_state_to.set(POISONED);
     }
 }
@@ -62,18 +62,18 @@ impl<'a> Drop for CompletionGuard<'a> {
     }
 }
 
-pub struct Once {
+pub(crate) struct Once {
     state: AtomicU32,
 }
 
 impl Once {
     #[inline]
-    pub const fn new() -> Once {
+    pub(crate) const fn new() -> Once {
         Once { state: AtomicU32::new(INCOMPLETE) }
     }
 
     #[inline]
-    pub fn is_completed(&self) -> bool {
+    pub(crate) fn is_completed(&self) -> bool {
         // Use acquire ordering to make all initialization changes visible to the
         // current thread.
         self.state.load(Acquire) == COMPLETE
@@ -94,7 +94,7 @@ impl Once {
     // so avoids the cost of dynamic dispatch.
     #[cold]
     #[track_caller]
-    pub fn call(&self, ignore_poisoning: bool, f: &mut impl FnMut(&public::OnceState)) {
+    pub(crate) fn call(&self, ignore_poisoning: bool, f: &mut impl FnMut(&public::OnceState)) {
         let mut state = self.state.load(Acquire);
         loop {
             match state {

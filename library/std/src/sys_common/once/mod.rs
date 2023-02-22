@@ -19,7 +19,7 @@ cfg_if::cfg_if! {
         target_os = "hermit",
     ))] {
         mod futex;
-        pub use futex::{Once, OnceState};
+        pub(crate) use futex::{Once, OnceState};
     } else if #[cfg(any(
         windows,
         target_family = "unix",

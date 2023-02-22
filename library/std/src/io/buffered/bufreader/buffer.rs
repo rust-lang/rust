@@ -12,7 +12,7 @@ use crate::cmp;
 use crate::io::{self, BorrowedBuf, Read};
 use crate::mem::MaybeUninit;
 
-pub struct Buffer {
+pub(crate) struct Buffer {
     // The buffer.
     buf: Box<[MaybeUninit<u8>]>,
     // The current seek offset into `buf`, must always be <= `filled`.
@@ -30,54 +30,54 @@ pub struct Buffer {
 
 impl Buffer {
     #[inline]
-    pub fn with_capacity(capacity: usize) -> Self {
+    pub(crate) fn with_capacity(capacity: usize) -> Self {
         let buf = Box::new_uninit_slice(capacity);
         Self { buf, pos: 0, filled: 0, initialized: 0 }
     }
 
     #[inline]
-    pub fn buffer(&self) -> &[u8] {
+    pub(crate) fn buffer(&self) -> &[u8] {
         // SAFETY: self.pos and self.cap are valid, and self.cap => self.pos, and
         // that region is initialized because those are all invariants of this type.
         unsafe { MaybeUninit::slice_assume_init_ref(self.buf.get_unchecked(self.pos..self.filled)) }
     }
 
     #[inline]
-    pub fn capacity(&self) -> usize {
+    pub(crate) fn capacity(&self) -> usize {
         self.buf.len()
     }
 
     #[inline]
-    pub fn filled(&self) -> usize {
+    pub(crate) fn filled(&self) -> usize {
         self.filled
     }
 
     #[inline]
-    pub fn pos(&self) -> usize {
+    pub(crate) fn pos(&self) -> usize {
         self.pos
     }
 
     // This is only used by a test which asserts that the initialization-tracking is correct.
     #[cfg(test)]
-    pub fn initialized(&self) -> usize {
+    pub(crate) fn initialized(&self) -> usize {
         self.initialized
     }
 
     #[inline]
-    pub fn discard_buffer(&mut self) {
+    pub(crate) fn discard_buffer(&mut self) {
         self.pos = 0;
         self.filled = 0;
     }
 
     #[inline]
-    pub fn consume(&mut self, amt: usize) {
+    pub(crate) fn consume(&mut self, amt: usize) {
         self.pos = cmp::min(self.pos + amt, self.filled);
     }
 
     /// If there are `amt` bytes available in the buffer, pass a slice containing those bytes to
     /// `visitor` and return true. If there are not enough bytes available, return false.
     #[inline]
-    pub fn consume_with<V>(&mut self, amt: usize, mut visitor: V) -> bool
+    pub(crate) fn consume_with<V>(&mut self, amt: usize, mut visitor: V) -> bool
     where
         V: FnMut(&[u8]),
     {
@@ -92,12 +92,12 @@ impl Buffer {
     }
 
     #[inline]
-    pub fn unconsume(&mut self, amt: usize) {
+    pub(crate) fn unconsume(&mut self, amt: usize) {
         self.pos = self.pos.saturating_sub(amt);
     }
 
     #[inline]
-    pub fn fill_buf(&mut self, mut reader: impl Read) -> io::Result<&[u8]> {
+    pub(crate) fn fill_buf(&mut self, mut reader: impl Read) -> io::Result<&[u8]> {
         // If we've reached the end of our internal buffer then we need to fetch
         // some more data from the reader.
         // Branch using `>=` instead of the more correct `==`

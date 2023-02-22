@@ -77,7 +77,7 @@ use crate::sys::thread_local_key as imp;
 ///     KEY.set(1 as *mut u8);
 /// }
 /// ```
-pub struct StaticKey {
+pub(crate) struct StaticKey {
     /// Inner static TLS key (internals).
     key: AtomicUsize,
     /// Destructor for the TLS value.
@@ -108,14 +108,14 @@ pub struct StaticKey {
 ///
 /// drop(key); // deallocate this TLS slot.
 /// ```
-pub struct Key {
+pub(crate) struct Key {
     key: imp::Key,
 }
 
 /// Constant initialization value for static TLS keys.
 ///
 /// This value specifies no destructor by default.
-pub const INIT: StaticKey = StaticKey::new(None);
+pub(crate) const INIT: StaticKey = StaticKey::new(None);
 
 // Define a sentinel value that is unlikely to be returned
 // as a TLS key (but it may be returned).
@@ -123,7 +123,7 @@ const KEY_SENTVAL: usize = 0;
 
 impl StaticKey {
     #[rustc_const_unstable(feature = "thread_local_internals", issue = "none")]
-    pub const fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> StaticKey {
+    pub(crate) const fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> StaticKey {
         StaticKey { key: atomic::AtomicUsize::new(KEY_SENTVAL), dtor }
     }
 
@@ -132,7 +132,7 @@ impl StaticKey {
     /// This will lazily allocate a TLS key from the OS if one has not already
     /// been allocated.
     #[inline]
-    pub unsafe fn get(&self) -> *mut u8 {
+    pub(crate) unsafe fn get(&self) -> *mut u8 {
         imp::get(self.key())
     }
 
@@ -141,7 +141,7 @@ impl StaticKey {
     /// This will lazily allocate a TLS key from the OS if one has not already
     /// been allocated.
     #[inline]
-    pub unsafe fn set(&self, val: *mut u8) {
+    pub(crate) unsafe fn set(&self, val: *mut u8) {
         imp::set(self.key(), val)
     }
 
@@ -202,19 +202,19 @@ impl Key {
     /// Note that the destructor will not be run when the `Key` goes out of
     /// scope.
     #[inline]
-    pub fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
+    pub(crate) fn new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
         Key { key: unsafe { imp::create(dtor) } }
     }
 
     /// See StaticKey::get
     #[inline]
-    pub fn get(&self) -> *mut u8 {
+    pub(crate) fn get(&self) -> *mut u8 {
         unsafe { imp::get(self.key) }
     }
 
     /// See StaticKey::set
     #[inline]
-    pub fn set(&self, val: *mut u8) {
+    pub(crate) fn set(&self, val: *mut u8) {
         unsafe { imp::set(self.key, val) }
     }
 }
