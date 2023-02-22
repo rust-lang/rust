@@ -1,0 +1,68 @@
+error: binary operation on reference to `Copy` type `i32`
+  --> $DIR/ref_binop_on_copy_type.rs:21:17
+   |
+LL |     let _ = &42 <= &0;
+   |                 ^^
+   |
+   = note: `i32` takes `4` bytes of memory; copying the value instead of referencing it might avoid unnecessary pointer indirections
+note: the lint level is defined here
+  --> $DIR/ref_binop_on_copy_type.rs:2:9
+   |
+LL | #![deny(ref_binop_on_copy_type)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+help: dereferencing the expressions will allow the compiler to more consistently optimize these binary operations
+   |
+LL -     let _ = &42 <= &0;
+LL +     let _ = 42 <= 0;
+   |
+
+error: binary operation on reference to `Copy` type `usize`
+  --> $DIR/ref_binop_on_copy_type.rs:28:34
+   |
+LL |         .filter(|(a, b, c, d)| a <= c && d as &usize <= b || c <= a && &b <= &d)
+   |                                  ^^
+   |
+   = note: `usize` takes `8` bytes of memory; copying the value instead of referencing it might avoid unnecessary pointer indirections
+help: dereferencing the expressions will allow the compiler to more consistently optimize these binary operations
+   |
+LL |         .filter(|(a, b, c, d)| *a <= *c && d as &usize <= b || c <= a && &b <= &d)
+   |                                +     +
+
+error: binary operation on reference to `Copy` type `usize`
+  --> $DIR/ref_binop_on_copy_type.rs:28:54
+   |
+LL |         .filter(|(a, b, c, d)| a <= c && d as &usize <= b || c <= a && &b <= &d)
+   |                                                      ^^
+   |
+   = note: `usize` takes `8` bytes of memory; copying the value instead of referencing it might avoid unnecessary pointer indirections
+help: dereferencing the expressions will allow the compiler to more consistently optimize these binary operations
+   |
+LL |         .filter(|(a, b, c, d)| a <= c && *(d as &usize) <= *b || c <= a && &b <= &d)
+   |                                          ++           +    +
+
+error: binary operation on reference to `Copy` type `usize`
+  --> $DIR/ref_binop_on_copy_type.rs:28:64
+   |
+LL |         .filter(|(a, b, c, d)| a <= c && d as &usize <= b || c <= a && &b <= &d)
+   |                                                                ^^
+   |
+   = note: `usize` takes `8` bytes of memory; copying the value instead of referencing it might avoid unnecessary pointer indirections
+help: dereferencing the expressions will allow the compiler to more consistently optimize these binary operations
+   |
+LL |         .filter(|(a, b, c, d)| a <= c && d as &usize <= b || *c <= *a && &b <= &d)
+   |                                                              +     +
+
+error: binary operation on reference to `Copy` type `usize`
+  --> $DIR/ref_binop_on_copy_type.rs:28:75
+   |
+LL |         .filter(|(a, b, c, d)| a <= c && d as &usize <= b || c <= a && &b <= &d)
+   |                                                                           ^^
+   |
+   = note: `usize` takes `8` bytes of memory; copying the value instead of referencing it might avoid unnecessary pointer indirections
+help: dereferencing the expressions will allow the compiler to more consistently optimize these binary operations
+   |
+LL |         .filter(|(a, b, c, d)| a <= c && d as &usize <= b || c <= a && *b <= *d)
+   |                                                                        ~     ~
+
+error: aborting due to 5 previous errors
+

@@ -1,7 +1,7 @@
 // Test bindings-after-at with slice-patterns
 
 // run-pass
-
+#![allow(ref_binop_on_copy_type)]
 
 #[derive(Debug, PartialEq)]
 enum MatchArm {

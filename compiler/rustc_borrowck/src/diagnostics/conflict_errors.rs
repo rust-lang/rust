@@ -2825,7 +2825,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let mut arguments = Vec::new();
                 for (index, argument) in sig.inputs().skip_binder().iter().enumerate() {
                     if let ty::Ref(argument_region, _, _) = argument.kind() {
-                        if argument_region == return_region {
+                        if *argument_region == *return_region {
                             // Need to use the `rustc_middle::ty` types to compare against the
                             // `return_region`. Then use the `rustc_hir` type to get only
                             // the lifetime span.

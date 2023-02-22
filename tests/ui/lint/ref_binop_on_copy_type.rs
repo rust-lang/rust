@@ -1,0 +1,41 @@
+// run-rustfix
+#![deny(ref_binop_on_copy_type)]
+// #105259
+
+fn main() {
+    let input = vec![
+        (2, 4, 6, 8),
+        (2, 3, 4, 5),
+        (5, 7, 7, 9),
+        (2, 8, 3, 7),
+        (6, 6, 4, 6),
+        (2, 6, 4, 8), // .. 500000000 lines of random data, read from disk with real code (~12GB)
+    ];
+
+    // 1761ms on my machine
+    let _variant_a_result = variant_a(&input);
+
+    //  656ms on my machine
+    let _variant_b_result = variant_b(&input);
+
+    let _ = &42 <= &0;
+    //~^ ERROR binary operation on reference
+}
+
+pub fn variant_a(input: &[(usize, usize, usize, usize)]) -> usize {
+    input
+        .iter()
+        .filter(|(a, b, c, d)| a <= c && d as &usize <= b || c <= a && &b <= &d)
+        //~^ ERROR binary operation on reference
+        //~| ERROR binary operation on reference
+        //~| ERROR binary operation on reference
+        //~| ERROR binary operation on reference
+        .count()
+}
+
+pub fn variant_b(input: &[(usize, usize, usize, usize)]) -> usize {
+    input
+        .iter()
+        .filter(|&&(a, b, c, d)| a <= c && d + &2usize <= b || c <= a && b <= d)
+        .count()
+}

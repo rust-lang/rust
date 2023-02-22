@@ -688,8 +688,9 @@ fn check_incompatible_features(sess: &Session) {
         .iter()
         .filter(|&&(f1, f2)| features.enabled(f1) && features.enabled(f2))
     {
-        if let Some((f1_name, f1_span)) = declared_features.clone().find(|(name, _)| name == f1) {
-            if let Some((f2_name, f2_span)) = declared_features.clone().find(|(name, _)| name == f2)
+        if let Some((f1_name, f1_span)) = declared_features.clone().find(|(name, _)| *name == *f1) {
+            if let Some((f2_name, f2_span)) =
+                declared_features.clone().find(|(name, _)| *name == *f2)
             {
                 let spans = vec![f1_span, f2_span];
                 sess.struct_span_err(

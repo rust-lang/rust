@@ -579,7 +579,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
         for (region_b, region_b_idx) in &regions {
             // Again, skip `'static` because it outlives everything. Also, we trivially
             // know that a region outlives itself.
-            if ty::ReStatic == **region_b || region_a == region_b {
+            if ty::ReStatic == **region_b || *region_a == *region_b {
                 continue;
             }
             if region_known_to_outlive(

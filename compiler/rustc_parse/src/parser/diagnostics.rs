@@ -414,7 +414,7 @@ impl<'a> Parser<'a> {
                 fn is_ident_eq_keyword(found: &TokenKind, expected: &TokenType) -> bool {
                     if let TokenKind::Ident(current_sym, _) = found {
                         if let TokenType::Keyword(suggested_sym) = expected {
-                            return current_sym == suggested_sym;
+                            return *current_sym == *suggested_sym;
                         }
                     }
                     false

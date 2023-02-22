@@ -1941,7 +1941,7 @@ impl PartialEq for VariantDef {
 
         let Self { def_id: lhs_def_id, ctor: _, name: _, discr: _, fields: _, flags: _ } = &self;
         let Self { def_id: rhs_def_id, ctor: _, name: _, discr: _, fields: _, flags: _ } = other;
-        lhs_def_id == rhs_def_id
+        *lhs_def_id == *rhs_def_id
     }
 }
 
@@ -1996,7 +1996,7 @@ impl PartialEq for FieldDef {
 
         let Self { did: rhs_did, name: _, vis: _ } = other;
 
-        lhs_did == rhs_did
+        *lhs_did == *rhs_did
     }
 }
 

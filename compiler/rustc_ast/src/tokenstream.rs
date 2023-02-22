@@ -65,7 +65,7 @@ impl TokenTree {
         match (self, other) {
             (TokenTree::Token(token, _), TokenTree::Token(token2, _)) => token.kind == token2.kind,
             (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
-                delim == delim2 && tts.eq_unspanned(tts2)
+                *delim == *delim2 && tts.eq_unspanned(tts2)
             }
             _ => false,
         }

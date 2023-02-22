@@ -153,7 +153,7 @@ impl<'a> TokenTreesReader<'a> {
                     };
                     for (brace, brace_span) in &self.diag_info.open_braces {
                         if same_identation_level(&sm, self.token.span, *brace_span)
-                            && brace == &close_delim
+                            && *brace == close_delim
                         {
                             // high likelihood of these two corresponding
                             candidate = Some(*brace_span);

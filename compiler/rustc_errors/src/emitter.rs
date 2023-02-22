@@ -351,7 +351,7 @@ pub trait Emitter: Translate {
             if let Some((macro_kind, name)) = has_macro_spans.first() {
                 // Mark the actual macro this originates from
                 let and_then = if let Some((macro_kind, last_name)) = has_macro_spans.last()
-                    && last_name != name
+                    && *last_name != *name
                 {
                     let descr = macro_kind.descr();
                     format!(
@@ -2753,7 +2753,7 @@ pub fn is_case_difference(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
     let ascii_confusables = &['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];
     // All the chars that differ in capitalization are confusable (above):
     let confusable = iter::zip(found.chars(), suggested.chars())
-        .filter(|(f, s)| f != s)
+        .filter(|(f, s)| *f != *s)
         .all(|(f, s)| (ascii_confusables.contains(&f) || ascii_confusables.contains(&s)));
     confusable && found.to_lowercase() == suggested.to_lowercase()
             // FIXME: We sometimes suggest the same thing we already have, which is a

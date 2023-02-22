@@ -5,6 +5,11 @@ lint_array_into_iter =
     .use_explicit_into_iter_suggestion =
         or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value
 
+lint_ref_binop_on_copy_type =
+    binary operation on reference to `Copy` type `{$ty}`
+    .note = `{$ty}` takes `{$bytes}` bytes of memory; copying the value instead of referencing it might avoid unnecessary pointer indirections
+    .suggestion = dereferencing the expressions will allow the compiler to more consistently optimize these binary operations
+
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
     .note = the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `{$ty_param}`, which is not an enum.

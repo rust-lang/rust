@@ -449,7 +449,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (expected.kind(), found.kind())
         {
             if let ty::Adt(found_def, found_substs) = *found_ty.kind() {
-                if exp_def == &found_def {
+                if *exp_def == found_def {
                     let have_as_ref = &[
                         (
                             sym::Option,
@@ -581,7 +581,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id: last_def_id, .. }),
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id: exp_def_id, .. }),
-            ) if last_def_id == exp_def_id => StatementAsExpression::CorrectType,
+            ) if *last_def_id == *exp_def_id => StatementAsExpression::CorrectType,
             (
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id: last_def_id, substs: last_bounds, .. }),
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id: exp_def_id, substs: exp_bounds, .. }),
@@ -607,14 +607,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 hir::GenericBound::Trait(tl, ml),
                                 hir::GenericBound::Trait(tr, mr),
                             ) if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
-                                && ml == mr =>
+                                && *ml == *mr =>
                             {
                                 true
                             }
                             (
                                 hir::GenericBound::LangItemTrait(langl, _, _, argsl),
                                 hir::GenericBound::LangItemTrait(langr, _, _, argsr),
-                            ) if langl == langr => {
+                            ) if *langl == *langr => {
                                 // FIXME: consider the bounds!
                                 debug!("{:?} {:?}", argsl, argsr);
                                 true

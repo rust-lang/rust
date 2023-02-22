@@ -803,7 +803,7 @@ impl<'tcx> Constructor<'tcx> {
             (Missing { .. } | Wildcard, _) => false,
 
             (Single, Single) => true,
-            (Variant(self_id), Variant(other_id)) => self_id == other_id,
+            (Variant(self_id), Variant(other_id)) => *self_id == *other_id,
 
             (IntRange(self_range), IntRange(other_range)) => self_range.is_covered_by(other_range),
             (
@@ -817,7 +817,7 @@ impl<'tcx> Constructor<'tcx> {
                     (Some(to), Some(from)) => {
                         (from == Ordering::Greater || from == Ordering::Equal)
                             && (to == Ordering::Less
-                                || (other_end == self_end && to == Ordering::Equal))
+                                || (*other_end == *self_end && to == Ordering::Equal))
                     }
                     _ => false,
                 }
@@ -859,7 +859,7 @@ impl<'tcx> Constructor<'tcx> {
         match self {
             // If `self` is `Single`, `used_ctors` cannot contain anything else than `Single`s.
             Single => !used_ctors.is_empty(),
-            Variant(vid) => used_ctors.iter().any(|c| matches!(c, Variant(i) if i == vid)),
+            Variant(vid) => used_ctors.iter().any(|c| matches!(c, Variant(i) if *i == *vid)),
             IntRange(range) => used_ctors
                 .iter()
                 .filter_map(|c| c.as_int_range())

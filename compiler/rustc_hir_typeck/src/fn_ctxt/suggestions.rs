@@ -815,7 +815,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => None,
             })
             .map(|(ty, bounds)| match ty.kind() {
-                ty::Param(param_ty) if param_ty == expected_ty_as_param => Ok(Some(bounds)),
+                ty::Param(param_ty) if *param_ty == *expected_ty_as_param => Ok(Some(bounds)),
                 // check whether there is any predicate that contains our `T`, like `Option<T>: Send`
                 _ => match ty.contains(expected) {
                     true => Err(()),
@@ -848,7 +848,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty_param_used_in_fn_params = fn_parameters.iter().any(|param| {
                 let ty = self.astconv().ast_ty_to_ty( param);
-                matches!(ty.kind(), ty::Param(fn_param_ty_param) if expected_ty_as_param == fn_param_ty_param)
+                matches!(ty.kind(), ty::Param(fn_param_ty_param) if *expected_ty_as_param == *fn_param_ty_param)
             });
 
         if ty_param_used_in_fn_params {
@@ -1008,7 +1008,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         let ty::Adt(adt_def, substs) = expr_ty.kind() else { return false; };
         let ty::Adt(expected_adt_def, expected_substs) = expected_ty.kind() else { return false; };
-        if adt_def != expected_adt_def {
+        if *adt_def != *expected_adt_def {
             return false;
         }
 

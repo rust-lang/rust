@@ -143,7 +143,7 @@ fn is_ancestor_or_same_capture(
         return false;
     }
 
-    iter::zip(proj_possible_ancestor, proj_capture).all(|(a, b)| a == b)
+    iter::zip(proj_possible_ancestor, proj_capture).all(|(a, b)| *a == *b)
 }
 
 /// Given a closure, returns the index of a capture within the desugared closure struct and the

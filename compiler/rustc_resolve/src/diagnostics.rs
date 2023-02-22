@@ -207,7 +207,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             (ident.name, self.tcx.sess.source_map().guess_head_span(new_binding.span));
 
         if let Some(s) = self.name_already_seen.get(&name) {
-            if s == &span {
+            if *s == span {
                 return;
             }
         }

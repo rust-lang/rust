@@ -258,15 +258,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             (PassMode::Pair(a1, b1), PassMode::Pair(a2, b2)) => {
                 arg_attr_compat(a1, a2) && arg_attr_compat(b1, b2)
             }
-            (PassMode::Cast(c1, pad1), PassMode::Cast(c2, pad2)) => c1 == c2 && pad1 == pad2,
+            (PassMode::Cast(c1, pad1), PassMode::Cast(c2, pad2)) => c1 == c2 && *pad1 == *pad2,
             (
                 PassMode::Indirect { attrs: a1, extra_attrs: None, on_stack: s1 },
                 PassMode::Indirect { attrs: a2, extra_attrs: None, on_stack: s2 },
-            ) => arg_attr_compat(a1, a2) && s1 == s2,
+            ) => arg_attr_compat(a1, a2) && *s1 == *s2,
             (
                 PassMode::Indirect { attrs: a1, extra_attrs: Some(e1), on_stack: s1 },
                 PassMode::Indirect { attrs: a2, extra_attrs: Some(e2), on_stack: s2 },
-            ) => arg_attr_compat(a1, a2) && arg_attr_compat(e1, e2) && s1 == s2,
+            ) => arg_attr_compat(a1, a2) && arg_attr_compat(e1, e2) && *s1 == *s2,
             _ => false,
         };
 

@@ -315,9 +315,9 @@ impl<I: Interner> PartialEq for TyKind<I> {
         // but the data patterns in practice are such that a comparison
         // succeeds 99%+ of the time, and it's faster to omit it.
         match (self, other) {
-            (Int(a_i), Int(b_i)) => a_i == b_i,
-            (Uint(a_u), Uint(b_u)) => a_u == b_u,
-            (Float(a_f), Float(b_f)) => a_f == b_f,
+            (Int(a_i), Int(b_i)) => *a_i == *b_i,
+            (Uint(a_u), Uint(b_u)) => *a_u == *b_u,
+            (Float(a_f), Float(b_f)) => *a_f == *b_f,
             (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Foreign(a_d), Foreign(b_d)) => a_d == b_d,
             (Array(a_t, a_c), Array(b_t, b_c)) => a_t == b_t && a_c == b_c,
@@ -327,7 +327,7 @@ impl<I: Interner> PartialEq for TyKind<I> {
             (FnDef(a_d, a_s), FnDef(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (FnPtr(a_s), FnPtr(b_s)) => a_s == b_s,
             (Dynamic(a_p, a_r, a_repr), Dynamic(b_p, b_r, b_repr)) => {
-                a_p == b_p && a_r == b_r && a_repr == b_repr
+                a_p == b_p && a_r == b_r && *a_repr == *b_repr
             }
             (Closure(a_d, a_s), Closure(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Generator(a_d, a_s, a_m), Generator(b_d, b_s, b_m)) => {
@@ -338,9 +338,9 @@ impl<I: Interner> PartialEq for TyKind<I> {
                 a_d == b_d && a_s == b_s
             }
             (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
-            (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i == b_i && a_p == b_p,
+            (Alias(a_i, a_p), Alias(b_i, b_p)) => *a_i == *b_i && *a_p == *b_p,
             (Param(a_p), Param(b_p)) => a_p == b_p,
-            (Bound(a_d, a_b), Bound(b_d, b_b)) => a_d == b_d && a_b == b_b,
+            (Bound(a_d, a_b), Bound(b_d, b_b)) => *a_d == *b_d && *a_b == *b_b,
             (Placeholder(a_p), Placeholder(b_p)) => a_p == b_p,
             (Infer(a_t), Infer(b_t)) => a_t == b_t,
             (Error(a_e), Error(b_e)) => a_e == b_e,
@@ -1014,7 +1014,7 @@ impl<I: Interner> PartialEq for RegionKind<I> {
         regionkind_discriminant(self) == regionkind_discriminant(other)
             && match (self, other) {
                 (ReEarlyBound(a_r), ReEarlyBound(b_r)) => a_r == b_r,
-                (ReLateBound(a_d, a_r), ReLateBound(b_d, b_r)) => a_d == b_d && a_r == b_r,
+                (ReLateBound(a_d, a_r), ReLateBound(b_d, b_r)) => *a_d == *b_d && *a_r == *b_r,
                 (ReFree(a_r), ReFree(b_r)) => a_r == b_r,
                 (ReStatic, ReStatic) => true,
                 (ReVar(a_r), ReVar(b_r)) => a_r == b_r,

@@ -6,6 +6,7 @@
 // rust-lang/rfcs#1006, and rust-lang/rfcs#107
 
 #![feature(if_let_guard)]
+#![allow(ref_binop_on_copy_type)]
 
 fn main() {
     rust_issue_24535();

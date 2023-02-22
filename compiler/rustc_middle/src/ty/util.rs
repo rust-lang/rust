@@ -315,7 +315,7 @@ impl<'tcx> TyCtxt<'tcx> {
         loop {
             match (&a.kind(), &b.kind()) {
                 (&ty::Adt(a_def, a_substs), &ty::Adt(b_def, b_substs))
-                    if a_def == b_def && a_def.is_struct() =>
+                    if *a_def == *b_def && a_def.is_struct() =>
                 {
                     if let Some(f) = a_def.non_enum_variant().fields.last() {
                         a = f.ty(self, a_substs);

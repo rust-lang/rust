@@ -2100,7 +2100,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 .find(|(other_idx, (pred, _))| match pred.kind().skip_binder() {
                     ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
                         if self.tcx.is_fn_trait(trait_pred.def_id())
-                            && other_idx != idx
+                            && *other_idx != *idx
                             // Make sure that the self type matches
                             // (i.e. constraining this closure)
                             && expected_self

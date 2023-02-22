@@ -1018,7 +1018,7 @@ impl PartialEq<Ipv4Addr> for IpAddr {
     #[inline]
     fn eq(&self, other: &Ipv4Addr) -> bool {
         match self {
-            IpAddr::V4(v4) => v4 == other,
+            IpAddr::V4(v4) => *v4 == *other,
             IpAddr::V6(_) => false,
         }
     }
@@ -1029,7 +1029,7 @@ impl PartialEq<IpAddr> for Ipv4Addr {
     #[inline]
     fn eq(&self, other: &IpAddr) -> bool {
         match other {
-            IpAddr::V4(v4) => self == v4,
+            IpAddr::V4(v4) => *self == *v4,
             IpAddr::V6(_) => false,
         }
     }
@@ -1875,7 +1875,7 @@ impl PartialEq<IpAddr> for Ipv6Addr {
     fn eq(&self, other: &IpAddr) -> bool {
         match other {
             IpAddr::V4(_) => false,
-            IpAddr::V6(v6) => self == v6,
+            IpAddr::V6(v6) => *self == *v6,
         }
     }
 }
@@ -1886,7 +1886,7 @@ impl PartialEq<Ipv6Addr> for IpAddr {
     fn eq(&self, other: &Ipv6Addr) -> bool {
         match self {
             IpAddr::V4(_) => false,
-            IpAddr::V6(v6) => v6 == other,
+            IpAddr::V6(v6) => *v6 == *other,
         }
     }
 }

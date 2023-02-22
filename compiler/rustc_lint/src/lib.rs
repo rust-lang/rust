@@ -204,6 +204,7 @@ late_lint_methods!(
             ImproperCTypesDefinitions: ImproperCTypesDefinitions,
             VariantSizeDifferences: VariantSizeDifferences,
             BoxPointers: BoxPointers,
+            RefBinopOnCopyType: RefBinopOnCopyType,
             PathStatements: PathStatements,
             LetUnderscore: LetUnderscore,
             // Depends on referenced function signatures in expressions

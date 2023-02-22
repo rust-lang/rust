@@ -1967,7 +1967,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | (ObjectCandidate(i), ObjectCandidate(j)) => {
                 // Arbitrarily pick the lower numbered candidate for backwards
                 // compatibility reasons. Don't let this affect inference.
-                i < j && !needs_infer
+                *i < *j && !needs_infer
             }
             (ObjectCandidate(_), ProjectionCandidate(..))
             | (ProjectionCandidate(..), ObjectCandidate(_)) => {

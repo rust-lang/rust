@@ -1,4 +1,5 @@
 // run-pass
+#![allow(ref_binop_on_copy_type)]
 
 fn main() {
     // We shouldn't promote this

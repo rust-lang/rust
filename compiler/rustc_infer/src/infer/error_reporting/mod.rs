@@ -1144,7 +1144,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let remainder2: Vec<_> = sub2.types().skip(common_len).collect();
                     let common_default_params =
                         iter::zip(remainder1.iter().rev(), remainder2.iter().rev())
-                            .filter(|(a, b)| a == b)
+                            .filter(|(a, b)| **a == **b)
                             .count();
                     let len = sub1.len() - common_default_params;
                     let consts_offset = len - sub1.consts().count();
@@ -2028,7 +2028,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                                 }),
                                                 ..
                                             } = s
-                                            && init_span == &self.span {
+                                            && *init_span == self.span {
                                                 self.result = Some(*array_ty);
                                             }
                                         }

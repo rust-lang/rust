@@ -4,7 +4,7 @@
 // run-pass
 // needs-unwind Asserting on contents of error message
 
-#![allow(path_statements, unused_allocation)]
+#![allow(path_statements, unused_allocation, ref_binop_on_copy_type)]
 #![feature(box_syntax, core_intrinsics, generic_assert, generic_assert_internals)]
 
 macro_rules! test {

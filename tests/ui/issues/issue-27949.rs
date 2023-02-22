@@ -5,6 +5,7 @@
 // LHS and RHS to be exactly identical--i.e. to have the same lifetimes.
 //
 // This was fixed in 1a7fb7dc78439a704f024609ce3dc0beb1386552.
+#![allow(ref_binop_on_copy_type)]
 
 #[derive(Copy, Clone)]
 struct Input<'a> {

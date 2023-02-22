@@ -267,7 +267,7 @@ pub fn is_ancestor_or_same_capture(
         return false;
     }
 
-    proj_possible_ancestor.iter().zip(proj_capture).all(|(a, b)| a == b)
+    proj_possible_ancestor.iter().zip(proj_capture).all(|(a, b)| *a == *b)
 }
 
 /// Part of `MinCaptureInformationMap`; describes the capture kind (&, &mut, move)

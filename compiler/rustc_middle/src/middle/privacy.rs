@@ -121,7 +121,7 @@ impl EffectiveVisibilities {
                 for l in Level::all_levels() {
                     let vis_at_level = eff_vis.at_level(l);
                     let old_vis_at_level = old_eff_vis.at_level_mut(l);
-                    if vis_at_level != old_vis_at_level
+                    if *vis_at_level != *old_vis_at_level
                         && vis_at_level.is_at_least(*old_vis_at_level, tree)
                     {
                         *old_vis_at_level = *vis_at_level

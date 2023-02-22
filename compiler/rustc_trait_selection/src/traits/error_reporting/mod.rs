@@ -1965,8 +1965,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             Some(CandidateSimilarity::Exact { ignoring_lifetimes })
         } else if cat_a == cat_b {
             match (a.kind(), b.kind()) {
-                (ty::Adt(def_a, _), ty::Adt(def_b, _)) => def_a == def_b,
-                (ty::Foreign(def_a), ty::Foreign(def_b)) => def_a == def_b,
+                (ty::Adt(def_a, _), ty::Adt(def_b, _)) => *def_a == *def_b,
+                (ty::Foreign(def_a), ty::Foreign(def_b)) => *def_a == *def_b,
                 // Matching on references results in a lot of unhelpful
                 // suggestions, so let's just not do that for now.
                 //
@@ -2849,14 +2849,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if let ObligationCauseCode::BuiltinDerivedObligation(ref data) = cause_code {
             let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
             let self_ty = parent_trait_ref.skip_binder().self_ty();
-            if obligated_types.iter().any(|ot| ot == &self_ty) {
+            if obligated_types.iter().any(|ot| *ot == self_ty) {
                 return true;
             }
             if let ty::Adt(def, substs) = self_ty.kind()
                 && let [arg] = &substs[..]
                 && let ty::subst::GenericArgKind::Type(ty) = arg.unpack()
                 && let ty::Adt(inner_def, _) = ty.kind()
-                && inner_def == def
+                && *inner_def == *def
             {
                 return true;
             }

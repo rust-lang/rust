@@ -49,6 +49,36 @@ pub enum ArrayIntoIterDiagSub {
     },
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_ref_binop_on_copy_type)]
+pub struct RefBinopOnCopyTypeDiag<'a> {
+    pub ty: String,
+    pub bytes: u64,
+    #[subdiagnostic]
+    pub suggestion: RefBinopOnCopyTypeSuggestion<'a>,
+    #[note]
+    pub note: Option<()>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
+pub struct RefBinopOnCopyTypeSuggestion<'a> {
+    pub left_brace_start: &'a str,
+    pub left_brace_end: &'a str,
+    pub left_sugg: &'a str,
+    #[suggestion_part(code = "{left_sugg}{left_brace_start}")]
+    pub left_start: Span,
+    #[suggestion_part(code = "{left_brace_end}")]
+    pub left_end: Option<Span>,
+    pub right_brace_start: &'a str,
+    pub right_brace_end: &'a str,
+    pub right_sugg: &'a str,
+    #[suggestion_part(code = "{right_sugg}{right_brace_start}")]
+    pub right_start: Span,
+    #[suggestion_part(code = "{right_brace_end}")]
+    pub right_end: Option<Span>,
+}
+
 // builtin.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_builtin_while_true)]

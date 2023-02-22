@@ -223,7 +223,7 @@ impl<I: Idx> IntervalSet<I> {
     fn check_invariants(&self) -> bool {
         let mut current: Option<u32> = None;
         for (start, end) in &self.map {
-            if start > end || current.map_or(false, |x| x + 1 >= *start) {
+            if *start > *end || current.map_or(false, |x| x + 1 >= *start) {
                 return false;
             }
             current = Some(*end);

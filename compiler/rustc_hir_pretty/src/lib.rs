@@ -2092,7 +2092,7 @@ impl<'a> State<'a> {
 
             match bound {
                 GenericBound::Trait(tref, modifier) => {
-                    if modifier == &TraitBoundModifier::Maybe {
+                    if *modifier == TraitBoundModifier::Maybe {
                         self.word("?");
                     }
                     self.print_poly_trait_ref(tref);

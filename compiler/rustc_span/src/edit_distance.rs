@@ -37,14 +37,14 @@ pub fn edit_distance(a: &str, b: &str, limit: usize) -> Option<usize> {
 
     // Strip common prefix.
     while let Some(((b_char, b_rest), (a_char, a_rest))) = b.split_first().zip(a.split_first())
-        && a_char == b_char
+        && *a_char == *b_char
     {
         a = a_rest;
         b = b_rest;
     }
     // Strip common suffix.
     while let Some(((b_char, b_rest), (a_char, a_rest))) = b.split_last().zip(a.split_last())
-        && a_char == b_char
+        && *a_char == *b_char
     {
         a = a_rest;
         b = b_rest;

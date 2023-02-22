@@ -951,7 +951,7 @@ pub(crate) fn required_region_bounds<'tcx>(
                     // it's kind of a moot point since you could never
                     // construct such an object, but this seems
                     // correct even if that code changes).
-                    if t == &erased_self_ty && !r.has_escaping_bound_vars() {
+                    if *t == erased_self_ty && !r.has_escaping_bound_vars() {
                         Some(*r)
                     } else {
                         None

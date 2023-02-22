@@ -321,7 +321,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Remove one layer of references to account for `&mut self` and
                 // `&self`, so that we can compare it against the binding.
                 let (ty, def_self_ty) = match (ty.kind(), def_self_ty.kind()) {
-                    (ty::Ref(_, ty, a), ty::Ref(_, self_ty, b)) if a == b => (*ty, *self_ty),
+                    (ty::Ref(_, ty, a), ty::Ref(_, self_ty, b)) if *a == *b => (*ty, *self_ty),
                     _ => (ty, def_self_ty),
                 };
                 let mut param_args = FxHashMap::default();

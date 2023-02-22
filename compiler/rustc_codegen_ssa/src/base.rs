@@ -694,7 +694,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             let cgus: Vec<_> = cgu_reuse
                 .iter()
                 .enumerate()
-                .filter(|&(_, reuse)| reuse == &CguReuse::No)
+                .filter(|&(_, reuse)| *reuse == CguReuse::No)
                 .take(tcx.sess.threads())
                 .collect();
 

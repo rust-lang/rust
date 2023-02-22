@@ -123,7 +123,7 @@ pub(super) fn transcribe<'a>(
             if let Frame::Sequence { idx, sep, .. } = stack.last_mut().unwrap() {
                 let (repeat_idx, repeat_len) = repeats.last_mut().unwrap();
                 *repeat_idx += 1;
-                if repeat_idx < repeat_len {
+                if *repeat_idx < *repeat_len {
                     *idx = 0;
                     if let Some(sep) = sep {
                         result.push(TokenTree::Token(sep.clone(), Spacing::Alone));

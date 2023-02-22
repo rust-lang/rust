@@ -894,7 +894,7 @@ impl PartialEq for Nonterminal {
     fn eq(&self, rhs: &Self) -> bool {
         match (self, rhs) {
             (NtIdent(ident_lhs, is_raw_lhs), NtIdent(ident_rhs, is_raw_rhs)) => {
-                ident_lhs == ident_rhs && is_raw_lhs == is_raw_rhs
+                ident_lhs == ident_rhs && *is_raw_lhs == *is_raw_rhs
             }
             (NtLifetime(ident_lhs), NtLifetime(ident_rhs)) => ident_lhs == ident_rhs,
             // FIXME: Assume that all "complex" nonterminal are not equal, we can't compare them

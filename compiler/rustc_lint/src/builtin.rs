@@ -38,7 +38,8 @@ use crate::{
         BuiltinUngatedAsyncFnTrackCaller, BuiltinUnnameableTestItems, BuiltinUnpermittedTypeInit,
         BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe,
         BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
-        BuiltinWhileTrue, SuggestChangingAssocTypes,
+        BuiltinWhileTrue, RefBinopOnCopyTypeDiag, RefBinopOnCopyTypeSuggestion,
+        SuggestChangingAssocTypes,
     },
     types::{transparent_newtype_field, CItemKind},
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
@@ -2888,7 +2889,7 @@ impl ClashingExternDeclarations {
                         }
                         (Ref(_a_region, a_ty, a_mut), Ref(_b_region, b_ty, b_mut)) => {
                             // For structural sameness, we don't need the region to be same.
-                            a_mut == b_mut
+                            *a_mut == *b_mut
                                 && structurally_same_type_impl(seen_types, cx, *a_ty, *b_ty, ckind)
                         }
                         (FnDef(..), FnDef(..)) => {
@@ -3303,6 +3304,118 @@ impl EarlyLintPass for SpecialModuleName {
                     _ => continue,
                 }
             }
+        }
+    }
+}
+
+declare_lint! {
+    /// The `ref_binop_on_copy_type` lint detects borrowed `Copy` types being passed to binary
+    /// operations that have unnecessary borrows.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # #![allow(unused)]
+    /// pub fn slice_of_ints(input: &[(usize, usize, usize, usize)]) -> usize {
+    ///     input
+    ///         .iter()
+    ///         .filter(|(a, b, c, d)| a <= c && d <= b || c <= a && b <= d)
+    ///         .count()
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// When making comparisons (or other binary operations) between two reference values that can
+    /// be copied instead, the compiler will not always remove the references, making the execution
+    /// of the binary operation slower than it otherwise could be by making the machine code "chase
+    /// pointers" before actually finding the underlying value. If the `Copy` value is as small or
+    /// smaller than a 64 bit pointer, we suggest dereferencing the value so the compiler will have
+    /// a better chance of producing optimal instructions.
+    REF_BINOP_ON_COPY_TYPE,
+    Warn,
+    "detects binary operations on references to `Copy` types like `&42 < &50`",
+}
+
+declare_lint_pass!(RefBinopOnCopyType => [REF_BINOP_ON_COPY_TYPE]);
+
+impl<'tcx> LateLintPass<'tcx> for RefBinopOnCopyType {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+        let hir::ExprKind::Binary(op, left, right) = expr.kind else { return; };
+        let left_ty = cx.typeck_results().expr_ty_adjusted(left);
+        let right_ty = cx.typeck_results().expr_ty_adjusted(right);
+        if let ty::Ref(_, left_ty, _) = left_ty.kind()
+            && let ty::Ref(_, left_ty, _) = left_ty.kind()
+            && let left_ty = left_ty.peel_refs()
+            && left_ty.is_copy_modulo_regions(cx.tcx, cx.param_env)
+            && let Some(size) = cx.tcx.layout_of(cx.param_env.and(left_ty)).ok().map(|layout| {
+                layout.size.bytes()
+            })
+            && let ty::Ref(_, right_ty, _) = right_ty.kind()
+            && let ty::Ref(_, right_ty, _) = right_ty.kind()
+            && let right_ty = right_ty.peel_refs()
+            && right_ty.is_copy_modulo_regions(cx.tcx, cx.param_env)
+            && let Some(size_r) = cx.tcx.layout_of(cx.param_env.and(right_ty)).ok().map(|layout| {
+                layout.size.bytes()
+            })
+            && size <= 8
+            && size_r <= 8
+        {
+            let left_start_base = left.span.shrink_to_lo();
+            let left_peeled = left.peel_borrows();
+            let left_start = left_start_base.to(left_peeled.span.shrink_to_lo());
+            let left_sugg = if left_start != left_start_base
+                && !matches!(cx.typeck_results().expr_ty_adjusted(left_peeled).kind(), ty::Ref(..))
+            {
+                ""
+            } else {
+                "*"
+            };
+            let (left_brace_start, left_brace_end, left_end) =
+                if left.precedence().order() < ast::ExprPrecedence::Unary.order() {
+                    ("(", ")", Some(left.span.shrink_to_hi()))
+                } else {
+                    ("", "", None)
+                };
+            let right_start_base = right.span.shrink_to_lo();
+            let right_peeled = right.peel_borrows();
+            let right_start = right_start_base.to(right_peeled.span.shrink_to_lo());
+            let right_sugg = if right_start != right_start_base
+                && !matches!(cx.typeck_results().expr_ty_adjusted(right_peeled).kind(), ty::Ref(..))
+            {
+                ""
+            } else {
+                "*"
+            };
+            let (right_brace_start, right_brace_end, right_end) =
+                if right.precedence().order() < ast::ExprPrecedence::Unary.order() {
+                    ("(", ")", Some(right.span.shrink_to_hi()))
+                } else {
+                    ("", "", None)
+                };
+            cx.emit_spanned_lint(
+                REF_BINOP_ON_COPY_TYPE,
+                op.span,
+                RefBinopOnCopyTypeDiag {
+                    ty: with_no_trimmed_paths!(left_ty.to_string()),
+                    bytes: size,
+                    note: Some(()),
+                    suggestion: RefBinopOnCopyTypeSuggestion {
+                        left_brace_start,
+                        left_brace_end,
+                        left_sugg,
+                        left_start,
+                        left_end,
+                        right_brace_start,
+                        right_brace_end,
+                        right_sugg,
+                        right_start,
+                        right_end,
+                    },
+                },
+            );
         }
     }
 }

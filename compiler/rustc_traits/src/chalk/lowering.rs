@@ -1086,7 +1086,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamsSubstitutor<'tcx> {
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match *t.kind() {
-            ty::Param(param) => match self.list.iter().position(|r| r == &param) {
+            ty::Param(param) => match self.list.iter().position(|r| *r == param) {
                 Some(idx) => self.tcx.mk_placeholder(ty::PlaceholderType {
                     universe: ty::UniverseIndex::from_usize(0),
                     name: ty::BoundTyKind::Anon(idx as u32),
