@@ -3335,7 +3335,7 @@ declare_lint! {
     /// smaller than a 64 bit pointer, we suggest dereferencing the value so the compiler will have
     /// a better chance of producing optimal instructions.
     REF_BINOP_ON_COPY_TYPE,
-    Warn,
+    Deny,
     "detects binary operations on references to `Copy` types like `&42 < &50`",
 }
 
