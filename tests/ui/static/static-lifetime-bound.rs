@@ -1,4 +1,4 @@
-fn f<'a: 'static>(_: &'a i32) {} //~WARN unnecessary lifetime parameter `'a`
+fn f<'a: 'static>(_: &'a i32) {}
 
 fn main() {
     let x = 0;

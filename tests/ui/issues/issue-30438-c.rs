@@ -5,7 +5,6 @@ trait Trait { type Out; }
 struct Test<'a> { s: &'a str }
 
 fn silly<'y, 'z>(_s: &'y Test<'z>) -> &'y <Test<'z> as Trait>::Out where 'z: 'static {
-    //~^ WARN unnecessary lifetime parameter `'z`
     let x = Test { s: "this cannot last" };
     &x
     //~^ ERROR: cannot return reference to local variable `x`

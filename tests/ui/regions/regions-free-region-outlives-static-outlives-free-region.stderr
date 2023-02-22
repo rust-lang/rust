@@ -1,10 +1,15 @@
 warning: unnecessary lifetime parameter `'a`
-  --> $DIR/regions-free-region-outlives-static-outlives-free-region.rs:12:11
+  --> $DIR/regions-free-region-outlives-static-outlives-free-region.rs:14:11
    |
 LL |     where 'a: 'static
    |           ^^
    |
    = help: you can use the `'static` lifetime directly, in place of `'a`
+note: the lint level is defined here
+  --> $DIR/regions-free-region-outlives-static-outlives-free-region.rs:11:9
+   |
+LL | #![warn(unused_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^
 
 warning: 1 warning emitted
 

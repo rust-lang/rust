@@ -2,7 +2,7 @@ use crate::dep_graph::DepKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::Representability;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
 use rustc_query_system::query::QueryInfo;
@@ -199,7 +199,8 @@ fn find_item_ty_spans(
 ) {
     match ty.kind {
         hir::TyKind::Path(hir::QPath::Resolved(_, path)) => {
-            if let Some(def_id) = path.res.opt_def_id() {
+            if let Res::Def(kind, def_id) = path.res
+                && kind != DefKind::TyAlias {
                 let check_params = def_id.as_local().map_or(true, |def_id| {
                     if def_id == needle {
                         spans.push(ty.span);

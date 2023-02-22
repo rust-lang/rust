@@ -1,6 +1,5 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
-use super::infcx_ext::InferCtxtExt;
 #[cfg(doc)]
 use super::trait_goals::structural_traits::*;
 use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
@@ -206,7 +205,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, G>,
     ) -> Vec<Candidate<'tcx>> {
-        debug_assert_eq!(goal, self.infcx.resolve_vars_if_possible(goal));
+        debug_assert_eq!(goal, self.resolve_vars_if_possible(goal));
 
         // HACK: `_: Trait` is ambiguous, because it may be satisfied via a builtin rule,
         // object bound, alias bound, etc. We are unable to determine this until we can at
@@ -250,8 +249,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let &ty::Alias(ty::Projection, projection_ty) = goal.predicate.self_ty().kind() else {
             return
         };
-        self.infcx.probe(|_| {
-            let normalized_ty = self.infcx.next_ty_infer();
+        self.probe(|this| {
+            let normalized_ty = this.next_ty_infer();
             let normalizes_to_goal = goal.with(
                 tcx,
                 ty::Binder::dummy(ty::ProjectionPredicate {
@@ -259,16 +258,16 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     term: normalized_ty.into(),
                 }),
             );
-            let normalization_certainty = match self.evaluate_goal(normalizes_to_goal) {
+            let normalization_certainty = match this.evaluate_goal(normalizes_to_goal) {
                 Ok((_, certainty)) => certainty,
                 Err(NoSolution) => return,
             };
-            let normalized_ty = self.infcx.resolve_vars_if_possible(normalized_ty);
+            let normalized_ty = this.resolve_vars_if_possible(normalized_ty);
 
             // NOTE: Alternatively we could call `evaluate_goal` here and only have a `Normalized` candidate.
             // This doesn't work as long as we use `CandidateSource` in winnowing.
             let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
-            let normalized_candidates = self.assemble_and_evaluate_candidates(goal);
+            let normalized_candidates = this.assemble_and_evaluate_candidates(goal);
             for mut normalized_candidate in normalized_candidates {
                 normalized_candidate.result =
                     normalized_candidate.result.unchecked_map(|mut response| {

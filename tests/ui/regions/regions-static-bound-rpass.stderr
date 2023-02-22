@@ -1,13 +1,18 @@
 warning: unnecessary lifetime parameter `'a`
-  --> $DIR/regions-static-bound-rpass.rs:4:11
+  --> $DIR/regions-static-bound-rpass.rs:6:11
    |
 LL |     where 'a: 'static { t }
    |           ^^
    |
    = help: you can use the `'static` lifetime directly, in place of `'a`
+note: the lint level is defined here
+  --> $DIR/regions-static-bound-rpass.rs:3:9
+   |
+LL | #![warn(unused_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^
 
 warning: unnecessary lifetime parameter `'a`
-  --> $DIR/regions-static-bound-rpass.rs:8:11
+  --> $DIR/regions-static-bound-rpass.rs:10:11
    |
 LL |     where 'a: 'static { t }
    |           ^^
@@ -15,7 +20,7 @@ LL |     where 'a: 'static { t }
    = help: you can use the `'static` lifetime directly, in place of `'a`
 
 warning: unnecessary lifetime parameter `'b`
-  --> $DIR/regions-static-bound-rpass.rs:12:19
+  --> $DIR/regions-static-bound-rpass.rs:14:19
    |
 LL |     where 'a: 'b, 'b: 'static { t }
    |                   ^^
