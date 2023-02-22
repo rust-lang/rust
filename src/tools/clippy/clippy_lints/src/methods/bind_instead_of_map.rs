@@ -8,7 +8,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::{LangItem, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty::DefIdTree;
 use rustc_span::Span;
 
 pub(crate) struct OptionAndThenSome;

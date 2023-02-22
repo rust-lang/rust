@@ -28,7 +28,7 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorGuaranteed;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeSuperVisitable};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeSuperVisitable};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_span::def_id::{DefId, CRATE_DEF_ID};
 use rustc_span::Span;

@@ -325,12 +325,15 @@ pub struct ClosureSizeProfileData<'tcx> {
     pub after_feature_tys: Ty<'tcx>,
 }
 
-pub trait DefIdTree: Copy {
-    fn opt_parent(self, id: DefId) -> Option<DefId>;
+impl TyCtxt<'_> {
+    #[inline]
+    pub fn opt_parent(self, id: DefId) -> Option<DefId> {
+        self.def_key(id).parent.map(|index| DefId { index, ..id })
+    }
 
     #[inline]
     #[track_caller]
-    fn parent(self, id: DefId) -> DefId {
+    pub fn parent(self, id: DefId) -> DefId {
         match self.opt_parent(id) {
             Some(id) => id,
             // not `unwrap_or_else` to avoid breaking caller tracking
@@ -340,17 +343,17 @@ pub trait DefIdTree: Copy {
 
     #[inline]
     #[track_caller]
-    fn opt_local_parent(self, id: LocalDefId) -> Option<LocalDefId> {
+    pub fn opt_local_parent(self, id: LocalDefId) -> Option<LocalDefId> {
         self.opt_parent(id.to_def_id()).map(DefId::expect_local)
     }
 
     #[inline]
     #[track_caller]
-    fn local_parent(self, id: LocalDefId) -> LocalDefId {
+    pub fn local_parent(self, id: LocalDefId) -> LocalDefId {
         self.parent(id.to_def_id()).expect_local()
     }
 
-    fn is_descendant_of(self, mut descendant: DefId, ancestor: DefId) -> bool {
+    pub fn is_descendant_of(self, mut descendant: DefId, ancestor: DefId) -> bool {
         if descendant.krate != ancestor.krate {
             return false;
         }
@@ -362,13 +365,6 @@ pub trait DefIdTree: Copy {
             }
         }
         true
-    }
-}
-
-impl<'tcx> DefIdTree for TyCtxt<'tcx> {
-    #[inline]
-    fn opt_parent(self, id: DefId) -> Option<DefId> {
-        self.def_key(id).parent.map(|index| DefId { index, ..id })
     }
 }
 
@@ -391,19 +387,19 @@ impl<Id: Into<DefId>> Visibility<Id> {
     }
 
     /// Returns `true` if an item with this visibility is accessible from the given module.
-    pub fn is_accessible_from(self, module: impl Into<DefId>, tree: impl DefIdTree) -> bool {
+    pub fn is_accessible_from(self, module: impl Into<DefId>, tcx: TyCtxt<'_>) -> bool {
         match self {
             // Public items are visible everywhere.
             Visibility::Public => true,
-            Visibility::Restricted(id) => tree.is_descendant_of(module.into(), id.into()),
+            Visibility::Restricted(id) => tcx.is_descendant_of(module.into(), id.into()),
         }
     }
 
     /// Returns `true` if this visibility is at least as accessible as the given visibility
-    pub fn is_at_least(self, vis: Visibility<impl Into<DefId>>, tree: impl DefIdTree) -> bool {
+    pub fn is_at_least(self, vis: Visibility<impl Into<DefId>>, tcx: TyCtxt<'_>) -> bool {
         match vis {
             Visibility::Public => self.is_public(),
-            Visibility::Restricted(id) => self.is_accessible_from(id, tree),
+            Visibility::Restricted(id) => self.is_accessible_from(id, tcx),
         }
     }
 }

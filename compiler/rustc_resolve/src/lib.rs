@@ -44,7 +44,7 @@ use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools, TyCtxt};
+use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::cstore::CrateStore;
@@ -1117,13 +1117,6 @@ impl<'a, 'tcx> AsMut<Resolver<'a, 'tcx>> for Resolver<'a, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> DefIdTree for &'a Resolver<'b, 'tcx> {
-    #[inline]
-    fn opt_parent(self, id: DefId) -> Option<DefId> {
-        self.tcx.opt_parent(id)
-    }
-}
-
 impl<'tcx> Resolver<'_, 'tcx> {
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
         self.node_id_to_def_id.get(&node).copied()
@@ -1789,7 +1782,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         vis: ty::Visibility<impl Into<DefId>>,
         module: Module<'a>,
     ) -> bool {
-        vis.is_accessible_from(module.nearest_parent_mod(), self)
+        vis.is_accessible_from(module.nearest_parent_mod(), self.tcx)
     }
 
     fn set_binding_parent_module(&mut self, binding: &'a NameBinding<'a>, module: Module<'a>) {
