@@ -1,16 +1,18 @@
 use rustc_hir::{Movability, Mutability};
-use rustc_infer::{infer::InferCtxt, traits::query::NoSolution};
+use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+
+use crate::solve::EvalCtxt;
 
 // Calculates the constituent types of a type for `auto trait` purposes.
 //
 // For types with an "existential" binder, i.e. generator witnesses, we also
 // instantiate the binder with placeholders eagerly.
 pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
-    infcx: &InferCtxt<'tcx>,
+    ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
-    let tcx = infcx.tcx;
+    let tcx = ecx.tcx();
     match *ty.kind() {
         ty::Uint(_)
         | ty::Int(_)
@@ -53,9 +55,7 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
             Ok(vec![generator_substs.tupled_upvars_ty(), generator_substs.witness()])
         }
 
-        ty::GeneratorWitness(types) => {
-            Ok(infcx.instantiate_binder_with_placeholders(types).to_vec())
-        }
+        ty::GeneratorWitness(types) => Ok(ecx.instantiate_binder_with_placeholders(types).to_vec()),
 
         ty::GeneratorWitnessMIR(..) => todo!(),
 
@@ -74,7 +74,7 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
 }
 
 pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
-    infcx: &InferCtxt<'tcx>,
+    ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
     match *ty.kind() {
@@ -113,18 +113,18 @@ pub(super) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
         ty::Tuple(tys) => Ok(tys.to_vec()),
 
         ty::Adt(def, substs) => {
-            let sized_crit = def.sized_constraint(infcx.tcx);
+            let sized_crit = def.sized_constraint(ecx.tcx());
             Ok(sized_crit
                 .0
                 .iter()
-                .map(|ty| sized_crit.rebind(*ty).subst(infcx.tcx, substs))
+                .map(|ty| sized_crit.rebind(*ty).subst(ecx.tcx(), substs))
                 .collect())
         }
     }
 }
 
 pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
-    infcx: &InferCtxt<'tcx>,
+    ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<Ty<'tcx>>, NoSolution> {
     match *ty.kind() {
@@ -165,7 +165,7 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         ty::Closure(_, substs) => Ok(vec![substs.as_closure().tupled_upvars_ty()]),
 
         ty::Generator(_, substs, Movability::Movable) => {
-            if infcx.tcx.features().generator_clone {
+            if ecx.tcx().features().generator_clone {
                 let generator = substs.as_generator();
                 Ok(vec![generator.tupled_upvars_ty(), generator.witness()])
             } else {
@@ -173,9 +173,7 @@ pub(super) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
             }
         }
 
-        ty::GeneratorWitness(types) => {
-            Ok(infcx.instantiate_binder_with_placeholders(types).to_vec())
-        }
+        ty::GeneratorWitness(types) => Ok(ecx.instantiate_binder_with_placeholders(types).to_vec()),
 
         ty::GeneratorWitnessMIR(..) => todo!(),
     }
