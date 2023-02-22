@@ -299,10 +299,78 @@ impl<T> Clone for Bucket<T> {
 impl<T> Bucket<T> {
     const IS_ZERO_SIZED_TYPE: bool = mem::size_of::<T>() == 0;
 
+    /// Creates a [`Bucket`] that contain pointer to the data.
+    /// The pointer calculation is performed by calculating the
+    /// offset from given `base` pointer (convenience for
+    /// `base.as_ptr().sub(index)`).
+    ///
+    /// `index` is in units of `T`; e.g., an `index` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
+    ///
+    /// If the `T` is a ZST, then we instead track the index of the element
+    /// in the table so that `erase` works properly (return
+    /// `NonNull::new_unchecked((index + 1) as *mut T)`)
+    ///
+    /// # Safety
+    ///
+    /// If `mem::size_of::<T>() != 0`, then the safety rules are directly derived
+    /// from the safety rules for [`<*mut T>::sub`] method of `*mut T` and the safety
+    /// rules of [`NonNull::new_unchecked`] function.
+    ///
+    /// Thus, in order to uphold the safety contracts for the [`<*mut T>::sub`] method
+    /// and [`NonNull::new_unchecked`] function, as well as for the correct
+    /// logic of the work of this crate, the following rules are necessary and
+    /// sufficient:
+    ///
+    /// * the `base` pointer must not be `dangling` and must points to the
+    ///   end of the first `value element` from the `data part` of the table, i.e.
+    ///   must be the pointer that returned by [`RawTable::data_end`] or by
+    ///   [`RawTableInner::data_end<T>`];
+    ///
+    /// * `index` must not be greater than `RawTableInner.bucket_mask`, i.e.
+    ///   `index <= RawTableInner.bucket_mask` or, in other words, `(index + 1)`
+    ///   must be no greater than the number returned by the function
+    ///   [`RawTable::buckets`] or [`RawTableInner::buckets`].
+    ///
+    /// If `mem::size_of::<T>() == 0`, then the only requirement is that the
+    /// `index` must not be greater than `RawTableInner.bucket_mask`, i.e.
+    /// `index <= RawTableInner.bucket_mask` or, in other words, `(index + 1)`
+    /// must be no greater than the number returned by the function
+    /// [`RawTable::buckets`] or [`RawTableInner::buckets`].
+    ///
+    /// [`Bucket`]: crate::raw::Bucket
+    /// [`<*mut T>::sub`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.sub-1
+    /// [`NonNull::new_unchecked`]: https://doc.rust-lang.org/stable/std/ptr/struct.NonNull.html#method.new_unchecked
+    /// [`RawTable::data_end`]: crate::raw::RawTable::data_end
+    /// [`RawTableInner::data_end<T>`]: crate::raw::RawTableInner::data_end<T>
+    /// [`RawTable::buckets`]: crate::raw::RawTable::buckets
+    /// [`RawTableInner::buckets`]: crate::raw::RawTableInner::buckets
     #[inline]
     unsafe fn from_base_index(base: NonNull<T>, index: usize) -> Self {
+        // If mem::size_of::<T>() != 0 then return a pointer to an `element` in
+        // the data part of the table (we start counting from "0", so that
+        // in the expression T[last], the "last" index actually one less than the
+        // "buckets" number in the table, i.e. "last = RawTableInner.bucket_mask"):
+        //
+        //                   `from_base_index(base, 1).as_ptr()` returns a pointer that
+        //                   points here in the data part of the table
+        //                   (to the start of T1)
+        //                        |
+        //                        |        `base: NonNull<T>` must point here
+        //                        |         (to the end of T0 or to the start of C0)
+        //                        v         v
+        // [Padding], Tlast, ..., |T1|, T0, |C0, C1, ..., Clast
+        //                           ^
+        //                           `from_base_index(base, 1)` returns a pointer
+        //                           that points here in the data part of the table
+        //                           (to the end of T1)
+        //
+        // where: T0...Tlast - our stored data; C0...Clast - control bytes
+        // or metadata for data.
         let ptr = if Self::IS_ZERO_SIZED_TYPE {
-            // won't overflow because index must be less than length
+            // won't overflow because index must be less than length (bucket_mask)
+            // and bucket_mask is guaranteed to be less than `isize::MAX`
+            // (see TableLayout::calculate_layout_for method)
             (index + 1) as *mut T
         } else {
             base.as_ptr().sub(index)
@@ -311,14 +379,130 @@ impl<T> Bucket<T> {
             ptr: NonNull::new_unchecked(ptr),
         }
     }
+
+    /// Calculates the index of a [`Bucket`] as distance between two pointers
+    /// (convenience for `base.as_ptr().offset_from(self.ptr.as_ptr()) as usize`).
+    /// The returned value is in units of T: the distance in bytes divided by
+    /// [`core::mem::size_of::<T>()`].
+    ///
+    /// If the `T` is a ZST, then we return the index of the element in
+    /// the table so that `erase` works properly (return `self.ptr.as_ptr() as usize - 1`).
+    ///
+    /// This function is the inverse of [`from_base_index`].
+    ///
+    /// # Safety
+    ///
+    /// If `mem::size_of::<T>() != 0`, then the safety rules are directly derived
+    /// from the safety rules for [`<*const T>::offset_from`] method of `*const T`.
+    ///
+    /// Thus, in order to uphold the safety contracts for [`<*const T>::offset_from`]
+    /// method, as well as for the correct logic of the work of this crate, the
+    /// following rules are necessary and sufficient:
+    ///
+    /// * `base` contained pointer must not be `dangling` and must point to the
+    ///   end of the first `element` from the `data part` of the table, i.e.
+    ///   must be a pointer that returns by [`RawTable::data_end`] or by
+    ///   [`RawTableInner::data_end<T>`];
+    ///
+    /// * `self` also must not contain dangling pointer;
+    ///
+    /// * both `self` and `base` must be created from the same [`RawTable`]
+    ///   (or [`RawTableInner`]).
+    ///
+    /// If `mem::size_of::<T>() == 0`, this function is always safe.
+    ///
+    /// [`Bucket`]: crate::raw::Bucket
+    /// [`from_base_index`]: crate::raw::Bucket::from_base_index
+    /// [`RawTable::data_end`]: crate::raw::RawTable::data_end
+    /// [`RawTableInner::data_end<T>`]: crate::raw::RawTableInner::data_end<T>
+    /// [`RawTable`]: crate::raw::RawTable
+    /// [`RawTableInner`]: crate::raw::RawTableInner
+    /// [`<*const T>::offset_from`]: https://doc.rust-lang.org/nightly/core/primitive.pointer.html#method.offset_from
     #[inline]
     unsafe fn to_base_index(&self, base: NonNull<T>) -> usize {
+        // If mem::size_of::<T>() != 0 then return an index under which we used to store the
+        // `element` in the data part of the table (we start counting from "0", so
+        // that in the expression T[last], the "last" index actually is one less than the
+        // "buckets" number in the table, i.e. "last = RawTableInner.bucket_mask").
+        // For example for 5th element in table calculation is performed like this:
+        //
+        //                        mem::size_of::<T>()
+        //                          |
+        //                          |         `self = from_base_index(base, 5)` that returns pointer
+        //                          |         that points here in tha data part of the table
+        //                          |         (to the end of T5)
+        //                          |           |                    `base: NonNull<T>` must point here
+        //                          v           |                    (to the end of T0 or to the start of C0)
+        //                        /‾‾‾\         v                      v
+        // [Padding], Tlast, ..., |T10|, ..., T5|, T4, T3, T2, T1, T0, |C0, C1, C2, C3, C4, C5, ..., C10, ..., Clast
+        //                                      \__________  __________/
+        //                                                 \/
+        //                                     `bucket.to_base_index(base)` = 5
+        //                                     (base.as_ptr() as usize - self.ptr.as_ptr() as usize) / mem::size_of::<T>()
+        //
+        // where: T0...Tlast - our stored data; C0...Clast - control bytes or metadata for data.
         if Self::IS_ZERO_SIZED_TYPE {
+            // this can not be UB
             self.ptr.as_ptr() as usize - 1
         } else {
             offset_from(base.as_ptr(), self.ptr.as_ptr())
         }
     }
+
+    /// Acquires the underlying raw pointer `*mut T` to `data`.
+    ///
+    /// # Note
+    ///
+    /// If `T` is not [`Copy`], do not use `*mut T` methods that can cause calling the
+    /// destructor of `T` (for example the [`<*mut T>::drop_in_place`] method), because
+    /// for properly dropping the data we also need to clear `data` control bytes. If we
+    /// drop data, but do not clear `data control byte` it leads to double drop when
+    /// [`RawTable`] goes out of scope.
+    ///
+    /// If you modify an already initialized `value`, so [`Hash`] and [`Eq`] on the new
+    /// `T` value and its borrowed form *must* match those for the old `T` value, as the map
+    /// will not re-evaluate where the new value should go, meaning the value may become
+    /// "lost" if their location does not reflect their state.
+    ///
+    /// [`RawTable`]: crate::raw::RawTable
+    /// [`<*mut T>::drop_in_place`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.drop_in_place
+    /// [`Hash`]: https://doc.rust-lang.org/core/hash/trait.Hash.html
+    /// [`Eq`]: https://doc.rust-lang.org/core/cmp/trait.Eq.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "raw")]
+    /// # fn test() {
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::raw::{Bucket, RawTable};
+    ///
+    /// type NewHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
+    ///
+    /// fn make_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
+    ///
+    /// let hash_builder = NewHashBuilder::default();
+    /// let mut table = RawTable::new();
+    ///
+    /// let value = ("a", 100);
+    /// let hash = make_hash(&hash_builder, &value.0);
+    ///
+    /// table.insert(hash, value.clone(), |val| make_hash(&hash_builder, &val.0));
+    ///
+    /// let bucket: Bucket<(&str, i32)> = table.find(hash, |(k1, _)| k1 == &value.0).unwrap();
+    ///
+    /// assert_eq!(unsafe { &*bucket.as_ptr() }, &("a", 100));
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "raw")]
+    /// #     test()
+    /// # }
+    /// ```
     #[inline]
     pub fn as_ptr(&self) -> *mut T {
         if Self::IS_ZERO_SIZED_TYPE {
@@ -328,6 +512,44 @@ impl<T> Bucket<T> {
             unsafe { self.ptr.as_ptr().sub(1) }
         }
     }
+
+    /// Create a new [`Bucket`] that is offset from the `self` by the given
+    /// `offset`. The pointer calculation is performed by calculating the
+    /// offset from `self` pointer (convenience for `self.ptr.as_ptr().sub(offset)`).
+    /// This function is used for iterators.
+    ///
+    /// `offset` is in units of `T`; e.g., a `offset` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// If `mem::size_of::<T>() != 0`, then the safety rules are directly derived
+    /// from the safety rules for [`<*mut T>::sub`] method of `*mut T` and safety
+    /// rules of [`NonNull::new_unchecked`] function.
+    ///
+    /// Thus, in order to uphold the safety contracts for [`<*mut T>::sub`] method
+    /// and [`NonNull::new_unchecked`] function, as well as for the correct
+    /// logic of the work of this crate, the following rules are necessary and
+    /// sufficient:
+    ///
+    /// * `self` contained pointer must not be `dangling`;
+    ///
+    /// * `self.to_base_index() + ofset` must not be greater than `RawTableInner.bucket_mask`,
+    ///   i.e. `(self.to_base_index() + ofset) <= RawTableInner.bucket_mask` or, in other
+    ///   words, `self.to_base_index() + ofset + 1` must be no greater than the number returned
+    ///   by the function [`RawTable::buckets`] or [`RawTableInner::buckets`].
+    ///
+    /// If `mem::size_of::<T>() == 0`, then the only requirement is that the
+    /// `self.to_base_index() + ofset` must not be greater than `RawTableInner.bucket_mask`,
+    /// i.e. `(self.to_base_index() + ofset) <= RawTableInner.bucket_mask` or, in other words,
+    /// `self.to_base_index() + ofset + 1` must be no greater than the number returned by the
+    /// function [`RawTable::buckets`] or [`RawTableInner::buckets`].
+    ///
+    /// [`Bucket`]: crate::raw::Bucket
+    /// [`<*mut T>::sub`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.sub-1
+    /// [`NonNull::new_unchecked`]: https://doc.rust-lang.org/stable/std/ptr/struct.NonNull.html#method.new_unchecked
+    /// [`RawTable::buckets`]: crate::raw::RawTable::buckets
+    /// [`RawTableInner::buckets`]: crate::raw::RawTableInner::buckets
     #[inline]
     unsafe fn next_n(&self, offset: usize) -> Self {
         let ptr = if Self::IS_ZERO_SIZED_TYPE {
@@ -339,26 +561,212 @@ impl<T> Bucket<T> {
             ptr: NonNull::new_unchecked(ptr),
         }
     }
+
+    /// Executes the destructor (if any) of the pointed-to `data`.
+    ///
+    /// # Safety
+    ///
+    /// See [`ptr::drop_in_place`] for safety concerns.
+    ///
+    /// You should use [`RawTable::erase`] instead of this function,
+    /// or be careful with calling this function directly, because for
+    /// properly dropping the data we need also clear `data` control bytes.
+    /// If we drop data, but do not erase `data control byte` it leads to
+    /// double drop when [`RawTable`] goes out of scope.
+    ///
+    /// [`ptr::drop_in_place`]: https://doc.rust-lang.org/core/ptr/fn.drop_in_place.html
+    /// [`RawTable`]: crate::raw::RawTable
+    /// [`RawTable::erase`]: crate::raw::RawTable::erase
     #[cfg_attr(feature = "inline-more", inline)]
     pub(crate) unsafe fn drop(&self) {
         self.as_ptr().drop_in_place();
     }
+
+    /// Reads the `value` from `self` without moving it. This leaves the
+    /// memory in `self` unchanged.
+    ///
+    /// # Safety
+    ///
+    /// See [`ptr::read`] for safety concerns.
+    ///
+    /// You should use [`RawTable::remove`] instead of this function,
+    /// or be careful with calling this function directly, because compiler
+    /// calls its destructor when readed `value` goes out of scope. It
+    /// can cause double dropping when [`RawTable`] goes out of scope,
+    /// because of not erased `data control byte`.
+    ///
+    /// [`ptr::read`]: https://doc.rust-lang.org/core/ptr/fn.read.html
+    /// [`RawTable`]: crate::raw::RawTable
+    /// [`RawTable::remove`]: crate::raw::RawTable::remove
     #[inline]
     pub(crate) unsafe fn read(&self) -> T {
         self.as_ptr().read()
     }
+
+    /// Overwrites a memory location with the given `value` without reading
+    /// or dropping the old value (like [`ptr::write`] function).
+    ///
+    /// # Safety
+    ///
+    /// See [`ptr::write`] for safety concerns.
+    ///
+    /// # Note
+    ///
+    /// [`Hash`] and [`Eq`] on the new `T` value and its borrowed form *must* match
+    /// those for the old `T` value, as the map will not re-evaluate where the new
+    /// value should go, meaning the value may become "lost" if their location
+    /// does not reflect their state.
+    ///
+    /// [`ptr::write`]: https://doc.rust-lang.org/core/ptr/fn.write.html
+    /// [`Hash`]: https://doc.rust-lang.org/core/hash/trait.Hash.html
+    /// [`Eq`]: https://doc.rust-lang.org/core/cmp/trait.Eq.html
     #[inline]
     pub(crate) unsafe fn write(&self, val: T) {
         self.as_ptr().write(val);
     }
+
+    /// Returns a shared immutable reference to the `value`.
+    ///
+    /// # Safety
+    ///
+    /// See [`NonNull::as_ref`] for safety concerns.
+    ///
+    /// [`NonNull::as_ref`]: https://doc.rust-lang.org/core/ptr/struct.NonNull.html#method.as_ref
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "raw")]
+    /// # fn test() {
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::raw::{Bucket, RawTable};
+    ///
+    /// type NewHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
+    ///
+    /// fn make_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
+    ///
+    /// let hash_builder = NewHashBuilder::default();
+    /// let mut table = RawTable::new();
+    ///
+    /// let value: (&str, String) = ("A pony", "is a small horse".to_owned());
+    /// let hash = make_hash(&hash_builder, &value.0);
+    ///
+    /// table.insert(hash, value.clone(), |val| make_hash(&hash_builder, &val.0));
+    ///
+    /// let bucket: Bucket<(&str, String)> = table.find(hash, |(k, _)| k == &value.0).unwrap();
+    ///
+    /// assert_eq!(
+    ///     unsafe { bucket.as_ref() },
+    ///     &("A pony", "is a small horse".to_owned())
+    /// );
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "raw")]
+    /// #     test()
+    /// # }
+    /// ```
     #[inline]
     pub unsafe fn as_ref<'a>(&self) -> &'a T {
         &*self.as_ptr()
     }
+
+    /// Returns a unique mutable reference to the `value`.
+    ///
+    /// # Safety
+    ///
+    /// See [`NonNull::as_mut`] for safety concerns.
+    ///
+    /// # Note
+    ///
+    /// [`Hash`] and [`Eq`] on the new `T` value and its borrowed form *must* match
+    /// those for the old `T` value, as the map will not re-evaluate where the new
+    /// value should go, meaning the value may become "lost" if their location
+    /// does not reflect their state.
+    ///
+    /// [`NonNull::as_mut`]: https://doc.rust-lang.org/core/ptr/struct.NonNull.html#method.as_mut
+    /// [`Hash`]: https://doc.rust-lang.org/core/hash/trait.Hash.html
+    /// [`Eq`]: https://doc.rust-lang.org/core/cmp/trait.Eq.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "raw")]
+    /// # fn test() {
+    /// use core::hash::{BuildHasher, Hash};
+    /// use hashbrown::raw::{Bucket, RawTable};
+    ///
+    /// type NewHashBuilder = core::hash::BuildHasherDefault<ahash::AHasher>;
+    ///
+    /// fn make_hash<K: Hash + ?Sized, S: BuildHasher>(hash_builder: &S, key: &K) -> u64 {
+    ///     use core::hash::Hasher;
+    ///     let mut state = hash_builder.build_hasher();
+    ///     key.hash(&mut state);
+    ///     state.finish()
+    /// }
+    ///
+    /// let hash_builder = NewHashBuilder::default();
+    /// let mut table = RawTable::new();
+    ///
+    /// let value: (&str, String) = ("A pony", "is a small horse".to_owned());
+    /// let hash = make_hash(&hash_builder, &value.0);
+    ///
+    /// table.insert(hash, value.clone(), |val| make_hash(&hash_builder, &val.0));
+    ///
+    /// let bucket: Bucket<(&str, String)> = table.find(hash, |(k, _)| k == &value.0).unwrap();
+    ///
+    /// unsafe {
+    ///     bucket
+    ///         .as_mut()
+    ///         .1
+    ///         .push_str(" less than 147 cm at the withers")
+    /// };
+    /// assert_eq!(
+    ///     unsafe { bucket.as_ref() },
+    ///     &(
+    ///         "A pony",
+    ///         "is a small horse less than 147 cm at the withers".to_owned()
+    ///     )
+    /// );
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "raw")]
+    /// #     test()
+    /// # }
+    /// ```
     #[inline]
     pub unsafe fn as_mut<'a>(&self) -> &'a mut T {
         &mut *self.as_ptr()
     }
+
+    /// Copies `size_of<T>` bytes from `other` to `self`. The source
+    /// and destination may *not* overlap.
+    ///
+    /// # Safety
+    ///
+    /// See [`ptr::copy_nonoverlapping`] for safety concerns.
+    ///
+    /// Like [`read`], `copy_nonoverlapping` creates a bitwise copy of `T`, regardless of
+    /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using *both* the values
+    /// in the region beginning at `*self` and the region beginning at `*other` can
+    /// [violate memory safety].
+    ///
+    /// # Note
+    ///
+    /// [`Hash`] and [`Eq`] on the new `T` value and its borrowed form *must* match
+    /// those for the old `T` value, as the map will not re-evaluate where the new
+    /// value should go, meaning the value may become "lost" if their location
+    /// does not reflect their state.
+    ///
+    /// [`ptr::copy_nonoverlapping`]: https://doc.rust-lang.org/core/ptr/fn.copy_nonoverlapping.html
+    /// [`read`]: https://doc.rust-lang.org/core/ptr/fn.read.html
+    /// [violate memory safety]: https://doc.rust-lang.org/std/ptr/fn.read.html#ownership-of-the-returned-value
+    /// [`Hash`]: https://doc.rust-lang.org/core/hash/trait.Hash.html
+    /// [`Eq`]: https://doc.rust-lang.org/core/cmp/trait.Eq.html
     #[cfg(feature = "raw")]
     #[inline]
     pub unsafe fn copy_from_nonoverlapping(&self, other: &Self) {

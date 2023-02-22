@@ -7657,6 +7657,7 @@ mod test_map {
     }
 
     #[test]
+    #[allow(clippy::needless_borrow)]
     fn test_extend_ref_kv_tuple() {
         use std::ops::AddAssign;
         let mut a = HashMap::new();
