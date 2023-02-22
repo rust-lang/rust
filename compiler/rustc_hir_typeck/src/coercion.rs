@@ -143,11 +143,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
         self.commit_if_ok(|_| {
+            let at = self.at(&self.cause, self.fcx.param_env).define_opaque_types(true);
             if self.use_lub {
-                self.at(&self.cause, self.fcx.param_env).lub(b, a)
+                at.lub(b, a)
             } else {
-                self.at(&self.cause, self.fcx.param_env)
-                    .sup(b, a)
+                at.sup(b, a)
                     .map(|InferOk { value: (), obligations }| InferOk { value: a, obligations })
             }
         })
@@ -174,7 +174,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // Best-effort try to unify these types -- we're already on the error path,
             // so this will have the side-effect of making sure we have no ambiguities
             // due to `[type error]` and `_` not coercing together.
-            let _ = self.commit_if_ok(|_| self.at(&self.cause, self.param_env).eq(a, b));
+            let _ = self.commit_if_ok(|_| {
+                self.at(&self.cause, self.param_env).define_opaque_types(true).eq(a, b)
+            });
             return success(vec![], self.fcx.tcx.ty_error(), vec![]);
         }
 
@@ -1484,6 +1486,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             // Another example is `break` with no argument expression.
             assert!(expression_ty.is_unit(), "if let hack without unit type");
             fcx.at(cause, fcx.param_env)
+                // needed for tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
+                .define_opaque_types(true)
                 .eq_exp(label_expression_as_expected, expression_ty, self.merged_ty())
                 .map(|infer_ok| {
                     fcx.register_infer_ok_obligations(infer_ok);

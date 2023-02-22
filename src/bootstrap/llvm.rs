@@ -516,7 +516,7 @@ impl Step for Llvm {
 
             let lib_llvm = out_dir.join("build").join("lib").join(lib_name);
             if !lib_llvm.exists() {
-                t!(builder.build.config.symlink_file("libLLVM.dylib", &lib_llvm));
+                t!(builder.symlink_file("libLLVM.dylib", &lib_llvm));
             }
         }
 

@@ -95,13 +95,16 @@ impl Default for Hook {
 
 static HOOK: RwLock<Hook> = RwLock::new(Hook::Default);
 
-/// Registers a custom panic hook, replacing any that was previously registered.
+/// Registers a custom panic hook, replacing the previously registered hook.
 ///
 /// The panic hook is invoked when a thread panics, but before the panic runtime
 /// is invoked. As such, the hook will run with both the aborting and unwinding
-/// runtimes. The default hook prints a message to standard error and generates
-/// a backtrace if requested, but this behavior can be customized with the
-/// `set_hook` and [`take_hook`] functions.
+/// runtimes.
+///
+/// The default hook, which is registered at startup, prints a message to standard error and
+/// generates a backtrace if requested. This behavior can be customized using the `set_hook` function.
+/// The current hook can be retrieved while reinstating the default hook with the [`take_hook`]
+/// function.
 ///
 /// [`take_hook`]: ./fn.take_hook.html
 ///
@@ -143,13 +146,14 @@ pub fn set_hook(hook: Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>) {
     drop(old);
 }
 
-/// Unregisters the current panic hook, returning it.
+/// Unregisters the current panic hook and returns it, registering the default hook
+/// in its place.
 ///
 /// *See also the function [`set_hook`].*
 ///
 /// [`set_hook`]: ./fn.set_hook.html
 ///
-/// If no custom hook is registered, the default hook will be returned.
+/// If the default hook is registered it will be returned, but remain registered.
 ///
 /// # Panics
 ///

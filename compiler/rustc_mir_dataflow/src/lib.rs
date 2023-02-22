@@ -16,7 +16,9 @@ extern crate tracing;
 extern crate rustc_middle;
 
 use rustc_ast::MetaItem;
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_hir::def_id::DefId;
+use rustc_macros::fluent_messages;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 
@@ -43,6 +45,8 @@ pub mod rustc_peek;
 pub mod storage;
 pub mod un_derefer;
 pub mod value_analysis;
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 pub(crate) mod indexes {
     pub(crate) use super::move_paths::MovePathIndex;

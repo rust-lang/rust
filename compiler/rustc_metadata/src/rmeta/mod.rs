@@ -354,6 +354,7 @@ define_tables! {
     explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Predicate<'static>, Span)>>,
     inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
+    associated_items_for_impl_trait_in_trait: Table<DefIndex, LazyArray<DefId>>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,

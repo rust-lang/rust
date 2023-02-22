@@ -264,7 +264,7 @@ pub struct InferCtxt<'tcx> {
     /// short lived InferCtxt within queries. The opaque type obligations are forwarded
     /// to the outside until the end up in an `InferCtxt` for typeck or borrowck.
     ///
-    /// It is default value is `DefiningAnchor::Error`, this way it is easier to catch errors that
+    /// Its default value is `DefiningAnchor::Error`, this way it is easier to catch errors that
     /// might come up during inference or typeck.
     pub defining_use_anchor: DefiningAnchor,
 
@@ -1111,11 +1111,13 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     /// Just a convenient wrapper of `next_region_var` for using during NLL.
+    #[instrument(skip(self), level = "debug")]
     pub fn next_nll_region_var(&self, origin: NllRegionVariableOrigin) -> ty::Region<'tcx> {
         self.next_region_var(RegionVariableOrigin::Nll(origin))
     }
 
     /// Just a convenient wrapper of `next_region_var` for using during NLL.
+    #[instrument(skip(self), level = "debug")]
     pub fn next_nll_region_var_in_universe(
         &self,
         origin: NllRegionVariableOrigin,

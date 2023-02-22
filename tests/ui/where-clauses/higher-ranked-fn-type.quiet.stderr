@@ -8,7 +8,7 @@ note: required by a bound in `called`
   --> $DIR/higher-ranked-fn-type.rs:12:25
    |
 LL | fn called()
-   |    ------ required by a bound in this
+   |    ------ required by a bound in this function
 LL | where
 LL |     for<'b> fn(&'b ()): Foo,
    |                         ^^^ required by this bound in `called`

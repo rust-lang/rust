@@ -36,7 +36,12 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate smallvec;
 
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_macros::fluent_messages;
+
 pub mod errors;
 pub mod infer;
 pub mod solve;
 pub mod traits;
+
+fluent_messages! { "../locales/en-US.ftl" }

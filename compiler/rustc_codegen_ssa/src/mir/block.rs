@@ -563,11 +563,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // with #[rustc_inherit_overflow_checks] and inlined from
         // another crate (mostly core::num generic/#[inline] fns),
         // while the current crate doesn't use overflow checks.
-        // NOTE: Unlike binops, negation doesn't have its own
-        // checked operation, just a comparison with the minimum
-        // value, so we have to check for the assert message.
-        if !bx.check_overflow() {
-            if let AssertKind::OverflowNeg(_) = *msg {
+        if !bx.cx().check_overflow() {
+            let overflow_not_to_check = match msg {
+                AssertKind::OverflowNeg(..) => true,
+                AssertKind::Overflow(op, ..) => op.is_checkable(),
+                _ => false,
+            };
+            if overflow_not_to_check {
                 const_cond = Some(expected);
             }
         }

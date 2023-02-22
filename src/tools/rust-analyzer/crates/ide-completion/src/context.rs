@@ -571,28 +571,25 @@ impl<'a> CompletionContext<'a> {
 
         // try to skip completions on path with invalid colons
         // this approach works in normal path and inside token tree
-        match original_token.kind() {
-            T![:] => {
-                // return if no prev token before colon
-                let prev_token = original_token.prev_token()?;
+        if original_token.kind() == T![:] {
+            // return if no prev token before colon
+            let prev_token = original_token.prev_token()?;
 
-                // only has a single colon
-                if prev_token.kind() != T![:] {
-                    return None;
-                }
-
-                // has 3 colon or 2 coloncolon in a row
-                // special casing this as per discussion in https://github.com/rust-lang/rust-analyzer/pull/13611#discussion_r1031845205
-                // and https://github.com/rust-lang/rust-analyzer/pull/13611#discussion_r1032812751
-                if prev_token
-                    .prev_token()
-                    .map(|t| t.kind() == T![:] || t.kind() == T![::])
-                    .unwrap_or(false)
-                {
-                    return None;
-                }
+            // only has a single colon
+            if prev_token.kind() != T![:] {
+                return None;
             }
-            _ => {}
+
+            // has 3 colon or 2 coloncolon in a row
+            // special casing this as per discussion in https://github.com/rust-lang/rust-analyzer/pull/13611#discussion_r1031845205
+            // and https://github.com/rust-lang/rust-analyzer/pull/13611#discussion_r1032812751
+            if prev_token
+                .prev_token()
+                .map(|t| t.kind() == T![:] || t.kind() == T![::])
+                .unwrap_or(false)
+            {
+                return None;
+            }
         }
 
         let AnalysisResult {

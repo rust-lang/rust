@@ -27,7 +27,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, BoundVar, ToPredicate, Ty, TyCtxt};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use std::fmt::Debug;
 use std::iter;
 
@@ -683,7 +683,11 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         self.infcx.create_next_universe()
     }
 
-    fn next_existential_region_var(&mut self, from_forall: bool) -> ty::Region<'tcx> {
+    fn next_existential_region_var(
+        &mut self,
+        from_forall: bool,
+        _name: Option<Symbol>,
+    ) -> ty::Region<'tcx> {
         let origin = NllRegionVariableOrigin::Existential { from_forall };
         self.infcx.next_nll_region_var(origin)
     }

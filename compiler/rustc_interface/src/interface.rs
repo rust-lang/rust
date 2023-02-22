@@ -222,6 +222,7 @@ pub struct Config {
     pub output_dir: Option<PathBuf>,
     pub output_file: Option<PathBuf>,
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
+    pub locale_resources: &'static [&'static str],
 
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
@@ -267,6 +268,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 config.opts,
                 config.crate_cfg,
                 config.crate_check_cfg,
+                config.locale_resources,
                 config.file_loader,
                 CompilerIO {
                     input: config.input,

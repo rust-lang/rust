@@ -7,7 +7,7 @@ use std::io::BufReader;
 use std::path::Path;
 use std::str::FromStr;
 
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use tracing::*;
 
@@ -117,10 +117,8 @@ fn parse_expected(
     //     //~^^^^^
     //     //[cfg1]~
     //     //[cfg1,cfg2]~^^
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(r"//(?:\[(?P<cfgs>[\w,]+)])?~(?P<adjust>\||\^*)").unwrap();
-    }
+    static RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"//(?:\[(?P<cfgs>[\w,]+)])?~(?P<adjust>\||\^*)").unwrap());
 
     let captures = RE.captures(line)?;
 

@@ -210,19 +210,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let out_val = numeric_intrinsic(intrinsic_name, bits, kind);
                 self.write_scalar(out_val, dest)?;
             }
-            sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
-                let lhs = self.read_immediate(&args[0])?;
-                let rhs = self.read_immediate(&args[1])?;
-                let bin_op = match intrinsic_name {
-                    sym::add_with_overflow => BinOp::Add,
-                    sym::sub_with_overflow => BinOp::Sub,
-                    sym::mul_with_overflow => BinOp::Mul,
-                    _ => bug!(),
-                };
-                self.binop_with_overflow(
-                    bin_op, /*force_overflow_checks*/ true, &lhs, &rhs, dest,
-                )?;
-            }
             sym::saturating_add | sym::saturating_sub => {
                 let l = self.read_immediate(&args[0])?;
                 let r = self.read_immediate(&args[1])?;

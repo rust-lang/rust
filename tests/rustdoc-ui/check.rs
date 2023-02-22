@@ -7,6 +7,7 @@
 //~^^ WARN
 
 #![warn(missing_docs)]
+#![warn(rustdoc::missing_doc_code_examples)]
 #![warn(rustdoc::all)]
 
 pub fn foo() {}

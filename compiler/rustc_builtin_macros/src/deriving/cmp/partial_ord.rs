@@ -98,7 +98,7 @@ fn cs_partial_cmp(
                 let [other_expr] = &field.other_selflike_exprs[..] else {
                         cx.span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
                     };
-                let args = vec![field.self_expr.clone(), other_expr.clone()];
+                let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
                 cx.expr_call_global(field.span, partial_cmp_path.clone(), args)
             }
             CsFold::Combine(span, mut expr1, expr2) => {
@@ -143,7 +143,7 @@ fn cs_partial_cmp(
                         cx.arm(span, cx.pat_some(span, cx.pat_path(span, equal_path.clone())), expr1);
                     let neq_arm =
                         cx.arm(span, cx.pat_ident(span, test_id), cx.expr_ident(span, test_id));
-                    cx.expr_match(span, expr2, vec![eq_arm, neq_arm])
+                    cx.expr_match(span, expr2, thin_vec![eq_arm, neq_arm])
                 }
             }
             CsFold::Fieldless => cx.expr_some(span, cx.expr_path(equal_path.clone())),

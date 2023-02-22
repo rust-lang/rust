@@ -52,23 +52,28 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{DiagnosticArgFromDisplay, Handler, StashKey};
+use rustc_errors::{
+    DiagnosticArgFromDisplay, DiagnosticMessage, Handler, StashKey, SubdiagnosticMessage,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::span_bug;
-use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
+use rustc_macros::fluent_messages;
+use rustc_middle::{
+    span_bug,
+    ty::{ResolverAstLowering, TyCtxt},
+};
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
+use thin_vec::ThinVec;
 
 macro_rules! arena_vec {
     ($this:expr; $($x:expr),*) => (
@@ -86,6 +91,8 @@ mod item;
 mod lifetime_collector;
 mod pat;
 mod path;
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
@@ -1207,7 +1214,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
                 let bound = this.lower_poly_trait_ref(
                     &PolyTraitRef {
-                        bound_generic_params: vec![],
+                        bound_generic_params: ThinVec::new(),
                         trait_ref: TraitRef { path: path.clone(), ref_id: t.id },
                         span: t.span
                     },

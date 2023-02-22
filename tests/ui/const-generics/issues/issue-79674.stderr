@@ -10,7 +10,7 @@ note: required by a bound in `requires_distinct`
   --> $DIR/issue-79674.rs:23:37
    |
 LL | fn requires_distinct<A, B>(_a: A, _b: B) where
-   |    ----------------- required by a bound in this
+   |    ----------------- required by a bound in this function
 LL |     A: MiniTypeId, B: MiniTypeId,
 LL |     Lift<{is_same_type::<A, B>()}>: IsFalse {}
    |                                     ^^^^^^^ required by this bound in `requires_distinct`

@@ -195,7 +195,8 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
 
     fn register_builtin_macro(&mut self, name: Symbol, ext: SyntaxExtensionKind) {
         if self.builtin_macros.insert(name, BuiltinMacroState::NotYetSeen(ext)).is_some() {
-            self.session
+            self.tcx
+                .sess
                 .diagnostic()
                 .bug(&format!("built-in macro `{}` was already registered", name));
         }
@@ -216,7 +217,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             ExpnData::allow_unstable(
                 ExpnKind::AstPass(pass),
                 call_site,
-                self.session.edition(),
+                self.tcx.sess.edition(),
                 features.into(),
                 None,
                 parent_module,
@@ -430,7 +431,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
                 PathResult::NonModule(..) |
                 // HACK(Urgau): This shouldn't be necessary
                 PathResult::Failed { is_error_from_last_segment: false, .. } => {
-                    self.session
+                    self.tcx.sess
                         .struct_span_err(span, "not sure whether the path is accessible or not")
                         .note("the type may have associated items, but we are currently not checking them")
                         .emit();
@@ -455,7 +456,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
     }
 
     fn get_proc_macro_quoted_span(&self, krate: CrateNum, id: usize) -> Span {
-        self.cstore().get_proc_macro_quoted_span_untracked(krate, id, self.session)
+        self.cstore().get_proc_macro_quoted_span_untracked(krate, id, self.tcx.sess)
     }
 
     fn declare_proc_macro(&mut self, id: NodeId) {
@@ -493,10 +494,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Report errors for the resolved macro.
         for segment in &path.segments {
             if let Some(args) = &segment.args {
-                self.session.span_err(args.span(), "generic arguments in macro path");
+                self.tcx.sess.span_err(args.span(), "generic arguments in macro path");
             }
             if kind == MacroKind::Attr && segment.ident.as_str().starts_with("rustc") {
-                self.session.span_err(
+                self.tcx.sess.span_err(
                     segment.ident.span,
                     "attributes starting with `rustc` are reserved for use by the `rustc` compiler",
                 );
@@ -508,7 +509,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if let Some(def_id) = def_id.as_local() {
                     self.unused_macros.remove(&def_id);
                     if self.proc_macro_stubs.contains(&def_id) {
-                        self.session.span_err(
+                        self.tcx.sess.span_err(
                             path.span,
                             "can't use a procedural macro from the same crate that defines it",
                         );
@@ -540,7 +541,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if let Some((article, expected)) = unexpected_res {
             let path_str = pprust::path_to_string(path);
             let msg = format!("expected {}, found {} `{}`", expected, res.descr(), path_str);
-            self.session
+            self.tcx
+                .sess
                 .struct_span_err(path.span, &msg)
                 .span_label(path.span, format!("not {} {}", article, expected))
                 .emit();
@@ -550,7 +552,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // We are trying to avoid reporting this error if other related errors were reported.
         if res != Res::Err
             && inner_attr
-            && !self.session.features_untracked().custom_inner_attributes
+            && !self.tcx.sess.features_untracked().custom_inner_attributes
         {
             let msg = match res {
                 Res::Def(..) => "inner macro attributes are unstable",
@@ -558,10 +560,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 _ => unreachable!(),
             };
             if soft_custom_inner_attributes_gate {
-                self.session.parse_sess.buffer_lint(SOFT_UNSTABLE, path.span, node_id, msg);
+                self.tcx.sess.parse_sess.buffer_lint(SOFT_UNSTABLE, path.span, node_id, msg);
             } else {
-                feature_err(&self.session.parse_sess, sym::custom_inner_attributes, path.span, msg)
-                    .emit();
+                feature_err(
+                    &self.tcx.sess.parse_sess,
+                    sym::custom_inner_attributes,
+                    path.span,
+                    msg,
+                )
+                .emit();
             }
         }
 
@@ -655,7 +662,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // Make sure compilation does not succeed if preferred macro resolution
                     // has changed after the macro had been expanded. In theory all such
                     // situations should be reported as errors, so this is a bug.
-                    this.session.delay_span_bug(span, "inconsistent resolution for a macro");
+                    this.tcx.sess.delay_span_bug(span, "inconsistent resolution for a macro");
                 }
             } else {
                 // It's possible that the macro was unresolved (indeterminate) and silently
@@ -672,7 +679,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         Segment::names_to_string(path)
                     );
                     let msg_note = "import resolution is stuck, try simplifying macro imports";
-                    this.session.struct_span_err(span, &msg).note(msg_note).emit();
+                    this.tcx.sess.struct_span_err(span, &msg).note(msg_note).emit();
                 }
             }
         };
@@ -699,7 +706,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // try to suggest if it's not a macro, maybe a function
                         if let PathResult::NonModule(partial_res) = self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope)
                             && partial_res.unresolved_segments() == 0 {
-                            let sm = self.session.source_map();
+                            let sm = self.tcx.sess.source_map();
                             let exclamation_span = sm.next_point(span);
                             suggestion = Some((
                                 vec![(exclamation_span, "".to_string())],
@@ -762,7 +769,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 Err(..) => {
                     let expected = kind.descr_expected();
                     let msg = format!("cannot find {} `{}` in this scope", expected, ident);
-                    let mut err = self.session.struct_span_err(ident.span, &msg);
+                    let mut err = self.tcx.sess.struct_span_err(ident.span, &msg);
                     self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident);
                     err.emit();
                 }
@@ -804,7 +811,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let soft_handler =
                         |lint, span, msg: &_| lint_buffer.buffer_lint(lint, node_id, span, msg);
                     stability::report_unstable(
-                        self.session,
+                        self.tcx.sess,
                         feature,
                         reason.to_opt_reason(),
                         issue,
@@ -840,7 +847,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if kind != NonMacroAttrKind::Tool && binding.map_or(true, |b| b.is_import()) {
                 let msg =
                     format!("cannot use {} {} through an import", kind.article(), kind.descr());
-                let mut err = self.session.struct_span_err(span, &msg);
+                let mut err = self.tcx.sess.struct_span_err(span, &msg);
                 if let Some(binding) = binding {
                     err.span_note(binding.span, &format!("the {} imported here", kind.descr()));
                 }
@@ -855,7 +862,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if ident.name == sym::cfg || ident.name == sym::cfg_attr {
             let macro_kind = self.get_macro(res).map(|macro_data| macro_data.ext.macro_kind());
             if macro_kind.is_some() && sub_namespace_match(macro_kind, Some(MacroKind::Attr)) {
-                self.session.span_err(
+                self.tcx.sess.span_err(
                     ident.span,
                     &format!("name `{}` is reserved in attribute namespace", ident),
                 );
@@ -871,12 +878,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         item: &ast::Item,
         edition: Edition,
     ) -> (SyntaxExtension, Vec<(usize, Span)>) {
-        let (mut result, mut rule_spans) = compile_declarative_macro(
-            &self.session,
-            self.session.features_untracked(),
-            item,
-            edition,
-        );
+        let (mut result, mut rule_spans) = compile_declarative_macro(self.tcx.sess, item, edition);
 
         if let Some(builtin_name) = result.builtin_name {
             // The macro was marked with `#[rustc_builtin_macro]`.
@@ -895,7 +897,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                     BuiltinMacroState::AlreadySeen(span) => {
                         struct_span_err!(
-                            self.session,
+                            self.tcx.sess,
                             item.span,
                             E0773,
                             "attempted to define built-in macro more than once"
@@ -906,7 +908,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             } else {
                 let msg = format!("cannot find a built-in macro with name `{}`", item.ident);
-                self.session.span_err(item.span, &msg);
+                self.tcx.sess.span_err(item.span, &msg);
             }
         }
 

@@ -280,6 +280,8 @@ pub enum DefPathData {
     AnonConst,
     /// An `impl Trait` type node.
     ImplTrait,
+    /// `impl Trait` generated associated type node.
+    ImplTraitAssocTy,
 }
 
 impl Definitions {
@@ -403,7 +405,7 @@ impl DefPathData {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
 
             Impl | ForeignMod | CrateRoot | Use | GlobalAsm | ClosureExpr | Ctor | AnonConst
-            | ImplTrait => None,
+            | ImplTrait | ImplTraitAssocTy => None,
         }
     }
 
@@ -422,7 +424,7 @@ impl DefPathData {
             ClosureExpr => DefPathDataName::Anon { namespace: sym::closure },
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
-            ImplTrait => DefPathDataName::Anon { namespace: sym::opaque },
+            ImplTrait | ImplTraitAssocTy => DefPathDataName::Anon { namespace: sym::opaque },
         }
     }
 }

@@ -35,6 +35,8 @@ macro_rules! arena_types {
                 rustc_data_structures::sync::Lrc<rustc_ast::Crate>,
             )>,
             [] output_filenames: std::sync::Arc<rustc_session::config::OutputFilenames>,
+            [] metadata_loader: rustc_data_structures::steal::Steal<Box<rustc_session::cstore::MetadataLoaderDyn>>,
+            [] crate_for_resolver: rustc_data_structures::steal::Steal<rustc_ast::ast::Crate>,
             [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,
             [decode] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
             [decode] code_region: rustc_middle::mir::coverage::CodeRegion,

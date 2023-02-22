@@ -115,7 +115,7 @@ pub use ide_db::{
         SourceRoot, SourceRootId,
     },
     label::Label,
-    line_index::{LineCol, LineColUtf16, LineIndex},
+    line_index::{LineCol, LineIndex},
     search::{ReferenceCategory, SearchScope},
     source_change::{FileSystemEdit, SourceChange},
     symbol_index::Query,

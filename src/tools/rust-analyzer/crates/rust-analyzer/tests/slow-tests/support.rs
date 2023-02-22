@@ -107,6 +107,7 @@ impl<'a> Project<'a> {
                     did_change_watched_files: Some(
                         lsp_types::DidChangeWatchedFilesClientCapabilities {
                             dynamic_registration: Some(true),
+                            relative_pattern_support: None,
                         },
                     ),
                     ..Default::default()

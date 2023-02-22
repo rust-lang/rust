@@ -1,6 +1,5 @@
-use crate::{
-    fluent, DiagnosticArgValue, DiagnosticBuilder, Handler, IntoDiagnostic, IntoDiagnosticArg,
-};
+use crate::fluent_generated as fluent;
+use crate::{DiagnosticArgValue, DiagnosticBuilder, Handler, IntoDiagnostic, IntoDiagnosticArg};
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_hir as hir;

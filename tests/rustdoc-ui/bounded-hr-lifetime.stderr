@@ -4,7 +4,5 @@ error: lifetime bounds cannot be used in this context
 LL |     for<'a: 'b + 'c> &'a (): std::fmt::Debug,
    |             ^^   ^^
 
-error: Compilation failed, aborting rustdoc
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

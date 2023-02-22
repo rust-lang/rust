@@ -9,12 +9,11 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
+use rustc_hir_analysis::astconv::InferCtxtExt as _;
 use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::AssocItem;
@@ -25,8 +24,8 @@ use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_session::lint;
 use rustc_span::def_id::DefId;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::lev_distance::{
-    find_best_match_for_name_with_substrings, lev_distance_with_substrings,
+use rustc_span::edit_distance::{
+    edit_distance_with_substrings, find_best_match_for_name_with_substrings,
 };
 use rustc_span::symbol::sym;
 use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
@@ -70,7 +69,7 @@ struct ProbeContext<'a, 'tcx> {
     impl_dups: FxHashSet<DefId>,
 
     /// When probing for names, include names that are close to the
-    /// requested name (by Levenshtein distance)
+    /// requested name (by edit distance)
     allow_similar_names: bool,
 
     /// Some(candidate) if there is a private candidate
@@ -1096,17 +1095,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn pick_core(&self) -> Option<PickResult<'tcx>> {
-        let pick = self.pick_all_method(Some(&mut vec![]));
-
-        // In this case unstable picking is done by `pick_method`.
-        if !self.tcx.sess.opts.unstable_opts.pick_stable_methods_before_any_unstable {
-            return pick;
-        }
-
-        if pick.is_none() {
-            return self.pick_all_method(None);
-        }
-        pick
+        // Pick stable methods only first, and consider unstable candidates if not found.
+        self.pick_all_method(Some(&mut vec![])).or_else(|| self.pick_all_method(None))
     }
 
     fn pick_all_method(
@@ -1245,54 +1235,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         })
     }
 
-    fn pick_method_with_unstable(&self, self_ty: Ty<'tcx>) -> Option<PickResult<'tcx>> {
-        debug!("pick_method_with_unstable(self_ty={})", self.ty_to_string(self_ty));
-
-        let mut possibly_unsatisfied_predicates = Vec::new();
-
-        for (kind, candidates) in
-            &[("inherent", &self.inherent_candidates), ("extension", &self.extension_candidates)]
-        {
-            debug!("searching {} candidates", kind);
-            let res = self.consider_candidates(
-                self_ty,
-                candidates,
-                &mut possibly_unsatisfied_predicates,
-                Some(&mut vec![]),
-            );
-            if res.is_some() {
-                return res;
-            }
-        }
-
-        for (kind, candidates) in
-            &[("inherent", &self.inherent_candidates), ("extension", &self.extension_candidates)]
-        {
-            debug!("searching unstable {kind} candidates");
-            let res = self.consider_candidates(
-                self_ty,
-                candidates,
-                &mut possibly_unsatisfied_predicates,
-                None,
-            );
-            if res.is_some() {
-                return res;
-            }
-        }
-
-        self.unsatisfied_predicates.borrow_mut().extend(possibly_unsatisfied_predicates);
-        None
-    }
-
     fn pick_method(
         &self,
         self_ty: Ty<'tcx>,
         mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
-        if !self.tcx.sess.opts.unstable_opts.pick_stable_methods_before_any_unstable {
-            return self.pick_method_with_unstable(self_ty);
-        }
-
         debug!("pick_method(self_ty={})", self.ty_to_string(self_ty));
 
         let mut possibly_unsatisfied_predicates = Vec::new();
@@ -1489,7 +1436,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             TraitCandidate(trait_ref) => self.probe(|_| {
                 let _ = self
                     .at(&ObligationCause::dummy(), self.param_env)
-                    .define_opaque_types(false)
                     .sup(candidate.xform_self_ty, self_ty);
                 match self.select_trait_candidate(trait_ref) {
                     Ok(Some(traits::ImplSource::UserDefined(ref impl_data))) => {
@@ -1519,7 +1465,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // First check that the self type can be related.
             let sub_obligations = match self
                 .at(&ObligationCause::dummy(), self.param_env)
-                .define_opaque_types(false)
                 .sup(probe.xform_self_ty, self_ty)
             {
                 Ok(InferOk { obligations, value: () }) => obligations,
@@ -1736,7 +1681,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 if let ProbeResult::Match = result
                     && self
                     .at(&ObligationCause::dummy(), self.param_env)
-                    .define_opaque_types(false)
                     .sup(return_ty, xform_ret_ty)
                     .is_err()
                 {
@@ -1794,7 +1738,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     /// Similarly to `probe_for_return_type`, this method attempts to find the best matching
     /// candidate method where the method name may have been misspelled. Similarly to other
-    /// Levenshtein based suggestions, we provide at most one such suggestion.
+    /// edit distance based suggestions, we provide at most one such suggestion.
     fn probe_for_similar_candidate(&mut self) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
         debug!("probing for method names similar to {:?}", self.method_name);
 
@@ -1941,33 +1885,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         (self.tcx.type_of(impl_def_id), self.fresh_item_substs(impl_def_id))
     }
 
-    fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx> {
-        InternalSubsts::for_item(self.tcx, def_id, |param, _| match param.kind {
-            GenericParamDefKind::Lifetime => self.tcx.lifetimes.re_erased.into(),
-            GenericParamDefKind::Type { .. } => self
-                .next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::SubstitutionPlaceholder,
-                    span: self.tcx.def_span(def_id),
-                })
-                .into(),
-            GenericParamDefKind::Const { .. } => {
-                let span = self.tcx.def_span(def_id);
-                let origin = ConstVariableOrigin {
-                    kind: ConstVariableOriginKind::SubstitutionPlaceholder,
-                    span,
-                };
-                self.next_const_var(
-                    self.tcx
-                        .type_of(param.def_id)
-                        .no_bound_vars()
-                        .expect("const parameter types cannot be generic"),
-                    origin,
-                )
-                .into()
-            }
-        })
-    }
-
     /// Replaces late-bound-regions bound by `value` with `'static` using
     /// `ty::erase_late_bound_regions`.
     ///
@@ -2052,8 +1969,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         if self.matches_by_doc_alias(x.def_id) {
                             return true;
                         }
-                        match lev_distance_with_substrings(name.as_str(), x.name.as_str(), max_dist)
-                        {
+                        match edit_distance_with_substrings(
+                            name.as_str(),
+                            x.name.as_str(),
+                            max_dist,
+                        ) {
                             Some(d) => d > 0,
                             None => false,
                         }

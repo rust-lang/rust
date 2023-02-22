@@ -815,8 +815,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn checked_binop_checks_overflow(ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
-        ecx.tcx.sess.overflow_checks()
+    fn ignore_checkable_overflow_assertions(ecx: &MiriInterpCx<'mir, 'tcx>) -> bool {
+        !ecx.tcx.sess.overflow_checks()
     }
 
     #[inline(always)]

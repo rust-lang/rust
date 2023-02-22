@@ -7,8 +7,6 @@ LL | #![doc(cfg_hide(test))]
    = note: see issue #43781 <https://github.com/rust-lang/rust/issues/43781> for more information
    = help: add `#![feature(doc_cfg_hide)]` to the crate attributes to enable
 
-error: Compilation failed, aborting rustdoc
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0658`.

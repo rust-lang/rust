@@ -273,7 +273,8 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // FIXME(oli-obk): Also do region checks here and then consider removing `check_opaque_meets_bounds` entirely.
         let param_env = self.tcx.param_env(def_id);
         // HACK This bubble is required for this tests to pass:
-        // type-alias-impl-trait/issue-67844-nested-opaque.rs
+        // nested-return-type2-tait2.rs
+        // nested-return-type2-tait3.rs
         let infcx =
             self.tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).build();
         let ocx = ObligationCtxt::new(&infcx);
