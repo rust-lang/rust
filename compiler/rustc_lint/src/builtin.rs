@@ -20,6 +20,7 @@
 //! If you define a new `LateLintPass`, you will also need to add it to the
 //! `late_lint_methods!` invocation in `lib.rs`.
 
+use crate::fluent_generated as fluent;
 use crate::{
     errors::BuiltinEllpisisInclusiveRangePatterns,
     lints::{
@@ -50,7 +51,7 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{fluent, Applicability, DecorateLint, MultiSpan};
+use rustc_errors::{Applicability, DecorateLint, MultiSpan};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};

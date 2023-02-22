@@ -2,13 +2,14 @@ use std::borrow::Cow;
 
 use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
-use rustc_errors::{fluent, AddToDiagnostic, Applicability, EmissionGuarantee, IntoDiagnostic};
+use rustc_errors::{AddToDiagnostic, Applicability, EmissionGuarantee, IntoDiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
+use crate::fluent_generated as fluent;
 use crate::parser::TokenDescription;
 
 #[derive(Diagnostic)]
@@ -78,7 +79,7 @@ pub(crate) struct IncorrectSemicolon<'a> {
 #[diag(parse_incorrect_use_of_await)]
 pub(crate) struct IncorrectUseOfAwait {
     #[primary_span]
-    #[suggestion(parentheses_suggestion, code = "", applicability = "machine-applicable")]
+    #[suggestion(parse_parentheses_suggestion, code = "", applicability = "machine-applicable")]
     pub span: Span,
 }
 
@@ -87,7 +88,7 @@ pub(crate) struct IncorrectUseOfAwait {
 pub(crate) struct IncorrectAwait {
     #[primary_span]
     pub span: Span,
-    #[suggestion(postfix_suggestion, code = "{expr}.await{question_mark}")]
+    #[suggestion(parse_postfix_suggestion, code = "{expr}.await{question_mark}")]
     pub sugg_span: (Span, Applicability),
     pub expr: String,
     pub question_mark: &'static str,
@@ -140,7 +141,7 @@ pub(crate) struct InvalidComparisonOperator {
 #[derive(Subdiagnostic)]
 pub(crate) enum InvalidComparisonOperatorSub {
     #[suggestion(
-        use_instead,
+        parse_use_instead,
         style = "short",
         applicability = "machine-applicable",
         code = "{correct}"
@@ -151,7 +152,7 @@ pub(crate) enum InvalidComparisonOperatorSub {
         invalid: String,
         correct: String,
     },
-    #[label(spaceship_operator_invalid)]
+    #[label(parse_spaceship_operator_invalid)]
     Spaceship(#[primary_span] Span),
 }
 
@@ -169,14 +170,14 @@ pub(crate) struct InvalidLogicalOperator {
 #[derive(Subdiagnostic)]
 pub(crate) enum InvalidLogicalOperatorSub {
     #[suggestion(
-        use_amp_amp_for_conjunction,
+        parse_use_amp_amp_for_conjunction,
         style = "short",
         applicability = "machine-applicable",
         code = "&&"
     )]
     Conjunction(#[primary_span] Span),
     #[suggestion(
-        use_pipe_pipe_for_disjunction,
+        parse_use_pipe_pipe_for_disjunction,
         style = "short",
         applicability = "machine-applicable",
         code = "||"
@@ -262,14 +263,14 @@ pub(crate) struct UnexpectedTokenAfterLabel {
     #[primary_span]
     #[label(parse_unexpected_token_after_label)]
     pub span: Span,
-    #[suggestion(suggestion_remove_label, style = "verbose", code = "")]
+    #[suggestion(parse_suggestion_remove_label, style = "verbose", code = "")]
     pub remove_label: Option<Span>,
     #[subdiagnostic]
     pub enclose_in_block: Option<UnexpectedTokenAfterLabelSugg>,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion_enclose_in_block, applicability = "machine-applicable")]
+#[multipart_suggestion(parse_suggestion_enclose_in_block, applicability = "machine-applicable")]
 pub(crate) struct UnexpectedTokenAfterLabelSugg {
     #[suggestion_part(code = "{{ ")]
     pub left: Span,
@@ -347,9 +348,9 @@ pub(crate) struct IfExpressionMissingThenBlock {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum IfExpressionMissingThenBlockSub {
-    #[help(condition_possibly_unfinished)]
+    #[help(parse_condition_possibly_unfinished)]
     UnfinishedCondition(#[primary_span] Span),
-    #[help(add_then_block)]
+    #[help(parse_add_then_block)]
     AddThenBlock(#[primary_span] Span),
 }
 
@@ -364,9 +365,9 @@ pub(crate) struct IfExpressionLetSomeSub {
 #[diag(parse_if_expression_missing_condition)]
 pub(crate) struct IfExpressionMissingCondition {
     #[primary_span]
-    #[label(condition_label)]
+    #[label(parse_condition_label)]
     pub if_span: Span,
-    #[label(block_label)]
+    #[label(parse_block_label)]
     pub block_span: Span,
 }
 
@@ -404,10 +405,10 @@ pub(crate) struct OuterAttributeNotAllowedOnIfElse {
     #[primary_span]
     pub last: Span,
 
-    #[label(branch_label)]
+    #[label(parse_branch_label)]
     pub branch_span: Span,
 
-    #[label(ctx_label)]
+    #[label(parse_ctx_label)]
     pub ctx_span: Span,
     pub ctx: String,
 
@@ -427,9 +428,14 @@ pub(crate) struct MissingInInForLoop {
 #[derive(Subdiagnostic)]
 pub(crate) enum MissingInInForLoopSub {
     // Has been misleading, at least in the past (closed Issue #48492), thus maybe-incorrect
-    #[suggestion(use_in_not_of, style = "short", applicability = "maybe-incorrect", code = "in")]
+    #[suggestion(
+        parse_use_in_not_of,
+        style = "short",
+        applicability = "maybe-incorrect",
+        code = "in"
+    )]
     InNotOf(#[primary_span] Span),
-    #[suggestion(add_in, style = "short", applicability = "maybe-incorrect", code = " in ")]
+    #[suggestion(parse_add_in, style = "short", applicability = "maybe-incorrect", code = " in ")]
     AddIn(#[primary_span] Span),
 }
 
@@ -484,8 +490,8 @@ pub(crate) struct EqFieldInit {
 #[diag(parse_dotdotdot)]
 pub(crate) struct DotDotDot {
     #[primary_span]
-    #[suggestion(suggest_exclusive_range, applicability = "maybe-incorrect", code = "..")]
-    #[suggestion(suggest_inclusive_range, applicability = "maybe-incorrect", code = "..=")]
+    #[suggestion(parse_suggest_exclusive_range, applicability = "maybe-incorrect", code = "..")]
+    #[suggestion(parse_suggest_inclusive_range, applicability = "maybe-incorrect", code = "..=")]
     pub span: Span,
 }
 
@@ -525,10 +531,10 @@ pub(crate) struct UseEmptyBlockNotSemi {
 #[diag(parse_comparison_interpreted_as_generic)]
 pub(crate) struct ComparisonInterpretedAsGeneric {
     #[primary_span]
-    #[label(label_comparison)]
+    #[label(parse_label_comparison)]
     pub comparison: Span,
     pub r#type: Path,
-    #[label(label_args)]
+    #[label(parse_label_args)]
     pub args: Span,
     #[subdiagnostic]
     pub suggestion: ComparisonOrShiftInterpretedAsGenericSugg,
@@ -538,17 +544,17 @@ pub(crate) struct ComparisonInterpretedAsGeneric {
 #[diag(parse_shift_interpreted_as_generic)]
 pub(crate) struct ShiftInterpretedAsGeneric {
     #[primary_span]
-    #[label(label_comparison)]
+    #[label(parse_label_comparison)]
     pub shift: Span,
     pub r#type: Path,
-    #[label(label_args)]
+    #[label(parse_label_args)]
     pub args: Span,
     #[subdiagnostic]
     pub suggestion: ComparisonOrShiftInterpretedAsGenericSugg,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
 pub(crate) struct ComparisonOrShiftInterpretedAsGenericSugg {
     #[suggestion_part(code = "(")]
     pub left: Span,
@@ -574,7 +580,7 @@ pub(crate) struct LeadingPlusNotSupported {
     #[label]
     pub span: Span,
     #[suggestion(
-        suggestion_remove_plus,
+        parse_suggestion_remove_plus,
         style = "verbose",
         code = "",
         applicability = "machine-applicable"
@@ -597,7 +603,7 @@ pub(crate) struct ParenthesesWithStructFields {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion_braces_for_struct, applicability = "maybe-incorrect")]
+#[multipart_suggestion(parse_suggestion_braces_for_struct, applicability = "maybe-incorrect")]
 pub(crate) struct BracesForStructLiteral {
     #[suggestion_part(code = " {{ ")]
     pub first: Span,
@@ -606,7 +612,7 @@ pub(crate) struct BracesForStructLiteral {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion_no_fields_for_fn, applicability = "maybe-incorrect")]
+#[multipart_suggestion(parse_suggestion_no_fields_for_fn, applicability = "maybe-incorrect")]
 pub(crate) struct NoFieldsForFnCall {
     #[suggestion_part(code = "")]
     pub fields: Vec<Span>,
@@ -643,7 +649,7 @@ pub(crate) struct ArrayBracketsInsteadOfSpaces {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion, applicability = "maybe-incorrect")]
+#[multipart_suggestion(parse_suggestion, applicability = "maybe-incorrect")]
 pub(crate) struct ArrayBracketsInsteadOfSpacesSugg {
     #[suggestion_part(code = "[")]
     pub left: Span,
@@ -655,9 +661,9 @@ pub(crate) struct ArrayBracketsInsteadOfSpacesSugg {
 #[diag(parse_match_arm_body_without_braces)]
 pub(crate) struct MatchArmBodyWithoutBraces {
     #[primary_span]
-    #[label(label_statements)]
+    #[label(parse_label_statements)]
     pub statements: Span,
-    #[label(label_arrow)]
+    #[label(parse_label_arrow)]
     pub arrow: Span,
     pub num_statements: usize,
     #[subdiagnostic]
@@ -670,7 +676,7 @@ pub(crate) struct MatchArmBodyWithoutBraces {
 pub(crate) struct InclusiveRangeExtraEquals {
     #[primary_span]
     #[suggestion(
-        suggestion_remove_eq,
+        parse_suggestion_remove_eq,
         style = "short",
         code = "..=",
         applicability = "maybe-incorrect"
@@ -695,7 +701,7 @@ pub(crate) struct InclusiveRangeMatchArrow {
 pub(crate) struct InclusiveRangeNoEnd {
     #[primary_span]
     #[suggestion(
-        suggestion_open_range,
+        parse_suggestion_open_range,
         code = "..",
         applicability = "machine-applicable",
         style = "short"
@@ -705,7 +711,7 @@ pub(crate) struct InclusiveRangeNoEnd {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum MatchArmBodyWithoutBracesSugg {
-    #[multipart_suggestion(suggestion_add_braces, applicability = "machine-applicable")]
+    #[multipart_suggestion(parse_suggestion_add_braces, applicability = "machine-applicable")]
     AddBraces {
         #[suggestion_part(code = "{{ ")]
         left: Span,
@@ -713,7 +719,7 @@ pub(crate) enum MatchArmBodyWithoutBracesSugg {
         right: Span,
     },
     #[suggestion(
-        suggestion_use_comma_not_semicolon,
+        parse_suggestion_use_comma_not_semicolon,
         code = ",",
         applicability = "machine-applicable"
     )]
@@ -733,7 +739,7 @@ pub(crate) struct StructLiteralNotAllowedHere {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
 pub(crate) struct StructLiteralNotAllowedHereSugg {
     #[suggestion_part(code = "(")]
     pub left: Span,
@@ -755,9 +761,9 @@ pub(crate) struct InvalidLiteralSuffixOnTupleIndex {
     #[label]
     pub span: Span,
     pub suffix: Symbol,
-    #[help(tuple_exception_line_1)]
-    #[help(tuple_exception_line_2)]
-    #[help(tuple_exception_line_3)]
+    #[help(parse_tuple_exception_line_1)]
+    #[help(parse_tuple_exception_line_2)]
+    #[help(parse_tuple_exception_line_3)]
     pub exception: Option<()>,
 }
 
@@ -775,11 +781,11 @@ pub(crate) struct MismatchedClosingDelimiter {
     #[primary_span]
     pub spans: Vec<Span>,
     pub delimiter: String,
-    #[label(label_unmatched)]
+    #[label(parse_label_unmatched)]
     pub unmatched: Span,
-    #[label(label_opening_candidate)]
+    #[label(parse_label_opening_candidate)]
     pub opening_candidate: Option<Span>,
-    #[label(label_unclosed)]
+    #[label(parse_label_unclosed)]
     pub unclosed: Option<Span>,
 }
 
@@ -930,7 +936,7 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
         self,
         handler: &'a rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'a, G> {
-        let token_descr = super::parser::TokenDescription::from_token(&self.token);
+        let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = handler.struct_diagnostic(match token_descr {
             Some(TokenDescription::ReservedIdentifier) => {
@@ -976,7 +982,7 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedSemi {
         self,
         handler: &'a rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'a, G> {
-        let token_descr = super::parser::TokenDescription::from_token(&self.token);
+        let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = handler.struct_diagnostic(match token_descr {
             Some(TokenDescription::ReservedIdentifier) => {
@@ -1025,7 +1031,7 @@ pub(crate) struct StructLiteralBodyWithoutPath {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion, applicability = "has-placeholders")]
+#[multipart_suggestion(parse_suggestion, applicability = "has-placeholders")]
 pub(crate) struct StructLiteralBodyWithoutPathSugg {
     #[suggestion_part(code = "{{ SomeStruct ")]
     pub before: Span,
@@ -1043,7 +1049,7 @@ pub(crate) struct StructLiteralNeedingParens {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
 pub(crate) struct StructLiteralNeedingParensSugg {
     #[suggestion_part(code = "(")]
     pub before: Span,
@@ -1070,7 +1076,7 @@ pub(crate) struct GenericParamsWithoutAngleBrackets {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
 pub(crate) struct GenericParamsWithoutAngleBracketsSugg {
     #[suggestion_part(code = "<")]
     pub left: Span,
@@ -1091,7 +1097,7 @@ pub(crate) struct ComparisonOperatorsCannotBeChained {
     )]
     pub suggest_turbofish: Option<Span>,
     #[help(parse_sugg_turbofish_syntax)]
-    #[help(sugg_parentheses_for_function_args)]
+    #[help(parse_sugg_parentheses_for_function_args)]
     pub help_turbofish: Option<()>,
     #[subdiagnostic]
     pub chaining_sugg: Option<ComparisonOperatorsCannotBeChainedSugg>,
@@ -1100,7 +1106,7 @@ pub(crate) struct ComparisonOperatorsCannotBeChained {
 #[derive(Subdiagnostic)]
 pub(crate) enum ComparisonOperatorsCannotBeChainedSugg {
     #[suggestion(
-        sugg_split_comparison,
+        parse_sugg_split_comparison,
         style = "verbose",
         code = " && {middle_term}",
         applicability = "maybe-incorrect"
@@ -1110,7 +1116,7 @@ pub(crate) enum ComparisonOperatorsCannotBeChainedSugg {
         span: Span,
         middle_term: String,
     },
-    #[multipart_suggestion(sugg_parenthesize, applicability = "maybe-incorrect")]
+    #[multipart_suggestion(parse_sugg_parenthesize, applicability = "maybe-incorrect")]
     Parenthesize {
         #[suggestion_part(code = "(")]
         left: Span,
@@ -1130,7 +1136,7 @@ pub(crate) struct QuestionMarkInType {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
 pub(crate) struct QuestionMarkInTypeSugg {
     #[suggestion_part(code = "Option<")]
     pub left: Span,
@@ -1148,7 +1154,7 @@ pub(crate) struct ParenthesesInForHead {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
 pub(crate) struct ParenthesesInForHeadSugg {
     #[suggestion_part(code = "{left_snippet}")]
     pub left: Span,
@@ -1208,7 +1214,7 @@ pub(crate) struct ConstGenericWithoutBraces {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
 pub(crate) struct ConstGenericWithoutBracesSugg {
     #[suggestion_part(code = "{{ ")]
     pub left: Span,
@@ -1228,7 +1234,7 @@ pub(crate) struct UnexpectedConstParamDeclaration {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum UnexpectedConstParamDeclarationSugg {
-    #[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+    #[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
     AddParam {
         #[suggestion_part(code = "<{snippet}>")]
         impl_generics: Span,
@@ -1237,7 +1243,7 @@ pub(crate) enum UnexpectedConstParamDeclarationSugg {
         snippet: String,
         ident: String,
     },
-    #[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+    #[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
     AppendParam {
         #[suggestion_part(code = ", {snippet}")]
         impl_generics_end: Span,
@@ -1284,7 +1290,7 @@ pub(crate) struct FnPtrWithGenerics {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion, applicability = "maybe-incorrect")]
+#[multipart_suggestion(parse_suggestion, applicability = "maybe-incorrect")]
 pub(crate) struct FnPtrWithGenericsSugg {
     #[suggestion_part(code = "{snippet}")]
     pub left: Span,
@@ -1325,16 +1331,16 @@ pub(crate) struct WhereClauseBeforeTupleStructBody {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[label(name_label)]
+    #[label(parse_name_label)]
     pub name: Span,
-    #[label(body_label)]
+    #[label(parse_body_label)]
     pub body: Span,
     #[subdiagnostic]
     pub sugg: Option<WhereClauseBeforeTupleStructBodySugg>,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
 pub(crate) struct WhereClauseBeforeTupleStructBodySugg {
     #[suggestion_part(code = "{snippet}")]
     pub left: Span,
@@ -1429,13 +1435,13 @@ pub(crate) enum MissingKeywordForItemDefinition {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum AmbiguousMissingKwForItemSub {
-    #[suggestion(suggestion, applicability = "maybe-incorrect", code = "{snippet}!")]
+    #[suggestion(parse_suggestion, applicability = "maybe-incorrect", code = "{snippet}!")]
     SuggestMacro {
         #[primary_span]
         span: Span,
         snippet: String,
     },
-    #[help(help)]
+    #[help(parse_help)]
     HelpMacro,
 }
 
@@ -1443,9 +1449,9 @@ pub(crate) enum AmbiguousMissingKwForItemSub {
 #[diag(parse_missing_trait_in_trait_impl)]
 pub(crate) struct MissingTraitInTraitImpl {
     #[primary_span]
-    #[suggestion(suggestion_add_trait, code = " Trait ", applicability = "has-placeholders")]
+    #[suggestion(parse_suggestion_add_trait, code = " Trait ", applicability = "has-placeholders")]
     pub span: Span,
-    #[suggestion(suggestion_remove_for, code = "", applicability = "maybe-incorrect")]
+    #[suggestion(parse_suggestion_remove_for, code = "", applicability = "maybe-incorrect")]
     pub for_span: Span,
 }
 
@@ -1505,7 +1511,7 @@ pub(crate) struct ExternCrateNameWithDashes {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
 pub(crate) struct ExternCrateNameWithDashesSugg {
     #[suggestion_part(code = "_")]
     pub dashes: Vec<Span>,
@@ -1726,10 +1732,15 @@ pub struct UnknownPrefix<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum UnknownPrefixSugg {
-    #[suggestion(suggestion_br, code = "br", applicability = "maybe-incorrect", style = "verbose")]
+    #[suggestion(
+        parse_suggestion_br,
+        code = "br",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
     UseBr(#[primary_span] Span),
     #[suggestion(
-        suggestion_whitespace,
+        parse_suggestion_whitespace,
         code = " ",
         applicability = "maybe-incorrect",
         style = "verbose"
@@ -1761,7 +1772,7 @@ pub struct UnknownTokenStart {
 
 #[derive(Subdiagnostic)]
 pub enum TokenSubstitution {
-    #[suggestion(sugg_quotes, code = "{suggestion}", applicability = "maybe-incorrect")]
+    #[suggestion(parse_sugg_quotes, code = "{suggestion}", applicability = "maybe-incorrect")]
     DirectedQuotes {
         #[primary_span]
         span: Span,
@@ -1769,7 +1780,7 @@ pub enum TokenSubstitution {
         ascii_str: &'static str,
         ascii_name: &'static str,
     },
-    #[suggestion(sugg_other, code = "{suggestion}", applicability = "maybe-incorrect")]
+    #[suggestion(parse_sugg_other, code = "{suggestion}", applicability = "maybe-incorrect")]
     Other {
         #[primary_span]
         span: Span,
@@ -1782,13 +1793,13 @@ pub enum TokenSubstitution {
 }
 
 #[derive(Subdiagnostic)]
-#[note(note_repeats)]
+#[note(parse_note_repeats)]
 pub struct UnknownTokenRepeat {
     pub repeats: usize,
 }
 
 #[derive(Subdiagnostic)]
-#[help(help_null)]
+#[help(parse_help_null)]
 pub struct UnknownTokenNull;
 
 #[derive(Diagnostic)]
@@ -1805,7 +1816,7 @@ pub enum UnescapeError {
     EscapeOnlyChar {
         #[primary_span]
         span: Span,
-        #[suggestion(escape, applicability = "machine-applicable", code = "{escaped_sugg}")]
+        #[suggestion(parse_escape, applicability = "machine-applicable", code = "{escaped_sugg}")]
         char_span: Span,
         escaped_sugg: String,
         escaped_msg: String,
@@ -1814,7 +1825,7 @@ pub enum UnescapeError {
     #[diag(parse_bare_cr)]
     BareCr {
         #[primary_span]
-        #[suggestion(escape, applicability = "machine-applicable", code = "\\r")]
+        #[suggestion(parse_escape, applicability = "machine-applicable", code = "\\r")]
         span: Span,
         double_quotes: bool,
     },
@@ -1854,7 +1865,12 @@ pub enum UnescapeError {
         #[primary_span]
         #[label]
         Span,
-        #[suggestion(terminate, code = "}}", applicability = "maybe-incorrect", style = "verbose")]
+        #[suggestion(
+            parse_terminate,
+            code = "}}",
+            applicability = "maybe-incorrect",
+            style = "verbose"
+        )]
         Span,
     ),
     #[diag(parse_no_brace_unicode_escape)]
@@ -1918,20 +1934,24 @@ pub enum UnescapeError {
 
 #[derive(Subdiagnostic)]
 pub enum MoreThanOneCharSugg {
-    #[suggestion(consider_normalized, code = "{normalized}", applicability = "machine-applicable")]
+    #[suggestion(
+        parse_consider_normalized,
+        code = "{normalized}",
+        applicability = "machine-applicable"
+    )]
     NormalizedForm {
         #[primary_span]
         span: Span,
         ch: String,
         normalized: String,
     },
-    #[suggestion(remove_non, code = "{ch}", applicability = "maybe-incorrect")]
+    #[suggestion(parse_remove_non, code = "{ch}", applicability = "maybe-incorrect")]
     RemoveNonPrinting {
         #[primary_span]
         span: Span,
         ch: String,
     },
-    #[suggestion(use_double_quotes, code = "{sugg}", applicability = "machine-applicable")]
+    #[suggestion(parse_use_double_quotes, code = "{sugg}", applicability = "machine-applicable")]
     Quotes {
         #[primary_span]
         span: Span,
@@ -1942,7 +1962,7 @@ pub enum MoreThanOneCharSugg {
 
 #[derive(Subdiagnostic)]
 pub enum MoreThanOneCharNote {
-    #[note(followed_by)]
+    #[note(parse_followed_by)]
     AllCombining {
         #[primary_span]
         span: Span,
@@ -1950,7 +1970,7 @@ pub enum MoreThanOneCharNote {
         len: usize,
         escaped_marks: String,
     },
-    #[note(non_printing)]
+    #[note(parse_non_printing)]
     NonPrinting {
         #[primary_span]
         span: Span,
@@ -1960,13 +1980,13 @@ pub enum MoreThanOneCharNote {
 
 #[derive(Subdiagnostic)]
 pub enum NoBraceUnicodeSub {
-    #[suggestion(use_braces, code = "{suggestion}", applicability = "maybe-incorrect")]
+    #[suggestion(parse_use_braces, code = "{suggestion}", applicability = "maybe-incorrect")]
     Suggestion {
         #[primary_span]
         span: Span,
         suggestion: String,
     },
-    #[help(format_of_unicode)]
+    #[help(parse_format_of_unicode)]
     Help,
 }
 
@@ -2042,9 +2062,9 @@ pub(crate) struct PatternOnWrongSideOfAt {
     #[suggestion(code = "{whole_pat}", applicability = "machine-applicable")]
     pub whole_span: Span,
     pub whole_pat: String,
-    #[label(label_pattern)]
+    #[label(parse_label_pattern)]
     pub pattern: Span,
-    #[label(label_binding)]
+    #[label(parse_label_binding)]
     pub binding: Span,
 }
 
@@ -2054,9 +2074,9 @@ pub(crate) struct PatternOnWrongSideOfAt {
 pub(crate) struct ExpectedBindingLeftOfAt {
     #[primary_span]
     pub whole_span: Span,
-    #[label(label_lhs)]
+    #[label(parse_label_lhs)]
     pub lhs: Span,
-    #[label(label_rhs)]
+    #[label(parse_label_rhs)]
     pub rhs: Span,
 }
 
@@ -2236,7 +2256,7 @@ pub(crate) struct NegativeBoundsNotSupported {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    suggestion,
+    parse_suggestion,
     style = "tool-only",
     code = "{fixed}",
     applicability = "machine-applicable"

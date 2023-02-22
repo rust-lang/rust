@@ -1,9 +1,10 @@
 use super::FnCtxt;
 
 use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
+use crate::fluent_generated as fluent;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
-use rustc_errors::{fluent, Applicability, Diagnostic, MultiSpan};
+use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;

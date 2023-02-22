@@ -53,7 +53,10 @@ use crate::check::check_fn;
 use crate::coercion::DynamicCoerceMany;
 use crate::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{struct_span_err, DiagnosticId, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{
+    struct_span_err, DiagnosticId, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
+    SubdiagnosticMessage,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -61,6 +64,7 @@ use rustc_hir::{HirIdMap, Node};
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_hir_analysis::check::check_abi;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_macros::fluent_messages;
 use rustc_middle::traits;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -68,6 +72,8 @@ use rustc_session::config;
 use rustc_session::Session;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 #[macro_export]
 macro_rules! type_error_struct {

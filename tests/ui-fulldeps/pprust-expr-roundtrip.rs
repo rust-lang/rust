@@ -220,7 +220,7 @@ fn main() {
 }
 
 fn run() {
-    let ps = ParseSess::new(FilePathMapping::empty());
+    let ps = ParseSess::new(vec![rustc_parse::DEFAULT_LOCALE_RESOURCE], FilePathMapping::empty());
 
     iter_exprs(2, &mut |mut e| {
         // If the pretty printer is correct, then `parse(print(e))` should be identical to `e`,

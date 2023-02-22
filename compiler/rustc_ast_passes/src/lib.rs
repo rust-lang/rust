@@ -11,8 +11,13 @@
 #![feature(let_chains)]
 #![recursion_limit = "256"]
 
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_macros::fluent_messages;
+
 pub mod ast_validation;
 mod errors;
 pub mod feature_gate;
 pub mod node_count;
 pub mod show_span;
+
+fluent_messages! { "../locales/en-US.ftl" }

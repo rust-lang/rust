@@ -1,14 +1,17 @@
-use crate::lints::{
-    AtomicOrderingFence, AtomicOrderingLoad, AtomicOrderingStore, ImproperCTypes,
-    InvalidAtomicOrderingDiag, OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign,
-    OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral, OverflowingUInt,
-    RangeEndpointOutOfRange, UnusedComparisons, VariantSizeDifferencesDiag,
+use crate::{
+    fluent_generated as fluent,
+    lints::{
+        AtomicOrderingFence, AtomicOrderingLoad, AtomicOrderingStore, ImproperCTypes,
+        InvalidAtomicOrderingDiag, OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign,
+        OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral,
+        OverflowingUInt, RangeEndpointOutOfRange, UnusedComparisons, VariantSizeDifferencesDiag,
+    },
 };
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{fluent, DiagnosticMessage};
+use rustc_errors::DiagnosticMessage;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};

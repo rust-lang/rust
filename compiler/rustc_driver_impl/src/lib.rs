@@ -23,11 +23,14 @@ use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
-use rustc_errors::{ErrorGuaranteed, PResult, TerminalUrl};
+use rustc_errors::{
+    DiagnosticMessage, ErrorGuaranteed, PResult, SubdiagnosticMessage, TerminalUrl,
+};
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
+use rustc_macros::fluent_messages;
 use rustc_metadata::locator;
 use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, TrimmedDefPaths};
@@ -60,6 +63,44 @@ use crate::session_diagnostics::{
     RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
     RLinkWrongFileType, RlinkNotAFile, RlinkUnableToRead,
 };
+
+fluent_messages! { "../locales/en-US.ftl" }
+
+pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
+    // tidy-alphabetical-start
+    crate::DEFAULT_LOCALE_RESOURCE,
+    rustc_ast_lowering::DEFAULT_LOCALE_RESOURCE,
+    rustc_ast_passes::DEFAULT_LOCALE_RESOURCE,
+    rustc_attr::DEFAULT_LOCALE_RESOURCE,
+    rustc_borrowck::DEFAULT_LOCALE_RESOURCE,
+    rustc_builtin_macros::DEFAULT_LOCALE_RESOURCE,
+    rustc_codegen_ssa::DEFAULT_LOCALE_RESOURCE,
+    rustc_const_eval::DEFAULT_LOCALE_RESOURCE,
+    rustc_error_messages::DEFAULT_LOCALE_RESOURCE,
+    rustc_expand::DEFAULT_LOCALE_RESOURCE,
+    rustc_hir_analysis::DEFAULT_LOCALE_RESOURCE,
+    rustc_hir_typeck::DEFAULT_LOCALE_RESOURCE,
+    rustc_incremental::DEFAULT_LOCALE_RESOURCE,
+    rustc_infer::DEFAULT_LOCALE_RESOURCE,
+    rustc_interface::DEFAULT_LOCALE_RESOURCE,
+    rustc_lint::DEFAULT_LOCALE_RESOURCE,
+    rustc_metadata::DEFAULT_LOCALE_RESOURCE,
+    rustc_middle::DEFAULT_LOCALE_RESOURCE,
+    rustc_mir_build::DEFAULT_LOCALE_RESOURCE,
+    rustc_mir_dataflow::DEFAULT_LOCALE_RESOURCE,
+    rustc_monomorphize::DEFAULT_LOCALE_RESOURCE,
+    rustc_parse::DEFAULT_LOCALE_RESOURCE,
+    rustc_passes::DEFAULT_LOCALE_RESOURCE,
+    rustc_plugin_impl::DEFAULT_LOCALE_RESOURCE,
+    rustc_privacy::DEFAULT_LOCALE_RESOURCE,
+    rustc_query_system::DEFAULT_LOCALE_RESOURCE,
+    rustc_resolve::DEFAULT_LOCALE_RESOURCE,
+    rustc_session::DEFAULT_LOCALE_RESOURCE,
+    rustc_symbol_mangling::DEFAULT_LOCALE_RESOURCE,
+    rustc_trait_selection::DEFAULT_LOCALE_RESOURCE,
+    rustc_ty_utils::DEFAULT_LOCALE_RESOURCE,
+    // tidy-alphabetical-end
+];
 
 /// Exit status code used for successful compilation and help output.
 pub const EXIT_SUCCESS: i32 = 0;
@@ -218,6 +259,7 @@ fn run_compiler(
         output_file: ofile,
         output_dir: odir,
         file_loader,
+        locale_resources: DEFAULT_LOCALE_RESOURCES,
         lint_caps: Default::default(),
         parse_sess_created: None,
         register_lints: None,
@@ -1162,7 +1204,7 @@ static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
 /// hook.
 pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     let fallback_bundle =
-        rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+        rustc_errors::fallback_fluent_bundle(crate::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
         rustc_errors::ColorConfig::Auto,
         None,

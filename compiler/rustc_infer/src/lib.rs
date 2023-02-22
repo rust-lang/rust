@@ -33,6 +33,11 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_macros::fluent_messages;
+
 mod errors;
 pub mod infer;
 pub mod traits;
+
+fluent_messages! { "../locales/en-US.ftl" }
