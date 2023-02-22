@@ -1,9 +1,9 @@
 #![feature(const_param_ty_trait)]
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 struct NotParam;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 struct CantParam(NotParam);
 
 impl std::marker::ConstParamTy for CantParam {}
