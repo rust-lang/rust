@@ -1103,9 +1103,7 @@ impl Step for Rls {
         let compiler = self.compiler;
         let target = self.target;
 
-        let rls = builder
-            .ensure(tool::Rls { compiler, target, extra_features: Vec::new() })
-            .expect("rls expected to build");
+        let rls = builder.ensure(tool::Rls { compiler, target, extra_features: Vec::new() });
 
         let mut tarball = Tarball::new(builder, "rls", &target.triple);
         tarball.set_overlay(OverlayKind::RLS);
@@ -1147,10 +1145,7 @@ impl Step for RustAnalyzer {
         let compiler = self.compiler;
         let target = self.target;
 
-        let rust_analyzer = builder
-            .ensure(tool::RustAnalyzer { compiler, target })
-            .expect("rust-analyzer always builds");
-
+        let rust_analyzer = builder.ensure(tool::RustAnalyzer { compiler, target });
         let mut tarball = Tarball::new(builder, "rust-analyzer", &target.triple);
         tarball.set_overlay(OverlayKind::RustAnalyzer);
         tarball.is_preview(true);
@@ -1194,12 +1189,9 @@ impl Step for Clippy {
         // Prepare the image directory
         // We expect clippy to build, because we've exited this step above if tool
         // state for clippy isn't testing.
-        let clippy = builder
-            .ensure(tool::Clippy { compiler, target, extra_features: Vec::new() })
-            .expect("clippy expected to build - essential tool");
-        let cargoclippy = builder
-            .ensure(tool::CargoClippy { compiler, target, extra_features: Vec::new() })
-            .expect("clippy expected to build - essential tool");
+        let clippy = builder.ensure(tool::Clippy { compiler, target, extra_features: Vec::new() });
+        let cargoclippy =
+            builder.ensure(tool::CargoClippy { compiler, target, extra_features: Vec::new() });
 
         let mut tarball = Tarball::new(builder, "clippy", &target.triple);
         tarball.set_overlay(OverlayKind::Clippy);
@@ -1248,9 +1240,9 @@ impl Step for Miri {
         let compiler = self.compiler;
         let target = self.target;
 
-        let miri = builder.ensure(tool::Miri { compiler, target, extra_features: Vec::new() })?;
+        let miri = builder.ensure(tool::Miri { compiler, target, extra_features: Vec::new() });
         let cargomiri =
-            builder.ensure(tool::CargoMiri { compiler, target, extra_features: Vec::new() })?;
+            builder.ensure(tool::CargoMiri { compiler, target, extra_features: Vec::new() });
 
         let mut tarball = Tarball::new(builder, "miri", &target.triple);
         tarball.set_overlay(OverlayKind::Miri);
@@ -1293,12 +1285,10 @@ impl Step for Rustfmt {
         let compiler = self.compiler;
         let target = self.target;
 
-        let rustfmt = builder
-            .ensure(tool::Rustfmt { compiler, target, extra_features: Vec::new() })
-            .expect("rustfmt expected to build - essential tool");
-        let cargofmt = builder
-            .ensure(tool::Cargofmt { compiler, target, extra_features: Vec::new() })
-            .expect("cargo fmt expected to build - essential tool");
+        let rustfmt =
+            builder.ensure(tool::Rustfmt { compiler, target, extra_features: Vec::new() });
+        let cargofmt =
+            builder.ensure(tool::Cargofmt { compiler, target, extra_features: Vec::new() });
         let mut tarball = Tarball::new(builder, "rustfmt", &target.triple);
         tarball.set_overlay(OverlayKind::Rustfmt);
         tarball.is_preview(true);
@@ -1352,9 +1342,8 @@ impl Step for RustDemangler {
             return None;
         }
 
-        let rust_demangler = builder
-            .ensure(tool::RustDemangler { compiler, target, extra_features: Vec::new() })
-            .expect("rust-demangler expected to build - in-tree tool");
+        let rust_demangler =
+            builder.ensure(tool::RustDemangler { compiler, target, extra_features: Vec::new() });
 
         // Prepare the image directory
         let mut tarball = Tarball::new(builder, "rust-demangler", &target.triple);

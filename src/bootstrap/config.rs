@@ -202,7 +202,6 @@ pub struct Config {
     pub save_toolstates: Option<PathBuf>,
     pub print_step_timings: bool,
     pub print_step_rusage: bool,
-    pub missing_tools: bool,
 
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
@@ -700,7 +699,6 @@ define_config! {
         gpg_password_file: Option<String> = "gpg-password-file",
         upload_addr: Option<String> = "upload-addr",
         src_tarball: Option<bool> = "src-tarball",
-        missing_tools: Option<bool> = "missing-tools",
         compression_formats: Option<Vec<String>> = "compression-formats",
     }
 }
@@ -1306,7 +1304,6 @@ impl Config {
             config.dist_upload_addr = t.upload_addr;
             config.dist_compression_formats = t.compression_formats;
             set(&mut config.rust_dist_src, t.src_tarball);
-            set(&mut config.missing_tools, t.missing_tools);
         }
 
         if let Some(r) = build.rustfmt {
