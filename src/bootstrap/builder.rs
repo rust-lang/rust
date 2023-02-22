@@ -1235,6 +1235,21 @@ impl<'a> Builder<'a> {
             compiler.stage
         };
 
+        // Export target-specific RUSTFLAGS to Cargo.  We must include flags
+        // for both the target and the host in case there are proc-macros.
+        let mut export_target_rustflags = |target| {
+            if let Some(target_cfg) = self.config.target_config.get(&target) {
+                if let Some(flags) = &target_cfg.rustflags {
+                    cargo.env(format!("CARGO_TARGET_{}_RUSTFLAGS", target.triple), flags);
+                }
+            }
+        };
+
+        export_target_rustflags(target);
+        if target != compiler.host {
+            export_target_rustflags(compiler.host);
+        }
+
         let mut rustflags = Rustflags::new(target);
         if stage != 0 {
             if let Ok(s) = env::var("CARGOFLAGS_NOT_BOOTSTRAP") {

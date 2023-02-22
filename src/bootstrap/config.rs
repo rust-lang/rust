@@ -452,6 +452,7 @@ pub struct Target {
     pub wasi_root: Option<PathBuf>,
     pub qemu_rootfs: Option<PathBuf>,
     pub no_std: bool,
+    pub rustflags: Option<String>,
 }
 
 impl Target {
@@ -795,6 +796,7 @@ define_config! {
         wasi_root: Option<String> = "wasi-root",
         qemu_rootfs: Option<String> = "qemu-rootfs",
         no_std: Option<bool> = "no-std",
+        rustflags: Option<String> = "rustflags",
     }
 }
 
@@ -1282,6 +1284,8 @@ impl Config {
                 target.qemu_rootfs = cfg.qemu_rootfs.map(PathBuf::from);
                 target.sanitizers = cfg.sanitizers;
                 target.profiler = cfg.profiler;
+
+                target.rustflags = cfg.rustflags;
 
                 config.target_config.insert(TargetSelection::from_user(&triple), target);
             }
