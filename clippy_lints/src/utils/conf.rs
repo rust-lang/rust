@@ -419,19 +419,19 @@ define_Conf! {
     (max_include_file_size: u64 = 1_000_000),
     /// Lint: EXPECT_USED.
     ///
-    /// Whether `expect` should be allowed within `#[cfg(test)]`
+    /// Whether `expect` should be allowed in test functions or `#[cfg(test)]`
     (allow_expect_in_tests: bool = false),
     /// Lint: UNWRAP_USED.
     ///
-    /// Whether `unwrap` should be allowed in test cfg
+    /// Whether `unwrap` should be allowed in test functions or `#[cfg(test)]`
     (allow_unwrap_in_tests: bool = false),
     /// Lint: DBG_MACRO.
     ///
-    /// Whether `dbg!` should be allowed in test functions
+    /// Whether `dbg!` should be allowed in test functions or `#[cfg(test)]`
     (allow_dbg_in_tests: bool = false),
     /// Lint: PRINT_STDOUT, PRINT_STDERR.
     ///
-    /// Whether print macros (ex. `println!`) should be allowed in test functions
+    /// Whether print macros (ex. `println!`) should be allowed in test functions or `#[cfg(test)]`
     (allow_print_in_tests: bool = false),
     /// Lint: RESULT_LARGE_ERR.
     ///
