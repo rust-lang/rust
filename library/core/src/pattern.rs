@@ -37,7 +37,7 @@
 )]
 
 use crate::fmt;
-use crate::mem::replace;
+use crate::mem::{replace, take};
 use crate::ops::Range;
 
 /// A pattern which can be matched against a [`Haystack`].
@@ -201,6 +201,84 @@ pub enum SearchStep<T = usize> {
     Done,
 }
 
+/// Possible return type of a search.
+///
+/// It abstract differences between `next`, `next_match` and `next_reject`
+/// methods.  Depending on return type an implementation for those functions
+/// will generate matches and rejects, only matches or only rejects.
+#[unstable(feature = "pattern_internals", issue = "none")]
+pub trait SearchResult<T = usize>: Sized + sealed::Sealed {
+    /// Value indicating searching has finished.
+    const DONE: Self;
+
+    /// Returns value describing a match or `None` if this implementation
+    /// doesn’t care about matches.
+    fn matching(start: T, end: T) -> Option<Self>;
+
+    /// Returns value describing a reject or `None` if this implementation
+    /// doesn’t care about matches.
+    fn rejecting(start: T, end: T) -> Option<Self>;
+}
+
+/// A wrapper for result type which only carries information about matches.
+#[unstable(feature = "pattern_internals", issue = "none")]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub struct MatchOnly<T = usize>(pub Option<(T, T)>);
+
+/// A wrapper for result type which only carries information about rejects.
+#[unstable(feature = "pattern_internals", issue = "none")]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub struct RejectOnly<T = usize>(pub Option<(T, T)>);
+
+impl<T> SearchResult<T> for SearchStep<T> {
+    const DONE: Self = SearchStep::Done;
+
+    #[inline(always)]
+    fn matching(s: T, e: T) -> Option<Self> {
+        Some(SearchStep::Match(s, e))
+    }
+
+    #[inline(always)]
+    fn rejecting(s: T, e: T) -> Option<Self> {
+        Some(SearchStep::Reject(s, e))
+    }
+}
+
+impl<T> SearchResult<T> for MatchOnly<T> {
+    const DONE: Self = Self(None);
+
+    #[inline(always)]
+    fn matching(s: T, e: T) -> Option<Self> {
+        Some(Self(Some((s, e))))
+    }
+
+    #[inline(always)]
+    fn rejecting(_s: T, _e: T) -> Option<Self> {
+        None
+    }
+}
+
+impl<T> SearchResult<T> for RejectOnly<T> {
+    const DONE: Self = Self(None);
+
+    #[inline(always)]
+    fn matching(_s: T, _e: T) -> Option<Self> {
+        None
+    }
+
+    #[inline(always)]
+    fn rejecting(s: T, e: T) -> Option<Self> {
+        Some(Self(Some((s, e))))
+    }
+}
+
+mod sealed {
+    pub trait Sealed {}
+    impl<T> Sealed for super::SearchStep<T> {}
+    impl<T> Sealed for super::MatchOnly<T> {}
+    impl<T> Sealed for super::RejectOnly<T> {}
+}
+
 /// A searcher for a string pattern.
 ///
 /// This trait provides methods for searching for non-overlapping matches of
@@ -362,6 +440,141 @@ pub unsafe trait ReverseSearcher<H: Haystack>: Searcher<H> {
 /// in the haystack `"aaa"` matches as either `"[aa]a"` or `"a[aa]"`, depending
 /// from which side it is searched.
 pub trait DoubleEndedSearcher<H: Haystack>: ReverseSearcher<H> {}
+
+//////////////////////////////////////////////////////////////////////////////
+// Internal EmptyNeedleSearcher helper
+//////////////////////////////////////////////////////////////////////////////
+
+/// Helper for implementing searchers looking for empty patterns.
+///
+/// An empty pattern matches around every element of a haystack.  For example,
+/// within a `&str` it matches around every character.  (This includes at the
+/// beginning and end of the string).
+///
+/// This struct helps implement searchers for empty patterns for various
+/// haystacks.   The only requirement is a function which advances the start
+/// position or end position of the haystack range.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(pattern, pattern_internals)]
+/// use core::pattern::{EmptyNeedleSearcher, SearchStep};
+///
+/// let haystack = "fóó";
+/// let mut searcher = EmptyNeedleSearcher::new(haystack);
+/// let advance = |range: core::ops::Range<usize>| {
+///     range.start + haystack[range].chars().next().unwrap().len_utf8()
+/// };
+/// let steps = core::iter::from_fn(|| {
+///     match searcher.next_fwd(advance) {
+///         SearchStep::Done => None,
+///         step => Some(step)
+///     }
+/// }).collect::<Vec<_>>();
+/// assert_eq!(&[
+///     SearchStep::Match(0, 0),
+///     SearchStep::Reject(0, 1),
+///     SearchStep::Match(1, 1),
+///     SearchStep::Reject(1, 3),
+///     SearchStep::Match(3, 3),
+///     SearchStep::Reject(3, 5),
+///     SearchStep::Match(5, 5),
+/// ], steps.as_slice());
+/// ```
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[unstable(feature = "pattern_internals", issue = "none")]
+pub struct EmptyNeedleSearcher<T> {
+    start: T,
+    end: T,
+    is_match_fwd: bool,
+    is_match_bwd: bool,
+    // Needed in case of an empty haystack, see #85462
+    is_finished: bool,
+}
+
+impl<T: Copy + PartialOrd> EmptyNeedleSearcher<T> {
+    /// Creates a new empty needle searcher for given haystack.
+    ///
+    /// The haystack is used to initialise the range of valid cursors positions.
+    pub fn new<H: Haystack<Cursor = T>>(haystack: H) -> Self {
+        Self {
+            start: haystack.cursor_at_front(),
+            end: haystack.cursor_at_back(),
+            is_match_bwd: true,
+            is_match_fwd: true,
+            is_finished: false,
+        }
+    }
+
+    /// Returns next search result.
+    ///
+    /// The callback function is used to advance the **start** of the range the
+    /// searcher is working on.  It is passed the current range of cursor
+    /// positions that weren’t visited yet and it must return the new start
+    /// cursor position.  It’s never called with an empty range.  For some
+    /// haystacks the callback may be as simple as a closure returning the start
+    /// incremented by one; others might require looking for a new valid
+    /// boundary.
+    pub fn next_fwd<R: SearchResult<T>, F>(&mut self, advance_fwd: F) -> R
+    where
+        F: FnOnce(crate::ops::Range<T>) -> T,
+    {
+        if self.is_finished {
+            return R::DONE;
+        }
+        if take(&mut self.is_match_fwd) {
+            if let Some(ret) = R::matching(self.start, self.start) {
+                return ret;
+            }
+        }
+        if self.start < self.end {
+            let pos = self.start;
+            self.start = advance_fwd(self.start..self.end);
+            if let Some(ret) = R::rejecting(pos, self.start) {
+                self.is_match_fwd = true;
+                return ret;
+            }
+            return R::matching(self.start, self.start).unwrap();
+        }
+        self.is_finished = true;
+        R::DONE
+    }
+
+    /// Returns next search result.
+    ///
+    /// The callback function is used to advance the **end** of the range the
+    /// searcher is working on backwards.  It is passed the current range of
+    /// cursor positions that weren’t visited yet and it must return the new end
+    /// cursor position.  It’s never called with an empty range.  For some
+    /// haystacks the callback may be as simple as a closure returning the end
+    /// decremented by one; others might require looking for a new valid
+    /// boundary.
+    pub fn next_bwd<R: SearchResult<T>, F>(&mut self, advance_bwd: F) -> R
+    where
+        F: FnOnce(crate::ops::Range<T>) -> T,
+    {
+        if self.is_finished {
+            return R::DONE;
+        }
+        if take(&mut self.is_match_bwd) {
+            if let Some(ret) = R::matching(self.end, self.end) {
+                return ret;
+            }
+        }
+        if self.start < self.end {
+            let pos = self.end;
+            self.end = advance_bwd(self.start..self.end);
+            if let Some(ret) = R::rejecting(self.end, pos) {
+                self.is_match_bwd = true;
+                return ret;
+            }
+            return R::matching(self.end, self.end).unwrap();
+        }
+        self.is_finished = true;
+        R::DONE
+    }
+}
 
 //////////////////////////////////////////////////////////////////////////////
 // Internal Split and SplitN implementations
