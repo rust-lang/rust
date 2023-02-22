@@ -32,7 +32,6 @@ use rustc_infer::traits::ImplSourceBuiltinData;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::DefIdTree;
 use rustc_middle::ty::{self, Term, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 

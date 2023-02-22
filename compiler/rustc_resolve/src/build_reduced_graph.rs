@@ -25,9 +25,8 @@ use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_metadata::creader::LoadedMacro;
-use rustc_middle::bug;
 use rustc_middle::metadata::ModChild;
-use rustc_middle::ty::{self, DefIdTree};
+use rustc_middle::{bug, ty};
 use rustc_session::cstore::CrateStore;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
 use rustc_span::source_map::respan;
@@ -99,7 +98,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         loop {
             match self.get_module(def_id) {
                 Some(module) => return module,
-                None => def_id = self.parent(def_id),
+                None => def_id = self.tcx.parent(def_id),
             }
         }
     }
@@ -775,7 +774,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                         let field_vis = self
                             .try_resolve_visibility(&field.vis, false)
                             .unwrap_or(ty::Visibility::Public);
-                        if ctor_vis.is_at_least(field_vis, &*self.r) {
+                        if ctor_vis.is_at_least(field_vis, self.r.tcx) {
                             ctor_vis = field_vis;
                         }
                         ret_fields.push(field_vis.to_def_id());
@@ -1414,10 +1413,7 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
         if !(ctxt == AssocCtxt::Impl
             && matches!(item.vis.kind, ast::VisibilityKind::Inherited)
-            && self
-                .r
-                .trait_impl_items
-                .contains(&ty::DefIdTree::local_parent(&*self.r, local_def_id)))
+            && self.r.trait_impl_items.contains(&self.r.tcx.local_parent(local_def_id)))
         {
             // Trait impl item visibility is inherited from its trait when not specified
             // explicitly. In that case we cannot determine it here in early resolve,

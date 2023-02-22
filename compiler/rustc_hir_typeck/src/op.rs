@@ -13,7 +13,7 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;

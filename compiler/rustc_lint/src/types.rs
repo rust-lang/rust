@@ -17,7 +17,7 @@ use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{
-    self, AdtKind, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    self, AdtKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map;

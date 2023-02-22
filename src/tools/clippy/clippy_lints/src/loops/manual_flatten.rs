@@ -9,7 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, Pat, PatKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, DefIdTree};
+use rustc_middle::ty;
 use rustc_span::source_map::Span;
 
 /// Check for unnecessary `if let` usage in a for loop where only the `Some` or `Ok` variant of the

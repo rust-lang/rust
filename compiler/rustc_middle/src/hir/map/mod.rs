@@ -1,5 +1,5 @@
 use crate::hir::{ModuleItems, Owner};
-use crate::ty::{DefIdTree, TyCtxt};
+use crate::ty::TyCtxt;
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};

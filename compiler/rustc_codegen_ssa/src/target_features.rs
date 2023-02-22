@@ -8,7 +8,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{DefIdTree, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::sym;

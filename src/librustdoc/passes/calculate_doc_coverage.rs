@@ -8,7 +8,6 @@ use crate::visit::DocVisitor;
 use rustc_hir as hir;
 use rustc_lint::builtin::MISSING_DOCS;
 use rustc_middle::lint::LintLevelSource;
-use rustc_middle::ty::DefIdTree;
 use rustc_session::lint;
 use rustc_span::FileName;
 use serde::Serialize;

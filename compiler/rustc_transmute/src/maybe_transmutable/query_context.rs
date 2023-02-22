@@ -58,9 +58,7 @@ mod rustc {
             use rustc_middle::ty;
 
             let parent = if let ty::Adt(adt_def, ..) = scope.kind() {
-                use rustc_middle::ty::DefIdTree;
-                let parent = self.parent(adt_def.did());
-                parent
+                self.parent(adt_def.did())
             } else {
                 // Is this always how we want to handle a non-ADT scope?
                 return false;
