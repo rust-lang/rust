@@ -1803,9 +1803,32 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     }
 
     /// Returns a pointer to a control byte.
+    ///
+    /// # Safety
+    ///
+    /// For the allocated [`RawTableInner`], the result is [`Undefined Behavior`],
+    /// if the `index` is greater than the `self.bucket_mask + 1 + Group::WIDTH`.
+    /// In that case, calling this function with `index == self.bucket_mask + 1 + Group::WIDTH`
+    /// will return a pointer to the end of the allocated table and it is useless on its own.
+    ///
+    /// Calling this function with `index >= self.bucket_mask + 1 + Group::WIDTH` on a
+    /// table that has not been allocated results in [`Undefined Behavior`].
+    ///
+    /// So to satisfy both requirements you should always follow the rule that
+    /// `index < self.bucket_mask + 1 + Group::WIDTH`
+    ///
+    /// Calling this function on [`RawTableInner`] that are not already allocated is safe
+    /// for read-only purpose.
+    ///
+    /// See also [`Bucket::as_ptr()`] method, for more information about of properly removing
+    /// or saving `data element` from / into the [`RawTable`] / [`RawTableInner`].
+    ///
+    /// [`Bucket::as_ptr()`]: Bucket::as_ptr()
+    /// [`Undefined Behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     unsafe fn ctrl(&self, index: usize) -> *mut u8 {
         debug_assert!(index < self.num_ctrl_bytes());
+        // SAFETY: The caller must uphold the safety rules for the [`RawTableInner::ctrl`]
         self.ctrl.as_ptr().add(index)
     }
 
