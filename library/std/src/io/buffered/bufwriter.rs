@@ -661,6 +661,10 @@ impl<W: Write + Seek> Seek for BufWriter<W> {
         self.flush_buf()?;
         self.get_mut().seek(pos)
     }
+
+    fn stream_len(&mut self) -> io::Result<u64> {
+        self.inner.stream_len()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

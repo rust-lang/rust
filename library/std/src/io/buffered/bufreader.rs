@@ -489,6 +489,10 @@ impl<R: Seek> Seek for BufReader<R> {
             )
         })
     }
+
+    fn stream_len(&mut self) -> io::Result<u64> {
+        self.inner.stream_len()
+    }
 }
 
 impl<T> SizeHint for BufReader<T> {
