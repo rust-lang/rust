@@ -130,12 +130,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     };
 
                     let expn_id = self.cstore().module_expansion_untracked(def_id, &self.tcx.sess);
-                    let span = self.cstore().get_span_untracked(def_id, &self.tcx.sess);
                     Some(self.new_module(
                         parent,
                         ModuleKind::Def(def_kind, def_id, name),
                         expn_id,
-                        span,
+                        self.def_span(def_id),
                         // FIXME: Account for `#[no_implicit_prelude]` attributes.
                         parent.map_or(false, |module| module.no_implicit_prelude),
                     ))

@@ -3376,7 +3376,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         participle: "defined",
                         article: res.article(),
                         shadowed_binding: res,
-                        shadowed_binding_span: self.r.opt_span(def_id).expect("const parameter defined outside of local crate"),
+                        shadowed_binding_span: self.r.def_span(def_id),
                     }
                 );
                 None

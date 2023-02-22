@@ -48,7 +48,6 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
-use rustc_session::cstore::CrateStore;
 use rustc_session::lint::LintBuffer;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::source_map::Spanned;
@@ -1870,20 +1869,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
-    #[inline]
-    fn opt_span(&self, def_id: DefId) -> Option<Span> {
-        def_id.as_local().map(|def_id| self.tcx.source_span(def_id))
-    }
-
-    /// Retrieves the name of the given `DefId`.
-    #[inline]
-    fn opt_name(&self, def_id: DefId) -> Option<Symbol> {
-        let def_key = match def_id.as_local() {
-            Some(def_id) => self.tcx.definitions_untracked().def_key(def_id),
-            None => self.cstore().def_key(def_id),
-        };
-        def_key.get_opt_name()
+    /// Retrieves definition span of the given `DefId`.
+    fn def_span(&self, def_id: DefId) -> Span {
+        match def_id.as_local() {
+            Some(def_id) => self.tcx.source_span(def_id),
+            None => self.cstore().get_span_untracked(def_id, self.tcx.sess),
+        }
     }
 
     /// Checks if an expression refers to a function marked with

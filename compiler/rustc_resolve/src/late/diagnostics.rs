@@ -19,7 +19,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::PrimTy;
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
@@ -166,13 +166,6 @@ impl TypoCandidate {
 }
 
 impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
-    fn def_span(&self, def_id: DefId) -> Option<Span> {
-        match def_id.krate {
-            LOCAL_CRATE => self.r.opt_span(def_id),
-            _ => Some(self.r.cstore().get_span_untracked(def_id, self.r.tcx.sess)),
-        }
-    }
-
     fn make_base_error(
         &mut self,
         path: &[Segment],
@@ -191,7 +184,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 span,
                 span_label: match res {
                     Res::Def(kind, def_id) if kind == DefKind::TyParam => {
-                        self.def_span(def_id).map(|span| (span, "found this type parameter"))
+                        Some((self.r.def_span(def_id), "found this type parameter"))
                     }
                     _ => None,
                 },
@@ -1295,9 +1288,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
                 PathSource::Expr(_) | PathSource::TupleStruct(..) | PathSource::Pat => {
                     let span = find_span(&source, err);
-                    if let Some(span) = self.def_span(def_id) {
-                        err.span_label(span, &format!("`{}` defined here", path_str));
-                    }
+                    err.span_label(self.r.def_span(def_id), &format!("`{path_str}` defined here"));
                     let (tail, descr, applicability) = match source {
                         PathSource::Pat | PathSource::TupleStruct(..) => {
                             ("", "pattern", Applicability::MachineApplicable)
@@ -1359,17 +1350,14 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 if self.r.tcx.sess.is_nightly_build() {
                     let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
                                `type` alias";
-                    if let Some(span) = self.def_span(def_id) {
-                        if let Ok(snip) = self.r.tcx.sess.source_map().span_to_snippet(span) {
-                            // The span contains a type alias so we should be able to
-                            // replace `type` with `trait`.
-                            let snip = snip.replacen("type", "trait", 1);
-                            err.span_suggestion(span, msg, snip, Applicability::MaybeIncorrect);
-                        } else {
-                            err.span_help(span, msg);
-                        }
+                    let span = self.r.def_span(def_id);
+                    if let Ok(snip) = self.r.tcx.sess.source_map().span_to_snippet(span) {
+                        // The span contains a type alias so we should be able to
+                        // replace `type` with `trait`.
+                        let snip = snip.replacen("type", "trait", 1);
+                        err.span_suggestion(span, msg, snip, Applicability::MaybeIncorrect);
                     } else {
-                        err.help(msg);
+                        err.span_help(span, msg);
                     }
                 }
             }
@@ -1512,9 +1500,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 match source {
                     PathSource::Expr(_) | PathSource::TupleStruct(..) | PathSource::Pat => {
                         let span = find_span(&source, err);
-                        if let Some(span) = self.def_span(def_id) {
-                            err.span_label(span, &format!("`{}` defined here", path_str));
-                        }
+                        err.span_label(
+                            self.r.def_span(def_id),
+                            &format!("`{path_str}` defined here"),
+                        );
                         err.span_suggestion(
                             span,
                             "use this syntax instead",
@@ -1527,9 +1516,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
             (Res::Def(DefKind::Ctor(_, CtorKind::Fn), ctor_def_id), _) if ns == ValueNS => {
                 let def_id = self.r.tcx.parent(ctor_def_id);
-                if let Some(span) = self.def_span(def_id) {
-                    err.span_label(span, &format!("`{}` defined here", path_str));
-                }
+                err.span_label(self.r.def_span(def_id), &format!("`{path_str}` defined here"));
                 let fields = self.r.field_names.get(&def_id).map_or_else(
                     || "/* fields */".to_string(),
                     |fields| vec!["_"; fields.len()].join(", "),
@@ -2093,9 +2080,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         };
 
         if def_id.is_local() {
-            if let Some(span) = self.def_span(def_id) {
-                err.span_note(span, "the enum is defined here");
-            }
+            err.span_note(self.r.def_span(def_id), "the enum is defined here");
         }
     }
 
