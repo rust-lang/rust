@@ -99,6 +99,15 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<TyCtxt<'tcx>> + Copy + Eq {
         requirements: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
     ) -> QueryResult<'tcx>;
 
+    // Consider a clause specifically for a `dyn Trait` self type. This requires
+    // additionally checking all of the supertraits and object bounds to hold,
+    // since they're not implied by the well-formedness of the object type.
+    fn consider_object_bound_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        assumption: ty::Predicate<'tcx>,
+    ) -> QueryResult<'tcx>;
+
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -455,7 +464,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         for assumption in
             elaborate_predicates(tcx, bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)))
         {
-            match G::consider_implied_clause(self, goal, assumption.predicate, []) {
+            match G::consider_object_bound_candidate(self, goal, assumption.predicate) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
                 }

@@ -1,6 +1,7 @@
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{Movability, Mutability};
 use rustc_infer::traits::query::NoSolution;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable};
 
 use crate::solve::EvalCtxt;
 
@@ -230,6 +231,65 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         ty::Bound(..)
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
             bug!("unexpected type `{self_ty}`")
+        }
+    }
+}
+
+pub(crate) fn predicates_for_object_candidate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::TraitRef<'tcx>,
+    object_bound: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+) -> Vec<ty::Predicate<'tcx>> {
+    let mut requirements = vec![];
+    requirements.extend(
+        tcx.super_predicates_of(trait_ref.def_id).instantiate(tcx, trait_ref.substs).predicates,
+    );
+    for item in tcx.associated_items(trait_ref.def_id).in_definition_order() {
+        if item.kind == ty::AssocKind::Type {
+            requirements.extend(tcx.item_bounds(item.def_id).subst(tcx, trait_ref.substs));
+        }
+    }
+
+    let mut replace_projection_with = FxHashMap::default();
+    for bound in object_bound {
+        let bound = bound.no_bound_vars().expect("higher-ranked projections not supported, yet");
+        if let ty::ExistentialPredicate::Projection(proj) = bound {
+            let proj = proj.with_self_ty(tcx, trait_ref.self_ty());
+            let old_ty = replace_projection_with.insert(
+                proj.projection_ty,
+                proj.term.ty().expect("expected only types in dyn right now"),
+            );
+            assert_eq!(
+                old_ty,
+                None,
+                "{} has two substitutions: {} and {}",
+                proj.projection_ty,
+                proj.term,
+                old_ty.unwrap()
+            );
+        }
+    }
+
+    requirements.fold_with(&mut ReplaceProjectionWith { tcx, mapping: replace_projection_with })
+}
+
+struct ReplaceProjectionWith<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    mapping: FxHashMap<ty::AliasTy<'tcx>, Ty<'tcx>>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
+            && let Some(replacement) = self.mapping.get(&alias_ty)
+        {
+            *replacement
+        } else {
+            ty.super_fold_with(self)
         }
     }
 }
