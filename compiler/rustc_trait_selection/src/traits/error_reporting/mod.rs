@@ -30,7 +30,7 @@ use rustc_hir::GenericParam;
 use rustc_hir::Item;
 use rustc_hir::Node;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
-use rustc_infer::infer::{InferOk, TypeTrace};
+use rustc_infer::infer::{DefiningAnchor, InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -2316,7 +2316,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 };
 
                 let obligation = obligation.with(self.tcx, trait_ref);
-                let mut selcx = SelectionContext::new(&self);
+                let mut selcx =
+                    SelectionContext::new(&self).with_defining_use_anchor(DefiningAnchor::Bubble);
                 match selcx.select_from_obligation(&obligation) {
                     Ok(None) => {
                         let ambiguities =

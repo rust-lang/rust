@@ -217,16 +217,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             freshener: infcx.freshener_keep_static(),
             intercrate_ambiguity_causes: None,
             query_mode: TraitQueryMode::Standard,
-            defining_use_anchor: infcx.old_defining_use_anchor,
+            defining_use_anchor: DefiningAnchor::Error,
         }
     }
 
-    pub fn with_query_mode(
-        infcx: &'cx InferCtxt<'tcx>,
-        query_mode: TraitQueryMode,
-    ) -> SelectionContext<'cx, 'tcx> {
-        debug!(?query_mode, "with_query_mode");
-        SelectionContext { query_mode, ..SelectionContext::new(infcx) }
+    pub fn with_defining_use_anchor(self, defining_use_anchor: DefiningAnchor) -> Self {
+        Self { defining_use_anchor, ..self }
+    }
+
+    pub fn new_in_canonical_query(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
+        SelectionContext {
+            query_mode: TraitQueryMode::Canonical,
+            defining_use_anchor: DefiningAnchor::Bubble,
+            ..SelectionContext::new(infcx)
+        }
     }
 
     /// Enables tracking of intercrate ambiguity causes. See

@@ -36,7 +36,7 @@ pub fn codegen_select_candidate<'tcx>(
         .build();
     //~^ HACK `Bubble` is required for
     // this test to pass: type-alias-impl-trait/assoc-projection-ice.rs
-    let mut selcx = SelectionContext::new(&infcx);
+    let mut selcx = SelectionContext::new(&infcx).with_defining_use_anchor(DefiningAnchor::Bubble);
 
     let obligation_cause = ObligationCause::dummy();
     let obligation = Obligation::new(tcx, obligation_cause, param_env, trait_ref);

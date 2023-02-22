@@ -585,7 +585,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         })?;
 
-        let mut selcx = traits::SelectionContext::new(self);
+        let mut selcx =
+            traits::SelectionContext::new(self).with_defining_use_anchor(self.defining_use_anchor);
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
         let cause = ObligationCause::new(

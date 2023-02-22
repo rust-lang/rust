@@ -137,7 +137,8 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     }
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        let selcx = SelectionContext::new(infcx);
+        let selcx =
+            SelectionContext::new(infcx).with_defining_use_anchor(infcx.old_defining_use_anchor);
         self.select(selcx)
     }
 
