@@ -2173,12 +2173,8 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query permits_uninit_init(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> Result<bool, ty::layout::LayoutError<'tcx>> {
-        desc { "checking to see if `{}` permits being left uninit", key.value }
-    }
-
-    query permits_zero_init(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> Result<bool, ty::layout::LayoutError<'tcx>> {
-        desc { "checking to see if `{}` permits being left zeroed", key.value }
+    query check_validity_of_init(key: (InitKind, ty::ParamEnvAnd<'tcx, Ty<'tcx>>)) -> Result<bool, ty::layout::LayoutError<'tcx>> {
+        desc { "checking to see if `{}` permits being left {}", key.1.value, key.0 }
     }
 
     query compare_impl_const(

@@ -4,8 +4,9 @@ use crate::infer::canonical::Canonical;
 use crate::mir;
 use crate::traits;
 use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::layout::{InitKind, TyAndLayout};
 use crate::ty::subst::{GenericArg, SubstsRef};
-use crate::ty::{self, layout::TyAndLayout, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::hir_id::{HirId, OwnerId};
 use rustc_query_system::query::{DefaultCacheSelector, SingleCacheSelector, VecCacheSelector};
@@ -694,5 +695,26 @@ impl Key for HirId {
     #[inline(always)]
     fn key_as_def_id(&self) -> Option<DefId> {
         None
+    }
+}
+
+impl<'tcx> Key for (InitKind, ty::ParamEnvAnd<'tcx, Ty<'tcx>>) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
+    // Just forward to `Ty<'tcx>`
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+
+    fn ty_adt_id(&self) -> Option<DefId> {
+        match self.1.value.kind() {
+            ty::Adt(adt, _) => Some(adt.did()),
+            _ => None,
+        }
     }
 }

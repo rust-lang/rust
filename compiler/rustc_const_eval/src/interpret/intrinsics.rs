@@ -11,7 +11,7 @@ use rustc_middle::mir::{
     BinOp, NonDivergingIntrinsic,
 };
 use rustc_middle::ty;
-use rustc_middle::ty::layout::LayoutOf as _;
+use rustc_middle::ty::layout::{InitKind, LayoutOf as _};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
@@ -437,7 +437,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if intrinsic_name == sym::assert_zero_valid {
                     let should_panic = !self
                         .tcx
-                        .permits_zero_init(self.param_env.and(ty))
+                        .check_validity_of_init((InitKind::Zero, self.param_env.and(ty)))
                         .map_err(|_| err_inval!(TooGeneric))?;
 
                     if should_panic {
@@ -454,7 +454,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if intrinsic_name == sym::assert_mem_uninitialized_valid {
                     let should_panic = !self
                         .tcx
-                        .permits_uninit_init(self.param_env.and(ty))
+                        .check_validity_of_init((
+                            InitKind::UninitMitigated0x01Fill,
+                            self.param_env.and(ty),
+                        ))
                         .map_err(|_| err_inval!(TooGeneric))?;
 
                     if should_panic {

@@ -6,8 +6,8 @@ use rustc_middle::mir::{
     BinOp, Body, Constant, ConstantKind, LocalDecls, Operand, Place, ProjectionElem, Rvalue,
     SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnOp,
 };
-use rustc_middle::ty::layout::LayoutError;
-use rustc_middle::ty::{self, ParamEnv, ParamEnvAnd, SubstsRef, Ty, TyCtxt};
+use rustc_middle::ty::layout::InitKind;
+use rustc_middle::ty::{self, ParamEnv, SubstsRef, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 
 pub struct InstCombine;
@@ -234,16 +234,15 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
         }
         let ty = substs.type_at(0);
 
-        // Check this is a foldable intrinsic before we query the layout of our generic parameter
-        let Some(assert_panics) = intrinsic_assert_panics(intrinsic_name) else { return; };
-        match assert_panics(self.tcx, self.param_env.and(ty)) {
-            // We don't know the layout, don't touch the assertion
-            Err(_) => {}
-            Ok(true) => {
+        let known_is_valid = intrinsic_assert_panics(self.tcx, self.param_env, ty, intrinsic_name);
+        match known_is_valid {
+            // We don't know the layout or it's not validity assertion at all, don't touch it
+            None => {}
+            Some(true) => {
                 // If we know the assert panics, indicate to later opts that the call diverges
                 *target = None;
             }
-            Ok(false) => {
+            Some(false) => {
                 // If we know the assert does not panic, turn the call into a Goto
                 terminator.kind = TerminatorKind::Goto { target: *target_block };
             }
@@ -252,33 +251,21 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
 }
 
 fn intrinsic_assert_panics<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
     intrinsic_name: Symbol,
-) -> Option<fn(TyCtxt<'tcx>, ParamEnvAnd<'tcx, Ty<'tcx>>) -> Result<bool, LayoutError<'tcx>>> {
-    fn inhabited_predicate<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Result<bool, LayoutError<'tcx>> {
-        Ok(tcx.layout_of(param_env_and_ty)?.abi.is_uninhabited())
-    }
-    fn zero_valid_predicate<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Result<bool, LayoutError<'tcx>> {
-        Ok(!tcx.permits_zero_init(param_env_and_ty)?)
-    }
-    fn mem_uninitialized_valid_predicate<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
-    ) -> Result<bool, LayoutError<'tcx>> {
-        Ok(!tcx.permits_uninit_init(param_env_and_ty)?)
-    }
-
-    match intrinsic_name {
-        sym::assert_inhabited => Some(inhabited_predicate),
-        sym::assert_zero_valid => Some(zero_valid_predicate),
-        sym::assert_mem_uninitialized_valid => Some(mem_uninitialized_valid_predicate),
-        _ => None,
-    }
+) -> Option<bool> {
+    Some(match intrinsic_name {
+        sym::assert_inhabited => tcx.layout_of(param_env.and(ty)).ok()?.abi.is_uninhabited(),
+        sym::assert_zero_valid => {
+            !tcx.check_validity_of_init((InitKind::Zero, param_env.and(ty))).ok()?
+        }
+        sym::assert_mem_uninitialized_valid => !tcx
+            .check_validity_of_init((InitKind::UninitMitigated0x01Fill, param_env.and(ty)))
+            .ok()?,
+        _ => return None,
+    })
 }
 
 fn resolve_rust_intrinsic<'tcx>(
