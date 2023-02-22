@@ -2114,17 +2114,29 @@ fn get_all_import_attributes<'hir>(
     attributes: &mut Vec<ast::Attribute>,
     is_inline: bool,
 ) {
+    let mut first = true;
     let hir_map = tcx.hir();
     let mut visitor = OneLevelVisitor::new(hir_map, target_def_id);
     let mut visited = FxHashSet::default();
+
     // If the item is an import and has at least a path with two parts, we go into it.
     while let hir::ItemKind::Use(path, _) = item.kind && visited.insert(item.hir_id()) {
-        // We add the attributes from this import into the list.
-        add_without_unwanted_attributes(attributes, hir_map.attrs(item.hir_id()), is_inline);
+        if first {
+            // This is the "original" reexport so we get all its attributes without filtering them.
+            attributes.extend_from_slice(hir_map.attrs(item.hir_id()));
+            first = false;
+        } else {
+            add_without_unwanted_attributes(attributes, hir_map.attrs(item.hir_id()), is_inline);
+        }
 
-        let def_id = if path.segments.len() > 1 {
-            match path.segments[path.segments.len() - 2].res {
+        let def_id = if let [.., parent_segment, _] = &path.segments {
+            match parent_segment.res {
                 hir::def::Res::Def(_, def_id) => def_id,
+                _ if parent_segment.ident.name == kw::Crate => {
+                    // In case the "parent" is the crate, it'll give `Res::Err` so we need to
+                    // circumvent it this way.
+                    tcx.parent(item.owner_id.def_id.to_def_id())
+                }
                 _ => break,
             }
         } else {
@@ -2341,9 +2353,7 @@ fn clean_maybe_renamed_item<'tcx>(
         if let Some(import_id) = import_id &&
             let Some(hir::Node::Item(use_node)) = cx.tcx.hir().find_by_def_id(import_id)
         {
-            // First, we add the attributes from the current import.
-            extra_attrs.extend_from_slice(inline::load_attrs(cx, import_id.to_def_id()));
-            let is_inline = extra_attrs.lists(sym::doc).get_word_attr(sym::inline).is_some();
+            let is_inline = inline::load_attrs(cx, import_id.to_def_id()).lists(sym::doc).get_word_attr(sym::inline).is_some();
             // Then we get all the various imports' attributes.
             get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut extra_attrs, is_inline);
             add_without_unwanted_attributes(&mut extra_attrs, inline::load_attrs(cx, def_id), is_inline);
