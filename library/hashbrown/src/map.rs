@@ -2123,6 +2123,18 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
         RawEntryBuilder { map: self }
     }
 
+    /// Returns a reference to the [`RawTable`] used underneath [`HashMap`].
+    /// This function is only available if the `raw` feature of the crate is enabled.
+    /// 
+    /// See [`raw_table_mut`] for more.
+    /// 
+    /// [`raw_table_mut`]: Self::raw_table_mut
+    #[cfg(feature = "raw")]
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn raw_table(&self) -> &RawTable<(K, V), A> {
+        &self.table
+    }    
+
     /// Returns a mutable reference to the [`RawTable`] used underneath [`HashMap`].
     /// This function is only available if the `raw` feature of the crate is enabled.
     ///
@@ -2159,7 +2171,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// where
     ///     F: Fn(&(K, V)) -> bool,
     /// {
-    ///     let raw_table = map.raw_table();
+    ///     let raw_table = map.raw_table_mut();
     ///     match raw_table.find(hash, is_match) {
     ///         Some(bucket) => Some(unsafe { raw_table.remove(bucket) }),
     ///         None => None,
@@ -2180,7 +2192,7 @@ impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
     /// ```
     #[cfg(feature = "raw")]
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn raw_table(&mut self) -> &mut RawTable<(K, V), A> {
+    pub fn raw_table_mut(&mut self) -> &mut RawTable<(K, V), A> {
         &mut self.table
     }
 }
