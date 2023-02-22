@@ -795,6 +795,11 @@ impl Seek for File {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         self.inner.seek(pos)
     }
+
+    fn stream_len(&mut self) -> io::Result<u64> {
+        let file_attr = self.inner.file_attr()?;
+        Ok(file_attr.size())
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for &File {
@@ -850,6 +855,10 @@ impl Write for &File {
 impl Seek for &File {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         self.inner.seek(pos)
+    }
+    fn stream_len(&mut self) -> io::Result<u64> {
+        let file_attr = self.inner.file_attr()?;
+        Ok(file_attr.size())
     }
 }
 
