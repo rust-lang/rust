@@ -151,7 +151,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 };
                 nested_goals.extend(
                     structural_traits::predicates_for_object_candidate(
-                        tcx,
+                        ecx,
+                        goal.param_env,
                         goal.predicate.projection_ty.trait_ref(tcx),
                         bounds,
                     )

@@ -110,7 +110,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 };
                 nested_goals.extend(
                     structural_traits::predicates_for_object_candidate(
-                        tcx,
+                        ecx,
+                        goal.param_env,
                         goal.predicate.trait_ref,
                         bounds,
                     )

@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{Movability, Mutability};
+use rustc_hir::{def_id::DefId, Movability, Mutability};
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable};
 
@@ -236,10 +236,12 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
 }
 
 pub(crate) fn predicates_for_object_candidate<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    ecx: &EvalCtxt<'_, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
     object_bound: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> Vec<ty::Predicate<'tcx>> {
+    let tcx = ecx.tcx();
     let mut requirements = vec![];
     requirements.extend(
         tcx.super_predicates_of(trait_ref.def_id).instantiate(tcx, trait_ref.substs).predicates,
@@ -252,13 +254,9 @@ pub(crate) fn predicates_for_object_candidate<'tcx>(
 
     let mut replace_projection_with = FxHashMap::default();
     for bound in object_bound {
-        let bound = bound.no_bound_vars().expect("higher-ranked projections not supported, yet");
-        if let ty::ExistentialPredicate::Projection(proj) = bound {
+        if let ty::ExistentialPredicate::Projection(proj) = bound.skip_binder() {
             let proj = proj.with_self_ty(tcx, trait_ref.self_ty());
-            let old_ty = replace_projection_with.insert(
-                proj.projection_ty,
-                proj.term.ty().expect("expected only types in dyn right now"),
-            );
+            let old_ty = replace_projection_with.insert(proj.def_id(), bound.rebind(proj));
             assert_eq!(
                 old_ty,
                 None,
@@ -270,24 +268,37 @@ pub(crate) fn predicates_for_object_candidate<'tcx>(
         }
     }
 
-    requirements.fold_with(&mut ReplaceProjectionWith { tcx, mapping: replace_projection_with })
+    requirements.fold_with(&mut ReplaceProjectionWith {
+        ecx,
+        param_env,
+        mapping: replace_projection_with,
+    })
 }
 
-struct ReplaceProjectionWith<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    mapping: FxHashMap<ty::AliasTy<'tcx>, Ty<'tcx>>,
+struct ReplaceProjectionWith<'a, 'tcx> {
+    ecx: &'a EvalCtxt<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    mapping: FxHashMap<DefId, ty::PolyProjectionPredicate<'tcx>>,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
     fn interner(&self) -> TyCtxt<'tcx> {
-        self.tcx
+        self.ecx.tcx()
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
-            && let Some(replacement) = self.mapping.get(&alias_ty)
+            && let Some(replacement) = self.mapping.get(&alias_ty.def_id)
         {
-            *replacement
+            let proj = self.ecx.instantiate_binder_with_infer(*replacement);
+            // Technically this folder could be fallible?
+            let nested = self
+                .ecx
+                .eq(self.param_env, alias_ty, proj.projection_ty)
+                .expect("expected to be able to unify goal projection with dyn's projection");
+            // Technically we could register these too..
+            assert!(nested.is_empty(), "did not expect unification to have any nested goals");
+            proj.term.ty().unwrap()
         } else {
             ty.super_fold_with(self)
         }
