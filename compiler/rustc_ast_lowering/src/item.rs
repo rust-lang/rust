@@ -284,7 +284,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
             },
             ItemKind::GlobalAsm(asm) => hir::ItemKind::GlobalAsm(self.lower_inline_asm(span, asm)),
-            ItemKind::TyAlias(box TyAlias { generics, where_clauses, ty: Some(ty), .. }) => {
+            ItemKind::TyAlias(box TyAlias { generics, where_clauses, ty, .. }) => {
                 // We lower
                 //
                 // type Foo = impl Trait
@@ -299,18 +299,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &generics,
                     id,
                     &ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                    |this| this.lower_ty(ty, &ImplTraitContext::TypeAliasesOpaqueTy),
-                );
-                hir::ItemKind::TyAlias(ty, generics)
-            }
-            ItemKind::TyAlias(box TyAlias { generics, where_clauses, ty: None, .. }) => {
-                let mut generics = generics.clone();
-                add_ty_alias_where_clause(&mut generics, *where_clauses, true);
-                let (generics, ty) = self.lower_generics(
-                    &generics,
-                    id,
-                    &ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                    |this| this.arena.alloc(this.ty(span, hir::TyKind::Err)),
+                    |this| match ty {
+                        None => {
+                            let guar = this.tcx.sess.delay_span_bug(
+                                span,
+                                "expected to lower type alias type, but it was missing",
+                            );
+                            this.arena.alloc(this.ty(span, hir::TyKind::Err(guar)))
+                        }
+                        Some(ty) => this.lower_ty(ty, &ImplTraitContext::TypeAliasesOpaqueTy),
+                    },
                 );
                 hir::ItemKind::TyAlias(ty, generics)
             }
@@ -847,7 +845,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| match ty {
                         None => {
-                            let ty = this.arena.alloc(this.ty(i.span, hir::TyKind::Err));
+                            let guar = this.tcx.sess.delay_span_bug(
+                                i.span,
+                                "expected to lower associated type, but it was missing",
+                            );
+                            let ty = this.arena.alloc(this.ty(i.span, hir::TyKind::Err(guar)));
                             hir::ImplItemKind::Type(ty)
                         }
                         Some(ty) => {
