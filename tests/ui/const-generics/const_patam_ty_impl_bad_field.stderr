@@ -1,5 +1,5 @@
 error[E0204]: the trait `ConstParamTy` may not be implemented for this type
-  --> $DIR/const_patam_ty_impl_bad_field.rs:9:36
+  --> $DIR/const_patam_ty_impl_bad_field.rs:10:36
    |
 LL | struct CantParam(NotParam);
    |                  -------- this field does not implement `ConstParamTy`

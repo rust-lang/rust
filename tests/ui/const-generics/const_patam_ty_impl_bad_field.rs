@@ -1,4 +1,5 @@
-#![feature(const_param_ty_trait)]
+#![allow(incomplete_features)]
+#![feature(adt_const_params)]
 
 #[derive(PartialEq, Eq)]
 struct NotParam;
