@@ -4,7 +4,7 @@ error[E0405]: cannot find trait `Oops` in this scope
 LL |     let _: S<impl Oops> = S;
    |                   ^^^^ not found in this scope
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in variable binding
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in variable bindings
   --> $DIR/issue-104513-ice.rs:3:14
    |
 LL |     let _: S<impl Oops> = S;

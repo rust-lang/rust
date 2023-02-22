@@ -1,4 +1,4 @@
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in trait method return
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in trait method return types
   --> $DIR/feature-gate-return_position_impl_trait_in_trait.rs:8:17
    |
 LL |     fn bar() -> impl Sized;
@@ -7,7 +7,7 @@ LL |     fn bar() -> impl Sized;
    = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
    = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in trait method return
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in trait method return types
   --> $DIR/feature-gate-return_position_impl_trait_in_trait.rs:9:21
    |
 LL |     fn baz() -> Box<impl std::fmt::Display>;
@@ -16,7 +16,7 @@ LL |     fn baz() -> Box<impl std::fmt::Display>;
    = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
    = help: add `#![feature(return_position_impl_trait_in_trait)]` to the crate attributes to enable
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in trait method return
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in trait method return types
   --> $DIR/feature-gate-return_position_impl_trait_in_trait.rs:15:23
    |
 LL |     async fn bar() -> impl Sized;

@@ -1,4 +1,4 @@
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in variable binding
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in variable bindings
   --> $DIR/issue-58504.rs:10:16
    |
 LL |     let gens: [impl Generator<Return=!, Yield=()>;2] = [ mk_gen(), mk_gen() ];
