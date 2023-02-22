@@ -1,6 +1,8 @@
-fn static_id<'a,'b>(t: &'a ()) -> &'static ()
-    where 'a: 'static { t }
-//~^ WARN unnecessary lifetime parameter `'a`
+#![warn(unused_lifetimes)]
+
+fn static_id<'a,'b>(t: &'a ()) -> &'static () where 'a: 'static { t }
+//~^ WARN lifetime parameter `'b` never used
+//~| WARN unnecessary lifetime parameter `'a`
 
 fn static_id_indirect<'a,'b>(t: &'a ()) -> &'static ()
     where 'a: 'b, 'b: 'static { t }
