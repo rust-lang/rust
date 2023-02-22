@@ -178,21 +178,78 @@ pub unsafe fn c_string_length(s: *const core::ffi::c_char) -> usize {
     let mut n: usize;
 
     asm!(
-        // search for a zero byte
+        // For small sizes, we avoid invoking SSE instructions.
+        // make manual comparisons instead.
         "xor %eax, %eax",
+        "cmpb $0, (%rdi)",
+        "je 3f",
+        "mov $1, %eax",
+        "cmpb $0, 1(%rdi)",
+        "je 3f",
+        "mov $2, %eax",
+        "cmpb $0, 2(%rdi)",
+        "je 3f",
+        "mov $3, %eax",
+        "cmpb $0, 3(%rdi)",
+        "je 3f",
 
-        // unbounded memory region
-        "xor %ecx, %ecx",
-        "not %rcx",
+        // Adjust address
+        "add $4, %rdi",
 
-        // perform search
-        "repne scasb (%rdi), %al",
+        // Align the address to 16 bytes (xmm register size).
+        // This is important, since an n byte read
+        // with n byte alignment is guranteed to never cross
+        // a page boundary and thus will never try to access
+        // memory which may not be accessible.
+        "mov %edi, %ecx",
+        "and $15, %ecx",
+        "and $-16, %rdi",
 
-        // extract length
-        "not %rcx",
-        "dec %rcx",
+        // zero out an xmm register for comparisons with zero.
+        "pxor    %xmm0, %xmm0",
+
+        // One manual iteration of a zero byte search.
+        // Ensuring proper alignment may cause us to read
+        // memory _before_ the actual string start.
+        // Thus, one separate iteration is needed to handle this special case.
+        "movdqa (%rdi), %xmm1",
+        "pcmpeqb %xmm0, %xmm1",
+        "pmovmskb %xmm1, %eax",
+        // Shift out comparisons that don't belong to the actual string.
+        "shr %cl, %eax",
+        // Check if there was a zero
+        "test %eax, %eax",
+        "jz 1f",
+
+        // A zero was found: calculate result and exit.
+        "bsf %eax, %eax",
+        "add $4, %eax",
+        "jmp 3f",
+
+        // No zero was found: prepare main loop.
+        "1:",
+        "add $16, %rdi",
+        "neg %rcx",
+        "add $4, %rcx",
+
+        // main loop
+        "2:",
+        "movdqa  (%rdi), %xmm1",
+        "add $16, %rdi",
+        "add $16, %rcx",
+        "pcmpeqb %xmm0, %xmm1",
+        "pmovmskb %xmm1, %eax",
+        // Check if there was a zero
+        "test   %eax, %eax",
+        "jz 2b",
+
+        // A zero was found: calculate result and exit.
+        "bsf %eax, %eax",
+        "add %rcx, %rax",
+        "3:",
         inout("rdi") s => _,
-        out("rcx") n,
+        out("rax") n,
+        out("rcx") _,
         options(att_syntax, nostack),
     );
 
