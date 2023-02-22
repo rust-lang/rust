@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::is_in_cfg_test;
+use clippy_utils::{is_in_cfg_test, is_in_test_function};
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -27,7 +27,7 @@ pub(super) fn check(
 
     let method = if is_err { "expect_err" } else { "expect" };
 
-    if allow_expect_in_tests && is_in_cfg_test(cx.tcx, expr.hir_id) {
+    if allow_expect_in_tests && (is_in_test_function(cx.tcx, expr.hir_id) || is_in_cfg_test(cx.tcx, expr.hir_id)) {
         return;
     }
 
