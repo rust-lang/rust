@@ -1318,7 +1318,6 @@ impl<'tcx> InferCtxt<'tcx> {
 
     #[instrument(level = "debug", skip(self), ret)]
     pub fn take_opaque_types(&self) -> opaque_types::OpaqueTypeMap<'tcx> {
-        debug_assert_ne!(self.old_defining_use_anchor, DefiningAnchor::Error);
         std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
     }
 
