@@ -31,7 +31,6 @@ use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, ExpnKind};
 
-use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
 use std::collections::BTreeMap;
 use std::default::Default;
@@ -269,15 +268,7 @@ fn clean_where_predicate<'tcx>(
             let bound_params = wbp
                 .bound_generic_params
                 .iter()
-                .map(|param| {
-                    // Higher-ranked params must be lifetimes.
-                    // Higher-ranked lifetimes can't have bounds.
-                    assert_matches!(
-                        param,
-                        hir::GenericParam { kind: hir::GenericParamKind::Lifetime { .. }, .. }
-                    );
-                    Lifetime(param.name.ident().name)
-                })
+                .map(|param| clean_generic_param(cx, None, param))
                 .collect();
             WherePredicate::BoundPredicate {
                 ty: clean_ty(wbp.bounded_ty, cx),
@@ -409,7 +400,7 @@ fn clean_projection_predicate<'tcx>(
         .collect_referenced_late_bound_regions(&pred)
         .into_iter()
         .filter_map(|br| match br {
-            ty::BrNamed(_, name) if br.is_named() => Some(Lifetime(name)),
+            ty::BrNamed(_, name) if br.is_named() => Some(GenericParamDef::lifetime(name)),
             _ => None,
         })
         .collect();
@@ -507,7 +498,6 @@ fn clean_generic_param_def<'tcx>(
         ty::GenericParamDefKind::Const { has_default } => (
             def.name,
             GenericParamDefKind::Const {
-                did: def.def_id,
                 ty: Box::new(clean_middle_ty(
                     ty::Binder::dummy(
                         cx.tcx
@@ -577,7 +567,6 @@ fn clean_generic_param<'tcx>(
         hir::GenericParamKind::Const { ty, default } => (
             param.name.ident().name,
             GenericParamDefKind::Const {
-                did: param.def_id.to_def_id(),
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default
                     .map(|ct| Box::new(ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string())),
@@ -830,7 +819,7 @@ fn clean_ty_generics<'tcx>(
                         p.get_bound_params()
                             .into_iter()
                             .flatten()
-                            .map(|param| GenericParamDef::lifetime(param.0))
+                            .cloned()
                             .collect(),
                     ));
                 }
