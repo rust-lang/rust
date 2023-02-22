@@ -9,7 +9,7 @@ note: required by a bound in `is_transmutable`
   --> $DIR/should_respect_endianness.rs:14:14
    |
 LL |       pub fn is_transmutable<Src, Dst>()
-   |              --------------- required by a bound in this
+   |              --------------- required by a bound in this function
 LL |       where
 LL |           Dst: BikeshedIntrinsicFrom<Src, Context, {
    |  ______________^

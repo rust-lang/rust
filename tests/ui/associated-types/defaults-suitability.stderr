@@ -27,7 +27,7 @@ LL |     Self::Ty: Clone,
    |               ^^^^^ required by this bound in `Tr2::Ty`
 LL | {
 LL |     type Ty = NotClone;
-   |          -- required by a bound in this
+   |          -- required by a bound in this associated type
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL | #[derive(Clone)]
@@ -75,7 +75,7 @@ LL |     Self::Assoc: IsU8<Self::Assoc>,
    |                  ^^^^^^^^^^^^^^^^^ required by this bound in `D::Assoc`
 ...
 LL |     type Assoc = NotClone;
-   |          ----- required by a bound in this
+   |          ----- required by a bound in this associated type
 
 error[E0277]: the trait bound `<Self as Foo2<T>>::Baz: Clone` is not satisfied
   --> $DIR/defaults-suitability.rs:65:23
@@ -124,7 +124,7 @@ LL |     Self::Baz: Clone,
    |                ^^^^^ required by this bound in `Foo3::Baz`
 ...
 LL |     type Baz = T;
-   |          --- required by a bound in this
+   |          --- required by a bound in this associated type
 help: consider further restricting type parameter `T`
    |
 LL |     Self::Baz: Clone, T: std::clone::Clone

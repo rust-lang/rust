@@ -2784,7 +2784,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             _ => true,
                         };
                     if ident.span.is_visible(sm) && !ident.span.overlaps(span) && !same_line {
-                        multispan.push_span_label(ident.span, "required by a bound in this");
+                        multispan.push_span_label(
+                            ident.span,
+                            format!(
+                                "required by a bound in this {}",
+                                tcx.def_kind(item_def_id).descr(item_def_id)
+                            ),
+                        );
                     }
                 }
                 let descr = format!("required by a bound in `{item_name}`");

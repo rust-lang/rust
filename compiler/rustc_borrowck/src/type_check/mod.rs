@@ -64,7 +64,7 @@ use crate::{
     region_infer::TypeTest,
     type_check::free_region_relations::{CreateResult, UniversalRegionRelations},
     universal_regions::{DefiningTy, UniversalRegions},
-    Upvar,
+    BorrowckInferCtxt, Upvar,
 };
 
 macro_rules! span_mirbug {
@@ -123,7 +123,7 @@ mod relate_tys;
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `elements` -- MIR region map
 pub(crate) fn type_check<'mir, 'tcx>(
-    infcx: &InferCtxt<'tcx>,
+    infcx: &BorrowckInferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexVec<Promoted, Body<'tcx>>,
@@ -866,7 +866,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 /// way, it accrues region constraints -- these can later be used by
 /// NLL region checking.
 struct TypeChecker<'a, 'tcx> {
-    infcx: &'a InferCtxt<'tcx>,
+    infcx: &'a BorrowckInferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     last_span: Span,
     body: &'a Body<'tcx>,
@@ -1019,7 +1019,7 @@ impl Locations {
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn new(
-        infcx: &'a InferCtxt<'tcx>,
+        infcx: &'a BorrowckInferCtxt<'a, 'tcx>,
         body: &'a Body<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
@@ -1356,11 +1356,34 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 };
                 let (sig, map) = tcx.replace_late_bound_regions(sig, |br| {
-                    self.infcx.next_region_var(LateBoundRegion(
-                        term.source_info.span,
-                        br.kind,
-                        LateBoundRegionConversionTime::FnCall,
-                    ))
+                    use crate::renumber::{BoundRegionInfo, RegionCtxt};
+                    use rustc_span::Symbol;
+
+                    let region_ctxt_fn = || {
+                        let reg_info = match br.kind {
+                            ty::BoundRegionKind::BrAnon(_, Some(span)) => {
+                                BoundRegionInfo::Span(span)
+                            }
+                            ty::BoundRegionKind::BrAnon(..) => {
+                                BoundRegionInfo::Name(Symbol::intern("anon"))
+                            }
+                            ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
+                            ty::BoundRegionKind::BrEnv => {
+                                BoundRegionInfo::Name(Symbol::intern("env"))
+                            }
+                        };
+
+                        RegionCtxt::LateBound(reg_info)
+                    };
+
+                    self.infcx.next_region_var(
+                        LateBoundRegion(
+                            term.source_info.span,
+                            br.kind,
+                            LateBoundRegionConversionTime::FnCall,
+                        ),
+                        region_ctxt_fn,
+                    )
                 });
                 debug!(?sig);
                 // IMPORTANT: We have to prove well formed for the function signature before

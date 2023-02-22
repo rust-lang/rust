@@ -25,7 +25,9 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::ChunkedBitSet;
 use rustc_index::vec::IndexVec;
-use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{
+    DefiningAnchor, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
+};
 use rustc_middle::mir::{
     traversal, Body, ClearCrossCrate, Local, Location, Mutability, NonDivergingIntrinsic, Operand,
     Place, PlaceElem, PlaceRef, VarDebugInfoContents,
@@ -43,6 +45,7 @@ use smallvec::SmallVec;
 use std::cell::OnceCell;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::ops::Deref;
 use std::rc::Rc;
 
 use rustc_mir_dataflow::impls::{
@@ -94,6 +97,7 @@ use nll::{PoloniusOutput, ToRegionVid};
 use place_ext::PlaceExt;
 use places_conflict::{places_conflict, PlaceConflictBias};
 use region_infer::RegionInferenceContext;
+use renumber::RegionCtxt;
 
 // FIXME(eddyb) perhaps move this somewhere more centrally.
 #[derive(Debug)]
@@ -167,10 +171,10 @@ fn do_mir_borrowck<'tcx>(
     return_body_with_facts: bool,
 ) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
     let def = input_body.source.with_opt_param().as_local().unwrap();
-
     debug!(?def);
 
     let tcx = infcx.tcx;
+    let infcx = BorrowckInferCtxt::new(infcx);
     let param_env = tcx.param_env(def.did);
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
@@ -218,7 +222,7 @@ fn do_mir_borrowck<'tcx>(
     let mut body_owned = input_body.clone();
     let mut promoted = input_promoted.clone();
     let free_regions =
-        nll::replace_regions_in_mir(infcx, param_env, &mut body_owned, &mut promoted);
+        nll::replace_regions_in_mir(&infcx, param_env, &mut body_owned, &mut promoted);
     let body = &body_owned; // no further changes
 
     let location_table_owned = LocationTable::new(body);
@@ -256,7 +260,7 @@ fn do_mir_borrowck<'tcx>(
         opt_closure_req,
         nll_errors,
     } = nll::compute_regions(
-        infcx,
+        &infcx,
         free_regions,
         body,
         &promoted,
@@ -271,12 +275,12 @@ fn do_mir_borrowck<'tcx>(
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
-    nll::dump_mir_results(infcx, &body, &regioncx, &opt_closure_req);
+    nll::dump_mir_results(&infcx, &body, &regioncx, &opt_closure_req);
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
     nll::dump_annotation(
-        infcx,
+        &infcx,
         &body,
         &regioncx,
         &opt_closure_req,
@@ -320,7 +324,7 @@ fn do_mir_borrowck<'tcx>(
 
         if let Err((move_data, move_errors)) = move_data_results {
             let mut promoted_mbcx = MirBorrowckCtxt {
-                infcx,
+                infcx: &infcx,
                 param_env,
                 body: promoted_body,
                 move_data: &move_data,
@@ -349,7 +353,7 @@ fn do_mir_borrowck<'tcx>(
     }
 
     let mut mbcx = MirBorrowckCtxt {
-        infcx,
+        infcx: &infcx,
         param_env,
         body,
         move_data: &mdpe.move_data,
@@ -481,8 +485,84 @@ pub struct BodyWithBorrowckFacts<'tcx> {
     pub location_table: LocationTable,
 }
 
+pub struct BorrowckInferCtxt<'cx, 'tcx> {
+    pub(crate) infcx: &'cx InferCtxt<'tcx>,
+    pub(crate) reg_var_to_origin: RefCell<FxHashMap<ty::RegionVid, RegionCtxt>>,
+}
+
+impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
+    pub(crate) fn new(infcx: &'cx InferCtxt<'tcx>) -> Self {
+        BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()) }
+    }
+
+    pub(crate) fn next_region_var<F>(
+        &self,
+        origin: RegionVariableOrigin,
+        get_ctxt_fn: F,
+    ) -> ty::Region<'tcx>
+    where
+        F: Fn() -> RegionCtxt,
+    {
+        let next_region = self.infcx.next_region_var(origin);
+        let vid = next_region
+            .as_var()
+            .unwrap_or_else(|| bug!("expected RegionKind::RegionVar on {:?}", next_region));
+
+        if cfg!(debug_assertions) {
+            debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
+            let ctxt = get_ctxt_fn();
+            let mut var_to_origin = self.reg_var_to_origin.borrow_mut();
+            let prev = var_to_origin.insert(vid, ctxt);
+
+            // This only makes sense if not called in a canonicalization context. If this
+            // ever changes we either want to get rid of `BorrowckInferContext::reg_var_to_origin`
+            // or modify how we track nll region vars for that map.
+            assert!(matches!(prev, None));
+        }
+
+        next_region
+    }
+
+    #[instrument(skip(self, get_ctxt_fn), level = "debug")]
+    pub(crate) fn next_nll_region_var<F>(
+        &self,
+        origin: NllRegionVariableOrigin,
+        get_ctxt_fn: F,
+    ) -> ty::Region<'tcx>
+    where
+        F: Fn() -> RegionCtxt,
+    {
+        let next_region = self.infcx.next_nll_region_var(origin.clone());
+        let vid = next_region
+            .as_var()
+            .unwrap_or_else(|| bug!("expected RegionKind::RegionVar on {:?}", next_region));
+
+        if cfg!(debug_assertions) {
+            debug!("inserting vid {:?} with origin {:?} into var_to_origin", vid, origin);
+            let ctxt = get_ctxt_fn();
+            let mut var_to_origin = self.reg_var_to_origin.borrow_mut();
+            let prev = var_to_origin.insert(vid, ctxt);
+
+            // This only makes sense if not called in a canonicalization context. If this
+            // ever changes we either want to get rid of `BorrowckInferContext::reg_var_to_origin`
+            // or modify how we track nll region vars for that map.
+            assert!(matches!(prev, None));
+        }
+
+        next_region
+    }
+}
+
+impl<'cx, 'tcx> Deref for BorrowckInferCtxt<'cx, 'tcx> {
+    type Target = InferCtxt<'tcx>;
+
+    fn deref(&self) -> &'cx Self::Target {
+        self.infcx
+    }
+}
+
 struct MirBorrowckCtxt<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'tcx>,
+    infcx: &'cx BorrowckInferCtxt<'cx, 'tcx>,
     param_env: ParamEnv<'tcx>,
     body: &'cx Body<'tcx>,
     move_data: &'cx MoveData<'tcx>,

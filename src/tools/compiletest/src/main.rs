@@ -588,7 +588,8 @@ fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
     let full_paths = {
         let mut full_paths: Vec<PathBuf> = all_paths
             .into_iter()
-            .map(|f| fs::canonicalize(&f).unwrap().with_extension("").with_extension("rs"))
+            .map(|f| PathBuf::from(f).with_extension("").with_extension("rs"))
+            .filter_map(|f| if Path::new(&f).exists() { f.canonicalize().ok() } else { None })
             .collect();
         full_paths.dedup();
         full_paths.sort_unstable();
