@@ -5,7 +5,7 @@ use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::thir::visit;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::ty::abstract_const::CastKind;
-use rustc_middle::ty::{self, Expr, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Expr, TyCtxt, TypeVisitableExt};
 use rustc_middle::{mir, thir};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;

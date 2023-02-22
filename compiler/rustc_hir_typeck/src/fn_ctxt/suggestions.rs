@@ -17,7 +17,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, suggest_constraining_type_params, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty,
-    TypeVisitable,
+    TypeVisitableExt,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;

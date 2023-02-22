@@ -16,7 +16,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::relate::TypeRelation;
-use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut, TypeVisitable};
+use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut, TypeVisitableExt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;

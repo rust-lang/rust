@@ -8,7 +8,8 @@ use rustc_hir as hir;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IgnoreRegions;
 use rustc_middle::ty::{
-    self, ir::TypeVisitor, AliasKind, ImplPolarity, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    self, AliasKind, ImplPolarity, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor,
 };
 use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};

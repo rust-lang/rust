@@ -1,7 +1,7 @@
 use crate::fluent_generated as fluent;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitable};
+use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -1121,13 +1121,6 @@ impl From<call::AdjustForForeignAbiError> for FnAbiError<'_> {
 
 impl<'tcx> fmt::Display for FnAbiError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[cfg(bootstrap)]
-        match self {
-            Self::Layout(err) => fmt::Display::fmt(err, f),
-            Self::AdjustForForeignAbi(err) => fmt::Display::fmt(err, f),
-        }
-
-        #[cfg(not(bootstrap))]
         match self {
             Self::Layout(err) => err.fmt(f),
             Self::AdjustForForeignAbi(err) => err.fmt(f),

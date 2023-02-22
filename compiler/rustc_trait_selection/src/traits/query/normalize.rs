@@ -11,9 +11,9 @@ use crate::traits::{ObligationCause, PredicateObligation, Reveal};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::traits::Normalized;
-use rustc_middle::ty::fold::{ir::FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
-use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable};
-use rustc_middle::ty::{self, ir::TypeVisitor, Ty, TyCtxt};
+use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 use rustc_span::DUMMY_SP;
 
 use std::ops::ControlFlow;
@@ -32,7 +32,7 @@ pub trait QueryNormalizeExt<'tcx> {
     /// use [`TyCtxt::normalize_erasing_regions`], which wraps this procedure.
     fn query_normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
-        T: TypeFoldable<'tcx>;
+        T: TypeFoldable<TyCtxt<'tcx>>;
 }
 
 impl<'cx, 'tcx> QueryNormalizeExt<'tcx> for At<'cx, 'tcx> {
@@ -51,7 +51,7 @@ impl<'cx, 'tcx> QueryNormalizeExt<'tcx> for At<'cx, 'tcx> {
     /// and other details are still "under development".
     fn query_normalize<T>(&self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         debug!(
             "normalize::<{}>(value={:?}, param_env={:?}, cause={:?})",
@@ -116,7 +116,7 @@ struct MaxEscapingBoundVarVisitor {
 }
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxEscapingBoundVarVisitor {
-    fn visit_binder<T: TypeVisitable<'tcx>>(
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
         &mut self,
         t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
@@ -177,7 +177,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
         self.infcx.tcx
     }
 
-    fn try_fold_binder<T: TypeFoldable<'tcx>>(
+    fn try_fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
     ) -> Result<ty::Binder<'tcx, T>, Self::Error> {

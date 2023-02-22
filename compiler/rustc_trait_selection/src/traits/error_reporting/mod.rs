@@ -34,10 +34,11 @@ use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::{ir::TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, FmtPrinter, Print};
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
+    TypeVisitable, TypeVisitableExt,
 };
 use rustc_session::config::TraitSolver;
 use rustc_session::Limit;
@@ -108,7 +109,7 @@ pub trait TypeErrCtxtExt<'tcx> {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
     where
         T: fmt::Display
-            + TypeFoldable<'tcx>
+            + TypeFoldable<TyCtxt<'tcx>>
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
 
@@ -121,7 +122,7 @@ pub trait TypeErrCtxtExt<'tcx> {
     ) -> !
     where
         T: fmt::Display
-            + TypeFoldable<'tcx>
+            + TypeFoldable<TyCtxt<'tcx>>
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug;
 
@@ -491,7 +492,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> !
     where
         T: fmt::Display
-            + TypeFoldable<'tcx>
+            + TypeFoldable<TyCtxt<'tcx>>
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
     {
@@ -511,7 +512,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
     where
         T: fmt::Display
-            + TypeFoldable<'tcx>
+            + TypeFoldable<TyCtxt<'tcx>>
             + Print<'tcx, FmtPrinter<'tcx, 'tcx>, Output = FmtPrinter<'tcx, 'tcx>>,
         <T as Print<'tcx, FmtPrinter<'tcx, 'tcx>>>::Error: std::fmt::Debug,
     {
@@ -2970,7 +2971,7 @@ impl ArgKind {
 
 struct HasNumericInferVisitor;
 
-impl<'tcx> ty::ir::TypeVisitor<TyCtxt<'tcx>> for HasNumericInferVisitor {
+impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for HasNumericInferVisitor {
     type BreakTy = ();
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

@@ -16,7 +16,7 @@ use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind};
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::middle::region::{self, Scope, ScopeData, YieldData};
 use rustc_middle::ty::fold::FnMutDelegate;
-use rustc_middle::ty::{self, BoundVariableKind, RvalueScopes, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, BoundVariableKind, RvalueScopes, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};

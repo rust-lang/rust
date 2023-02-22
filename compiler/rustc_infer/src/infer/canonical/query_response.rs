@@ -59,7 +59,7 @@ impl<'tcx> InferCtxt<'tcx> {
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> Fallible<CanonicalQueryResponse<'tcx, T>>
     where
-        T: Debug + TypeFoldable<'tcx>,
+        T: Debug + TypeFoldable<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
     {
         let query_response = self.make_query_response(inference_vars, answer, fulfill_cx)?;
@@ -85,7 +85,7 @@ impl<'tcx> InferCtxt<'tcx> {
         answer: T,
     ) -> Canonical<'tcx, QueryResponse<'tcx, T>>
     where
-        T: Debug + TypeFoldable<'tcx>,
+        T: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
         self.canonicalize_response(QueryResponse {
             var_values: inference_vars,
@@ -106,7 +106,7 @@ impl<'tcx> InferCtxt<'tcx> {
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> Result<QueryResponse<'tcx, T>, NoSolution>
     where
-        T: Debug + TypeFoldable<'tcx>,
+        T: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
         let tcx = self.tcx;
 
@@ -180,7 +180,7 @@ impl<'tcx> InferCtxt<'tcx> {
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> InferResult<'tcx, R>
     where
-        R: Debug + TypeFoldable<'tcx>,
+        R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
         let InferOk { value: result_subst, mut obligations } =
             self.query_response_substitution(cause, param_env, original_values, query_response)?;
@@ -242,7 +242,7 @@ impl<'tcx> InferCtxt<'tcx> {
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
     ) -> InferResult<'tcx, R>
     where
-        R: Debug + TypeFoldable<'tcx>,
+        R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
         let InferOk { value: result_subst, mut obligations } = self
             .query_response_substitution_guess(cause, param_env, original_values, query_response)?;
@@ -356,7 +356,7 @@ impl<'tcx> InferCtxt<'tcx> {
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> InferResult<'tcx, CanonicalVarValues<'tcx>>
     where
-        R: Debug + TypeFoldable<'tcx>,
+        R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
         debug!(
             "query_response_substitution(original_values={:#?}, query_response={:#?})",
@@ -401,7 +401,7 @@ impl<'tcx> InferCtxt<'tcx> {
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> InferResult<'tcx, CanonicalVarValues<'tcx>>
     where
-        R: Debug + TypeFoldable<'tcx>,
+        R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
         debug!(
             "query_response_substitution_guess(original_values={:#?}, query_response={:#?})",
@@ -523,7 +523,7 @@ impl<'tcx> InferCtxt<'tcx> {
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> InferResult<'tcx, ()>
     where
-        R: Debug + TypeFoldable<'tcx>,
+        R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
         // A closure that yields the result value for the given
         // canonical variable; this is taken from

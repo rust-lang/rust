@@ -38,7 +38,7 @@ pub(crate) fn renumber_regions<'tcx, T, F>(
     get_ctxt_fn: F,
 ) -> T
 where
-    T: TypeFoldable<'tcx>,
+    T: TypeFoldable<TyCtxt<'tcx>>,
     F: Fn() -> RegionCtxt,
 {
     infcx.tcx.fold_regions(value, |_region, _depth| {
@@ -89,7 +89,7 @@ struct NllVisitor<'a, 'tcx> {
 impl<'a, 'tcx> NllVisitor<'a, 'tcx> {
     fn renumber_regions<T, F>(&mut self, value: T, region_ctxt_fn: F) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
         F: Fn() -> RegionCtxt,
     {
         renumber_regions(self.infcx, value, region_ctxt_fn)

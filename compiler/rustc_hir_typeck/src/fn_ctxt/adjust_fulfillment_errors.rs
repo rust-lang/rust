@@ -4,7 +4,7 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::{
-    self, ir::TypeVisitor, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    self, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_span::{self, Span};
 use rustc_trait_selection::traits;
@@ -243,7 +243,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         true
     }
 
-    fn find_ambiguous_parameter_in<T: TypeVisitable<'tcx>>(
+    fn find_ambiguous_parameter_in<T: TypeVisitable<TyCtxt<'tcx>>>(
         &self,
         item_def_id: DefId,
         t: T,

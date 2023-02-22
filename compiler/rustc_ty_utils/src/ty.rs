@@ -2,11 +2,9 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
-#[cfg(not(bootstrap))]
-use rustc_middle::ty::ir::TypeVisitable;
 use rustc_middle::ty::{
-    self, ir::TypeVisitor, Binder, EarlyBinder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt,
-    TypeSuperVisitable,
+    self, Binder, EarlyBinder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt,
+    TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_session::config::TraitSolver;
 use rustc_span::def_id::{DefId, CRATE_DEF_ID};

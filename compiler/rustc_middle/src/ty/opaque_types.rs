@@ -1,9 +1,7 @@
 use crate::error::ConstNotUsedTraitAlias;
-use crate::ty::fold::{ir::TypeFolder, TypeSuperFoldable};
+use crate::ty::fold::{TypeFolder, TypeSuperFoldable};
 use crate::ty::subst::{GenericArg, GenericArgKind};
-#[cfg(not(bootstrap))]
-use crate::ty::TypeFoldable;
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::def_id::DefId;
 use rustc_span::Span;

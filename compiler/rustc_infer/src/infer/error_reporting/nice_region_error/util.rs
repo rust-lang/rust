@@ -143,7 +143,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
     fn includes_region(
         &self,
-        ty: Binder<'tcx, impl TypeVisitable<'tcx>>,
+        ty: Binder<'tcx, impl TypeVisitable<TyCtxt<'tcx>>>,
         region: ty::BoundRegionKind,
     ) -> bool {
         let late_bound_regions = self.tcx().collect_referenced_late_bound_regions(&ty);

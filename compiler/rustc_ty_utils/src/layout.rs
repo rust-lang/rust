@@ -7,7 +7,7 @@ use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
 };
 use rustc_middle::ty::{
-    self, subst::SubstsRef, AdtDef, EarlyBinder, ReprOptions, Ty, TyCtxt, TypeVisitable,
+    self, subst::SubstsRef, AdtDef, EarlyBinder, ReprOptions, Ty, TyCtxt, TypeVisitableExt,
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::symbol::Symbol;

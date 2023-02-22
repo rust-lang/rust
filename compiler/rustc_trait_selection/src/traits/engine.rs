@@ -104,7 +104,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         });
     }
 
-    pub fn normalize<T: TypeFoldable<'tcx>>(
+    pub fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -220,7 +220,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         answer: T,
     ) -> Fallible<CanonicalQueryResponse<'tcx, T>>
     where
-        T: Debug + TypeFoldable<'tcx>,
+        T: Debug + TypeFoldable<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
     {
         self.infcx.make_canonicalized_query_response(

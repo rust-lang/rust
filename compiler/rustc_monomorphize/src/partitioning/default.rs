@@ -9,7 +9,7 @@ use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, Linkage, Visibility};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::print::characteristic_def_id_of_type;
-use rustc_middle::ty::{self, visit::TypeVisitable, DefIdTree, InstanceDef, TyCtxt};
+use rustc_middle::ty::{self, visit::TypeVisitableExt, DefIdTree, InstanceDef, TyCtxt};
 use rustc_span::symbol::Symbol;
 
 use super::PartitioningCx;

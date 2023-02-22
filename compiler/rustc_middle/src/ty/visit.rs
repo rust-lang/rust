@@ -5,15 +5,9 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use std::ops::ControlFlow;
 
-pub trait TypeVisitable<'tcx> = ir::TypeVisitable<TyCtxt<'tcx>> + TypeVisitableExt<'tcx>;
-pub trait TypeSuperVisitable<'tcx> = ir::TypeSuperVisitable<TyCtxt<'tcx>>;
-pub trait TypeVisitor<'tcx> = ir::TypeVisitor<TyCtxt<'tcx>>;
+pub use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 
-pub mod ir {
-    pub use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-}
-
-pub trait TypeVisitableExt<'tcx>: ir::TypeVisitable<TyCtxt<'tcx>> {
+pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     /// Returns `true` if `self` has any late-bound regions that are either
     /// bound by `binder` or bound by some binder outside of `binder`.
     /// If `binder` is `ty::INNERMOST`, this indicates whether
@@ -135,7 +129,7 @@ pub trait TypeVisitableExt<'tcx>: ir::TypeVisitable<TyCtxt<'tcx>> {
     }
 }
 
-impl<'tcx, T: ir::TypeVisitable<TyCtxt<'tcx>>> TypeVisitableExt<'tcx> for T {}
+impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> TypeVisitableExt<'tcx> for T {}
 
 ///////////////////////////////////////////////////////////////////////////
 // Region folder
@@ -144,7 +138,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Invoke `callback` on every region appearing free in `value`.
     pub fn for_each_free_region(
         self,
-        value: &impl TypeVisitable<'tcx>,
+        value: &impl TypeVisitable<TyCtxt<'tcx>>,
         mut callback: impl FnMut(ty::Region<'tcx>),
     ) {
         self.any_free_region_meets(value, |r| {
@@ -156,7 +150,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `true` if `callback` returns true for every region appearing free in `value`.
     pub fn all_free_regions_meet(
         self,
-        value: &impl TypeVisitable<'tcx>,
+        value: &impl TypeVisitable<TyCtxt<'tcx>>,
         mut callback: impl FnMut(ty::Region<'tcx>) -> bool,
     ) -> bool {
         !self.any_free_region_meets(value, |r| !callback(r))
@@ -165,7 +159,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `true` if `callback` returns true for some region appearing free in `value`.
     pub fn any_free_region_meets(
         self,
-        value: &impl TypeVisitable<'tcx>,
+        value: &impl TypeVisitable<TyCtxt<'tcx>>,
         callback: impl FnMut(ty::Region<'tcx>) -> bool,
     ) -> bool {
         struct RegionVisitor<F> {
@@ -190,13 +184,13 @@ impl<'tcx> TyCtxt<'tcx> {
             callback: F,
         }
 
-        impl<'tcx, F> ir::TypeVisitor<TyCtxt<'tcx>> for RegionVisitor<F>
+        impl<'tcx, F> TypeVisitor<TyCtxt<'tcx>> for RegionVisitor<F>
         where
             F: FnMut(ty::Region<'tcx>) -> bool,
         {
             type BreakTy = ();
 
-            fn visit_binder<T: TypeVisitable<'tcx>>(
+            fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
                 &mut self,
                 t: &Binder<'tcx, T>,
             ) -> ControlFlow<Self::BreakTy> {
@@ -243,7 +237,7 @@ impl<'tcx> TyCtxt<'tcx> {
         value: &Binder<'tcx, T>,
     ) -> FxHashSet<ty::BoundRegionKind>
     where
-        T: TypeVisitable<'tcx>,
+        T: TypeVisitable<TyCtxt<'tcx>>,
     {
         self.collect_late_bound_regions(value, true)
     }
@@ -254,7 +248,7 @@ impl<'tcx> TyCtxt<'tcx> {
         value: &Binder<'tcx, T>,
     ) -> FxHashSet<ty::BoundRegionKind>
     where
-        T: TypeVisitable<'tcx>,
+        T: TypeVisitable<TyCtxt<'tcx>>,
     {
         self.collect_late_bound_regions(value, false)
     }
@@ -265,7 +259,7 @@ impl<'tcx> TyCtxt<'tcx> {
         just_constraint: bool,
     ) -> FxHashSet<ty::BoundRegionKind>
     where
-        T: TypeVisitable<'tcx>,
+        T: TypeVisitable<TyCtxt<'tcx>>,
     {
         let mut collector = LateBoundRegionsCollector::new(just_constraint);
         let result = value.as_ref().skip_binder().visit_with(&mut collector);
@@ -292,10 +286,10 @@ impl<'tcx> ValidateBoundVars<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeVisitor<TyCtxt<'tcx>> for ValidateBoundVars<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ValidateBoundVars<'tcx> {
     type BreakTy = ();
 
-    fn visit_binder<T: TypeVisitable<'tcx>>(
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
         &mut self,
         t: &Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
@@ -404,10 +398,10 @@ struct HasEscapingVarsVisitor {
     outer_index: ty::DebruijnIndex,
 }
 
-impl<'tcx> ir::TypeVisitor<TyCtxt<'tcx>> for HasEscapingVarsVisitor {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasEscapingVarsVisitor {
     type BreakTy = FoundEscapingVars;
 
-    fn visit_binder<T: TypeVisitable<'tcx>>(
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
         &mut self,
         t: &Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
@@ -481,7 +475,7 @@ impl std::fmt::Debug for HasTypeFlagsVisitor {
     }
 }
 
-impl<'tcx> ir::TypeVisitor<TyCtxt<'tcx>> for HasTypeFlagsVisitor {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasTypeFlagsVisitor {
     type BreakTy = FoundFlags;
 
     #[inline]
@@ -551,8 +545,8 @@ impl LateBoundRegionsCollector {
     }
 }
 
-impl<'tcx> ir::TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector {
-    fn visit_binder<T: TypeVisitable<'tcx>>(
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
         &mut self,
         t: &Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
@@ -613,7 +607,7 @@ impl MaxUniverse {
     }
 }
 
-impl<'tcx> ir::TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         if let ty::Placeholder(placeholder) = t.kind() {
             self.max_universe = ty::UniverseIndex::from_u32(

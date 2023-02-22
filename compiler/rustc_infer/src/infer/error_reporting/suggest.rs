@@ -8,7 +8,7 @@ use rustc_middle::traits::{
     StatementAsExpression,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TypeVisitable};
+use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TypeVisitableExt};
 use rustc_span::{sym, BytePos, Span};
 
 use crate::errors::{

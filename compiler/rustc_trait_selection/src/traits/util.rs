@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{GenericArg, SubstsRef};
 
 use super::NormalizeExt;
