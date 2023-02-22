@@ -127,5 +127,8 @@ hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit wh
     .label = deref recursion limit reached
     .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)
 
+hir_analysis_where_clause_on_main = `main` function is not allowed to have a `where` clause
+    .label = `main` cannot have a `where` clause
+
 hir_analysis_track_caller_on_main = `main` function is not allowed to be `#[track_caller]`
     .label = `main` function is not allowed to be `#[track_caller]`
