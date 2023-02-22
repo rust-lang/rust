@@ -417,7 +417,7 @@ fn check_opaque_meets_bounds<'tcx>(
         .infer_ctxt()
         .with_opaque_type_inference(DefiningAnchor::Bind(defining_use_anchor))
         .build();
-    let ocx = ObligationCtxt::new(&infcx);
+    let ocx = ObligationCtxt::new_with_opaque_type_anchor(&infcx, defining_use_anchor);
     let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
 
     // `ReErased` regions appear in the "parent_substs" of closures/generators.
