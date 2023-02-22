@@ -964,6 +964,19 @@ pub fn make_test_description<R: Read>(
         .join(if config.host.contains("windows") { "rust-lld.exe" } else { "rust-lld" })
         .exists();
 
+    fn is_on_path(file: &'static str) -> impl Fn() -> bool {
+        move || env::split_paths(&env::var_os("PATH").unwrap()).any(|dir| dir.join(file).is_file())
+    }
+
+    // On Windows, dlltool.exe is used for all architectures.
+    #[cfg(windows)]
+    let (has_i686_dlltool, has_x86_64_dlltool) =
+        (is_on_path("dlltool.exe"), is_on_path("dlltool.exe"));
+    // For non-Windows, there are architecture specific dlltool binaries.
+    #[cfg(not(windows))]
+    let (has_i686_dlltool, has_x86_64_dlltool) =
+        (is_on_path("i686-w64-mingw32-dlltool"), is_on_path("x86_64-w64-mingw32-dlltool"));
+
     iter_header(path, src, &mut |revision, ln| {
         if revision.is_some() && revision != cfg {
             return;
@@ -1031,6 +1044,8 @@ pub fn make_test_description<R: Read>(
         reason!(config.debugger == Some(Debugger::Gdb) && ignore_gdb(config, ln));
         reason!(config.debugger == Some(Debugger::Lldb) && ignore_lldb(config, ln));
         reason!(!has_rust_lld && config.parse_name_directive(ln, "needs-rust-lld"));
+        reason!(config.parse_name_directive(ln, "needs-i686-dlltool") && !has_i686_dlltool());
+        reason!(config.parse_name_directive(ln, "needs-x86_64-dlltool") && !has_x86_64_dlltool());
         should_fail |= config.parse_name_directive(ln, "should-fail");
     });
 

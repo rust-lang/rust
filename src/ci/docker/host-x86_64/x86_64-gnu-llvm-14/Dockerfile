@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   zlib1g-dev \
   xz-utils \
   nodejs \
+  mingw-w64 \
   && rm -rf /var/lib/apt/lists/*
 
 # Install powershell (universal package) so we can test x.ps1 on Linux
