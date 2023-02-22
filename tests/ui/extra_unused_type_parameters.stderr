@@ -1,30 +1,30 @@
 error: type parameter goes unused in function definition
   --> $DIR/extra_unused_type_parameters.rs:4:13
    |
-LL | fn unused_ty<T>(x: u8) {}
+LL | fn unused_ty<T>(x: u8) {
    |             ^^^
    |
    = help: consider removing the parameter
    = note: `-D clippy::extra-unused-type-parameters` implied by `-D warnings`
 
 error: type parameters go unused in function definition
-  --> $DIR/extra_unused_type_parameters.rs:6:16
+  --> $DIR/extra_unused_type_parameters.rs:8:16
    |
-LL | fn unused_multi<T, U>(x: u8) {}
+LL | fn unused_multi<T, U>(x: u8) {
    |                ^^^^^^
    |
    = help: consider removing the parameters
 
 error: type parameter goes unused in function definition
-  --> $DIR/extra_unused_type_parameters.rs:8:23
+  --> $DIR/extra_unused_type_parameters.rs:12:23
    |
-LL | fn unused_with_lt<'a, T>(x: &'a u8) {}
+LL | fn unused_with_lt<'a, T>(x: &'a u8) {
    |                       ^
    |
    = help: consider removing the parameter
 
 error: type parameter goes unused in function definition
-  --> $DIR/extra_unused_type_parameters.rs:18:19
+  --> $DIR/extra_unused_type_parameters.rs:24:19
    |
 LL | fn unused_bounded<T: Default, U>(x: U) {
    |                   ^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL | fn unused_bounded<T: Default, U>(x: U) {
    = help: consider removing the parameter
 
 error: type parameter goes unused in function definition
-  --> $DIR/extra_unused_type_parameters.rs:22:24
+  --> $DIR/extra_unused_type_parameters.rs:28:24
    |
 LL | fn unused_where_clause<T, U>(x: U)
    |                        ^^
@@ -40,7 +40,7 @@ LL | fn unused_where_clause<T, U>(x: U)
    = help: consider removing the parameter
 
 error: type parameters go unused in function definition
-  --> $DIR/extra_unused_type_parameters.rs:29:16
+  --> $DIR/extra_unused_type_parameters.rs:35:16
    |
 LL | fn some_unused<A, B, C, D: Iterator<Item = (B, C)>, E>(b: B, c: C) {
    |                ^^       ^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^
@@ -48,20 +48,28 @@ LL | fn some_unused<A, B, C, D: Iterator<Item = (B, C)>, E>(b: B, c: C) {
    = help: consider removing the parameters
 
 error: type parameter goes unused in function definition
-  --> $DIR/extra_unused_type_parameters.rs:54:22
+  --> $DIR/extra_unused_type_parameters.rs:60:22
    |
-LL |     fn unused_ty_impl<T>(&self) {}
+LL |     fn unused_ty_impl<T>(&self) {
    |                      ^^^
    |
    = help: consider removing the parameter
 
 error: type parameters go unused in function definition
-  --> $DIR/extra_unused_type_parameters.rs:74:17
+  --> $DIR/extra_unused_type_parameters.rs:82:17
    |
-LL | fn unused_opaque<A, B>(dummy: impl Default) {}
+LL | fn unused_opaque<A, B>(dummy: impl Default) {
    |                 ^^^^^^
    |
    = help: consider removing the parameters
 
-error: aborting due to 8 previous errors
+error: type parameter goes unused in function definition
+  --> $DIR/extra_unused_type_parameters.rs:95:58
+   |
+LL |     fn unused_with_priv_trait_bound<T: private::Private, U>() {
+   |                                                          ^
+   |
+   = help: consider removing the parameter
+
+error: aborting due to 9 previous errors
 
