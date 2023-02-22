@@ -53,16 +53,16 @@ void getFunction(raw_ostream &os, std::string callval, std::string FT,
     auto Def = cast<DefInit>(resultRoot->getOperator())->getDef();
     if (opName == "SameFunc" || Def->isSubClassOf("SameFunc")) {
       os << "#if LLVM_VERSION_MAJOR >= 11\n";
-      os << "  auto " << callval << " = orig->getCalledOperand();\n";
+      os << "  auto " << callval << " = call.getCalledOperand();\n";
       os << "#else\n";
-      os << "  auto " << callval << " = orig->getCalledValue();\n";
+      os << "  auto " << callval << " = call.getCalledValue();\n";
       os << "#endif\n";
-      os << "  auto " << FT << " = orig->getFunctionType();\n";
-      os << "  auto " << cconv << " = orig->getCallingConv();\n";
+      os << "  auto " << FT << " = call.getFunctionType();\n";
+      os << "  auto " << cconv << " = call.getCallingConv();\n";
       return;
     }
     if (opName == "SameTypesFunc" || Def->isSubClassOf("SameTypesFunc")) {
-      os << " auto " << FT << " = orig->getFunctionType();\n";
+      os << " auto " << FT << " = call.getFunctionType();\n";
       os << " auto " << callval
          << " = gutils->oldFunc->getParent()->getOrInsertFunction(";
       os << Def->getValueInit("name")->getAsString();
@@ -71,7 +71,7 @@ void getFunction(raw_ostream &os, std::string callval, std::string FT,
       os << "  .getCallee()\n";
       os << "#endif\n";
       os << ";\n";
-      os << "  auto " << cconv << " = orig->getCallingConv();\n";
+      os << "  auto " << cconv << " = call.getCallingConv();\n";
       return;
     }
   }
@@ -96,7 +96,7 @@ void getIntrinsic(raw_ostream &os, std::string callval, std::string FT,
         "Intrinsic::"
      << intrName << ", tys);\n";
   os << "  auto " << FT << " = " << callval << "->getFunctionType();\n";
-  os << "  auto " << cconv << " = orig->getCallingConv();\n";
+  os << "  auto " << cconv << " = call.getCallingConv();\n";
 }
 
 // Returns whether value generated is a vector value or not.
@@ -252,7 +252,7 @@ bool handle(raw_ostream &os, Record *pattern, Init *resultTree,
       os << ")";
     os << ";\n";
     if (isCall) {
-      os << " cubcall->setDebugLoc(gutils->getNewFromOriginal(orig->"
+      os << " cubcall->setDebugLoc(gutils->getNewFromOriginal(call."
             "getDebugLoc()));\n";
       os << " cubcall->setCallingConv(cconv);\n";
       for (auto *attr : *cast<ListInit>(Def->getValueAsListInit("fnattrs"))) {
@@ -269,7 +269,7 @@ bool handle(raw_ostream &os, Record *pattern, Init *resultTree,
       }
       os << " res = cubcall;\n";
     } else if (isIntr) {
-      os << " cubcall->setDebugLoc(gutils->getNewFromOriginal(orig->"
+      os << " cubcall->setDebugLoc(gutils->getNewFromOriginal(call."
             "getDebugLoc()));\n";
       os << " cubcall->setCallingConv(cconv);\n";
       os << " res = cubcall;\n";
@@ -302,7 +302,7 @@ bool handle(raw_ostream &os, Record *pattern, Init *resultTree,
 
       if (isCall) {
         os << "   "
-              "V->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));"
+              "V->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));"
               "\n";
         os << "   V->setCallingConv(cconv);\n";
         for (auto *attr : *cast<ListInit>(Def->getValueAsListInit("fnattrs"))) {
@@ -320,7 +320,7 @@ bool handle(raw_ostream &os, Record *pattern, Init *resultTree,
       }
       if (isIntr) {
         os << "   "
-              "V->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));"
+              "V->setDebugLoc(gutils->getNewFromOriginal(call.getDebugLoc()));"
               "\n";
         os << "   V->setCallingConv(cconv);\n";
       }
@@ -351,10 +351,10 @@ static void emitDerivatives(const RecordKeeper &recordKeeper, raw_ostream &os) {
     StringMap<std::string> nameToOrdinal;
     for (int i = 0, e = tree->getNumArgs(); i != e; ++i)
       nameToOrdinal[tree->getArgNameStr(i)] =
-          "orig->getOperand(" + std::to_string(i) + ")";
+          "call.getOperand(" + std::to_string(i) + ")";
 
     if (tree->getNameStr().str().size())
-      nameToOrdinal[tree->getNameStr().str()] = "orig";
+      nameToOrdinal[tree->getNameStr().str()] = "&call";
 
     for (auto arg : tree->getArgs()) {
       if (isa<DagInit>(arg))
@@ -375,17 +375,17 @@ static void emitDerivatives(const RecordKeeper &recordKeeper, raw_ostream &os) {
       prev = true;
     }
     os << " ){\n";
-    os << "    if (gutils->knownRecomputeHeuristic.find(orig) !=\n";
+    os << "    if (gutils->knownRecomputeHeuristic.find(&call) !=\n";
     os << "        gutils->knownRecomputeHeuristic.end()) {\n";
-    os << "        if (!gutils->knownRecomputeHeuristic[orig]) {\n";
+    os << "        if (!gutils->knownRecomputeHeuristic[&call]) {\n";
     os << "          gutils->cacheForReverse(BuilderZ, newCall,\n";
-    os << "                                  getIndex(orig, "
+    os << "                                  getIndex(&call, "
           "CacheType::Self));\n";
     os << "        }\n";
     os << "    }\n";
 
-    os << "    eraseIfUnused(*orig);\n";
-    os << "    if (gutils->isConstantInstruction(orig))\n";
+    os << "    eraseIfUnused(call);\n";
+    os << "    if (gutils->isConstantInstruction(&call))\n";
     os << "      return;\n";
 
     os << "    switch (Mode) {\n";
@@ -399,9 +399,9 @@ static void emitDerivatives(const RecordKeeper &recordKeeper, raw_ostream &os) {
 
     for (auto argOpEn : llvm::enumerate(*argOps)) {
       size_t argIdx = argOpEn.index();
-      os << "        if (!gutils->isConstantValue(orig->getArgOperand("
+      os << "        if (!gutils->isConstantValue(call.getArgOperand("
          << argIdx << "))) {\n";
-      os << "          Value *dif = diffe(orig->getArgOperand(" << argIdx
+      os << "          Value *dif = diffe(call.getArgOperand(" << argIdx
          << "), Builder2);\n";
       DagInit *resultTree = cast<DagInit>(argOpEn.value());
       os << "          Value *tmp = ";
@@ -436,7 +436,7 @@ static void emitDerivatives(const RecordKeeper &recordKeeper, raw_ostream &os) {
       os << "        }\n";
     }
 
-    os << "        setDiffe(orig, res, Builder2);\n";
+    os << "        setDiffe(&call, res, Builder2);\n";
 
     os << "        break;\n";
     os << "      }\n";
@@ -455,13 +455,13 @@ static void emitDerivatives(const RecordKeeper &recordKeeper, raw_ostream &os) {
       if (seen)
         os << "} else ";
       seen = true;
-      os << "if (!dif && !gutils->isConstantValue(orig->getArgOperand("
+      os << "if (!dif && !gutils->isConstantValue(call.getArgOperand("
          << argIdx << "))) {\n";
       DagInit *resultTree = cast<DagInit>(argOpEn.value());
       if (hasDiffeRet(resultTree)) {
-        os << "          dif = diffe(orig, Builder2);\n";
-        os << "          setDiffe(orig, "
-              "Constant::getNullValue(gutils->getShadowType(orig->getType())), "
+        os << "          dif = diffe(&call, Builder2);\n";
+        os << "          setDiffe(&call, "
+              "Constant::getNullValue(gutils->getShadowType(call.getType())), "
               "Builder2);\n";
       }
     }
@@ -472,7 +472,7 @@ static void emitDerivatives(const RecordKeeper &recordKeeper, raw_ostream &os) {
       size_t argIdx = argOpEn.index();
       DagInit *resultTree = cast<DagInit>(argOpEn.value());
 
-      os << "        if (!gutils->isConstantValue(orig->getArgOperand("
+      os << "        if (!gutils->isConstantValue(call.getArgOperand("
          << argIdx << "))) {\n";
       os << "          Value *tmp = ";
       bool vectorValued = handle(os, pattern, resultTree, "Builder2",
@@ -492,8 +492,8 @@ static void emitDerivatives(const RecordKeeper &recordKeeper, raw_ostream &os) {
         os << "          }\n";
       }
 
-      os << "          addToDiffe(orig->getArgOperand(" << argIdx << "), toadd";
-      os << ", Builder2, orig->getArgOperand(" << argIdx << ")->getType());\n";
+      os << "          addToDiffe(call.getArgOperand(" << argIdx << "), toadd";
+      os << ", Builder2, call.getArgOperand(" << argIdx << ")->getType());\n";
       os << "        }\n";
     }
 
