@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_lint::LateContext;
 use rustc_middle::mir::{self, visit::Visitor as _, Mutability};
-use rustc_middle::ty::{self, visit::ir::TypeVisitor, TyCtxt};
+use rustc_middle::ty::{self, visit::TypeVisitor, TyCtxt};
 use rustc_mir_dataflow::{impls::MaybeStorageLive, Analysis, ResultsCursor};
 use std::borrow::Cow;
 use std::ops::ControlFlow;
