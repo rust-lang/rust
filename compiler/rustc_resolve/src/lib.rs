@@ -946,7 +946,6 @@ pub struct Resolver<'a, 'tcx> {
     has_pub_restricted: bool,
     used_imports: FxHashSet<NodeId>,
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
-    maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
 
     /// Privacy errors are delayed until the end in order to deduplicate them.
     privacy_errors: Vec<PrivacyError<'a>>,
@@ -1284,7 +1283,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             has_pub_restricted: false,
             used_imports: FxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
-            maybe_unused_extern_crates: Vec::new(),
 
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
@@ -1400,7 +1398,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let extern_crate_map = self.extern_crate_map;
         let reexport_map = self.reexport_map;
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
-        let maybe_unused_extern_crates = self.maybe_unused_extern_crates;
         let glob_map = self.glob_map;
         let main_def = self.main_def;
         let confused_type_with_std_module = self.confused_type_with_std_module;
@@ -1414,12 +1411,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             reexport_map,
             glob_map,
             maybe_unused_trait_imports,
-            maybe_unused_extern_crates,
-            extern_prelude: self
-                .extern_prelude
-                .iter()
-                .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
-                .collect(),
             main_def,
             trait_impls: self.trait_impls,
             proc_macros,

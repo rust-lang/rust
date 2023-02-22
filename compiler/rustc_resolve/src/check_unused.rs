@@ -278,7 +278,6 @@ impl Resolver<'_, '_> {
                 }
                 ImportKind::ExternCrate { id, .. } => {
                     let def_id = self.local_def_id(id);
-                    self.maybe_unused_extern_crates.push((def_id, import.span));
                     if self.extern_crate_map.get(&def_id).map_or(true, |&cnum| {
                         !tcx.is_compiler_builtins(cnum)
                             && !tcx.is_panic_runtime(cnum)
