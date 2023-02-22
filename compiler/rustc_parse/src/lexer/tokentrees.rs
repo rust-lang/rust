@@ -161,7 +161,6 @@ impl<'a> TokenTreesReader<'a> {
                         }
                     }
                     let (tok, _) = self.diag_info.open_braces.pop().unwrap();
-                    debug!("anan now: open {:#?} close {:#?}", open_delim, close_delim);
                     self.diag_info.unmatched_delims.push(UnmatchedDelim {
                         expected_delim: tok,
                         found_delim: Some(close_delim),

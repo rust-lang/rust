@@ -196,30 +196,7 @@ pub fn maybe_file_to_stream(
         ));
     });
 
-    let (token_trees, unmatched_delims) =
-        lexer::parse_token_trees(sess, src.as_str(), source_file.start_pos, override_span);
-
-    match token_trees {
-        Ok(stream) if unmatched_delims.is_empty() => Ok(stream),
-        _ => {
-            // Return error if there are unmatched delimiters or unclosng delimiters.
-            // We emit delimiter mismatch errors first, then emit the unclosing delimiter mismatch
-            // because the delimiter mismatch is more likely to be the root cause of the
-
-            let mut buffer = Vec::with_capacity(1);
-            // Not using `emit_unclosed_delims` to use `db.buffer`
-            for unmatched in unmatched_delims {
-                if let Some(err) = make_unclosed_delims_error(unmatched, &sess) {
-                    err.buffer(&mut buffer);
-                }
-            }
-            if let Err(err) = token_trees {
-                // Add unclosing delimiter error
-                err.buffer(&mut buffer);
-            }
-            Err(buffer)
-        }
-    }
+    lexer::parse_token_trees(sess, src.as_str(), source_file.start_pos, override_span)
 }
 
 /// Given a stream and the `ParseSess`, produces a parser.

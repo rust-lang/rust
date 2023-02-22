@@ -19,9 +19,9 @@ use crate::errors::{
 };
 
 use crate::fluent_generated as fluent;
-use rustc_ast as ast;
-use crate::parser;
 use crate::lexer::UnmatchedDelim;
+use crate::parser;
+use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, TokenKind};
 use rustc_ast::util::parser::AssocOp;
