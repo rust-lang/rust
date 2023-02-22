@@ -393,6 +393,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// will instantiate fresh inference variables for each canonical
     /// variable instead. Therefore, the result of this method must be
     /// properly unified
+    #[instrument(level = "debug", skip(self, cause, param_env))]
     fn query_response_substitution_guess<R>(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -403,11 +404,6 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
-        debug!(
-            "query_response_substitution_guess(original_values={:#?}, query_response={:#?})",
-            original_values, query_response,
-        );
-
         // For each new universe created in the query result that did
         // not appear in the original query, create a local
         // superuniverse.
@@ -502,7 +498,9 @@ impl<'tcx> InferCtxt<'tcx> {
         for &(a, b) in &query_response.value.opaque_types {
             let a = substitute_value(self.tcx, &result_subst, a);
             let b = substitute_value(self.tcx, &result_subst, b);
-            obligations.extend(self.at(cause, param_env).eq(a, b)?.obligations);
+            debug!(?a, ?b, "constrain opaque type");
+            obligations
+                .extend(self.at(cause, param_env).define_opaque_types(true).eq(a, b)?.obligations);
         }
 
         Ok(InferOk { value: result_subst, obligations })

@@ -1046,7 +1046,7 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
             ty::ReVar(rid) => match self.values[rid] {
                 VarValue::Empty(_) => r,
                 VarValue::Value(r) => r,
-                VarValue::ErrorValue => tcx.mk_re_error_misc(),
+                VarValue::ErrorValue => tcx.lifetimes.re_static,
             },
             _ => r,
         };

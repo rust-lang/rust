@@ -1,7 +1,6 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
-use crate::imports::ImportResolver;
 use crate::Namespace::*;
 use crate::{BuiltinMacroState, Determinacy};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
@@ -233,7 +232,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
     }
 
     fn resolve_imports(&mut self) {
-        ImportResolver { r: self }.resolve_imports()
+        self.resolve_imports()
     }
 
     fn resolve_macro_invocation(

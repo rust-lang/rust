@@ -60,7 +60,7 @@ use std::collections::BTreeSet;
 use std::{fmt, ptr};
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
-use imports::{Import, ImportKind, ImportResolver, NameResolution};
+use imports::{Import, ImportKind, NameResolution};
 use late::{HasGenericParams, PathSource, PatternSource};
 use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 
@@ -1491,9 +1491,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
         self.tcx.sess.time("resolve_crate", || {
-            self.tcx
-                .sess
-                .time("finalize_imports", || ImportResolver { r: self }.finalize_imports());
+            self.tcx.sess.time("finalize_imports", || self.finalize_imports());
             self.tcx.sess.time("compute_effective_visibilities", || {
                 EffectiveVisibilitiesVisitor::compute_effective_visibilities(self, krate)
             });
