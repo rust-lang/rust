@@ -457,6 +457,48 @@ pub unsafe trait ReverseSearcher<H: Haystack>: Searcher<H> {
 /// from which side it is searched.
 pub trait DoubleEndedSearcher<H: Haystack>: ReverseSearcher<H> {}
 
+/// A wrapper around single-argument function returning a boolean,
+/// i.e. a predicate function.
+///
+/// `Predicate` objects are created with [`predicate`] function.
+#[derive(Clone, Debug)]
+pub struct Predicate<F>(F);
+
+/// Constructs a wrapper for a single-argument function returning a boolean,
+/// i.e. a predicate function.
+///
+/// This is intended to be used as a pattern when working with haystacks which
+/// (for whatever reason) cannot support naked function traits as patterns.
+pub fn predicate<T, F: FnMut(T) -> bool>(pred: F) -> Predicate<F> {
+    Predicate(pred)
+}
+
+impl<F> Predicate<F> {
+    /// Executes the predicate returning its result.
+    pub fn test<T>(&mut self, element: T) -> bool
+    where
+        F: FnMut(T) -> bool,
+    {
+        self.0(element)
+    }
+
+    /// Returns reference to the wrapped predicate function.
+    pub fn as_fn<T>(&mut self) -> &mut F
+    where
+        F: FnMut(T) -> bool,
+    {
+        &mut self.0
+    }
+
+    /// Consumes this object and returns wrapped predicate function.
+    pub fn into_fn<T>(self) -> F
+    where
+        F: FnMut(T) -> bool,
+    {
+        self.0
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // Internal EmptyNeedleSearcher helper
 //////////////////////////////////////////////////////////////////////////////
