@@ -1070,13 +1070,17 @@ pub fn merge_sort<T, CmpF, ElemAllocF, ElemDeallocF, RunAllocF, RunDeallocF>(
     // without any other analysis. This is perf critical for small inputs, in cold code.
     const MAX_LEN_ALWAYS_INSERTION_SORT: usize = 20;
 
+    // Instrumenting the standard library showed that 90+% of the calls to sort by rustc are either
+    // of size 0 or 1. Make this path extra fast by assuming the branch is likely.
+    if intrinsics::likely(len < 2) {
+        return;
+    }
+
     if intrinsics::likely(len <= MAX_LEN_ALWAYS_INSERTION_SORT) {
-        if intrinsics::likely(len >= 2) {
-            // More specialized and faster options, extending the range of allocation free sorting
-            // are possible but come at a great cost of additional code, which is problematic for
-            // compile-times.
-            insertion_sort_shift_left(v, 1, is_less);
-        }
+        // More specialized and faster options, extending the range of allocation free sorting
+        // are possible but come at a great cost of additional code, which is problematic for
+        // compile-times.
+        insertion_sort_shift_left(v, 1, is_less);
 
         return;
     }
