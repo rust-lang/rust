@@ -235,6 +235,40 @@ pub(crate) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
     }
 }
 
+/// Assemble a list of predicates that would be present on a theoretical
+/// user impl for an object type. These predicates must be checked any time
+/// we assemble a built-in object candidate for an object type, since they
+/// are not implied by the well-formedness of the type.
+///
+/// For example, given the following traits:
+///
+/// ```rust,ignore (theoretical code)
+/// trait Foo: Baz {
+///     type Bar: Copy;
+/// }
+///
+/// trait Baz {}
+/// ```
+///
+/// For the dyn type `dyn Foo<Item = Ty>`, we can imagine there being a
+/// pair of theoretical impls:
+///
+/// ```rust,ignore (theoretical code)
+/// impl Foo for dyn Foo<Item = Ty>
+/// where
+///     Self: Baz,
+///     <Self as Foo>::Bar: Copy,
+/// {
+///     type Bar = Ty;
+/// }
+///
+/// impl Baz for dyn Foo<Item = Ty> {}
+/// ```
+///
+/// However, in order to make such impls well-formed, we need to do an
+/// additional step of eagerly folding the associated types in the where
+/// clauses of the impl. In this example, that means replacing
+/// `<Self as Foo>::Bar` with `Ty` in the first impl.
 pub(crate) fn predicates_for_object_candidate<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -247,6 +281,8 @@ pub(crate) fn predicates_for_object_candidate<'tcx>(
         tcx.super_predicates_of(trait_ref.def_id).instantiate(tcx, trait_ref.substs).predicates,
     );
     for item in tcx.associated_items(trait_ref.def_id).in_definition_order() {
+        // FIXME(associated_const_equality): Also add associated consts to
+        // the requirements here.
         if item.kind == ty::AssocKind::Type {
             requirements.extend(tcx.item_bounds(item.def_id).subst(tcx, trait_ref.substs));
         }
@@ -290,13 +326,16 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceProjectionWith<'_, 'tcx> {
         if let ty::Alias(ty::Projection, alias_ty) = *ty.kind()
             && let Some(replacement) = self.mapping.get(&alias_ty.def_id)
         {
+            // We may have a case where our object type's projection bound is higher-ranked,
+            // but the where clauses we instantiated are not. We can solve this by instantiating
+            // the binder at the usage site.
             let proj = self.ecx.instantiate_binder_with_infer(*replacement);
-            // Technically this folder could be fallible?
+            // FIXME: Technically this folder could be fallible?
             let nested = self
                 .ecx
                 .eq(self.param_env, alias_ty, proj.projection_ty)
                 .expect("expected to be able to unify goal projection with dyn's projection");
-            // Technically we could register these too..
+            // FIXME: Technically we could register these too..
             assert!(nested.is_empty(), "did not expect unification to have any nested goals");
             proj.term.ty().unwrap()
         } else {
