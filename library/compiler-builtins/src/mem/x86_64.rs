@@ -173,6 +173,7 @@ pub unsafe fn compare_bytes(a: *const u8, b: *const u8, n: usize) -> i32 {
     c16(a.cast(), b.cast(), n)
 }
 
+#[cfg(target_feature="sse2")]
 #[inline(always)]
 pub unsafe fn c_string_length(s: *const core::ffi::c_char) -> usize {
     let mut n: usize;
@@ -253,6 +254,19 @@ pub unsafe fn c_string_length(s: *const core::ffi::c_char) -> usize {
         options(att_syntax, nostack),
     );
 
+    n
+}
+
+// Provided for scenarios like kernel development, where SSE might not
+// be available.
+#[cfg(not(target_feature="sse2"))]
+#[inline(always)]
+pub unsafe fn c_string_length(mut s: *const core::ffi::c_char) -> usize {
+    let mut n = 0;
+    while *s != 0 {
+        n += 1;
+        s = s.add(1);
+    }
     n
 }
 
