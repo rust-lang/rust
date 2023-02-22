@@ -86,7 +86,7 @@ mod prelude {
     pub(crate) use rustc_middle::ty::layout::{self, LayoutOf, TyAndLayout};
     pub(crate) use rustc_middle::ty::{
         self, FloatTy, Instance, InstanceDef, IntTy, ParamEnv, Ty, TyCtxt, TypeAndMut,
-        TypeFoldable, UintTy,
+        TypeFoldable, TypeVisitableExt, UintTy,
     };
     pub(crate) use rustc_target::abi::{Abi, Scalar, Size, VariantIdx};
 

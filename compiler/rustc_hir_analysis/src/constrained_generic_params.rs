@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashSet;
-use rustc_middle::ty::visit::{ir::TypeVisitor, TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::source_map::Span;
 use std::ops::ControlFlow;
@@ -43,7 +43,7 @@ pub fn parameters_for_impl<'tcx>(
 /// of parameters whose values are needed in order to constrain `ty` - these
 /// differ, with the latter being a superset, in the presence of projections.
 pub fn parameters_for<'tcx>(
-    t: &impl TypeVisitable<'tcx>,
+    t: &impl TypeVisitable<TyCtxt<'tcx>>,
     include_nonconstraining: bool,
 ) -> Vec<Parameter> {
     let mut collector = ParameterCollector { parameters: vec![], include_nonconstraining };

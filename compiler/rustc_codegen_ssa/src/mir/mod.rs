@@ -3,7 +3,7 @@ use crate::traits::*;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
-use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_target::abi::call::{FnAbi, PassMode};
 
 use std::iter;
@@ -105,7 +105,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn monomorphize<T>(&self, value: T) -> T
     where
-        T: Copy + TypeFoldable<'tcx>,
+        T: Copy + TypeFoldable<TyCtxt<'tcx>>,
     {
         debug!("monomorphize: self.instance={:?}", self.instance);
         self.instance.subst_mir_and_normalize_erasing_regions(

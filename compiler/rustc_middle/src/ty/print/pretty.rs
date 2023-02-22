@@ -1,7 +1,7 @@
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::ty::{
     self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, TermKind, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
 use crate::ty::{GenericArg, GenericArgKind};
 use rustc_apfloat::ieee::{Double, Single};
@@ -225,7 +225,7 @@ pub trait PrettyPrinter<'tcx>:
 
     fn in_binder<T>(self, value: &ty::Binder<'tcx, T>) -> Result<Self, Self::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>,
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<TyCtxt<'tcx>>,
     {
         value.as_ref().skip_binder().print(self)
     }
@@ -236,7 +236,7 @@ pub trait PrettyPrinter<'tcx>:
         f: F,
     ) -> Result<Self, Self::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>,
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<TyCtxt<'tcx>>,
     {
         f(value.as_ref().skip_binder(), self)
     }
@@ -2033,7 +2033,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
 
     fn in_binder<T>(self, value: &ty::Binder<'tcx, T>) -> Result<Self, Self::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>,
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<TyCtxt<'tcx>>,
     {
         self.pretty_in_binder(value)
     }
@@ -2044,7 +2044,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         f: C,
     ) -> Result<Self, Self::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>,
+        T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<TyCtxt<'tcx>>,
     {
         self.pretty_wrap_binder(value, f)
     }
@@ -2224,12 +2224,12 @@ struct RegionFolder<'a, 'tcx> {
             ),
 }
 
-impl<'a, 'tcx> ty::ir::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
+impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
     fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(
+    fn fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
     ) -> ty::Binder<'tcx, T> {
@@ -2289,7 +2289,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         value: &ty::Binder<'tcx, T>,
     ) -> Result<(Self, T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>), fmt::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>,
+        T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<TyCtxt<'tcx>>,
     {
         fn name_by_region_index(
             index: usize,
@@ -2452,7 +2452,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
     pub fn pretty_in_binder<T>(self, value: &ty::Binder<'tcx, T>) -> Result<Self, fmt::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>,
+        T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<TyCtxt<'tcx>>,
     {
         let old_region_index = self.region_index;
         let (new, new_value, _) = self.name_all_regions(value)?;
@@ -2468,7 +2468,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         f: C,
     ) -> Result<Self, fmt::Error>
     where
-        T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>,
+        T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<TyCtxt<'tcx>>,
     {
         let old_region_index = self.region_index;
         let (new, new_value, _) = self.name_all_regions(value)?;
@@ -2480,7 +2480,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
     fn prepare_region_info<T>(&mut self, value: &ty::Binder<'tcx, T>)
     where
-        T: TypeVisitable<'tcx>,
+        T: TypeVisitable<TyCtxt<'tcx>>,
     {
         struct RegionNameCollector<'tcx> {
             used_region_names: FxHashSet<Symbol>,
@@ -2496,7 +2496,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::visit::ir::TypeVisitor<TyCtxt<'tcx>> for RegionNameCollector<'tcx> {
+        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for RegionNameCollector<'tcx> {
             type BreakTy = ();
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -2533,7 +2533,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
 impl<'tcx, T, P: PrettyPrinter<'tcx>> Print<'tcx, P> for ty::Binder<'tcx, T>
 where
-    T: Print<'tcx, P, Output = P, Error = P::Error> + TypeFoldable<'tcx>,
+    T: Print<'tcx, P, Output = P, Error = P::Error> + TypeFoldable<TyCtxt<'tcx>>,
 {
     type Output = P;
     type Error = P::Error;

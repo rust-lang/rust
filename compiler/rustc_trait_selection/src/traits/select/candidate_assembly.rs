@@ -9,7 +9,7 @@ use hir::LangItem;
 use rustc_hir as hir;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
-use rustc_middle::ty::{self, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_target::spec::abi::Abi;
 
 use crate::traits;

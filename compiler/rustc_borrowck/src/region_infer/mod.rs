@@ -17,7 +17,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::ObligationCauseCode;
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::Span;
 
 use crate::{
@@ -1366,7 +1366,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// we use this kind of hacky solution.
     fn normalize_to_scc_representatives<T>(&self, tcx: TyCtxt<'tcx>, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         tcx.fold_regions(value, |r, _db| {
             let vid = self.to_region_vid(r);

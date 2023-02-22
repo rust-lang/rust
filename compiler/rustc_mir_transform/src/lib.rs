@@ -35,7 +35,7 @@ use rustc_middle::mir::{
     TerminatorKind,
 };
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 
 #[macro_use]

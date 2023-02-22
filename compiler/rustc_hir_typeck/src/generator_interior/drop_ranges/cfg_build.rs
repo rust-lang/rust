@@ -12,7 +12,7 @@ use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::{
     hir::map::Map,
-    ty::{ParamEnv, TyCtxt, TypeVisitable, TypeckResults},
+    ty::{ParamEnv, TyCtxt, TypeVisitableExt, TypeckResults},
 };
 use std::mem::swap;
 

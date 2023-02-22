@@ -1,6 +1,6 @@
 use crate::error::StrictCoherenceNeedsNegativeCoherence;
 use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::visit::TypeVisitable;
+use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;

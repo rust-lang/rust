@@ -7,7 +7,7 @@ use super::Subtype;
 
 use crate::traits::{ObligationCause, PredicateObligations};
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 
 /// "Greatest lower bound" (common subtype)
 pub struct Glb<'combine, 'infcx, 'tcx> {

@@ -105,7 +105,7 @@ pub trait TypeRelation<'tcx>: Sized {
         T: Relate<'tcx>;
 }
 
-pub trait Relate<'tcx>: TypeFoldable<'tcx> + PartialEq + Copy {
+pub trait Relate<'tcx>: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: Self,

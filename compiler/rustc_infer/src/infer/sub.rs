@@ -3,7 +3,7 @@ use super::{ObligationEmittingRelation, SubregionOrigin};
 
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::mem;

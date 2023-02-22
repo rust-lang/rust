@@ -6,7 +6,10 @@ use rustc_infer::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::ty::{self, ir::TypeVisitor, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor,
+};
 use rustc_span::DUMMY_SP;
 use std::ops::ControlFlow;
 
@@ -137,7 +140,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             })
     }
 
-    pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<'tcx> + Copy>(
+    pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<TyCtxt<'tcx>> + Copy>(
         &self,
         value: ty::Binder<'tcx, T>,
     ) -> T {
@@ -148,7 +151,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         )
     }
 
-    pub(super) fn instantiate_binder_with_placeholders<T: TypeFoldable<'tcx> + Copy>(
+    pub(super) fn instantiate_binder_with_placeholders<T: TypeFoldable<TyCtxt<'tcx>> + Copy>(
         &self,
         value: ty::Binder<'tcx, T>,
     ) -> T {
@@ -157,7 +160,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
     pub(super) fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.infcx.resolve_vars_if_possible(value)
     }

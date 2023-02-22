@@ -25,7 +25,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::TypeTrace;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, DefIdTree, IsSuggestable, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};

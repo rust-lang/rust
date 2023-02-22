@@ -20,7 +20,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::{
     self, BindingMode, Expr, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir,
 };
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable, TypeckResults};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_span::Symbol;

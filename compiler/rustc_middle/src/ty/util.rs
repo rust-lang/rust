@@ -4,8 +4,8 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
-    self, ir::TypeFolder, DefIdTree, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable,
+    self, DefIdTree, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt,
 };
 use crate::ty::{GenericArgKind, SubstsRef};
 use rustc_apfloat::Float as _;
@@ -1349,8 +1349,8 @@ pub fn fold_list<'tcx, F, T>(
     intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> &'tcx ty::List<T>,
 ) -> Result<&'tcx ty::List<T>, F::Error>
 where
-    F: FallibleTypeFolder<'tcx>,
-    T: TypeFoldable<'tcx> + PartialEq + Copy,
+    F: FallibleTypeFolder<TyCtxt<'tcx>>,
+    T: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy,
 {
     let mut iter = list.iter();
     // Look for the first element that changed

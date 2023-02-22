@@ -106,7 +106,7 @@ impl<'tcx> ToUniverseInfo<'tcx>
     }
 }
 
-impl<'tcx, T: Copy + fmt::Display + TypeFoldable<'tcx> + 'tcx> ToUniverseInfo<'tcx>
+impl<'tcx, T: Copy + fmt::Display + TypeFoldable<TyCtxt<'tcx>> + 'tcx> ToUniverseInfo<'tcx>
     for Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>
 {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
@@ -258,7 +258,7 @@ struct NormalizeQuery<'tcx, T> {
 
 impl<'tcx, T> TypeOpInfo<'tcx> for NormalizeQuery<'tcx, T>
 where
-    T: Copy + fmt::Display + TypeFoldable<'tcx> + 'tcx,
+    T: Copy + fmt::Display + TypeFoldable<TyCtxt<'tcx>> + 'tcx,
 {
     fn fallback_error(
         &self,

@@ -82,7 +82,7 @@ pub(super) enum CandidateSource {
 }
 
 /// Methods used to assemble candidates for either trait or projection goals.
-pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
+pub(super) trait GoalKind<'tcx>: TypeFoldable<TyCtxt<'tcx>> + Copy + Eq {
     fn self_ty(self) -> Ty<'tcx>;
 
     fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self;

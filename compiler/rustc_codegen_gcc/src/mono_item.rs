@@ -1,7 +1,7 @@
 use rustc_codegen_ssa::traits::PreDefineMethods;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::mono::{Linkage, Visibility};
-use rustc_middle::ty::{self, Instance, TypeVisitable};
+use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
 use rustc_span::def_id::DefId;
 

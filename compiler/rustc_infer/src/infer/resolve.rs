@@ -1,11 +1,8 @@
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::{FixupError, FixupResult, InferCtxt, Span};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
-use rustc_middle::ty::fold::{
-    ir::{FallibleTypeFolder, TypeFolder},
-    TypeSuperFoldable,
-};
-use rustc_middle::ty::visit::{ir::TypeVisitor, TypeSuperVisitable};
+use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitableExt, TypeVisitor};
 use rustc_middle::ty::{self, Const, InferConst, Ty, TyCtxt, TypeFoldable};
 
 use std::ops::ControlFlow;
@@ -200,7 +197,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for UnresolvedTypeOrConstFinder<'a, 'tc
 /// then an `Err` result is returned.
 pub fn fully_resolve<'tcx, T>(infcx: &InferCtxt<'tcx>, value: T) -> FixupResult<'tcx, T>
 where
-    T: TypeFoldable<'tcx>,
+    T: TypeFoldable<TyCtxt<'tcx>>,
 {
     value.try_fold_with(&mut FullTypeResolver { infcx })
 }

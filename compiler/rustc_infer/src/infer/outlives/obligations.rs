@@ -69,7 +69,7 @@ use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, Region, SubstsRef, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Region, SubstsRef, Ty, TyCtxt, TypeVisitableExt};
 use smallvec::smallvec;
 
 impl<'tcx> InferCtxt<'tcx> {

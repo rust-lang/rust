@@ -30,15 +30,15 @@ pub fn type_visitable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
     s.add_bounds(synstructure::AddBounds::Generics);
     let body_visit = s.each(|bind| {
         quote! {
-            ::rustc_middle::ty::visit::ir::TypeVisitable::visit_with(#bind, __visitor)?;
+            ::rustc_middle::ty::visit::TypeVisitable::visit_with(#bind, __visitor)?;
         }
     });
     s.bind_with(|_| synstructure::BindStyle::Move);
 
     s.bound_impl(
-        quote!(::rustc_middle::ty::visit::ir::TypeVisitable<::rustc_middle::ty::TyCtxt<'tcx>>),
+        quote!(::rustc_middle::ty::visit::TypeVisitable<::rustc_middle::ty::TyCtxt<'tcx>>),
         quote! {
-            fn visit_with<__V: ::rustc_middle::ty::visit::TypeVisitor<'tcx>>(
+            fn visit_with<__V: ::rustc_middle::ty::visit::TypeVisitor<::rustc_middle::ty::TyCtxt<'tcx>>>(
                 &self,
                 __visitor: &mut __V
             ) -> ::std::ops::ControlFlow<__V::BreakTy> {

@@ -10,7 +10,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
-use rustc_middle::ty::{Binder, TraitRef, TypeVisitable};
+use rustc_middle::ty::{Binder, TraitRef, TypeVisitableExt};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;

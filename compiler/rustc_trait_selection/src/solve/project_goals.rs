@@ -14,7 +14,7 @@ use rustc_infer::traits::Reveal;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::ProjectionPredicate;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_middle::ty::{ToPredicate, TypeVisitable};
+use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
 use rustc_span::{sym, DUMMY_SP};
 use std::iter;
 

@@ -1,4 +1,4 @@
-use rustc_middle::ty::fold::{ir::TypeFolder, TypeFoldable, TypeSuperFoldable};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
 
 use super::type_variable::TypeVariableOrigin;
@@ -98,7 +98,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn fudge_inference_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce() -> Result<T, E>,
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let variable_lengths = self.variable_lengths();
         let (mut fudger, value) = self.probe(|_| {

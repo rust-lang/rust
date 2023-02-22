@@ -104,7 +104,7 @@ use rustc_middle::ty::fast_reject::SimplifiedType::{
     PtrSimplifiedType, SliceSimplifiedType, StrSimplifiedType, UintSimplifiedType,
 };
 use rustc_middle::ty::{
-    layout::IntegerExt, BorrowKind, ClosureKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeVisitable, UpvarCapture,
+    layout::IntegerExt, BorrowKind, ClosureKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, UpvarCapture,
 };
 use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_span::hygiene::{ExpnKind, MacroKind};

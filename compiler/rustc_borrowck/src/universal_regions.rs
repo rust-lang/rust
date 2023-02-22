@@ -728,7 +728,7 @@ trait InferCtxtExt<'tcx> {
         value: T,
     ) -> T
     where
-        T: TypeFoldable<'tcx>;
+        T: TypeFoldable<TyCtxt<'tcx>>;
 
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
@@ -738,7 +738,7 @@ trait InferCtxtExt<'tcx> {
         indices: &mut UniversalRegionIndices<'tcx>,
     ) -> T
     where
-        T: TypeFoldable<'tcx>;
+        T: TypeFoldable<TyCtxt<'tcx>>;
 
     fn replace_late_bound_regions_with_nll_infer_vars_in_recursive_scope(
         &self,
@@ -761,7 +761,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
         value: T,
     ) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.infcx.tcx.fold_regions(value, |region, _depth| {
             let name = match region.get_name() {
@@ -785,7 +785,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
         indices: &mut UniversalRegionIndices<'tcx>,
     ) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
             debug!(?br);
@@ -906,7 +906,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// returned by `to_region_vid`.
     pub fn fold_to_region_vids<T>(&self, tcx: TyCtxt<'tcx>, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         tcx.fold_regions(value, |region, _| tcx.mk_re_var(self.to_region_vid(region)))
     }

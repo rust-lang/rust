@@ -49,7 +49,7 @@ use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
-use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_session::config::TraitSolver;
 use rustc_span::symbol::sym;
 
@@ -1406,7 +1406,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// The weird return type of this function allows it to be used with the `try` (`?`)
     /// operator within certain functions.
     #[inline(always)]
-    fn check_recursion_limit<T: Display + TypeFoldable<'tcx>, V>(
+    fn check_recursion_limit<T: Display + TypeFoldable<TyCtxt<'tcx>>, V>(
         &self,
         obligation: &Obligation<'tcx, T>,
         error_obligation: &Obligation<'tcx, V>,

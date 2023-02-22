@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
 use rustc_middle::{
     hir::place::{PlaceBase, Projection, ProjectionKind},
-    ty::TypeVisitable,
+    ty::TypeVisitableExt,
 };
 
 pub(super) fn find_consumed_and_borrowed<'a, 'tcx>(

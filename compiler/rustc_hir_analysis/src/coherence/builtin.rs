@@ -11,7 +11,7 @@ use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::{self, RegionResolutionError};
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
-use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitableExt};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::misc::{
     type_allowed_to_implement_copy, CopyImplementationError, InfringingFieldsReason,

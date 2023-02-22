@@ -7,10 +7,10 @@ use crate::mir::interpret::{
 };
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{ir::TypeFoldable, FallibleTypeFolder};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::visit::{TypeVisitable, TypeVisitor};
-use crate::ty::{self, ir, DefIdTree, List, Ty, TyCtxt};
+use crate::ty::visit::{TypeVisitable, TypeVisitableExt, TypeVisitor};
+use crate::ty::{self, DefIdTree, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 
@@ -2755,7 +2755,10 @@ impl UserTypeProjection {
 }
 
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for UserTypeProjection {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         Ok(UserTypeProjection {
             base: self.base.try_fold_with(folder)?,
             projs: self.projs.try_fold_with(folder)?,
@@ -2763,8 +2766,11 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for UserTypeProjection {
     }
 }
 
-impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for UserTypeProjection {
-    fn visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> ControlFlow<Vs::BreakTy> {
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for UserTypeProjection {
+    fn visit_with<Vs: TypeVisitor<TyCtxt<'tcx>>>(
+        &self,
+        visitor: &mut Vs,
+    ) -> ControlFlow<Vs::BreakTy> {
         self.base.visit_with(visitor)
         // Note: there's nothing in `self.proj` to visit.
     }
