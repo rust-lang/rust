@@ -7,6 +7,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
@@ -796,8 +797,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Construct `ExprKind::Err` for the given `span`.
-    pub(crate) fn expr_err(&mut self, span: Span) -> hir::Expr<'hir> {
-        self.expr(span, hir::ExprKind::Err)
+    pub(crate) fn expr_err(&mut self, span: Span, guar: ErrorGuaranteed) -> hir::Expr<'hir> {
+        self.expr(span, hir::ExprKind::Err(guar))
     }
 
     fn lower_impl_item(&mut self, i: &AssocItem) -> &'hir hir::ImplItem<'hir> {
@@ -975,7 +976,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_block_expr_opt(&mut self, span: Span, block: Option<&Block>) -> hir::Expr<'hir> {
         match block {
             Some(block) => self.lower_block_expr(block),
-            None => self.expr_err(span),
+            None => self.expr_err(span, self.tcx.sess.delay_span_bug(span, "no block")),
         }
     }
 
@@ -985,7 +986,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 &[],
                 match expr {
                     Some(expr) => this.lower_expr_mut(expr),
-                    None => this.expr_err(span),
+                    None => this.expr_err(span, this.tcx.sess.delay_span_bug(span, "no block")),
                 },
             )
         })

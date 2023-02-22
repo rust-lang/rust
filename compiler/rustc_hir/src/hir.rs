@@ -1688,7 +1688,7 @@ impl Expr<'_> {
             ExprKind::Struct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
-            ExprKind::Err => ExprPrecedence::Err,
+            ExprKind::Err(_) => ExprPrecedence::Err,
         }
     }
 
@@ -1754,7 +1754,7 @@ impl Expr<'_> {
             | ExprKind::Yield(..)
             | ExprKind::Cast(..)
             | ExprKind::DropTemps(..)
-            | ExprKind::Err => false,
+            | ExprKind::Err(_) => false,
         }
     }
 
@@ -1840,7 +1840,7 @@ impl Expr<'_> {
             | ExprKind::Binary(..)
             | ExprKind::Yield(..)
             | ExprKind::DropTemps(..)
-            | ExprKind::Err => true,
+            | ExprKind::Err(_) => true,
         }
     }
 
@@ -2013,7 +2013,7 @@ pub enum ExprKind<'hir> {
     Yield(&'hir Expr<'hir>, YieldSource),
 
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
-    Err,
+    Err(rustc_span::ErrorGuaranteed),
 }
 
 /// Represents an optionally `Self`-qualified value/type path or associated extension.
