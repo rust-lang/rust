@@ -1741,8 +1741,37 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         self.set_ctrl(index, h2(hash));
     }
 
+    /// Replaces the hash in the control byte at the given index with the provided one,
+    /// and possibly also replicates the new control byte at the end of the array of control
+    /// bytes, returning the old control byte.
+    ///
+    /// This function does not make any changes to the `data` parts of the table,
+    /// or any changes to the the `items` or `growth_left` field of the table.
+    ///
+    /// # Safety
+    ///
+    /// The safety rules are directly derived from the safety rules for [`RawTableInner::set_ctrl_h2`]
+    /// and [`RawTableInner::ctrl`] methods. Thus, in order to uphold the safety contracts for both
+    /// methods, you must observe the following rules when calling this function:
+    ///
+    /// * The [`RawTableInner`] has already been allocated;
+    ///
+    /// * The `index` must not be greater than the `RawTableInner.bucket_mask`, i.e.
+    ///   `index <= RawTableInner.bucket_mask` or, in other words, `(index + 1)` must
+    ///   be no greater than the number returned by the function [`RawTableInner::buckets`].
+    ///
+    /// Calling this function on a table that has not been allocated results in [`undefined behavior`].
+    ///
+    /// See also [`Bucket::as_ptr`] method, for more information about of properly removing
+    /// or saving `data element` from / into the [`RawTable`] / [`RawTableInner`].
+    ///
+    /// [`RawTableInner::set_ctrl_h2`]: RawTableInner::set_ctrl_h2
+    /// [`RawTableInner::buckets`]: RawTableInner::buckets
+    /// [`Bucket::as_ptr`]: Bucket::as_ptr
+    /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     unsafe fn replace_ctrl_h2(&self, index: usize, hash: u64) -> u8 {
+        // SAFETY: The caller must uphold the safety rules for the [`RawTableInner::replace_ctrl_h2`]
         let prev_ctrl = *self.ctrl(index);
         self.set_ctrl_h2(index, hash);
         prev_ctrl
