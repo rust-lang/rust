@@ -435,6 +435,10 @@ impl Step for Rustfmt {
             &[],
         );
 
+        if !builder.fail_fast {
+            cargo.arg("--no-fail-fast");
+        }
+
         let dir = testdir(builder, compiler.host);
         t!(fs::create_dir_all(&dir));
         cargo.env("RUSTFMT_TEST_DIR", dir);
@@ -615,6 +619,10 @@ impl Step for Miri {
         );
         cargo.add_rustc_lib_path(builder, compiler);
 
+        if !builder.fail_fast {
+            cargo.arg("--no-fail-fast");
+        }
+
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", sysroot);
@@ -745,6 +753,10 @@ impl Step for Clippy {
             SourceType::InTree,
             &[],
         );
+
+        if !builder.fail_fast {
+            cargo.arg("--no-fail-fast");
+        }
 
         cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
