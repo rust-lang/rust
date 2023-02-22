@@ -701,7 +701,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub(in super::super) fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
-        vec![self.tcx.ty_error(); len]
+        let ty_error = self.tcx.ty_error();
+        vec![ty_error; len]
     }
 
     /// Unifies the output type with the expected type early, for more coercions

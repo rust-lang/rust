@@ -529,9 +529,9 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         for elem in place.projection.iter() {
             if place_ty.variant_index.is_none() {
-                if place_ty.ty.references_error() {
+                if let Err(guar) = place_ty.ty.error_reported() {
                     assert!(self.errors_reported);
-                    return PlaceTy::from_ty(self.tcx().ty_error());
+                    return PlaceTy::from_ty(self.tcx().ty_error_with_guaranteed(guar));
                 }
             }
             place_ty = self.sanitize_projection(place_ty, elem, place, location, context);

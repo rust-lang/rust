@@ -518,8 +518,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .type_of(param.def_id)
                             .no_bound_vars()
                             .expect("const parameter types cannot be generic");
-                        if ty.references_error() {
-                            return tcx.const_error(ty).into();
+                        if let Err(guar) = ty.error_reported() {
+                            return tcx.const_error_with_guaranteed(ty, guar).into();
                         }
                         if !infer_args && has_default {
                             tcx.const_param_default(param.def_id).subst(tcx, substs.unwrap()).into()
@@ -1579,7 +1579,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     false
                 });
                 if references_self {
-                    tcx.sess
+                    let guar = tcx
+                        .sess
                         .delay_span_bug(span, "trait object projection bounds reference `Self`");
                     let substs: Vec<_> = b
                         .projection_ty
@@ -1587,7 +1588,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         .iter()
                         .map(|arg| {
                             if arg.walk().any(|arg| arg == dummy_self.into()) {
-                                return tcx.ty_error().into();
+                                return tcx.ty_error_with_guaranteed(guar).into();
                             }
                             arg
                         })
@@ -3064,7 +3065,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let ty = self.ast_ty_to_ty_inner(qself, false, true);
                 self.associated_path_to_ty(ast_ty.hir_id, ast_ty.span, ty, qself, segment, false)
                     .map(|(ty, _, _)| ty)
-                    .unwrap_or_else(|_| tcx.ty_error())
+                    .unwrap_or_else(|guar| tcx.ty_error_with_guaranteed(guar))
             }
             &hir::TyKind::Path(hir::QPath::LangItem(lang_item, span, _)) => {
                 let def_id = tcx.require_lang_item(lang_item, Some(span));

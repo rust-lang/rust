@@ -1033,7 +1033,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let result_ty = coerce.complete(self);
-        if cond_ty.references_error() { self.tcx.ty_error() } else { result_ty }
+        if let Err(guar) = cond_ty.error_reported() {
+            self.tcx.ty_error_with_guaranteed(guar)
+        } else {
+            result_ty
+        }
     }
 
     /// Type check assignment expression `expr` of form `lhs = rhs`.
@@ -1155,8 +1159,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 
-        if lhs_ty.references_error() || rhs_ty.references_error() {
-            self.tcx.ty_error()
+        if let Err(guar) = (lhs_ty, rhs_ty).error_reported() {
+            self.tcx.ty_error_with_guaranteed(guar)
         } else {
             self.tcx.mk_unit()
         }
@@ -1274,8 +1278,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let t_expr = self.resolve_vars_if_possible(t_expr);
 
         // Eagerly check for some obvious errors.
-        if t_expr.references_error() || t_cast.references_error() {
-            self.tcx.ty_error()
+        if let Err(guar) = (t_expr, t_cast).error_reported() {
+            self.tcx.ty_error_with_guaranteed(guar)
         } else {
             // Defer other checks until we're done type checking.
             let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
@@ -1296,7 +1300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     deferred_cast_checks.push(cast_check);
                     t_cast
                 }
-                Err(_) => self.tcx.ty_error(),
+                Err(guar) => self.tcx.ty_error_with_guaranteed(guar),
             }
         }
     }
@@ -1423,8 +1427,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        if element_ty.references_error() {
-            return tcx.ty_error();
+        if let Err(guar) = element_ty.error_reported() {
+            return tcx.ty_error_with_guaranteed(guar);
         }
 
         self.check_repeat_element_needs_copy_bound(element, count, element_ty);
@@ -1493,8 +1497,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.check_expr_with_expectation(&e, NoExpectation),
         });
         let tuple = self.tcx.mk_tup(elt_ts_iter);
-        if tuple.references_error() {
-            self.tcx.ty_error()
+        if let Err(guar) = tuple.error_reported() {
+            self.tcx.ty_error_with_guaranteed(guar)
         } else {
             self.require_type_is_sized(tuple, expr.span, traits::TupleInitializerSized);
             tuple
@@ -1510,9 +1514,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
     ) -> Ty<'tcx> {
         // Find the relevant variant
-        let Some((variant, adt_ty)) = self.check_struct_path(qpath, expr.hir_id) else {
-            self.check_struct_fields_on_error(fields, base_expr);
-            return self.tcx.ty_error();
+        let (variant, adt_ty) = match self.check_struct_path(qpath, expr.hir_id) {
+            Ok(data) => data,
+            Err(guar) => {
+                self.check_struct_fields_on_error(fields, base_expr);
+                return self.tcx.ty_error_with_guaranteed(guar);
+            }
         };
 
         // Prohibit struct expressions when non-exhaustive flag is set.
@@ -1594,12 +1601,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.field_ty(field.span, v_field, substs)
             } else {
                 error_happened = true;
-                if let Some(prev_span) = seen_fields.get(&ident) {
+                let guar = if let Some(prev_span) = seen_fields.get(&ident) {
                     tcx.sess.emit_err(FieldMultiplySpecifiedInInitializer {
                         span: field.ident.span,
                         prev_span: *prev_span,
                         ident,
-                    });
+                    })
                 } else {
                     self.report_unknown_field(
                         adt_ty,
@@ -1608,10 +1615,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ast_fields,
                         adt.variant_descr(),
                         expr_span,
-                    );
-                }
+                    )
+                };
 
-                tcx.ty_error()
+                tcx.ty_error_with_guaranteed(guar)
             };
 
             // Make sure to give a type to the field even if there's
@@ -1994,14 +2001,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         skip_fields: &[hir::ExprField<'_>],
         kind_name: &str,
         expr_span: Span,
-    ) {
+    ) -> ErrorGuaranteed {
         if variant.is_recovered() {
-            self.set_tainted_by_errors(
-                self.tcx
-                    .sess
-                    .delay_span_bug(expr_span, "parser recovered but no error was emitted"),
-            );
-            return;
+            let guar = self
+                .tcx
+                .sess
+                .delay_span_bug(expr_span, "parser recovered but no error was emitted");
+            self.set_tainted_by_errors(guar);
+            return guar;
         }
         let mut err = self.err_ctxt().type_error_struct_with_diag(
             field.ident.span,
@@ -2115,7 +2122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
             }
         }
-        err.emit();
+        err.emit()
     }
 
     // Return a hint about the closest match in field names
@@ -2256,11 +2263,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // (#90483) apply adjustments to avoid ExprUseVisitor from
             // creating erroneous projection.
             self.apply_adjustments(base, adjustments);
-            self.ban_private_field_access(expr, base_ty, field, did, expected.only_has_type(self));
-            return self.tcx().ty_error();
+            let guar = self.ban_private_field_access(
+                expr,
+                base_ty,
+                field,
+                did,
+                expected.only_has_type(self),
+            );
+            return self.tcx().ty_error_with_guaranteed(guar);
         }
 
-        if field.name == kw::Empty {
+        let guar = if field.name == kw::Empty {
+            self.tcx.sess.delay_span_bug(field.span, "field name with no name")
         } else if self.method_exists(
             field,
             base_ty,
@@ -2268,9 +2282,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             true,
             expected.only_has_type(self),
         ) {
-            self.ban_take_value_of_method(expr, base_ty, field);
+            self.ban_take_value_of_method(expr, base_ty, field)
         } else if !base_ty.is_primitive_ty() {
-            self.ban_nonexisting_field(field, base, expr, base_ty);
+            self.ban_nonexisting_field(field, base, expr, base_ty)
         } else {
             let field_name = field.to_string();
             let mut err = type_error_struct!(
@@ -2339,10 +2353,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
             }
-            err.emit();
-        }
+            err.emit()
+        };
 
-        self.tcx().ty_error()
+        self.tcx().ty_error_with_guaranteed(guar)
     }
 
     fn suggest_await_on_field_access(
@@ -2388,7 +2402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base: &'tcx hir::Expr<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
         base_ty: Ty<'tcx>,
-    ) {
+    ) -> ErrorGuaranteed {
         debug!(
             "ban_nonexisting_field: field={:?}, base={:?}, expr={:?}, base_ty={:?}",
             ident, base, expr, base_ty
@@ -2436,7 +2450,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             HelpUseLatestEdition::new().add_to_diagnostic(&mut err);
         }
 
-        err.emit();
+        err.emit()
     }
 
     fn ban_private_field_access(
@@ -2446,7 +2460,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: Ident,
         base_did: DefId,
         return_ty: Option<Ty<'tcx>>,
-    ) {
+    ) -> ErrorGuaranteed {
         let struct_path = self.tcx().def_path_str(base_did);
         let kind_name = self.tcx().def_kind(base_did).descr(base_did);
         let mut err = struct_span_err!(
@@ -2469,10 +2483,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None,
             );
         }
-        err.emit();
+        err.emit()
     }
 
-    fn ban_take_value_of_method(&self, expr: &hir::Expr<'tcx>, expr_t: Ty<'tcx>, field: Ident) {
+    fn ban_take_value_of_method(
+        &self,
+        expr: &hir::Expr<'tcx>,
+        expr_t: Ty<'tcx>,
+        field: Ident,
+    ) -> ErrorGuaranteed {
         let mut err = type_error_struct!(
             self.tcx().sess,
             field.span,
@@ -2544,7 +2563,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.help("methods are immutable and cannot be assigned to");
         }
 
-        err.emit();
+        err.emit()
     }
 
     fn point_at_param_definition(&self, err: &mut Diagnostic, param: ty::ParamTy) {

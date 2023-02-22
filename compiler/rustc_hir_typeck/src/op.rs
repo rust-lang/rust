@@ -631,7 +631,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Err(errors) => {
                 let actual = self.resolve_vars_if_possible(operand_ty);
-                if !actual.references_error() {
+                let guar = actual.error_reported().err().unwrap_or_else(|| {
                     let mut err = struct_span_err!(
                         self.tcx.sess,
                         ex.span,
@@ -701,9 +701,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    err.emit();
-                }
-                self.tcx.ty_error()
+                    err.emit()
+                });
+                self.tcx.ty_error_with_guaranteed(guar)
             }
         }
     }
