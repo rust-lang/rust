@@ -187,6 +187,30 @@ impl<T, const N: usize> const BorrowMut<[T]> for [T; N] {
     }
 }
 
+#[stable(feature = "array_borrow", since = "1.4.0")]
+#[rustc_const_unstable(feature = "const_borrow", issue = "91522")]
+impl<T, const N: usize> const Borrow<[T]> for &[T; N] {
+    fn borrow(&self) -> &[T] {
+        &self[..]
+    }
+}
+
+#[stable(feature = "array_borrow", since = "1.4.0")]
+#[rustc_const_unstable(feature = "const_borrow", issue = "91522")]
+impl<T, const N: usize> const Borrow<[T]> for &mut [T; N] {
+    fn borrow(&self) -> &[T] {
+        &self[..]
+    }
+}
+
+#[stable(feature = "array_borrow", since = "1.4.0")]
+#[rustc_const_unstable(feature = "const_borrow", issue = "91522")]
+impl<T, const N: usize> const BorrowMut<[T]> for &mut [T; N] {
+    fn borrow_mut(&mut self) -> &mut [T] {
+        &mut self[..]
+    }
+}
+
 /// Tries to create an array `[T; N]` by copying from a slice `&[T]`. Succeeds if
 /// `slice.len() == N`.
 ///
