@@ -197,11 +197,6 @@ impl FileDesc {
         }
     }
 
-    #[cfg(target_os = "linux")]
-    pub fn get_cloexec(&self) -> io::Result<bool> {
-        unsafe { Ok((cvt(libc::fcntl(self.as_raw_fd(), libc::F_GETFD))? & libc::FD_CLOEXEC) != 0) }
-    }
-
     #[cfg(not(any(
         target_env = "newlib",
         target_os = "solaris",
