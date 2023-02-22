@@ -19,8 +19,8 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::cstore::{CrateSource, CrateStore};
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
-use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::{kw, Symbol};
+use rustc_span::Span;
 
 use rustc_data_structures::sync::Lrc;
 use std::any::Any;
@@ -507,14 +507,6 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
 }
 
 impl CStore {
-    pub fn struct_field_names_untracked<'a>(
-        &'a self,
-        def: DefId,
-        sess: &'a Session,
-    ) -> impl Iterator<Item = Spanned<Symbol>> + 'a {
-        self.get_crate_data(def.krate).get_struct_field_names(def.index, sess)
-    }
-
     pub fn ctor_untracked(&self, def: DefId) -> Option<(CtorKind, DefId)> {
         self.get_crate_data(def.krate).get_ctor(def.index)
     }

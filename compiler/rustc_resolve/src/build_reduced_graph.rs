@@ -29,7 +29,6 @@ use rustc_middle::metadata::ModChild;
 use rustc_middle::{bug, ty};
 use rustc_session::cstore::CrateStore;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
-use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
@@ -327,13 +326,13 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         }
     }
 
-    fn insert_field_names_local(&mut self, def_id: DefId, vdata: &ast::VariantData) {
-        let field_names = vdata
-            .fields()
-            .iter()
-            .map(|field| respan(field.span, field.ident.map_or(kw::Empty, |ident| ident.name)))
-            .collect();
-        self.r.field_names.insert(def_id, field_names);
+    fn insert_field_def_ids(&mut self, def_id: LocalDefId, vdata: &ast::VariantData) {
+        if vdata.fields().iter().any(|field| field.is_placeholder) {
+            // The fields are not expanded yet.
+            return;
+        }
+        let def_ids = vdata.fields().iter().map(|field| self.r.local_def_id(field.id).to_def_id());
+        self.r.field_def_ids.insert(def_id, self.r.tcx.arena.alloc_from_iter(def_ids));
     }
 
     fn insert_field_visibilities_local(&mut self, def_id: DefId, vdata: &ast::VariantData) {
@@ -343,12 +342,6 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             .map(|field| field.vis.span.until(field.ident.map_or(field.ty.span, |i| i.span)))
             .collect();
         self.r.field_visibility_spans.insert(def_id, field_vis);
-    }
-
-    fn insert_field_names_extern(&mut self, def_id: DefId) {
-        let field_names =
-            self.r.cstore().struct_field_names_untracked(def_id, self.r.tcx.sess).collect();
-        self.r.field_names.insert(def_id, field_names);
     }
 
     fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
@@ -748,7 +741,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
 
                 // Record field names for error reporting.
-                self.insert_field_names_local(def_id, vdata);
+                self.insert_field_def_ids(local_def_id, vdata);
                 self.insert_field_visibilities_local(def_id, vdata);
 
                 // If this is a tuple or unit struct, define a name
@@ -797,7 +790,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
 
                 // Record field names for error reporting.
-                self.insert_field_names_local(def_id, vdata);
+                self.insert_field_def_ids(local_def_id, vdata);
                 self.insert_field_visibilities_local(def_id, vdata);
             }
 
@@ -1002,12 +995,6 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             | Res::SelfTyAlias { .. }
             | Res::SelfCtor(..)
             | Res::Err => bug!("unexpected resolution: {:?}", res),
-        }
-        // Record some extra data for better diagnostics.
-        match res {
-            Res::Def(DefKind::Struct, def_id) => self.insert_field_names_extern(def_id),
-            Res::Def(DefKind::Union, def_id) => self.insert_field_names_extern(def_id),
-            _ => {}
         }
     }
 
@@ -1519,7 +1506,7 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         }
 
         // Record field names for error reporting.
-        self.insert_field_names_local(def_id.to_def_id(), &variant.data);
+        self.insert_field_def_ids(def_id, &variant.data);
         self.insert_field_visibilities_local(def_id.to_def_id(), &variant.data);
 
         visit::walk_variant(self, variant);

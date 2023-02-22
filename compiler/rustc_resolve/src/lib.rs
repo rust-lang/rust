@@ -50,7 +50,6 @@ use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::LintBuffer;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -881,10 +880,7 @@ pub struct Resolver<'a, 'tcx> {
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
     has_self: LocalDefIdSet,
-
-    /// Names of fields of an item `DefId` accessible with dot syntax.
-    /// Used for hints during error reporting.
-    field_names: FxHashMap<DefId, Vec<Spanned<Symbol>>>,
+    field_def_ids: LocalDefIdMap<&'tcx [DefId]>,
 
     /// Span of the privacy modifier in fields of an item `DefId` accessible with dot syntax.
     /// Used for hints during error reporting.
@@ -1249,7 +1245,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             extern_prelude,
 
             has_self: Default::default(),
-            field_names: FxHashMap::default(),
+            field_def_ids: Default::default(),
             field_visibility_spans: FxHashMap::default(),
 
             determined_imports: Vec::new(),
@@ -1874,6 +1870,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match def_id.as_local() {
             Some(def_id) => self.tcx.source_span(def_id),
             None => self.cstore().get_span_untracked(def_id, self.tcx.sess),
+        }
+    }
+
+    fn field_def_ids(&self, def_id: DefId) -> Option<&'tcx [DefId]> {
+        match def_id.as_local() {
+            Some(def_id) => self.field_def_ids.get(&def_id).copied(),
+            None => Some(self.tcx.associated_item_def_ids(def_id)),
         }
     }
 

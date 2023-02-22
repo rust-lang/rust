@@ -1295,19 +1295,23 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         }
                         _ => (": val", "literal", Applicability::HasPlaceholders),
                     };
-                    let (fields, applicability) = match self.r.field_names.get(&def_id) {
-                        Some(fields) => (
-                            fields
+
+                    let field_ids = self.r.field_def_ids(def_id);
+                    let (fields, applicability) = match field_ids {
+                        Some(field_ids) => (
+                            field_ids
                                 .iter()
-                                .map(|f| format!("{}{}", f.node, tail))
+                                .map(|&field_id| {
+                                    format!("{}{tail}", self.r.tcx.item_name(field_id))
+                                })
                                 .collect::<Vec<String>>()
                                 .join(", "),
                             applicability,
                         ),
                         None => ("/* fields */".to_string(), Applicability::HasPlaceholders),
                     };
-                    let pad = match self.r.field_names.get(&def_id) {
-                        Some(fields) if fields.is_empty() => "",
+                    let pad = match field_ids {
+                        Some(field_ids) if field_ids.is_empty() => "",
                         _ => " ",
                     };
                     err.span_suggestion(
@@ -1451,10 +1455,12 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         );
 
                         // Use spans of the tuple struct definition.
-                        self.r
-                            .field_names
-                            .get(&def_id)
-                            .map(|fields| fields.iter().map(|f| f.span).collect::<Vec<_>>())
+                        self.r.field_def_ids(def_id).map(|field_ids| {
+                            field_ids
+                                .iter()
+                                .map(|&field_id| self.r.def_span(field_id))
+                                .collect::<Vec<_>>()
+                        })
                     }
                     _ => None,
                 };
@@ -1517,9 +1523,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             (Res::Def(DefKind::Ctor(_, CtorKind::Fn), ctor_def_id), _) if ns == ValueNS => {
                 let def_id = self.r.tcx.parent(ctor_def_id);
                 err.span_label(self.r.def_span(def_id), &format!("`{path_str}` defined here"));
-                let fields = self.r.field_names.get(&def_id).map_or_else(
+                let fields = self.r.field_def_ids(def_id).map_or_else(
                     || "/* fields */".to_string(),
-                    |fields| vec!["_"; fields.len()].join(", "),
+                    |field_ids| vec!["_"; field_ids.len()].join(", "),
                 );
                 err.span_suggestion(
                     span,
@@ -1600,8 +1606,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     if let Some(Res::Def(DefKind::Struct | DefKind::Union, did)) =
                         resolution.full_res()
                     {
-                        if let Some(field_names) = self.r.field_names.get(&did) {
-                            if field_names.iter().any(|&field_name| ident.name == field_name.node) {
+                        if let Some(field_ids) = self.r.field_def_ids(did) {
+                            if field_ids
+                                .iter()
+                                .any(|&field_id| ident.name == self.r.tcx.item_name(field_id))
+                            {
                                 return Some(AssocSuggestion::Field);
                             }
                         }
@@ -2015,11 +2024,12 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         } else {
             let needs_placeholder = |ctor_def_id: DefId, kind: CtorKind| {
                 let def_id = self.r.tcx.parent(ctor_def_id);
-                let has_no_fields = self.r.field_names.get(&def_id).map_or(false, |f| f.is_empty());
                 match kind {
                     CtorKind::Const => false,
-                    CtorKind::Fn if has_no_fields => false,
-                    _ => true,
+                    CtorKind::Fn => !self
+                        .r
+                        .field_def_ids(def_id)
+                        .map_or(false, |field_ids| field_ids.is_empty()),
                 }
             };
 
