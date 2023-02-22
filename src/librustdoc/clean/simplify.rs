@@ -49,11 +49,7 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> ThinVec<WP
     equalities.retain(|(lhs, rhs, bound_params)| {
         let Some((ty, trait_did, name)) = lhs.projection() else { return true; };
         let Some((bounds, _)) = tybounds.get_mut(ty) else { return true };
-        let bound_params = bound_params
-            .into_iter()
-            .map(|param| clean::GenericParamDef::lifetime(param.0))
-            .collect();
-        merge_bounds(cx, bounds, bound_params, trait_did, name, rhs)
+        merge_bounds(cx, bounds, bound_params.clone(), trait_did, name, rhs)
     });
 
     // And finally, let's reassemble everything
