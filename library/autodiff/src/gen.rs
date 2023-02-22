@@ -74,12 +74,12 @@ pub(crate) fn generate_body(token: TokenStream, item: &AutoDiffItem) -> (TokenSt
             fn_name_call
         )
     } else {
-        let mut item = syn::parse2::<ItemFn>(token).unwrap();
-        let (params, _) = parser::strip_sig_attributes(item.sig.inputs.iter().collect(), false);
-        item.sig.inputs = params.into_iter().collect();
+        let mut iitem = syn::parse2::<ItemFn>(token).unwrap();
+        let (params, _) = parser::strip_sig_attributes(iitem.sig.inputs.iter().collect(), false, &item.header);
+        iitem.sig.inputs = params.into_iter().collect();
 
-        let fn_name = &item.sig.ident;
-        (quote!(#item), quote!(#fn_name))
+        let fn_name = &iitem.sig.ident;
+        (quote!(#iitem), quote!(#fn_name))
     };
 
     let ret = match item.sig.output {

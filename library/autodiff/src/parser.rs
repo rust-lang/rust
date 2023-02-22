@@ -134,7 +134,7 @@ impl Header {
     }
 }
 
-pub(crate) fn strip_sig_attributes(args: Vec<&FnArg>, do_skip: bool) -> (Vec<FnArg>, Vec<Activity>) {
+pub(crate) fn strip_sig_attributes(args: Vec<&FnArg>, do_skip: bool, header: &Header) -> (Vec<FnArg>, Vec<Activity>) {
     let mut args = args.into_iter().cloned().collect::<Vec<_>>();
     let mut arg_it = args.iter_mut();
     let mut acts = Vec::new();
@@ -156,6 +156,11 @@ pub(crate) fn strip_sig_attributes(args: Vec<&FnArg>, do_skip: bool) -> (Vec<FnA
             _ => {}
         }
         acts.push(act);
+    }
+
+    // remove last activity because it belongs to return type
+    if header.mode == Mode::Reverse && header.ret_act == Activity::Active {
+        acts.pop();
     }
 
     (args, acts)
@@ -344,7 +349,7 @@ pub(crate) fn parse(args: TokenStream, input: TokenStream) -> AutoDiffItem {
     let (header, param_attrs) = Header::parse(args);
 
     // strip the function parameters from attribute macros
-    let (params, param_attrs2) = strip_sig_attributes(sig.inputs.iter().collect(), !block.is_some());
+    let (params, param_attrs2) = strip_sig_attributes(sig.inputs.iter().collect(), !block.is_some(), &header);
     sig.inputs = params.into_iter().collect();
 
     let mut params = match (param_attrs, param_attrs2) {

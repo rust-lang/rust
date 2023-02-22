@@ -12,6 +12,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
+use crate::typetree::to_enzyme_typetree;
 use llvm::{EnzymeLogicRef, EnzymeTypeAnalysisRef, CreateTypeAnalysis, CreateEnzymeLogic, LLVMSetValueName2, LLVMGetModuleContext, LLVMAddFunction, BasicBlock, LLVMGetElementType, LLVMAppendBasicBlockInContext, LLVMCountParams, LLVMTypeOf, LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd, LLVMBuildExtractValue, LLVMBuildRet, LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMBuildCall, LLVMGetParams, LLVMDeleteFunction, LLVMCountStructElementTypes, LLVMGetReturnType, enzyme_rust_forward_diff, enzyme_rust_reverse_diff, LLVMVoidTypeInContext};
 //use llvm::LLVMRustGetNamedValue;
 use rustc_codegen_ssa::back::link::ensure_removed;
@@ -37,7 +38,7 @@ use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo};
 use tracing::debug;
 
 use libc::{c_char, c_int, c_uint, c_void, size_t};
-use std::ffi::CString;
+use std::ffi::{CString, CStr};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -579,7 +580,7 @@ unsafe fn create_wrapper<'a>(
             outer_params,
             inner_params,
             c_inner_fnc_name,
-            )
+        )
     }
 
 
@@ -641,7 +642,7 @@ pub(crate) unsafe fn extract_return_type<'a>(
 // As unsafe as it can be.
 #[allow(unused_variables)]
 #[allow(unused)]
-pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item: AutoDiffItem, typetree: DiffTypeTree) -> Result<(), FatalError> {
+pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item: AutoDiffItem) -> Result<(), FatalError> {
     let autodiff_mode = item.attrs.mode;
     let rust_name = item.source;
     let rust_name2 = &item.target;
@@ -649,14 +650,19 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item:
     let args_activity = item.attrs.input_activity.clone();
     let ret_activity: DiffActivity = item.attrs.ret_activity;
 
+    // get target and source function
     let name = CString::new(rust_name.to_owned()).unwrap();
     let name2 = CString::new(rust_name2.clone()).unwrap();
-    let src_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
-    let target_fnc_tmp = llvm::LLVMGetNamedFunction(llmod, name2.as_ptr());
-    assert!(src_fnc_tmp.is_some());
-    assert!(target_fnc_tmp.is_some());
-    let fnc_todiff = src_fnc_tmp.unwrap();
-    let target_fnc = target_fnc_tmp.unwrap();
+    let src_fnc = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr()).unwrap();
+    let target_fnc = llvm::LLVMGetNamedFunction(llmod, name2.as_ptr()).unwrap();
+
+    // create enzyme typetrees
+    let llvm_data_layout = unsafe{ llvm::LLVMGetDataLayoutStr(&*llmod) };
+    let llvm_data_layout = std::str::from_utf8(unsafe {CStr::from_ptr(llvm_data_layout)}.to_bytes())
+        .expect("got a non-UTF8 data-layout from LLVM");
+
+    let input_tts = item.inputs.into_iter().map(|x| to_enzyme_typetree(x, llvm_data_layout, llcx)).collect();
+    let output_tt = to_enzyme_typetree(item.output, llvm_data_layout, llcx);
 
     let opt  = 1;
     let ret_primary_ret = false;
@@ -664,8 +670,8 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item:
     let logic_ref: EnzymeLogicRef = CreateEnzymeLogic(opt as u8);
     let type_analysis: EnzymeTypeAnalysisRef = CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
     let mut res: &Value = match item.attrs.mode {
-        DiffMode::Forward => enzyme_rust_forward_diff(logic_ref, type_analysis, fnc_todiff, args_activity, ret_activity, ret_primary_ret, typetree),
-        DiffMode::Reverse => enzyme_rust_reverse_diff(logic_ref, type_analysis, fnc_todiff, args_activity, ret_activity, ret_primary_ret, diff_primary_ret, typetree),
+        DiffMode::Forward => enzyme_rust_forward_diff(logic_ref, type_analysis, src_fnc, args_activity, ret_activity, ret_primary_ret, input_tts, output_tt),
+        DiffMode::Reverse => enzyme_rust_reverse_diff(logic_ref, type_analysis, src_fnc, args_activity, ret_activity, ret_primary_ret, diff_primary_ret, input_tts, output_tt),
         _ => unreachable!(),
     };
     let f_type = LLVMTypeOf(res);
@@ -698,7 +704,7 @@ pub(crate) unsafe fn differentiate(
     module: &ModuleCodegen<ModuleLlvm>,
     _cgcx: &CodegenContext<LlvmCodegenBackend>,
     diff_items: Vec<AutoDiffItem>,
-    typetrees: FxHashMap<String, DiffTypeTree>,
+    _typetrees: FxHashMap<String, DiffTypeTree>,
     config: &ModuleConfig,
     ) -> Result<(), FatalError> {
 
@@ -712,9 +718,7 @@ pub(crate) unsafe fn differentiate(
     }
 
     for item in diff_items {
-        let tt = typetrees.get(&item.source).unwrap().clone();
-
-        let res = enzyme_ad(llmod, llcx, item, tt);
+        let res = enzyme_ad(llmod, llcx, item);
         assert!(res.is_ok());
     }
 

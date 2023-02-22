@@ -19,7 +19,6 @@ use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 
 use super::RustString;
-use crate::DiffTypeTree;
 
 pub type Bool = c_uint;
 
@@ -1010,7 +1009,8 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
     input_diffactivity: Vec<DiffActivity>,
     ret_diffactivity: DiffActivity,
     mut ret_primary_ret: bool,
-    typetree: DiffTypeTree,
+    input_tts: Vec<TypeTree>,
+    output_tt: TypeTree,
     ) -> &Value{
 
     let ret_activity = cdiffe_from(ret_diffactivity);
@@ -1034,14 +1034,14 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
         ret_primary_ret = false;
     }
 
-    let mut args_tree = typetree.input_tt.into_iter()
+    let mut args_tree = input_tts.iter()
         .map(|x| x.inner).collect::<Vec<_>>();
     //let mut args_tree = vec![TypeTree::new().inner; typetree.input_tt.len()];
 
     // We don't support volatile / extern / (global?) values.
     // Just because I didn't had time to test them, and it seems less urgent.
     let args_uncacheable = vec![0; input_activity.len()];
-    let ret = typetree.ret_tt;
+    let ret = output_tt.clone();
 
     let kv_tmp = IntList {
         data: std::ptr::null_mut(),
@@ -1083,10 +1083,11 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     ret_activity: DiffActivity,
     mut ret_primary_ret: bool,
     diff_primary_ret: bool,
-    typetree: DiffTypeTree,
+    input_tts: Vec<TypeTree>,
+    output_tt: TypeTree,
     ) -> &Value{
 
-    dbg!(&typetree);
+    dbg!(&input_tts);
     let ret_activity = cdiffe_from(ret_activity);
     assert!(ret_activity == CDIFFE_TYPE::DFT_CONSTANT || ret_activity == CDIFFE_TYPE::DFT_OUT_DIFF);
     let input_activity: Vec<CDIFFE_TYPE> = input_activity.iter().map(|&x| cdiffe_from(x)).collect();
@@ -1103,7 +1104,7 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
         ret_primary_ret = false;
     }
 
-    let mut args_tree = typetree.input_tt.iter()
+    let mut args_tree = input_tts.iter()
         .map(|x| x.inner).collect::<Vec<_>>();
 
     //let mut args_tree = vec![TypeTree::new().inner; typetree.input_tt.len()];
@@ -1111,7 +1112,7 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     // We don't support volatile / extern / (global?) values.
     // Just because I didn't had time to test them, and it seems less urgent.
     let args_uncacheable = vec![0; input_activity.len()];
-    let ret = typetree.ret_tt;
+    let ret = output_tt.clone();
     let kv_tmp = IntList {
         data: std::ptr::null_mut(),
         size: 0,

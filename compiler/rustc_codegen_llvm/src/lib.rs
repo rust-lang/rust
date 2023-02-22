@@ -67,6 +67,7 @@ mod coverageinfo;
 mod debuginfo;
 mod declare;
 mod intrinsic;
+mod typetree;
 
 // The following is a work around that replaces `pub mod llvm;` and that fixes issue 53912.
 #[path = "llvm/mod.rs"]
@@ -448,7 +449,7 @@ pub fn get_enzyme_typetree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str, tcx: TyCt
         let inner_id = id.builtin_deref(true).unwrap().ty;
         let inner_tt = get_enzyme_typetree(inner_id, llvm_data_layout, tcx, llcx, depth+1);
 
-        tt.merge(inner_tt).only(-1)
+        let tt = tt.merge(inner_tt).only(-1);
         println!("{:depth$} add indirection {}", "", tt);
 
         return tt;
@@ -497,14 +498,14 @@ pub fn get_enzyme_typetree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str, tcx: TyCt
                 println!("{:depth$} -> {}", "", inner_tt);
                 field_tt.push(inner_tt);
 
-                if field_ty.is_adt() {
+                if field_ty.is_integral() {
+                    field_sizes.push(1);
+                } else {
                     let param_env_and = ParamEnvAnd {
                         param_env: ParamEnv::empty(),
                         value: field_ty,
                     };
                     field_sizes.push(tcx.layout_of(param_env_and).unwrap().size.bytes());
-                } else {
-                    field_sizes.push(1);
                 }
             }
             //dbg!(offsets);
@@ -520,6 +521,8 @@ pub fn get_enzyme_typetree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str, tcx: TyCt
                 let tt = tt.clone();
                 //let tt = tt.only(offset.bytes_usize() as isize);
                 let tt = tt.shift(llvm_data_layout, 0, size, offset.bytes_usize() as usize);
+                dbg!(&offset, &size);
+                dbg!(&tt);
 
                 ret_tt = ret_tt.merge(tt);
             }

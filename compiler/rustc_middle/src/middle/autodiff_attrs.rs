@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use crate::middle::typetree::TypeTree;
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Eq, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
@@ -73,10 +74,12 @@ impl AutoDiffAttrs {
         }
     }
 
-    pub fn into_item(self, source: String, target: String) -> AutoDiffItem {
+    pub fn into_item(self, source: String, target: String, inputs: Vec<TypeTree>, output: TypeTree) -> AutoDiffItem {
         AutoDiffItem {
             source,
             target,
+            inputs,
+            output,
             attrs: self,
         }
     }
@@ -87,4 +90,6 @@ pub struct AutoDiffItem {
     pub source: String,
     pub target: String,
     pub attrs: AutoDiffAttrs,
+    pub inputs: Vec<TypeTree>,
+    pub output: TypeTree,
 }
