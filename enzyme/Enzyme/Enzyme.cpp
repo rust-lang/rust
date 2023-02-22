@@ -781,6 +781,46 @@ public:
     return width;
   }
 
+  static FnTypeInfo
+  populate_overwritten_args(TypeAnalysis &TA, llvm::Function *fn,
+                            DerivativeMode mode,
+                            std::vector<bool> &overwritten_args) {
+    FnTypeInfo type_args(fn);
+    for (auto &a : type_args.Function->args()) {
+      overwritten_args.push_back(
+          !(mode == DerivativeMode::ReverseModeCombined));
+      TypeTree dt;
+      if (a.getType()->isFPOrFPVectorTy()) {
+        dt = ConcreteType(a.getType()->getScalarType());
+      } else if (a.getType()->isPointerTy()) {
+#if LLVM_VERSION_MAJOR >= 15
+        if (a.getContext().supportsTypedPointers()) {
+#endif
+          auto et = a.getType()->getPointerElementType();
+          if (et->isFPOrFPVectorTy()) {
+            dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1, nullptr);
+          } else if (et->isPointerTy()) {
+            dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1, nullptr);
+          }
+#if LLVM_VERSION_MAJOR >= 15
+        }
+#endif
+        dt.insert({}, BaseType::Pointer);
+      } else if (a.getType()->isIntOrIntVectorTy()) {
+        dt = ConcreteType(BaseType::Integer);
+      }
+      type_args.Arguments.insert(
+          std::pair<Argument *, TypeTree>(&a, dt.Only(-1, nullptr)));
+      // TODO note that here we do NOT propagate constants in type info (and
+      // should consider whether we should)
+      type_args.KnownValues.insert(
+          std::pair<Argument *, std::set<int64_t>>(&a, {}));
+    }
+
+    type_args = TA.analyzeFunction(type_args).getAnalyzedTypeInfo();
+    return type_args;
+  }
+
   bool HandleBatch(CallInst *CI) {
     unsigned width = 1;
     unsigned truei = 0;
@@ -1424,41 +1464,10 @@ public:
       return false;
     }
 
-    std::vector<bool> overwritten_args;
-    FnTypeInfo type_args(fn);
-    for (auto &a : type_args.Function->args()) {
-      overwritten_args.push_back(
-          !(mode == DerivativeMode::ReverseModeCombined));
-      TypeTree dt;
-      if (a.getType()->isFPOrFPVectorTy()) {
-        dt = ConcreteType(a.getType()->getScalarType());
-      } else if (a.getType()->isPointerTy()) {
-#if LLVM_VERSION_MAJOR >= 15
-        if (a.getContext().supportsTypedPointers()) {
-#endif
-          auto et = a.getType()->getPointerElementType();
-          if (et->isFPOrFPVectorTy()) {
-            dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1, nullptr);
-          } else if (et->isPointerTy()) {
-            dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1, nullptr);
-          }
-#if LLVM_VERSION_MAJOR >= 15
-        }
-#endif
-        dt.insert({}, BaseType::Pointer);
-      } else if (a.getType()->isIntOrIntVectorTy()) {
-        dt = ConcreteType(BaseType::Integer);
-      }
-      type_args.Arguments.insert(
-          std::pair<Argument *, TypeTree>(&a, dt.Only(-1, nullptr)));
-      // TODO note that here we do NOT propagate constants in type info (and
-      // should consider whether we should)
-      type_args.KnownValues.insert(
-          std::pair<Argument *, std::set<int64_t>>(&a, {}));
-    }
-
     TypeAnalysis TA(Logic.PPC.FAM);
-    type_args = TA.analyzeFunction(type_args).getAnalyzedTypeInfo();
+    std::vector<bool> overwritten_args;
+    FnTypeInfo type_args =
+        populate_overwritten_args(TA, fn, mode, overwritten_args);
 
     // differentiate fn
     Function *newFunc = nullptr;
