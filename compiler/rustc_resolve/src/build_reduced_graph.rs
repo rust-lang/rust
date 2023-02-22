@@ -114,7 +114,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         if !def_id.is_local() {
-            let def_kind = self.cstore().def_kind(def_id);
+            let def_kind = self.tcx.def_kind(def_id);
             if let DefKind::Mod | DefKind::Enum | DefKind::Trait = def_kind {
                 let parent = self
                     .tcx

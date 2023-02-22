@@ -529,10 +529,6 @@ impl CStore {
         )
     }
 
-    pub fn def_kind(&self, def: DefId) -> DefKind {
-        self.get_crate_data(def.krate).def_kind(def.index)
-    }
-
     /// Only public-facing way to traverse all the definitions in a non-local crate.
     /// Critically useful for this third-party project: <https://github.com/hacspec/hacspec>.
     /// See <https://github.com/rust-lang/rust/pull/85889> for context.
