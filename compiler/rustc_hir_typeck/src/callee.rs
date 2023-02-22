@@ -438,7 +438,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let err = self.report_invalid_callee(call_expr, callee_expr, callee_ty, arg_exprs);
 
-                return self.tcx.ty_error_with_guaranteed(err);
+                return self.tcx.ty_error(err);
             }
         };
 

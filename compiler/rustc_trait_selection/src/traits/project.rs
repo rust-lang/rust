@@ -1214,7 +1214,7 @@ struct Progress<'tcx> {
 
 impl<'tcx> Progress<'tcx> {
     fn error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Self {
-        Progress { term: tcx.ty_error_with_guaranteed(guar).into(), obligations: vec![] }
+        Progress { term: tcx.ty_error(guar).into(), obligations: vec![] }
     }
 
     fn with_addl_obligations(mut self, mut obligations: Vec<PredicateObligation<'tcx>>) -> Self {
@@ -2111,7 +2111,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
             "confirm_impl_candidate: no associated type {:?} for {:?}",
             assoc_ty.item.name, obligation.predicate
         );
-        return Progress { term: tcx.ty_error().into(), obligations: nested };
+        return Progress { term: tcx.ty_error_misc().into(), obligations: nested };
     }
     // If we're trying to normalize `<Vec<u32> as X>::A<S>` using
     //`impl<T> X for Vec<T> { type A<Y> = Box<Y>; }`, then:
@@ -2200,7 +2200,7 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         Err(guar) => return Progress::error(tcx, guar),
     };
     if !leaf_def.item.defaultness(tcx).has_value() {
-        return Progress { term: tcx.ty_error().into(), obligations };
+        return Progress { term: tcx.ty_error_misc().into(), obligations };
     }
 
     // Use the default `impl Trait` for the trait, e.g., for a default trait body
@@ -2271,10 +2271,7 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         obligation.recursion_depth + 1,
         tcx.bound_return_position_impl_trait_in_trait_tys(impl_fn_def_id)
             .map_bound(|tys| {
-                tys.map_or_else(
-                    |guar| tcx.ty_error_with_guaranteed(guar),
-                    |tys| tys[&obligation.predicate.def_id],
-                )
+                tys.map_or_else(|guar| tcx.ty_error(guar), |tys| tys[&obligation.predicate.def_id])
             })
             .subst(tcx, impl_fn_substs),
         &mut obligations,

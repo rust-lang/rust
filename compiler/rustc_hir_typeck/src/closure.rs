@@ -800,7 +800,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         guar: ErrorGuaranteed,
     ) -> ty::PolyFnSig<'tcx> {
         let astconv: &dyn AstConv<'_> = self;
-        let err_ty = self.tcx.ty_error_with_guaranteed(guar);
+        let err_ty = self.tcx.ty_error(guar);
 
         let supplied_arguments = decl.inputs.iter().map(|a| {
             // Convert the types that the user supplied (if any), but ignore them.

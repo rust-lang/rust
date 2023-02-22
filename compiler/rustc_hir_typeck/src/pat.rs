@@ -476,7 +476,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // There exists a side that didn't meet our criteria that the end-point
             // be of a numeric or char type, as checked in `calc_side` above.
             let guar = self.emit_err_pat_range(span, lhs, rhs);
-            return self.tcx.ty_error_with_guaranteed(guar);
+            return self.tcx.ty_error(guar);
         }
 
         // Unify each side with `expected`.
@@ -496,7 +496,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         demand_eqtype(&mut rhs, lhs);
 
         if let (Some((true, ..)), _) | (_, Some((true, ..))) = (lhs, rhs) {
-            return self.tcx.ty_error();
+            return self.tcx.ty_error_misc();
         }
 
         // Find the unified type and check if it's of numeric or char type again.
@@ -512,7 +512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 *fail = true;
             }
             let guar = self.emit_err_pat_range(span, lhs, rhs);
-            return self.tcx.ty_error_with_guaranteed(guar);
+            return self.tcx.ty_error(guar);
         }
         ty
     }
@@ -850,7 +850,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (variant, pat_ty) = match self.check_struct_path(qpath, pat.hir_id) {
             Ok(data) => data,
             Err(guar) => {
-                let err = self.tcx.ty_error_with_guaranteed(guar);
+                let err = self.tcx.ty_error(guar);
                 for field in fields {
                     let ti = ti;
                     self.check_pat(field.pat, err, def_bm, ti);
@@ -866,7 +866,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.check_struct_pat_fields(pat_ty, &pat, variant, fields, has_rest_pat, def_bm, ti) {
             pat_ty
         } else {
-            self.tcx.ty_error()
+            self.tcx.ty_error_misc()
         }
     }
 
@@ -886,12 +886,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Res::Err => {
                 let e = tcx.sess.delay_span_bug(qpath.span(), "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
-                return tcx.ty_error_with_guaranteed(e);
+                return tcx.ty_error(e);
             }
             Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Variant, _) => {
                 let expected = "unit struct, unit variant or constant";
                 let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, "E0533", expected);
-                return tcx.ty_error_with_guaranteed(e);
+                return tcx.ty_error(e);
             }
             Res::SelfCtor(..)
             | Res::Def(
@@ -1034,7 +1034,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         let on_error = |e| {
             for pat in subpats {
-                self.check_pat(pat, tcx.ty_error_with_guaranteed(e), def_bm, ti);
+                self.check_pat(pat, tcx.ty_error(e), def_bm, ti);
             }
         };
         let report_unexpected_res = |res: Res| {
@@ -1051,7 +1051,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let e = tcx.sess.delay_span_bug(pat.span, "`Res::Err` but no error emitted");
             self.set_tainted_by_errors(e);
             on_error(e);
-            return tcx.ty_error_with_guaranteed(e);
+            return tcx.ty_error(e);
         }
 
         // Type-check the path.
@@ -1059,7 +1059,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.hir_id);
         if !pat_ty.is_fn() {
             let e = report_unexpected_res(res);
-            return tcx.ty_error_with_guaranteed(e);
+            return tcx.ty_error(e);
         }
 
         let variant = match res {
@@ -1067,11 +1067,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let e = tcx.sess.delay_span_bug(pat.span, "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
                 on_error(e);
-                return tcx.ty_error_with_guaranteed(e);
+                return tcx.ty_error(e);
             }
             Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
                 let e = report_unexpected_res(res);
-                return tcx.ty_error_with_guaranteed(e);
+                return tcx.ty_error(e);
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => tcx.expect_variant_res(res),
             _ => bug!("unexpected pattern resolution: {:?}", res),
@@ -1112,7 +1112,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Pattern has wrong number of fields.
             let e = self.e0023(pat.span, res, qpath, subpats, &variant.fields, expected, had_err);
             on_error(e);
-            return tcx.ty_error_with_guaranteed(e);
+            return tcx.ty_error(e);
         }
         pat_ty
     }
@@ -1308,9 +1308,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let reported = err.emit();
             // Walk subpatterns with an expected type of `err` in this case to silence
             // further errors being emitted when using the bindings. #50333
-            let element_tys_iter = (0..max_len).map(|_| tcx.ty_error_with_guaranteed(reported));
+            let element_tys_iter = (0..max_len).map(|_| tcx.ty_error(reported));
             for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                self.check_pat(elem, tcx.ty_error_with_guaranteed(reported), def_bm, ti);
+                self.check_pat(elem, tcx.ty_error(reported), def_bm, ti);
             }
             tcx.mk_tup(element_tys_iter)
         } else {
@@ -1358,7 +1358,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Occupied(occupied) => {
                     no_field_errors = false;
                     let guar = self.error_field_already_bound(span, field.ident, *occupied.get());
-                    tcx.ty_error_with_guaranteed(guar)
+                    tcx.ty_error(guar)
                 }
                 Vacant(vacant) => {
                     vacant.insert(span);
@@ -1372,7 +1372,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .unwrap_or_else(|| {
                             inexistent_fields.push(field);
                             no_field_errors = false;
-                            tcx.ty_error()
+                            tcx.ty_error_misc()
                         })
                 }
             };
@@ -1944,7 +1944,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (box_ty, inner_ty)
             }
             Err(guar) => {
-                let err = tcx.ty_error_with_guaranteed(guar);
+                let err = tcx.ty_error(guar);
                 (err, err)
             }
         };
@@ -1995,7 +1995,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             Err(guar) => {
-                let err = tcx.ty_error_with_guaranteed(guar);
+                let err = tcx.ty_error(guar);
                 (err, err)
             }
         };
@@ -2049,7 +2049,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .error_reported()
                     .err()
                     .unwrap_or_else(|| self.error_expected_array_or_slice(span, expected, ti));
-                let err = self.tcx.ty_error_with_guaranteed(guar);
+                let err = self.tcx.ty_error(guar);
                 (err, Some(err), err)
             }
         };
@@ -2116,7 +2116,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // If we get here, we must have emitted an error.
-        (Some(self.tcx.ty_error_with_guaranteed(guar)), arr_ty)
+        (Some(self.tcx.ty_error(guar)), arr_ty)
     }
 
     fn error_scrutinee_inconsistent_length(

@@ -790,7 +790,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );
-                collected_tys.insert(def_id, tcx.ty_error_with_guaranteed(reported));
+                collected_tys.insert(def_id, tcx.ty_error(reported));
             }
         }
     }

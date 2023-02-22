@@ -316,7 +316,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 | ty::Never
                 | ty::Foreign(..) => tcx.types.unit,
 
-                ty::Error(e) => tcx.ty_error_with_guaranteed(*e),
+                ty::Error(e) => tcx.ty_error(*e),
 
                 ty::Str | ty::Slice(_) => tcx.types.usize,
 

@@ -74,7 +74,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
                 let ty = self.resolve_vars_if_possible(ty);
                 if ty.has_non_region_infer() {
-                    self.tcx.ty_error()
+                    self.tcx.ty_error_misc()
                 } else {
                     self.tcx.erase_regions(ty)
                 }
@@ -115,7 +115,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tuple_arguments,
                 method.ok().map(|method| method.def_id),
             );
-            return self.tcx.ty_error();
+            return self.tcx.ty_error_misc();
         }
 
         let method = method.unwrap();
@@ -535,7 +535,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .typeck_results
                     .borrow()
                     .expr_ty_adjusted_opt(*expr)
-                    .unwrap_or_else(|| tcx.ty_error());
+                    .unwrap_or_else(|| tcx.ty_error_misc());
                 (self.resolve_vars_if_possible(ty), normalize_span(expr.span))
             })
             .collect();
@@ -1288,7 +1288,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 opt_ty.unwrap_or_else(|| self.next_float_var())
             }
             ast::LitKind::Bool(_) => tcx.types.bool,
-            ast::LitKind::Err => tcx.ty_error(),
+            ast::LitKind::Err => tcx.ty_error_misc(),
         }
     }
 
@@ -1717,7 +1717,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         if let Err(guar) = ty.error_reported() {
             // Override the types everywhere with `err()` to avoid knock on errors.
-            let err = self.tcx.ty_error_with_guaranteed(guar);
+            let err = self.tcx.ty_error(guar);
             self.write_ty(hir_id, err);
             self.write_ty(pat.hir_id, err);
             let local_ty = LocalTy { decl_ty: err, revealed_ty: err };
@@ -1746,9 +1746,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let result = self
                     .astconv()
                     .associated_path_to_ty(hir_id, path_span, ty.raw, qself, segment, true);
-                let ty = result
-                    .map(|(ty, _, _)| ty)
-                    .unwrap_or_else(|guar| self.tcx().ty_error_with_guaranteed(guar));
+                let ty =
+                    result.map(|(ty, _, _)| ty).unwrap_or_else(|guar| self.tcx().ty_error(guar));
                 let ty = self.handle_raw_ty(path_span, ty);
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));
 

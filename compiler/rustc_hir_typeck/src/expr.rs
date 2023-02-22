@@ -88,7 +88,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return if let [Adjustment { kind: Adjust::NeverToAny, target }] = &adjustments[..] {
                     target.to_owned()
                 } else {
-                    self.tcx().ty_error_with_guaranteed(reported)
+                    self.tcx().ty_error(reported)
                 };
             }
 
@@ -313,7 +313,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.types.never
                 } else {
                     // There was an error; make type-check fail.
-                    tcx.ty_error()
+                    tcx.ty_error_misc()
                 }
             }
             ExprKind::Ret(ref expr_opt) => self.check_expr_return(expr_opt.as_deref(), expr),
@@ -354,7 +354,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Field(base, field) => self.check_field(expr, &base, field, expected),
             ExprKind::Index(base, idx) => self.check_expr_index(base, idx, expr),
             ExprKind::Yield(value, ref src) => self.check_expr_yield(value, expr, src),
-            hir::ExprKind::Err => tcx.ty_error(),
+            hir::ExprKind::Err => tcx.ty_error_misc(),
         }
     }
 
@@ -402,7 +402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         {
                             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                         }
-                        oprnd_t = tcx.ty_error_with_guaranteed(err.emit());
+                        oprnd_t = tcx.ty_error(err.emit());
                     }
                 }
                 hir::UnOp::Not => {
@@ -452,7 +452,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tm = ty::TypeAndMut { ty, mutbl };
         match kind {
-            _ if tm.ty.references_error() => self.tcx.ty_error(),
+            _ if tm.ty.references_error() => self.tcx.ty_error_misc(),
             hir::BorrowKind::Raw => {
                 self.check_named_place_expr(oprnd);
                 self.tcx.mk_ptr(tm)
@@ -531,11 +531,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let e =
                     self.tcx.sess.delay_span_bug(qpath.span(), "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
-                tcx.ty_error_with_guaranteed(e)
+                tcx.ty_error(e)
             }
             Res::Def(DefKind::Variant, _) => {
                 let e = report_unexpected_variant_res(tcx, res, qpath, expr.span, "E0533", "value");
-                tcx.ty_error_with_guaranteed(e)
+                tcx.ty_error(e)
             }
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
         };
@@ -634,7 +634,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // If the loop context is not a `loop { }`, then break with
                 // a value is illegal, and `opt_coerce_to` will be `None`.
                 // Just set expectation to error in that case.
-                let coerce_to = opt_coerce_to.unwrap_or_else(|| tcx.ty_error());
+                let coerce_to = opt_coerce_to.unwrap_or_else(|| tcx.ty_error_misc());
 
                 // Recurse without `enclosing_breakables` borrowed.
                 e_ty = self.check_expr_with_hint(e, coerce_to);
@@ -1033,11 +1033,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let result_ty = coerce.complete(self);
-        if let Err(guar) = cond_ty.error_reported() {
-            self.tcx.ty_error_with_guaranteed(guar)
-        } else {
-            result_ty
-        }
+        if let Err(guar) = cond_ty.error_reported() { self.tcx.ty_error(guar) } else { result_ty }
     }
 
     /// Type check assignment expression `expr` of form `lhs = rhs`.
@@ -1113,7 +1109,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If the assignment expression itself is ill-formed, don't
             // bother emitting another error
             let reported = err.emit_unless(lhs_ty.references_error() || rhs_ty.references_error());
-            return self.tcx.ty_error_with_guaranteed(reported);
+            return self.tcx.ty_error(reported);
         }
 
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
@@ -1160,7 +1156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 
         if let Err(guar) = (lhs_ty, rhs_ty).error_reported() {
-            self.tcx.ty_error_with_guaranteed(guar)
+            self.tcx.ty_error(guar)
         } else {
             self.tcx.mk_unit()
         }
@@ -1279,7 +1275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Eagerly check for some obvious errors.
         if let Err(guar) = (t_expr, t_cast).error_reported() {
-            self.tcx.ty_error_with_guaranteed(guar)
+            self.tcx.ty_error(guar)
         } else {
             // Defer other checks until we're done type checking.
             let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
@@ -1300,7 +1296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     deferred_cast_checks.push(cast_check);
                     t_cast
                 }
-                Err(guar) => self.tcx.ty_error_with_guaranteed(guar),
+                Err(guar) => self.tcx.ty_error(guar),
             }
         }
     }
@@ -1428,7 +1424,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if let Err(guar) = element_ty.error_reported() {
-            return tcx.ty_error_with_guaranteed(guar);
+            return tcx.ty_error(guar);
         }
 
         self.check_repeat_element_needs_copy_bound(element, count, element_ty);
@@ -1498,7 +1494,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         let tuple = self.tcx.mk_tup(elt_ts_iter);
         if let Err(guar) = tuple.error_reported() {
-            self.tcx.ty_error_with_guaranteed(guar)
+            self.tcx.ty_error(guar)
         } else {
             self.require_type_is_sized(tuple, expr.span, traits::TupleInitializerSized);
             tuple
@@ -1518,7 +1514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ok(data) => data,
             Err(guar) => {
                 self.check_struct_fields_on_error(fields, base_expr);
-                return self.tcx.ty_error_with_guaranteed(guar);
+                return self.tcx.ty_error(guar);
             }
         };
 
@@ -1618,7 +1614,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                 };
 
-                tcx.ty_error_with_guaranteed(guar)
+                tcx.ty_error(guar)
             };
 
             // Make sure to give a type to the field even if there's
@@ -2270,7 +2266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 did,
                 expected.only_has_type(self),
             );
-            return self.tcx().ty_error_with_guaranteed(guar);
+            return self.tcx().ty_error(guar);
         }
 
         let guar = if field.name == kw::Empty {
@@ -2356,7 +2352,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.emit()
         };
 
-        self.tcx().ty_error_with_guaranteed(guar)
+        self.tcx().ty_error(guar)
     }
 
     fn suggest_await_on_field_access(
@@ -2848,7 +2844,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     let reported = err.emit();
-                    self.tcx.ty_error_with_guaranteed(reported)
+                    self.tcx.ty_error(reported)
                 }
             }
         }

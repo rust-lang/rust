@@ -276,7 +276,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                         .sess
                         .delay_span_bug(span, &format!("failed to normalize {:?}", ty));
                     TypeOpOutput {
-                        output: self.infcx.tcx.ty_error_with_guaranteed(guar),
+                        output: self.infcx.tcx.ty_error(guar),
                         constraints: None,
                         error_info: None,
                     }

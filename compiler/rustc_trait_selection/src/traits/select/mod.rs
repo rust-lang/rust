@@ -2451,7 +2451,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ),
                 );
                 let value = self.infcx.fresh_substs_for_item(obligation.cause.span, impl_def_id);
-                let err = self.tcx().ty_error_with_guaranteed(guar);
+                let err = self.tcx().ty_error(guar);
                 let value = value.fold_with(&mut BottomUpFolder {
                     tcx: self.tcx(),
                     ty_op: |_| err,

@@ -156,7 +156,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                             infcx.tcx,
                         )
                     });
-                    prev.ty = infcx.tcx.ty_error_with_guaranteed(guar);
+                    prev.ty = infcx.tcx.ty_error(guar);
                 }
                 // Pick a better span if there is one.
                 // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
@@ -248,7 +248,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         origin: OpaqueTyOrigin,
     ) -> Ty<'tcx> {
         if let Some(e) = self.tainted_by_errors() {
-            return self.tcx.ty_error_with_guaranteed(e);
+            return self.tcx.ty_error(e);
         }
 
         let definition_ty = instantiated_ty
@@ -261,7 +261,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             origin,
             instantiated_ty.span,
         ) {
-            return self.tcx.ty_error_with_guaranteed(guar);
+            return self.tcx.ty_error(guar);
         }
 
         // Only check this for TAIT. RPIT already supports `tests/ui/impl-trait/nested-return-type2.rs`
@@ -326,7 +326,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             definition_ty
         } else {
             let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
-            self.tcx.ty_error_with_guaranteed(reported)
+            self.tcx.ty_error(reported)
         }
     }
 }

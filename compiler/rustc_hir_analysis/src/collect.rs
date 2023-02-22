@@ -499,7 +499,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                 }
                 _ => {}
             }
-            self.tcx().ty_error_with_guaranteed(err.emit())
+            self.tcx().ty_error(err.emit())
         }
     }
 
