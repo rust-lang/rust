@@ -16,7 +16,7 @@ use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::cstore::{CrateSource, CrateStore};
+use rustc_session::cstore::CrateStore;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::symbol::{kw, Symbol};
@@ -501,7 +501,9 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             tcx.arena
                 .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))
         },
-        crates: |tcx, ()| tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).crates_untracked()),
+        crates: |tcx, ()| {
+            tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).iter_crate_data().map(|(cnum, _)| cnum))
+        },
         ..*providers
     };
 }
@@ -547,20 +549,12 @@ impl CStore {
         )
     }
 
-    pub fn crate_source_untracked(&self, cnum: CrateNum) -> Lrc<CrateSource> {
-        self.get_crate_data(cnum).source.clone()
-    }
-
     pub fn get_span_untracked(&self, def_id: DefId, sess: &Session) -> Span {
         self.get_crate_data(def_id.krate).get_span(def_id.index, sess)
     }
 
     pub fn def_kind(&self, def: DefId) -> DefKind {
         self.get_crate_data(def.krate).def_kind(def.index)
-    }
-
-    pub fn crates_untracked(&self) -> impl Iterator<Item = CrateNum> + '_ {
-        self.iter_crate_data().map(|(cnum, _)| cnum)
     }
 
     pub fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
