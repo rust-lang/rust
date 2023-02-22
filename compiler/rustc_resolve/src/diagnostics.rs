@@ -12,11 +12,10 @@ use rustc_errors::{struct_span_err, SuggestionStyle};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::PrimTy;
-use rustc_index::vec::IndexVec;
 use rustc_middle::bug;
-use rustc_middle::ty::DefIdTree;
+use rustc_middle::ty::{DefIdTree, TyCtxt};
 use rustc_session::lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE;
 use rustc_session::lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS;
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -154,8 +153,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             if !candidates.is_empty() {
                 show_candidates(
-                    &self.tcx.sess,
-                    &self.tcx.untracked().source_span.read(),
+                    self.tcx,
                     &mut err,
                     span,
                     &candidates,
@@ -687,8 +685,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         err.span_help(span, &help_msg);
                     }
                     show_candidates(
-                        &self.tcx.sess,
-                        &self.tcx.untracked().source_span.read(),
+                        self.tcx,
                         &mut err,
                         Some(span),
                         &import_suggestions,
@@ -1352,8 +1349,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let import_suggestions =
             self.lookup_import_candidates(ident, Namespace::MacroNS, parent_scope, is_expected);
         show_candidates(
-            &self.tcx.sess,
-            &self.tcx.untracked().source_span.read(),
+            self.tcx,
             err,
             None,
             &import_suggestions,
@@ -2358,8 +2354,7 @@ pub(crate) enum DiagnosticMode {
 }
 
 pub(crate) fn import_candidates(
-    session: &Session,
-    source_span: &IndexVec<LocalDefId, Span>,
+    tcx: TyCtxt<'_>,
     err: &mut Diagnostic,
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
@@ -2368,8 +2363,7 @@ pub(crate) fn import_candidates(
     append: &str,
 ) {
     show_candidates(
-        session,
-        source_span,
+        tcx,
         err,
         use_placement_span,
         candidates,
@@ -2385,8 +2379,7 @@ pub(crate) fn import_candidates(
 /// entities with that name in all crates. This method allows outputting the
 /// results of this search in a programmer-friendly way
 fn show_candidates(
-    session: &Session,
-    source_span: &IndexVec<LocalDefId, Span>,
+    tcx: TyCtxt<'_>,
     err: &mut Diagnostic,
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
@@ -2511,8 +2504,8 @@ fn show_candidates(
             );
 
             if let Some(local_def_id) = def_id.and_then(|did| did.as_local()) {
-                let span = source_span[local_def_id];
-                let span = session.source_map().guess_head_span(span);
+                let span = tcx.source_span(local_def_id);
+                let span = tcx.sess.source_map().guess_head_span(span);
                 let mut multi_span = MultiSpan::from_span(span);
                 multi_span.push_span_label(span, "not accessible");
                 err.span_note(multi_span, &msg);
@@ -2542,8 +2535,8 @@ fn show_candidates(
             let mut spans = Vec::new();
             for (name, _, def_id, _) in &inaccessible_path_strings {
                 if let Some(local_def_id) = def_id.and_then(|did| did.as_local()) {
-                    let span = source_span[local_def_id];
-                    let span = session.source_map().guess_head_span(span);
+                    let span = tcx.source_span(local_def_id);
+                    let span = tcx.sess.source_map().guess_head_span(span);
                     spans.push((name, span));
                 } else {
                     if !has_colon {

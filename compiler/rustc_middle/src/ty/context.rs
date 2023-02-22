@@ -1030,7 +1030,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// system if the result is otherwise tracked through queries
     #[inline]
     pub fn source_span_untracked(self, def_id: LocalDefId) -> Span {
-        self.untracked.source_span.read().get(def_id).copied().unwrap_or(DUMMY_SP)
+        self.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP)
     }
 
     #[inline(always)]
@@ -2525,6 +2525,5 @@ pub fn provide(providers: &mut ty::query::Providers) {
         // We want to check if the panic handler was defined in this crate
         tcx.lang_items().panic_impl().map_or(false, |did| did.is_local())
     };
-    providers.source_span =
-        |tcx, def_id| tcx.untracked.source_span.read().get(def_id).copied().unwrap_or(DUMMY_SP);
+    providers.source_span = |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP);
 }
