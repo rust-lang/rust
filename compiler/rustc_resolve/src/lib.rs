@@ -1431,9 +1431,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn crate_loader<T>(&mut self, f: impl FnOnce(&mut CrateLoader<'_, '_>) -> T) -> T {
-        let mut cstore = self.tcx.untracked().cstore.write();
-        let cstore = cstore.untracked_as_any().downcast_mut().unwrap();
-        f(&mut CrateLoader::new(self.tcx, &mut *cstore, &mut self.used_extern_options))
+        f(&mut CrateLoader::new(
+            self.tcx,
+            &mut CStore::from_tcx_mut(self.tcx),
+            &mut self.used_extern_options,
+        ))
     }
 
     fn cstore(&self) -> MappedReadGuard<'_, CStore> {
