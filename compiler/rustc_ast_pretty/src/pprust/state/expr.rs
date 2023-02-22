@@ -248,8 +248,9 @@ impl<'a> State<'a> {
         };
 
         self.print_expr_maybe_paren(lhs, left_prec);
-        self.space();
-        self.word_space(op.node.to_string());
+        self.nbsp();
+        self.word(op.node.to_string());
+        self.nbsp();
         self.print_expr_maybe_paren(rhs, right_prec)
     }
 
