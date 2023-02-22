@@ -28,7 +28,7 @@ use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArg
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{Lrc, MappedReadGuard};
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::{
     Applicability, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, SubdiagnosticMessage,
 };
@@ -1436,10 +1436,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             &mut CStore::from_tcx_mut(self.tcx),
             &mut self.used_extern_options,
         ))
-    }
-
-    fn cstore(&self) -> MappedReadGuard<'_, CStore> {
-        CStore::from_tcx(self.tcx)
     }
 
     fn dummy_ext(&self, macro_kind: MacroKind) -> Lrc<SyntaxExtension> {

@@ -21,6 +21,7 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::PrimTy;
+use rustc_metadata::creader::CStore;
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -1419,7 +1420,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 let struct_ctor = match def_id.as_local() {
                     Some(def_id) => self.r.struct_constructors.get(&def_id).cloned(),
                     None => {
-                        let ctor = self.r.cstore().ctor_untracked(def_id);
+                        let ctor = CStore::from_tcx(self.r.tcx).ctor_untracked(def_id);
                         ctor.map(|(ctor_kind, ctor_def_id)| {
                             let ctor_res =
                                 Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);

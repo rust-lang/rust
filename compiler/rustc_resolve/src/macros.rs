@@ -17,6 +17,7 @@ use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, Invocation, InvocationKind, SupportsMacroExpansion};
 use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, LocalDefId};
+use rustc_metadata::creader::CStore;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::RegisteredTools;
 use rustc_middle::ty::TyCtxt;
@@ -459,7 +460,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
     }
 
     fn get_proc_macro_quoted_span(&self, krate: CrateNum, id: usize) -> Span {
-        self.cstore().get_proc_macro_quoted_span_untracked(krate, id, self.tcx.sess)
+        CStore::from_tcx(self.tcx).get_proc_macro_quoted_span_untracked(krate, id, self.tcx.sess)
     }
 
     fn declare_proc_macro(&mut self, id: NodeId) {

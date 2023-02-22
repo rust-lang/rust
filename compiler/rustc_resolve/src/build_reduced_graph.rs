@@ -24,7 +24,7 @@ use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
-use rustc_metadata::creader::LoadedMacro;
+use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::{bug, ty};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
@@ -167,7 +167,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             return macro_data.clone();
         }
 
-        let load_macro_untracked = self.cstore().load_macro_untracked(def_id, &self.tcx.sess);
+        let load_macro_untracked =
+            CStore::from_tcx(self.tcx).load_macro_untracked(def_id, &self.tcx.sess);
         let (ext, macro_rules) = match load_macro_untracked {
             LoadedMacro::MacroDef(item, edition) => (
                 Lrc::new(self.compile_macro(&item, edition).0),
