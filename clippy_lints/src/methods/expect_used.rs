@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::{is_in_cfg_test, is_in_test_function};
 use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{is_in_cfg_test, is_in_test_function};
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_span::sym;
