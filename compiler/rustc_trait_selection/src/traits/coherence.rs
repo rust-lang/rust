@@ -96,7 +96,7 @@ pub fn overlapping_impls(
     }
 
     let infcx = tcx.infer_ctxt().intercrate().build();
-    let selcx = &mut SelectionContext::new(&infcx);
+    let selcx = &mut SelectionContext::new(&infcx, DefiningAnchor::Error);
     let overlaps =
         overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).is_some();
     if !overlaps {
@@ -107,7 +107,7 @@ pub fn overlapping_impls(
     // this time tracking intercrate ambiguity causes for better
     // diagnostics. (These take time and can lead to false errors.)
     let infcx = tcx.infer_ctxt().intercrate().build();
-    let selcx = &mut SelectionContext::new(&infcx);
+    let selcx = &mut SelectionContext::new(&infcx, DefiningAnchor::Error);
     selcx.enable_tracking_intercrate_ambiguity_causes();
     Some(overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).unwrap())
 }
@@ -305,7 +305,7 @@ fn negative_impl(tcx: TyCtxt<'_>, impl1_def_id: DefId, impl2_def_id: DefId) -> b
     };
 
     // Attempt to prove that impl2 applies, given all of the above.
-    let selcx = &mut SelectionContext::new(&infcx);
+    let selcx = &mut SelectionContext::new(&infcx, DefiningAnchor::Error);
     let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
     let (subject2, obligations) =
         impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs);

@@ -744,7 +744,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                     let implsrc = {
                         let infcx = tcx.infer_ctxt().build();
-                        let mut selcx = SelectionContext::new(&infcx);
+                        let mut selcx = SelectionContext::new(&infcx, DefiningAnchor::Error);
                         selcx.select(&obligation)
                     };
 

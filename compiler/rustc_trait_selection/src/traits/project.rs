@@ -28,6 +28,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
+use rustc_infer::infer::DefiningAnchor;
 use rustc_infer::traits::ImplSourceBuiltinData;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
@@ -58,7 +59,7 @@ pub trait NormalizeExt<'tcx> {
 
 impl<'tcx> NormalizeExt<'tcx> for At<'_, 'tcx> {
     fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> InferOk<'tcx, T> {
-        let mut selcx = SelectionContext::new(self.infcx);
+        let mut selcx = SelectionContext::new(self.infcx, DefiningAnchor::Error);
         let Normalized { value, obligations } =
             normalize_with_depth(&mut selcx, self.param_env, self.cause.clone(), 0, value);
         InferOk { value, obligations }

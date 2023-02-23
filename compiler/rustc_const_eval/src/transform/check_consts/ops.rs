@@ -7,7 +7,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -149,7 +149,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     );
 
                     let infcx = tcx.infer_ctxt().build();
-                    let mut selcx = SelectionContext::new(&infcx);
+                    let mut selcx = SelectionContext::new(&infcx, DefiningAnchor::Error);
                     let implsrc = selcx.select(&obligation);
 
                     if let Ok(Some(ImplSource::UserDefined(data))) = implsrc {

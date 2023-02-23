@@ -2316,8 +2316,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 };
 
                 let obligation = obligation.with(self.tcx, trait_ref);
-                let mut selcx =
-                    SelectionContext::new(&self).with_defining_use_anchor(DefiningAnchor::Bubble);
+                let mut selcx = SelectionContext::new(&self, DefiningAnchor::Bubble);
                 match selcx.select_from_obligation(&obligation) {
                     Ok(None) => {
                         let ambiguities =

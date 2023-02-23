@@ -211,18 +211,17 @@ enum BuiltinImplConditions<'tcx> {
 }
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
-    pub fn new(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
+    pub fn new(
+        infcx: &'cx InferCtxt<'tcx>,
+        defining_use_anchor: impl Into<DefiningAnchor>,
+    ) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx,
             freshener: infcx.freshener_keep_static(),
             intercrate_ambiguity_causes: None,
             query_mode: TraitQueryMode::Standard,
-            defining_use_anchor: DefiningAnchor::Error,
+            defining_use_anchor: defining_use_anchor.into(),
         }
-    }
-
-    pub fn with_defining_use_anchor(self, defining_use_anchor: DefiningAnchor) -> Self {
-        Self { defining_use_anchor, ..self }
     }
 
     pub fn new_in_canonical_query(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
@@ -230,8 +229,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             query_mode: TraitQueryMode::Canonical,
             // This bubble is required for this tests to pass:
             // impl-trait/issue99642.rs
-            defining_use_anchor: DefiningAnchor::Bubble,
-            ..SelectionContext::new(infcx)
+            ..SelectionContext::new(infcx, DefiningAnchor::Bubble)
         }
     }
 

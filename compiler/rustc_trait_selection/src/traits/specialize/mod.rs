@@ -187,7 +187,7 @@ fn fulfill_implication<'tcx>(
 
     let source_trait = ImplSubject::Trait(source_trait_ref);
 
-    let selcx = &mut SelectionContext::new(&infcx);
+    let selcx = &mut SelectionContext::new(&infcx, DefiningAnchor::Error);
     let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
     let (target_trait, obligations) =
         util::impl_subject_and_oblig(selcx, param_env, target_impl, target_substs);

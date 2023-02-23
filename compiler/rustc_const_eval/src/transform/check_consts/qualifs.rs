@@ -4,7 +4,7 @@
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::LangItem;
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_middle::mir;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
@@ -162,7 +162,7 @@ impl Qualif for NeedsNonConstDrop {
         );
 
         let infcx = cx.tcx.infer_ctxt().build();
-        let mut selcx = SelectionContext::new(&infcx);
+        let mut selcx = SelectionContext::new(&infcx, DefiningAnchor::Error);
         let Some(impl_src) = selcx.select(&obligation).ok().flatten() else {
             // If we couldn't select a const destruct candidate, then it's bad
             return true;

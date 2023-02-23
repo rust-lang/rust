@@ -1,5 +1,5 @@
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
@@ -23,7 +23,7 @@ fn normalize_projection_ty<'tcx>(
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
         |ocx, ParamEnvAnd { param_env, value: goal }| {
-            let selcx = &mut SelectionContext::new(ocx.infcx);
+            let selcx = &mut SelectionContext::new(ocx.infcx, DefiningAnchor::Error);
             let cause = ObligationCause::dummy();
             let mut obligations = vec![];
             let answer = traits::normalize_projection_type(

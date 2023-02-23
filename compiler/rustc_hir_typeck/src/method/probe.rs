@@ -1428,9 +1428,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let cause = traits::ObligationCause::misc(self.span, self.body_id);
         let predicate = ty::Binder::dummy(trait_ref);
         let obligation = traits::Obligation::new(self.tcx, cause, self.param_env, predicate);
-        traits::SelectionContext::new(self)
-            .with_defining_use_anchor(self.defining_use_anchor())
-            .select(&obligation)
+        traits::SelectionContext::new(self, self.defining_use_anchor()).select(&obligation)
     }
 
     fn candidate_source(&self, candidate: &Candidate<'tcx>, self_ty: Ty<'tcx>) -> CandidateSource {

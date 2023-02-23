@@ -1,3 +1,4 @@
+use rustc_infer::infer::DefiningAnchor;
 use rustc_middle::ty;
 use rustc_session::config::TraitSolver;
 
@@ -127,7 +128,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         match self.evaluate_obligation(obligation) {
             Ok(result) => result,
             Err(OverflowError::Canonical) => {
-                let mut selcx = SelectionContext::new(&self);
+                let mut selcx = SelectionContext::new(&self, DefiningAnchor::Error);
                 selcx.evaluate_root_obligation(obligation).unwrap_or_else(|r| match r {
                     OverflowError::Canonical => {
                         span_bug!(

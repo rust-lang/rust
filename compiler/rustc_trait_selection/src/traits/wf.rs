@@ -2,6 +2,7 @@ use crate::infer::InferCtxt;
 use crate::traits;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
+use rustc_infer::infer::DefiningAnchor;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
@@ -314,7 +315,7 @@ impl<'tcx> WfPredicates<'tcx> {
         let mut obligations = Vec::with_capacity(self.out.len());
         for mut obligation in self.out {
             assert!(!obligation.has_escaping_bound_vars());
-            let mut selcx = traits::SelectionContext::new(infcx);
+            let mut selcx = traits::SelectionContext::new(infcx, DefiningAnchor::Error);
             // Don't normalize the whole obligation, the param env is either
             // already normalized, or we're currently normalizing the
             // param_env. Either way we should only normalize the predicate.
