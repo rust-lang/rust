@@ -230,7 +230,8 @@ impl Rewrite for Pat {
                 rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)
             }
             PatKind::TupleStruct(ref q_self, ref path, ref pat_vec) => {
-                let path_str = rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)?;
+                let path_str =
+                    rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)?;
                 rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape)
             }
             PatKind::Lit(ref expr) => expr.rewrite(context, shape),
@@ -256,9 +257,15 @@ impl Rewrite for Pat {
                 None,
                 None,
             ),
-            PatKind::Struct(ref qself, ref path, ref fields, ellipsis) => {
-                rewrite_struct_pat(qself.as_ref(), path, fields, ellipsis, self.span, context, shape)
-            }
+            PatKind::Struct(ref qself, ref path, ref fields, ellipsis) => rewrite_struct_pat(
+                qself.as_ref(),
+                path,
+                fields,
+                ellipsis,
+                self.span,
+                context,
+                shape,
+            ),
             PatKind::MacCall(ref mac) => {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Pat)
             }

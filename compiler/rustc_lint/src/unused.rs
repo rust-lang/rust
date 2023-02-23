@@ -739,9 +739,13 @@ trait UnusedDelimLint {
                 (cond, UnusedDelimsCtx::WhileCond, true, Some(left), Some(right))
             }
 
-            ForLoop(_, ref cond, ref block, ..) => {
-                (cond, UnusedDelimsCtx::ForIterExpr, true, None, Some(block.span.lo()))
-            }
+            ForLoop(ref for_loop) => (
+                &for_loop.iter,
+                UnusedDelimsCtx::ForIterExpr,
+                true,
+                None,
+                Some(for_loop.body.span.lo()),
+            ),
 
             Match(ref head, _) if Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX => {
                 let left = e.span.lo() + rustc_span::BytePos(5);
@@ -948,7 +952,7 @@ impl EarlyLintPass for UnusedParens {
     #[inline]
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         match e.kind {
-            ExprKind::Let(ref pat, _, _) | ExprKind::ForLoop(ref pat, ..) => {
+            ExprKind::Let(ref pat, _, _) | ExprKind::ForLoop(box ast::ForLoop { ref pat, .. }) => {
                 self.check_unused_parens_pat(cx, pat, false, false, (true, true));
             }
             // We ignore parens in cases like `if (((let Some(0) = Some(1))))` because we already

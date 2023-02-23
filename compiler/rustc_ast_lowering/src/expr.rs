@@ -60,8 +60,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 //
                 // This also needs special handling because the HirId of the returned `hir::Expr` will not
                 // correspond to the `e.id`, so `lower_expr_for` handles attribute lowering itself.
-                ExprKind::ForLoop(pat, head, body, opt_label) => {
-                    return self.lower_expr_for(e, pat, head, body, *opt_label);
+                ExprKind::ForLoop(box ast::ForLoop { label, pat, iter, body }) => {
+                    return self.lower_expr_for(e, pat, iter, body, *label);
                 }
                 _ => (),
             }

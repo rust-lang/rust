@@ -362,8 +362,8 @@ impl<'a> State<'a> {
                 self.space();
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::ForLoop(pat, iter, blk, opt_label) => {
-                if let Some(label) = opt_label {
+            ast::ExprKind::ForLoop(box ast::ForLoop { label, pat, iter, body }) => {
+                if let Some(label) = label {
                     self.print_ident(label.ident);
                     self.word_space(":");
                 }
@@ -375,7 +375,7 @@ impl<'a> State<'a> {
                 self.word_space("in");
                 self.print_expr_as_cond(iter);
                 self.space();
-                self.print_block_with_attrs(blk, attrs);
+                self.print_block_with_attrs(body, attrs);
             }
             ast::ExprKind::Loop(blk, opt_label, _) => {
                 if let Some(label) = opt_label {

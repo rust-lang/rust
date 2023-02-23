@@ -1724,7 +1724,7 @@ impl<'a> Parser<'a> {
                     && matches!(
                         expr.kind,
                         ExprKind::While(_, _, None)
-                            | ExprKind::ForLoop(_, _, _, None)
+                            | ExprKind::ForLoop(box ast::ForLoop { label: None, .. })
                             | ExprKind::Loop(_, None, _)
                             | ExprKind::Block(_, None)
                     )
@@ -2450,7 +2450,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `for <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
-    fn parse_for_expr(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
+    fn parse_for_expr(&mut self, label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
         // Record whether we are about to parse `for (`.
         // This is used below for recovery in case of `for ( $stuff ) $block`
         // in which case we will suggest `for $stuff $block`.
@@ -2484,13 +2484,19 @@ impl<'a> Parser<'a> {
             let block = self.mk_block(thin_vec![], BlockCheckMode::Default, self.prev_token.span);
             return Ok(self.mk_expr(
                 lo.to(self.prev_token.span),
-                ExprKind::ForLoop(pat, err_expr, block, opt_label),
+                ExprKind::ForLoop(Box::new(ast::ForLoop {
+                    pat,
+                    iter: err_expr,
+                    body: block,
+                    label,
+                })),
             ));
         }
 
-        let (attrs, loop_block) = self.parse_inner_attrs_and_block()?;
+        let (attrs, block) = self.parse_inner_attrs_and_block()?;
 
-        let kind = ExprKind::ForLoop(pat, expr, loop_block, opt_label);
+        let kind =
+            ExprKind::ForLoop(Box::new(ast::ForLoop { pat, iter: expr, body: block, label }));
         Ok(self.mk_expr_with_attrs(lo.to(self.prev_token.span), kind, attrs))
     }
 

@@ -1325,6 +1325,17 @@ pub struct Closure {
     pub fn_arg_span: Span,
 }
 
+/// A `for` loop, with an optional label.
+///
+/// `'label: for pat in iter { body }`
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct ForLoop {
+    pub pat: P<Pat>,
+    pub iter: P<Expr>,
+    pub body: P<Block>,       // njn: rename block?
+    pub label: Option<Label>, // njn: move label last in all use points
+}
+
 /// Limit types of a range (inclusive or exclusive)
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug)]
 pub enum RangeLimits {
@@ -1410,10 +1421,8 @@ pub enum ExprKind {
     While(P<Expr>, P<Block>, Option<Label>),
     /// A `for` loop, with an optional label.
     ///
-    /// `'label: for pat in expr { block }`
-    ///
     /// This is desugared to a combination of `loop` and `match` expressions.
-    ForLoop(P<Pat>, P<Expr>, P<Block>, Option<Label>),
+    ForLoop(Box<ForLoop>),
     /// Conditionless loop (can be exited with `break`, `continue`, or `return`).
     ///
     /// `'label: loop { block }`
@@ -3130,8 +3139,8 @@ mod size_asserts {
     static_assert_size!(AssocItemKind, 32);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 32);
-    static_assert_size!(Expr, 72);
-    static_assert_size!(ExprKind, 40);
+    static_assert_size!(Expr, 64);
+    static_assert_size!(ExprKind, 32);
     static_assert_size!(Fn, 152);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);

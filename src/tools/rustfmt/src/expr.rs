@@ -664,9 +664,9 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<
                 expr.span,
             ))
         }
-        ast::ExprKind::ForLoop(ref pat, ref cond, ref block, label) => {
-            Some(ControlFlow::new_for(pat, cond, block, label, expr.span))
-        }
+        ast::ExprKind::ForLoop(ref l) => Some(ControlFlow::new_for(
+            &l.pat, &l.iter, &l.body, l.label, expr.span,
+        )),
         ast::ExprKind::Loop(ref block, label, _) => {
             Some(ControlFlow::new_loop(block, label, expr.span))
         }
