@@ -248,6 +248,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             inference_vars,
             answer,
             &mut **self.engine.borrow_mut(),
+            self.defining_use_anchor,
         )
     }
 

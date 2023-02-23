@@ -57,12 +57,14 @@ impl<'tcx> InferCtxt<'tcx> {
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
+        defining_use_anchor: DefiningAnchor,
     ) -> Fallible<CanonicalQueryResponse<'tcx, T>>
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
     {
-        let query_response = self.make_query_response(inference_vars, answer, fulfill_cx)?;
+        let query_response =
+            self.make_query_response(inference_vars, answer, fulfill_cx, defining_use_anchor)?;
         debug!("query_response = {:#?}", query_response);
         let canonical_result = self.canonicalize_response(query_response);
         debug!("canonical_result = {:#?}", canonical_result);
@@ -104,6 +106,7 @@ impl<'tcx> InferCtxt<'tcx> {
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
+        defining_use_anchor: DefiningAnchor,
     ) -> Result<QueryResponse<'tcx, T>, NoSolution>
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
@@ -111,17 +114,17 @@ impl<'tcx> InferCtxt<'tcx> {
         let tcx = self.tcx;
 
         // Select everything, returning errors.
-        let true_errors = fulfill_cx.select_where_possible(self, self.old_defining_use_anchor);
+        let true_errors = fulfill_cx.select_where_possible(self, defining_use_anchor);
         debug!("true_errors = {:#?}", true_errors);
 
         if !true_errors.is_empty() {
             // FIXME -- we don't indicate *why* we failed to solve
-            debug!("make_query_response: true_errors={:#?}", true_errors);
+            debug!("true_errors={:#?}", true_errors);
             return Err(NoSolution);
         }
 
         // Anything left unselected *now* must be an ambiguity.
-        let ambig_errors = fulfill_cx.select_all_or_error(self, self.old_defining_use_anchor);
+        let ambig_errors = fulfill_cx.select_all_or_error(self, defining_use_anchor);
         debug!("ambig_errors = {:#?}", ambig_errors);
 
         let region_obligations = self.take_registered_region_obligations();
