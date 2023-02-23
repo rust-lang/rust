@@ -665,7 +665,7 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
             | ExprKind::Path(_)
             | ExprKind::Continue(_)
             | ExprKind::InlineAsm(_)
-            | ExprKind::Err => (),
+            | ExprKind::Err(_) => (),
         }
         ControlFlow::Continue(())
     }
