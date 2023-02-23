@@ -9,6 +9,7 @@ use crate::errors;
 use hir::{ExprKind, PatKind};
 use rustc_arena::TypedArena;
 use rustc_ast::{LitKind, Mutability};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
@@ -55,7 +56,7 @@ struct MatchVisitor<'a, 'p, 'tcx> {
 
 impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
-        intravisit::walk_expr(self, ex);
+        ensure_sufficient_stack(|| intravisit::walk_expr(self, ex));
         match &ex.kind {
             hir::ExprKind::Match(scrut, arms, source) => {
                 self.check_match(scrut, arms, *source, ex.span)
