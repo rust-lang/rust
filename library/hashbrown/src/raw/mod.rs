@@ -1588,6 +1588,9 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// Searches for an empty or deleted bucket which is suitable for inserting
     /// a new element, returning the `index` for the new [`Bucket`].
     ///
+    /// This function does not make any changes to the `data` part of the table, or any
+    /// changes to the `items` or `growth_left` field of the table.
+    ///
     /// The table must have at least 1 empty or deleted `bucket`, otherwise this function
     /// will never return (will go into an infinite loop) for tables larger than the group
     /// width, or return an index outside of the table indices range if the table is less
@@ -1598,10 +1601,9 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// Actually, calling this function is always safe, but attempting to write data at
     /// the index returned by this function when the table is less than the group width
     /// and if there was not at least one empty bucket in the table will cause immediate
-    /// [`undefined behavior`].
-    ///
-    /// This is because in this case the function will return `self.bucket_mask + 1`
-    /// as an index due to the trailing EMPTY control bytes outside the table range.
+    /// [`undefined behavior`]. This is because in this case the function will return
+    /// `self.bucket_mask + 1` as an index due to the trailing EMPTY control bytes outside
+    /// the table range.
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
