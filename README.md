@@ -1,4 +1,4 @@
-# The Rust Programming Language
+# The Rust Programming Language +Enzyme
 
 This is the main source code repository for [Rust]. It contains the compiler,
 standard library, and documentation. It is modified to use Enzyme for AutoDiff.
@@ -6,17 +6,20 @@ standard library, and documentation. It is modified to use Enzyme for AutoDiff.
 Please configure this fork using the following command:
 
 ```
-./configure --enable-llvm-link-shared --enable-llvm-plugins --enable-llvm-enzyme --release-channel=nightly --enable-llvm-assertions --enable-clang --enable-lld --enable-option-checking --enable-ninja --disable-docs
+mkdir build
+cd build
+../configure --enable-llvm-link-shared --enable-llvm-plugins --enable-llvm-enzyme --release-channel=nightly --enable-llvm-assertions --enable-clang --enable-lld --enable-option-checking --enable-ninja --disable-docs
 ```
 
 Afterwards you can build rustc using:
 ```
-x build --stage 1 library/std   
+../x.py build --stage 1 library/std
 ```
 
-Afterwards rustc toolchain link will allow you to use it trough cargo (adjust path):
+Afterwards rustc toolchain link will allow you to use it through cargo:
 ```
-rustup toolchain link enzyme /home/drehwald/prog/rust/build/x86_64-unknown-linux-gnu/stage1
+rustup toolchain link enzyme `pwd`/build/`rustup target list --installed`/stage1
+rustup toolchain install nightly # enables -Z unstable-options
 ```
 
 [Rust]: https://www.rust-lang.org
