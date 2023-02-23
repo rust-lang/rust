@@ -1,4 +1,4 @@
-error[E0107]: this trait takes 1 generic argument but 0 generic arguments were supplied
+error[E0107]: trait takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/unable-fulfill-trait.rs:4:17
    |
 LL |     field1: dyn Bar<'a, 'b,>,
