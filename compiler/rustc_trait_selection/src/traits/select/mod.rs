@@ -228,6 +228,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn new_in_canonical_query(infcx: &'cx InferCtxt<'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             query_mode: TraitQueryMode::Canonical,
+            // This bubble is required for this tests to pass:
+            // impl-trait/issue99642.rs
             defining_use_anchor: DefiningAnchor::Bubble,
             ..SelectionContext::new(infcx)
         }

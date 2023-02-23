@@ -1,6 +1,6 @@
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
-use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, FnSig, Lift, PolyFnSig, Ty, TyCtxt, TypeFoldable};
@@ -212,15 +212,10 @@ fn type_op_prove_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, ProvePredicate<'tcx>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
-    // HACK This bubble is required for this test to pass:
-    // impl-trait/issue-99642.rs
-    tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).enter_canonical_trait_query(
-        &canonicalized,
-        |ocx, key| {
-            type_op_prove_predicate_with_cause(ocx, key, ObligationCause::dummy());
-            Ok(())
-        },
-    )
+    tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, |ocx, key| {
+        type_op_prove_predicate_with_cause(ocx, key, ObligationCause::dummy());
+        Ok(())
+    })
 }
 
 /// The core of the `type_op_prove_predicate` query: for diagnostics purposes in NLL HRTB errors,

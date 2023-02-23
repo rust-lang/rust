@@ -152,8 +152,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Bor
 
     let hir_owner = tcx.hir().local_def_id_to_hir_id(def.did).owner;
 
-    let infcx =
-        tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id)).build();
+    let infcx = tcx.infer_ctxt().build();
     let input_body: &Body<'_> = &input_body.borrow();
     let promoted: &IndexVec<_, _> = &promoted.borrow();
     let opt_closure_req = do_mir_borrowck(

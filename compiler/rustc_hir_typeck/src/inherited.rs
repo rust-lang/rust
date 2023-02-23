@@ -96,10 +96,7 @@ impl<'tcx> Inherited<'tcx> {
         let hir_owner = tcx.hir().local_def_id_to_hir_id(def_id).owner;
 
         InheritedBuilder {
-            infcx: tcx
-                .infer_ctxt()
-                .ignoring_regions()
-                .with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id)),
+            infcx: tcx.infer_ctxt().ignoring_regions(),
             def_id,
             typeck_results: RefCell::new(ty::TypeckResults::new(hir_owner)),
         }

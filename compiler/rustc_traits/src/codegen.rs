@@ -29,12 +29,8 @@ pub fn codegen_select_candidate<'tcx>(
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
-    let infcx = tcx
-        .infer_ctxt()
-        .ignoring_regions()
-        .with_opaque_type_inference(DefiningAnchor::Bubble)
-        .build();
-    //~^ HACK `Bubble` is required for
+    let infcx = tcx.infer_ctxt().ignoring_regions().build();
+    // HACK `Bubble` is required for
     // this test to pass: type-alias-impl-trait/assoc-projection-ice.rs
     let mut selcx = SelectionContext::new(&infcx).with_defining_use_anchor(DefiningAnchor::Bubble);
 

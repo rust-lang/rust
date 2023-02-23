@@ -33,7 +33,7 @@ pub fn get_body_with_borrowck_facts(
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> BodyWithBorrowckFacts<'_> {
     let (input_body, promoted) = tcx.mir_promoted(def);
-    let infcx = tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(def.did)).build();
+    let infcx = tcx.infer_ctxt().build();
     let input_body: &Body<'_> = &input_body.borrow();
     let promoted: &IndexVec<_, _> = &promoted.borrow();
     *super::do_mir_borrowck(&infcx, input_body, promoted, true, DefiningAnchor::Bind(def.did))
