@@ -452,6 +452,17 @@ pub(crate) struct MissingExpressionInForLoop {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_loop_else)]
+#[note]
+pub(crate) struct LoopElseNotSupported {
+    #[primary_span]
+    pub span: Span,
+    pub loop_kind: &'static str,
+    #[label(parse_loop_keyword)]
+    pub loop_kw: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_missing_comma_after_match_arm)]
 pub(crate) struct MissingCommaAfterMatchArm {
     #[primary_span]
