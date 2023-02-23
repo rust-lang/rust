@@ -424,7 +424,7 @@ pub fn fully_solve_bound<'tcx>(
     let trait_ref = tcx.mk_trait_ref(bound, [ty]);
     let obligation = Obligation::new(tcx, cause, param_env, ty::Binder::dummy(trait_ref));
 
-    fully_solve_obligation(infcx, obligation, infcx.old_defining_use_anchor)
+    fully_solve_obligation(infcx, obligation, DefiningAnchor::Error)
 }
 
 /// Normalizes the predicates and checks whether they hold in an empty environment. If this
