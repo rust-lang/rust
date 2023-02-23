@@ -8835,7 +8835,7 @@ public:
             if (invertedReturn->getType() !=
                 gutils->getShadowType(call.getType())) {
               llvm::errs() << " o: " << call << "\n";
-              llvm::errs() << " ot: " << call.getType() << "\n";
+              llvm::errs() << " ot: " << *call.getType() << "\n";
               llvm::errs() << " ir: " << *invertedReturn << "\n";
               llvm::errs() << " irt: " << *invertedReturn->getType() << "\n";
               llvm::errs() << " p: " << *placeholder << "\n";
@@ -8923,7 +8923,7 @@ public:
               if (invertedReturn->getType() !=
                   gutils->getShadowType(call.getType())) {
                 llvm::errs() << " o: " << call << "\n";
-                llvm::errs() << " ot: " << call.getType() << "\n";
+                llvm::errs() << " ot: " << *call.getType() << "\n";
                 llvm::errs() << " ir: " << *invertedReturn << "\n";
                 llvm::errs() << " irt: " << *invertedReturn->getType() << "\n";
                 llvm::errs() << " p: " << *placeholder << "\n";
