@@ -1,8 +1,10 @@
 use crate::{
     fluent_generated as fluent,
-    thir::pattern::{deconstruct_pat::{Constructor, DeconstructedPat}, MatchCheckCtxt},
+    thir::pattern::{
+        deconstruct_pat::{Constructor, DeconstructedPat},
+        MatchCheckCtxt,
+    },
 };
-use rustc_errors::Handler;
 use rustc_errors::{
     error_code, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     Handler, IntoDiagnostic, MultiSpan, SubdiagnosticMessage,
@@ -391,9 +393,7 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
             TypeNote::MarkedExhaustive { .. } => {
                 diag.note(fluent::mir_build_type_note_non_exhaustive)
             }
-            TypeNote::NotMarkedExhaustive { .. } => {
-                diag.note(fluent::mir_build_type_note)
-            }
+            TypeNote::NotMarkedExhaustive { .. } => diag.note(fluent::mir_build_type_note),
         };
 
         if self.ref_note.is_some() {
@@ -858,7 +858,7 @@ impl<'tcx> AddToDiagnostic for AdtDefinedHere<'tcx> {
         diag.set_arg("ty", self.ty);
         let mut spans = MultiSpan::from(self.adt_def_span);
 
-        for Variant { span } in self.variants {
+        for span in self.variants {
             spans.push_span_label(span, fluent::mir_build_variant_defined_here);
         }
 
@@ -1036,12 +1036,12 @@ impl<'tcx> AddToDiagnostic for ArmSuggestions<'tcx> {
             ArmSuggestions::OneLiner { suggest_msg, span, pattern } => {
                 let suggestion = format!(", {pattern} => {{ todo!() }}");
                 let suggest_msg = match suggest_msg {
-                    AddArmKind::Wildcard => rustc_errors::fluent::mir_build_suggest_wildcard_arm,
+                    AddArmKind::Wildcard => fluent::mir_build_suggest_wildcard_arm,
                     AddArmKind::Single { pat } => {
                         diag.set_arg("pat", pat);
-                        rustc_errors::fluent::mir_build_suggest_single_arm
+                        fluent::mir_build_suggest_single_arm
                     }
-                    AddArmKind::Multiple => rustc_errors::fluent::mir_build_suggest_multiple_arms,
+                    AddArmKind::Multiple => fluent::mir_build_suggest_multiple_arms,
                 };
                 diag.span_suggestion_verbose(
                     span,
@@ -1059,12 +1059,12 @@ impl<'tcx> AddToDiagnostic for ArmSuggestions<'tcx> {
                 arm_suggestions,
             } => {
                 let suggest_msg = match suggest_msg {
-                    AddArmKind::Wildcard => rustc_errors::fluent::mir_build_suggest_wildcard_arm,
+                    AddArmKind::Wildcard => fluent::mir_build_suggest_wildcard_arm,
                     AddArmKind::Single { pat } => {
                         diag.set_arg("pat", pat);
-                        rustc_errors::fluent::mir_build_suggest_single_arm
+                        fluent::mir_build_suggest_single_arm
                     }
-                    AddArmKind::Multiple => rustc_errors::fluent::mir_build_suggest_multiple_arms,
+                    AddArmKind::Multiple => fluent::mir_build_suggest_multiple_arms,
                 };
 
                 let mut suggestion = String::new();
