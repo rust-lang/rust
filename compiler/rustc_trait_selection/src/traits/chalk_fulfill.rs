@@ -8,6 +8,7 @@ use crate::traits::{
     SelectionError, TraitEngine,
 };
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_infer::infer::DefiningAnchor;
 use rustc_middle::ty::TypeVisitableExt;
 
 pub struct FulfillmentContext<'tcx> {
@@ -54,7 +55,11 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             .collect()
     }
 
-    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
+    fn select_where_possible(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+        _defining_use_anchor: DefiningAnchor,
+    ) -> Vec<FulfillmentError<'tcx>> {
         if !self.usable_in_snapshot {
             assert!(!infcx.is_in_snapshot());
         }

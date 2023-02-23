@@ -625,10 +625,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut fulfill_cx = crate::solve::FulfillmentCtxt::new();
         fulfill_cx.register_predicate_obligations(self.infcx, predicates);
         // True errors
-        if !fulfill_cx.select_where_possible(self.infcx).is_empty() {
+        if !fulfill_cx.select_where_possible(self.infcx, DefiningAnchor::Bubble).is_empty() {
             return Ok(EvaluatedToErr);
         }
-        if !fulfill_cx.select_all_or_error(self.infcx).is_empty() {
+        if !fulfill_cx.select_all_or_error(self.infcx, DefiningAnchor::Bubble).is_empty() {
             return Ok(EvaluatedToAmbig);
         }
         // Regions and opaques are handled in the `evaluation_probe` by looking at the snapshot

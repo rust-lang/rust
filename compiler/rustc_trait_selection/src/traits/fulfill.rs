@@ -2,6 +2,7 @@ use crate::infer::{InferCtxt, TyOrConstInferVar};
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
+use rustc_infer::infer::DefiningAnchor;
 use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitObligation};
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -136,9 +137,12 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         self.predicates.to_errors(CodeAmbiguity).into_iter().map(to_fulfillment_error).collect()
     }
 
-    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        let selcx =
-            SelectionContext::new(infcx).with_defining_use_anchor(infcx.old_defining_use_anchor);
+    fn select_where_possible(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+        defining_use_anchor: DefiningAnchor,
+    ) -> Vec<FulfillmentError<'tcx>> {
+        let selcx = SelectionContext::new(infcx).with_defining_use_anchor(defining_use_anchor);
         self.select(selcx)
     }
 

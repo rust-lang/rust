@@ -63,7 +63,7 @@ pub fn codegen_select_candidate<'tcx>(
     // In principle, we only need to do this so long as `impl_source`
     // contains unbound type parameters. It could be a slight
     // optimization to stop iterating early.
-    let errors = fulfill_cx.select_all_or_error(&infcx);
+    let errors = fulfill_cx.select_all_or_error(&infcx, DefiningAnchor::Bubble);
     if !errors.is_empty() {
         // `rustc_monomorphize::collector` assumes there are no type errors.
         // Cycle errors are the only post-monomorphization errors possible; emit them now so

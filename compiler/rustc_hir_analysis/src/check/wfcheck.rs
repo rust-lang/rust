@@ -1674,7 +1674,14 @@ fn receiver_is_valid<'tcx>(
         return true;
     }
 
-    let mut autoderef = Autoderef::new(infcx, wfcx.param_env, wfcx.body_def_id, span, receiver_ty);
+    let mut autoderef = Autoderef::new(
+        infcx,
+        wfcx.param_env,
+        wfcx.body_def_id,
+        span,
+        receiver_ty,
+        wfcx.ocx.defining_use_anchor(),
+    );
 
     // The `arbitrary_self_types` feature allows raw pointer receivers like `self: *const Self`.
     if arbitrary_self_types_enabled {

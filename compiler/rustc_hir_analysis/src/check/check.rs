@@ -1545,7 +1545,7 @@ pub(super) fn check_generator_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         let obligation = Obligation::new(tcx, cause.clone(), param_env, *predicate);
         fulfillment_cx.register_predicate_obligation(&infcx, obligation);
     }
-    let errors = fulfillment_cx.select_all_or_error(&infcx);
+    let errors = fulfillment_cx.select_all_or_error(&infcx, DefiningAnchor::Bind(def_id));
     debug!(?errors);
     if !errors.is_empty() {
         infcx.err_ctxt().report_fulfillment_errors(&errors, None);

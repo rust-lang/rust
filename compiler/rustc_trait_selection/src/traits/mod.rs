@@ -402,7 +402,7 @@ pub fn fully_solve_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
 ) -> Vec<FulfillmentError<'tcx>> {
-    let ocx = ObligationCtxt::new(infcx);
+    let ocx = ObligationCtxt::new(infcx).with_defining_use_anchor(infcx.old_defining_use_anchor);
     ocx.register_obligations(obligations);
     ocx.select_all_or_error()
 }

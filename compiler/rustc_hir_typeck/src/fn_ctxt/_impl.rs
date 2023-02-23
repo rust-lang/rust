@@ -594,7 +594,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) {
-        let mut result = self.fulfillment_cx.borrow_mut().select_where_possible(self);
+        let mut result =
+            self.fulfillment_cx.borrow_mut().select_where_possible(self, self.defining_use_anchor);
         if !result.is_empty() {
             mutate_fulfillment_errors(&mut result);
             self.adjust_fulfillment_errors_for_expr_obligation(&mut result);
@@ -746,7 +747,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let expect_args = self
             .fudge_inference_if_ok(|| {
-                let ocx = ObligationCtxt::new_in_snapshot(self);
+                let ocx = ObligationCtxt::new_in_snapshot(self)
+                    .with_defining_use_anchor(self.defining_use_anchor);
 
                 // Attempt to apply a subtyping relationship between the formal
                 // return type (likely containing type variables if the function

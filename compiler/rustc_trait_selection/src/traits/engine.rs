@@ -65,19 +65,11 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     }
 
     pub fn new_with_opaque_type_bubbling(infcx: &'a InferCtxt<'tcx>) -> Self {
-        Self {
-            infcx,
-            engine: RefCell::new(<dyn TraitEngine<'_>>::new(infcx.tcx)),
-            defining_use_anchor: DefiningAnchor::Bubble,
-        }
+        Self::new(infcx).with_defining_use_anchor(DefiningAnchor::Bubble)
     }
 
     pub fn new_with_opaque_type_anchor(infcx: &'a InferCtxt<'tcx>, anchor: LocalDefId) -> Self {
-        Self {
-            infcx,
-            engine: RefCell::new(<dyn TraitEngine<'_>>::new(infcx.tcx)),
-            defining_use_anchor: DefiningAnchor::Bind(anchor),
-        }
+        Self::new(infcx).with_defining_use_anchor(DefiningAnchor::Bind(anchor))
     }
 
     pub fn new_in_snapshot(infcx: &'a InferCtxt<'tcx>) -> Self {
@@ -86,6 +78,10 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             engine: RefCell::new(<dyn TraitEngine<'_>>::new_in_snapshot(infcx.tcx)),
             defining_use_anchor: DefiningAnchor::Error,
         }
+    }
+
+    pub fn with_defining_use_anchor(self, defining_use_anchor: DefiningAnchor) -> Self {
+        Self { defining_use_anchor, ..self }
     }
 
     pub fn register_obligation(&self, obligation: PredicateObligation<'tcx>) {
@@ -203,11 +199,11 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     }
 
     pub fn select_where_possible(&self) -> Vec<FulfillmentError<'tcx>> {
-        self.engine.borrow_mut().select_where_possible(self.infcx)
+        self.engine.borrow_mut().select_where_possible(self.infcx, self.defining_use_anchor)
     }
 
     pub fn select_all_or_error(&self) -> Vec<FulfillmentError<'tcx>> {
-        self.engine.borrow_mut().select_all_or_error(self.infcx)
+        self.engine.borrow_mut().select_all_or_error(self.infcx, self.defining_use_anchor)
     }
 
     pub fn assumed_wf_types(
@@ -253,5 +249,9 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             answer,
             &mut **self.engine.borrow_mut(),
         )
+    }
+
+    pub fn defining_use_anchor(&self) -> DefiningAnchor {
+        self.defining_use_anchor
     }
 }

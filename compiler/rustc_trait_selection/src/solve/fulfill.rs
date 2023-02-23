@@ -1,6 +1,6 @@
 use std::mem;
 
-use rustc_infer::infer::InferCtxt;
+use rustc_infer::infer::{DefiningAnchor, InferCtxt};
 use rustc_infer::traits::{
     query::NoSolution, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes,
     PredicateObligation, SelectionError, TraitEngine,
@@ -51,7 +51,11 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
             .collect()
     }
 
-    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
+    fn select_where_possible(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+        _defining_use_anchor: DefiningAnchor,
+    ) -> Vec<FulfillmentError<'tcx>> {
         let mut errors = Vec::new();
         for i in 0.. {
             if !infcx.tcx.recursion_limit().value_within_limit(i) {
