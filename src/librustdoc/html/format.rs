@@ -744,7 +744,7 @@ pub(crate) fn href_relative_parts<'fqp>(
 ) -> Box<dyn Iterator<Item = Symbol> + 'fqp> {
     for (i, (f, r)) in fqp.iter().zip(relative_to_fqp.iter()).enumerate() {
         // e.g. linking to std::iter from std::vec (`dissimilar_part_count` will be 1)
-        if f != r {
+        if *f != *r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
             let fqp_module = &fqp[i..fqp.len()];
             return Box::new(

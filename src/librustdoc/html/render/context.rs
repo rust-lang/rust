@@ -228,7 +228,7 @@ impl<'tcx> Context<'tcx> {
         } else {
             if let Some(&(ref names, ty)) = self.cache().paths.get(&it.item_id.expect_def_id()) {
                 if self.current.len() + 1 != names.len()
-                    || self.current.iter().zip(names.iter()).any(|(a, b)| a != b)
+                    || self.current.iter().zip(names.iter()).any(|(a, b)| *a != *b)
                 {
                     // We checked that the redirection isn't pointing to the current file,
                     // preventing an infinite redirection loop in the generated

@@ -1483,12 +1483,12 @@ impl Type {
             (Type::Slice(a), Type::Slice(b)) => a.is_same(b, cache),
             (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_same(b, cache),
             (Type::RawPointer(mutability, type_), Type::RawPointer(b_mutability, b_type_)) => {
-                mutability == b_mutability && type_.is_same(b_type_, cache)
+                *mutability == *b_mutability && type_.is_same(b_type_, cache)
             }
             (
                 Type::BorrowedRef { mutability, type_, .. },
                 Type::BorrowedRef { mutability: b_mutability, type_: b_type_, .. },
-            ) => mutability == b_mutability && type_.is_same(b_type_, cache),
+            ) => *mutability == *b_mutability && type_.is_same(b_type_, cache),
             // Placeholders and generics are equal to all other types.
             (Type::Infer, _) | (_, Type::Infer) => true,
             (Type::Generic(_), _) | (_, Type::Generic(_)) => true,
