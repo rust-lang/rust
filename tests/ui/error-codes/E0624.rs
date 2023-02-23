@@ -8,5 +8,5 @@ mod inner {
 
 fn main() {
     let foo = inner::Foo;
-    foo.method(); //~ ERROR associated function `method` is private [E0624]
+    foo.method(); //~ ERROR method `method` is private [E0624]
 }

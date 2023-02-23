@@ -927,7 +927,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 DefKind::Ctor(CtorOf::Variant, _) => {
                     "use parentheses to construct this tuple variant".to_string()
                 }
-                kind => format!("use parentheses to call this {}", kind.descr(def_id)),
+                kind => format!(
+                    "use parentheses to call this {}",
+                    self.tcx.def_kind_descr(kind, def_id)
+                ),
             },
             DefIdOrName::Name(name) => format!("use parentheses to call this {name}"),
         };
@@ -2139,7 +2142,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 err.note(&format!(
                     "{}s cannot be accessed directly on a `trait`, they can only be \
                         accessed through a specific `impl`",
-                    assoc_item.kind.as_def_kind().descr(item_def_id)
+                    self.tcx.def_kind_descr(assoc_item.kind.as_def_kind(), item_def_id)
                 ));
                 err.span_suggestion(
                     span,

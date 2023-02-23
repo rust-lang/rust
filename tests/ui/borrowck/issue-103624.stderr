@@ -10,13 +10,13 @@ LL |
 LL |             self.b;
    |             ^^^^^^ move occurs because `self.b` has type `StructB`, which does not implement the `Copy` trait
 
-error[E0521]: borrowed data escapes outside of associated function
+error[E0521]: borrowed data escapes outside of method
   --> $DIR/issue-103624.rs:14:9
    |
 LL |       async fn foo(&self) {
    |                    -----
    |                    |
-   |                    `self` is a reference that is only valid in the associated function body
+   |                    `self` is a reference that is only valid in the method body
    |                    let's call the lifetime of this reference `'1`
 LL |           let bar = self.b.bar().await;
 LL | /         spawn_blocking(move || {
@@ -26,7 +26,7 @@ LL | |
 LL | |         })
    | |          ^
    | |          |
-   | |__________`self` escapes the associated function body here
+   | |__________`self` escapes the method body here
    |            argument requires that `'1` must outlive `'static`
 
 error: aborting due to 2 previous errors

@@ -6,11 +6,11 @@ LL |     assert_eq!('x'.ipu_flatten(), 0);
    |
    = note: candidate #1 is defined in an impl of the trait `IpuIterator` for the type `char`
    = note: candidate #2 is defined in an impl of the trait `IpuItertools` for the type `char`
-help: disambiguate the associated function for candidate #1
+help: disambiguate the method for candidate #1
    |
 LL |     assert_eq!(IpuIterator::ipu_flatten(&'x'), 0);
    |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-help: disambiguate the associated function for candidate #2
+help: disambiguate the method for candidate #2
    |
 LL |     assert_eq!(IpuItertools::ipu_flatten(&'x'), 0);
    |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

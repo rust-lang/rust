@@ -1,4 +1,4 @@
-warning: an associated function with this name may be added to the standard library in the future
+warning: a method with this name may be added to the standard library in the future
   --> $DIR/inference_unstable.rs:16:20
    |
 LL |     assert_eq!('x'.ipu_flatten(), 1);
@@ -10,7 +10,7 @@ LL |     assert_eq!('x'.ipu_flatten(), 1);
    = help: add `#![feature(ipu_flatten)]` to the crate attributes to enable `inference_unstable_iterator::IpuIterator::ipu_flatten`
    = note: `#[warn(unstable_name_collisions)]` on by default
 
-warning: an associated function with this name may be added to the standard library in the future
+warning: a method with this name may be added to the standard library in the future
   --> $DIR/inference_unstable.rs:19:20
    |
 LL |     assert_eq!('x'.ipu_by_value_vs_by_ref(), 1);
@@ -21,7 +21,7 @@ LL |     assert_eq!('x'.ipu_by_value_vs_by_ref(), 1);
    = help: call with fully qualified syntax `inference_unstable_itertools::IpuItertools::ipu_by_value_vs_by_ref(...)` to keep using the current method
    = help: add `#![feature(ipu_flatten)]` to the crate attributes to enable `inference_unstable_iterator::IpuIterator::ipu_by_value_vs_by_ref`
 
-warning: an associated function with this name may be added to the standard library in the future
+warning: a method with this name may be added to the standard library in the future
   --> $DIR/inference_unstable.rs:22:20
    |
 LL |     assert_eq!('x'.ipu_by_ref_vs_by_ref_mut(), 1);
@@ -32,7 +32,7 @@ LL |     assert_eq!('x'.ipu_by_ref_vs_by_ref_mut(), 1);
    = help: call with fully qualified syntax `inference_unstable_itertools::IpuItertools::ipu_by_ref_vs_by_ref_mut(...)` to keep using the current method
    = help: add `#![feature(ipu_flatten)]` to the crate attributes to enable `inference_unstable_iterator::IpuIterator::ipu_by_ref_vs_by_ref_mut`
 
-warning: an associated function with this name may be added to the standard library in the future
+warning: a method with this name may be added to the standard library in the future
   --> $DIR/inference_unstable.rs:25:40
    |
 LL |     assert_eq!((&mut 'x' as *mut char).ipu_by_mut_ptr_vs_by_const_ptr(), 1);

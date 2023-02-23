@@ -2,7 +2,7 @@ error: lifetime may not live long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:6:46
    |
 LL |     fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
-   |                    -         -               ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |                    -         -               ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
    |                    |         |
    |                    |         let's call the lifetime of this reference `'1`
    |                    let's call the lifetime of this reference `'2`
@@ -16,7 +16,7 @@ error: lifetime may not live long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:9:69
    |
 LL |     fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
-   |                    -          -                                     ^^^^^^^^^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |                    -          -                                     ^^^^^^^^^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
    |                    |          |
    |                    |          let's call the lifetime of this reference `'1`
    |                    let's call the lifetime of this reference `'2`
@@ -30,7 +30,7 @@ error: lifetime may not live long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch.rs:15:58
    |
 LL |     fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
-   |            --  ---- has type `Pin<&'1 Foo>`              ^^^ associated function was supposed to return data with lifetime `'1` but it is returning data with lifetime `'a`
+   |            --  ---- has type `Pin<&'1 Foo>`              ^^^ method was supposed to return data with lifetime `'1` but it is returning data with lifetime `'a`
    |            |
    |            lifetime `'a` defined here
 

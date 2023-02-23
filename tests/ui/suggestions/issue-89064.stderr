@@ -56,7 +56,7 @@ note: associated function defined here, with 0 generic parameters
 LL |     fn foo() {}
    |        ^^^
 
-error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: this method takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-89064.rs:31:16
    |
 LL |     let _ = 42.into::<Option<_>>();

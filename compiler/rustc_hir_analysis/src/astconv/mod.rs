@@ -1217,7 +1217,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     | (hir::def::DefKind::AssocConst, ty::TermKind::Const(_)) => (),
                     (_, _) => {
                         let got = if let Some(_) = term.ty() { "type" } else { "constant" };
-                        let expected = def_kind.descr(assoc_item_def_id);
+                        let expected = tcx.def_descr(assoc_item_def_id);
                         let mut err = tcx.sess.struct_span_err(
                             binding.span,
                             &format!("expected {expected} bound, found {got}"),
@@ -1552,7 +1552,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         i.bottom().1,
                         E0038,
                         "the {} `{}` cannot be made into an object",
-                        tcx.def_kind(def_id).descr(def_id),
+                        tcx.def_descr(def_id),
                         tcx.item_name(def_id),
                     );
                     err.note(
@@ -2174,7 +2174,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             "`{}` could{} refer to the {} defined here",
                             assoc_ident,
                             also,
-                            kind.descr(def_id)
+                            tcx.def_kind_descr(kind, def_id)
                         );
                         lint.span_note(tcx.def_span(def_id), &note_msg);
                     };
@@ -2350,7 +2350,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let kind = DefKind::AssocTy;
 
         if !tcx.visibility(item).is_accessible_from(def_scope, tcx) {
-            let kind = kind.descr(item);
+            let kind = tcx.def_kind_descr(kind, item);
             let msg = format!("{kind} `{name}` is private");
             let def_span = tcx.def_span(item);
             tcx.sess

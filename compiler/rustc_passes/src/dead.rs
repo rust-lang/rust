@@ -694,7 +694,7 @@ impl<'tcx> DeadVisitor<'tcx> {
             })
             .collect();
 
-        let descr = tcx.def_kind(first_id).descr(first_id.to_def_id());
+        let descr = tcx.def_descr(first_id.to_def_id());
         let num = dead_codes.len();
         let multiple = num > 6;
         let name_list = names.into();
@@ -706,7 +706,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         };
 
         let parent_info = if let Some(parent_item) = parent_item {
-            let parent_descr = tcx.def_kind(parent_item).descr(parent_item.to_def_id());
+            let parent_descr = tcx.def_descr(parent_item.to_def_id());
             Some(ParentInfo {
                 num,
                 descr,

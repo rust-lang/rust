@@ -160,7 +160,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             MethodError::PrivateMatch(kind, def_id, out_of_scope_traits) => {
-                let kind = kind.descr(def_id);
+                let kind = self.tcx.def_kind_descr(kind, def_id);
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     item_name.span,
@@ -1062,8 +1062,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         &format!(
                             "there is {} {} with a similar name",
-                            def_kind.article(),
-                            def_kind.descr(similar_candidate.def_id),
+                            self.tcx.def_kind_descr_article(def_kind, similar_candidate.def_id),
+                            self.tcx.def_kind_descr(def_kind, similar_candidate.def_id)
                         ),
                         similar_candidate.name,
                         Applicability::MaybeIncorrect,
@@ -1172,7 +1172,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             path,
                             ty,
                             item.kind,
-                            item.def_id,
+                            self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
                             sugg_span,
                             idx,
                             self.tcx.sess.source_map(),
@@ -1208,7 +1208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             path,
                             rcvr_ty,
                             item.kind,
-                            item.def_id,
+                            self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
                             sugg_span,
                             idx,
                             self.tcx.sess.source_map(),
@@ -2853,7 +2853,7 @@ fn print_disambiguation_help<'tcx>(
     trait_name: String,
     rcvr_ty: Ty<'_>,
     kind: ty::AssocKind,
-    def_id: DefId,
+    def_kind_descr: &'static str,
     span: Span,
     candidate: Option<usize>,
     source_map: &source_map::SourceMap,
@@ -2886,7 +2886,7 @@ fn print_disambiguation_help<'tcx>(
         span,
         &format!(
             "disambiguate the {} for {}",
-            kind.as_def_kind().descr(def_id),
+            def_kind_descr,
             if let Some(candidate) = candidate {
                 format!("candidate #{}", candidate)
             } else {

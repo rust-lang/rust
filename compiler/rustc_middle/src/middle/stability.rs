@@ -255,7 +255,7 @@ fn late_report_deprecation(
     let method_span = method_span.unwrap_or(span);
     tcx.struct_span_lint_hir(lint, hir_id, method_span, message, |diag| {
         if let hir::Node::Expr(_) = tcx.hir().get(hir_id) {
-            let kind = tcx.def_kind(def_id).descr(def_id);
+            let kind = tcx.def_descr(def_id);
             deprecation_suggestion(diag, kind, suggestion, method_span);
         }
         diag
@@ -392,7 +392,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     let lint = deprecation_lint(is_in_effect);
                     if self.lint_level_at_node(lint, id).0 != Level::Allow {
                         let def_path = with_no_trimmed_paths!(self.def_path_str(def_id));
-                        let def_kind = self.def_kind(def_id).descr(def_id);
+                        let def_kind = self.def_descr(def_id);
 
                         late_report_deprecation(
                             self,

@@ -79,38 +79,38 @@ LL |     r.unstable_undeclared();
    = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
-error[E0624]: associated function `pub_crate` is private
+error[E0624]: method `pub_crate` is private
   --> $DIR/explore-issue-38412.rs:48:7
    |
 LL |     r.pub_crate();
-   |       ^^^^^^^^^ private associated function
+   |       ^^^^^^^^^ private method
    |
   ::: $DIR/auxiliary/pub-and-stability.rs:114:9
    |
 LL |         pub(crate) fn pub_crate(&self) -> i32 { self.d_priv }
-   |         ------------------------------------- private associated function defined here
+   |         ------------------------------------- private method defined here
 
-error[E0624]: associated function `pub_mod` is private
+error[E0624]: method `pub_mod` is private
   --> $DIR/explore-issue-38412.rs:49:7
    |
 LL |     r.pub_mod();
-   |       ^^^^^^^ private associated function
+   |       ^^^^^^^ private method
    |
   ::: $DIR/auxiliary/pub-and-stability.rs:116:9
    |
 LL |         pub(in m) fn pub_mod(&self) -> i32 { self.d_priv }
-   |         ---------------------------------- private associated function defined here
+   |         ---------------------------------- private method defined here
 
-error[E0624]: associated function `private` is private
+error[E0624]: method `private` is private
   --> $DIR/explore-issue-38412.rs:50:7
    |
 LL |     r.private();
-   |       ^^^^^^^ private associated function
+   |       ^^^^^^^ private method
    |
   ::: $DIR/auxiliary/pub-and-stability.rs:118:9
    |
 LL |         fn private(&self) -> i32 { self.d_priv }
-   |         ------------------------ private associated function defined here
+   |         ------------------------ private method defined here
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
   --> $DIR/explore-issue-38412.rs:55:7
@@ -130,38 +130,38 @@ LL |     t.unstable_undeclared();
    = note: see issue #38412 <https://github.com/rust-lang/rust/issues/38412> for more information
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
-error[E0624]: associated function `pub_crate` is private
+error[E0624]: method `pub_crate` is private
   --> $DIR/explore-issue-38412.rs:61:7
    |
 LL |     t.pub_crate();
-   |       ^^^^^^^^^ private associated function
+   |       ^^^^^^^^^ private method
    |
   ::: $DIR/auxiliary/pub-and-stability.rs:129:9
    |
 LL |         pub(crate) fn pub_crate(&self) -> i32 { self.0 }
-   |         ------------------------------------- private associated function defined here
+   |         ------------------------------------- private method defined here
 
-error[E0624]: associated function `pub_mod` is private
+error[E0624]: method `pub_mod` is private
   --> $DIR/explore-issue-38412.rs:62:7
    |
 LL |     t.pub_mod();
-   |       ^^^^^^^ private associated function
+   |       ^^^^^^^ private method
    |
   ::: $DIR/auxiliary/pub-and-stability.rs:130:9
    |
 LL |         pub(in m) fn pub_mod(&self) -> i32 { self.0 }
-   |         ---------------------------------- private associated function defined here
+   |         ---------------------------------- private method defined here
 
-error[E0624]: associated function `private` is private
+error[E0624]: method `private` is private
   --> $DIR/explore-issue-38412.rs:63:7
    |
 LL |     t.private();
-   |       ^^^^^^^ private associated function
+   |       ^^^^^^^ private method
    |
   ::: $DIR/auxiliary/pub-and-stability.rs:131:9
    |
 LL |         fn private(&self) -> i32 { self.0 }
-   |         ------------------------ private associated function defined here
+   |         ------------------------ private method defined here
 
 error: aborting due to 19 previous errors
 

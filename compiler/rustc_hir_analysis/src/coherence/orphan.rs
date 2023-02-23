@@ -532,7 +532,7 @@ fn lint_auto_trait_impl<'tcx>(
         }),
         |lint| {
             let item_span = tcx.def_span(self_type_did);
-            let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
+            let self_descr = tcx.def_descr(self_type_did);
             match arg {
                 ty::util::NotUniqueParam::DuplicateParam(arg) => {
                     lint.note(&format!("`{}` is mentioned multiple times", arg));

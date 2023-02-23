@@ -1461,7 +1461,7 @@ fn opaque_type_cycle_error(
                                     span,
                                     format!(
                                         "{} captures itself here",
-                                        tcx.def_kind(closure_def_id).descr(closure_def_id)
+                                        tcx.def_descr(closure_def_id)
                                     ),
                                 );
                             }

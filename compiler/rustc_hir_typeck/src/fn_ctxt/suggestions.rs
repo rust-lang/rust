@@ -121,7 +121,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 DefIdOrName::DefId(def_id) => match self.tcx.def_kind(def_id) {
                     DefKind::Ctor(CtorOf::Struct, _) => "construct this tuple struct".to_string(),
                     DefKind::Ctor(CtorOf::Variant, _) => "construct this tuple variant".to_string(),
-                    kind => format!("call this {}", kind.descr(def_id)),
+                    kind => format!("call this {}", self.tcx.def_kind_descr(kind, def_id)),
                 },
                 DefIdOrName::Name(name) => format!("call this {name}"),
             };
@@ -340,7 +340,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     CtorOf::Variant => "an enum variant",
                 }));
             } else {
-                let descr = kind.descr(def_id);
+                let descr = self.tcx.def_kind_descr(kind, def_id);
                 err.span_label(sp, format!("{descr} `{name}` defined here"));
             }
             return true;

@@ -12,7 +12,7 @@ impl StructA {
     async fn foo(&self) {
         let bar = self.b.bar().await;
         spawn_blocking(move || {
-            //~^ ERROR borrowed data escapes outside of associated function
+            //~^ ERROR borrowed data escapes outside of method
             self.b;
             //~^ ERROR cannot move out of `self.b`, as `self` is a captured variable in an `Fn` closure
         })

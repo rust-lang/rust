@@ -69,7 +69,7 @@ fn check_method() {
     S.c(); // OK
     // a, b, c are resolved as inherent items, their traits don't need to be in scope
     let c = &S as &dyn C;
-    c.a(); //~ ERROR associated function `a` is private
+    c.a(); //~ ERROR method `a` is private
     c.b(); // OK
     c.c(); // OK
 
@@ -81,7 +81,7 @@ fn check_method() {
     //~^ ERROR no function or associated item named `b` found
     S::c(&S); // OK
     // a, b, c are resolved as inherent items, their traits don't need to be in scope
-    <dyn C>::a(&S); //~ ERROR associated function `a` is private
+    <dyn C>::a(&S); //~ ERROR method `a` is private
     <dyn C>::b(&S); // OK
     C::c(&S); // OK
 }

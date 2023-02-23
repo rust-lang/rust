@@ -671,7 +671,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && !self.type_is_sized_modulo_regions(self.param_env, output_ty, callee_expr.span)
             {
                 let descr = match maybe_def {
-                    DefIdOrName::DefId(def_id) => self.tcx.def_kind(def_id).descr(def_id),
+                    DefIdOrName::DefId(def_id) => self.tcx.def_descr(def_id),
                     DefIdOrName::Name(name) => name,
                 };
                 err.span_label(

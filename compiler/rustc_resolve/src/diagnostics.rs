@@ -189,7 +189,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let container = match parent.kind {
-            ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id()),
+            ModuleKind::Def(kind, _, _) => self.tcx.def_kind_descr(kind, parent.def_id()),
             ModuleKind::Block => "block",
         };
 
@@ -1804,7 +1804,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         found("module")
                     } else {
                         match binding.res() {
-                            Res::Def(kind, id) => found(kind.descr(id)),
+                            Res::Def(kind, id) => found(self.tcx.def_kind_descr(kind, id)),
                             _ => found(ns_to_try.descr()),
                         }
                     }

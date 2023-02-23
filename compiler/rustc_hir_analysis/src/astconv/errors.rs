@@ -304,10 +304,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             if let Some(did) = adt_did {
                 err.span_label(
                     tcx.def_span(did),
-                    format!(
-                        "associated item `{name}` not found for this {}",
-                        tcx.def_kind(did).descr(did)
-                    ),
+                    format!("associated item `{name}` not found for this {}", tcx.def_descr(did)),
                 );
             }
         };

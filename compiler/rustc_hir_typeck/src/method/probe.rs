@@ -1366,8 +1366,8 @@ impl<'tcx> Pick<'tcx> {
             span,
             format!(
                 "{} {} with this name may be added to the standard library in the future",
-                def_kind.article(),
-                def_kind.descr(self.item.def_id),
+                tcx.def_kind_descr_article(def_kind, self.item.def_id),
+                tcx.def_kind_descr(def_kind, self.item.def_id),
             ),
             |lint| {
                 match (self.item.kind, self.item.container) {

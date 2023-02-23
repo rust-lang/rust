@@ -7,7 +7,7 @@ LL | |
 LL | |     });
    | |______- an argument is missing
    |
-note: associated function defined here
+note: method defined here
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 help: provide the argument
    |

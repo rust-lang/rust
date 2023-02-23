@@ -1336,7 +1336,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                     hir::QPath::Resolved(_, path) => Some(self.tcx.def_path_str(path.res.def_id())),
                     hir::QPath::TypeRelative(_, segment) => Some(segment.ident.to_string()),
                 };
-                let kind = kind.descr(def_id);
+                let kind = self.tcx.def_descr(def_id);
                 let sess = self.tcx.sess;
                 let _ = match name {
                     Some(name) => {
