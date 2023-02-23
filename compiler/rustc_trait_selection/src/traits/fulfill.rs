@@ -521,7 +521,11 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     && tcx.def_kind(a.def.did) == DefKind::AssocConst =>
                             {
                                 if let Ok(new_obligations) = infcx
-                                    .at(&obligation.cause, obligation.param_env)
+                                    .at(
+                                        &obligation.cause,
+                                        obligation.param_env,
+                                        DefiningAnchor::Error,
+                                    )
                                     .trace(c1, c2)
                                     .eq(a.substs, b.substs)
                                 {
@@ -532,8 +536,13 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             }
                             (_, Unevaluated(_)) | (Unevaluated(_), _) => (),
                             (_, _) => {
-                                if let Ok(new_obligations) =
-                                    infcx.at(&obligation.cause, obligation.param_env).eq(c1, c2)
+                                if let Ok(new_obligations) = infcx
+                                    .at(
+                                        &obligation.cause,
+                                        obligation.param_env,
+                                        DefiningAnchor::Error,
+                                    )
+                                    .eq(c1, c2)
                                 {
                                     return ProcessResult::Changed(mk_pending(
                                         new_obligations.into_obligations(),
@@ -576,7 +585,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             match self
                                 .selcx
                                 .infcx
-                                .at(&obligation.cause, obligation.param_env)
+                                .at(&obligation.cause, obligation.param_env, DefiningAnchor::Error)
                                 .eq(c1, c2)
                             {
                                 Ok(inf_ok) => {
@@ -621,7 +630,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     match self
                         .selcx
                         .infcx
-                        .at(&obligation.cause, obligation.param_env)
+                        .at(&obligation.cause, obligation.param_env, DefiningAnchor::Error)
                         .eq(ct.ty(), ty)
                     {
                         Ok(inf_ok) => ProcessResult::Changed(mk_pending(inf_ok.into_obligations())),

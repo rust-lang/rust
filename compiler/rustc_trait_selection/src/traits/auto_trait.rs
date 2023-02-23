@@ -814,7 +814,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
-                            match selcx.infcx.at(&obligation.cause, obligation.param_env).eq(c1, c2)
+                            match selcx.infcx.at(&obligation.cause, obligation.param_env, DefiningAnchor::Error).eq(c1, c2)
                             {
                                 Ok(_) => (),
                                 Err(_) => return false,

@@ -130,7 +130,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         rhs: T,
     ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
         self.infcx
-            .at(&ObligationCause::dummy(), param_env)
+            .at(&ObligationCause::dummy(), param_env, DefiningAnchor::Error)
             .eq(lhs, rhs)
             .map(|InferOk { value: (), obligations }| {
                 obligations.into_iter().map(|o| o.into()).collect()

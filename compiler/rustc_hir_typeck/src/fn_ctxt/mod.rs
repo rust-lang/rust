@@ -147,7 +147,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn at(&'a self, cause: &'a ObligationCause<'tcx>) -> At<'a, 'tcx> {
-        self.infcx.at(cause, self.param_env)
+        self.infcx.at(cause, self.param_env, self.defining_use_anchor())
     }
 
     pub fn sess(&self) -> &Session {

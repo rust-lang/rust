@@ -9,7 +9,7 @@ use rustc_middle::ty::{GenericArg, SubstsRef};
 
 use super::NormalizeExt;
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext};
-use rustc_infer::infer::InferOk;
+use rustc_infer::infer::{DefiningAnchor, InferOk};
 pub use rustc_infer::traits::{self, util::*};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -201,13 +201,17 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
 ) -> (ImplSubject<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
     let subject = selcx.tcx().bound_impl_subject(impl_def_id);
     let subject = subject.subst(selcx.tcx(), impl_substs);
-    let InferOk { value: subject, obligations: normalization_obligations1 } =
-        selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(subject);
+    let InferOk { value: subject, obligations: normalization_obligations1 } = selcx
+        .infcx
+        .at(&ObligationCause::dummy(), param_env, DefiningAnchor::Error)
+        .normalize(subject);
 
     let predicates = selcx.tcx().predicates_of(impl_def_id);
     let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
-    let InferOk { value: predicates, obligations: normalization_obligations2 } =
-        selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(predicates);
+    let InferOk { value: predicates, obligations: normalization_obligations2 } = selcx
+        .infcx
+        .at(&ObligationCause::dummy(), param_env, DefiningAnchor::Error)
+        .normalize(predicates);
     let impl_obligations =
         super::predicates_for_generics(|_, _| ObligationCause::dummy(), param_env, predicates);
 

@@ -11,7 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
 use rustc_infer::infer::{
     type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
-    TyCtxtInferExt,
+    TyCtxtInferExt, DefiningAnchor,
 };
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
@@ -312,7 +312,7 @@ fn is_normalizable_helper<'tcx>(
     cache.insert(ty, false);
     let infcx = cx.tcx.infer_ctxt().build();
     let cause = rustc_middle::traits::ObligationCause::dummy();
-    let result = if infcx.at(&cause, param_env).query_normalize(ty).is_ok() {
+    let result = if infcx.at(&cause, param_env, DefiningAnchor::Error).query_normalize(ty).is_ok() {
         match ty.kind() {
             ty::Adt(def, substs) => def.variants().iter().all(|variant| {
                 variant

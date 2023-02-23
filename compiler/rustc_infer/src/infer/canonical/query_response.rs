@@ -515,12 +515,8 @@ impl<'tcx> InferCtxt<'tcx> {
             let a = substitute_value(self.tcx, &result_subst, a);
             let b = substitute_value(self.tcx, &result_subst, b);
             debug!(?a, ?b, "constrain opaque type");
-            obligations.extend(
-                self.at(cause, param_env)
-                    .define_opaque_types(defining_use_anchor)
-                    .eq(a, b)?
-                    .obligations,
-            );
+            obligations
+                .extend(self.at(cause, param_env, defining_use_anchor).eq(a, b)?.obligations);
         }
 
         Ok(InferOk { value: result_subst, obligations })
@@ -613,8 +609,11 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 match (value1.unpack(), value2.unpack()) {
                     (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
-                        obligations
-                            .extend(self.at(cause, param_env).eq(v1, v2)?.into_obligations());
+                        obligations.extend(
+                            self.at(cause, param_env, DefiningAnchor::Error)
+                                .eq(v1, v2)?
+                                .into_obligations(),
+                        );
                     }
                     (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
                         if re1.is_erased() && re2.is_erased() =>
@@ -622,11 +621,14 @@ impl<'tcx> InferCtxt<'tcx> {
                         // no action needed
                     }
                     (GenericArgKind::Lifetime(v1), GenericArgKind::Lifetime(v2)) => {
-                        obligations
-                            .extend(self.at(cause, param_env).eq(v1, v2)?.into_obligations());
+                        obligations.extend(
+                            self.at(cause, param_env, DefiningAnchor::Error)
+                                .eq(v1, v2)?
+                                .into_obligations(),
+                        );
                     }
                     (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
-                        let ok = self.at(cause, param_env).eq(v1, v2)?;
+                        let ok = self.at(cause, param_env, DefiningAnchor::Error).eq(v1, v2)?;
                         obligations.extend(ok.into_obligations());
                     }
                     _ => {

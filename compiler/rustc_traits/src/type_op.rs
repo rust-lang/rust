@@ -1,6 +1,6 @@
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, FnSig, Lift, PolyFnSig, Ty, TyCtxt, TypeFoldable};
@@ -164,8 +164,10 @@ where
     T: fmt::Debug + TypeFoldable<TyCtxt<'tcx>> + Lift<'tcx>,
 {
     let (param_env, Normalize { value }) = key.into_parts();
-    let Normalized { value, obligations } =
-        ocx.infcx.at(&ObligationCause::dummy(), param_env).query_normalize(value)?;
+    let Normalized { value, obligations } = ocx
+        .infcx
+        .at(&ObligationCause::dummy(), param_env, DefiningAnchor::Error)
+        .query_normalize(value)?;
     ocx.register_obligations(obligations);
     Ok(value)
 }

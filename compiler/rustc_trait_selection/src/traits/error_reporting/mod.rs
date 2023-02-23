@@ -2142,7 +2142,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .map(|ImplCandidate { trait_ref, similarity }| {
                 // FIXME(compiler-errors): This should be using `NormalizeExt::normalize`
                 let normalized = self
-                    .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+                    .at(&ObligationCause::dummy(), ty::ParamEnv::empty(), DefiningAnchor::Error)
                     .query_normalize(trait_ref)
                     .map_or(trait_ref, |normalized| normalized.value);
                 (similarity, normalized)
@@ -2706,8 +2706,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let cleaned_pred =
                 pred.fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() });
 
-            let InferOk { value: cleaned_pred, .. } =
-                self.infcx.at(&ObligationCause::dummy(), param_env).normalize(cleaned_pred);
+            let InferOk { value: cleaned_pred, .. } = self
+                .infcx
+                .at(&ObligationCause::dummy(), param_env, DefiningAnchor::Error)
+                .normalize(cleaned_pred);
 
             let obligation =
                 Obligation::new(self.tcx, ObligationCause::dummy(), param_env, cleaned_pred);

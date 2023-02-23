@@ -1211,7 +1211,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // implied by wf, but also because that would possibly result in
         // erroneous errors later on.
         let InferOk { value: output, obligations: _ } =
-            self.at(&ObligationCause::dummy(), param_env).normalize(output);
+            self.at(&ObligationCause::dummy(), param_env, DefiningAnchor::Error).normalize(output);
 
         if output.is_ty_var() { None } else { Some((def_id_or_name, output, inputs)) }
     }
@@ -3388,8 +3388,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         [trait_pred.self_ty()],
                     )
                 });
-                let InferOk { value: projection_ty, .. } =
-                    self.at(&obligation.cause, obligation.param_env).normalize(projection_ty);
+                let InferOk { value: projection_ty, .. } = self
+                    .at(&obligation.cause, obligation.param_env, DefiningAnchor::Error)
+                    .normalize(projection_ty);
 
                 debug!(
                     normalized_projection_type = ?self.resolve_vars_if_possible(projection_ty)

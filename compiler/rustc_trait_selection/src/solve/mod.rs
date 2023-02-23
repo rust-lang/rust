@@ -374,7 +374,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         } else {
             let InferOk { value: (), obligations } = self
                 .infcx
-                .at(&ObligationCause::dummy(), goal.param_env)
+                .at(&ObligationCause::dummy(), goal.param_env, DefiningAnchor::Error)
                 .sub(goal.predicate.a, goal.predicate.b)?;
             self.evaluate_all_and_make_canonical_response(
                 obligations.into_iter().map(|pred| pred.into()).collect(),

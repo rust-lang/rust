@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt};
@@ -100,7 +100,7 @@ fn dropck_outlives<'tcx>(
             // to push them onto the stack to be expanded.
             for ty in constraints.dtorck_types.drain(..) {
                 let Normalized { value: ty, obligations } =
-                    ocx.infcx.at(&cause, param_env).query_normalize(ty)?;
+                    ocx.infcx.at(&cause, param_env, DefiningAnchor::Error).query_normalize(ty)?;
                 ocx.register_obligations(obligations);
 
                 debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);

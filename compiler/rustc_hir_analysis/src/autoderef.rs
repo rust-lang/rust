@@ -143,7 +143,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
 
         let normalized_ty = self
             .infcx
-            .at(&cause, self.param_env)
+            .at(&cause, self.param_env, DefiningAnchor::Error)
             .normalize(tcx.mk_projection(tcx.lang_items().deref_target()?, trait_ref.substs));
         let mut fulfillcx = <dyn TraitEngine<'tcx>>::new_in_snapshot(tcx, self.defining_use_anchor);
         let normalized_ty =

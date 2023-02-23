@@ -289,9 +289,8 @@ fn project_and_unify_type<'cx, 'tcx>(
     obligations.extend(new);
 
     match infcx
-        .at(&obligation.cause, obligation.param_env)
-        // This is needed to support nested opaque types like `impl Fn() -> impl Trait`
-        .define_opaque_types(selcx.defining_use_anchor())
+        // This anchor is needed to support nested opaque types like `impl Fn() -> impl Trait`
+        .at(&obligation.cause, obligation.param_env, selcx.defining_use_anchor())
         .eq(normalized, actual)
     {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {
@@ -2067,7 +2066,10 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
 
     debug!(?cache_projection, ?obligation_projection);
 
-    match infcx.at(cause, param_env).eq(cache_projection, obligation_projection) {
+    match infcx
+        .at(cause, param_env, DefiningAnchor::Error)
+        .eq(cache_projection, obligation_projection)
+    {
         Ok(InferOk { value: _, obligations }) => {
             nested_obligations.extend(obligations);
             assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);

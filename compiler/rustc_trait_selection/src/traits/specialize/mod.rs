@@ -194,7 +194,7 @@ fn fulfill_implication<'tcx>(
 
     // do the impls unify? If not, no specialization.
     let Ok(InferOk { obligations: more_obligations, .. }) =
-        infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait, target_trait)
+        infcx.at(&ObligationCause::dummy(), param_env, DefiningAnchor::Error).eq(source_trait, target_trait)
     else {
         debug!(
             "fulfill_implication: {:?} does not unify with {:?}",

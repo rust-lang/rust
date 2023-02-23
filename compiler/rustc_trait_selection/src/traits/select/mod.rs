@@ -919,7 +919,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             {
                                 if let Ok(new_obligations) = self
                                     .infcx
-                                    .at(&obligation.cause, obligation.param_env)
+                                    .at(
+                                        &obligation.cause,
+                                        obligation.param_env,
+                                        DefiningAnchor::Error,
+                                    )
                                     .trace(c1, c2)
                                     .eq(a.substs, b.substs)
                                 {
@@ -938,7 +942,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             (_, _) => {
                                 if let Ok(new_obligations) = self
                                     .infcx
-                                    .at(&obligation.cause, obligation.param_env)
+                                    .at(
+                                        &obligation.cause,
+                                        obligation.param_env,
+                                        DefiningAnchor::Error,
+                                    )
                                     .eq(c1, c2)
                                 {
                                     let mut obligations = new_obligations.obligations;
@@ -973,7 +981,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
-                            match self.infcx.at(&obligation.cause, obligation.param_env).eq(c1, c2)
+                            match self
+                                .infcx
+                                .at(&obligation.cause, obligation.param_env, DefiningAnchor::Error)
+                                .eq(c1, c2)
                             {
                                 Ok(inf_ok) => self.evaluate_predicates_recursively(
                                     previous_stack,
@@ -1002,7 +1013,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
                 ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
-                    match self.infcx.at(&obligation.cause, obligation.param_env).eq(ct.ty(), ty) {
+                    match self
+                        .infcx
+                        .at(&obligation.cause, obligation.param_env, DefiningAnchor::Error)
+                        .eq(ct.ty(), ty)
+                    {
                         Ok(inf_ok) => self.evaluate_predicates_recursively(
                             previous_stack,
                             inf_ok.into_obligations(),
@@ -1759,7 +1774,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             )
         });
         self.infcx
-            .at(&obligation.cause, obligation.param_env)
+            .at(&obligation.cause, obligation.param_env, DefiningAnchor::Error)
             .sup(ty::Binder::dummy(placeholder_trait_ref), trait_bound)
             .map(|InferOk { obligations: _, value: () }| {
                 // This method is called within a probe, so we can't have
@@ -1821,7 +1836,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let is_match = self
             .infcx
-            .at(&obligation.cause, obligation.param_env)
+            .at(&obligation.cause, obligation.param_env, DefiningAnchor::Error)
             .sup(obligation.predicate, infer_projection)
             .map_or(false, |InferOk { obligations, value: () }| {
                 self.evaluate_predicates_recursively(
@@ -2514,7 +2529,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let InferOk { obligations, .. } = self
             .infcx
-            .at(&cause, obligation.param_env)
+            .at(&cause, obligation.param_env, DefiningAnchor::Error)
             .eq(placeholder_obligation_trait_ref, impl_trait_ref)
             .map_err(|e| {
                 debug!("match_impl: failed eq_trait_refs due to `{}`", e.to_string(self.tcx()))
@@ -2564,7 +2579,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, ()> {
         self.infcx
-            .at(&obligation.cause, obligation.param_env)
+            .at(&obligation.cause, obligation.param_env, DefiningAnchor::Error)
             .sup(obligation.predicate.to_poly_trait_ref(), poly_trait_ref)
             .map(|InferOk { obligations, .. }| obligations)
             .map_err(|_| ())

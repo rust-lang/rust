@@ -51,8 +51,9 @@ impl<'tcx> InferCtxt<'tcx> {
         &'a self,
         cause: &'a ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
+        define_opaque_types: impl Into<DefiningAnchor>,
     ) -> At<'a, 'tcx> {
-        At { infcx: self, cause, param_env, define_opaque_types: DefiningAnchor::Error }
+        At { infcx: self, cause, param_env, define_opaque_types: define_opaque_types.into() }
     }
 
     /// Forks the inference context, creating a new inference context with the same inference

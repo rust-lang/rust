@@ -142,7 +142,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     pub fn at(&self) -> At<'_, 'tcx> {
-        self.infcx.at(&self.cause, self.param_env)
+        self.fcx.at(&self.cause)
     }
 
     fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {

@@ -21,6 +21,7 @@ use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
 use rustc_hir::PredicateOrigin;
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
+use rustc_infer::infer::DefiningAnchor;
 use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::InternalSubsts;
@@ -1682,7 +1683,7 @@ fn normalize<'tcx>(
     // Try to normalize `<X as Y>::T` to a type
     let infcx = cx.tcx.infer_ctxt().build();
     let normalized = infcx
-        .at(&ObligationCause::dummy(), cx.param_env)
+        .at(&ObligationCause::dummy(), cx.param_env, DefiningAnchor::Error)
         .query_normalize(ty)
         .map(|resolved| infcx.resolve_vars_if_possible(resolved.value));
     match normalized {

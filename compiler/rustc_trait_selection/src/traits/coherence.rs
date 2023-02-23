@@ -127,8 +127,10 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
         predicates: tcx.predicates_of(impl_def_id).instantiate(tcx, impl_substs).predicates,
     };
 
-    let InferOk { value: mut header, obligations } =
-        selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(header);
+    let InferOk { value: mut header, obligations } = selcx
+        .infcx
+        .at(&ObligationCause::dummy(), param_env, DefiningAnchor::Error)
+        .normalize(header);
 
     header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
     header
@@ -214,7 +216,7 @@ fn equate_impl_headers<'cx, 'tcx>(
     debug!("equate_impl_headers(impl1_header={:?}, impl2_header={:?}", impl1_header, impl2_header);
     selcx
         .infcx
-        .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+        .at(&ObligationCause::dummy(), ty::ParamEnv::empty(), DefiningAnchor::Error)
         .define_opaque_types(DefiningAnchor::Bubble)
         .eq_impl_headers(impl1_header, impl2_header)
         .map(|infer_ok| infer_ok.obligations)
@@ -323,7 +325,7 @@ fn equate<'tcx>(
 ) -> bool {
     // do the impls unify? If not, not disjoint.
     let Ok(InferOk { obligations: more_obligations, .. }) =
-        infcx.at(&ObligationCause::dummy(), impl_env).eq(subject1, subject2)
+        infcx.at(&ObligationCause::dummy(), impl_env, DefiningAnchor::Error).eq(subject1, subject2)
     else {
         debug!("explicit_disjoint: {:?} does not unify with {:?}", subject1, subject2);
         return true;
