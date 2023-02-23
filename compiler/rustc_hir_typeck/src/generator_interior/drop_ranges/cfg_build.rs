@@ -230,9 +230,10 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
         let ty = self.typeck_results.expr_ty(expr);
         let ty = self.infcx.resolve_vars_if_possible(ty);
         if ty.has_non_region_infer() {
-            self.tcx()
-                .sess
-                .delay_span_bug(expr.span, format!("could not resolve infer vars in `{ty}`"));
+            self.tcx().sess.delay_bug_unless_error(
+                expr.span,
+                format!("could not resolve infer vars in `{ty}`"),
+            );
             return;
         }
         let ty = self.tcx().erase_regions(ty);

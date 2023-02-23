@@ -653,8 +653,10 @@ impl<'tcx> TyCtxt<'tcx> {
             {
                 Bound::Included(a)
             } else {
-                self.sess
-                    .delay_span_bug(attr.span, "invalid rustc_layout_scalar_valid_range attribute");
+                self.sess.delay_bug_unless_error(
+                    attr.span,
+                    "invalid rustc_layout_scalar_valid_range attribute",
+                );
                 Bound::Unbounded
             }
         };
@@ -722,17 +724,17 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty(Error(reported))
     }
 
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
+    /// Constructs a `TyKind::Error` type and registers a `delay_bug_unless_error` to ensure it gets used.
     #[track_caller]
     pub fn ty_error_misc(self) -> Ty<'tcx> {
         self.ty_error_with_message(DUMMY_SP, "TyKind::Error constructed but no error reported")
     }
 
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg` to
+    /// Constructs a `TyKind::Error` type and registers a `delay_bug_unless_error` with the given `msg` to
     /// ensure it gets used.
     #[track_caller]
     pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {
-        let reported = self.sess.delay_span_bug(span, msg);
+        let reported = self.sess.delay_bug_unless_error(span, msg);
         self.mk_ty(Error(reported))
     }
 
@@ -742,7 +744,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.intern_region(ty::ReError(reported))
     }
 
-    /// Constructs a `RegionKind::ReError` lifetime and registers a `delay_span_bug` to ensure it
+    /// Constructs a `RegionKind::ReError` lifetime and registers a `delay_bug_unless_error` to ensure it
     /// gets used.
     #[track_caller]
     pub fn mk_re_error_misc(self) -> Region<'tcx> {
@@ -752,11 +754,11 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    /// Constructs a `RegionKind::ReError` lifetime and registers a `delay_span_bug` with the given
+    /// Constructs a `RegionKind::ReError` lifetime and registers a `delay_bug_unless_error` with the given
     /// `msg` to ensure it gets used.
     #[track_caller]
     pub fn mk_re_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Region<'tcx> {
-        let reported = self.sess.delay_span_bug(span, msg);
+        let reported = self.sess.delay_bug_unless_error(span, msg);
         self.mk_re_error(reported)
     }
 
@@ -788,7 +790,7 @@ impl<'tcx> TyCtxt<'tcx> {
         span: S,
         msg: &str,
     ) -> Const<'tcx> {
-        let reported = self.sess.delay_span_bug(span, msg);
+        let reported = self.sess.delay_bug_unless_error(span, msg);
         self.mk_const(ty::ConstKind::Error(reported), ty)
     }
 
@@ -2456,13 +2458,13 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
+    /// Constructs a `TyKind::Error` type and registers a `delay_bug_unless_error` to ensure it gets used.
     #[track_caller]
     pub fn ty_error_misc(self) -> Ty<'tcx> {
         self.tcx.ty_error_with_message(self.span, "TyKind::Error constructed but no error reported")
     }
 
-    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg to
+    /// Constructs a `TyKind::Error` type and registers a `delay_bug_unless_error` with the given `msg to
     /// ensure it gets used.
     #[track_caller]
     pub fn ty_error_with_message(self, msg: &str) -> Ty<'tcx> {

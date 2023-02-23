@@ -122,7 +122,7 @@ impl<'tcx> Const<'tcx> {
             match tcx.at(expr.span).lit_to_const(lit_input) {
                 Ok(c) => return Some(c),
                 Err(e) => {
-                    tcx.sess.delay_span_bug(
+                    tcx.sess.delay_bug_unless_error(
                         expr.span,
                         &format!("Const::from_anon_const: couldn't lit_to_const {:?}", e),
                     );

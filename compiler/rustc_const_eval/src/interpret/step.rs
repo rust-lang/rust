@@ -285,7 +285,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let layout = self.layout_of(ty)?;
                 if layout.is_unsized() {
                     // FIXME: This should be a span_bug (#80742)
-                    self.tcx.sess.delay_span_bug(
+                    self.tcx.sess.delay_bug_unless_error(
                         self.frame().current_span(),
                         &format!("Nullary MIR operator called for unsized type {}", ty),
                     );

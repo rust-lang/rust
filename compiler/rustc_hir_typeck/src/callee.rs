@@ -249,7 +249,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) {
                 // Check for `self` receiver on the method, otherwise we can't use this as a `Fn*` trait.
                 if !self.tcx.associated_item(ok.value.def_id).fn_has_self_parameter {
-                    self.tcx.sess.delay_span_bug(
+                    self.tcx.sess.delay_bug_unless_error(
                         call_expr.span,
                         "input to overloaded call fn is not a self receiver",
                     );
@@ -266,7 +266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // caused an error elsewhere.
                         self.tcx
                             .sess
-                            .delay_span_bug(call_expr.span, "input to call/call_mut is not a ref");
+                            .delay_bug_unless_error(call_expr.span, "input to call/call_mut is not a ref");
                         return None;
                     };
 

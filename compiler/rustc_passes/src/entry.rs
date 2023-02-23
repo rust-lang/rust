@@ -189,7 +189,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) {
     if *tcx.sess.parse_sess.reached_eof.borrow() {
         // There's an unclosed brace that made the parser reach `Eof`, we shouldn't complain about
         // the missing `fn main()` then as it might have been hidden inside an unclosed block.
-        tcx.sess.delay_span_bug(sp, "`main` not found, but expected unclosed brace error");
+        tcx.sess.delay_bug_unless_error(sp, "`main` not found, but expected unclosed brace error");
         return;
     }
 

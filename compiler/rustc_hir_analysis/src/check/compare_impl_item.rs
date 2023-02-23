@@ -369,9 +369,10 @@ fn compare_method_predicate_entailment<'tcx>(
                 if infcx.tainted_by_errors().is_none() {
                     infcx.err_ctxt().report_region_errors(impl_m_def_id, &errors);
                 }
-                return Err(tcx
-                    .sess
-                    .delay_span_bug(rustc_span::DUMMY_SP, "error should have been emitted"));
+                return Err(tcx.sess.delay_bug_unless_error(
+                    rustc_span::DUMMY_SP,
+                    "error should have been emitted",
+                ));
             }
         }
     }
@@ -786,7 +787,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 collected_tys.insert(def_id, ty);
             }
             Err(err) => {
-                let reported = tcx.sess.delay_span_bug(
+                let reported = tcx.sess.delay_bug_unless_error(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );

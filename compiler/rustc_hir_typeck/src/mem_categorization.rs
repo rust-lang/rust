@@ -547,7 +547,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let ty::Adt(adt_def, _) = ty.kind() else {
             self.tcx()
                 .sess
-                .delay_span_bug(span, "struct or tuple struct pattern not applied to an ADT");
+                .delay_bug_unless_error(span, "struct or tuple struct pattern not applied to an ADT");
             return Err(());
         };
 
@@ -580,9 +580,10 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         match ty.kind() {
             ty::Adt(adt_def, _) => Ok(adt_def.variant(variant_index).fields.len()),
             _ => {
-                self.tcx()
-                    .sess
-                    .delay_span_bug(span, "struct or tuple struct pattern not applied to an ADT");
+                self.tcx().sess.delay_bug_unless_error(
+                    span,
+                    "struct or tuple struct pattern not applied to an ADT",
+                );
                 Err(())
             }
         }
@@ -595,7 +596,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         match ty.kind() {
             ty::Tuple(substs) => Ok(substs.len()),
             _ => {
-                self.tcx().sess.delay_span_bug(span, "tuple pattern not applied to a tuple");
+                self.tcx()
+                    .sess
+                    .delay_bug_unless_error(span, "tuple pattern not applied to a tuple");
                 Err(())
             }
         }

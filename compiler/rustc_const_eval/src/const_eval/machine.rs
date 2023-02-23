@@ -378,7 +378,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 if ecx.tcx.is_ctfe_mir_available(def.did) {
                     Ok(ecx.tcx.mir_for_ctfe_opt_const_arg(def))
                 } else if ecx.tcx.def_kind(def.did) == DefKind::AssocConst {
-                    let guar = ecx.tcx.sess.delay_span_bug(
+                    let guar = ecx.tcx.sess.delay_bug_unless_error(
                         rustc_span::DUMMY_SP,
                         "This is likely a const item that is missing from its impl",
                     );

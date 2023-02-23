@@ -59,7 +59,7 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
         let result = match result {
             Ok(r) => r,
             Err(NoSolution) => {
-                self.tcx.sess.delay_span_bug(
+                self.tcx.sess.delay_bug_unless_error(
                     span,
                     "implied_outlives_bounds failed to solve all obligations",
                 );
@@ -88,7 +88,7 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
                 span_bug!(span, "{:#?}", constraints.member_constraints);
             }
             if !errors.is_empty() {
-                self.tcx.sess.delay_span_bug(
+                self.tcx.sess.delay_bug_unless_error(
                     span,
                     "implied_outlives_bounds failed to solve obligations from instantiation",
                 );

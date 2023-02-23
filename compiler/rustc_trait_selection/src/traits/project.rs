@@ -1730,7 +1730,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
             | super::ImplSource::TraitUpcasting(_)
             | super::ImplSource::ConstDestruct(_) => {
                 // These traits have no associated types.
-                selcx.tcx().sess.delay_span_bug(
+                selcx.tcx().sess.delay_bug_unless_error(
                     obligation.cause.span,
                     &format!("Cannot project an associated type from `{:?}`", impl_source),
                 );

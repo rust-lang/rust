@@ -130,7 +130,7 @@ where
                         let interior_tys = match witness.kind() {
                             &ty::GeneratorWitness(tys) => tcx.erase_late_bound_regions(tys),
                             _ => {
-                                tcx.sess.delay_span_bug(
+                                tcx.sess.delay_bug_unless_error(
                                     tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP),
                                     &format!("unexpected generator witness type {:?}", witness),
                                 );

@@ -56,7 +56,7 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
     let result = pcx.lower_pattern(pat);
     if !pcx.errors.is_empty() {
         let msg = format!("encountered errors lowering pattern: {:?}", pcx.errors);
-        tcx.sess.delay_span_bug(pat.span, &msg);
+        tcx.sess.delay_bug_unless_error(pat.span, &msg);
     }
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
     result
@@ -259,7 +259,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                             "found bad range pattern `{:?}` outside of error recovery",
                             (&lo, &hi),
                         );
-                        self.tcx.sess.delay_span_bug(pat.span, msg);
+                        self.tcx.sess.delay_bug_unless_error(pat.span, msg);
                         PatKind::Wild
                     }
                 };

@@ -188,7 +188,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(e) => e,
         };
 
-        self.set_tainted_by_errors(self.tcx.sess.delay_span_bug(
+        self.set_tainted_by_errors(self.tcx.sess.delay_bug_unless_error(
             expr.span,
             "`TypeError` when attempting coercion but no error emitted",
         ));

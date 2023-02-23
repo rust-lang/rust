@@ -173,7 +173,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             };
 
             if !assoc_def.item.defaultness(tcx).has_value() {
-                tcx.sess.delay_span_bug(
+                tcx.sess.delay_bug_unless_error(
                     tcx.def_span(assoc_def.item.def_id),
                     "missing value for assoc item in impl",
                 );

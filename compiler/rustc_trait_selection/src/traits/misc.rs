@@ -88,7 +88,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
             let ty = ocx.normalize(&normalization_cause, param_env, unnormalized_ty);
             let normalization_errors = ocx.select_where_possible();
             if !normalization_errors.is_empty() {
-                tcx.sess.delay_span_bug(field_span, format!("couldn't normalize struct field `{unnormalized_ty}` when checking Copy implementation"));
+                tcx.sess.delay_bug_unless_error(field_span, format!("couldn't normalize struct field `{unnormalized_ty}` when checking Copy implementation"));
                 continue;
             }
 

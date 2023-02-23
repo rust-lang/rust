@@ -155,7 +155,10 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                 return false;
             } else if field_ty.needs_drop(tcx, param_env) {
                 // This should never happen. But we can get here e.g. in case of name resolution errors.
-                tcx.sess.delay_span_bug(span, "we should never accept maybe-dropping union fields");
+                tcx.sess.delay_bug_unless_error(
+                    span,
+                    "we should never accept maybe-dropping union fields",
+                );
             }
         }
     } else {
@@ -187,7 +190,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
         // Generic statics are rejected, but we still reach this case.
         Err(e) => {
-            tcx.sess.delay_span_bug(span, &e.to_string());
+            tcx.sess.delay_bug_unless_error(span, &e.to_string());
             return;
         }
     };
@@ -210,7 +213,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
     let item = tcx.hir().item(id);
     let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) = item.kind else {
-        tcx.sess.delay_span_bug(item.span, "expected opaque item");
+        tcx.sess.delay_bug_unless_error(item.span, "expected opaque item");
         return;
     };
 
@@ -438,7 +441,7 @@ fn check_opaque_meets_bounds<'tcx>(
         Ok(()) => {}
         Err(ty_err) => {
             let ty_err = ty_err.to_string(tcx);
-            tcx.sess.delay_span_bug(
+            tcx.sess.delay_bug_unless_error(
                 span,
                 &format!("could not unify `{hidden_ty}` with revealed type:\n{ty_err}"),
             );
@@ -757,7 +760,10 @@ fn check_impl_items_against_trait<'tcx>(
             tcx.associated_item(trait_item_id)
         } else {
             // Checked in `associated_item`.
-            tcx.sess.delay_span_bug(tcx.def_span(impl_item), "missing associated item in trait");
+            tcx.sess.delay_bug_unless_error(
+                tcx.def_span(impl_item),
+                "missing associated item in trait",
+            );
             continue;
         };
         match ty_impl_item.kind {

@@ -41,7 +41,7 @@ impl AttrWrapper {
     }
 
     pub(crate) fn take_for_recovery(self, sess: &ParseSess) -> AttrVec {
-        sess.span_diagnostic.delay_span_bug(
+        sess.span_diagnostic.delay_bug_unless_error(
             self.attrs.get(0).map(|attr| attr.span).unwrap_or(DUMMY_SP),
             "AttrVec is taken for recovery but no error is produced",
         );
@@ -269,7 +269,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.sess
                     .span_diagnostic
-                    .delay_span_bug(inner_attr.span, "Missing token range for attribute");
+                    .delay_bug_unless_error(inner_attr.span, "Missing token range for attribute");
             }
         }
 

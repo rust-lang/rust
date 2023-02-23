@@ -1404,7 +1404,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             TyKind::MacCall(_) => panic!("`TyKind::MacCall` should have been expanded by now"),
             TyKind::CVarArgs => {
-                self.tcx.sess.delay_span_bug(
+                self.tcx.sess.delay_bug_unless_error(
                     t.span,
                     "`TyKind::CVarArgs` should have been handled elsewhere",
                 );

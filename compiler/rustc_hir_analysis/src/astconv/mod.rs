@@ -1577,9 +1577,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     false
                 });
                 if references_self {
-                    let guar = tcx
-                        .sess
-                        .delay_span_bug(span, "trait object projection bounds reference `Self`");
+                    let guar = tcx.sess.delay_bug_unless_error(
+                        span,
+                        "trait object projection bounds reference `Self`",
+                    );
                     let substs: Vec<_> = b
                         .projection_ty
                         .substs
@@ -2064,7 +2065,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // trait reference.
                 let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
                     // A cycle error occurred, most likely.
-                    let guar = tcx.sess.delay_span_bug(span, "expected cycle error");
+                    let guar = tcx.sess.delay_bug_unless_error(span, "expected cycle error");
                     return Err(guar);
                 };
 
@@ -2982,7 +2983,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let e = self
                     .tcx()
                     .sess
-                    .delay_span_bug(path.span, "path with `Res::Err` but no error emitted");
+                    .delay_bug_unless_error(path.span, "path with `Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
                 self.tcx().ty_error(e)
             }

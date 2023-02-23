@@ -742,9 +742,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Op::Unary(..) => 0,
             },
         ) {
-            self.tcx
-                .sess
-                .delay_span_bug(span, "operator didn't have the right number of generic args");
+            self.tcx.sess.delay_bug_unless_error(
+                span,
+                "operator didn't have the right number of generic args",
+            );
             return Err(vec![]);
         }
 

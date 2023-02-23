@@ -203,7 +203,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         // since it is essentially doing `Drop::drop(&mut x); x = new_value;`.
         let ty = self.tcx.erase_regions(assignee_place.place.base_ty);
         if ty.needs_infer() {
-            self.tcx.sess.delay_span_bug(
+            self.tcx.sess.delay_bug_unless_error(
                 self.tcx.hir().span(assignee_place.hir_id),
                 &format!("inference variables in {ty}"),
             );

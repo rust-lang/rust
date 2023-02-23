@@ -856,7 +856,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         // Errors in earlier passes can yield error variables without
         // resolution errors here; delay ICE in favor of those errors.
-        self.tcx().sess.delay_span_bug(
+        self.tcx().sess.delay_bug_unless_error(
             self.var_infos[node_idx].origin.span(),
             &format!(
                 "collect_error_for_expanding_node() could not find \

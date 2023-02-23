@@ -81,7 +81,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // coercions from ! to `expected`.
         if ty.is_never() {
             if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
-                let reported = self.tcx().sess.delay_span_bug(
+                let reported = self.tcx().sess.delay_bug_unless_error(
                     expr.span,
                     "expression with never type wound up being adjusted",
                 );
@@ -528,8 +528,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = match res {
             Res::Err => {
                 self.suggest_assoc_method_call(segs);
-                let e =
-                    self.tcx.sess.delay_span_bug(qpath.span(), "`Res::Err` but no error emitted");
+                let e = self
+                    .tcx
+                    .sess
+                    .delay_bug_unless_error(qpath.span(), "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
                 tcx.ty_error(e)
             }
@@ -1211,7 +1213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // permit break with a value [1].
         if ctxt.coerce.is_none() && !ctxt.may_break {
             // [1]
-            self.tcx.sess.delay_span_bug(body.span, "no coercion, but loop may not break");
+            self.tcx.sess.delay_bug_unless_error(body.span, "no coercion, but loop may not break");
         }
         ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| self.tcx.mk_unit())
     }
@@ -2002,7 +2004,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let guar = self
                 .tcx
                 .sess
-                .delay_span_bug(expr_span, "parser recovered but no error was emitted");
+                .delay_bug_unless_error(expr_span, "parser recovered but no error was emitted");
             self.set_tainted_by_errors(guar);
             return guar;
         }
@@ -2270,7 +2272,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let guar = if field.name == kw::Empty {
-            self.tcx.sess.delay_span_bug(field.span, "field name with no name")
+            self.tcx.sess.delay_bug_unless_error(field.span, "field name with no name")
         } else if self.method_exists(
             field,
             base_ty,

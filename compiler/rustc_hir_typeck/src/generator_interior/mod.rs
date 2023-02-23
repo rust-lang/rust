@@ -112,7 +112,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                     self.fcx
                         .tcx
                         .sess
-                        .delay_span_bug(span, &format!("Encountered var {:?}", unresolved_term));
+                        .delay_bug_unless_error(span, &format!("Encountered var {:?}", unresolved_term));
                 } else {
                     let note = format!(
                         "the type is part of the {} because of this {}",
@@ -466,7 +466,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                     self.fcx
                         .tcx
                         .sess
-                        .delay_span_bug(expr.span, &format!("inference variables in {ty}"));
+                        .delay_bug_unless_error(expr.span, &format!("inference variables in {ty}"));
                     true
                 } else {
                     ty.needs_drop(self.fcx.tcx, self.fcx.param_env)
@@ -523,7 +523,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         if let Some(ty) = self.fcx.typeck_results.borrow().expr_ty_opt(expr) {
             self.record(ty, expr.hir_id, scope, Some(expr), expr.span);
         } else {
-            self.fcx.tcx.sess.delay_span_bug(expr.span, "no type for node");
+            self.fcx.tcx.sess.delay_bug_unless_error(expr.span, "no type for node");
         }
     }
 }

@@ -169,7 +169,9 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
                 bug!("unexpected type during structural-match checking: {:?}", ty);
             }
             ty::Error(_) => {
-                self.tcx.sess.delay_span_bug(self.span, "ty::Error in structural-match check");
+                self.tcx
+                    .sess
+                    .delay_bug_unless_error(self.span, "ty::Error in structural-match check");
                 // We still want to check other types after encountering an error,
                 // as this may still emit relevant errors.
                 return ControlFlow::Continue(());

@@ -88,7 +88,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 (generics, arg_index)
             } else {
                 // I dont think it's possible to reach this but I'm not 100% sure - BoxyUwU
-                tcx.sess.delay_span_bug(
+                tcx.sess.delay_bug_unless_error(
                     tcx.def_span(def_id),
                     "unexpected non-GAT usage of an anon const",
                 );
@@ -142,7 +142,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     if let Some(path) = get_path_containing_arg_in_pat(pat, hir_id) {
                         path
                     } else {
-                        tcx.sess.delay_span_bug(
+                        tcx.sess.delay_bug_unless_error(
                             tcx.def_span(def_id),
                             &format!("unable to find const parent for {} in pat {:?}", hir_id, pat),
                         );
@@ -150,7 +150,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     }
                 }
                 _ => {
-                    tcx.sess.delay_span_bug(
+                    tcx.sess.delay_bug_unless_error(
                         tcx.def_span(def_id),
                         &format!("unexpected const parent path {:?}", parent_node),
                     );
@@ -173,7 +173,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     .position(|ct| ct.hir_id == hir_id)
                     .map(|idx| (idx, seg)))
             }) else {
-                tcx.sess.delay_span_bug(
+                tcx.sess.delay_bug_unless_error(
                     tcx.def_span(def_id),
                     "no arg matching AnonConst in path",
                 );
@@ -183,7 +183,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             let generics = match tcx.res_generics_def_id(segment.res) {
                 Some(def_id) => tcx.generics_of(def_id),
                 None => {
-                    tcx.sess.delay_span_bug(
+                    tcx.sess.delay_bug_unless_error(
                         tcx.def_span(def_id),
                         &format!("unexpected anon const res {:?} in path: {:?}", segment.res, path),
                     );

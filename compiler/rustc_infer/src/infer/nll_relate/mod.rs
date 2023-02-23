@@ -572,7 +572,7 @@ where
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
             ) if a_def_id == b_def_id => infcx.super_combine_tys(self, a, b).or_else(|err| {
-                self.tcx().sess.delay_span_bug(
+                self.tcx().sess.delay_bug_unless_error(
                     self.delegate.span(),
                     "failure to relate an opaque to itself should result in an error later on",
                 );
@@ -635,7 +635,7 @@ where
         match b.kind() {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 // Forbid inference variables in the RHS.
-                self.infcx.tcx.sess.delay_span_bug(
+                self.infcx.tcx.sess.delay_bug_unless_error(
                     self.delegate.span(),
                     format!("unexpected inference var {:?}", b,),
                 );

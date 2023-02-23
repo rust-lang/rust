@@ -85,7 +85,7 @@ fn univariant_uninterned<'tcx>(
     let dl = cx.data_layout();
     let pack = repr.pack;
     if pack.is_some() && repr.align.is_some() {
-        cx.tcx.sess.delay_span_bug(DUMMY_SP, "struct cannot be packed and aligned");
+        cx.tcx.sess.delay_bug_unless_error(DUMMY_SP, "struct cannot be packed and aligned");
         return Err(LayoutError::Unknown(ty));
     }
 
@@ -294,7 +294,7 @@ fn layout_of_uncached<'tcx>(
         ty::Adt(def, substs) if def.repr().simd() => {
             if !def.is_struct() {
                 // Should have yielded E0517 by now.
-                tcx.sess.delay_span_bug(
+                tcx.sess.delay_bug_unless_error(
                     DUMMY_SP,
                     "#[repr(simd)] was applied to an ADT that is not a struct",
                 );
@@ -420,7 +420,7 @@ fn layout_of_uncached<'tcx>(
 
             if def.is_union() {
                 if def.repr().pack.is_some() && def.repr().align.is_some() {
-                    cx.tcx.sess.delay_span_bug(
+                    cx.tcx.sess.delay_bug_unless_error(
                         tcx.def_span(def.did()),
                         "union cannot be packed and aligned",
                     );

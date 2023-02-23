@@ -220,8 +220,8 @@ impl<'a> Parser<'a> {
                 // emit again.
 
                 // FIXME(#100717): pass `TopLevelOrPatternNotAllowed::* { sub: None }` to
-                // `delay_span_bug()` instead of fluent message
-                self.sess.span_diagnostic.delay_span_bug(
+                // `delay_bug_unless_error()` instead of fluent message
+                self.sess.span_diagnostic.delay_bug_unless_error(
                     span,
                     match syntax_loc {
                         PatternLocation::LetBinding => {

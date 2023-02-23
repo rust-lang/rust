@@ -267,7 +267,7 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
             {
                 write!(f, "inside closure")
             } else {
-                // Note: this triggers a `bug_unless_diagnostic_emitted` state, which means
+                // Note: this triggers a `bug_unless_diagnostic` state, which means
                 // that if we ever get here we must emit a diagnostic. We should never display
                 // a `FrameInfo` unless we actually want to emit a warning or error to the user.
                 write!(f, "inside `{}`", self.instance)
@@ -509,7 +509,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .instance
             .try_subst_mir_and_normalize_erasing_regions(*self.tcx, self.param_env, value)
             .map_err(|e| {
-                self.tcx.sess.delay_span_bug(
+                self.tcx.sess.delay_bug_unless_error(
                     self.cur_span(),
                     format!("failed to normalize {}", e.get_type_for_failure()).as_str(),
                 );

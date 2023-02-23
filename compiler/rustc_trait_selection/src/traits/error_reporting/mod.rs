@@ -474,7 +474,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        self.tcx.sess.delay_span_bug(DUMMY_SP, "expected fullfillment errors")
+        self.tcx.sess.delay_bug_unless_error(DUMMY_SP, "expected fullfillment errors")
     }
 
     /// Reports that an overflow has occurred and halts compilation. We
@@ -621,7 +621,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut span = obligation.cause.span;
         // FIXME: statically guarantee this by tainting after the diagnostic is emitted
         self.set_tainted_by_errors(
-            tcx.sess.delay_span_bug(span, "`report_selection_error` did not emit an error"),
+            tcx.sess.delay_bug_unless_error(span, "`report_selection_error` did not emit an error"),
         );
 
         let mut err = match *error {
@@ -1467,12 +1467,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // Already reported in the query.
             SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(_)) => {
                 // FIXME(eddyb) remove this once `ErrorGuaranteed` becomes a proof token.
-                self.tcx.sess.delay_span_bug(span, "`ErrorGuaranteed` without an error");
+                self.tcx.sess.delay_bug_unless_error(span, "`ErrorGuaranteed` without an error");
                 return;
             }
             // Already reported.
             Overflow(OverflowError::Error(_)) => {
-                self.tcx.sess.delay_span_bug(span, "`OverflowError` has been reported");
+                self.tcx.sess.delay_bug_unless_error(span, "`OverflowError` has been reported");
                 return;
             }
             Overflow(_) => {

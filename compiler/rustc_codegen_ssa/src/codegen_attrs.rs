@@ -71,7 +71,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
         if let DefKind::Fn | DefKind::AssocFn | DefKind::Variant | DefKind::Ctor(..) = def_kind {
             true
         } else {
-            tcx.sess.delay_span_bug(attr_sp, "this attribute can only be applied to functions");
+            tcx.sess
+                .delay_bug_unless_error(attr_sp, "this attribute can only be applied to functions");
             false
         }
     };

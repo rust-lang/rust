@@ -409,11 +409,12 @@ struct HandlerInner {
     warn_count: usize,
     deduplicated_err_count: usize,
     emitter: Box<dyn Emitter + sync::Send>,
-    delayed_span_bugs: Vec<DelayedDiagnostic>,
-    /// Bugs that are delayed unless a diagnostic (warn/lint/error) is emitted.
+    /// Bugs that are delayed unless an error is emitted.
+    delayed_expected_error_bugs: Vec<DelayedDiagnostic>,
+    /// Bugs that are delayed unless any diagnostic (warn/lint/error) is emitted.
     delayed_expect_diagnostic_bugs: Vec<DelayedDiagnostic>,
     /// This flag indicates that an expected diagnostic was emitted and suppressed.
-    /// This is used for the `delayed_bugs_unless_diagnostic_emitted` check.
+    /// This is used for the `delayed_bugs_unless_diagnostic` check.
     suppressed_expected_diag: bool,
 
     /// This set contains the `DiagnosticId` of all emitted diagnostics to avoid
@@ -500,7 +501,7 @@ pub struct HandlerFlags {
     /// If true, immediately emit diagnostics that would otherwise be buffered.
     /// (rustc: see `-Z dont-buffer-diagnostics` and `-Z treat-err-as-bug`)
     pub dont_buffer_diagnostics: bool,
-    /// If true, immediately print bugs registered with `delay_span_bug`.
+    /// If true, immediately print bugs registered with `delay_bug_unless_error`.
     /// (rustc: see `-Z report-delayed-bugs`)
     pub report_delayed_bugs: bool,
     /// Show macro backtraces.
@@ -517,8 +518,11 @@ impl Drop for HandlerInner {
         self.emit_stashed_diagnostics();
 
         if !self.has_errors() {
-            let bugs = std::mem::replace(&mut self.delayed_span_bugs, Vec::new());
-            self.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
+            let bugs = std::mem::replace(&mut self.delayed_expected_error_bugs, Vec::new());
+            self.flush_delayed(
+                bugs,
+                "no errors encountered even though `delay_bug_unless_error` issued",
+            );
         }
 
         // They're `delayed_span_bugs` but for "require some diagnostic happened"
@@ -528,7 +532,7 @@ impl Drop for HandlerInner {
             let bugs = std::mem::replace(&mut self.delayed_expect_diagnostic_bugs, Vec::new());
             self.flush_delayed(
                 bugs,
-                "no warnings or errors encountered even though `delayed_bugs_unless_diagnostic_emitted` issued",
+                "no warnings or errors encountered even though `delayed_bugs_unless_diagnostic` issued",
             );
         }
 
@@ -606,7 +610,7 @@ impl Handler {
                 deduplicated_err_count: 0,
                 deduplicated_warn_count: 0,
                 emitter,
-                delayed_span_bugs: Vec::new(),
+                delayed_expected_error_bugs: Vec::new(),
                 delayed_expect_diagnostic_bugs: Vec::new(),
                 suppressed_expected_diag: false,
                 taught_diagnostics: Default::default(),
@@ -660,7 +664,7 @@ impl Handler {
         inner.deduplicated_warn_count = 0;
 
         // actually free the underlying memory (which `clear` would not do)
-        inner.delayed_span_bugs = Default::default();
+        inner.delayed_expected_error_bugs = Default::default();
         inner.delayed_expect_diagnostic_bugs = Default::default();
         inner.taught_diagnostics = Default::default();
         inner.emitted_diagnostic_codes = Default::default();
@@ -994,19 +998,19 @@ impl Handler {
         self.inner.borrow_mut().span_bug(span, msg)
     }
 
-    /// For documentation on this, see `Session::delay_span_bug`.
+    /// For documentation on this, see `Session::delay_bug_unless_error`.
     #[track_caller]
-    pub fn delay_span_bug(
+    pub fn delay_bug_unless_error(
         &self,
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> ErrorGuaranteed {
-        self.inner.borrow_mut().delay_span_bug(span, msg)
+        self.inner.borrow_mut().delay_bug_unless_error(span, msg)
     }
 
     // FIXME(eddyb) note the comment inside `impl Drop for HandlerInner`.
-    pub fn delay_bug_unless_diagnostic_emitted(&self, msg: impl Into<DiagnosticMessage>) {
-        self.inner.borrow_mut().delay_bug_unless_diagnostic_emitted(msg)
+    pub fn delay_bug_unless_diagnostic(&self, msg: impl Into<DiagnosticMessage>) {
+        self.inner.borrow_mut().delay_bug_unless_diagnostic(msg)
     }
 
     #[track_caller]
@@ -1266,8 +1270,11 @@ impl Handler {
 
     pub fn flush_delayed(&self) {
         let mut inner = self.inner.lock();
-        let bugs = std::mem::replace(&mut inner.delayed_span_bugs, Vec::new());
-        inner.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
+        let bugs = std::mem::replace(&mut inner.delayed_expected_error_bugs, Vec::new());
+        inner.flush_delayed(
+            bugs,
+            "no errors encountered even though `delay_bug_unless_error` issued",
+        );
     }
 }
 
@@ -1328,7 +1335,7 @@ impl HandlerInner {
             // when an error is first emitted, also), but maybe there's a case
             // in which that's not sound? otherwise this is really inefficient.
             let backtrace = std::backtrace::Backtrace::force_capture();
-            self.delayed_span_bugs
+            self.delayed_expected_error_bugs
                 .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
 
             if !self.flags.report_delayed_bugs {
@@ -1434,7 +1441,7 @@ impl HandlerInner {
     }
 
     fn delayed_bug_count(&self) -> usize {
-        self.delayed_span_bugs.len() + self.delayed_expect_diagnostic_bugs.len()
+        self.delayed_expected_error_bugs.len() + self.delayed_expect_diagnostic_bugs.len()
     }
 
     fn print_error_count(&mut self, registry: &Registry) {
@@ -1558,14 +1565,14 @@ impl HandlerInner {
         self.has_errors() || self.lint_err_count > 0
     }
     fn has_errors_or_delayed_span_bugs(&self) -> bool {
-        self.has_errors() || !self.delayed_span_bugs.is_empty()
+        self.has_errors() || !self.delayed_expected_error_bugs.is_empty()
     }
     fn has_any_message(&self) -> bool {
         self.err_count() > 0 || self.lint_err_count > 0 || self.warn_count > 0
     }
 
     fn is_compilation_going_to_fail(&self) -> bool {
-        self.has_errors() || self.lint_err_count > 0 || !self.delayed_span_bugs.is_empty()
+        self.has_errors() || self.lint_err_count > 0 || !self.delayed_expected_error_bugs.is_empty()
     }
 
     fn abort_if_errors(&mut self) {
@@ -1586,14 +1593,14 @@ impl HandlerInner {
         self.emit_diagnostic(diag.set_span(sp));
     }
 
-    /// For documentation on this, see `Session::delay_span_bug`.
+    /// For documentation on this, see `Session::delay_bug_unless_error`.
     #[track_caller]
-    fn delay_span_bug(
+    fn delay_bug_unless_error(
         &mut self,
         sp: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> ErrorGuaranteed {
-        // This is technically `self.treat_err_as_bug()` but `delay_span_bug` is called before
+        // This is technically `self.treat_err_as_bug()` but `delay_bug_unless_error` is called before
         // incrementing `err_count` by one, so we need to +1 the comparing.
         // FIXME: Would be nice to increment err_count in a more coherent way.
         if self.flags.treat_err_as_bug.map_or(false, |c| {
@@ -1608,7 +1615,7 @@ impl HandlerInner {
     }
 
     // FIXME(eddyb) note the comment inside `impl Drop for HandlerInner`.
-    fn delay_bug_unless_diagnostic_emitted(&mut self, msg: impl Into<DiagnosticMessage>) {
+    fn delay_bug_unless_diagnostic(&mut self, msg: impl Into<DiagnosticMessage>) {
         let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
         if self.flags.report_delayed_bugs {
             self.emit_diagnostic(&mut diagnostic);

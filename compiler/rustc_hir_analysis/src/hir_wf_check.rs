@@ -28,8 +28,10 @@ fn diagnostic_hir_wf_check<'tcx>(
     let hir_id = hir.local_def_id_to_hir_id(def_id);
 
     // HIR wfcheck should only ever happen as part of improving an existing error
-    tcx.sess
-        .delay_span_bug(tcx.def_span(def_id), "Performed HIR wfcheck without an existing error!");
+    tcx.sess.delay_bug_unless_error(
+        tcx.def_span(def_id),
+        "Performed HIR wfcheck without an existing error!",
+    );
 
     let icx = ItemCtxt::new(tcx, def_id.to_def_id());
 
@@ -187,7 +189,7 @@ struct EraseAllBoundRegions<'tcx> {
 // `ItemCtxt::to_ty`. To make things simpler, we just erase all
 // of them, regardless of depth. At worse, this will give
 // us an inaccurate span for an error message, but cannot
-// lead to unsoundness (we call `delay_span_bug` at the start
+// lead to unsoundness (we call `delay_bug_unless_error` at the start
 // of `diagnostic_hir_wf_check`).
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseAllBoundRegions<'tcx> {
     fn interner(&self) -> TyCtxt<'tcx> {

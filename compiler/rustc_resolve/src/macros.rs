@@ -661,7 +661,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // Make sure compilation does not succeed if preferred macro resolution
                     // has changed after the macro had been expanded. In theory all such
                     // situations should be reported as errors, so this is a bug.
-                    this.tcx.sess.delay_span_bug(span, "inconsistent resolution for a macro");
+                    this.tcx
+                        .sess
+                        .delay_bug_unless_error(span, "inconsistent resolution for a macro");
                 }
             } else {
                 // It's possible that the macro was unresolved (indeterminate) and silently

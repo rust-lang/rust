@@ -272,7 +272,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // FIXME: currently we never try to compose autoderefs
                     // and ReifyFnPointer/UnsafeFnPointer, but we could.
                     _ => {
-                        self.tcx.sess.delay_span_bug(
+                        self.tcx.sess.delay_bug_unless_error(
                             expr.span,
                             &format!(
                                 "while adjusting {:?}, can't compose {:?} and {:?}",
@@ -1322,7 +1322,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match self.at(&self.misc(span), self.param_env).eq(impl_ty, self_ty) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
-                    self.tcx.sess.delay_span_bug(
+                    self.tcx.sess.delay_bug_unless_error(
                         span,
                         &format!(
                         "instantiate_value_path: (UFCS) {:?} was a subtype of {:?} but now is not?",

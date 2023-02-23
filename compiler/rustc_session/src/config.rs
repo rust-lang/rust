@@ -413,9 +413,9 @@ pub enum TrimmedDefPaths {
     /// `try_print_trimmed_def_path` never prints a trimmed path and never calls the expensive query
     #[default]
     Never,
-    /// `try_print_trimmed_def_path` calls the expensive query, the query doesn't call `delay_bug_unless_diagnostic_emitted`
+    /// `try_print_trimmed_def_path` calls the expensive query, the query doesn't call `delay_bug_unless_diagnostic`
     Always,
-    /// `try_print_trimmed_def_path` calls the expensive query, the query calls `delay_bug_unless_diagnostic_emitted`
+    /// `try_print_trimmed_def_path` calls the expensive query, the query calls `delay_bug_unless_diagnostic`
     GoodPath,
 }
 

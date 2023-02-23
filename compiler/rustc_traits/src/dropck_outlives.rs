@@ -188,7 +188,7 @@ fn dtorck_constraint_for_ty<'tcx>(
                 // By the time this code runs, all type variables ought to
                 // be fully resolved.
 
-                tcx.sess.delay_span_bug(
+                tcx.sess.delay_bug_unless_error(
                     span,
                     &format!("upvar_tys for closure not found. Expected capture information for closure {ty}",),
                 );
@@ -230,7 +230,7 @@ fn dtorck_constraint_for_ty<'tcx>(
             if !substs.as_generator().is_valid() {
                 // By the time this code runs, all type variables ought to
                 // be fully resolved.
-                tcx.sess.delay_span_bug(
+                tcx.sess.delay_bug_unless_error(
                     span,
                     &format!("upvar_tys for generator not found. Expected capture information for generator {ty}",),
                 );

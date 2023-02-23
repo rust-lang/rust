@@ -1618,7 +1618,7 @@ options! {
     remap_cwd_prefix: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "remap paths under the current working directory to this path prefix"),
     report_delayed_bugs: bool = (false, parse_bool, [TRACKED],
-        "immediately print bugs registered with `delay_span_bug` (default: no)"),
+        "immediately print bugs registered with `delay_bug_unless_error` (default: no)"),
     sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
         "use a sanitizer"),
     sanitizer_memory_track_origins: usize = (0, parse_sanitizer_memory_track_origins, [TRACKED],

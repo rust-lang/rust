@@ -116,7 +116,7 @@ pub(crate) fn lit_to_mir_constant<'tcx>(
         let width = tcx
             .layout_of(param_ty)
             .map_err(|_| {
-                LitToConstError::Reported(tcx.sess.delay_span_bug(
+                LitToConstError::Reported(tcx.sess.delay_bug_unless_error(
                     DUMMY_SP,
                     format!("couldn't compute width of literal: {:?}", lit_input.lit),
                 ))
@@ -154,7 +154,7 @@ pub(crate) fn lit_to_mir_constant<'tcx>(
         }
         (ast::LitKind::Float(n, _), ty::Float(fty)) => parse_float_into_constval(*n, *fty, neg)
             .ok_or_else(|| {
-                LitToConstError::Reported(tcx.sess.delay_span_bug(
+                LitToConstError::Reported(tcx.sess.delay_bug_unless_error(
                     DUMMY_SP,
                     format!("couldn't parse float literal: {:?}", lit_input.lit),
                 ))
@@ -163,7 +163,8 @@ pub(crate) fn lit_to_mir_constant<'tcx>(
         (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),
         (ast::LitKind::Err, _) => {
             return Err(LitToConstError::Reported(
-                tcx.sess.delay_span_bug(DUMMY_SP, "encountered LitKind::Err during mir build"),
+                tcx.sess
+                    .delay_bug_unless_error(DUMMY_SP, "encountered LitKind::Err during mir build"),
             ));
         }
         _ => return Err(LitToConstError::TypeError),

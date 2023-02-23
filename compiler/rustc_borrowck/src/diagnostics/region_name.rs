@@ -619,8 +619,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     _,
                 ) => {
                     // HIR lowering sometimes doesn't catch this in erroneous
-                    // programs, so we need to use delay_span_bug here. See #82126.
-                    self.infcx.tcx.sess.delay_span_bug(
+                    // programs, so we need to use delay_bug_unless_error here. See #82126.
+                    self.infcx.tcx.sess.delay_bug_unless_error(
                         hir_arg.span(),
                         &format!("unmatched subst and hir arg: found {kind:?} vs {hir_arg:?}"),
                     );

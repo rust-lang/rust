@@ -2054,11 +2054,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     && !self.has_buffered_errors()
                 {
                     // rust-lang/rust#46908: In pure NLL mode this code path should be
-                    // unreachable, but we use `delay_span_bug` because we can hit this when
+                    // unreachable, but we use `delay_bug_unless_error` because we can hit this when
                     // dereferencing a non-Copy raw pointer *and* have `-Ztreat-err-as-bug`
                     // enabled. We don't want to ICE for that case, as other errors will have
                     // been emitted (#52262).
-                    self.infcx.tcx.sess.delay_span_bug(
+                    self.infcx.tcx.sess.delay_bug_unless_error(
                         span,
                         &format!(
                             "Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
@@ -2354,11 +2354,11 @@ mod error {
 
         pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorGuaranteed>) {
             if let None = self.tainted_by_errors {
-                self.tainted_by_errors = Some(
-                    self.tcx
-                        .sess
-                        .delay_span_bug(t.span.clone(), "diagnostic buffered but not emitted"),
-                )
+                self.tainted_by_errors =
+                    Some(self.tcx.sess.delay_bug_unless_error(
+                        t.span.clone(),
+                        "diagnostic buffered but not emitted",
+                    ))
             }
             t.buffer(&mut self.buffered);
         }

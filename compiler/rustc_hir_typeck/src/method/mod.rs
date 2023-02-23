@@ -374,7 +374,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // type parameters or early-bound regions.
         let tcx = self.tcx;
         let Some(method_item) = self.associated_value(trait_def_id, m_name) else {
-            tcx.sess.delay_span_bug(
+            tcx.sess.delay_bug_unless_error(
                 obligation.cause.span,
                 "operator trait does not have corresponding operator method",
             );
@@ -382,7 +382,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         if method_item.kind != ty::AssocKind::Fn {
-            self.tcx.sess.delay_span_bug(tcx.def_span(method_item.def_id), "not a method");
+            self.tcx.sess.delay_bug_unless_error(tcx.def_span(method_item.def_id), "not a method");
             return None;
         }
 

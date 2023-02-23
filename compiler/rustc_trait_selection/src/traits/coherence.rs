@@ -298,7 +298,7 @@ fn negative_impl(tcx: TyCtxt<'_>, impl1_def_id: DefId, impl2_def_id: DefId) -> b
     ) {
         Ok(s) => s,
         Err(err) => {
-            tcx.sess.delay_span_bug(
+            tcx.sess.delay_bug_unless_error(
                 tcx.def_span(impl1_def_id),
                 format!("failed to fully normalize {:?}: {:?}", impl1_def_id, err),
             );

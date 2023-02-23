@@ -1740,7 +1740,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             Err(self
                 .tcx
                 .sess
-                .delay_span_bug(rustc_span::DUMMY_SP, "error should have been emitted"))
+                .delay_bug_unless_error(rustc_span::DUMMY_SP, "error should have been emitted"))
         }
     }
 

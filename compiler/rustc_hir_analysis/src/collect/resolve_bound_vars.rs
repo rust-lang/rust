@@ -1338,7 +1338,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
         }
 
-        self.tcx.sess.delay_span_bug(
+        self.tcx.sess.delay_bug_unless_error(
             lifetime_ref.ident.span,
             &format!("Could not resolve {:?} in scope {:#?}", lifetime_ref, self.scope,),
         );
@@ -1392,9 +1392,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             return;
         }
 
-        self.tcx
-            .sess
-            .delay_span_bug(self.tcx.hir().span(hir_id), "could not resolve {param_def_id:?}");
+        self.tcx.sess.delay_bug_unless_error(
+            self.tcx.hir().span(hir_id),
+            "could not resolve {param_def_id:?}",
+        );
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1888,7 +1889,7 @@ fn is_late_bound_map(
                                         Some(true) => Some(arg),
                                         Some(false) => None,
                                         None => {
-                                            tcx.sess.delay_span_bug(
+                                            tcx.sess.delay_bug_unless_error(
                                                 *span,
                                                 format!(
                                                     "Incorrect generic arg count for alias {:?}",

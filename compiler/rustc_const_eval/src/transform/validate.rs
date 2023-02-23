@@ -92,9 +92,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[track_caller]
     fn fail(&self, location: Location, msg: impl AsRef<str>) {
         let span = self.body.source_info(location).span;
-        // We use `delay_span_bug` as we might see broken MIR when other errors have already
+        // We use `delay_bug_unless_error` as we might see broken MIR when other errors have already
         // occurred.
-        self.tcx.sess.diagnostic().delay_span_bug(
+        self.tcx.sess.diagnostic().delay_bug_unless_error(
             span,
             &format!(
                 "broken MIR in {:?} ({}) at {:?}:\n{}",
@@ -958,7 +958,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
     fn visit_source_scope(&mut self, scope: SourceScope) {
         if self.body.source_scopes.get(scope).is_none() {
-            self.tcx.sess.diagnostic().delay_span_bug(
+            self.tcx.sess.diagnostic().delay_bug_unless_error(
                 self.body.span,
                 &format!(
                     "broken MIR in {:?} ({}):\ninvalid source scope {:?}",

@@ -258,7 +258,7 @@ impl<Prov: Provenance> Allocation<Prov> {
                 panic!("Allocation::uninit called with panic_on_fail had allocation failure")
             }
             ty::tls::with(|tcx| {
-                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
+                tcx.sess.delay_bug_unless_error(DUMMY_SP, "exhausted memory during interpretation")
             });
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })?;

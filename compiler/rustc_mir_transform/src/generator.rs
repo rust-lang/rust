@@ -863,7 +863,7 @@ fn sanitize_witness<'tcx>(
             tcx.normalize_erasing_late_bound_regions(param_env, interior_tys)
         }
         _ => {
-            tcx.sess.delay_span_bug(
+            tcx.sess.delay_bug_unless_error(
                 body.span,
                 &format!("unexpected generator witness type {:?}", witness.kind()),
             );
@@ -1439,8 +1439,10 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                 )
             }
             _ => {
-                tcx.sess
-                    .delay_span_bug(body.span, &format!("unexpected generator type {}", gen_ty));
+                tcx.sess.delay_bug_unless_error(
+                    body.span,
+                    &format!("unexpected generator type {}", gen_ty),
+                );
                 return;
             }
         };

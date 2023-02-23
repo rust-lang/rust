@@ -175,7 +175,7 @@ impl<'tcx> InferCtxt<'tcx> {
             );
 
             if let Err(NoSolution) = self.tcx.check_tys_might_be_eq(canonical) {
-                self.tcx.sess.delay_span_bug(
+                self.tcx.sess.delay_bug_unless_error(
                     DUMMY_SP,
                     &format!("cannot relate consts of different types (a={:?}, b={:?})", a, b,),
                 );

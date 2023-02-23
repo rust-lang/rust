@@ -1208,7 +1208,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                 is_type: true,
                                             },
                                         );
-                                        self.tcx.sess.delay_span_bug(span, CG_BUG_STR);
+                                        self.tcx.sess.delay_bug_unless_error(span, CG_BUG_STR);
                                     }
 
                                     return Res::Err;
@@ -1268,7 +1268,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                             is_type: false,
                                         },
                                     );
-                                    self.tcx.sess.delay_span_bug(span, CG_BUG_STR);
+                                    self.tcx.sess.delay_bug_unless_error(span, CG_BUG_STR);
                                 }
 
                                 return Res::Err;

@@ -58,7 +58,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
         let (side_table, move_data) = match MoveData::gather_moves(body, tcx, param_env) {
             Ok(move_data) => move_data,
             Err((move_data, _)) => {
-                tcx.sess.delay_span_bug(
+                tcx.sess.delay_bug_unless_error(
                     body.span,
                     "No `move_errors` should be allowed in MIR borrowck",
                 );
@@ -354,7 +354,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                     }
 
                     if maybe_dead {
-                        self.tcx.sess.delay_span_bug(
+                        self.tcx.sess.delay_bug_unless_error(
                             terminator.source_info.span,
                             &format!(
                                 "drop of untracked, uninitialized value {:?}, place {:?} ({:?})",
@@ -410,7 +410,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             bb,
                         ),
                         LookupResult::Parent(..) => {
-                            self.tcx.sess.delay_span_bug(
+                            self.tcx.sess.delay_bug_unless_error(
                                 terminator.source_info.span,
                                 &format!("drop of untracked value {:?}", bb),
                             );

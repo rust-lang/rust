@@ -14,7 +14,7 @@ pub(crate) fn lit_to_const<'tcx>(
         let width = tcx
             .layout_of(param_ty)
             .map_err(|_| {
-                LitToConstError::Reported(tcx.sess.delay_span_bug(
+                LitToConstError::Reported(tcx.sess.delay_bug_unless_error(
                     DUMMY_SP,
                     format!("couldn't compute width of literal: {:?}", lit_input.lit),
                 ))
@@ -55,7 +55,8 @@ pub(crate) fn lit_to_const<'tcx>(
         (ast::LitKind::Char(c), ty::Char) => ty::ValTree::from_scalar_int((*c).into()),
         (ast::LitKind::Err, _) => {
             return Err(LitToConstError::Reported(
-                tcx.sess.delay_span_bug(DUMMY_SP, "encountered LitKind::Err during mir build"),
+                tcx.sess
+                    .delay_bug_unless_error(DUMMY_SP, "encountered LitKind::Err during mir build"),
             ));
         }
         _ => return Err(LitToConstError::TypeError),

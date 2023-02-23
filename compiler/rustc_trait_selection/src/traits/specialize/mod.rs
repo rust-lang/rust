@@ -156,7 +156,7 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
         match traits::fully_normalize(&infcx, ObligationCause::dummy(), penv, impl1_trait_ref) {
             Ok(impl1_trait_ref) => impl1_trait_ref,
             Err(_errors) => {
-                tcx.sess.delay_span_bug(
+                tcx.sess.delay_bug_unless_error(
                     tcx.def_span(impl1_def_id),
                     format!("failed to fully normalize {impl1_trait_ref}"),
                 );
@@ -395,16 +395,18 @@ fn report_conflicting_impls<'tcx>(
 
     match used_to_be_allowed {
         None => {
-            let reported = if overlap.with_impl.is_local()
-                || tcx.orphan_check_impl(impl_def_id).is_ok()
-            {
-                let mut err = tcx.sess.struct_span_err(impl_span, msg);
-                err.code(error_code!(E0119));
-                decorate(tcx, &overlap, impl_span, &mut err);
-                Some(err.emit())
-            } else {
-                Some(tcx.sess.delay_span_bug(impl_span, "impl should have failed the orphan check"))
-            };
+            let reported =
+                if overlap.with_impl.is_local() || tcx.orphan_check_impl(impl_def_id).is_ok() {
+                    let mut err = tcx.sess.struct_span_err(impl_span, msg);
+                    err.code(error_code!(E0119));
+                    decorate(tcx, &overlap, impl_span, &mut err);
+                    Some(err.emit())
+                } else {
+                    Some(tcx.sess.delay_bug_unless_error(
+                        impl_span,
+                        "impl should have failed the orphan check",
+                    ))
+                };
             sg.has_errored = reported;
         }
         Some(kind) => {

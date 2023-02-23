@@ -2443,7 +2443,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // the placeholder trait ref may fail due the Generalizer relation
                 // raising a CyclicalTy error due to a sub_root_var relation
                 // for a variable being generalized...
-                let guar = self.infcx.tcx.sess.delay_span_bug(
+                let guar = self.infcx.tcx.sess.delay_bug_unless_error(
                     obligation.cause.span,
                     &format!(
                         "Impl {:?} was matchable against {:?} but now is not",

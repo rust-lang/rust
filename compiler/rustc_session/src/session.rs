@@ -573,7 +573,7 @@ impl Session {
         if self.err_count() == old_count {
             Ok(result)
         } else {
-            Err(self.delay_span_bug(
+            Err(self.delay_bug_unless_error(
                 rustc_span::DUMMY_SP,
                 "`self.err_count()` changed but an error was not emitted",
             ))
@@ -620,18 +620,18 @@ impl Session {
     ///
     /// [`DUMMY_SP`]: rustc_span::DUMMY_SP
     #[track_caller]
-    pub fn delay_span_bug<S: Into<MultiSpan>>(
+    pub fn delay_bug_unless_error<S: Into<MultiSpan>>(
         &self,
         sp: S,
         msg: impl Into<DiagnosticMessage>,
     ) -> ErrorGuaranteed {
-        self.diagnostic().delay_span_bug(sp, msg)
+        self.diagnostic().delay_bug_unless_error(sp, msg)
     }
 
     /// Used for code paths of expensive computations that should only take place when
     /// warnings or errors are emitted. If no messages are emitted ("good path"), then
     /// it's likely a bug.
-    pub fn delay_bug_unless_diagnostic_emitted(&self, msg: impl Into<DiagnosticMessage>) {
+    pub fn delay_bug_unless_diagnostic(&self, msg: impl Into<DiagnosticMessage>) {
         if self.opts.unstable_opts.print_type_sizes
             || self.opts.unstable_opts.query_dep_graph
             || self.opts.unstable_opts.dump_mir.is_some()
@@ -642,7 +642,7 @@ impl Session {
             return;
         }
 
-        self.diagnostic().delay_bug_unless_diagnostic_emitted(msg)
+        self.diagnostic().delay_bug_unless_diagnostic(msg)
     }
 
     #[rustc_lint_diagnostics]
@@ -892,7 +892,7 @@ impl Session {
                 if fuel.remaining == 0 && !fuel.out_of_fuel {
                     if self.diagnostic().can_emit_warnings() {
                         // We only call `msg` in case we can actually emit warnings.
-                        // Otherwise, this could cause a `delay_bug_unless_diagnostic_emitted` to
+                        // Otherwise, this could cause a `delay_bug_unless_diagnostic` to
                         // trigger (issue #79546).
                         self.emit_warning(errors::OptimisationFuelExhausted { msg: msg() });
                     }
