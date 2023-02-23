@@ -429,7 +429,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                     if let (hir::TyKind::Infer, false) = (&ty.kind, self.astconv.allow_ty_infer()) {
                         self.inferred_params.push(ty.span);
-                        tcx.ty_error().into()
+                        tcx.ty_error_misc().into()
                     } else {
                         self.astconv.ast_ty_to_ty(ty).into()
                     }
@@ -502,14 +502,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 _ => false,
                             }) {
                                 // Avoid ICE #86756 when type error recovery goes awry.
-                                return tcx.ty_error().into();
+                                return tcx.ty_error_misc().into();
                             }
                             tcx.at(self.span).type_of(param.def_id).subst(tcx, substs).into()
                         } else if infer_args {
                             self.astconv.ty_infer(Some(param), self.span).into()
                         } else {
                             // We've already errored above about the mismatch.
-                            tcx.ty_error().into()
+                            tcx.ty_error_misc().into()
                         }
                     }
                     GenericParamDefKind::Const { has_default } => {
@@ -518,8 +518,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .type_of(param.def_id)
                             .no_bound_vars()
                             .expect("const parameter types cannot be generic");
-                        if ty.references_error() {
-                            return tcx.const_error(ty).into();
+                        if let Err(guar) = ty.error_reported() {
+                            return tcx.const_error_with_guaranteed(ty, guar).into();
                         }
                         if !infer_args && has_default {
                             tcx.const_param_default(param.def_id).subst(tcx, substs.unwrap()).into()
@@ -1239,9 +1239,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         }
                         let reported = err.emit();
                         term = match def_kind {
-                            hir::def::DefKind::AssocTy => {
-                                tcx.ty_error_with_guaranteed(reported).into()
-                            }
+                            hir::def::DefKind::AssocTy => tcx.ty_error(reported).into(),
                             hir::def::DefKind::AssocConst => tcx
                                 .const_error_with_guaranteed(
                                     tcx.type_of(assoc_item_def_id)
@@ -1397,7 +1395,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .map(|trait_ref| tcx.def_span(trait_ref));
             let reported =
                 tcx.sess.emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
-            return tcx.ty_error_with_guaranteed(reported);
+            return tcx.ty_error(reported);
         }
 
         // Check that there are no gross object safety violations;
@@ -1414,7 +1412,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     &object_safety_violations,
                 )
                 .emit();
-                return tcx.ty_error_with_guaranteed(reported);
+                return tcx.ty_error(reported);
             }
         }
 
@@ -1523,10 +1521,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         if arg == dummy_self.into() {
                             let param = &generics.params[index];
                             missing_type_params.push(param.name);
-                            return tcx.ty_error().into();
+                            return tcx.ty_error_misc().into();
                         } else if arg.walk().any(|arg| arg == dummy_self.into()) {
                             references_self = true;
-                            return tcx.ty_error().into();
+                            return tcx.ty_error_misc().into();
                         }
                         arg
                     })
@@ -1579,7 +1577,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     false
                 });
                 if references_self {
-                    tcx.sess
+                    let guar = tcx
+                        .sess
                         .delay_span_bug(span, "trait object projection bounds reference `Self`");
                     let substs: Vec<_> = b
                         .projection_ty
@@ -1587,7 +1586,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         .iter()
                         .map(|arg| {
                             if arg.walk().any(|arg| arg == dummy_self.into()) {
-                                return tcx.ty_error().into();
+                                return tcx.ty_error(guar).into();
                             }
                             arg
                         })
@@ -2473,7 +2472,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 &[path_str],
                 item_segment.ident.name,
             );
-            return tcx.ty_error_with_guaranteed(reported)
+            return tcx.ty_error(reported)
         };
 
         debug!("qpath_to_ty: self_type={:?}", self_ty);
@@ -2820,7 +2819,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let index = generics.param_def_id_to_index[&def_id.to_def_id()];
                         tcx.mk_ty_param(index, tcx.hir().ty_param_name(def_id))
                     }
-                    Some(rbv::ResolvedArg::Error(guar)) => tcx.ty_error_with_guaranteed(guar),
+                    Some(rbv::ResolvedArg::Error(guar)) => tcx.ty_error(guar),
                     arg => bug!("unexpected bound var resolution for {hir_id:?}: {arg:?}"),
                 }
             }
@@ -2932,7 +2931,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     {
                         err.span_note(impl_.self_ty.span, "not a concrete type");
                     }
-                    tcx.ty_error_with_guaranteed(err.emit())
+                    tcx.ty_error(err.emit())
                 } else {
                     ty
                 }
@@ -2985,7 +2984,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .sess
                     .delay_span_bug(path.span, "path with `Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
-                self.tcx().ty_error_with_guaranteed(e)
+                self.tcx().ty_error(e)
             }
             _ => span_bug!(span, "unexpected resolution: {:?}", path.res),
         }
@@ -3064,7 +3063,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let ty = self.ast_ty_to_ty_inner(qself, false, true);
                 self.associated_path_to_ty(ast_ty.hir_id, ast_ty.span, ty, qself, segment, false)
                     .map(|(ty, _, _)| ty)
-                    .unwrap_or_else(|_| tcx.ty_error())
+                    .unwrap_or_else(|guar| tcx.ty_error(guar))
             }
             &hir::TyKind::Path(hir::QPath::LangItem(lang_item, span, _)) => {
                 let def_id = tcx.require_lang_item(lang_item, Some(span));
@@ -3112,7 +3111,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // handled specially and will not descend into this routine.
                 self.ty_infer(None, ast_ty.span)
             }
-            hir::TyKind::Err => tcx.ty_error(),
+            hir::TyKind::Err => tcx.ty_error_misc(),
         };
 
         self.record_ty(ast_ty.hir_id, result_ty, ast_ty.span);

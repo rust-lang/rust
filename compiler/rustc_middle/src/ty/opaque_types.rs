@@ -186,7 +186,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                                 .emit();
                         }
 
-                        self.interner().ty_error()
+                        self.interner().ty_error_misc()
                     }
                 }
             }

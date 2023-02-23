@@ -170,14 +170,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug!("Coerce.tys({:?} => {:?})", a, b);
 
         // Just ignore error types.
-        if a.references_error() || b.references_error() {
+        if let Err(guar) = (a, b).error_reported() {
             // Best-effort try to unify these types -- we're already on the error path,
             // so this will have the side-effect of making sure we have no ambiguities
             // due to `[type error]` and `_` not coercing together.
             let _ = self.commit_if_ok(|_| {
                 self.at(&self.cause, self.param_env).define_opaque_types(true).eq(a, b)
             });
-            return success(vec![], self.fcx.tcx.ty_error(), vec![]);
+            return success(vec![], self.fcx.tcx.ty_error(guar), vec![]);
         }
 
         // Coercing from `!` to any type is allowed:
@@ -997,7 +997,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let (adjustments, _) = self.register_infer_ok_obligations(ok);
         self.apply_adjustments(expr, adjustments);
-        Ok(if expr_ty.references_error() { self.tcx.ty_error() } else { target })
+        Ok(if let Err(guar) = expr_ty.error_reported() { self.tcx.ty_error(guar) } else { target })
     }
 
     /// Same as `try_coerce()`, but without side-effects.
@@ -1434,8 +1434,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
         // If we see any error types, just propagate that error
         // upwards.
-        if expression_ty.references_error() || self.merged_ty().references_error() {
-            self.final_ty = Some(fcx.tcx.ty_error());
+        if let Err(guar) = (expression_ty, self.merged_ty()).error_reported() {
+            self.final_ty = Some(fcx.tcx.ty_error(guar));
             return;
         }
 
@@ -1620,7 +1620,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
                 let reported = err.emit_unless(unsized_return);
 
-                self.final_ty = Some(fcx.tcx.ty_error_with_guaranteed(reported));
+                self.final_ty = Some(fcx.tcx.ty_error(reported));
             }
         }
     }

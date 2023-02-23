@@ -639,7 +639,7 @@ fn construct_error(
     let hir_id = tcx.hir().local_def_id_to_hir_id(def);
     let generator_kind = tcx.generator_kind(def);
 
-    let ty = tcx.ty_error();
+    let ty = tcx.ty_error(err);
     let num_params = match body_owner_kind {
         hir::BodyOwnerKind::Fn => tcx.fn_sig(def).skip_binder().inputs().skip_binder().len(),
         hir::BodyOwnerKind::Closure => {

@@ -3,6 +3,7 @@
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use hir::def::DefKind;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::astconv::AstConv;
@@ -488,17 +489,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
         let expected_span =
             expected_sig.cause_span.unwrap_or_else(|| self.tcx.def_span(expr_def_id));
-        self.report_arg_count_mismatch(
-            expected_span,
-            closure_span,
-            expected_args,
-            found_args,
-            true,
-            closure_arg_span,
-        )
-        .emit();
+        let guar = self
+            .report_arg_count_mismatch(
+                expected_span,
+                closure_span,
+                expected_args,
+                found_args,
+                true,
+                closure_arg_span,
+            )
+            .emit();
 
-        let error_sig = self.error_sig_of_closure(decl);
+        let error_sig = self.error_sig_of_closure(decl, guar);
 
         self.closure_sigs(expr_def_id, body, error_sig)
     }
@@ -792,13 +794,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Converts the types that the user supplied, in case that doing
     /// so should yield an error, but returns back a signature where
     /// all parameters are of type `TyErr`.
-    fn error_sig_of_closure(&self, decl: &hir::FnDecl<'_>) -> ty::PolyFnSig<'tcx> {
+    fn error_sig_of_closure(
+        &self,
+        decl: &hir::FnDecl<'_>,
+        guar: ErrorGuaranteed,
+    ) -> ty::PolyFnSig<'tcx> {
         let astconv: &dyn AstConv<'_> = self;
+        let err_ty = self.tcx.ty_error(guar);
 
         let supplied_arguments = decl.inputs.iter().map(|a| {
             // Convert the types that the user supplied (if any), but ignore them.
             astconv.ast_ty_to_ty(a);
-            self.tcx.ty_error()
+            err_ty
         });
 
         if let hir::FnRetTy::Return(ref output) = decl.output {
@@ -807,7 +814,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let result = ty::Binder::dummy(self.tcx.mk_fn_sig(
             supplied_arguments,
-            self.tcx.ty_error(),
+            err_ty,
             decl.c_variadic,
             hir::Unsafety::Normal,
             Abi::RustCall,

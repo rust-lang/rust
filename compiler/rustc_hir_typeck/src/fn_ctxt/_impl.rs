@@ -451,7 +451,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn node_ty(&self, id: hir::HirId) -> Ty<'tcx> {
         match self.typeck_results.borrow().node_types().get(id) {
             Some(&t) => t,
-            None if let Some(e) = self.tainted_by_errors() => self.tcx.ty_error_with_guaranteed(e),
+            None if let Some(e) = self.tainted_by_errors() => self.tcx.ty_error(e),
             None => {
                 bug!(
                     "no type for node {} in fcx {}",
@@ -465,7 +465,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn node_ty_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
         match self.typeck_results.borrow().node_types().get(id) {
             Some(&t) => Some(t),
-            None if let Some(e) = self.tainted_by_errors() => Some(self.tcx.ty_error_with_guaranteed(e)),
+            None if let Some(e) = self.tainted_by_errors() => Some(self.tcx.ty_error(e)),
             None => None,
         }
     }
@@ -701,7 +701,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub(in super::super) fn err_args(&self, len: usize) -> Vec<Ty<'tcx>> {
-        vec![self.tcx.ty_error(); len]
+        let ty_error = self.tcx.ty_error_misc();
+        vec![ty_error; len]
     }
 
     /// Unifies the output type with the expected type early, for more coercions
@@ -1161,7 +1162,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     let reported = err.emit();
-                    return (tcx.ty_error_with_guaranteed(reported), res);
+                    return (tcx.ty_error(reported), res);
                 }
             }
         } else {
@@ -1417,7 +1418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .emit_inference_failure_err((**self).body_id, sp, ty.into(), E0282, true)
                     .emit()
             });
-            let err = self.tcx.ty_error_with_guaranteed(e);
+            let err = self.tcx.ty_error(e);
             self.demand_suptype(sp, err, ty);
             err
         }

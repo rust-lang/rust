@@ -239,7 +239,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
                     decl.hidden_type.span,
                     &format!("could not resolve {:#?}", hidden_type.ty.kind()),
                 );
-                hidden_type.ty = infcx.tcx.ty_error_with_guaranteed(reported);
+                hidden_type.ty = infcx.tcx.ty_error(reported);
             }
 
             (opaque_type_key, (hidden_type, decl.origin))
@@ -529,9 +529,9 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         for elem in place.projection.iter() {
             if place_ty.variant_index.is_none() {
-                if place_ty.ty.references_error() {
+                if let Err(guar) = place_ty.ty.error_reported() {
                     assert!(self.errors_reported);
-                    return PlaceTy::from_ty(self.tcx().ty_error());
+                    return PlaceTy::from_ty(self.tcx().ty_error(guar));
                 }
             }
             place_ty = self.sanitize_projection(place_ty, elem, place, location, context);
@@ -763,7 +763,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
     fn error(&mut self) -> Ty<'tcx> {
         self.errors_reported = true;
-        self.tcx().ty_error()
+        self.tcx().ty_error_misc()
     }
 
     fn get_ambient_variance(&self, context: PlaceContext) -> ty::Variance {

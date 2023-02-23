@@ -455,7 +455,7 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                 interner.tcx.mk_alias_ty(assoc_ty.0, substitution.lower_into(interner)),
             ),
             TyKind::Foreign(def_id) => ty::Foreign(def_id.0),
-            TyKind::Error => return interner.tcx.ty_error(),
+            TyKind::Error => return interner.tcx.ty_error_misc(),
             TyKind::Alias(alias_ty) => match alias_ty {
                 chalk_ir::AliasTy::Projection(projection) => ty::Alias(
                     ty::Projection,

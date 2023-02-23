@@ -718,13 +718,13 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
     #[track_caller]
-    pub fn ty_error_with_guaranteed(self, reported: ErrorGuaranteed) -> Ty<'tcx> {
+    pub fn ty_error(self, reported: ErrorGuaranteed) -> Ty<'tcx> {
         self.mk_ty(Error(reported))
     }
 
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
     #[track_caller]
-    pub fn ty_error(self) -> Ty<'tcx> {
+    pub fn ty_error_misc(self) -> Ty<'tcx> {
         self.ty_error_with_message(DUMMY_SP, "TyKind::Error constructed but no error reported")
     }
 
@@ -2458,7 +2458,7 @@ impl<'tcx> TyCtxt<'tcx> {
 impl<'tcx> TyCtxtAt<'tcx> {
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
     #[track_caller]
-    pub fn ty_error(self) -> Ty<'tcx> {
+    pub fn ty_error_misc(self) -> Ty<'tcx> {
         self.tcx.ty_error_with_message(self.span, "TyKind::Error constructed but no error reported")
     }
 
