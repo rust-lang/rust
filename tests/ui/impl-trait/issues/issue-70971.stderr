@@ -1,4 +1,4 @@
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in variable binding
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in variable bindings
   --> $DIR/issue-70971.rs:2:14
    |
 LL |     let x : (impl Copy,) = (true,);

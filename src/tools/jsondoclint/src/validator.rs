@@ -71,6 +71,19 @@ impl<'a> Validator<'a> {
         }
     }
 
+    fn check_items(&mut self, id: &Id, items: &[Id]) {
+        let mut visited_ids = HashSet::with_capacity(items.len());
+
+        for item in items {
+            if !visited_ids.insert(item) {
+                self.fail(
+                    id,
+                    ErrorKind::Custom(format!("Duplicated entry in `items` field: `{item:?}`")),
+                );
+            }
+        }
+    }
+
     fn check_item(&mut self, id: &'a Id) {
         if let Some(item) = &self.krate.index.get(id) {
             item.links.values().for_each(|id| self.add_any_id(id));
@@ -83,9 +96,9 @@ impl<'a> Validator<'a> {
                 ItemEnum::Enum(x) => self.check_enum(x),
                 ItemEnum::Variant(x) => self.check_variant(x, id),
                 ItemEnum::Function(x) => self.check_function(x),
-                ItemEnum::Trait(x) => self.check_trait(x),
+                ItemEnum::Trait(x) => self.check_trait(x, id),
                 ItemEnum::TraitAlias(x) => self.check_trait_alias(x),
-                ItemEnum::Impl(x) => self.check_impl(x),
+                ItemEnum::Impl(x) => self.check_impl(x, id),
                 ItemEnum::Typedef(x) => self.check_typedef(x),
                 ItemEnum::OpaqueTy(x) => self.check_opaque_ty(x),
                 ItemEnum::Constant(x) => self.check_constant(x),
@@ -94,7 +107,7 @@ impl<'a> Validator<'a> {
                 ItemEnum::Macro(x) => self.check_macro(x),
                 ItemEnum::ProcMacro(x) => self.check_proc_macro(x),
                 ItemEnum::Primitive(x) => self.check_primitive_type(x),
-                ItemEnum::Module(x) => self.check_module(x),
+                ItemEnum::Module(x) => self.check_module(x, id),
                 // FIXME: Why don't these have their own structs?
                 ItemEnum::ExternCrate { .. } => {}
                 ItemEnum::AssocConst { type_, default: _ } => self.check_type(type_),
@@ -112,7 +125,8 @@ impl<'a> Validator<'a> {
     }
 
     // Core checkers
-    fn check_module(&mut self, module: &'a Module) {
+    fn check_module(&mut self, module: &'a Module, id: &Id) {
+        self.check_items(id, &module.items);
         module.items.iter().for_each(|i| self.add_mod_item_id(i));
     }
 
@@ -181,7 +195,8 @@ impl<'a> Validator<'a> {
         self.check_fn_decl(&x.decl);
     }
 
-    fn check_trait(&mut self, x: &'a Trait) {
+    fn check_trait(&mut self, x: &'a Trait, id: &Id) {
+        self.check_items(id, &x.items);
         self.check_generics(&x.generics);
         x.items.iter().for_each(|i| self.add_trait_item_id(i));
         x.bounds.iter().for_each(|i| self.check_generic_bound(i));
@@ -193,7 +208,8 @@ impl<'a> Validator<'a> {
         x.params.iter().for_each(|i| self.check_generic_bound(i));
     }
 
-    fn check_impl(&mut self, x: &'a Impl) {
+    fn check_impl(&mut self, x: &'a Impl, id: &Id) {
+        self.check_items(id, &x.items);
         self.check_generics(&x.generics);
         if let Some(path) = &x.trait_ {
             self.check_path(path, PathKind::Trait);

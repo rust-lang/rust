@@ -239,7 +239,7 @@ pub fn predicate_for_trait_def<'tcx>(
     cause: ObligationCause<'tcx>,
     trait_def_id: DefId,
     recursion_depth: usize,
-    params: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+    params: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
 ) -> PredicateObligation<'tcx> {
     let trait_ref = tcx.mk_trait_ref(trait_def_id, params);
     predicate_for_trait_ref(tcx, cause, param_env, trait_ref, recursion_depth)

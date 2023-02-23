@@ -1,4 +1,4 @@
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in `impl` method return
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in `impl` method return types
   --> $DIR/fn-not-async-err2.rs:13:22
    |
 LL |     fn foo(&self) -> impl Future<Output = i32> {

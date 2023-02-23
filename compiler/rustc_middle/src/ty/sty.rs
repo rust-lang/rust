@@ -568,7 +568,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item = impl Iterator<Item = Ty<'tcx>> + Captures<'tcx>> {
+    ) -> impl Iterator<Item: Iterator<Item = Ty<'tcx>> + Captures<'tcx>> {
         let layout = tcx.generator_layout(def_id).unwrap();
         layout.variant_fields.iter().map(move |variant| {
             variant.iter().map(move |field| {

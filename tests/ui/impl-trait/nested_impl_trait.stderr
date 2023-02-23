@@ -34,7 +34,7 @@ LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> { x }
    |                                  |         nested `impl Trait` here
    |                                  outer `impl Trait`
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in `fn` pointer return
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in `fn` pointer return types
   --> $DIR/nested_impl_trait.rs:10:32
    |
 LL | fn bad_in_fn_syntax(x: fn() -> impl Into<impl Debug>) {}

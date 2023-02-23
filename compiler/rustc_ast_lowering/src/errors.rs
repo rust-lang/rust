@@ -79,6 +79,14 @@ pub struct MisplacedImplTrait<'a> {
     pub position: DiagnosticArgFromDisplay<'a>,
 }
 
+#[derive(Diagnostic)]
+#[diag(ast_lowering_misplaced_assoc_ty_binding)]
+pub struct MisplacedAssocTyBinding<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub position: DiagnosticArgFromDisplay<'a>,
+}
+
 #[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering_rustc_box_attribute_error)]
 pub struct RustcBoxAttributeError {

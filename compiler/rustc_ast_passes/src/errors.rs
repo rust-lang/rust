@@ -24,13 +24,6 @@ pub struct ForbiddenLetStable {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_forbidden_assoc_constraint)]
-pub struct ForbiddenAssocConstraint {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_keyword_lifetime)]
 pub struct KeywordLifetime {
     #[primary_span]

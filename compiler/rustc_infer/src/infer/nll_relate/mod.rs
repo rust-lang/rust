@@ -763,10 +763,7 @@ impl<'tcx, D> ObligationEmittingRelation<'tcx> for TypeRelating<'_, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    fn register_predicates(
-        &mut self,
-        obligations: impl IntoIterator<Item = impl ty::ToPredicate<'tcx>>,
-    ) {
+    fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ty::ToPredicate<'tcx>>) {
         self.delegate.register_obligations(
             obligations
                 .into_iter()
