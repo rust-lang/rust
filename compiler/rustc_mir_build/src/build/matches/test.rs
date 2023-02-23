@@ -832,7 +832,7 @@ fn trait_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     method_name: Symbol,
-    substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+    substs: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
 ) -> ConstantKind<'tcx> {
     // The unhygienic comparison here is acceptable because this is only
     // used on known traits.

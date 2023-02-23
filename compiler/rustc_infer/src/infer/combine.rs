@@ -478,10 +478,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         self.obligations.extend(obligations.into_iter());
     }
 
-    pub fn register_predicates(
-        &mut self,
-        obligations: impl IntoIterator<Item = impl ToPredicate<'tcx>>,
-    ) {
+    pub fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ToPredicate<'tcx>>) {
         self.obligations.extend(obligations.into_iter().map(|to_pred| {
             Obligation::new(self.infcx.tcx, self.trace.cause.clone(), self.param_env, to_pred)
         }))
@@ -814,10 +811,7 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
     /// Register predicates that must hold in order for this relation to hold. Uses
     /// a default obligation cause, [`ObligationEmittingRelation::register_obligations`] should
     /// be used if control over the obligaton causes is required.
-    fn register_predicates(
-        &mut self,
-        obligations: impl IntoIterator<Item = impl ToPredicate<'tcx>>,
-    );
+    fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ToPredicate<'tcx>>);
 
     /// Register an obligation that both constants must be equal to each other.
     ///

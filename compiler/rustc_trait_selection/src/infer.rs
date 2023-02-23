@@ -42,7 +42,7 @@ pub trait InferCtxtExt<'tcx> {
     fn type_implements_trait(
         &self,
         trait_def_id: DefId,
-        params: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+        params: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> traits::EvaluationResult;
 }
@@ -82,7 +82,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     fn type_implements_trait(
         &self,
         trait_def_id: DefId,
-        params: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+        params: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> traits::EvaluationResult {
         let trait_ref = self.tcx.mk_trait_ref(trait_def_id, params);
