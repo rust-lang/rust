@@ -28,13 +28,6 @@ use std::ops::Deref;
 pub struct Inherited<'tcx> {
     pub(super) infcx: InferCtxt<'tcx>,
 
-    /// The `DefId` of the item in whose context we are performing inference or typeck.
-    /// It is used to check whether an opaque type use is a defining use.
-    ///
-    /// Its default value is `DefiningAnchor::Error`, this way it is easier to catch errors that
-    /// might come up during inference or typeck.
-    pub(super) defining_use_anchor: DefiningAnchor,
-
     pub(super) typeck_results: RefCell<ty::TypeckResults<'tcx>>,
 
     pub(super) locals: RefCell<HirIdMap<super::LocalTy<'tcx>>>,
@@ -124,7 +117,6 @@ impl<'tcx> Inherited<'tcx> {
 
         let defining_use_anchor = DefiningAnchor::Bind(typeck_results.borrow().hir_owner.def_id);
         Inherited {
-            defining_use_anchor,
             typeck_results,
             infcx,
             fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(tcx, defining_use_anchor)),
@@ -139,6 +131,10 @@ impl<'tcx> Inherited<'tcx> {
             body_id,
             infer_var_info: RefCell::new(Default::default()),
         }
+    }
+
+    pub fn defining_use_anchor(&self) -> DefiningAnchor {
+        self.fulfillment_cx.borrow().defining_use_anchor()
     }
 
     #[instrument(level = "debug", skip(self))]

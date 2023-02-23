@@ -46,7 +46,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             fn_def_id,
             decl.output.span(),
             fcx.param_env,
-            fcx.defining_use_anchor,
+            fcx.defining_use_anchor(),
         ));
 
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));

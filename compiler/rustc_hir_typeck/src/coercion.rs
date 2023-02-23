@@ -145,7 +145,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         self.commit_if_ok(|_| {
             let at = self
                 .at(&self.cause, self.fcx.param_env)
-                .define_opaque_types(self.defining_use_anchor);
+                .define_opaque_types(self.defining_use_anchor());
             if self.use_lub {
                 at.lub(b, a)
             } else {
@@ -178,7 +178,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // due to `[type error]` and `_` not coercing together.
             let _ = self.commit_if_ok(|_| {
                 self.at(&self.cause, self.param_env)
-                    .define_opaque_types(self.defining_use_anchor)
+                    .define_opaque_types(self.defining_use_anchor())
                     .eq(a, b)
             });
             return success(vec![], self.fcx.tcx.ty_error(guar), vec![]);
@@ -585,8 +585,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         })?;
 
-        let mut selcx =
-            traits::SelectionContext::new(self).with_defining_use_anchor(self.defining_use_anchor);
+        let mut selcx = traits::SelectionContext::new(self)
+            .with_defining_use_anchor(self.defining_use_anchor());
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
         let cause = ObligationCause::new(
@@ -1492,7 +1492,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             assert!(expression_ty.is_unit(), "if let hack without unit type");
             fcx.at(cause, fcx.param_env)
                 // needed for tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
-                .define_opaque_types(fcx.defining_use_anchor)
+                .define_opaque_types(fcx.defining_use_anchor())
                 .eq_exp(label_expression_as_expected, expression_ty, self.merged_ty())
                 .map(|infer_ok| {
                     fcx.register_infer_ok_obligations(infer_ok);

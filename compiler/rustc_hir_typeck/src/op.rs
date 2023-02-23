@@ -778,7 +778,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Err(rustc_trait_selection::traits::fully_solve_obligation(
                     self,
                     obligation,
-                    self.defining_use_anchor,
+                    self.defining_use_anchor(),
                 ))
             }
         }

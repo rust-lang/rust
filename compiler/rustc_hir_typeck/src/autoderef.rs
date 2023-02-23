@@ -12,7 +12,14 @@ use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn autoderef(&'a self, span: Span, base_ty: Ty<'tcx>) -> Autoderef<'a, 'tcx> {
-        Autoderef::new(self, self.param_env, self.body_id, span, base_ty, self.defining_use_anchor)
+        Autoderef::new(
+            self,
+            self.param_env,
+            self.body_id,
+            span,
+            base_ty,
+            self.defining_use_anchor(),
+        )
     }
 
     pub fn try_overloaded_deref(

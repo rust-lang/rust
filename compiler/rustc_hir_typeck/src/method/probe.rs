@@ -1429,7 +1429,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let predicate = ty::Binder::dummy(trait_ref);
         let obligation = traits::Obligation::new(self.tcx, cause, self.param_env, predicate);
         traits::SelectionContext::new(self)
-            .with_defining_use_anchor(self.defining_use_anchor)
+            .with_defining_use_anchor(self.defining_use_anchor())
             .select(&obligation)
     }
 

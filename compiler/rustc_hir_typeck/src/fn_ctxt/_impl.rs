@@ -738,7 +738,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::subst::GenericArgKind::Type(ty) = ty.unpack()
                     && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *ty.kind()
                     && let Some(def_id) = def_id.as_local()
-                    && self.opaque_type_origin(def_id, self.defining_use_anchor).is_some() {
+                    && self.opaque_type_origin(def_id, self.defining_use_anchor()).is_some() {
                     return None;
                 }
             }
@@ -746,7 +746,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let expect_args = self
             .fudge_inference_if_ok(|| {
-                let ocx = ObligationCtxt::new_in_snapshot(self, self.defining_use_anchor);
+                let ocx = ObligationCtxt::new_in_snapshot(self, self.defining_use_anchor());
 
                 // Attempt to apply a subtyping relationship between the formal
                 // return type (likely containing type variables if the function
@@ -1460,7 +1460,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.param_env,
             original_values,
             query_result,
-            self.defining_use_anchor,
+            self.defining_use_anchor(),
         )
     }
 

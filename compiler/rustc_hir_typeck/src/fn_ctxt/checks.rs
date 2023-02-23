@@ -1903,7 +1903,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.param_env,
                             ty::Binder::dummy(trait_ref),
                         );
-                        match SelectionContext::new(&self).with_defining_use_anchor(self.defining_use_anchor).select(&obligation) {
+                        match SelectionContext::new(&self).with_defining_use_anchor(self.defining_use_anchor()).select(&obligation) {
                             Ok(Some(traits::ImplSource::UserDefined(impl_source))) => {
                                 Some(impl_source.impl_def_id)
                             }

@@ -115,7 +115,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         match self
             .at(cause, self.param_env)
-            .define_opaque_types(self.defining_use_anchor)
+            .define_opaque_types(self.defining_use_anchor())
             .sup(expected, actual)
         {
             Ok(InferOk { obligations, value: () }) => {
@@ -149,7 +149,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         match self
             .at(cause, self.param_env)
-            .define_opaque_types(self.defining_use_anchor)
+            .define_opaque_types(self.defining_use_anchor())
             .eq(expected, actual)
         {
             Ok(InferOk { obligations, value: () }) => {
