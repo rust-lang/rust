@@ -348,3 +348,8 @@ infer_prlf_known_limitation = this is a known limitation that will be removed in
 
 infer_opaque_captures_lifetime = hidden type for `{$opaque_ty}` captures lifetime that does not appear in bounds
     .label = opaque type defined here
+
+infer_fps_use_ref = consider using a reference
+infer_fps_remove_ref = consider removing the reference
+infer_fps_cast = consider casting to a fn pointer
+infer_fps_items_are_distinct = fn items are distinct from fn pointers

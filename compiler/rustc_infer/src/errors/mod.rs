@@ -1157,3 +1157,63 @@ pub struct OpaqueCapturesLifetime<'tcx> {
     pub opaque_ty_span: Span,
     pub opaque_ty: Ty<'tcx>,
 }
+
+#[derive(Subdiagnostic)]
+pub enum FunctionPointerSuggestion<'a> {
+    #[suggestion(
+        infer_fps_use_ref,
+        code = "&{fn_name}",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    UseRef {
+        #[primary_span]
+        span: Span,
+        #[skip_arg]
+        fn_name: String,
+    },
+    #[suggestion(
+        infer_fps_remove_ref,
+        code = "{fn_name}",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    RemoveRef {
+        #[primary_span]
+        span: Span,
+        #[skip_arg]
+        fn_name: String,
+    },
+    #[suggestion(
+        infer_fps_cast,
+        code = "&({fn_name} as {sig})",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    CastRef {
+        #[primary_span]
+        span: Span,
+        #[skip_arg]
+        fn_name: String,
+        #[skip_arg]
+        sig: Binder<'a, FnSig<'a>>,
+    },
+    #[suggestion(
+        infer_fps_cast,
+        code = "{fn_name} as {sig}",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    Cast {
+        #[primary_span]
+        span: Span,
+        #[skip_arg]
+        fn_name: String,
+        #[skip_arg]
+        sig: Binder<'a, FnSig<'a>>,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[note(infer_fps_items_are_distinct)]
+pub struct FnItemsAreDistinct;

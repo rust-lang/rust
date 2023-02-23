@@ -13,7 +13,8 @@ use rustc_span::{sym, BytePos, Span};
 use rustc_target::abi::FieldIdx;
 
 use crate::errors::{
-    ConsiderAddingAwait, SuggAddLetForLetChains, SuggestRemoveSemiOrReturnBinding,
+    ConsiderAddingAwait, FnItemsAreDistinct, FunctionPointerSuggestion, SuggAddLetForLetChains,
+    SuggestRemoveSemiOrReturnBinding,
 };
 
 use super::TypeErrCtxt;
@@ -362,31 +363,19 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     return;
                 }
 
-                let (msg, sug) = match (expected.is_ref(), found.is_ref()) {
-                    (true, false) => {
-                        let msg = "consider using a reference";
-                        let sug = format!("&{fn_name}");
-                        (msg, sug)
-                    }
-                    (false, true) => {
-                        let msg = "consider removing the reference";
-                        let sug = format!("{fn_name}");
-                        (msg, sug)
-                    }
+                let sugg = match (expected.is_ref(), found.is_ref()) {
+                    (true, false) => FunctionPointerSuggestion::UseRef { span, fn_name },
+                    (false, true) => FunctionPointerSuggestion::RemoveRef { span, fn_name },
                     (true, true) => {
-                        diag.note("fn items are distinct from fn pointers");
-                        let msg = "consider casting to a fn pointer";
-                        let sug = format!("&({fn_name} as {sig})");
-                        (msg, sug)
+                        diag.subdiagnostic(FnItemsAreDistinct);
+                        FunctionPointerSuggestion::CastRef { span, fn_name, sig: *sig }
                     }
                     (false, false) => {
-                        diag.note("fn items are distinct from fn pointers");
-                        let msg = "consider casting to a fn pointer";
-                        let sug = format!("{fn_name} as {sig}");
-                        (msg, sug)
+                        diag.subdiagnostic(FnItemsAreDistinct);
+                        FunctionPointerSuggestion::Cast { span, fn_name, sig: *sig }
                     }
                 };
-                diag.span_suggestion_verbose(span, msg, sug, Applicability::MaybeIncorrect);
+                diag.subdiagnostic(sugg);
             }
             (ty::FnDef(did1, substs1), ty::FnDef(did2, substs2)) => {
                 let expected_sig =
