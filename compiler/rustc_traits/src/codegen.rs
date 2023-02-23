@@ -51,7 +51,7 @@ pub fn codegen_select_candidate<'tcx>(
     // Currently, we use a fulfillment context to completely resolve
     // all nested obligations. This is because they can inform the
     // inference of the impl's type parameters.
-    let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(tcx);
+    let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(tcx, DefiningAnchor::Bubble);
     let impl_source = selection.map(|predicate| {
         fulfill_cx.register_predicate_obligation(&infcx, predicate);
     });
@@ -59,7 +59,7 @@ pub fn codegen_select_candidate<'tcx>(
     // In principle, we only need to do this so long as `impl_source`
     // contains unbound type parameters. It could be a slight
     // optimization to stop iterating early.
-    let errors = fulfill_cx.select_all_or_error(&infcx, DefiningAnchor::Bubble);
+    let errors = fulfill_cx.select_all_or_error(&infcx);
     if !errors.is_empty() {
         // `rustc_monomorphize::collector` assumes there are no type errors.
         // Cycle errors are the only post-monomorphization errors possible; emit them now so

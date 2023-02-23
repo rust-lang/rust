@@ -36,11 +36,7 @@ pub trait TraitEngine<'tcx>: 'tcx {
         obligation: PredicateObligation<'tcx>,
     );
 
-    fn select_where_possible(
-        &mut self,
-        infcx: &InferCtxt<'tcx>,
-        defining_use_anchor: DefiningAnchor,
-    ) -> Vec<FulfillmentError<'tcx>>;
+    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
 
     fn collect_remaining_errors(&mut self) -> Vec<FulfillmentError<'tcx>>;
 
@@ -53,6 +49,8 @@ pub trait TraitEngine<'tcx>: 'tcx {
         &mut self,
         infcx: &InferCtxt<'tcx>,
     ) -> Vec<PredicateObligation<'tcx>>;
+
+    fn defining_use_anchor(&self) -> DefiningAnchor;
 }
 
 pub trait TraitEngineExt<'tcx> {
@@ -62,11 +60,7 @@ pub trait TraitEngineExt<'tcx> {
         obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
     );
 
-    fn select_all_or_error(
-        &mut self,
-        infcx: &InferCtxt<'tcx>,
-        defining_use_anchor: DefiningAnchor,
-    ) -> Vec<FulfillmentError<'tcx>>;
+    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
 }
 
 impl<'tcx, T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
@@ -80,12 +74,8 @@ impl<'tcx, T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
         }
     }
 
-    fn select_all_or_error(
-        &mut self,
-        infcx: &InferCtxt<'tcx>,
-        defining_use_anchor: DefiningAnchor,
-    ) -> Vec<FulfillmentError<'tcx>> {
-        let errors = self.select_where_possible(infcx, defining_use_anchor);
+    fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
+        let errors = self.select_where_possible(infcx);
         if !errors.is_empty() {
             return errors;
         }

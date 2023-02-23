@@ -127,7 +127,7 @@ impl<'tcx> Inherited<'tcx> {
             defining_use_anchor,
             typeck_results,
             infcx,
-            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(tcx)),
+            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(tcx, defining_use_anchor)),
             locals: RefCell::new(Default::default()),
             deferred_sized_obligations: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),

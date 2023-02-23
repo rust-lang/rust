@@ -25,24 +25,34 @@ use rustc_session::config::TraitSolver;
 use rustc_span::Span;
 
 pub trait TraitEngineExt<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> Box<Self>;
-    fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> Box<Self>;
+    fn new(tcx: TyCtxt<'tcx>, defining_use_anchor: impl Into<DefiningAnchor>) -> Box<Self>;
+    fn new_in_snapshot(
+        tcx: TyCtxt<'tcx>,
+        defining_use_anchor: impl Into<DefiningAnchor>,
+    ) -> Box<Self>;
 }
 
 impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> Box<Self> {
+    fn new(tcx: TyCtxt<'tcx>, defining_use_anchor: impl Into<DefiningAnchor>) -> Box<Self> {
         match tcx.sess.opts.unstable_opts.trait_solver {
-            TraitSolver::Classic => Box::new(FulfillmentContext::new()),
-            TraitSolver::Chalk => Box::new(ChalkFulfillmentContext::new()),
-            TraitSolver::Next => Box::new(NextFulfillmentCtxt::new()),
+            TraitSolver::Classic => Box::new(FulfillmentContext::new(defining_use_anchor)),
+            TraitSolver::Chalk => Box::new(ChalkFulfillmentContext::new(defining_use_anchor)),
+            TraitSolver::Next => Box::new(NextFulfillmentCtxt::new(defining_use_anchor)),
         }
     }
 
-    fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> Box<Self> {
+    fn new_in_snapshot(
+        tcx: TyCtxt<'tcx>,
+        defining_use_anchor: impl Into<DefiningAnchor>,
+    ) -> Box<Self> {
         match tcx.sess.opts.unstable_opts.trait_solver {
-            TraitSolver::Classic => Box::new(FulfillmentContext::new_in_snapshot()),
-            TraitSolver::Chalk => Box::new(ChalkFulfillmentContext::new_in_snapshot()),
-            TraitSolver::Next => Box::new(NextFulfillmentCtxt::new()),
+            TraitSolver::Classic => {
+                Box::new(FulfillmentContext::new_in_snapshot(defining_use_anchor))
+            }
+            TraitSolver::Chalk => {
+                Box::new(ChalkFulfillmentContext::new_in_snapshot(defining_use_anchor))
+            }
+            TraitSolver::Next => Box::new(NextFulfillmentCtxt::new(defining_use_anchor)),
         }
     }
 }
@@ -52,15 +62,13 @@ impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
 pub struct ObligationCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
     engine: RefCell<Box<dyn TraitEngine<'tcx>>>,
-    defining_use_anchor: DefiningAnchor,
 }
 
 impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'tcx>, defining_use_anchor: impl Into<DefiningAnchor>) -> Self {
         Self {
             infcx,
-            engine: RefCell::new(<dyn TraitEngine<'_>>::new(infcx.tcx)),
-            defining_use_anchor: defining_use_anchor.into(),
+            engine: RefCell::new(<dyn TraitEngine<'_>>::new(infcx.tcx, defining_use_anchor)),
         }
     }
 
@@ -70,8 +78,10 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     ) -> Self {
         Self {
             infcx,
-            engine: RefCell::new(<dyn TraitEngine<'_>>::new_in_snapshot(infcx.tcx)),
-            defining_use_anchor: defining_use_anchor.into(),
+            engine: RefCell::new(<dyn TraitEngine<'_>>::new_in_snapshot(
+                infcx.tcx,
+                defining_use_anchor,
+            )),
         }
     }
 
@@ -140,7 +150,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     {
         self.infcx
             .at(cause, param_env)
-            .define_opaque_types(self.defining_use_anchor)
+            .define_opaque_types(self.defining_use_anchor())
             .eq_exp(a_is_expected, a, b)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
@@ -154,7 +164,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
             .at(cause, param_env)
-            .define_opaque_types(self.defining_use_anchor)
+            .define_opaque_types(self.defining_use_anchor())
             .eq(expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
@@ -169,7 +179,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
             .at(cause, param_env)
-            .define_opaque_types(self.defining_use_anchor)
+            .define_opaque_types(self.defining_use_anchor())
             .sup(expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
@@ -184,17 +194,17 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
     ) -> Result<(), TypeError<'tcx>> {
         self.infcx
             .at(cause, param_env)
-            .define_opaque_types(self.defining_use_anchor)
+            .define_opaque_types(self.defining_use_anchor())
             .sup(expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
     }
 
     pub fn select_where_possible(&self) -> Vec<FulfillmentError<'tcx>> {
-        self.engine.borrow_mut().select_where_possible(self.infcx, self.defining_use_anchor)
+        self.engine.borrow_mut().select_where_possible(self.infcx)
     }
 
     pub fn select_all_or_error(&self) -> Vec<FulfillmentError<'tcx>> {
-        self.engine.borrow_mut().select_all_or_error(self.infcx, self.defining_use_anchor)
+        self.engine.borrow_mut().select_all_or_error(self.infcx)
     }
 
     pub fn assumed_wf_types(
@@ -239,11 +249,10 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             inference_vars,
             answer,
             &mut **self.engine.borrow_mut(),
-            self.defining_use_anchor,
         )
     }
 
     pub fn defining_use_anchor(&self) -> DefiningAnchor {
-        self.defining_use_anchor
+        self.engine.borrow().defining_use_anchor()
     }
 }

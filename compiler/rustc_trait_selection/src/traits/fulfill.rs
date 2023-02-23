@@ -64,6 +64,7 @@ pub struct FulfillmentContext<'tcx> {
     // a snapshot (they don't *straddle* a snapshot, so there
     // is no trouble there).
     usable_in_snapshot: bool,
+    defining_use_anchor: DefiningAnchor,
 }
 
 #[derive(Clone, Debug)]
@@ -82,12 +83,22 @@ static_assert_size!(PendingPredicateObligation<'_>, 72);
 
 impl<'a, 'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
-    pub(super) fn new() -> FulfillmentContext<'tcx> {
-        FulfillmentContext { predicates: ObligationForest::new(), usable_in_snapshot: false }
+    pub(super) fn new(defining_use_anchor: impl Into<DefiningAnchor>) -> FulfillmentContext<'tcx> {
+        FulfillmentContext {
+            predicates: ObligationForest::new(),
+            usable_in_snapshot: false,
+            defining_use_anchor: defining_use_anchor.into(),
+        }
     }
 
-    pub(super) fn new_in_snapshot() -> FulfillmentContext<'tcx> {
-        FulfillmentContext { predicates: ObligationForest::new(), usable_in_snapshot: true }
+    pub(super) fn new_in_snapshot(
+        defining_use_anchor: impl Into<DefiningAnchor>,
+    ) -> FulfillmentContext<'tcx> {
+        FulfillmentContext {
+            predicates: ObligationForest::new(),
+            usable_in_snapshot: true,
+            defining_use_anchor: defining_use_anchor.into(),
+        }
     }
 
     /// Attempts to select obligations using `selcx`.
@@ -137,12 +148,8 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         self.predicates.to_errors(CodeAmbiguity).into_iter().map(to_fulfillment_error).collect()
     }
 
-    fn select_where_possible(
-        &mut self,
-        infcx: &InferCtxt<'tcx>,
-        defining_use_anchor: DefiningAnchor,
-    ) -> Vec<FulfillmentError<'tcx>> {
-        let selcx = SelectionContext::new(infcx).with_defining_use_anchor(defining_use_anchor);
+    fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
+        let selcx = SelectionContext::new(infcx).with_defining_use_anchor(self.defining_use_anchor);
         self.select(selcx)
     }
 
@@ -197,6 +204,10 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
         self.predicates.map_pending_obligations(|o| o.obligation.clone())
+    }
+
+    fn defining_use_anchor(&self) -> DefiningAnchor {
+        self.defining_use_anchor
     }
 }
 
