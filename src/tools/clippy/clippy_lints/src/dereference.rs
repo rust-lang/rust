@@ -1022,7 +1022,7 @@ fn binding_ty_auto_deref_stability<'tcx>(
                     ))
                     .is_sized(cx.tcx, cx.param_env.without_caller_bounds()),
             ),
-            TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(..) | TyKind::TraitObject(..) | TyKind::Err => {
+            TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(..) | TyKind::TraitObject(..) | TyKind::Err(_) => {
                 Position::ReborrowStable(precedence)
             },
         };
@@ -1038,7 +1038,7 @@ fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
             if self.0
                 || matches!(
                     ty.kind,
-                    TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(_) | TyKind::Err
+                    TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(_) | TyKind::Err(_)
                 )
             {
                 self.0 = true;
