@@ -4,7 +4,7 @@ error[E0071]: expected struct, variant or union type, found associated type
 LL |     let s = T::A {};
    |             ^^^^ not a struct
 
-error[E0107]: this associated type takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: associated type takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/struct-path-associated-type.rs:14:16
    |
 LL |     let z = T::A::<u8> {};
@@ -30,7 +30,7 @@ error[E0071]: expected struct, variant or union type, found associated type
 LL |         T::A {} => {}
    |         ^^^^ not a struct
 
-error[E0107]: this associated type takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: associated type takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/struct-path-associated-type.rs:25:16
    |
 LL |     let z = T::A::<u8> {};

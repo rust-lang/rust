@@ -1,4 +1,4 @@
-error[E0107]: this method takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-104287.rs:10:5
    |
 LL |     foo::<()>(x);

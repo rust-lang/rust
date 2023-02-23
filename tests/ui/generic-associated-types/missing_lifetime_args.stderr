@@ -14,7 +14,7 @@ help: add missing lifetime arguments
 LL | fn foo<'c, 'd>(_arg: Box<dyn X<Y<'_, '_> = (&'c u32, &'d u32)>>) {}
    |                                 ++++++++
 
-error[E0107]: this struct takes 3 lifetime arguments but 2 lifetime arguments were supplied
+error[E0107]: struct takes 3 lifetime arguments but 2 lifetime arguments were supplied
   --> $DIR/missing_lifetime_args.rs:14:26
    |
 LL | fn bar<'a, 'b, 'c>(_arg: Foo<'a, 'b>) {}
@@ -32,7 +32,7 @@ help: add missing lifetime argument
 LL | fn bar<'a, 'b, 'c>(_arg: Foo<'a, 'b, 'a>) {}
    |                                    ++++
 
-error[E0107]: this struct takes 3 lifetime arguments but 1 lifetime argument was supplied
+error[E0107]: struct takes 3 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/missing_lifetime_args.rs:17:16
    |
 LL | fn f<'a>(_arg: Foo<'a>) {}

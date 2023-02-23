@@ -462,7 +462,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
         if self.gen_args.span_ext().is_some() {
             format!(
-                "this {} takes {}{} {} argument{} but {} {} supplied",
+                "{} takes {}{} {} argument{} but {} {} supplied",
                 def_kind,
                 quantifier,
                 bound,

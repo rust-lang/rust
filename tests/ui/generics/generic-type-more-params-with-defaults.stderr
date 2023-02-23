@@ -1,4 +1,4 @@
-error[E0107]: this struct takes at most 2 generic arguments but 3 generic arguments were supplied
+error[E0107]: struct takes at most 2 generic arguments but 3 generic arguments were supplied
   --> $DIR/generic-type-more-params-with-defaults.rs:9:12
    |
 LL |     let _: Vec<isize, Heap, bool>;

@@ -1,4 +1,4 @@
-error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/typeck-builtin-bound-type-parameters.rs:1:11
    |
 LL | fn foo1<T:Copy<U>, U>(x: T) {}
@@ -6,7 +6,7 @@ LL | fn foo1<T:Copy<U>, U>(x: T) {}
    |           |
    |           expected 0 generic arguments
 
-error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/typeck-builtin-bound-type-parameters.rs:4:14
    |
 LL | trait Trait: Copy<dyn Send> {}
@@ -14,7 +14,7 @@ LL | trait Trait: Copy<dyn Send> {}
    |              |
    |              expected 0 generic arguments
 
-error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/typeck-builtin-bound-type-parameters.rs:7:21
    |
 LL | struct MyStruct1<T: Copy<T>>;
@@ -22,7 +22,7 @@ LL | struct MyStruct1<T: Copy<T>>;
    |                     |
    |                     expected 0 generic arguments
 
-error[E0107]: this trait takes 0 lifetime arguments but 1 lifetime argument was supplied
+error[E0107]: trait takes 0 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/typeck-builtin-bound-type-parameters.rs:10:25
    |
 LL | struct MyStruct2<'a, T: Copy<'a>>;
@@ -30,7 +30,7 @@ LL | struct MyStruct2<'a, T: Copy<'a>>;
    |                         |
    |                         expected 0 lifetime arguments
 
-error[E0107]: this trait takes 0 lifetime arguments but 1 lifetime argument was supplied
+error[E0107]: trait takes 0 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/typeck-builtin-bound-type-parameters.rs:13:15
    |
 LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
@@ -38,7 +38,7 @@ LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
    |               |
    |               expected 0 lifetime arguments
 
-error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/typeck-builtin-bound-type-parameters.rs:13:15
    |
 LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
