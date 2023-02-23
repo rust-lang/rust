@@ -6,6 +6,7 @@ use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc_infer::infer::region_constraints::Constraint;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
+use rustc_infer::infer::DefiningAnchor;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::infer::{InferCtxt, RegionResolutionError, SubregionOrigin, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
@@ -245,7 +246,7 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
-        let ocx = ObligationCtxt::new(&infcx);
+        let ocx = ObligationCtxt::new(&infcx, DefiningAnchor::Error);
         type_op_prove_predicate_with_cause(&ocx, key, cause);
         try_extract_error_from_fulfill_cx(&ocx, placeholder_region, error_region)
     }
@@ -286,7 +287,7 @@ where
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
-        let ocx = ObligationCtxt::new(&infcx);
+        let ocx = ObligationCtxt::new(&infcx, DefiningAnchor::Error);
 
         // FIXME(lqd): Unify and de-duplicate the following with the actual
         // `rustc_traits::type_op::type_op_normalize` query to allow the span we need in the
@@ -330,7 +331,7 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
     ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
-        let ocx = ObligationCtxt::new(&infcx);
+        let ocx = ObligationCtxt::new(&infcx, DefiningAnchor::Error);
         type_op_ascribe_user_type_with_span(&ocx, key, Some(cause.span)).ok()?;
         try_extract_error_from_fulfill_cx(&ocx, placeholder_region, error_region)
     }

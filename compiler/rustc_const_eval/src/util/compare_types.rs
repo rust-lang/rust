@@ -3,7 +3,7 @@
 //! FIXME: Move this to a more general place. The utility of this extends to
 //! other areas of the compiler as well.
 
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -43,7 +43,7 @@ pub fn is_subtype<'tcx>(
 
     let mut builder = tcx.infer_ctxt().ignoring_regions();
     let infcx = builder.build();
-    let ocx = ObligationCtxt::new_with_opaque_type_bubbling(&infcx);
+    let ocx = ObligationCtxt::new(&infcx, DefiningAnchor::Bubble);
     let cause = ObligationCause::dummy();
     let src = ocx.normalize(&cause, param_env, src);
     let dest = ocx.normalize(&cause, param_env, dest);

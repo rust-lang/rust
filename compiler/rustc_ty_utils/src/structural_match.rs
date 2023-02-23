@@ -2,7 +2,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 
 /// This method returns true if and only if `adt_ty` itself has been marked as
@@ -16,7 +16,7 @@ fn has_structural_eq_impls<'tcx>(tcx: TyCtxt<'tcx>, adt_ty: Ty<'tcx>) -> bool {
     let ref infcx = tcx.infer_ctxt().build();
     let cause = ObligationCause::dummy();
 
-    let ocx = ObligationCtxt::new(infcx);
+    let ocx = ObligationCtxt::new(infcx, DefiningAnchor::Error);
     // require `#[derive(PartialEq)]`
     let structural_peq_def_id =
         infcx.tcx.require_lang_item(LangItem::StructuralPeq, Some(cause.span));

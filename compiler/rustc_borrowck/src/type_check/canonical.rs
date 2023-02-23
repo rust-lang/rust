@@ -1,5 +1,6 @@
 use std::fmt;
 
+use rustc_infer::infer::DefiningAnchor;
 use rustc_infer::infer::{canonical::Canonical, InferOk};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
@@ -221,7 +222,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let cause = ObligationCause::dummy_with_span(span);
         let param_env = self.param_env;
         let op = |infcx: &'_ _| {
-            let ocx = ObligationCtxt::new_in_snapshot(infcx);
+            let ocx = ObligationCtxt::new_in_snapshot(infcx, DefiningAnchor::Error);
             let user_ty = ocx.normalize(&cause, param_env, user_ty);
             ocx.eq(&cause, param_env, user_ty, mir_ty)?;
             if !ocx.select_all_or_error().is_empty() {

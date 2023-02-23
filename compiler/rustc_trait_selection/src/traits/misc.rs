@@ -5,7 +5,7 @@ use crate::traits::{self, ObligationCause, ObligationCtxt};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::infer::canonical::Canonical;
-use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
+use rustc_infer::infer::{DefiningAnchor, RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::{infer::outlives::env::OutlivesEnvironment, traits::FulfillmentError};
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
@@ -59,7 +59,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         for field in &variant.fields {
             // Do this per-field to get better error messages.
             let infcx = tcx.infer_ctxt().build();
-            let ocx = traits::ObligationCtxt::new(&infcx);
+            let ocx = traits::ObligationCtxt::new(&infcx, DefiningAnchor::Error);
 
             let unnormalized_ty = field.ty(tcx, substs);
             if unnormalized_ty.references_error() {
@@ -141,7 +141,7 @@ pub fn check_tys_might_be_eq<'tcx>(
 ) -> Result<(), NoSolution> {
     let (infcx, (param_env, ty_a, ty_b), _) =
         tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &canonical);
-    let ocx = ObligationCtxt::new(&infcx);
+    let ocx = ObligationCtxt::new(&infcx, DefiningAnchor::Error);
 
     let result = ocx.eq(&ObligationCause::dummy(), param_env, ty_a, ty_b);
     // use `select_where_possible` instead of `select_all_or_error` so that

@@ -72,7 +72,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_infer::traits::specialization_graph::Node;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -162,7 +162,7 @@ fn get_impl_substs(
     impl2_node: Node,
 ) -> Option<(SubstsRef<'_>, SubstsRef<'_>)> {
     let infcx = &tcx.infer_ctxt().build();
-    let ocx = ObligationCtxt::new(infcx);
+    let ocx = ObligationCtxt::new(infcx, DefiningAnchor::Error);
     let param_env = tcx.param_env(impl1_def_id);
 
     let assumed_wf_types =

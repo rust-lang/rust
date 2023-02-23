@@ -10,6 +10,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
 pub mod specialization_graph;
+use rustc_infer::infer::DefiningAnchor;
 use specialization_graph::GraphExt;
 
 use crate::errors::NegativePositiveConflict;
@@ -204,7 +205,7 @@ fn fulfill_implication<'tcx>(
 
     // Needs to be `in_snapshot` because this function is used to rebase
     // substitutions, which may happen inside of a select within a probe.
-    let ocx = ObligationCtxt::new_in_snapshot(infcx);
+    let ocx = ObligationCtxt::new_in_snapshot(infcx, DefiningAnchor::Error);
     // attempt to prove all of the predicates for impl2 given those for impl1
     // (which are packed up in penv)
     ocx.register_obligations(obligations.chain(more_obligations));

@@ -229,6 +229,12 @@ pub enum DefiningAnchor {
     Error,
 }
 
+impl From<LocalDefId> for DefiningAnchor {
+    fn from(v: LocalDefId) -> Self {
+        Self::Bind(v)
+    }
+}
+
 pub struct InferCtxt<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 

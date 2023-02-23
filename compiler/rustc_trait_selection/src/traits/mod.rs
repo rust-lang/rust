@@ -373,7 +373,7 @@ pub fn fully_normalize<'tcx, T>(
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
 {
-    let ocx = ObligationCtxt::new(infcx);
+    let ocx = ObligationCtxt::new(infcx, DefiningAnchor::Error);
     debug!(?value);
     let normalized_value = ocx.normalize(&cause, param_env, value);
     debug!(?normalized_value);
@@ -405,7 +405,7 @@ pub fn fully_solve_obligations<'tcx>(
     obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
     defining_use_anchor: DefiningAnchor,
 ) -> Vec<FulfillmentError<'tcx>> {
-    let ocx = ObligationCtxt::new(infcx).with_defining_use_anchor(defining_use_anchor);
+    let ocx = ObligationCtxt::new(infcx, defining_use_anchor);
     ocx.register_obligations(obligations);
     ocx.select_all_or_error()
 }
@@ -438,7 +438,7 @@ pub fn impossible_predicates<'tcx>(
 
     let infcx = tcx.infer_ctxt().build();
     let param_env = ty::ParamEnv::reveal_all();
-    let ocx = ObligationCtxt::new(&infcx);
+    let ocx = ObligationCtxt::new(&infcx, DefiningAnchor::Error);
     let predicates = ocx.normalize(&ObligationCause::dummy(), param_env, predicates);
     for predicate in predicates {
         let obligation = Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate);

@@ -25,7 +25,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericParamKind, Node};
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::query::Providers;
@@ -1320,7 +1320,7 @@ fn suggest_impl_trait<'tcx>(
         {
             continue;
         }
-        let ocx = ObligationCtxt::new_in_snapshot(&infcx);
+        let ocx = ObligationCtxt::new_in_snapshot(&infcx, DefiningAnchor::Error);
         let item_ty = ocx.normalize(
             &ObligationCause::misc(span, def_id),
             param_env,

@@ -138,7 +138,7 @@ impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
     {
         let (infcx, key, canonical_inference_vars) =
             self.build_with_canonical(DUMMY_SP, canonical_key);
-        let ocx = ObligationCtxt::new(&infcx);
+        let ocx = ObligationCtxt::new(&infcx, DefiningAnchor::Error);
         let value = operation(&ocx, key)?;
         ocx.make_canonicalized_query_response(canonical_inference_vars, value)
     }

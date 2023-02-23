@@ -28,7 +28,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefiningAnchor, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::middle::stability::AllowUnstable;
@@ -2231,7 +2231,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .iter()
             .filter_map(|&(impl_, (assoc_item, def_scope))| {
                 infcx.probe(|_| {
-                    let ocx = ObligationCtxt::new_in_snapshot(&infcx);
+                    let ocx = ObligationCtxt::new_in_snapshot(&infcx, DefiningAnchor::Error);
 
                     let impl_ty = tcx.type_of(impl_);
                     let impl_substs = infcx.fresh_item_substs(impl_);

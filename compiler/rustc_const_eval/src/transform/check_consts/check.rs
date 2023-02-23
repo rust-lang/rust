@@ -4,7 +4,7 @@ use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{DefiningAnchor, TyCtxtInferExt};
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -752,7 +752,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // "non-const" check. This is required for correctness here.
                     {
                         let infcx = tcx.infer_ctxt().build();
-                        let ocx = ObligationCtxt::new(&infcx);
+                        let ocx = ObligationCtxt::new(&infcx, DefiningAnchor::Error);
 
                         let predicates = tcx.predicates_of(callee).instantiate(tcx, substs);
                         let cause = ObligationCause::new(

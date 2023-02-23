@@ -45,7 +45,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Expr;
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{Coercion, InferOk, InferResult};
+use rustc_infer::infer::{Coercion, DefiningAnchor, InferOk, InferResult};
 use rustc_infer::traits::Obligation;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::{
@@ -1020,7 +1020,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let Ok(ok) = coerce.coerce(source, target) else {
                 return false;
             };
-            let ocx = ObligationCtxt::new_in_snapshot(self);
+            let ocx = ObligationCtxt::new_in_snapshot(self, DefiningAnchor::Error);
             ocx.register_obligations(ok.obligations);
             ocx.select_where_possible().is_empty()
         })
