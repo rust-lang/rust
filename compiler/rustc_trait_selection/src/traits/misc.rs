@@ -107,7 +107,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
         adt,
         substs,
         parent_cause,
-        hir::LangItem::Copy,
+        hir::LangItem::ConstParamTy,
     )
     .map_err(ConstParamTyImplementationError::InfrigingFields)?;
 
