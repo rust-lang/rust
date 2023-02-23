@@ -71,10 +71,6 @@ struct AstValidator<'a> {
     /// or `Foo::Bar<impl Trait>`
     is_impl_trait_banned: bool,
 
-    /// Used to ban associated type bounds (i.e., `Type<AssocType: Bounds>`) in
-    /// certain positions.
-    is_assoc_ty_bound_banned: bool,
-
     /// See [ForbiddenLetReason]
     forbidden_let_reason: Option<ForbiddenLetReason>,
 
@@ -180,28 +176,10 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn with_banned_assoc_ty_bound(&mut self, f: impl FnOnce(&mut Self)) {
-        let old = mem::replace(&mut self.is_assoc_ty_bound_banned, true);
-        f(self);
-        self.is_assoc_ty_bound_banned = old;
-    }
-
     fn with_impl_trait(&mut self, outer: Option<Span>, f: impl FnOnce(&mut Self)) {
         let old = mem::replace(&mut self.outer_impl_trait, outer);
         f(self);
         self.outer_impl_trait = old;
-    }
-
-    fn visit_assoc_constraint_from_generic_args(&mut self, constraint: &'a AssocConstraint) {
-        match constraint.kind {
-            AssocConstraintKind::Equality { .. } => {}
-            AssocConstraintKind::Bound { .. } => {
-                if self.is_assoc_ty_bound_banned {
-                    self.session.emit_err(ForbiddenAssocConstraint { span: constraint.span });
-                }
-            }
-        }
-        self.visit_assoc_constraint(constraint);
     }
 
     // Mirrors `visit::walk_ty`, but tracks relevant state.
@@ -1248,7 +1226,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         // are allowed to contain nested `impl Trait`.
                         AngleBracketedArg::Constraint(constraint) => {
                             self.with_impl_trait(None, |this| {
-                                this.visit_assoc_constraint_from_generic_args(constraint);
+                                this.visit_assoc_constraint(constraint);
                             });
                         }
                     }
@@ -1371,14 +1349,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         visit::walk_param_bound(self, bound)
-    }
-
-    fn visit_variant_data(&mut self, s: &'a VariantData) {
-        self.with_banned_assoc_ty_bound(|this| visit::walk_struct_def(this, s))
-    }
-
-    fn visit_enum_def(&mut self, enum_definition: &'a EnumDef) {
-        self.with_banned_assoc_ty_bound(|this| visit::walk_enum_def(this, enum_definition))
     }
 
     fn visit_fn(&mut self, fk: FnKind<'a>, span: Span, id: NodeId) {
@@ -1709,7 +1679,6 @@ pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> 
         outer_impl_trait: None,
         disallow_tilde_const: None,
         is_impl_trait_banned: false,
-        is_assoc_ty_bound_banned: false,
         forbidden_let_reason: Some(ForbiddenLetReason::GenericForbidden),
         lint_buffer: lints,
     };

@@ -1,0 +1,8 @@
+error: associated type bounds are only allowed in where clauses and function signatures, not in bounds
+  --> $DIR/bad-universal-in-dyn-in-where-clause.rs:9:19
+   |
+LL |     dyn for<'j> B<AssocType: 'j>:,
+   |                   ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -288,31 +288,31 @@ enum ImplTraitPosition {
 impl std::fmt::Display for ImplTraitPosition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self {
-            ImplTraitPosition::Path => "path",
-            ImplTraitPosition::Variable => "variable binding",
-            ImplTraitPosition::Trait => "trait",
-            ImplTraitPosition::AsyncBlock => "async block",
-            ImplTraitPosition::Bound => "bound",
-            ImplTraitPosition::Generic => "generic",
-            ImplTraitPosition::ExternFnParam => "`extern fn` param",
-            ImplTraitPosition::ClosureParam => "closure param",
-            ImplTraitPosition::PointerParam => "`fn` pointer param",
-            ImplTraitPosition::FnTraitParam => "`Fn` trait param",
-            ImplTraitPosition::TraitParam => "trait method param",
-            ImplTraitPosition::ImplParam => "`impl` method param",
-            ImplTraitPosition::ExternFnReturn => "`extern fn` return",
-            ImplTraitPosition::ClosureReturn => "closure return",
-            ImplTraitPosition::PointerReturn => "`fn` pointer return",
-            ImplTraitPosition::FnTraitReturn => "`Fn` trait return",
-            ImplTraitPosition::TraitReturn => "trait method return",
-            ImplTraitPosition::ImplReturn => "`impl` method return",
-            ImplTraitPosition::GenericDefault => "generic parameter default",
-            ImplTraitPosition::ConstTy => "const type",
-            ImplTraitPosition::StaticTy => "static type",
-            ImplTraitPosition::AssocTy => "associated type",
-            ImplTraitPosition::FieldTy => "field type",
-            ImplTraitPosition::Cast => "cast type",
-            ImplTraitPosition::ImplSelf => "impl header",
+            ImplTraitPosition::Path => "paths",
+            ImplTraitPosition::Variable => "variable bindings",
+            ImplTraitPosition::Trait => "traits",
+            ImplTraitPosition::AsyncBlock => "async blocks",
+            ImplTraitPosition::Bound => "bounds",
+            ImplTraitPosition::Generic => "generics",
+            ImplTraitPosition::ExternFnParam => "`extern fn` params",
+            ImplTraitPosition::ClosureParam => "closure params",
+            ImplTraitPosition::PointerParam => "`fn` pointer params",
+            ImplTraitPosition::FnTraitParam => "`Fn` trait params",
+            ImplTraitPosition::TraitParam => "trait method params",
+            ImplTraitPosition::ImplParam => "`impl` method params",
+            ImplTraitPosition::ExternFnReturn => "`extern fn` return types",
+            ImplTraitPosition::ClosureReturn => "closure return types",
+            ImplTraitPosition::PointerReturn => "`fn` pointer return types",
+            ImplTraitPosition::FnTraitReturn => "`Fn` trait return types",
+            ImplTraitPosition::TraitReturn => "trait method return types",
+            ImplTraitPosition::ImplReturn => "`impl` method return types",
+            ImplTraitPosition::GenericDefault => "generic parameter defaults",
+            ImplTraitPosition::ConstTy => "const types",
+            ImplTraitPosition::StaticTy => "static types",
+            ImplTraitPosition::AssocTy => "associated types",
+            ImplTraitPosition::FieldTy => "field types",
+            ImplTraitPosition::Cast => "cast types",
+            ImplTraitPosition::ImplSelf => "impl headers",
         };
 
         write!(f, "{name}")
@@ -1002,8 +1002,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             self.arena.alloc(hir::GenericArgs::none())
         };
-        let itctx_tait = &ImplTraitContext::TypeAliasesOpaqueTy;
-
         let kind = match &constraint.kind {
             AssocConstraintKind::Equality { term } => {
                 let term = match term {
@@ -1013,8 +1011,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::TypeBindingKind::Equality { term }
             }
             AssocConstraintKind::Bound { bounds } => {
+                enum DesugarKind<'a> {
+                    ImplTrait,
+                    Error(&'a ImplTraitPosition),
+                    Bound,
+                }
+
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.
-                let (desugar_to_impl_trait, itctx) = match itctx {
+                let desugar_kind = match itctx {
                     // We are in the return position:
                     //
                     //     fn foo() -> impl Iterator<Item: Debug>
@@ -1023,7 +1027,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     //
                     //     fn foo() -> impl Iterator<Item = impl Debug>
                     ImplTraitContext::ReturnPositionOpaqueTy { .. }
-                    | ImplTraitContext::TypeAliasesOpaqueTy { .. } => (true, itctx),
+                    | ImplTraitContext::TypeAliasesOpaqueTy { .. } => DesugarKind::ImplTrait,
 
                     // We are in the argument position, but within a dyn type:
                     //
@@ -1032,15 +1036,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // so desugar to
                     //
                     //     fn foo(x: dyn Iterator<Item = impl Debug>)
-                    ImplTraitContext::Universal if self.is_in_dyn_type => (true, itctx),
+                    ImplTraitContext::Universal if self.is_in_dyn_type => DesugarKind::ImplTrait,
 
-                    // In `type Foo = dyn Iterator<Item: Debug>` we desugar to
-                    // `type Foo = dyn Iterator<Item = impl Debug>` but we have to override the
-                    // "impl trait context" to permit `impl Debug` in this position (it desugars
-                    // then to an opaque type).
-                    //
-                    // FIXME: this is only needed until `impl Trait` is allowed in type aliases.
-                    ImplTraitContext::Disallowed(_) if self.is_in_dyn_type => (true, itctx_tait),
+                    ImplTraitContext::Disallowed(position) if self.is_in_dyn_type => {
+                        DesugarKind::Error(position)
+                    }
 
                     // We are in the parameter position, but not within a dyn type:
                     //
@@ -1049,35 +1049,46 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // so we leave it as is and this gets expanded in astconv to a bound like
                     // `<T as Iterator>::Item: Debug` where `T` is the type parameter for the
                     // `impl Iterator`.
-                    _ => (false, itctx),
+                    _ => DesugarKind::Bound,
                 };
 
-                if desugar_to_impl_trait {
-                    // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
-                    // constructing the HIR for `impl bounds...` and then lowering that.
+                match desugar_kind {
+                    DesugarKind::ImplTrait => {
+                        // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
+                        // constructing the HIR for `impl bounds...` and then lowering that.
 
-                    let impl_trait_node_id = self.next_node_id();
+                        let impl_trait_node_id = self.next_node_id();
 
-                    self.with_dyn_type_scope(false, |this| {
-                        let node_id = this.next_node_id();
-                        let ty = this.lower_ty(
-                            &Ty {
-                                id: node_id,
-                                kind: TyKind::ImplTrait(impl_trait_node_id, bounds.clone()),
-                                span: this.lower_span(constraint.span),
-                                tokens: None,
-                            },
-                            itctx,
-                        );
+                        self.with_dyn_type_scope(false, |this| {
+                            let node_id = this.next_node_id();
+                            let ty = this.lower_ty(
+                                &Ty {
+                                    id: node_id,
+                                    kind: TyKind::ImplTrait(impl_trait_node_id, bounds.clone()),
+                                    span: this.lower_span(constraint.span),
+                                    tokens: None,
+                                },
+                                itctx,
+                            );
 
-                        hir::TypeBindingKind::Equality { term: ty.into() }
-                    })
-                } else {
-                    // Desugar `AssocTy: Bounds` into a type binding where the
-                    // later desugars into a trait predicate.
-                    let bounds = self.lower_param_bounds(bounds, itctx);
+                            hir::TypeBindingKind::Equality { term: ty.into() }
+                        })
+                    }
+                    DesugarKind::Bound => {
+                        // Desugar `AssocTy: Bounds` into a type binding where the
+                        // later desugars into a trait predicate.
+                        let bounds = self.lower_param_bounds(bounds, itctx);
 
-                    hir::TypeBindingKind::Constraint { bounds }
+                        hir::TypeBindingKind::Constraint { bounds }
+                    }
+                    DesugarKind::Error(position) => {
+                        self.tcx.sess.emit_err(errors::MisplacedAssocTyBinding {
+                            span: constraint.span,
+                            position: DiagnosticArgFromDisplay(position),
+                        });
+                        let err_ty = &*self.arena.alloc(self.ty(constraint.span, hir::TyKind::Err));
+                        hir::TypeBindingKind::Equality { term: err_ty.into() }
+                    }
                 }
             }
         };
