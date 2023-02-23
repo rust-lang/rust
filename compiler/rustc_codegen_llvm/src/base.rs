@@ -1,5 +1,3 @@
-//! Codegen the MIR to the LLVM IR.
-//!
 //! Hopefully useful general knowledge about codegen:
 //!
 //! * There's no way to find out the [`Ty`] type of a [`Value`]. Doing so
@@ -18,7 +16,6 @@ use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm;
 use crate::value::Value;
-use crate::{get_enzyme_typetree, DiffTypeTree};
 
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
@@ -27,15 +24,14 @@ use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::dep_graph;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc_middle::mir::mono::{Linkage, Visibility, MonoItem};
-use rustc_middle::ty::{self, Ty, TyCtxt, ParamEnv};
+use rustc_middle::mir::mono::{Linkage, Visibility};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::SanitizerSet;
 use rustc_data_structures::fx::FxHashMap;
 
 use std::time::Instant;
-use std::ffi::CStr;
 
 pub struct ValueIter<'ll> {
     cur: Option<&'ll Value>,
@@ -132,7 +128,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             }
 
             // find autodiff items and build typetrees for them
-            mono_items.iter()
+            /*mono_items.iter()
                 //.filter(|(mono_item, _)| mono_item.def_id().map(|x| tcx.autodiff_attrs(x).is_active()).unwrap_or(false))
                 .filter(|(mono_item, _)| mono_item.def_id().map(|x| tcx.autodiff_attrs(x).is_source()).unwrap_or(false))
                 .filter_map(|(mono_item, _)| {
@@ -148,7 +144,9 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
                         },
                         _ => None
                     }
-                }).collect::<FxHashMap<_, _>>()
+                }).collect::<FxHashMap<_, _>>()*/
+
+            FxHashMap::default()
         };
 
         llvm_module.typetrees = typetrees;
@@ -161,35 +159,6 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
     }
 
     (module, cost)
-}
-
-fn parse_typetree<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, llvm_module: &ModuleLlvm) -> DiffTypeTree {
-    let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
-
-    // TODO: verify.
-    // I think we don't need lifetimes here, so skip_binder is valid?
-    // let tmp = fnc_binder.no_bound_vars();
-    // assert!(tmp.is_some());
-    // let x: ty::FnSig<'_> = tmp.unwrap();
-    let x: ty::FnSig<'_> = fnc_binder.skip_binder();
-
-    let output: Ty<'_> = x.output();
-    let inputs: &[Ty<'_>] = x.inputs();
-    let llvm_data_layout = unsafe{ llvm::LLVMGetDataLayoutStr(&*llvm_module.llmod_raw) };
-    let llvm_data_layout = std::str::from_utf8(unsafe {CStr::from_ptr(llvm_data_layout)}.to_bytes())
-        .expect("got a non-UTF8 data-layout from LLVM");
-    let mut input_tt = vec![];
-    for input in inputs {
-        let new_input_tt = get_enzyme_typetree(*input, llvm_data_layout, tcx, llvm_module.llcx, 0);
-        println!("input final tt: {}", new_input_tt);
-        input_tt.push(new_input_tt);
-    }
-    let ret_tt = get_enzyme_typetree(output, llvm_data_layout, tcx, llvm_module.llcx, 0);
-    println!("output final tt: {}", ret_tt);
-    DiffTypeTree {
-        ret_tt,
-        input_tt,
-    }
 }
 
 pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {

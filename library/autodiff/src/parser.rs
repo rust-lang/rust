@@ -159,9 +159,10 @@ pub(crate) fn strip_sig_attributes(args: Vec<&FnArg>, do_skip: bool, header: &He
     }
 
     // remove last activity because it belongs to return type
-    if header.mode == Mode::Reverse && header.ret_act == Activity::Active {
-        acts.pop();
-    }
+    //if header.mode == Mode::Reverse && header.ret_act == Activity::Active {
+    //    dbg!(&acts);
+    //    acts.pop();
+    //}
 
     (args, acts)
 }
@@ -244,7 +245,10 @@ fn create_target_signature_forward(mut sig: Signature, act: &Vec<Activity>, ret_
             }
             
             if *ret_act != Activity::Const {
-                outputs.push(ret_arg(&p));
+                match sig.output {
+                    ReturnType::Type(_, ref ty) => outputs.push(ty.clone()),
+                    _ => panic!(""),
+                }
             }
         } else {
             inputs.push(p.clone());
@@ -272,7 +276,11 @@ fn create_target_signature_forward(mut sig: Signature, act: &Vec<Activity>, ret_
         sig.output = if *ret_act == Activity::Duplicated {
             parse_quote!(-> (#ret_ty, #( #outputs, )*))
         } else {
-            parse_quote!(-> (#( #outputs, )*))
+            if outputs.len() > 1 {
+                parse_quote!(-> (#( #outputs, )*))
+            } else {
+                parse_quote!(-> #( #outputs )*)
+            }
         };
     }
         
@@ -353,12 +361,9 @@ pub(crate) fn parse(args: TokenStream, input: TokenStream) -> AutoDiffItem {
     sig.inputs = params.into_iter().collect();
 
     let mut params = match (param_attrs, param_attrs2) {
-        (a, b) if b.is_empty() => a,
-        (a, b) if a.is_empty() => b,
-        (a, b) if a.is_empty() && b.is_empty() => Vec::new(),
-        _ => {
-            panic!("Only one attribute supported");
-        }
+        (a, _) if !a.is_empty() => a,
+        (_, b) if !b.is_empty() => b,
+        _ => Vec::new(),
     };
 
     let sig = match block.is_some() {
@@ -375,7 +380,7 @@ pub(crate) fn parse(args: TokenStream, input: TokenStream) -> AutoDiffItem {
     }).sum::<usize>();
 
     // don't add const for return adjoint variable
-    if header.ret_act == Activity::Active && header.mode == Mode::Reverse {
+    if header.ret_act == Activity::Active && header.mode == Mode::Reverse && rem_params > 0 {
         rem_params -= 1;
     }
 

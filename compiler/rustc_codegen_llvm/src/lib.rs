@@ -21,7 +21,7 @@ extern crate rustc_macros;
 
 use back::write::{create_informational_target_machine, create_target_machine};
 
-use llvm::{TypeTree, CConcreteType};
+use llvm::TypeTree;
 pub use llvm_util::target_features;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
@@ -36,12 +36,11 @@ use rustc_errors::{ErrorGuaranteed, FatalError, Handler};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{TyCtxt, Ty, FloatTy, ParamEnvAnd, ParamEnv, Adt, self};
+use rustc_middle::ty::TyCtxt;
 use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::FieldsShape;
 
 use std::any::Any;
 use std::ffi::CStr;
@@ -405,170 +404,6 @@ impl CodegenBackend for LlvmCodegenBackend {
         // This should produce either a finished executable or library.
         link_binary::<LlvmArchiveBuilder<'_>>(sess, &codegen_results, outputs)
     }
-}
-
-pub fn get_enzyme_typetree2<'tcx>( _tcx: TyCtxt<'tcx>, llcx: &'_ llvm::Context, ty: Ty<'tcx>, depth: u8) -> Option<TypeTree> {
-    assert!(depth <= 6);
-
-    match ty.kind() {
-        ty::Bool | ty::Char => Some(TypeTree::from_type(CConcreteType::DT_Unknown, llcx)),
-        ty::Float(x) if *x == FloatTy::F32 => Some(TypeTree::from_type(CConcreteType::DT_Float, llcx)),
-        ty::Float(x) if *x == FloatTy::F64 => Some(TypeTree::from_type(CConcreteType::DT_Double, llcx)),
-        ty::Int(_) | ty::Uint(_) => Some(TypeTree::from_type(CConcreteType::DT_Integer, llcx)),
-        _ => unreachable!(),
-    }
-}
-
-pub fn get_enzyme_typetree<'tcx>(id: Ty<'tcx>, llvm_data_layout: &str, tcx: TyCtxt<'tcx>, llcx: &'_ llvm::Context, depth: usize) -> TypeTree {
-    assert!(depth <= 20);
-    if id.is_scalar() {
-        assert!(!id.is_any_ptr());
-
-        let scalar_type = if id.is_integral() {
-            llvm::CConcreteType::DT_Integer
-        } else {
-            assert!(id.is_floating_point());
-            match id {
-                x if x == tcx.types.f32 => llvm::CConcreteType::DT_Float ,
-                x if x == tcx.types.f64 => llvm::CConcreteType::DT_Double,
-                _ => panic!("floatTy scalar that is neither f32 nor f64"),
-            }
-        };
-
-        println!("{:depth$} build scalar {}", "", id);
-
-        return llvm::TypeTree::from_type(scalar_type, llcx).only(-1);
-    }
-
-    if id.is_unsafe_ptr() || id.is_ref() || id.is_box() {
-        if  id.is_fn_ptr() {
-            unimplemented!("what to do whith fn ptr?");
-        }
-
-        let tt = TypeTree::from_type(llvm_::CConcreteType::DT_Pointer, llcx);
-        let inner_id = id.builtin_deref(true).unwrap().ty;
-        let inner_tt = get_enzyme_typetree(inner_id, llvm_data_layout, tcx, llcx, depth+1);
-
-        let tt = tt.merge(inner_tt).only(-1);
-        println!("{:depth$} add indirection {}", "", tt);
-
-        return tt;
-    }
-
-    let param_env_and = ParamEnvAnd {
-        param_env: ParamEnv::empty(),
-        value: id,
-    };
-
-    let layout = tcx.layout_of(param_env_and);
-    assert!(layout.is_ok());
-
-    let layout = layout.unwrap().layout;
-    let fields = layout.fields();
-    let _abi = layout.abi();
-    let max_size = layout.size();
-
-    if id.is_adt() {
-        let adt_def = id.ty_adt_def().unwrap();
-        let substs = match id.kind() {
-            Adt(_, subst_ref) => subst_ref,
-            _ => panic!(""),
-        };
-
-        if adt_def.is_struct() {
-            let (offsets, _memory_index) = match fields {
-                FieldsShape::Arbitrary{ offsets: o, memory_index: m } => (o,m),
-                _ => panic!(""),
-            };
-            let fields = adt_def.all_fields();
-            let mut field_tt = vec![];
-            let mut field_sizes = vec![];
-            println!("{:depth$} combine fields", "");
-
-            for field in fields {
-                let field_ty: Ty<'_> = field.ty(tcx, substs);
-                let field_ty: Ty<'_> = tcx.normalize_erasing_regions(ParamEnv::empty(), field_ty);
-
-                if field_ty.is_phantom_data() {
-                    continue;
-                }
-
-                let inner_tt = get_enzyme_typetree(field_ty, llvm_data_layout, tcx, llcx, depth+1);
-
-                println!("{:depth$} -> {}", "", inner_tt);
-                field_tt.push(inner_tt);
-
-                if field_ty.is_integral() {
-                    field_sizes.push(1);
-                } else {
-                    let param_env_and = ParamEnvAnd {
-                        param_env: ParamEnv::empty(),
-                        value: field_ty,
-                    };
-                    field_sizes.push(tcx.layout_of(param_env_and).unwrap().size.bytes());
-                }
-            }
-            //dbg!(offsets);
-            //dbg!(memory_index);
-            //dbg!(&field_sizes);
-
-            // Now let's move those typeTrees in the order that rustc mandates.
-            let mut ret_tt = TypeTree::new();
-            for i in 0..field_tt.len() {
-                let tt = &field_tt[i];
-                let offset = offsets[i];
-                let size = (field_sizes[i]) as isize;
-                let tt = tt.clone();
-                //let tt = tt.only(offset.bytes_usize() as isize);
-                let tt = tt.shift(llvm_data_layout, 0, size, offset.bytes_usize() as usize);
-                dbg!(&offset, &size);
-                dbg!(&tt);
-
-                ret_tt = ret_tt.merge(tt);
-            }
-            println!("{:depth$} into {}", "", ret_tt);
-
-            return ret_tt;
-        } else {
-            unimplemented!("adt that isn't a struct");
-        }
-    }
-
-
-    if id.is_array() {
-        let (stride, count) = match fields {
-            FieldsShape::Array{ stride: s, count: c } => (s,c),
-            _ => panic!(""),
-        };
-        let byte_stride = stride.bytes_usize();
-        let byte_max_size = max_size.bytes_usize();
-        let isize_count: usize = (*count).try_into().unwrap();
-
-        assert!(byte_stride * *count as usize == byte_max_size);
-        assert!(*count > 0); // return empty TT for empty?
-        let sub_id = id.builtin_index().unwrap();
-        let subtt = get_enzyme_typetree(sub_id, llvm_data_layout, tcx, llcx, depth+1);
-
-        // calculate size of subtree
-        let param_env_and = ParamEnvAnd {
-            param_env: ParamEnv::empty(),
-            value: sub_id,
-        };
-        let size = tcx.layout_of(param_env_and).unwrap().size.bytes();
-
-        let mut tt = TypeTree::new();
-
-        //dbg!(&sub_tt, isize_count);
-        for i in 0..isize_count {
-            tt = tt.merge(subtt.clone().shift(llvm_data_layout, 0, size as isize, i * (byte_stride as usize)));
-        }
-        println!("{:depth$} repeated array into {}", "", tt);
-
-        return tt;
-    }
-
-    println!("Warning: create empty typetree for {}", id);
-    TypeTree::new()
 }
 
 #[derive(Clone, Debug)]

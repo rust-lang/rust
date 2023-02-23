@@ -717,6 +717,8 @@ pub(crate) unsafe fn differentiate(
         llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrint), 1);
     }
 
+    llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymeStrictAliasing), 1);
+
     for item in diff_items {
         let res = enzyme_ad(llmod, llcx, item);
         assert!(res.is_ok());

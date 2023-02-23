@@ -1041,7 +1041,6 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
     // We don't support volatile / extern / (global?) values.
     // Just because I didn't had time to test them, and it seems less urgent.
     let args_uncacheable = vec![0; input_activity.len()];
-    let ret = output_tt.clone();
 
     let kv_tmp = IntList {
         data: std::ptr::null_mut(),
@@ -1052,7 +1051,7 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
 
     let dummy_type = CFnTypeInfo {
         Arguments: args_tree.as_mut_ptr(),
-        Return: ret.inner,
+        Return: output_tt.inner.clone(),
         KnownValues: known_values.as_mut_ptr(),
     };
 
@@ -1087,7 +1086,6 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     output_tt: TypeTree,
     ) -> &Value{
 
-    dbg!(&input_tts);
     let ret_activity = cdiffe_from(ret_activity);
     assert!(ret_activity == CDIFFE_TYPE::DFT_CONSTANT || ret_activity == CDIFFE_TYPE::DFT_OUT_DIFF);
     let input_activity: Vec<CDIFFE_TYPE> = input_activity.iter().map(|&x| cdiffe_from(x)).collect();
@@ -1107,24 +1105,22 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     let mut args_tree = input_tts.iter()
         .map(|x| x.inner).collect::<Vec<_>>();
 
-    //let mut args_tree = vec![TypeTree::new().inner; typetree.input_tt.len()];
-
     // We don't support volatile / extern / (global?) values.
     // Just because I didn't had time to test them, and it seems less urgent.
-    let args_uncacheable = vec![0; input_activity.len()];
-    let ret = output_tt.clone();
+    let args_uncacheable = vec![0; input_tts.len()];
     let kv_tmp = IntList {
         data: std::ptr::null_mut(),
         size: 0,
     };
 
-    let mut known_values = vec![kv_tmp; input_activity.len()];
+    let mut known_values = vec![kv_tmp; input_tts.len()];
 
     let dummy_type = CFnTypeInfo {
         Arguments: args_tree.as_mut_ptr(),
-        Return: ret.inner,
+        Return: output_tt.inner.clone(),
         KnownValues: known_values.as_mut_ptr(),
     };
+
     EnzymeCreatePrimalAndGradient(
         logic_ref, // Logic
         fnc,
@@ -2771,6 +2767,7 @@ extern "C" {
     pub static mut EnzymePrintActivity: c_void;
     pub static mut EnzymePrintType: c_void;
     pub static mut EnzymePrint: c_void;
+    pub static mut EnzymeStrictAliasing: c_void;
 }
 
 #[repr(C)]

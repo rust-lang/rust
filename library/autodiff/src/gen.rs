@@ -61,14 +61,26 @@ pub(crate) fn generate_body(token: TokenStream, item: &AutoDiffItem) -> (TokenSt
             _ => quote!(#fn_name_wrapper),
         };
 
+        // estimate return type on last variable (which is the adjoint)
+        let ret = if item.header.mode == Mode::Reverse && item.header.ret_act == Activity::Active {
+            let last = match fn_args.last().unwrap(){
+                FnArg::Typed(t) => &t.ty,
+                _ => panic!(""),
+            };
+
+            quote!(-> #last)
+        } else {
+            quote!()
+        };
+
         //let ret_type = match item.ret_act {
         //    Activity::Duplicated | Activity::DuplicatedNoNeed => {
         //        item.sig.output.
 
         (
             quote!(
-                fn #fn_name_wrapper(#( #fn_args, )*) {
-                    #fn_name(#( #fn_args_name, )*);
+                fn #fn_name_wrapper(#( #fn_args, )*) #ret {
+                    #fn_name(#( #fn_args_name, )*)
                 }
             ),
             fn_name_call
