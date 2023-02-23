@@ -576,7 +576,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
     let cause = traits::ObligationCause::misc(span, impl_did);
     let predicate =
         predicate_for_trait_def(tcx, param_env, cause, trait_def_id, 0, [source, target]);
-    let errors = traits::fully_solve_obligation(&infcx, predicate);
+    let errors = traits::fully_solve_obligation(&infcx, predicate, infer::DefiningAnchor::Error);
     if !errors.is_empty() {
         infcx.err_ctxt().report_fulfillment_errors(&errors, None);
     }

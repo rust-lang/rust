@@ -775,7 +775,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (None, Some(trait_did)) => {
                 let (obligation, _) =
                     self.obligation_for_method(cause, trait_did, lhs_ty, Some(input_types));
-                Err(rustc_trait_selection::traits::fully_solve_obligation(self, obligation))
+                Err(rustc_trait_selection::traits::fully_solve_obligation(
+                    self,
+                    obligation,
+                    self.defining_use_anchor,
+                ))
             }
         }
     }

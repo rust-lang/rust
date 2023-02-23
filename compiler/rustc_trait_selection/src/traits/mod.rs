@@ -170,7 +170,7 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
         // The handling of regions in this area of the code is terrible,
         // see issue #29149. We should be able to improve on this with
         // NLL.
-        let errors = fully_solve_obligation(infcx, obligation);
+        let errors = fully_solve_obligation(infcx, obligation, infcx.old_defining_use_anchor);
 
         match &errors[..] {
             [] => true,
@@ -393,8 +393,9 @@ where
 pub fn fully_solve_obligation<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligation: PredicateObligation<'tcx>,
+    defining_use_anchor: DefiningAnchor,
 ) -> Vec<FulfillmentError<'tcx>> {
-    fully_solve_obligations(infcx, [obligation], infcx.old_defining_use_anchor)
+    fully_solve_obligations(infcx, [obligation], defining_use_anchor)
 }
 
 /// Process a set of obligations (and any nested obligations that come from them)
@@ -423,7 +424,7 @@ pub fn fully_solve_bound<'tcx>(
     let trait_ref = tcx.mk_trait_ref(bound, [ty]);
     let obligation = Obligation::new(tcx, cause, param_env, ty::Binder::dummy(trait_ref));
 
-    fully_solve_obligation(infcx, obligation)
+    fully_solve_obligation(infcx, obligation, infcx.old_defining_use_anchor)
 }
 
 /// Normalizes the predicates and checks whether they hold in an empty environment. If this

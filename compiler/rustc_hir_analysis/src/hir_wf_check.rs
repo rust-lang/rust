@@ -80,6 +80,7 @@ fn diagnostic_hir_wf_check<'tcx>(
                     self.param_env,
                     ty::Binder::dummy(ty::PredicateKind::WellFormed(tcx_ty.into())),
                 ),
+                rustc_infer::infer::DefiningAnchor::Error,
             );
             if !errors.is_empty() {
                 debug!("Wf-check got errors for {:?}: {:?}", ty, errors);
