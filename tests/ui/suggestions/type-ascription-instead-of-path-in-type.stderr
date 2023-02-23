@@ -18,7 +18,7 @@ LL |     let _: Vec<A:B> = A::B;
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
-error[E0107]: this struct takes at least 1 generic argument but 0 generic arguments were supplied
+error[E0107]: struct takes at least 1 generic argument but 0 generic arguments were supplied
   --> $DIR/type-ascription-instead-of-path-in-type.rs:6:12
    |
 LL |     let _: Vec<A:B> = A::B;

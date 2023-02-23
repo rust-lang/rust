@@ -4,9 +4,9 @@ struct Bar<'a>(&'a ());
 
 fn main() {
     Foo::<'static, 'static, ()>(&0);
-    //~^ ERROR this struct takes 1 lifetime argument but 2 lifetime arguments were supplied
+    //~^ ERROR struct takes 1 lifetime argument but 2 lifetime arguments were supplied
 
     Bar::<'static, 'static, ()>(&());
-    //~^ ERROR this struct takes 1 lifetime argument but 2 lifetime arguments were supplied
-    //~| ERROR this struct takes 0
+    //~^ ERROR struct takes 1 lifetime argument but 2 lifetime arguments were supplied
+    //~| ERROR struct takes 0
 }

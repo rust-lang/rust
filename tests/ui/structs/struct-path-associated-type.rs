@@ -13,7 +13,7 @@ fn f<T: Tr>() {
     //~^ ERROR expected struct, variant or union type, found associated type
     let z = T::A::<u8> {};
     //~^ ERROR expected struct, variant or union type, found associated type
-    //~| ERROR this associated type takes 0 generic arguments but 1 generic argument was supplied
+    //~| ERROR associated type takes 0 generic arguments but 1 generic argument was supplied
     match S {
         T::A {} => {}
         //~^ ERROR expected struct, variant or union type, found associated type
@@ -22,7 +22,7 @@ fn f<T: Tr>() {
 
 fn g<T: Tr<A = S>>() {
     let s = T::A {}; // OK
-    let z = T::A::<u8> {}; //~ ERROR this associated type takes 0 generic arguments but 1 generic argument was supplied
+    let z = T::A::<u8> {}; //~ ERROR associated type takes 0 generic arguments but 1 generic argument was supplied
     match S {
         T::A {} => {} // OK
     }

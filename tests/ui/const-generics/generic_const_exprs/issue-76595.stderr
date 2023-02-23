@@ -1,4 +1,4 @@
-error[E0107]: this function takes 2 generic arguments but 1 generic argument was supplied
+error[E0107]: function takes 2 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-76595.rs:15:5
    |
 LL |     test::<2>();

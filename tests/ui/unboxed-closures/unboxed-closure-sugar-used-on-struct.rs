@@ -6,7 +6,7 @@ struct Bar<A> {
 
 fn foo(b: Box<Bar()>) {
     //~^ ERROR parenthesized type parameters may only be used with a `Fn` trait
-    //~| ERROR this struct takes 1 generic argument but 0 generic arguments
+    //~| ERROR struct takes 1 generic argument but 0 generic arguments
 }
 
 fn main() { }

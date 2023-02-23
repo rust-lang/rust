@@ -45,13 +45,13 @@ fn main() {
         y: 8,
     };
 
-    let pt3 = PointF::<i32> { //~ ERROR this type alias takes 0 generic arguments but 1 generic argument
+    let pt3 = PointF::<i32> { //~ ERROR type alias takes 0 generic arguments but 1 generic argument
         x: 9,  //~ ERROR mismatched types
         y: 10, //~ ERROR mismatched types
     };
 
     match (Point { x: 1, y: 2 }) {
-        PointF::<u32> { .. } => {} //~ ERROR this type alias takes 0 generic arguments but 1 generic argument
+        PointF::<u32> { .. } => {} //~ ERROR type alias takes 0 generic arguments but 1 generic argument
         //~^ ERROR mismatched types
     }
 

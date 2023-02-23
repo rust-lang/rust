@@ -4,7 +4,7 @@ fn foo<T>() {
     }
 
     impl<T> Drop for Foo<T> {
-        //~^ ERROR this struct takes 0 generic arguments but 1 generic argument
+        //~^ ERROR struct takes 0 generic arguments but 1 generic argument
         fn drop(&mut self) {}
     }
 }

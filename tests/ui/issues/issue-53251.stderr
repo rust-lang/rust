@@ -1,4 +1,4 @@
-error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: associated function takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-53251.rs:11:20
    |
 LL |                 S::f::<i64>();
@@ -16,7 +16,7 @@ LL |     fn f() {}
    |        ^
    = note: this error originates in the macro `impl_add` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: associated function takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-53251.rs:11:20
    |
 LL |                 S::f::<i64>();
