@@ -238,8 +238,6 @@ fn compare_method_predicate_entailment<'tcx>(
     // type.
 
     // Compute placeholder form of impl and trait method tys.
-    let tcx = infcx.tcx;
-
     let mut wf_tys = FxIndexSet::default();
 
     let unnormalized_impl_sig = infcx.instantiate_binder_with_fresh_vars(

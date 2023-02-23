@@ -376,7 +376,7 @@ fn resolve_negative_obligation<'tcx>(
     };
 
     let param_env = o.param_env;
-    if !super::fully_solve_obligation(&infcx, o, infcx.old_defining_use_anchor).is_empty() {
+    if !super::fully_solve_obligation(&infcx, o, DefiningAnchor::Error).is_empty() {
         return false;
     }
 

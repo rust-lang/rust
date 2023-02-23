@@ -83,7 +83,7 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
                         param_env,
                     )
                 }),
-                self.old_defining_use_anchor,
+                rustc_infer::infer::DefiningAnchor::Error,
             );
             if !constraints.member_constraints.is_empty() {
                 span_bug!(span, "{:#?}", constraints.member_constraints);
