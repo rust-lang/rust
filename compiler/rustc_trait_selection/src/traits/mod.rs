@@ -170,7 +170,7 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
         // The handling of regions in this area of the code is terrible,
         // see issue #29149. We should be able to improve on this with
         // NLL.
-        let errors = fully_solve_obligation(infcx, obligation, infcx.old_defining_use_anchor);
+        let errors = fully_solve_obligation(infcx, obligation, DefiningAnchor::Error);
 
         match &errors[..] {
             [] => true,
