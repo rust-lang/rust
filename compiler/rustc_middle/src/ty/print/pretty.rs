@@ -2947,8 +2947,9 @@ fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
         //
         // For good paths causing this bug, the `rustc_middle::ty::print::with_no_trimmed_paths`
         // wrapper can be used to suppress this query, in exchange for full paths being formatted.
-        tcx.sess.delay_good_path_bug(
-            "trimmed_def_paths constructed but no error emitted; use `DelayDm` for lints or `with_no_trimmed_paths` for debugging",
+        tcx.sess.delay_bug_unless_diagnostic_emitted(
+            "trimmed_def_paths constructed but no diagnostic emitted; \
+            use `DelayDm` for lints or `with_no_trimmed_paths` for debugging",
         );
     }
 
