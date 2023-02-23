@@ -639,7 +639,7 @@ impl<'a> Parser<'a> {
             }
             // We can only resolve single-segment paths at the moment, because multi-segment paths
             // require type-checking: see `visit_generic_arg` in `src/librustc_resolve/late.rs`.
-            ast::ExprKind::Path(None, path)
+            ast::ExprKind::Path1(path)
                 if path.segments.len() == 1 && path.segments[0].args.is_none() =>
             {
                 true

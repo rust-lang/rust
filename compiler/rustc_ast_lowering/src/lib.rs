@@ -161,7 +161,7 @@ trait ResolverAstLoweringExt {
 
 impl ResolverAstLoweringExt for ResolverAstLowering {
     fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>> {
-        if let ExprKind::Path(None, path) = &expr.kind {
+        if let ExprKind::Path1(path) = &expr.kind {
             // Don't perform legacy const generics rewriting if the path already
             // has generic arguments.
             if path.segments.last().unwrap().args.is_some() {
@@ -1163,7 +1163,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                                 let path_expr = Expr {
                                     id: ty.id,
-                                    kind: ExprKind::Path(qself.clone(), path.clone()),
+                                    kind: ExprKind::mk_path1_or_path2(qself.clone(), path.clone()),
                                     span,
                                     attrs: AttrVec::new(),
                                     tokens: None,
@@ -1229,7 +1229,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let id = self.lower_node_id(t.id);
-        let qpath = self.lower_qpath(t.id, qself, path, param_mode, itctx);
+        let qpath = self.lower_qpath(t.id, qself.as_ref(), path, param_mode, itctx);
         self.ty_path(id, t.span, qpath)
     }
 
@@ -2210,7 +2210,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_trait_ref(&mut self, p: &TraitRef, itctx: &ImplTraitContext) -> hir::TraitRef<'hir> {
-        let path = match self.lower_qpath(p.ref_id, &None, &p.path, ParamMode::Explicit, itctx) {
+        let path = match self.lower_qpath(p.ref_id, None, &p.path, ParamMode::Explicit, itctx) {
             hir::QPath::Resolved(None, path) => path,
             qpath => panic!("lower_trait_ref: unexpected QPath `{qpath:?}`"),
         };

@@ -215,7 +215,8 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::MethodCall(..)
             | ast::ExprKind::Paren(..)
             | ast::ExprKind::Underscore
-            | ast::ExprKind::Path(..)
+            | ast::ExprKind::Path1(..)
+            | ast::ExprKind::Path2(..)
             | ast::ExprKind::Repeat(..)
             | ast::ExprKind::Ret(..)
             | ast::ExprKind::Yeet(..)

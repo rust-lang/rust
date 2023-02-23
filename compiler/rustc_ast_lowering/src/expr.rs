@@ -269,10 +269,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.tcx.sess.emit_err(UnderscoreExprLhsAssign { span: e.span });
                     hir::ExprKind::Err
                 }
-                ExprKind::Path(qself, path) => {
+                ExprKind::Path1(path) => {
                     let qpath = self.lower_qpath(
                         e.id,
-                        qself,
+                        None,
+                        path,
+                        ParamMode::Optional,
+                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    );
+                    hir::ExprKind::Path(qpath)
+                }
+                ExprKind::Path2(qself, path) => {
+                    let qpath = self.lower_qpath(
+                        e.id,
+                        Some(qself),
                         path,
                         ParamMode::Optional,
                         &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
@@ -307,7 +317,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Struct(
                         self.arena.alloc(self.lower_qpath(
                             e.id,
-                            &se.qself,
+                            se.qself.as_ref(),
                             &se.path,
                             ParamMode::Optional,
                             &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
@@ -370,7 +380,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         args: ThinVec<AstP<Expr>>,
         legacy_args_idx: &[usize],
     ) -> hir::ExprKind<'hir> {
-        let ExprKind::Path(None, path) = &mut f.kind else {
+        let ExprKind::Path1(path) = &mut f.kind else {
             unreachable!();
         };
 
@@ -1119,15 +1129,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn extract_tuple_struct_path<'a>(
         &mut self,
         expr: &'a Expr,
-    ) -> Option<(&'a Option<AstP<QSelf>>, &'a Path)> {
-        if let ExprKind::Path(qself, path) = &expr.kind {
+    ) -> Option<(Option<&'a AstP<QSelf>>, &'a Path)> {
+        // njn: ugh
+        if let ExprKind::Path1(path) = &expr.kind {
             // Does the path resolve to something disallowed in a tuple struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
                 if let Some(res) = partial_res.full_res() && !res.expected_in_tuple_struct_pat() {
                     return None;
                 }
             }
-            return Some((qself, path));
+            return Some((None, path));
+        } else if let ExprKind::Path2(qself, path) = &expr.kind {
+            // Does the path resolve to something disallowed in a tuple struct/variant pattern?
+            if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
+                if let Some(res) = partial_res.full_res() && !res.expected_in_tuple_struct_pat() {
+                    return None;
+                }
+            }
+            return Some((Some(qself), path));
         }
         None
     }
@@ -1139,15 +1158,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn extract_unit_struct_path<'a>(
         &mut self,
         expr: &'a Expr,
-    ) -> Option<(&'a Option<AstP<QSelf>>, &'a Path)> {
-        if let ExprKind::Path(qself, path) = &expr.kind {
+    ) -> Option<(Option<&'a AstP<QSelf>>, &'a Path)> {
+        // njn: ugh
+        if let ExprKind::Path1(path) = &expr.kind {
             // Does the path resolve to something disallowed in a unit struct/variant pattern?
             if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
                 if let Some(res) = partial_res.full_res() && !res.expected_in_unit_struct_pat() {
                     return None;
                 }
             }
-            return Some((qself, path));
+            return Some((None, path));
+        } else if let ExprKind::Path2(qself, path) = &expr.kind {
+            // Does the path resolve to something disallowed in a unit struct/variant pattern?
+            if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
+                if let Some(res) = partial_res.full_res() && !res.expected_in_unit_struct_pat() {
+                    return None;
+                }
+            }
+            return Some((Some(qself), path));
         }
         None
     }
@@ -1216,7 +1244,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
             }
             // Unit structs and enum variants.
-            ExprKind::Path(..) => {
+            ExprKind::Path1(..) | ExprKind::Path2(..) => {
                 if let Some((qself, path)) = self.extract_unit_struct_path(lhs) {
                     let qpath = self.lower_qpath(
                         lhs.id,
@@ -1244,7 +1272,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }));
                 let qpath = self.lower_qpath(
                     lhs.id,
-                    &se.qself,
+                    se.qself.as_ref(),
                     &se.path,
                     ParamMode::Optional,
                     &ImplTraitContext::Disallowed(ImplTraitPosition::Path),

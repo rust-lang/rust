@@ -156,17 +156,30 @@ pub fn parse_asm_args<'a>(
             ast::InlineAsmOperand::Const { anon_const }
         } else if p.eat_keyword(sym::sym) {
             let expr = p.parse_expr()?;
-            let ast::ExprKind::Path(qself, path) = &expr.kind else {
-                let err = diag
-                    .struct_span_err(expr.span, "expected a path for argument to `sym`");
-                return Err(err);
-            };
-            let sym = ast::InlineAsmSym {
-                id: ast::DUMMY_NODE_ID,
-                qself: qself.clone(),
-                path: path.clone(),
-            };
-            ast::InlineAsmOperand::Sym { sym }
+            match &expr.kind {
+                // njn: ugh
+                ast::ExprKind::Path1(path) => {
+                    let sym = ast::InlineAsmSym {
+                        id: ast::DUMMY_NODE_ID,
+                        qself: None,
+                        path: path.clone(),
+                    };
+                    ast::InlineAsmOperand::Sym { sym }
+                }
+                ast::ExprKind::Path2(qself, path) => {
+                    let sym = ast::InlineAsmSym {
+                        id: ast::DUMMY_NODE_ID,
+                        qself: Some(qself.clone()),
+                        path: path.clone().into_inner(),
+                    };
+                    ast::InlineAsmOperand::Sym { sym }
+                }
+                _ => {
+                    let err =
+                        diag.struct_span_err(expr.span, "expected a path for argument to `sym`");
+                    return Err(err);
+                }
+            }
         } else if allow_templates {
             let template = p.parse_expr()?;
             // If it can't possibly expand to a string, provide diagnostics here to include other

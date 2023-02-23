@@ -202,7 +202,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         if let Some(def_id) = static_def_id {
                             let path = self.lower_qpath(
                                 sym.id,
-                                &sym.qself,
+                                sym.qself.as_ref(),
                                 &sym.path,
                                 ParamMode::Optional,
                                 &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
@@ -213,7 +213,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             // Expr using the name node id.
                             let expr = Expr {
                                 id: sym.id,
-                                kind: ExprKind::Path(sym.qself.clone(), sym.path.clone()),
+                                kind: ExprKind::mk_path1_or_path2(
+                                    sym.qself.clone(),
+                                    sym.path.clone(),
+                                ),
                                 span: *op_sp,
                                 attrs: AttrVec::new(),
                                 tokens: None,

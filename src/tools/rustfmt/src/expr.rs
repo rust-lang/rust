@@ -116,7 +116,7 @@ pub(crate) fn format_expr(
             rewrite_struct_lit(
                 context,
                 path,
-                qself,
+                qself.as_ref(),
                 fields,
                 rest,
                 &expr.attrs,
@@ -168,8 +168,11 @@ pub(crate) fn format_expr(
         ast::ExprKind::Match(ref cond, ref arms) => {
             rewrite_match(context, cond, arms, shape, expr.span, &expr.attrs)
         }
-        ast::ExprKind::Path(ref qself, ref path) => {
-            rewrite_path(context, PathContext::Expr, qself, path, shape)
+        ast::ExprKind::Path1(ref path) => {
+            rewrite_path(context, PathContext::Expr, None, path, shape)
+        }
+        ast::ExprKind::Path2(ref qself, ref path) => {
+            rewrite_path(context, PathContext::Expr, Some(qself), path, shape)
         }
         ast::ExprKind::Assign(ref lhs, ref rhs, _) => {
             rewrite_assignment(context, lhs, rhs, None, shape)
@@ -1297,7 +1300,7 @@ pub(crate) fn rewrite_call(
 pub(crate) fn is_simple_expr(expr: &ast::Expr) -> bool {
     match expr.kind {
         ast::ExprKind::Lit(..) => true,
-        ast::ExprKind::Path(ref qself, ref path) => qself.is_none() && path.segments.len() <= 1,
+        ast::ExprKind::Path1(ref path) => path.segments.len() <= 1,
         ast::ExprKind::AddrOf(_, _, ref expr)
         | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Cast(ref expr, _)
@@ -1541,7 +1544,7 @@ fn struct_lit_can_be_aligned(fields: &[ast::ExprField], has_base: bool) -> bool 
 fn rewrite_struct_lit<'a>(
     context: &RewriteContext<'_>,
     path: &ast::Path,
-    qself: &Option<ptr::P<ast::QSelf>>,
+    qself: Option<&ptr::P<ast::QSelf>>,
     fields: &'a [ast::ExprField],
     struct_rest: &ast::StructRest,
     attrs: &[ast::Attribute],

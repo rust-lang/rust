@@ -384,13 +384,31 @@ impl<'a> PathSource<'a> {
                 // this is not precise but usually more helpful than just "value".
                 Some(ExprKind::Call(call_expr, _)) => match &call_expr.kind {
                     // the case of `::some_crate()`
-                    ExprKind::Path(_, path)
+                    ExprKind::Path1(path)
                         if path.segments.len() == 2
                             && path.segments[0].ident.name == kw::PathRoot =>
                     {
                         "external crate"
                     }
-                    ExprKind::Path(_, path) => {
+                    // njn: ugh, double duplication
+                    ExprKind::Path2(_, path)
+                        if path.segments.len() == 2
+                            && path.segments[0].ident.name == kw::PathRoot =>
+                    {
+                        "external crate"
+                    }
+                    ExprKind::Path1(path) => {
+                        let mut msg = "function";
+                        if let Some(segment) = path.segments.iter().last() {
+                            if let Some(c) = segment.ident.to_string().chars().next() {
+                                if c.is_uppercase() {
+                                    msg = "function, tuple struct or tuple variant";
+                                }
+                            }
+                        }
+                        msg
+                    }
+                    ExprKind::Path2(_, path) => {
                         let mut msg = "function";
                         if let Some(segment) = path.segments.iter().last() {
                             if let Some(c) = segment.ident.to_string().chars().next() {
@@ -688,7 +706,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
             }
             TyKind::Path(ref qself, ref path) => {
                 self.diagnostic_metadata.current_type_path = Some(ty);
-                self.smart_resolve_path(ty.id, &qself, path, PathSource::Type);
+                self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
 
                 // Check whether we should interpret this as a bare trait object.
                 if qself.is_none()
@@ -789,7 +807,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                 this.visit_generic_params(&tref.bound_generic_params, false);
                 this.smart_resolve_path(
                     tref.trait_ref.ref_id,
-                    &None,
+                    None,
                     &tref.trait_ref.path,
                     PathSource::Trait(AliasPossibility::Maybe),
                 );
@@ -1021,7 +1039,7 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
                                 |this| {
                                     this.smart_resolve_path(
                                         ty.id,
-                                        qself,
+                                        qself.as_ref(),
                                         path,
                                         PathSource::Expr(None),
                                     );
@@ -1181,7 +1199,12 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
         self.with_rib(ValueNS, InlineAsmSymRibKind, |this| {
             this.with_rib(TypeNS, InlineAsmSymRibKind, |this| {
                 this.with_label_rib(InlineAsmSymRibKind, |this| {
-                    this.smart_resolve_path(sym.id, &sym.qself, &sym.path, PathSource::Expr(None));
+                    this.smart_resolve_path(
+                        sym.id,
+                        sym.qself.as_ref(),
+                        &sym.path,
+                        PathSource::Expr(None),
+                    );
                     visit::walk_inline_asm_sym(this, sym);
                 });
             })
@@ -2674,7 +2697,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             self.diagnostic_metadata.currently_processing_impl_trait =
                 Some((trait_ref.clone(), self_type.clone()));
             let res = self.smart_resolve_path_fragment(
-                &None,
+                None,
                 &path,
                 PathSource::Trait(AliasPossibility::No),
                 Finalize::new(trait_ref.ref_id, trait_ref.path.span),
@@ -3202,7 +3225,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 PatKind::TupleStruct(ref qself, ref path, ref sub_patterns) => {
                     self.smart_resolve_path(
                         pat.id,
-                        qself,
+                        qself.as_ref(),
                         path,
                         PathSource::TupleStruct(
                             pat.span,
@@ -3211,10 +3234,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     );
                 }
                 PatKind::Path(ref qself, ref path) => {
-                    self.smart_resolve_path(pat.id, qself, path, PathSource::Pat);
+                    self.smart_resolve_path(pat.id, qself.as_ref(), path, PathSource::Pat);
                 }
                 PatKind::Struct(ref qself, ref path, ..) => {
-                    self.smart_resolve_path(pat.id, qself, path, PathSource::Struct);
+                    self.smart_resolve_path(pat.id, qself.as_ref(), path, PathSource::Struct);
                 }
                 PatKind::Or(ref ps) => {
                     // Add a new set of bindings to the stack. `Or` here records that when a
@@ -3407,7 +3430,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     fn smart_resolve_path(
         &mut self,
         id: NodeId,
-        qself: &Option<P<QSelf>>,
+        qself: Option<&P<QSelf>>,
         path: &Path,
         source: PathSource<'ast>,
     ) {
@@ -3422,7 +3445,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn smart_resolve_path_fragment(
         &mut self,
-        qself: &Option<P<QSelf>>,
+        qself: Option<&P<QSelf>>,
         path: &[Segment],
         source: PathSource<'ast>,
         finalize: Finalize,
@@ -3671,7 +3694,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     // Resolve in alternative namespaces if resolution in the primary namespace fails.
     fn resolve_qpath_anywhere(
         &mut self,
-        qself: &Option<P<QSelf>>,
+        qself: Option<&P<QSelf>>, // njn: precursor?
         path: &[Segment],
         primary_ns: Namespace,
         span: Span,
@@ -3715,7 +3738,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     /// Handles paths that may refer to associated items.
     fn resolve_qpath(
         &mut self,
-        qself: &Option<P<QSelf>>,
+        qself: Option<&P<QSelf>>,
         path: &[Segment],
         ns: Namespace,
         finalize: Finalize,
@@ -3745,7 +3768,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // but with `qself` set to `None`.
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
             let partial_res = self.smart_resolve_path_fragment(
-                &None,
+                None,
                 &path[..=qself.position],
                 PathSource::TraitItem(ns),
                 Finalize::with_root_span(finalize.node_id, finalize.path_span, qself.path_span),
@@ -3927,13 +3950,18 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
         // Next, resolve the node.
         match expr.kind {
-            ExprKind::Path(ref qself, ref path) => {
-                self.smart_resolve_path(expr.id, qself, path, PathSource::Expr(parent));
+            ExprKind::Path1(ref path) => {
+                self.smart_resolve_path(expr.id, None, path, PathSource::Expr(parent));
+                visit::walk_expr(self, expr);
+            }
+
+            ExprKind::Path2(ref qself, ref path) => {
+                self.smart_resolve_path(expr.id, Some(qself), path, PathSource::Expr(parent));
                 visit::walk_expr(self, expr);
             }
 
             ExprKind::Struct(ref se) => {
-                self.smart_resolve_path(expr.id, &se.qself, &se.path, PathSource::Struct);
+                self.smart_resolve_path(expr.id, se.qself.as_ref(), &se.path, PathSource::Struct);
                 visit::walk_expr(self, expr);
             }
 

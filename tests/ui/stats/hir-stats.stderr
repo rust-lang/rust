@@ -34,7 +34,7 @@ ast-stats-1 - Struct                    72 ( 1.1%)             1
 ast-stats-1 - Wild                      72 ( 1.1%)             1
 ast-stats-1 - Ident                    360 ( 5.5%)             5
 ast-stats-1 Expr                     576 ( 8.8%)             8            72
-ast-stats-1 - Path                      72 ( 1.1%)             1
+ast-stats-1 - Path1                     72 ( 1.1%)             1
 ast-stats-1 - Match                     72 ( 1.1%)             1
 ast-stats-1 - Struct                    72 ( 1.1%)             1
 ast-stats-1 - Lit                      144 ( 2.2%)             2
@@ -92,7 +92,7 @@ ast-stats-2 - Struct                    72 ( 1.0%)             1
 ast-stats-2 - Wild                      72 ( 1.0%)             1
 ast-stats-2 - Ident                    360 ( 5.0%)             5
 ast-stats-2 Expr                     648 ( 9.1%)             9            72
-ast-stats-2 - Path                      72 ( 1.0%)             1
+ast-stats-2 - Path1                     72 ( 1.0%)             1
 ast-stats-2 - Match                     72 ( 1.0%)             1
 ast-stats-2 - Struct                    72 ( 1.0%)             1
 ast-stats-2 - InlineAsm                 72 ( 1.0%)             1

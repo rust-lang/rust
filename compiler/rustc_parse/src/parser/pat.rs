@@ -411,7 +411,7 @@ impl<'a> Parser<'a> {
             if qself.is_none() && self.check(&token::Not) {
                 self.parse_pat_mac_invoc(path)?
             } else if let Some(form) = self.parse_range_end() {
-                let begin = self.mk_expr(span, ExprKind::Path(qself, path));
+                let begin = self.mk_expr(span, ExprKind::mk_path1_or_path2(qself, path));
                 self.parse_pat_range_begin_with(begin, form)?
             } else if self.check(&token::OpenDelim(Delimiter::Brace)) {
                 self.parse_pat_struct(qself, path)?
@@ -781,16 +781,17 @@ impl<'a> Parser<'a> {
             self.parse_const_block(self.token.span, true)
         } else if self.check_path() {
             let lo = self.token.span;
-            let (qself, path) = if self.eat_lt() {
+            if self.eat_lt() {
                 // Parse a qualified path
                 let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
-                (Some(qself), path)
+                let hi = self.prev_token.span;
+                Ok(self.mk_expr(lo.to(hi), ExprKind::Path2(qself, P(path))))
             } else {
                 // Parse an unqualified path
-                (None, self.parse_path(PathStyle::Expr)?)
-            };
-            let hi = self.prev_token.span;
-            Ok(self.mk_expr(lo.to(hi), ExprKind::Path(qself, path)))
+                let path = self.parse_path(PathStyle::Expr)?;
+                let hi = self.prev_token.span;
+                Ok(self.mk_expr(lo.to(hi), ExprKind::Path1(path)))
+            }
         } else {
             self.parse_literal_maybe_minus()
         }

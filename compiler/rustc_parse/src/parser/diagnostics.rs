@@ -105,7 +105,7 @@ impl RecoverQPath for Expr {
     fn recovered(qself: Option<P<QSelf>>, path: ast::Path) -> Self {
         Self {
             span: path.span,
-            kind: ExprKind::Path(qself, path),
+            kind: ExprKind::mk_path1_or_path2(qself, path),
             attrs: AttrVec::new(),
             id: ast::DUMMY_NODE_ID,
             tokens: None,
@@ -1752,7 +1752,7 @@ impl<'a> Parser<'a> {
         (self.token == token::Lt && // `foo:<bar`, likely a typoed turbofish.
             self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident()))
             || self.token.is_ident() &&
-            matches!(node, ast::ExprKind::Path(..) | ast::ExprKind::Field(..)) &&
+            matches!(node, ast::ExprKind::Path1(..) | ast::ExprKind::Path2(..) | ast::ExprKind::Field(..)) &&
             !self.token.is_reserved_ident() &&           // v `foo:bar(baz)`
             self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Parenthesis))
             || self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Brace)) // `foo:bar {`
@@ -2377,7 +2377,7 @@ impl<'a> Parser<'a> {
                     return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
                 } else if token::Colon == snapshot.token.kind
                     && expr.span.lo() == snapshot.token.span.hi()
-                    && matches!(expr.kind, ExprKind::Path(..))
+                    && matches!(expr.kind, ExprKind::Path1(..) | ExprKind::Path2(..))
                 {
                     // Find a mistake like "foo::var:A".
                     err.span_suggestion(

@@ -1156,7 +1156,7 @@ impl Expr {
             self
         };
 
-        if let ExprKind::Path(None, path) = &this.kind
+        if let ExprKind::Path1(path) = &this.kind
             && path.segments.len() == 1
             && path.segments[0].args.is_none()
         {
@@ -1168,7 +1168,7 @@ impl Expr {
 
     pub fn to_bound(&self) -> Option<GenericBound> {
         match &self.kind {
-            ExprKind::Path(None, path) => Some(GenericBound::Trait(
+            ExprKind::Path1(path) => Some(GenericBound::Trait(
                 PolyTraitRef::new(ThinVec::new(), path.clone(), self.span),
                 TraitBoundModifier::None,
             )),
@@ -1188,7 +1188,10 @@ impl Expr {
     pub fn to_ty(&self) -> Option<P<Ty>> {
         let kind = match &self.kind {
             // Trivial conversions.
-            ExprKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
+            ExprKind::Path1(path) => TyKind::Path(None, path.clone()),
+            ExprKind::Path2(qself, path) => {
+                TyKind::Path(Some(qself.clone()), path.clone().into_inner())
+            }
             ExprKind::MacCall(mac) => TyKind::MacCall(mac.clone()),
 
             ExprKind::Paren(expr) => expr.to_ty().map(TyKind::Paren)?,
@@ -1257,7 +1260,8 @@ impl Expr {
             ExprKind::Index(..) => ExprPrecedence::Index,
             ExprKind::Range(..) => ExprPrecedence::Range,
             ExprKind::Underscore => ExprPrecedence::Path,
-            ExprKind::Path(..) => ExprPrecedence::Path,
+            ExprKind::Path1(..) => ExprPrecedence::Path,
+            ExprKind::Path2(..) => ExprPrecedence::Path,
             ExprKind::AddrOf(..) => ExprPrecedence::AddrOf,
             ExprKind::Break(..) => ExprPrecedence::Break,
             ExprKind::Continue(..) => ExprPrecedence::Continue,
@@ -1293,12 +1297,13 @@ impl Expr {
         match &self.peel_parens().kind {
             ExprKind::Box(_)
             | ExprKind::Array(_)
-            | ExprKind::Call(_, _)
+            | ExprKind::Call(..)
             | ExprKind::Tup(_)
             | ExprKind::Lit(_)
-            | ExprKind::Range(_, _, _)
+            | ExprKind::Range(..)
             | ExprKind::Underscore
-            | ExprKind::Path(_, _)
+            | ExprKind::Path1(_)
+            | ExprKind::Path2(..)
             | ExprKind::Struct(_) => true,
             _ => false,
         }
@@ -1450,11 +1455,13 @@ pub enum ExprKind {
     /// An underscore, used in destructuring assignment to ignore a value.
     Underscore,
 
+    // njn: update this comment
     /// Variable reference, possibly containing `::` and/or type
     /// parameters (e.g., `foo::bar::<baz>`).
     ///
     /// Optionally "qualified" (e.g., `<Vec<T> as SomeTrait>::SomeType`).
-    Path(Option<P<QSelf>>, Path),
+    Path1(Path),
+    Path2(P<QSelf>, P<Path>),
 
     /// A referencing operation (`&a`, `&mut a`, `&raw const a` or `&raw mut a`).
     AddrOf(BorrowKind, Mutability, P<Expr>),
@@ -1506,6 +1513,16 @@ pub enum ExprKind {
 
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err,
+}
+
+impl ExprKind {
+    pub fn mk_path1_or_path2(qself: Option<P<QSelf>>, path: Path) -> ExprKind {
+        if let Some(qself) = qself {
+            ExprKind::Path2(qself, P(path))
+        } else {
+            ExprKind::Path1(path)
+        }
+    }
 }
 
 /// The explicit `Self` type in a "qualified path". The actual

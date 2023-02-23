@@ -1915,7 +1915,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// `#[rustc_legacy_const_generics]` and returns the argument index list
     /// from the attribute.
     fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
-        if let ExprKind::Path(None, path) = &expr.kind {
+        if let ExprKind::Path1(path) = &expr.kind {
             // Don't perform legacy const generics rewriting if the path already
             // has generic arguments.
             if path.segments.last().unwrap().args.is_some() {

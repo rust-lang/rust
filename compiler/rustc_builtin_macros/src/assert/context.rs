@@ -243,7 +243,13 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     self.manage_cond_expr(arg);
                 }
             }
-            ExprKind::Path(_, Path { segments, .. }) if let [path_segment] = &segments[..] => {
+            // njn: ugh
+            ExprKind::Path1(path) if let [path_segment] = &path.segments[..] => {
+                let path_ident = path_segment.ident;
+                self.manage_initial_capture(expr, path_ident);
+            }
+            // njn: ugh
+            ExprKind::Path2(_, path) if let [path_segment] = &path.segments[..] => {
                 let path_ident = path_segment.ident;
                 self.manage_initial_capture(expr, path_ident);
             }
@@ -307,7 +313,8 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Loop(_, _, _)
             | ExprKind::MacCall(_)
             | ExprKind::Match(_, _)
-            | ExprKind::Path(_, _)
+            | ExprKind::Path1(_)
+            | ExprKind::Path2(..)
             | ExprKind::Ret(_)
             | ExprKind::Try(_)
             | ExprKind::TryBlock(_)

@@ -149,7 +149,7 @@ impl<'a> Parser<'a> {
                 this.parse_struct_expr(None, path, true)?
             } else {
                 let hi = this.prev_token.span;
-                this.mk_expr(lo.to(hi), ExprKind::Path(None, path))
+                this.mk_expr(lo.to(hi), ExprKind::Path1(path))
             };
 
             let expr = this.with_res(Restrictions::STMT_EXPR, |this| {

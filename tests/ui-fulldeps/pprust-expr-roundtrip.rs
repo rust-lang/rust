@@ -59,7 +59,7 @@ fn expr(kind: ExprKind) -> P<Expr> {
 fn make_x() -> P<Expr> {
     let seg = PathSegment::from_ident(Ident::from_str("x"));
     let path = Path { segments: thin_vec![seg], span: DUMMY_SP, tokens: None };
-    expr(ExprKind::Path(None, path))
+    expr(ExprKind::Path1(path))
 }
 
 /// Iterate over exprs of depth up to `depth`. The goal is to explore all "interesting"

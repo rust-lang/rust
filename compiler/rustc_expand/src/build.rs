@@ -84,7 +84,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn const_ident(&self, span: Span, ident: Ident) -> ast::AnonConst {
-        self.anon_const(span, ast::ExprKind::Path(None, self.path_ident(span, ident)))
+        self.anon_const(span, ast::ExprKind::Path1(self.path_ident(span, ident)))
     }
 
     pub fn ty_ref(
@@ -244,7 +244,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn expr_path(&self, path: ast::Path) -> P<ast::Expr> {
-        self.expr(path.span, ast::ExprKind::Path(None, path))
+        self.expr(path.span, ast::ExprKind::Path1(path))
     }
 
     pub fn expr_ident(&self, span: Span, id: Ident) -> P<ast::Expr> {

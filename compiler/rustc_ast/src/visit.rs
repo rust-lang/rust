@@ -886,10 +886,9 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             walk_list!(visitor, visit_expr, end);
         }
         ExprKind::Underscore => {}
-        ExprKind::Path(maybe_qself, path) => {
-            if let Some(qself) = maybe_qself {
-                visitor.visit_ty(&qself.ty);
-            }
+        ExprKind::Path1(path) => visitor.visit_path(path, expression.id),
+        ExprKind::Path2(qself, path) => {
+            visitor.visit_ty(&qself.ty);
             visitor.visit_path(path, expression.id)
         }
         ExprKind::Break(opt_label, opt_expr) => {

@@ -34,7 +34,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     PatKind::TupleStruct(qself, path, pats) => {
                         let qpath = self.lower_qpath(
                             pattern.id,
-                            qself,
+                            qself.as_ref(),
                             path,
                             ParamMode::Optional,
                             &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
@@ -50,7 +50,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     PatKind::Path(qself, path) => {
                         let qpath = self.lower_qpath(
                             pattern.id,
-                            qself,
+                            qself.as_ref(),
                             path,
                             ParamMode::Optional,
                             &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
@@ -60,7 +60,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     PatKind::Struct(qself, path, fields, etc) => {
                         let qpath = self.lower_qpath(
                             pattern.id,
-                            qself,
+                            qself.as_ref(),
                             path,
                             ParamMode::Optional,
                             &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
@@ -327,7 +327,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             | ExprKind::ConstBlock(..)
             | ExprKind::IncludedBytes(..)
             | ExprKind::Err => {}
-            ExprKind::Path(..) if allow_paths => {}
+            ExprKind::Path1(..) | ExprKind::Path2(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
             _ => {
                 self.tcx.sess.emit_err(ArbitraryExpressionInPattern { span: expr.span });

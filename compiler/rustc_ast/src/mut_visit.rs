@@ -198,6 +198,10 @@ pub trait MutVisitor: Sized {
         noop_visit_qself(qs, self);
     }
 
+    fn visit_qself2(&mut self, qs: &mut P<QSelf>) {
+        noop_visit_qself2(qs, self);
+    }
+
     fn visit_generic_args(&mut self, p: &mut GenericArgs) {
         noop_visit_generic_args(p, self);
     }
@@ -549,12 +553,20 @@ pub fn noop_visit_path<T: MutVisitor>(Path { segments, span, tokens }: &mut Path
     visit_lazy_tts(tokens, vis);
 }
 
+// njn: redo
 pub fn noop_visit_qself<T: MutVisitor>(qself: &mut Option<P<QSelf>>, vis: &mut T) {
     visit_opt(qself, |qself| {
         let QSelf { ty, path_span, position: _ } = &mut **qself;
         vis.visit_ty(ty);
         vis.visit_span(path_span);
     })
+}
+
+// njn: redo
+pub fn noop_visit_qself2<T: MutVisitor>(qself: &mut P<QSelf>, vis: &mut T) {
+    let QSelf { ty, path_span, position: _ } = &mut **qself;
+    vis.visit_ty(ty);
+    vis.visit_span(path_span);
 }
 
 pub fn noop_visit_generic_args<T: MutVisitor>(generic_args: &mut GenericArgs, vis: &mut T) {
@@ -1434,8 +1446,11 @@ pub fn noop_visit_expr<T: MutVisitor>(
             visit_opt(e2, |e2| vis.visit_expr(e2));
         }
         ExprKind::Underscore => {}
-        ExprKind::Path(qself, path) => {
-            vis.visit_qself(qself);
+        ExprKind::Path1(path) => {
+            vis.visit_path(path);
+        }
+        ExprKind::Path2(qself, path) => {
+            vis.visit_qself2(qself); // njn: rename
             vis.visit_path(path);
         }
         ExprKind::Break(label, expr) => {

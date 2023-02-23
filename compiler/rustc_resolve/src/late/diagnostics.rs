@@ -1136,7 +1136,26 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     let mut expr_kind = &args[0].kind;
                     loop {
                         match expr_kind {
-                            ExprKind::Path(_, arg_name) if arg_name.segments.len() == 1 => {
+                            // njn: can Path2 and arg_name.segments.len()==1 both be true?
+                            ExprKind::Path1(arg_name) if arg_name.segments.len() == 1 => {
+                                if arg_name.segments[0].ident.name == kw::SelfLower {
+                                    let call_span = parent.span;
+                                    let tail_args_span = if args.len() > 1 {
+                                        Some(Span::new(
+                                            args[1].span.lo(),
+                                            args.last().unwrap().span.hi(),
+                                            call_span.ctxt(),
+                                            None,
+                                        ))
+                                    } else {
+                                        None
+                                    };
+                                    has_self_arg = Some((call_span, tail_args_span));
+                                }
+                                break;
+                            }
+                            // njn: ugh, duplication
+                            ExprKind::Path2(_, arg_name) if arg_name.segments.len() == 1 => {
                                 if arg_name.segments[0].ident.name == kw::SelfLower {
                                     let call_span = parent.span;
                                     let tail_args_span = if args.len() > 1 {
@@ -1263,7 +1282,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     None
                     | Some(Expr {
                         kind:
-                            ExprKind::Path(..)
+                            ExprKind::Path1(..)
+                            | ExprKind::Path2(..)
                             | ExprKind::Binary(..)
                             | ExprKind::Unary(..)
                             | ExprKind::If(..)
@@ -1855,7 +1875,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     // suggest `let name = blah` to introduce a new binding
     fn let_binding_suggestion(&mut self, err: &mut Diagnostic, ident_span: Span) -> bool {
         if let Some(Expr { kind: ExprKind::Assign(lhs, .. ), .. }) = self.diagnostic_metadata.in_assignment &&
-            let ast::ExprKind::Path(None, _) = lhs.kind {
+            let ast::ExprKind::Path1(_) = lhs.kind {
                 if !ident_span.from_expansion() {
                     err.span_suggestion_verbose(
                         ident_span.shrink_to_lo(),

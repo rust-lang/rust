@@ -50,7 +50,7 @@ macro_rules! maybe_whole_expr {
                 token::NtPath(path) => {
                     let path = (**path).clone();
                     $p.bump();
-                    return Ok($p.mk_expr($p.prev_token.span, ExprKind::Path(None, path)));
+                    return Ok($p.mk_expr($p.prev_token.span, ExprKind::Path1(path)));
                 }
                 token::NtBlock(block) => {
                     let block = block.clone();
@@ -712,7 +712,7 @@ impl<'a> Parser<'a> {
                 match (&lhs.kind, &self.token.kind) {
                     (
                         // `foo: `
-                        ExprKind::Path(None, ast::Path { segments, .. }),
+                        ExprKind::Path1(ast::Path { segments, .. }),
                         TokenKind::Ident(kw::For | kw::Loop | kw::While, false),
                     ) if segments.len() == 1 => {
                         let snapshot = self.create_snapshot_for_diagnostic();
@@ -1188,7 +1188,7 @@ impl<'a> Parser<'a> {
         }
 
         match (seq.as_mut(), snapshot) {
-            (Err(err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
+            (Err(err), Some((mut snapshot, ExprKind::Path1(path)))) => {
                 snapshot.bump(); // `(`
                 match snapshot.parse_struct_fields(path.clone(), false, Delimiter::Parenthesis) {
                     Ok((fields, ..))
@@ -1505,7 +1505,7 @@ impl<'a> Parser<'a> {
             }
             return expr;
         } else {
-            (path.span, ExprKind::Path(qself, path))
+            (path.span, ExprKind::mk_path1_or_path2(qself, path))
         };
 
         let expr = self.mk_expr(span, kind);
@@ -1740,7 +1740,7 @@ impl<'a> Parser<'a> {
 
                 // Recover `break label aaaaa`
                 if self.may_recover()
-                    && let ExprKind::Path(None, p) = &expr.kind
+                    && let ExprKind::Path1(p) = &expr.kind
                     && let [segment] = &*p.segments
                     && let &ast::PathSegment { ident, args: None, .. } = segment
                     && let Some(next) = self.parse_expr_opt()?
@@ -3138,7 +3138,7 @@ impl<'a> Parser<'a> {
                 // Mimic `x: x` for the `x` field shorthand.
                 let ident = this.parse_ident_common(false)?;
                 let path = ast::Path::from_ident(ident);
-                (ident, this.mk_expr(ident.span, ExprKind::Path(None, path)))
+                (ident, this.mk_expr(ident.span, ExprKind::Path1(path)))
             } else {
                 let ident = this.parse_field_name()?;
                 this.error_on_eq_field_init(ident);

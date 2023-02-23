@@ -495,8 +495,8 @@ impl<'a> State<'a> {
                 }
             }
             ast::ExprKind::Underscore => self.word("_"),
-            ast::ExprKind::Path(None, path) => self.print_path(path, true, 0),
-            ast::ExprKind::Path(Some(qself), path) => self.print_qpath(path, qself, true),
+            ast::ExprKind::Path1(path) => self.print_path(path, true, 0),
+            ast::ExprKind::Path2(qself, path) => self.print_qpath(path, qself, true),
             ast::ExprKind::Break(opt_label, opt_expr) => {
                 self.word("break");
                 if let Some(label) = opt_label {

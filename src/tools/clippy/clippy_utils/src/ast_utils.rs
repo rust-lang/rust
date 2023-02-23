@@ -212,7 +212,8 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Async(lc, _, lb), Async(rc, _, rb)) => lc == rc && eq_block(lb, rb),
         (Range(lf, lt, ll), Range(rf, rt, rl)) => ll == rl && eq_expr_opt(lf, rf) && eq_expr_opt(lt, rt),
         (AddrOf(lbk, lm, le), AddrOf(rbk, rm, re)) => lbk == rbk && lm == rm && eq_expr(le, re),
-        (Path(lq, lp), Path(rq, rp)) => both(lq, rq, eq_qself) && eq_path(lp, rp),
+        (Path1(lp), Path1(rp)) => eq_path(lp, rp),
+        (Path2(lq, lp), Path2(rq, rp)) => eq_qself(lq, rq) && eq_path(lp, rp),
         (MacCall(l), MacCall(r)) => eq_mac_call(l, r),
         (Struct(lse), Struct(rse)) => {
             eq_maybe_qself(&lse.qself, &rse.qself)

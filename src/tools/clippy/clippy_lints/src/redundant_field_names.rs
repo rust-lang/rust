@@ -62,7 +62,7 @@ impl EarlyLintPass for RedundantFieldNames {
                 if field.is_shorthand {
                     continue;
                 }
-                if let ExprKind::Path(None, path) = &field.expr.kind {
+                if let ExprKind::Path1(path) = &field.expr.kind {
                     if path.segments.len() == 1
                         && path.segments[0].ident == field.ident
                         && path.segments[0].args.is_none()

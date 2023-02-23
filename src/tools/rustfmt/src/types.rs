@@ -38,7 +38,7 @@ pub(crate) enum PathContext {
 pub(crate) fn rewrite_path(
     context: &RewriteContext<'_>,
     path_context: PathContext,
-    qself: &Option<ptr::P<ast::QSelf>>,
+    qself: Option<&ptr::P<ast::QSelf>>,
     path: &ast::Path,
     shape: Shape,
 ) -> Option<String> {
@@ -655,7 +655,7 @@ impl Rewrite for ast::PolyTraitRef {
 
 impl Rewrite for ast::TraitRef {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        rewrite_path(context, PathContext::Type, &None, &self.path, shape)
+        rewrite_path(context, PathContext::Type, None, &self.path, shape)
     }
 }
 
@@ -800,7 +800,7 @@ impl Rewrite for ast::Ty {
                 rewrite_tuple(context, items.iter(), self.span, shape, items.len() == 1)
             }
             ast::TyKind::Path(ref q_self, ref path) => {
-                rewrite_path(context, PathContext::Type, q_self, path, shape)
+                rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)
             }
             ast::TyKind::Array(ref ty, ref repeats) => rewrite_pair(
                 &**ty,
