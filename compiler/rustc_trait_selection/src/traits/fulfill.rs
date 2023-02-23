@@ -230,18 +230,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 // In this case we haven't changed, but wish to make a change.
                 true
             }
-            _ => {
-                // This `for` loop was once a call to `all()`, but this lower-level
-                // form was a perf win. See #64545 for details.
-                (|| {
-                    for &infer_var in &pending_obligation.stalled_on {
-                        if self.selcx.infcx.uninlined_ty_or_const_infer_var_changed(infer_var) {
-                            return true;
-                        }
-                    }
-                    false
-                })()
-            }
+            _ => pending_obligation.stalled_on.iter().any(|&infer_var| {
+                self.selcx.infcx.uninlined_ty_or_const_infer_var_changed(infer_var)
+            }),
         }
     }
 
