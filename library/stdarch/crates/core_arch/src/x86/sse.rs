@@ -1047,7 +1047,7 @@ pub unsafe fn _mm_unpacklo_ps(a: __m128, b: __m128) -> __m128 {
     simd_shuffle!(a, b, [0, 4, 1, 5])
 }
 
-/// Combine higher half of `a` and `b`. The highwe half of `b` occupies the
+/// Combine higher half of `a` and `b`. The higher half of `b` occupies the
 /// lower half of result.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_movehl_ps)
