@@ -219,6 +219,7 @@ mod neg_cmp_op_on_partial_ord;
 mod neg_multiply;
 mod new_without_default;
 mod no_effect;
+mod no_mangle_with_rust_abi;
 mod non_copy_const;
 mod non_expressive_names;
 mod non_octal_unix_permissions;
@@ -921,6 +922,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             avoid_breaking_exported_api,
         ))
     });
+    store.register_late_pass(|_| Box::new(no_mangle_with_rust_abi::NoMangleWithRustAbi));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

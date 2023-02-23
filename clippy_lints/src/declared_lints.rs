@@ -450,6 +450,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::no_effect::NO_EFFECT_INFO,
     crate::no_effect::NO_EFFECT_UNDERSCORE_BINDING_INFO,
     crate::no_effect::UNNECESSARY_OPERATION_INFO,
+    crate::no_mangle_with_rust_abi::NO_MANGLE_WITH_RUST_ABI_INFO,
     crate::non_copy_const::BORROW_INTERIOR_MUTABLE_CONST_INFO,
     crate::non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST_INFO,
     crate::non_expressive_names::JUST_UNDERSCORES_AND_DIGITS_INFO,
