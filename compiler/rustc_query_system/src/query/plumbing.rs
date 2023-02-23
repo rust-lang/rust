@@ -394,6 +394,7 @@ where
     }
 }
 
+#[inline(always)]
 fn execute_job<Q, Qcx>(
     qcx: Qcx,
     key: Q::Key,
@@ -479,6 +480,7 @@ where
     (result, dep_node_index)
 }
 
+#[inline(always)]
 fn try_load_from_disk_and_cache_in_memory<Q, Qcx>(
     qcx: Qcx,
     key: &Q::Key,
@@ -569,6 +571,7 @@ where
     Some((result, dep_node_index))
 }
 
+#[inline]
 #[instrument(skip(tcx, result, hash_result), level = "debug")]
 pub(crate) fn incremental_verify_ich<Tcx, V: Debug>(
     tcx: Tcx,
@@ -723,6 +726,7 @@ pub enum QueryMode {
     Ensure,
 }
 
+#[inline(always)]
 pub fn get_query<Q, Qcx, D>(qcx: Qcx, span: Span, key: Q::Key, mode: QueryMode) -> Option<Q::Value>
 where
     D: DepKind,
