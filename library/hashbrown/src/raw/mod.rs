@@ -1586,16 +1586,48 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     }
 
     /// Searches for an empty or deleted bucket which is suitable for inserting
-    /// a new element.
+    /// a new element, returning the `index` for the new [`Bucket`].
     ///
-    /// There must be at least 1 empty bucket in the table.
+    /// This function does not make any changes to the `data` part of the table, or any
+    /// changes to the `items` or `growth_left` field of the table.
+    ///
+    /// The table must have at least 1 empty or deleted `bucket`, otherwise this function
+    /// will never return (will go into an infinite loop) for tables larger than the group
+    /// width, or return an index outside of the table indices range if the table is less
+    /// than the group width.
+    ///
+    /// # Note
+    ///
+    /// Calling this function is always safe, but attempting to write data at
+    /// the index returned by this function when the table is less than the group width
+    /// and if there was not at least one empty bucket in the table will cause immediate
+    /// [`undefined behavior`]. This is because in this case the function will return
+    /// `self.bucket_mask + 1` as an index due to the trailing EMPTY control bytes outside
+    /// the table range.
+    ///
+    /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     fn find_insert_slot(&self, hash: u64) -> usize {
         let mut probe_seq = self.probe_seq(hash);
         loop {
+            // SAFETY:
+            // * `ProbeSeq.pos` cannot be greater than `self.bucket_mask = self.buckets() - 1`
+            //   of the table due to masking with `self.bucket_mask` and also because mumber of
+            //   buckets is a power of two (see comment for masking below).
+            //
+            // * Even if `ProbeSeq.pos` returns `position == self.bucket_mask`, it is safe to
+            //   call `Group::load` due to the extended control bytes range, which is
+            //  `self.bucket_mask + 1 + Group::WIDTH` (in fact, this means that the last control
+            //   byte will never be read for the allocated table);
+            //
+            // * Also, even if `RawTableInner` is not already allocated, `ProbeSeq.pos` will
+            //   always return "0" (zero), so Group::load will read unaligned `Group::static_empty()`
+            //   bytes, which is safe (see RawTableInner::new_in).
             unsafe {
                 let group = Group::load(self.ctrl(probe_seq.pos));
                 if let Some(bit) = group.match_empty_or_deleted().lowest_set_bit() {
+                    // This is the same as `(probe_seq.pos + bit) % self.buckets()` because the number
+                    // of buckets is a power of two, and `self.bucket_mask = self.buckets() - 1`.
                     let result = (probe_seq.pos + bit) & self.bucket_mask;
 
                     // In tables smaller than the group width, trailing control
@@ -1607,9 +1639,26 @@ impl<A: Allocator + Clone> RawTableInner<A> {
                     // table. This second scan is guaranteed to find an empty
                     // slot (due to the load factor) before hitting the trailing
                     // control bytes (containing EMPTY).
+                    //
+                    // SAFETY: The `result` is guaranteed to be in range `0..self.bucket_mask`
+                    // due to masking with `self.bucket_mask`
                     if unlikely(self.is_bucket_full(result)) {
                         debug_assert!(self.bucket_mask < Group::WIDTH);
                         debug_assert_ne!(probe_seq.pos, 0);
+                        // SAFETY:
+                        //
+                        // * We are in range and `ptr = self.ctrl(0)` are valid for reads
+                        //   and properly aligned, because the table is already allocated
+                        //   (see `TableLayout::calculate_layout_for` and `ptr::read`);
+                        //
+                        // * For tables larger than the group width, we will never end up in the given
+                        //   branch, since `(probe_seq.pos + bit) & self.bucket_mask` cannot return a
+                        //   full bucket index. For tables smaller than the group width, calling the
+                        //   `lowest_set_bit_nonzero` function (when `nightly` feature enabled) is also
+                        //   safe, as the trailing control bytes outside the range of the table are filled
+                        //   with EMPTY bytes, so this second scan either finds an empty slot (due to the
+                        //   load factor) or hits the trailing control bytes (containing EMPTY). See
+                        //   `intrinsics::cttz_nonzero` for more information.
                         return Group::load_aligned(self.ctrl(0))
                             .match_empty_or_deleted()
                             .lowest_set_bit_nonzero();
