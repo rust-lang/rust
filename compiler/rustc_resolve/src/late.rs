@@ -2043,7 +2043,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     TyKind::ImplicitSelf => true,
                     TyKind::Path(None, _) => {
                         let path_res = self.r.partial_res_map[&ty.id].full_res();
-                        if let Some(Res::SelfTyParam { .. } | Res::SelfTyAlias { .. }) = path_res {
+                        if matches!(path_res, Some(Res::SelfTyParam { .. } | Res::SelfTyAlias { .. })) {
                             return true;
                         }
                         self.impl_self.is_some() && path_res == self.impl_self
