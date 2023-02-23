@@ -164,7 +164,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                 pending_obligation
                     .stalled_on
                     .iter()
-                    .any(|&var| self.infcx.ty_or_const_infer_var_changed(var))
+                    .any(|&var| self.infcx.uninlined_ty_or_const_infer_var_changed(var))
             }
 
             fn process_obligation(
@@ -224,7 +224,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
             // code is so hot. 1 and 0 dominate; 2+ is fairly rare.
             1 => {
                 let infer_var = pending_obligation.stalled_on[0];
-                self.selcx.infcx.ty_or_const_infer_var_changed(infer_var)
+                self.selcx.infcx.inlined_ty_or_const_infer_var_changed(infer_var)
             }
             0 => {
                 // In this case we haven't changed, but wish to make a change.
@@ -235,7 +235,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 // form was a perf win. See #64545 for details.
                 (|| {
                     for &infer_var in &pending_obligation.stalled_on {
-                        if self.selcx.infcx.ty_or_const_infer_var_changed(infer_var) {
+                        if self.selcx.infcx.uninlined_ty_or_const_infer_var_changed(infer_var) {
                             return true;
                         }
                     }

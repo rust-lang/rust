@@ -1641,17 +1641,26 @@ impl<'tcx> InferCtxt<'tcx> {
         tcx.const_eval_resolve_for_typeck(param_env_erased, unevaluated, span)
     }
 
+    #[inline(never)]
+    pub fn uninlined_ty_or_const_infer_var_changed(
+        &self,
+        infer_var: TyOrConstInferVar<'tcx>,
+    ) -> bool {
+        self.inlined_ty_or_const_infer_var_changed(infer_var)
+    }
+
     /// `ty_or_const_infer_var_changed` is equivalent to one of these two:
     ///   * `shallow_resolve(ty) != ty` (where `ty.kind = ty::Infer(_)`)
     ///   * `shallow_resolve(ct) != ct` (where `ct.kind = ty::ConstKind::Infer(_)`)
     ///
-    /// However, `ty_or_const_infer_var_changed` is more efficient. It's always
-    /// inlined, despite being large, because it has only two call sites that
-    /// are extremely hot (both in `traits::fulfill`'s checking of `stalled_on`
-    /// inference variables), and it handles both `Ty` and `ty::Const` without
+    /// However, `inlined_ty_or_const_infer_var_changed` is more efficient.
+    /// It's always inlined, and it handles both `Ty` and `ty::Const` without
     /// having to resort to storing full `GenericArg`s in `stalled_on`.
     #[inline(always)]
-    pub fn ty_or_const_infer_var_changed(&self, infer_var: TyOrConstInferVar<'tcx>) -> bool {
+    pub fn inlined_ty_or_const_infer_var_changed(
+        &self,
+        infer_var: TyOrConstInferVar<'tcx>,
+    ) -> bool {
         match infer_var {
             TyOrConstInferVar::Ty(v) => {
                 use self::type_variable::TypeVariableValue;
