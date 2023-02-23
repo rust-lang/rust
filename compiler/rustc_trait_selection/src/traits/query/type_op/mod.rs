@@ -85,6 +85,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
         query_key: ParamEnvAnd<'tcx, Self>,
         infcx: &InferCtxt<'tcx>,
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
+        defining_use_anchor: DefiningAnchor,
     ) -> Fallible<(
         Self::QueryResponse,
         Option<Canonical<'tcx, ParamEnvAnd<'tcx, Self>>>,
@@ -112,6 +113,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
                 &canonical_var_values,
                 canonical_result,
                 output_query_region_constraints,
+                defining_use_anchor,
             )?;
 
         Ok((value, Some(canonical_self), obligations, canonical_result.value.certainty))
@@ -128,11 +130,11 @@ where
     fn fully_perform(
         self,
         infcx: &InferCtxt<'tcx>,
-        _defining_use_anchor: DefiningAnchor,
+        defining_use_anchor: DefiningAnchor,
     ) -> Fallible<TypeOpOutput<'tcx, Self>> {
         let mut region_constraints = QueryRegionConstraints::default();
         let (output, error_info, mut obligations, _) =
-            Q::fully_perform_into(self, infcx, &mut region_constraints)?;
+            Q::fully_perform_into(self, infcx, &mut region_constraints, defining_use_anchor)?;
 
         // Typically, instantiating NLL query results does not
         // create obligations. However, in some cases there
@@ -148,6 +150,7 @@ where
                     obligation.param_env.and(ProvePredicate::new(obligation.predicate)),
                     infcx,
                     &mut region_constraints,
+                    defining_use_anchor,
                 ) {
                     Ok(((), _, new, certainty)) => {
                         obligations.extend(new);

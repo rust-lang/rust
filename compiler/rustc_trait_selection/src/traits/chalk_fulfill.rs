@@ -58,7 +58,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     fn select_where_possible(
         &mut self,
         infcx: &InferCtxt<'tcx>,
-        _defining_use_anchor: DefiningAnchor,
+        defining_use_anchor: DefiningAnchor,
     ) -> Vec<FulfillmentError<'tcx>> {
         if !self.usable_in_snapshot {
             assert!(!infcx.is_in_snapshot());
@@ -95,6 +95,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                                 obligation.param_env,
                                 &orig_values,
                                 &response,
+                                defining_use_anchor,
                             ) {
                                 Ok(infer_ok) => next_round.extend(
                                     infer_ok.obligations.into_iter().map(|obligation| {

@@ -1462,6 +1462,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.param_env,
             original_values,
             query_result,
+            self.defining_use_anchor,
         )
     }
 

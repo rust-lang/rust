@@ -20,7 +20,7 @@ use std::mem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_infer::infer::canonical::{OriginalQueryValues, QueryRegionConstraints, QueryResponse};
-use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{DefiningAnchor, InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::Obligation;
 use rustc_middle::infer::canonical::Certainty as OldCertainty;
@@ -156,6 +156,7 @@ pub trait InferCtxtEvalExt<'tcx> {
     fn evaluate_root_goal(
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
+        defining_use_anchor: DefiningAnchor,
     ) -> Result<(bool, Certainty), NoSolution>;
 }
 
@@ -163,6 +164,7 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
     fn evaluate_root_goal(
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
+        defining_use_anchor: DefiningAnchor,
     ) -> Result<(bool, Certainty), NoSolution> {
         let mut search_graph = search_graph::SearchGraph::new(self.tcx);
 
@@ -171,6 +173,7 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
             infcx: self,
             var_values: CanonicalVarValues::dummy(),
             in_projection_eq_hack: false,
+            defining_use_anchor,
         }
         .evaluate_goal(goal);
 
@@ -194,6 +197,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         search_graph: &'a mut search_graph::SearchGraph<'tcx>,
         canonical_goal: CanonicalGoal<'tcx>,
+        defining_use_anchor: DefiningAnchor,
     ) -> QueryResult<'tcx> {
         // Deal with overflow, caching, and coinduction.
         //
@@ -201,8 +205,13 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         search_graph.with_new_goal(tcx, canonical_goal, |search_graph| {
             let (ref infcx, goal, var_values) =
                 tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &canonical_goal);
-            let mut ecx =
-                EvalCtxt { infcx, var_values, search_graph, in_projection_eq_hack: false };
+            let mut ecx = EvalCtxt {
+                infcx,
+                var_values,
+                search_graph,
+                in_projection_eq_hack: false,
+                defining_use_anchor,
+            };
             ecx.compute_goal(goal)
         })
     }
@@ -225,12 +234,20 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     ) -> Result<(bool, Certainty), NoSolution> {
         let mut orig_values = OriginalQueryValues::default();
         let canonical_goal = self.infcx.canonicalize_query(goal, &mut orig_values);
-        let canonical_response =
-            EvalCtxt::evaluate_canonical_goal(self.tcx(), self.search_graph, canonical_goal)?;
+        let canonical_response = EvalCtxt::evaluate_canonical_goal(
+            self.tcx(),
+            self.search_graph,
+            canonical_goal,
+            self.defining_use_anchor,
+        )?;
 
         let has_changed = !canonical_response.value.var_values.is_identity();
-        let certainty =
-            instantiate_canonical_query_response(self.infcx, &orig_values, canonical_response);
+        let certainty = instantiate_canonical_query_response(
+            self.infcx,
+            &orig_values,
+            canonical_response,
+            self.defining_use_anchor,
+        );
 
         // Check that rerunning this query with its inference constraints applied
         // doesn't result in new inference constraints and has the same result.
@@ -246,8 +263,12 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         {
             let mut orig_values = OriginalQueryValues::default();
             let canonical_goal = self.infcx.canonicalize_query(goal, &mut orig_values);
-            let canonical_response =
-                EvalCtxt::evaluate_canonical_goal(self.tcx(), self.search_graph, canonical_goal)?;
+            let canonical_response = EvalCtxt::evaluate_canonical_goal(
+                self.tcx(),
+                self.search_graph,
+                canonical_goal,
+                self.defining_use_anchor,
+            )?;
             if !canonical_response.value.var_values.is_identity() {
                 bug!("unstable result: {goal:?} {canonical_goal:?} {canonical_response:?}");
             }
@@ -580,6 +601,7 @@ fn instantiate_canonical_query_response<'tcx>(
     infcx: &InferCtxt<'tcx>,
     original_values: &OriginalQueryValues<'tcx>,
     response: CanonicalResponse<'tcx>,
+    defining_use_anchor: DefiningAnchor,
 ) -> Certainty {
     let Ok(InferOk { value, obligations }) = infcx
         .instantiate_query_response_and_region_obligations(
@@ -599,6 +621,7 @@ fn instantiate_canonical_query_response<'tcx>(
                 opaque_types: resp.external_constraints.opaque_types.to_owned(),
                 value: resp.certainty,
             }),
+            defining_use_anchor,
         ) else { bug!(); };
     assert!(obligations.is_empty());
     value

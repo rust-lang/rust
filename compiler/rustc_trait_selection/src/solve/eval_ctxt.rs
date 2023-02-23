@@ -2,7 +2,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
+use rustc_infer::infer::{DefiningAnchor, InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
@@ -27,6 +27,7 @@ pub struct EvalCtxt<'a, 'tcx> {
     /// This field is used by a debug assertion in [`EvalCtxt::evaluate_goal`],
     /// see the comment in that method for more details.
     pub in_projection_eq_hack: bool,
+    pub(super) defining_use_anchor: DefiningAnchor,
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {

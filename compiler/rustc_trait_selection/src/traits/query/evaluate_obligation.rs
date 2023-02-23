@@ -87,9 +87,10 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             self.tcx.at(obligation.cause.span()).evaluate_obligation(c_pred)
         } else {
             self.probe(|snapshot| {
-                if let Ok((_, certainty)) =
-                    self.evaluate_root_goal(Goal::new(self.tcx, param_env, obligation.predicate))
-                {
+                if let Ok((_, certainty)) = self.evaluate_root_goal(
+                    Goal::new(self.tcx, param_env, obligation.predicate),
+                    rustc_infer::infer::DefiningAnchor::Error,
+                ) {
                     match certainty {
                         Certainty::Yes => {
                             if self.opaque_types_added_in_snapshot(snapshot) {

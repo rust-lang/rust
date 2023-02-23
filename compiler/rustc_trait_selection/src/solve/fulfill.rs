@@ -54,7 +54,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
     fn select_where_possible(
         &mut self,
         infcx: &InferCtxt<'tcx>,
-        _defining_use_anchor: DefiningAnchor,
+        defining_use_anchor: DefiningAnchor,
     ) -> Vec<FulfillmentError<'tcx>> {
         let mut errors = Vec::new();
         for i in 0.. {
@@ -65,7 +65,8 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
             let mut has_changed = false;
             for obligation in mem::take(&mut self.obligations) {
                 let goal = obligation.clone().into();
-                let (changed, certainty) = match infcx.evaluate_root_goal(goal) {
+                let (changed, certainty) = match infcx.evaluate_root_goal(goal, defining_use_anchor)
+                {
                     Ok(result) => result,
                     Err(NoSolution) => {
                         errors.push(FulfillmentError {

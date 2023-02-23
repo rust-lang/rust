@@ -10,6 +10,7 @@ use crate::traits::project::{needs_normalization, BoundVarReplacer, PlaceholderR
 use crate::traits::{ObligationCause, PredicateObligation, Reveal};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_infer::infer::DefiningAnchor;
 use rustc_infer::traits::Normalized;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
@@ -72,6 +73,7 @@ impl<'cx, 'tcx> QueryNormalizeExt<'tcx> for At<'cx, 'tcx> {
             cache: SsoHashMap::new(),
             anon_depth: 0,
             universes: vec![],
+            defining_use_anchor: self.define_opaque_types,
         };
 
         // This is actually a consequence by the way `normalize_erasing_regions` works currently.
@@ -168,6 +170,7 @@ struct QueryNormalizer<'cx, 'tcx> {
     cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
     anon_depth: usize,
     universes: Vec<Option<ty::UniverseIndex>>,
+    defining_use_anchor: DefiningAnchor,
 }
 
 impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> {
@@ -282,6 +285,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                         self.param_env,
                         &orig_values,
                         result,
+                        self.defining_use_anchor,
                     )?;
                 debug!("QueryNormalizer: result = {:#?}", result);
                 debug!("QueryNormalizer: obligations = {:#?}", obligations);
@@ -333,6 +337,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                         self.param_env,
                         &orig_values,
                         result,
+                        self.defining_use_anchor,
                     )?;
                 debug!("QueryNormalizer: result = {:#?}", result);
                 debug!("QueryNormalizer: obligations = {:#?}", obligations);

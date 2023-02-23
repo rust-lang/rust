@@ -181,12 +181,18 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         original_values: &OriginalQueryValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
+        defining_use_anchor: DefiningAnchor,
     ) -> InferResult<'tcx, R>
     where
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
-        let InferOk { value: result_subst, mut obligations } =
-            self.query_response_substitution(cause, param_env, original_values, query_response)?;
+        let InferOk { value: result_subst, mut obligations } = self.query_response_substitution(
+            cause,
+            param_env,
+            original_values,
+            query_response,
+            defining_use_anchor,
+        )?;
 
         obligations.extend(self.query_outlives_constraints_into_obligations(
             cause,
@@ -243,12 +249,19 @@ impl<'tcx> InferCtxt<'tcx> {
         original_values: &OriginalQueryValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
+        defining_use_anchor: DefiningAnchor,
     ) -> InferResult<'tcx, R>
     where
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
         let InferOk { value: result_subst, mut obligations } = self
-            .query_response_substitution_guess(cause, param_env, original_values, query_response)?;
+            .query_response_substitution_guess(
+                cause,
+                param_env,
+                original_values,
+                query_response,
+                defining_use_anchor,
+            )?;
 
         // Compute `QueryOutlivesConstraint` values that unify each of
         // the original values `v_o` that was canonicalized into a
@@ -357,6 +370,7 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         original_values: &OriginalQueryValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
+        defining_use_anchor: DefiningAnchor,
     ) -> InferResult<'tcx, CanonicalVarValues<'tcx>>
     where
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
@@ -371,6 +385,7 @@ impl<'tcx> InferCtxt<'tcx> {
             param_env,
             original_values,
             query_response,
+            defining_use_anchor,
         )?;
 
         value.obligations.extend(
@@ -403,6 +418,7 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         original_values: &OriginalQueryValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
+        defining_use_anchor: DefiningAnchor,
     ) -> InferResult<'tcx, CanonicalVarValues<'tcx>>
     where
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
@@ -504,7 +520,7 @@ impl<'tcx> InferCtxt<'tcx> {
             debug!(?a, ?b, "constrain opaque type");
             obligations.extend(
                 self.at(cause, param_env)
-                    .define_opaque_types(self.old_defining_use_anchor)
+                    .define_opaque_types(defining_use_anchor)
                     .eq(a, b)?
                     .obligations,
             );
