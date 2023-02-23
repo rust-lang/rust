@@ -342,7 +342,6 @@ fn mir_promoted(
             // These next passes must be executed together
             &add_call_guards::CriticalCallEdges,
             &elaborate_drops::ElaborateDrops,
-            &simplify::SimplifyCfg::new("elaborate-drops"),
             &coverage::InstrumentCoverage,
         ],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),

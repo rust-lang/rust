@@ -1,3 +1,4 @@
+use crate::simplify::remove_dead_blocks;
 use crate::MirPass;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
@@ -68,6 +69,9 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
             .elaborate()
         };
         elaborate_patch.apply(body);
+
+        remove_dead_blocks(tcx, body);
+        body.basic_blocks_mut().raw.shrink_to_fit();
     }
 }
 
