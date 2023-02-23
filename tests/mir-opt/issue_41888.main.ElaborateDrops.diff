@@ -92,8 +92,7 @@
       }
   
       bb10 (cleanup): {
--         drop(_3) -> bb11;                // scope 1 at $DIR/issue_41888.rs:+3:19: +3:20
-+         goto -> bb11;                    // scope 1 at $DIR/issue_41888.rs:+3:19: +3:20
+          drop(_3) -> bb11;                // scope 1 at $DIR/issue_41888.rs:+3:19: +3:20
       }
   
       bb11 (cleanup): {
@@ -110,7 +109,7 @@
 +         _8 = const true;                 // scope 1 at $DIR/issue_41888.rs:+3:9: +3:10
 +         _9 = const true;                 // scope 1 at $DIR/issue_41888.rs:+3:9: +3:10
 +         _1 = move _3;                    // scope 1 at $DIR/issue_41888.rs:+3:9: +3:10
-+         goto -> bb10;                    // scope 1 at $DIR/issue_41888.rs:+3:9: +3:10
++         goto -> bb12;                    // scope 1 at $DIR/issue_41888.rs:+3:9: +3:10
 +     }
 + 
 +     bb14: {

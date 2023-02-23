@@ -66,8 +66,7 @@
       }
   
       bb6 (cleanup): {
--         drop(_5) -> bb8;                 // scope 2 at $DIR/issue_41110.rs:+4:9: +4:10
-+         goto -> bb8;                     // scope 2 at $DIR/issue_41110.rs:+4:9: +4:10
+          drop(_5) -> bb8;                 // scope 2 at $DIR/issue_41110.rs:+4:9: +4:10
       }
   
       bb7 (cleanup): {
@@ -91,7 +90,7 @@
 + 
 +     bb11 (cleanup): {
 +         _2 = move _5;                    // scope 2 at $DIR/issue_41110.rs:+4:5: +4:6
-+         goto -> bb6;                     // scope 2 at $DIR/issue_41110.rs:+4:5: +4:6
++         goto -> bb10;                    // scope 2 at $DIR/issue_41110.rs:+4:5: +4:6
 +     }
 + 
 +     bb12: {
