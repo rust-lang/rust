@@ -37,7 +37,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     {
         let old_universe = self.infcx.universe();
 
-        let TypeOpOutput { output, constraints, error_info } = op.fully_perform(self.infcx)?;
+        let TypeOpOutput { output, constraints, error_info } =
+            op.fully_perform(self.infcx, self.defining_use_anchor)?;
 
         debug!(?output, ?constraints);
 

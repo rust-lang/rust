@@ -5,6 +5,7 @@ use crate::infer::{InferCtxt, InferOk};
 use crate::traits::query::Fallible;
 use crate::traits::ObligationCause;
 use rustc_infer::infer::canonical::Certainty;
+use rustc_infer::infer::DefiningAnchor;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::ty::fold::TypeFoldable;
@@ -32,7 +33,11 @@ pub trait TypeOp<'tcx>: Sized + fmt::Debug {
     /// Processes the operation and all resulting obligations,
     /// returning the final result along with any region constraints
     /// (they will be given over to the NLL region solver).
-    fn fully_perform(self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>>;
+    fn fully_perform(
+        self,
+        infcx: &InferCtxt<'tcx>,
+        defining_use_anchor: DefiningAnchor,
+    ) -> Fallible<TypeOpOutput<'tcx, Self>>;
 }
 
 /// The output from performing a type op
@@ -120,7 +125,11 @@ where
     type Output = Q::QueryResponse;
     type ErrorInfo = Canonical<'tcx, ParamEnvAnd<'tcx, Q>>;
 
-    fn fully_perform(self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
+    fn fully_perform(
+        self,
+        infcx: &InferCtxt<'tcx>,
+        _defining_use_anchor: DefiningAnchor,
+    ) -> Fallible<TypeOpOutput<'tcx, Self>> {
         let mut region_constraints = QueryRegionConstraints::default();
         let (output, error_info, mut obligations, _) =
             Q::fully_perform_into(self, infcx, &mut region_constraints)?;

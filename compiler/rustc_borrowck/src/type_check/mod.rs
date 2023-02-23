@@ -2720,10 +2720,15 @@ impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
     /// constraints in our `InferCtxt`
     type ErrorInfo = InstantiateOpaqueType<'tcx>;
 
-    fn fully_perform(mut self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
-        let (mut output, region_constraints) = scrape_region_constraints(infcx, || {
-            Ok(InferOk { value: (), obligations: self.obligations.clone() })
-        })?;
+    fn fully_perform(
+        mut self,
+        infcx: &InferCtxt<'tcx>,
+        defining_use_anchor: DefiningAnchor,
+    ) -> Fallible<TypeOpOutput<'tcx, Self>> {
+        let (mut output, region_constraints) =
+            scrape_region_constraints(infcx, defining_use_anchor, || {
+                Ok(InferOk { value: (), obligations: self.obligations.clone() })
+            })?;
         self.region_constraints = Some(region_constraints);
         output.error_info = Some(self);
         Ok(output)

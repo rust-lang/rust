@@ -268,7 +268,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } = self
                 .param_env
                 .and(type_op::normalize::Normalize::new(ty))
-                .fully_perform(self.infcx)
+                .fully_perform(self.infcx, rustc_infer::infer::DefiningAnchor::Error)
                 .unwrap_or_else(|_| {
                     let guar = self
                         .infcx
@@ -349,7 +349,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         let TypeOpOutput { output: bounds, constraints, .. } = self
             .param_env
             .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
-            .fully_perform(self.infcx)
+            .fully_perform(self.infcx, rustc_infer::infer::DefiningAnchor::Error)
             .unwrap_or_else(|_| bug!("failed to compute implied bounds {:?}", ty));
         debug!(?bounds, ?constraints);
         self.add_outlives_bounds(bounds);

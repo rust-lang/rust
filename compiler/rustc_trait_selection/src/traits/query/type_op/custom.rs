@@ -4,6 +4,7 @@ use crate::traits;
 use crate::traits::query::type_op::TypeOpOutput;
 use crate::traits::query::Fallible;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
+use rustc_infer::infer::DefiningAnchor;
 use rustc_span::source_map::DUMMY_SP;
 
 use std::fmt;
@@ -36,12 +37,16 @@ where
     /// Processes the operation and all resulting obligations,
     /// returning the final result along with any region constraints
     /// (they will be given over to the NLL region solver).
-    fn fully_perform(self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
+    fn fully_perform(
+        self,
+        infcx: &InferCtxt<'tcx>,
+        defining_use_anchor: DefiningAnchor,
+    ) -> Fallible<TypeOpOutput<'tcx, Self>> {
         if cfg!(debug_assertions) {
             info!("fully_perform({:?})", self);
         }
 
-        Ok(scrape_region_constraints(infcx, || (self.closure)(infcx))?.0)
+        Ok(scrape_region_constraints(infcx, defining_use_anchor, || (self.closure)(infcx))?.0)
     }
 }
 
@@ -58,6 +63,7 @@ where
 /// constraints that result, creating query-region-constraints.
 pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
     infcx: &InferCtxt<'tcx>,
+    defining_use_anchor: DefiningAnchor,
     op: impl FnOnce() -> Fallible<InferOk<'tcx, R>>,
 ) -> Fallible<(TypeOpOutput<'tcx, Op>, RegionConstraintData<'tcx>)> {
     // During NLL, we expect that nobody will register region
@@ -73,7 +79,7 @@ pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
     );
 
     let InferOk { value, obligations } = infcx.commit_if_ok(|_| op())?;
-    let errors = traits::fully_solve_obligations(infcx, obligations, infcx.old_defining_use_anchor);
+    let errors = traits::fully_solve_obligations(infcx, obligations, defining_use_anchor);
     if !errors.is_empty() {
         infcx.tcx.sess.diagnostic().delay_span_bug(
             DUMMY_SP,
