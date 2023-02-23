@@ -8521,4 +8521,49 @@ mod test_map {
 
         map2.clone_from(&map1);
     }
+
+    #[test]
+    #[should_panic = "panic in clone"]
+    fn test_clone_from_memory_leaks() {
+        use ::alloc::vec::Vec;
+
+        struct CheckedClone {
+            panic_in_clone: bool,
+            need_drop: Vec<i32>,
+        }
+        impl Clone for CheckedClone {
+            fn clone(&self) -> Self {
+                if self.panic_in_clone {
+                    panic!("panic in clone")
+                }
+                Self {
+                    panic_in_clone: self.panic_in_clone,
+                    need_drop: self.need_drop.clone(),
+                }
+            }
+        }
+        let mut map1 = HashMap::new();
+        map1.insert(
+            1,
+            CheckedClone {
+                panic_in_clone: false,
+                need_drop: vec![0, 1, 2],
+            },
+        );
+        map1.insert(
+            2,
+            CheckedClone {
+                panic_in_clone: false,
+                need_drop: vec![3, 4, 5],
+            },
+        );
+        map1.insert(
+            3,
+            CheckedClone {
+                panic_in_clone: true,
+                need_drop: vec![6, 7, 8],
+            },
+        );
+        let _map2 = map1.clone();
+    }
 }

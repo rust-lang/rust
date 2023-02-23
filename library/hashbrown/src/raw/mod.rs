@@ -2386,7 +2386,7 @@ impl<T: Clone, A: Allocator + Clone> RawTable<T, A> {
         // to make sure we drop only the elements that have been
         // cloned so far.
         let mut guard = guard((0, &mut *self), |(index, self_)| {
-            if Self::DATA_NEEDS_DROP && !self_.is_empty() {
+            if Self::DATA_NEEDS_DROP {
                 for i in 0..=*index {
                     if self_.is_bucket_full(i) {
                         self_.bucket(i).drop();
