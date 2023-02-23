@@ -166,7 +166,11 @@ fn require_same_types<'tcx>(
     let infcx = &tcx.infer_ctxt().build();
     let param_env = ty::ParamEnv::empty();
     let errors = match infcx.at(cause, param_env).eq(expected, actual) {
-        Ok(InferOk { obligations, .. }) => traits::fully_solve_obligations(infcx, obligations),
+        Ok(InferOk { obligations, .. }) => traits::fully_solve_obligations(
+            infcx,
+            obligations,
+            rustc_infer::infer::DefiningAnchor::Error,
+        ),
         Err(err) => {
             infcx.err_ctxt().report_mismatched_types(cause, expected, actual, err).emit();
             return false;

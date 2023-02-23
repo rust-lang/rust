@@ -73,7 +73,7 @@ pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
     );
 
     let InferOk { value, obligations } = infcx.commit_if_ok(|_| op())?;
-    let errors = traits::fully_solve_obligations(infcx, obligations);
+    let errors = traits::fully_solve_obligations(infcx, obligations, infcx.old_defining_use_anchor);
     if !errors.is_empty() {
         infcx.tcx.sess.diagnostic().delay_span_bug(
             DUMMY_SP,

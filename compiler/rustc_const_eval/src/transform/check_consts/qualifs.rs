@@ -184,7 +184,12 @@ impl Qualif for NeedsNonConstDrop {
         }
 
         // If we had any errors, then it's bad
-        !traits::fully_solve_obligations(&infcx, impl_src.nested_obligations()).is_empty()
+        !traits::fully_solve_obligations(
+            &infcx,
+            impl_src.nested_obligations(),
+            rustc_infer::infer::DefiningAnchor::Error,
+        )
+        .is_empty()
     }
 
     fn in_adt_inherently<'tcx>(

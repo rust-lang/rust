@@ -26,6 +26,7 @@ use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorGuaranteed;
+use rustc_infer::infer::DefiningAnchor;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeSuperVisitable};
@@ -393,7 +394,7 @@ pub fn fully_solve_obligation<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligation: PredicateObligation<'tcx>,
 ) -> Vec<FulfillmentError<'tcx>> {
-    fully_solve_obligations(infcx, [obligation])
+    fully_solve_obligations(infcx, [obligation], infcx.old_defining_use_anchor)
 }
 
 /// Process a set of obligations (and any nested obligations that come from them)
@@ -401,8 +402,9 @@ pub fn fully_solve_obligation<'tcx>(
 pub fn fully_solve_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>,
+    defining_use_anchor: DefiningAnchor,
 ) -> Vec<FulfillmentError<'tcx>> {
-    let ocx = ObligationCtxt::new(infcx).with_defining_use_anchor(infcx.old_defining_use_anchor);
+    let ocx = ObligationCtxt::new(infcx).with_defining_use_anchor(defining_use_anchor);
     ocx.register_obligations(obligations);
     ocx.select_all_or_error()
 }

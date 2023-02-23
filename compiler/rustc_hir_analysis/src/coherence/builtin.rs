@@ -335,6 +335,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                             [field.ty(tcx, substs_a), field.ty(tcx, substs_b)],
                         )
                     }),
+                    infer::DefiningAnchor::Error,
                 );
                 if !errors.is_empty() {
                     infcx.err_ctxt().report_fulfillment_errors(&errors, None);
