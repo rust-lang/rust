@@ -1193,7 +1193,7 @@ fn merge_sort_impl<T, CmpF, RunAllocF, RunDeallocF>(
 
         // Insert some more elements into the run if it's too short. Insertion sort is faster than
         // merge sort on short sequences, so this significantly improves performance.
-        local_end = <T as StableSortTypeImpl>::provide_sorted_batch(local_v, 0, local_end, is_less);
+        local_end = provide_sorted_batch(local_v, 0, local_end, is_less);
 
         end = start + local_end;
 
@@ -1209,7 +1209,7 @@ fn merge_sort_impl<T, CmpF, RunAllocF, RunDeallocF>(
 
             // SAFETY: buf_ptr is valid for buf_len writes, because we took it from buf slice.
             unsafe {
-                merge(merge_slice, left.len, buf_ptr, buf_len, is_less);
+                <T as StableSortTypeImpl>::merge(merge_slice, left.len, buf_ptr, buf_len, is_less);
             }
             runs[r + 1] = TimSortRun { start: left.start, len: left.len + right.len };
             runs.remove(r);
@@ -1422,36 +1422,7 @@ where
     }
 }
 
-// Use a trait to focus code-gen on only the parts actually relevant for the type.
-// Avoid generating LLVM-IR for the stable sorting-network for types that don't qualify.
-trait StableSortTypeImpl: Sized {
-    /// Takes a range as denoted by start and end, that is already sorted and extends it to the right if
-    /// necessary with sorts optimized for smaller ranges such as insertion sort.
-    fn provide_sorted_batch<F>(v: &mut [Self], start: usize, end: usize, is_less: &mut F) -> usize
-    where
-        F: FnMut(&Self, &Self) -> bool;
-}
-
-impl<T> StableSortTypeImpl for T {
-    default fn provide_sorted_batch<F>(
-        v: &mut [Self],
-        start: usize,
-        end: usize,
-        is_less: &mut F,
-    ) -> usize
-    where
-        F: FnMut(&Self, &Self) -> bool,
-    {
-        provide_sorted_batch_default(v, start, end, is_less)
-    }
-}
-
-fn provide_sorted_batch_default<T, F>(
-    v: &mut [T],
-    start: usize,
-    mut end: usize,
-    is_less: &mut F,
-) -> usize
+fn provide_sorted_batch<T, F>(v: &mut [T], start: usize, mut end: usize, is_less: &mut F) -> usize
 where
     F: FnMut(&T, &T) -> bool,
 {
@@ -1462,12 +1433,11 @@ where
     // merge sort on short sequences, so this significantly improves performance.
     let start_end_diff = end - start;
 
-    // Reduce the border conditions where new runs are created that don't fit FAST_SORT_SIZE.
-    let min_insertion_run =
-        if const { qualifies_for_stable_sort_network::<T>() } { 20 } else { 10 };
+    // Create a run that will be at least this long.
+    const MIN_INSERTION_RUN: usize = 10;
 
-    if start_end_diff < min_insertion_run && end < len {
-        end = cmp::min(start + min_insertion_run, len);
+    if start_end_diff < MIN_INSERTION_RUN && end < len {
+        end = cmp::min(start + MIN_INSERTION_RUN, len);
         let presorted_start = cmp::max(start_end_diff, 1);
 
         insertion_sort_shift_left(&mut v[start..end], presorted_start, is_less);
@@ -1476,51 +1446,84 @@ where
     end
 }
 
-// Limit this code-gen to Copy types, to limit emitted LLVM-IR.
-impl<T: IsCopyMarker> StableSortTypeImpl for T {
-    fn provide_sorted_batch<F>(
+#[rustc_unsafe_specialization_marker]
+trait FreezeMarker {}
+
+impl<T: crate::marker::Freeze> FreezeMarker for T {}
+
+// Use a trait to focus code-gen on only the parts actually relevant for the type.
+// Avoid generating LLVM-IR for the stable sorting-network for types that don't qualify.
+trait StableSortTypeImpl: Sized {
+    /// Merges non-decreasing runs `v[..mid]` and `v[mid..]` using `buf` as temporary storage, and
+    /// stores the result into `v[..]`.
+    ///
+    /// # Safety
+    ///
+    /// Buffer as pointed to by `buf_ptr` must have space for `buf_len` writes. And must not alias
+    /// `v`.
+    unsafe fn merge<F>(
         v: &mut [Self],
-        start: usize,
-        mut end: usize,
+        mid: usize,
+        buf_ptr: *mut Self,
+        buf_len: usize,
         is_less: &mut F,
-    ) -> usize
-    where
+    ) where
+        F: FnMut(&Self, &Self) -> bool;
+}
+
+impl<T> StableSortTypeImpl for T {
+    default unsafe fn merge<F>(
+        v: &mut [Self],
+        mid: usize,
+        buf_ptr: *mut Self,
+        buf_len: usize,
+        is_less: &mut F,
+    ) where
         F: FnMut(&Self, &Self) -> bool,
     {
-        const MAX_IGNORE_PRE_SORTED: usize = 6;
-        const FAST_SORT_SIZE: usize = 32;
-
         let len = v.len();
-        assert!(end >= start && end <= len);
+        assert!(
+            mid > 0 && mid < len && buf_len >= (cmp::min(mid, len - mid)) && !buf_ptr.is_null()
+        );
 
-        // Insert some more elements into the run if it's too short. Insertion sort is faster than
-        // merge sort on short sequences, so this significantly improves performance.
-        let start_end_diff = end - start;
-
-        if const { qualifies_for_stable_sort_network::<T>() }
-            && (start + FAST_SORT_SIZE) <= len
-            && start_end_diff <= MAX_IGNORE_PRE_SORTED
-        {
-            // For random inputs on average how many elements are naturally already sorted
-            // (start_end_diff) will be relatively small. And it's faster to avoid a merge operation
-            // between the newly sorted elements by the sort network and the already sorted
-            // elements. Instead just run the sort network and ignore the already sorted streak.
-            //
-            // Note, this optimization significantly reduces comparison count, versus just always
-            // using insertion_sort_shift_left. Insertion sort is faster than calling merge here,
-            // and this is yet faster starting at FAST_SORT_SIZE 20.
-            end = start + FAST_SORT_SIZE;
-
-            // Use a straight-line sorting network here instead of some hybrid network with early
-            // exit. If the input is already sorted the previous adaptive analysis path of TimSort
-            // ought to have found it. So we prefer minimizing the total amount of comparisons,
-            // which are user provided and may be of arbitrary cost.
-            sort32_stable(&mut v[start..end], is_less);
-        } else {
-            end = provide_sorted_batch_default(v, start, end, is_less);
+        // SAFETY: We checked that the two slices must be non-empty and `mid` must be in bounds. The
+        // caller has to guarantee that Buffer `buf` must be long enough to hold a copy of the shorter
+        // slice. Also, `T` must not be a zero-sized type.
+        unsafe {
+            merge_fallback(v, mid, buf_ptr, is_less);
         }
+    }
+}
 
-        end
+// Limit this code-gen to Copy types, to limit emitted LLVM-IR.
+impl<T: FreezeMarker> StableSortTypeImpl for T {
+    unsafe fn merge<F>(
+        v: &mut [Self],
+        mid: usize,
+        buf_ptr: *mut Self,
+        buf_len: usize,
+        is_less: &mut F,
+    ) where
+        F: FnMut(&Self, &Self) -> bool,
+    {
+        let len = v.len();
+        assert!(
+            mid > 0 && mid < len && buf_len >= (cmp::min(mid, len - mid)) && !buf_ptr.is_null()
+        );
+
+        // SAFETY: We checked that the two slices must be non-empty and `mid` must be in bounds. The
+        // caller has to guarantee that Buffer `buf` must be long enough to hold a copy of the shorter
+        // slice. Also, `T` must not be a zero-sized type. We checked that T is observation safe. Should
+        // is_less panic v was not modified in bi_directional_merge and retains it's original input.
+        // buf_ptr and v must not alias and swap has v.len() space.
+        unsafe {
+            if len <= buf_len {
+                bi_directional_merge(v, mid, buf_ptr, is_less);
+                ptr::copy_nonoverlapping(buf_ptr, v.as_mut_ptr(), len);
+            } else {
+                merge_fallback(v, mid, buf_ptr, is_less);
+            }
+        }
     }
 }
 
@@ -1656,114 +1659,6 @@ where
     }
 }
 
-/// Merges non-decreasing runs `v[..mid]` and `v[mid..]` using `buf` as temporary storage, and
-/// stores the result into `v[..]`.
-///
-/// # Safety
-///
-/// Buffer as pointed to by `buf_ptr` must have space for `buf_len` writes. And must not alias `v`.
-#[inline(always)]
-unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf_ptr: *mut T, buf_len: usize, is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    let len = v.len();
-    assert!(mid > 0 && mid < len && buf_len >= (cmp::min(mid, len - mid)) && !buf_ptr.is_null());
-
-    // SAFETY: We checked that the two slices must be non-empty and `mid` must be in bounds. The
-    // caller has to guarantee that Buffer `buf` must be long enough to hold a copy of the shorter
-    // slice. Also, `T` must not be a zero-sized type. We checked that T is observation safe. Should
-    // is_less panic v was not modified in bi_directional_merge and retains it's original input.
-    // buf_ptr and v must not alias and swap has v.len() space.
-    unsafe {
-        if const { !has_direct_iterior_mutability::<T>() } && len <= buf_len {
-            bi_directional_merge(v, mid, buf_ptr, is_less);
-            ptr::copy_nonoverlapping(buf_ptr, v.as_mut_ptr(), len);
-        } else {
-            merge_fallback(v, mid, buf_ptr, is_less);
-        }
-    }
-}
-
-#[rustc_unsafe_specialization_marker]
-trait IsCopyMarker {}
-
-impl<T: Copy> IsCopyMarker for T {}
-
-#[const_trait]
-trait IsCopy {
-    fn value() -> bool;
-}
-
-impl<T> const IsCopy for T {
-    default fn value() -> bool {
-        false
-    }
-}
-
-impl<T: IsCopyMarker> const IsCopy for T {
-    fn value() -> bool {
-        true
-    }
-}
-
-#[must_use]
-const fn is_copy<T>() -> bool {
-    <T as IsCopy>::value()
-}
-
-#[must_use]
-const fn is_cheap_to_move<T>() -> bool {
-    // This is a heuristic, and as such it will guess wrong from time to time. The two parts broken
-    // down:
-    //
-    // - Type size: Large types are more expensive to move and the time won avoiding branches can be
-    //              offset by the increased cost of moving the values.
-    //
-    // In contrast to stable sort, using sorting networks here, allows to do fewer comparisons.
-    mem::size_of::<T>() <= mem::size_of::<[usize; 4]>()
-}
-
-#[rustc_unsafe_specialization_marker]
-trait FreezeMarker {}
-
-impl<T: crate::marker::Freeze> FreezeMarker for T {}
-
-#[const_trait]
-trait IsFreeze {
-    fn value() -> bool;
-}
-
-impl<T> const IsFreeze for T {
-    default fn value() -> bool {
-        false
-    }
-}
-
-impl<T: FreezeMarker> const IsFreeze for T {
-    fn value() -> bool {
-        true
-    }
-}
-
-// I would like to make this a const fn.
-#[must_use]
-const fn has_direct_iterior_mutability<T>() -> bool {
-    // - Can the type have interior mutability, this is checked by testing if T is Copy.
-    //   If the type can have interior mutability it may alter itself during comparison in a way
-    //   that must be observed after the sort operation concludes.
-    //   Otherwise a type like Mutex<Option<Box<str>>> could lead to double free.
-    !<T as IsFreeze>::value()
-}
-
-#[must_use]
-const fn qualifies_for_stable_sort_network<T>() -> bool {
-    // This is only a heuristic but, generally for expensive to compare types, it's not worth it to
-    // use the stable sorting-network. Which is great at extracting instruction-level parallelism
-    // (ILP) for types like integers, but not for a complex type with indirection.
-    is_cheap_to_move::<T>() && is_copy::<T>() && !has_direct_iterior_mutability::<T>()
-}
-
 #[inline(always)]
 unsafe fn merge_up<T, F>(
     mut src_left: *const T,
@@ -1836,83 +1731,6 @@ where
     (src_left, src_right, dest_ptr)
 }
 
-/// Merge v assuming the len is even and v[..len / 2] and v[len / 2..] are sorted.
-///
-/// Original idea for bi-directional merging by Igor van den Hoven (quadsort), adapted to only use
-/// merge up and down. In contrast to the original parity_merge function, it performs 2 writes
-/// instead of 4 per iteration. Ord violation detection was added.
-pub unsafe fn bi_directional_merge_even<T, F>(v: &[T], dest_ptr: *mut T, is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    // SAFETY: the caller must guarantee that `dest_ptr` is valid for v.len() writes.
-    // Also `v.as_ptr` and `dest_ptr` must not alias.
-    //
-    // The caller must guarantee that T cannot modify itself inside is_less.
-    // merge_up and merge_down read left and right pointers and potentially modify the stack value
-    // they point to, if T has interior mutability. This may leave one or two potential writes to
-    // the stack value un-observed when dest is copied onto of src.
-
-    // It helps to visualize the merge:
-    //
-    // Initial:
-    //
-    //  |ptr_data (in dest)
-    //  |ptr_left           |ptr_right
-    //  v                   v
-    // [xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
-    //                     ^                   ^
-    //                     |t_ptr_left         |t_ptr_right
-    //                                         |t_ptr_data (in dest)
-    //
-    // After:
-    //
-    //                      |ptr_data (in dest)
-    //        |ptr_left     |           |ptr_right
-    //        v             v           v
-    // [xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
-    //       ^             ^           ^
-    //       |t_ptr_left   |           |t_ptr_right
-    //                     |t_ptr_data (in dest)
-    //
-    //
-    // Note, the pointers that have been written, are now one past where they were read and
-    // copied. written == incremented or decremented + copy to dest.
-
-    assert!(const { !has_direct_iterior_mutability::<T>() });
-
-    let len = v.len();
-    let src_ptr = v.as_ptr();
-
-    let len_div_2 = len / 2;
-
-    // SAFETY: No matter what the result of the user-provided comparison function is, all 4 read
-    // pointers will always be in-bounds. Writing `ptr_data` and `t_ptr_data` will always be in
-    // bounds if the caller guarantees that `dest_ptr` is valid for `v.len()` writes.
-    unsafe {
-        let mut ptr_left = src_ptr;
-        let mut ptr_right = src_ptr.wrapping_add(len_div_2);
-        let mut ptr_data = dest_ptr;
-
-        let mut t_ptr_left = src_ptr.wrapping_add(len_div_2 - 1);
-        let mut t_ptr_right = src_ptr.wrapping_add(len - 1);
-        let mut t_ptr_data = dest_ptr.wrapping_add(len - 1);
-
-        for _ in 0..len_div_2 {
-            (ptr_left, ptr_right, ptr_data) = merge_up(ptr_left, ptr_right, ptr_data, is_less);
-            (t_ptr_left, t_ptr_right, t_ptr_data) =
-                merge_down(t_ptr_left, t_ptr_right, t_ptr_data, is_less);
-        }
-
-        let left_diff = (ptr_left as usize).wrapping_sub(t_ptr_left as usize);
-        let right_diff = (ptr_right as usize).wrapping_sub(t_ptr_right as usize);
-
-        if !(left_diff == mem::size_of::<T>() && right_diff == mem::size_of::<T>()) {
-            panic_on_ord_violation();
-        }
-    }
-}
-
 /// Merge v assuming v[..mid] and v[mid..] are already sorted.
 #[inline(never)]
 pub unsafe fn bi_directional_merge<T, F>(v: &[T], mid: usize, dest_ptr: *mut T, is_less: &mut F)
@@ -1929,8 +1747,6 @@ where
     unsafe {
         let len = v.len();
         let src_ptr = v.as_ptr();
-
-        assert!(const { !has_direct_iterior_mutability::<T>() });
 
         // The original idea for bi-directional merging comes from Igor van den Hoven (quadsort), the
         // code was adapted to only perform 2 writes per loop iteration instead of 4. And it was adapted
@@ -2040,181 +1856,6 @@ where
 
         if !(left_diff == mem::size_of::<T>() && right_diff == mem::size_of::<T>()) {
             panic_on_ord_violation();
-        }
-    }
-}
-
-// --- Branchless sorting (less branches not zero) ---
-
-/// Swap two values in array pointed to by a_ptr and b_ptr if b is less than a.
-#[inline(always)]
-unsafe fn branchless_swap<T>(a_ptr: *mut T, b_ptr: *mut T, should_swap: bool) {
-    // This is a branchless version of swap if.
-    // The equivalent code with a branch would be:
-    //
-    // if should_swap {
-    //     ptr::swap_nonoverlapping(a_ptr, b_ptr, 1);
-    // }
-
-    // Give ourselves some scratch space to work with.
-    // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
-    let mut tmp = mem::MaybeUninit::<T>::uninit();
-
-    // The goal is to generate cmov instructions here.
-    let a_swap_ptr = if should_swap { b_ptr } else { a_ptr };
-    let b_swap_ptr = if should_swap { a_ptr } else { b_ptr };
-
-    // SAFETY: the caller must guarantee that `a_ptr` and `b_ptr` are valid for writes
-    // and properly aligned, and part of the same allocation, and do not alias.
-    unsafe {
-        ptr::copy_nonoverlapping(b_swap_ptr, tmp.as_mut_ptr(), 1);
-        ptr::copy(a_swap_ptr, a_ptr, 1);
-        ptr::copy_nonoverlapping(tmp.as_ptr(), b_ptr, 1);
-    }
-}
-
-/// Swap two values in array pointed to by a_ptr and b_ptr if b is less than a.
-#[inline(always)]
-unsafe fn swap_if_less<T, F>(arr_ptr: *mut T, a: usize, b: usize, is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    // SAFETY: the caller must guarantee that `a` and `b` each added to `arr_ptr` yield valid
-    // pointers into `arr_ptr`. and properly aligned, and part of the same allocation, and do not
-    // alias. `a` and `b` must be different numbers.
-    unsafe {
-        debug_assert!(a != b);
-
-        let a_ptr = arr_ptr.add(a);
-        let b_ptr = arr_ptr.add(b);
-
-        // PANIC SAFETY: if is_less panics, no scratch memory was created and the slice should still be
-        // in a well defined state, without duplicates.
-
-        // Important to only swap if it is more and not if it is equal. is_less should return false for
-        // equal, so we don't swap.
-        let should_swap = is_less(&*b_ptr, &*a_ptr);
-
-        branchless_swap(a_ptr, b_ptr, should_swap);
-    }
-}
-
-/// Comparing and swapping anything but adjacent elements will yield a non stable sort.
-/// So this must be fundamental building block for stable sorting networks.
-#[inline(always)]
-unsafe fn swap_next_if_less<T, F>(arr_ptr: *mut T, is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    // SAFETY: the caller must guarantee that `arr_ptr` and `arr_ptr.add(1)` yield valid
-    // pointers that are properly aligned, and part of the same allocation.
-    unsafe {
-        swap_if_less(arr_ptr, 0, 1, is_less);
-    }
-}
-
-/// Sort 8 elements
-///
-/// Never inline this function to avoid code bloat. It still optimizes nicely and has practically no
-/// performance impact.
-#[inline(never)]
-fn sort8_stable<T, F>(v: &mut [T], is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    // SAFETY: caller must ensure v.len() >= 8.
-    assert!(v.len() == 8);
-
-    let arr_ptr = v.as_mut_ptr();
-
-    // SAFETY: We checked the len.
-    unsafe {
-        // Transposition sorting-network, by only comparing and swapping adjacent wires we have a stable
-        // sorting-network. Sorting-networks are great at leveraging Instruction-Level-Parallelism
-        // (ILP), they expose multiple comparisons in straight-line code with builtin data-dependency
-        // parallelism and ordering per layer. This has to do 28 comparisons in contrast to the 19
-        // comparisons done by an optimal size 8 unstable sorting-network.
-        swap_next_if_less(arr_ptr.add(0), is_less);
-        swap_next_if_less(arr_ptr.add(2), is_less);
-        swap_next_if_less(arr_ptr.add(4), is_less);
-        swap_next_if_less(arr_ptr.add(6), is_less);
-
-        swap_next_if_less(arr_ptr.add(1), is_less);
-        swap_next_if_less(arr_ptr.add(3), is_less);
-        swap_next_if_less(arr_ptr.add(5), is_less);
-
-        swap_next_if_less(arr_ptr.add(0), is_less);
-        swap_next_if_less(arr_ptr.add(2), is_less);
-        swap_next_if_less(arr_ptr.add(4), is_less);
-        swap_next_if_less(arr_ptr.add(6), is_less);
-
-        swap_next_if_less(arr_ptr.add(1), is_less);
-        swap_next_if_less(arr_ptr.add(3), is_less);
-        swap_next_if_less(arr_ptr.add(5), is_less);
-
-        swap_next_if_less(arr_ptr.add(0), is_less);
-        swap_next_if_less(arr_ptr.add(2), is_less);
-        swap_next_if_less(arr_ptr.add(4), is_less);
-        swap_next_if_less(arr_ptr.add(6), is_less);
-
-        swap_next_if_less(arr_ptr.add(1), is_less);
-        swap_next_if_less(arr_ptr.add(3), is_less);
-        swap_next_if_less(arr_ptr.add(5), is_less);
-
-        swap_next_if_less(arr_ptr.add(0), is_less);
-        swap_next_if_less(arr_ptr.add(2), is_less);
-        swap_next_if_less(arr_ptr.add(4), is_less);
-        swap_next_if_less(arr_ptr.add(6), is_less);
-
-        swap_next_if_less(arr_ptr.add(1), is_less);
-        swap_next_if_less(arr_ptr.add(3), is_less);
-        swap_next_if_less(arr_ptr.add(5), is_less);
-    }
-}
-
-fn sort32_stable<T, F>(v: &mut [T], is_less: &mut F)
-where
-    F: FnMut(&T, &T) -> bool,
-{
-    assert!(v.len() == 32 && const { !has_direct_iterior_mutability::<T>() });
-
-    let mut swap = mem::MaybeUninit::<[T; 32]>::uninit();
-    let swap_ptr = swap.as_mut_ptr() as *mut T;
-
-    // SAFETY: We checked the len for sort8 and that T is Copy and thus observation safe.
-    // Should is_less panic v was not modified in bi_directional_merge_even and retains it's original input.
-    // swap and v must not alias and swap has v.len() space.
-    unsafe {
-        sort8_stable(&mut v[0..8], is_less);
-        sort8_stable(&mut v[8..16], is_less);
-        sort8_stable(&mut v[16..24], is_less);
-        sort8_stable(&mut v[24..32], is_less);
-
-        bi_directional_merge_even(&v[0..16], swap_ptr, is_less);
-        bi_directional_merge_even(&v[16..32], swap_ptr.add(16), is_less);
-
-        let arr_ptr = v.as_mut_ptr();
-        ptr::copy_nonoverlapping(swap_ptr, arr_ptr, 32);
-
-        // It's slightly faster to merge directly into v and copy over the 'safe' elements of swap
-        // into v only if there was a panic. This technique is also known as ping-pong merge.
-        let drop_guard = DropGuard { src: swap_ptr, dest: arr_ptr };
-        bi_directional_merge_even(&*ptr::slice_from_raw_parts(swap_ptr, 32), arr_ptr, is_less);
-        mem::forget(drop_guard);
-    }
-
-    struct DropGuard<T> {
-        src: *const T,
-        dest: *mut T,
-    }
-
-    impl<T> Drop for DropGuard<T> {
-        fn drop(&mut self) {
-            // SAFETY: `T` is not a zero-sized type, src must hold the original 32 elements of v in
-            // any order. And dest must be valid to write 32 elements.
-            unsafe {
-                ptr::copy_nonoverlapping(self.src, self.dest, 32);
-            }
         }
     }
 }
