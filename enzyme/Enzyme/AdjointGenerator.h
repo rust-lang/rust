@@ -11480,7 +11480,7 @@ public:
       if (!noFree && !EnzymeGlobalActivity) {
         bool mayActiveFree = false;
 #if LLVM_VERSION_MAJOR >= 14
-        for (unsigned i = 0; i < orig->arg_size(); ++i)
+        for (unsigned i = 0; i < call.arg_size(); ++i)
 #else
         for (unsigned i = 0; i < call.getNumArgOperands(); ++i)
 #endif
@@ -11606,7 +11606,7 @@ public:
       std::map<int, Attribute> structAttrs;
 
 #if LLVM_VERSION_MAJOR >= 14
-      for (unsigned i = 0; i < orig->arg_size(); ++i)
+      for (unsigned i = 0; i < call.arg_size(); ++i)
 #else
       for (unsigned i = 0; i < call.getNumArgOperands(); ++i)
 #endif
@@ -11642,7 +11642,7 @@ public:
           writeOnlyNoCapture = false;
         }
 #if LLVM_VERSION_MAJOR >= 14
-        if (!orig->onlyWritesMemory(i))
+        if (!call.onlyWritesMemory(i))
 #else
         if (!(call.dataOperandHasImpliedAttr(i + 1, Attribute::WriteOnly) ||
               call.dataOperandHasImpliedAttr(i + 1, Attribute::ReadNone) ||
@@ -11879,7 +11879,7 @@ public:
     }
 
 #if LLVM_VERSION_MAJOR >= 14
-    for (unsigned i = 0; i < orig->arg_size(); ++i)
+    for (unsigned i = 0; i < call.arg_size(); ++i)
 #else
     for (unsigned i = 0; i < call.getNumArgOperands(); ++i)
 #endif
@@ -11919,7 +11919,7 @@ public:
         writeOnlyNoCapture = false;
       }
 #if LLVM_VERSION_MAJOR >= 14
-      if (!orig->onlyWritesMemory(i))
+      if (!call.onlyWritesMemory(i))
 #else
       if (!(call.dataOperandHasImpliedAttr(i + 1, Attribute::WriteOnly) ||
             call.dataOperandHasImpliedAttr(i + 1, Attribute::ReadNone) ||
@@ -12023,7 +12023,7 @@ public:
         BundleTypes.push_back(ValueType::Both);
     if (called) {
 #if LLVM_VERSION_MAJOR >= 14
-      if (orig->arg_size() !=
+      if (call.arg_size() !=
           cast<Function>(called)->getFunctionType()->getNumParams())
 #else
       if (call.getNumArgOperands() !=
@@ -12095,13 +12095,13 @@ public:
           ft = F->getFunctionType();
         else {
 #if LLVM_VERSION_MAJOR >= 15
-          if (orig->getContext().supportsTypedPointers()) {
+          if (call.getContext().supportsTypedPointers()) {
 #endif
             ft =
                 cast<FunctionType>(callval->getType()->getPointerElementType());
 #if LLVM_VERSION_MAJOR >= 15
           } else {
-            ft = orig->getFunctionType();
+            ft = call.getFunctionType();
           }
 #endif
         }
@@ -12630,7 +12630,7 @@ public:
     }
 
 #if LLVM_VERSION_MAJOR >= 14
-    for (unsigned i = 0; i < orig->arg_size(); ++i)
+    for (unsigned i = 0; i < call.arg_size(); ++i)
 #else
     for (unsigned i = 0; i < call.getNumArgOperands(); ++i)
 #endif
