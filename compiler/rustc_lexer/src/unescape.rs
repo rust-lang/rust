@@ -287,10 +287,8 @@ where
         F: FnMut(Range<usize>, Result<char, EscapeError>),
     {
         let tail = chars.as_str();
-        let first_non_space = tail
-            .bytes()
-            .position(|b| b != b' ' && b != b'\t' && b != b'\n' && b != b'\r')
-            .unwrap_or(tail.len());
+        let first_non_space =
+            tail.bytes().position(|b| !b.is_ascii_whitespace()).unwrap_or(tail.len());
         if tail[1..first_non_space].contains('\n') {
             // The +1 accounts for the escaping slash.
             let end = start + first_non_space + 1;
@@ -300,8 +298,8 @@ where
         if let Some(c) = tail.chars().nth(0) {
             // For error reporting, we would like the span to contain the character that was not
             // skipped. The +1 is necessary to account for the leading \ that started the escape.
-            let end = start + first_non_space + c.len_utf8() + 1;
             if c.is_whitespace() {
+                let end = start + first_non_space + c.len_utf8() + 1;
                 callback(start..end, Err(EscapeError::UnskippedWhitespaceWarning));
             }
         }

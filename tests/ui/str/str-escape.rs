@@ -8,4 +8,6 @@ fn main() {
              bar
              ";
     //~^^^ WARNING non-ASCII whitespace symbol '\u{a0}' is not skipped
+    let s = "Hello,\
+       world!";
 }
