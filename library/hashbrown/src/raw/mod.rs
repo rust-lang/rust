@@ -1596,9 +1596,9 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     /// width, or return an index outside of the table indices range if the table is less
     /// than the group width.
     ///
-    /// # Safety
+    /// # Note
     ///
-    /// Actually, calling this function is always safe, but attempting to write data at
+    /// Calling this function is always safe, but attempting to write data at
     /// the index returned by this function when the table is less than the group width
     /// and if there was not at least one empty bucket in the table will cause immediate
     /// [`undefined behavior`]. This is because in this case the function will return
@@ -1607,7 +1607,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
-    unsafe fn find_insert_slot(&self, hash: u64) -> usize {
+    fn find_insert_slot(&self, hash: u64) -> usize {
         let mut probe_seq = self.probe_seq(hash);
         loop {
             // SAFETY:
