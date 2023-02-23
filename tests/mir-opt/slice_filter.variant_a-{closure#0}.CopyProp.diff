@@ -1,7 +1,7 @@
 - // MIR for `variant_a::{closure#0}` before CopyProp
 + // MIR for `variant_a::{closure#0}` after CopyProp
   
-  fn variant_a::{closure#0}(_1: &mut [closure@$DIR/slice_filter.rs:8:25: 8:39], _2: &&(usize, usize, usize, usize)) -> bool {
+  fn variant_a::{closure#0}(_1: &mut [closure@$DIR/slice_filter.rs:9:25: 9:39], _2: &&(usize, usize, usize, usize)) -> bool {
       let mut _0: bool;                    // return place in scope 0 at $DIR/slice_filter.rs:+0:40: +0:40
       let _3: &usize;                      // in scope 0 at $DIR/slice_filter.rs:+0:27: +0:28
       let _4: &usize;                      // in scope 0 at $DIR/slice_filter.rs:+0:30: +0:31
@@ -42,7 +42,7 @@
           debug b => _4;                   // in scope 1 at $DIR/slice_filter.rs:+0:30: +0:31
           debug c => _5;                   // in scope 1 at $DIR/slice_filter.rs:+0:33: +0:34
           debug d => _6;                   // in scope 1 at $DIR/slice_filter.rs:+0:36: +0:37
-          scope 2 (inlined cmp::impls::<impl PartialOrd for &usize>::le) { // at $DIR/slice_filter.rs:8:40: 8:46
+          scope 2 (inlined cmp::impls::<impl PartialOrd for &usize>::le) { // at $DIR/slice_filter.rs:9:40: 9:46
               debug self => _9;            // in scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
               debug other => _10;          // in scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
               let mut _29: &usize;         // in scope 2 at $SRC_DIR/core/src/cmp.rs:LL:COL
@@ -56,7 +56,7 @@
                   let mut _34: usize;      // in scope 3 at $SRC_DIR/core/src/cmp.rs:LL:COL
               }
           }
-          scope 4 (inlined cmp::impls::<impl PartialOrd for &usize>::le) { // at $DIR/slice_filter.rs:8:60: 8:66
+          scope 4 (inlined cmp::impls::<impl PartialOrd for &usize>::le) { // at $DIR/slice_filter.rs:9:60: 9:66
               debug self => _18;           // in scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
               debug other => _19;          // in scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
               let mut _35: &usize;         // in scope 4 at $SRC_DIR/core/src/cmp.rs:LL:COL
@@ -70,7 +70,7 @@
                   let mut _40: usize;      // in scope 5 at $SRC_DIR/core/src/cmp.rs:LL:COL
               }
           }
-          scope 6 (inlined cmp::impls::<impl PartialOrd for &usize>::le) { // at $DIR/slice_filter.rs:8:50: 8:56
+          scope 6 (inlined cmp::impls::<impl PartialOrd for &usize>::le) { // at $DIR/slice_filter.rs:9:50: 9:56
               debug self => _13;           // in scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
               debug other => _14;          // in scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
               let mut _41: &usize;         // in scope 6 at $SRC_DIR/core/src/cmp.rs:LL:COL
@@ -84,7 +84,7 @@
                   let mut _46: usize;      // in scope 7 at $SRC_DIR/core/src/cmp.rs:LL:COL
               }
           }
-          scope 8 (inlined cmp::impls::<impl PartialOrd for &usize>::le) { // at $DIR/slice_filter.rs:8:70: 8:76
+          scope 8 (inlined cmp::impls::<impl PartialOrd for &usize>::le) { // at $DIR/slice_filter.rs:9:70: 9:76
               debug self => _22;           // in scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
               debug other => _23;          // in scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL
               let mut _47: &usize;         // in scope 8 at $SRC_DIR/core/src/cmp.rs:LL:COL

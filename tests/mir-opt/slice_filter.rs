@@ -1,3 +1,4 @@
+#![allow(ref_binop_on_copy_type)]
 fn main() {
     let input = vec![];
     let _variant_a_result = variant_a(&input);

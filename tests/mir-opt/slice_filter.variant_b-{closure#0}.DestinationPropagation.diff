@@ -1,7 +1,7 @@
 - // MIR for `variant_b::{closure#0}` before DestinationPropagation
 + // MIR for `variant_b::{closure#0}` after DestinationPropagation
   
-  fn variant_b::{closure#0}(_1: &mut [closure@$DIR/slice_filter.rs:12:25: 12:41], _2: &&(usize, usize, usize, usize)) -> bool {
+  fn variant_b::{closure#0}(_1: &mut [closure@$DIR/slice_filter.rs:13:25: 13:41], _2: &&(usize, usize, usize, usize)) -> bool {
       let mut _0: bool;                    // return place in scope 0 at $DIR/slice_filter.rs:+0:42: +0:42
       let _3: usize;                       // in scope 0 at $DIR/slice_filter.rs:+0:29: +0:30
       let _4: usize;                       // in scope 0 at $DIR/slice_filter.rs:+0:32: +0:33
