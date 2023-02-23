@@ -1683,7 +1683,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if let Some(_) = remaining_fields.remove(&ident) {
                                 let target_ty = self.field_ty(base_expr.span, f, substs);
                                 let cause = self.misc(base_expr.span);
-                                match self.at(&cause, self.param_env).sup(target_ty, fru_ty) {
+                                match self.at(&cause).sup(target_ty, fru_ty) {
                                     Ok(InferOk { obligations, value: () }) => {
                                         self.register_predicates(obligations)
                                     }

@@ -317,9 +317,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.register_infer_ok_obligations(
-            self.at(&self.misc(span), self.param_env).normalize(value),
-        )
+        self.register_infer_ok_obligations(self.at(&self.misc(span)).normalize(value))
     }
 
     pub fn require_type_meets(
@@ -561,7 +559,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Unify `interior` with `witness` and collect all the resulting obligations.
             let span = self.tcx.hir().body(body_id).value.span;
             let ok = self
-                .at(&self.misc(span), self.param_env)
+                .at(&self.misc(span))
                 .eq(interior, witness)
                 .expect("Failed to unify generator interior type");
             let mut obligations = ok.obligations;
@@ -1319,7 +1317,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This also occurs for an enum variant on a type alias.
             let impl_ty = self.normalize(span, tcx.type_of(impl_def_id).subst(tcx, substs));
             let self_ty = self.normalize(span, self_ty);
-            match self.at(&self.misc(span), self.param_env).eq(impl_ty, self_ty) {
+            match self.at(&self.misc(span)).eq(impl_ty, self_ty) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
                     self.tcx.sess.delay_span_bug(

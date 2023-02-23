@@ -327,7 +327,7 @@ pub fn resolve_interior<'a, 'tcx>(
     );
 
     // Unify the type variable inside the generator with the new witness
-    match fcx.at(&fcx.misc(body.value.span), fcx.param_env).eq(interior, witness) {
+    match fcx.at(&fcx.misc(body.value.span)).eq(interior, witness) {
         Ok(ok) => fcx.register_infer_ok_obligations(ok),
         _ => bug!("failed to relate {interior} and {witness}"),
     }

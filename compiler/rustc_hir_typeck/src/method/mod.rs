@@ -409,8 +409,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let fn_sig =
             self.instantiate_binder_with_fresh_vars(obligation.cause.span, infer::FnCall, fn_sig);
 
-        let InferOk { value, obligations: o } =
-            self.at(&obligation.cause, self.param_env).normalize(fn_sig);
+        let InferOk { value, obligations: o } = self.at(&obligation.cause).normalize(fn_sig);
         let fn_sig = {
             obligations.extend(o);
             value
@@ -426,8 +425,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // any late-bound regions appearing in its bounds.
         let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, substs);
 
-        let InferOk { value, obligations: o } =
-            self.at(&obligation.cause, self.param_env).normalize(bounds);
+        let InferOk { value, obligations: o } = self.at(&obligation.cause).normalize(bounds);
         let bounds = {
             obligations.extend(o);
             value

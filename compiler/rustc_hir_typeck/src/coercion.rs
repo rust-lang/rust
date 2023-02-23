@@ -44,6 +44,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Expr;
 use rustc_hir_analysis::astconv::AstConv;
+use rustc_infer::infer::at::At;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, DefiningAnchor, InferOk, InferResult};
 use rustc_infer::traits::Obligation;
@@ -140,12 +141,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Coerce { fcx, cause, allow_two_phase, use_lub: false }
     }
 
+    pub fn at(&self) -> At<'_, 'tcx> {
+        self.infcx.at(&self.cause, self.param_env)
+    }
+
     fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
         self.commit_if_ok(|_| {
-            let at = self
-                .at(&self.cause, self.fcx.param_env)
-                .define_opaque_types(self.defining_use_anchor());
+            let at = self.at().define_opaque_types(self.defining_use_anchor());
             if self.use_lub {
                 at.lub(b, a)
             } else {
@@ -177,9 +180,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // so this will have the side-effect of making sure we have no ambiguities
             // due to `[type error]` and `_` not coercing together.
             let _ = self.commit_if_ok(|_| {
-                self.at(&self.cause, self.param_env)
-                    .define_opaque_types(self.defining_use_anchor())
-                    .eq(a, b)
+                self.at().define_opaque_types(self.defining_use_anchor()).eq(a, b)
             });
             return success(vec![], self.fcx.tcx.ty_error(guar), vec![]);
         }
@@ -843,8 +844,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         //! into a closure or a `proc`.
 
         let b = self.shallow_resolve(b);
-        let InferOk { value: b, mut obligations } =
-            self.at(&self.cause, self.param_env).normalize(b);
+        let InferOk { value: b, mut obligations } = self.at().normalize(b);
         debug!("coerce_from_fn_item(a={:?}, b={:?})", a, b);
 
         match b.kind() {
@@ -865,8 +865,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     }
                 }
 
-                let InferOk { value: a_sig, obligations: o1 } =
-                    self.at(&self.cause, self.param_env).normalize(a_sig);
+                let InferOk { value: a_sig, obligations: o1 } = self.at().normalize(a_sig);
                 obligations.extend(o1);
 
                 let a_fn_pointer = self.tcx.mk_fn_ptr(a_sig);
@@ -1105,9 +1104,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (ty::FnDef(..), ty::FnDef(..)) => {
                         // Don't reify if the function types have a LUB, i.e., they
                         // are the same function and their parameters have a LUB.
-                        match self
-                            .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
-                        {
+                        match self.commit_if_ok(|_| self.at(cause).lub(prev_ty, new_ty)) {
                             // We have a LUB of prev_ty and new_ty, just return it.
                             Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
                             Err(_) => {
@@ -1155,7 +1152,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The signature must match.
             let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
             let sig = self
-                .at(cause, self.param_env)
+                .at(cause)
                 .trace(prev_ty, new_ty)
                 .lub(a_sig, b_sig)
                 .map(|ok| self.register_infer_ok_obligations(ok))?;
@@ -1241,7 +1238,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
 
                 return self
-                    .commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
+                    .commit_if_ok(|_| self.at(cause).lub(prev_ty, new_ty))
                     .map(|ok| self.register_infer_ok_obligations(ok));
             }
         }
@@ -1252,7 +1249,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(e) = first_error {
                     Err(e)
                 } else {
-                    self.commit_if_ok(|_| self.at(cause, self.param_env).lub(prev_ty, new_ty))
+                    self.commit_if_ok(|_| self.at(cause).lub(prev_ty, new_ty))
                         .map(|ok| self.register_infer_ok_obligations(ok))
                 }
             }
@@ -1489,7 +1486,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             //
             // Another example is `break` with no argument expression.
             assert!(expression_ty.is_unit(), "if let hack without unit type");
-            fcx.at(cause, fcx.param_env)
+            fcx.at(cause)
                 // needed for tests/ui/type-alias-impl-trait/issue-65679-inst-opaque-ty-from-val-twice.rs
                 .define_opaque_types(fcx.defining_use_anchor())
                 .eq_exp(label_expression_as_expected, expression_ty, self.merged_ty())

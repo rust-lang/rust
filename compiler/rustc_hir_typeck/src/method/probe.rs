@@ -754,7 +754,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // see issue #89650
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
             let InferOk { value: xform_self_ty, obligations } =
-                self.fcx.at(&cause, self.param_env).normalize(xform_self_ty);
+                self.fcx.at(&cause).normalize(xform_self_ty);
 
             debug!(
                 "assemble_inherent_impl_probe after normalization: xform_self_ty = {:?}/{:?}",
@@ -933,11 +933,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let fty = self.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, fty);
 
                 if let Some(self_ty) = self_ty {
-                    if self
-                        .at(&ObligationCause::dummy(), self.param_env)
-                        .sup(fty.inputs()[0], self_ty)
-                        .is_err()
-                    {
+                    if self.at(&ObligationCause::dummy()).sup(fty.inputs()[0], self_ty).is_err() {
                         return false;
                     }
                 }
@@ -1440,9 +1436,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 CandidateSource::Trait(candidate.item.container_id(self.tcx))
             }
             TraitCandidate(trait_ref) => self.probe(|_| {
-                let _ = self
-                    .at(&ObligationCause::dummy(), self.param_env)
-                    .sup(candidate.xform_self_ty, self_ty);
+                let _ = self.at(&ObligationCause::dummy()).sup(candidate.xform_self_ty, self_ty);
                 match self.select_trait_candidate(trait_ref) {
                     Ok(Some(traits::ImplSource::UserDefined(ref impl_data))) => {
                         // If only a single impl matches, make the error message point
@@ -1469,16 +1463,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         self.probe(|_| {
             // First check that the self type can be related.
-            let sub_obligations = match self
-                .at(&ObligationCause::dummy(), self.param_env)
-                .sup(probe.xform_self_ty, self_ty)
-            {
-                Ok(InferOk { obligations, value: () }) => obligations,
-                Err(err) => {
-                    debug!("--> cannot relate self-types {:?}", err);
-                    return ProbeResult::NoMatch;
-                }
-            };
+            let sub_obligations =
+                match self.at(&ObligationCause::dummy()).sup(probe.xform_self_ty, self_ty) {
+                    Ok(InferOk { obligations, value: () }) => obligations,
+                    Err(err) => {
+                        debug!("--> cannot relate self-types {:?}", err);
+                        return ProbeResult::NoMatch;
+                    }
+                };
 
             let mut result = ProbeResult::Match;
             let mut xform_ret_ty = probe.xform_ret_ty;
@@ -1500,7 +1492,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let InferOk {
                         value: normalized_xform_ret_ty,
                         obligations: normalization_obligations,
-                    } = self.fcx.at(&cause, self.param_env).normalize(xform_ret_ty);
+                    } = self.fcx.at(&cause).normalize(xform_ret_ty);
                     xform_ret_ty = normalized_xform_ret_ty;
                     debug!("xform_ret_ty after normalization: {:?}", xform_ret_ty);
 
@@ -1510,7 +1502,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let impl_bounds = impl_bounds.instantiate(self.tcx, substs);
 
                     let InferOk { value: impl_bounds, obligations: norm_obligations } =
-                        self.fcx.at(&cause, self.param_env).normalize(impl_bounds);
+                        self.fcx.at(&cause).normalize(impl_bounds);
 
                     // Convert the bounds into obligations.
                     let impl_obligations = traits::predicates_for_generics(
@@ -1663,7 +1655,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let InferOk {
                         value: normalized_xform_ret_ty,
                         obligations: normalization_obligations,
-                    } = self.fcx.at(&cause, self.param_env).normalize(xform_ret_ty);
+                    } = self.fcx.at(&cause).normalize(xform_ret_ty);
                     xform_ret_ty = normalized_xform_ret_ty;
                     debug!("xform_ret_ty after normalization: {:?}", xform_ret_ty);
                     // Evaluate those obligations to see if they might possibly hold.
@@ -1686,7 +1678,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 );
                 if let ProbeResult::Match = result
                     && self
-                    .at(&ObligationCause::dummy(), self.param_env)
+                    .at(&ObligationCause::dummy())
                     .sup(return_ty, xform_ret_ty)
                     .is_err()
                 {

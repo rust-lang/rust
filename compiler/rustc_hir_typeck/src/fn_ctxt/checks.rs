@@ -302,9 +302,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // 3. Check if the formal type is a supertype of the checked one
             //    and register any such obligations for future type checks
-            let supertype_error = self
-                .at(&self.misc(provided_arg.span), self.param_env)
-                .sup(formal_input_ty, coerced_ty);
+            let supertype_error =
+                self.at(&self.misc(provided_arg.span)).sup(formal_input_ty, coerced_ty);
             let subtyping_error = match supertype_error {
                 Ok(InferOk { obligations, value: () }) => {
                     self.register_predicates(obligations);
@@ -585,9 +584,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // Using probe here, since we don't want this subtyping to affect inference.
-            let subtyping_error = self.probe(|_| {
-                self.at(&self.misc(arg_span), self.param_env).sup(formal_input_ty, coerced_ty).err()
-            });
+            let subtyping_error = self
+                .probe(|_| self.at(&self.misc(arg_span)).sup(formal_input_ty, coerced_ty).err());
 
             // Same as above: if either the coerce type or the checked type is an error type,
             // consider them *not* compatible.

@@ -6,6 +6,7 @@ mod suggestions;
 
 pub use _impl::*;
 use rustc_errors::ErrorGuaranteed;
+use rustc_infer::infer::at::At;
 pub use suggestions::*;
 
 use crate::coercion::DynamicCoerceMany;
@@ -143,6 +144,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn misc(&self, span: Span) -> ObligationCause<'tcx> {
         self.cause(span, ObligationCauseCode::MiscObligation)
+    }
+
+    pub fn at(&'a self, cause: &'a ObligationCause<'tcx>) -> At<'a, 'tcx> {
+        self.infcx.at(cause, self.param_env)
     }
 
     pub fn sess(&self) -> &Session {
