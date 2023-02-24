@@ -51,6 +51,14 @@ fn issue10272() {
     } else if a.contains("ha") {
     } else if a == "wow" {
     }
+
+    let p: *mut i8 = std::ptr::null_mut();
+    if p.is_null() {
+    } else if p.align_offset(0) == 0 {
+    } else if p.is_null() {
+        // ok, p is mutable pointer
+    } else {
+    }
 }
 
 fn main() {}

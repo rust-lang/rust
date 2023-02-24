@@ -3,16 +3,19 @@ use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, sn
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
-    capture_local_usage, eq_expr_value, find_binding_init, get_enclosing_block, hash_expr, hash_stmt, if_sequence,
-    is_else_clause, is_lint_allowed, path_to_local, search_same, ContainsName, HirEqInterExpr, SpanlessEq,
+    capture_local_usage, def_path_def_ids, eq_expr_value, find_binding_init, get_enclosing_block, hash_expr, hash_stmt,
+    if_sequence, is_else_clause, is_lint_allowed, path_to_local, search_same, ContainsName, HirEqInterExpr, SpanlessEq,
 };
 use core::iter;
 use core::ops::ControlFlow;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, HirIdSet, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_middle::query::Key;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::walk_chain;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Span, Symbol};
@@ -159,7 +162,19 @@ declare_clippy_lint! {
     "`if` statement with shared code in all blocks"
 }
 
-declare_lint_pass!(CopyAndPaste => [
+pub struct CopyAndPaste {
+    ignore_interior_mutability: Vec<String>,
+}
+
+impl CopyAndPaste {
+    pub fn new(ignore_interior_mutability: Vec<String>) -> Self {
+        Self {
+            ignore_interior_mutability,
+        }
+    }
+}
+
+impl_lint_pass!(CopyAndPaste => [
     IFS_SAME_COND,
     SAME_FUNCTIONS_IN_IF_CONDITION,
     IF_SAME_THEN_ELSE,
@@ -170,7 +185,14 @@ impl<'tcx> LateLintPass<'tcx> for CopyAndPaste {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion() && matches!(expr.kind, ExprKind::If(..)) && !is_else_clause(cx.tcx, expr) {
             let (conds, blocks) = if_sequence(expr);
-            lint_same_cond(cx, &conds);
+            let mut ignored_ty_ids = FxHashSet::default();
+            for ignored_ty in &self.ignore_interior_mutability {
+                let path: Vec<&str> = ignored_ty.split("::").collect();
+                for id in def_path_def_ids(cx, path.as_slice()) {
+                    ignored_ty_ids.insert(id);
+                }
+            }
+            lint_same_cond(cx, &conds, &ignored_ty_ids);
             lint_same_fns_in_if_cond(cx, &conds);
             let all_same =
                 !is_lint_allowed(cx, IF_SAME_THEN_ELSE, expr.hir_id) && lint_if_same_then_else(cx, &conds, &blocks);
@@ -547,23 +569,41 @@ fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbo
     })
 }
 
+fn method_caller_is_ignored_or_mutable(
+    cx: &LateContext<'_>,
+    caller_expr: &Expr<'_>,
+    ignored_ty_ids: &FxHashSet<DefId>,
+) -> bool {
+    let caller_ty = cx.typeck_results().expr_ty(caller_expr);
+    let is_ignored_ty = if let Some(adt_id) = caller_ty.ty_adt_id() && ignored_ty_ids.contains(&adt_id) {
+        true
+    } else {
+        false
+    };
+
+    if is_ignored_ty
+        || caller_ty.is_mutable_ptr()
+        || path_to_local(caller_expr)
+            .and_then(|hid| find_binding_init(cx, hid))
+            .is_none()
+    {
+        return true;
+    }
+
+    false
+}
+
 /// Implementation of `IFS_SAME_COND`.
-fn lint_same_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
+fn lint_same_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>], ignored_ty_ids: &FxHashSet<DefId>) {
     for (i, j) in search_same(
         conds,
         |e| hash_expr(cx, e),
         |lhs, rhs| {
-            // If any side (ex. lhs) is a method call, and the caller is not mutable,
-            // then we can ignore side effects?
             if let ExprKind::MethodCall(_, caller, _, _) = lhs.kind {
-                if path_to_local(caller)
-                    .and_then(|hir_id| find_binding_init(cx, hir_id))
-                    .is_some()
-                {
-                    // caller is not declared as mutable
-                    SpanlessEq::new(cx).eq_expr(lhs, rhs)
-                } else {
+                if method_caller_is_ignored_or_mutable(cx, caller, ignored_ty_ids) {
                     false
+                } else {
+                    SpanlessEq::new(cx).eq_expr(lhs, rhs)
                 }
             } else {
                 eq_expr_value(cx, lhs, rhs)

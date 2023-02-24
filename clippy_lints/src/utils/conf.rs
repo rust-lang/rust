@@ -437,7 +437,7 @@ define_Conf! {
     ///
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     (large_error_threshold: u64 = 128),
-    /// Lint: MUTABLE_KEY_TYPE.
+    /// Lint: MUTABLE_KEY_TYPE, IFS_SAME_COND.
     ///
     /// A list of paths to types that should be treated like `Arc`, i.e. ignored but
     /// for the generic parameters for determining interior mutability
