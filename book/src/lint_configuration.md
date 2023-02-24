@@ -472,7 +472,7 @@ The maximum size of a file included via `include_bytes!()` or `include_str!()`, 
 
 
 ### allow-expect-in-tests
-Whether `expect` should be allowed within `#[cfg(test)]`
+Whether `expect` should be allowed in test functions or `#[cfg(test)]`
 
 **Default Value:** `false` (`bool`)
 
@@ -480,7 +480,7 @@ Whether `expect` should be allowed within `#[cfg(test)]`
 
 
 ### allow-unwrap-in-tests
-Whether `unwrap` should be allowed in test cfg
+Whether `unwrap` should be allowed in test functions or `#[cfg(test)]`
 
 **Default Value:** `false` (`bool`)
 
@@ -488,7 +488,7 @@ Whether `unwrap` should be allowed in test cfg
 
 
 ### allow-dbg-in-tests
-Whether `dbg!` should be allowed in test functions
+Whether `dbg!` should be allowed in test functions or `#[cfg(test)]`
 
 **Default Value:** `false` (`bool`)
 
@@ -496,7 +496,7 @@ Whether `dbg!` should be allowed in test functions
 
 
 ### allow-print-in-tests
-Whether print macros (ex. `println!`) should be allowed in test functions
+Whether print macros (ex. `println!`) should be allowed in test functions or `#[cfg(test)]`
 
 **Default Value:** `false` (`bool`)
 
