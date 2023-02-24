@@ -73,10 +73,6 @@ pub(crate) fn generate_body(token: TokenStream, item: &AutoDiffItem) -> (TokenSt
             quote!()
         };
 
-        //let ret_type = match item.ret_act {
-        //    Activity::Duplicated | Activity::DuplicatedNoNeed => {
-        //        item.sig.output.
-
         (
             quote!(
                 fn #fn_name_wrapper(#( #fn_args, )*) #ret {

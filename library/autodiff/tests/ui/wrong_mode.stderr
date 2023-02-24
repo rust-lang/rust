@@ -1,0 +1,7 @@
+error: should be forward or reverse
+ --> tests/ui/wrong_mode.rs:3:19
+  |
+3 | #[autodiff(d_sin, WrongMode)]
+  |                   ^^^^^^^^^
+  |
+  = help: `#[autodiff]` modes should be either forward or reverse
