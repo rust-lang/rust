@@ -474,6 +474,25 @@ fn test_retain() {
     assert!(a.is_empty());
 }
 
+#[test]
+fn test_retain_catch_unwind() {
+    let mut heap = BinaryHeap::from(vec![3, 1, 2]);
+
+    // Removes the 3, then unwinds out of retain.
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        heap.retain(|e| {
+            if *e == 1 {
+                panic!();
+            }
+            false
+        });
+    }));
+
+    // Naively this would be [1, 2] (an invalid heap) if BinaryHeap delegates to
+    // Vec's retain impl and then does not rebuild the heap after that unwinds.
+    assert_eq!(heap.into_vec(), [2, 1]);
+}
+
 // old binaryheap failed this test
 //
 // Integrity means that all elements are present after a comparison panics,
