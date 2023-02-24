@@ -42,7 +42,7 @@ use hir_def::{
     adt::VariantData,
     body::{BodyDiagnostic, SyntheticSyntax},
     expr::{BindingAnnotation, ExprOrPatId, LabelId, Pat, PatId},
-    generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
+    generics::{ConstParamData, LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     item_tree::ItemTreeNode,
     lang_item::{LangItem, LangItemTarget},
     layout::{Layout, LayoutError, ReprOptions},
@@ -1187,6 +1187,31 @@ impl Adt {
                     .nth(0)
             })
             .map(|arena| arena.1.clone())
+    }
+
+    /// Returns an iterator of all `const` generic paramaters
+    ///
+    /// This method is not well optimized, I could not statisfy the borrow
+    /// checker. I'm sure there are smarter ways to return the consts names
+    pub fn consts(&self, db: &dyn HirDatabase) -> impl Iterator<Item = ConstParamData> {
+        let resolver = match self {
+            Adt::Struct(s) => s.id.resolver(db.upcast()),
+            Adt::Union(u) => u.id.resolver(db.upcast()),
+            Adt::Enum(e) => e.id.resolver(db.upcast()),
+        };
+        resolver
+            .generic_params()
+            .map_or(vec![], |gp| {
+                gp.as_ref()
+                    .type_or_consts
+                    .iter()
+                    .filter_map(|arena| match arena.1 {
+                        TypeOrConstParamData::ConstParamData(consts) => Some(consts.clone()),
+                        _ => None,
+                    })
+                    .collect::<Vec<ConstParamData>>()
+            })
+            .into_iter()
     }
 
     pub fn as_enum(&self) -> Option<Enum> {
@@ -3358,15 +3383,21 @@ impl Type {
             .map(move |ty| self.derived(ty))
     }
 
-    /// Combines lifetime indicators and type arguments into a single `Iterator`
+    /// Combines lifetime indicators, type and constant parameters into a single `Iterator`
     pub fn lifetime_and_type_arguments<'a>(
         &'a self,
         db: &'a dyn HirDatabase,
     ) -> impl Iterator<Item = SmolStr> + 'a {
+        // iterate the lifetime
         self.as_adt()
             .and_then(|a| a.lifetime(db).and_then(|lt| Some((&lt.name).to_smol_str())))
             .into_iter()
+            // add the type paramaters
             .chain(self.type_arguments().map(|ty| SmolStr::new(ty.display(db).to_string())))
+            // add const paramameters
+            .chain(self.as_adt().map_or(vec![], |a| {
+                a.consts(db).map(|cs| cs.name.to_smol_str()).collect::<Vec<SmolStr>>()
+            }))
     }
 
     pub fn iterate_method_candidates_with_traits<T>(

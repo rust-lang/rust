@@ -1102,6 +1102,114 @@ impl<T, U> Data<'a, T, U> {
             "#]],
         );
     }
+
+    #[test]
+    fn test_runnables_doc_test_in_impl_with_const() {
+        check(
+            r#"
+//- /lib.rs
+$0
+fn main() {}
+
+struct Data<const N: usize>;
+impl<const N: usize> Data<N> {
+    /// ```
+    /// let x = 5;
+    /// ```
+    fn foo() {}
+}
+"#,
+            &[Bin, DocTest],
+            expect![[r#"
+                [
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 1..13,
+                            focus_range: 4..8,
+                            name: "main",
+                            kind: Function,
+                        },
+                        kind: Bin,
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 79..133,
+                            name: "foo",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "Data<N>::foo",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_runnables_doc_test_in_impl_with_lifetime_types_and_const() {
+        check(
+            r#"
+//- /lib.rs
+$0
+fn main() {}
+
+struct Data<'a, T, const N: usize>;
+impl<'a, T, const N: usize> Data<'a, T, N> {
+    /// ```
+    /// let x = 5;
+    /// ```
+    fn foo() {}
+}
+"#,
+            &[Bin, DocTest],
+            expect![[r#"
+                [
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 1..13,
+                            focus_range: 4..8,
+                            name: "main",
+                            kind: Function,
+                        },
+                        kind: Bin,
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 100..154,
+                            name: "foo",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "Data<'a,T,N>::foo",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                ]
+            "#]],
+        );
+    }
     #[test]
     fn test_runnables_module() {
         check(
