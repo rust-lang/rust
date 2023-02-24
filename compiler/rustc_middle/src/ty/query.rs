@@ -328,8 +328,9 @@ macro_rules! define_callbacks {
 
                 Providers {
                     $($name: |_, key| bug!(
-                        "`tcx.{}({:?})` is not supported for {} crate;\n
-                        hint: Queries can be either made to the local crate, or the external crate. This error means you tried to use it for one that's not supported.\n
+                        "`tcx.{}({:?})` is not supported for {} crate;\n\
+                        hint: Queries can be either made to the local crate, or the external crate. \
+                        This error means you tried to use it for one that's not supported.\n\
                         If that's not the case, {} was likely never assigned to a provider function.\n",
                         stringify!($name),
                         key,
