@@ -17,7 +17,6 @@ use crate::shims::os_str::bytes_to_os_str;
 use crate::*;
 use shims::os_str::os_str_to_bytes;
 use shims::time::system_time_to_duration;
-use shims::unix::linux::fd::epoll::Epoll;
 
 #[derive(Debug)]
 pub struct FileHandle {
@@ -25,15 +24,11 @@ pub struct FileHandle {
     writable: bool,
 }
 
-pub trait FileDescriptor: std::fmt::Debug {
+pub trait FileDescriptor: std::fmt::Debug + helpers::AsAny {
     fn name(&self) -> &'static str;
 
     fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle> {
         throw_unsup_format!("{} cannot be used as FileHandle", self.name());
-    }
-
-    fn as_epoll_handle<'tcx>(&mut self) -> InterpResult<'tcx, &mut Epoll> {
-        throw_unsup_format!("not an epoll file descriptor");
     }
 
     fn read<'tcx>(
@@ -69,7 +64,9 @@ pub trait FileDescriptor: std::fmt::Debug {
 
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>>;
 
-    fn is_tty(&self) -> bool;
+    fn is_tty(&self) -> bool {
+        false
+    }
 
     #[cfg(unix)]
     fn as_unix_host_fd(&self) -> Option<i32> {
@@ -270,10 +267,6 @@ impl FileDescriptor for NullOutput {
 
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(NullOutput))
-    }
-
-    fn is_tty(&self) -> bool {
-        false
     }
 }
 
