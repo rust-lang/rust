@@ -1,6 +1,9 @@
 error: `for...else` loops are not supported
   --> $DIR/for-else-let-else-err.rs:4:7
    |
+LL |       let _ = for _ in 0..1 {
+   |               --- `else` is attached to this loop
+LL |
 LL |       } else {
    |  _______^
 LL | |

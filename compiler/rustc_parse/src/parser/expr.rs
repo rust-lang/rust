@@ -2492,13 +2492,13 @@ impl<'a> Parser<'a> {
 
         let kind = ExprKind::ForLoop(pat, expr, loop_block, opt_label);
 
-        self.recover_loop_else("for")?;
+        self.recover_loop_else("for", lo)?;
 
         Ok(self.mk_expr_with_attrs(lo.to(self.prev_token.span), kind, attrs))
     }
 
     /// Recovers from an `else` clause after a loop (`for...else`, `while...else`)
-    fn recover_loop_else(&mut self, loop_kind: &'static str) -> PResult<'a, ()> {
+    fn recover_loop_else(&mut self, loop_kind: &'static str, loop_kw: Span) -> PResult<'a, ()> {
         if self.token.is_keyword(kw::Else) && self.may_recover() {
             let else_span = self.token.span;
             self.bump();
@@ -2506,6 +2506,7 @@ impl<'a> Parser<'a> {
             self.sess.emit_err(errors::LoopElseNotSupported {
                 span: else_span.to(else_clause.span),
                 loop_kind,
+                loop_kw,
             });
         }
         Ok(())
@@ -2536,7 +2537,7 @@ impl<'a> Parser<'a> {
             err
         })?;
 
-        self.recover_loop_else("while")?;
+        self.recover_loop_else("while", lo)?;
 
         Ok(self.mk_expr_with_attrs(
             lo.to(self.prev_token.span),

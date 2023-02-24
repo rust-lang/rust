@@ -1,6 +1,9 @@
 error: `while...else` loops are not supported
   --> $DIR/while-else-err.rs:4:7
    |
+LL |       while false {
+   |       ----- `else` is attached to this loop
+LL |
 LL |       } else {
    |  _______^
 LL | |

@@ -458,6 +458,8 @@ pub(crate) struct LoopElseNotSupported {
     #[primary_span]
     pub span: Span,
     pub loop_kind: &'static str,
+    #[label(parse_loop_keyword)]
+    pub loop_kw: Span,
 }
 
 #[derive(Diagnostic)]
