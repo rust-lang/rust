@@ -1,0 +1,191 @@
+thread 'rustc' panicked at 'assertion failed: match (base.layout.abi, field_layout.abi) {/n    (Abi::Scalar(..), Abi::Scalar(..)) => true,/n    (Abi::ScalarPair(..), Abi::ScalarPair(..)) => true,/n    _ => false,/n}', /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/projection.rs:LL:CC
+stack backtrace:
+   0: std::backtrace_rs::backtrace::libunwind::trace::h008c5b42d32c0aac
+ at RUSTLIB/std/src/../../backtrace/src/backtrace/libunwind.rs:LL:CC
+   1: std::backtrace_rs::backtrace::trace_unsynchronized::h10448b7ea7a42de8
+ at RUSTLIB/std/src/../../backtrace/src/backtrace/mod.rs:LL:CC
+   2: std::sys_common::backtrace::_print_fmt::hc6e473a776a68bbd
+ at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
+   3: <std::sys_common::backtrace::_print::DisplayBacktrace as core::fmt::Display>::fmt::h39b215ddb676095c
+ at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
+   4: core::fmt::write::hddcff75d97b62bda
+ at RUSTLIB/core/src/fmt/mod.rs:LL:CC
+   5: std::io::Write::write_fmt::h998c068bd876d481
+ at RUSTLIB/std/src/io/mod.rs:LL:CC
+   6: std::sys_common::backtrace::_print::h70b086daa1ac19eb
+ at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
+   7: std::sys_common::backtrace::print::hc27a1b56f89774c4
+ at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
+   8: std::panicking::default_hook::{{closure}}::ha3ff819c1473c868
+   9: std::panicking::default_hook::h1b721822dd3bff49
+ at RUSTLIB/std/src/panicking.rs:LL:CC
+  10: rustc_driver_impl[7b3a653d0c94de7d]::DEFAULT_HOOK::{closure#0}::{closure#0}
+ at /home/ec2-user/rust/compiler/rustc_driver_impl/src/lib.rs:LL:CC
+  11: std::panicking::rust_panic_with_hook::h93df1b0b7efd98e3
+ at RUSTLIB/std/src/panicking.rs:LL:CC
+  12: std::panicking::begin_panic_handler::{{closure}}::h48747adcbf3edd31
+ at RUSTLIB/std/src/panicking.rs:LL:CC
+  13: std::sys_common::backtrace::__rust_end_short_backtrace::hd27bf9662415921f
+ at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
+  14: rust_begin_unwind
+ at RUSTLIB/std/src/panicking.rs:LL:CC
+  15: core::panicking::panic_fmt::h0bffd9fe7380ad87
+ at RUSTLIB/core/src/panicking.rs:LL:CC
+  16: core::panicking::panic::hfdce98a2c517000d
+ at RUSTLIB/core/src/panicking.rs:LL:CC
+  17: <rustc_const_eval[4e000bde99451921]::interpret::eval_context::InterpCx<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::operand_field
+ at /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/projection.rs:LL:CC
+  18: <rustc_const_eval[4e000bde99451921]::interpret::operand::OpTy<<miri[6d1dc8fb05d65e34]::machine::MiriMachine as rustc_const_eval[4e000bde99451921]::interpret::machine::Machine>::Provenance> as rustc_const_eval[4e000bde99451921]::interpret::visitor::Value<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::project_field
+ at /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/visitor.rs:LL:CC
+  19: <rustc_const_eval[4e000bde99451921]::interpret::validity::ValidityVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine> as rustc_const_eval[4e000bde99451921]::interpret::visitor::ValueVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::walk_value::{closure#0}
+ at /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/visitor.rs:LL:CC
+  20: core[bcca127a5acc307]::iter::adapters::map::map_fold::{closure#0}
+ at RUSTLIB/core/src/iter/adapters/map.rs:LL:CC
+  21: <core[bcca127a5acc307]::ops::range::Range<usize> as core[bcca127a5acc307]::iter::traits::iterator::Iterator>::fold
+ at RUSTLIB/core/src/iter/traits/iterator.rs:LL:CC
+  22: <core[bcca127a5acc307]::iter::adapters::map::Map<core[bcca127a5acc307]::ops::range::Range<usize>, <rustc_const_eval[4e000bde99451921]::interpret::validity::ValidityVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine> as rustc_const_eval[4e000bde99451921]::interpret::visitor::ValueVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::walk_value::{closure#0}> as core[bcca127a5acc307]::iter::traits::iterator::Iterator>::fold
+ at RUSTLIB/core/src/iter/adapters/map.rs:LL:CC
+  23: <core[bcca127a5acc307]::iter::adapters::map::Map<core[bcca127a5acc307]::ops::range::Range<usize>, <rustc_const_eval[4e000bde99451921]::interpret::validity::ValidityVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine> as rustc_const_eval[4e000bde99451921]::interpret::visitor::ValueVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::walk_value::{closure#0}> as core[bcca127a5acc307]::iter::traits::iterator::Iterator>::for_each
+ at RUSTLIB/core/src/iter/traits/iterator.rs:LL:CC
+  24: <alloc[2c0a7ca6721e12e8]::vec::Vec<core[bcca127a5acc307]::result::Result<rustc_const_eval[4e000bde99451921]::interpret::operand::OpTy<miri[6d1dc8fb05d65e34]::machine::Provenance>, rustc_middle[7f5432af343af345]::mir::interpret::error::InterpErrorInfo>>>::extend_trusted
+ at RUSTLIB/alloc/src/vec/mod.rs:LL:CC
+  25: <alloc[2c0a7ca6721e12e8]::vec::Vec<core[bcca127a5acc307]::result::Result<rustc_const_eval[4e000bde99451921]::interpret::operand::OpTy<miri[6d1dc8fb05d65e34]::machine::Provenance>, rustc_middle[7f5432af343af345]::mir::interpret::error::InterpErrorInfo>> as alloc[2c0a7ca6721e12e8]::vec::spec_extend::SpecExtend<core[bcca127a5acc307]::result::Result<rustc_const_eval[4e000bde99451921]::interpret::operand::OpTy<miri[6d1dc8fb05d65e34]::machine::Provenance>, rustc_middle[7f5432af343af345]::mir::interpret::error::InterpErrorInfo>, core[bcca127a5acc307]::iter::adapters::map::Map<core[bcca127a5acc307]::ops::range::Range<usize>, <rustc_const_eval[4e000bde99451921]::interpret::validity::ValidityVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine> as rustc_const_eval[4e000bde99451921]::interpret::visitor::ValueVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::walk_value::{closure#0}>>>::spec_extend
+ at RUSTLIB/alloc/src/vec/spec_extend.rs:LL:CC
+  26: <alloc[2c0a7ca6721e12e8]::vec::Vec<core[bcca127a5acc307]::result::Result<rustc_const_eval[4e000bde99451921]::interpret::operand::OpTy<miri[6d1dc8fb05d65e34]::machine::Provenance>, rustc_middle[7f5432af343af345]::mir::interpret::error::InterpErrorInfo>> as alloc[2c0a7ca6721e12e8]::vec::spec_from_iter_nested::SpecFromIterNested<core[bcca127a5acc307]::result::Result<rustc_const_eval[4e000bde99451921]::interpret::operand::OpTy<miri[6d1dc8fb05d65e34]::machine::Provenance>, rustc_middle[7f5432af343af345]::mir::interpret::error::InterpErrorInfo>, core[bcca127a5acc307]::iter::adapters::map::Map<core[bcca127a5acc307]::ops::range::Range<usize>, <rustc_const_eval[4e000bde99451921]::interpret::validity::ValidityVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine> as rustc_const_eval[4e000bde99451921]::interpret::visitor::ValueVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::walk_value::{closure#0}>>>::from_iter
+ at RUSTLIB/alloc/src/vec/spec_from_iter_nested.rs:LL:CC
+  27: <alloc[2c0a7ca6721e12e8]::vec::Vec<core[bcca127a5acc307]::result::Result<rustc_const_eval[4e000bde99451921]::interpret::operand::OpTy<miri[6d1dc8fb05d65e34]::machine::Provenance>, rustc_middle[7f5432af343af345]::mir::interpret::error::InterpErrorInfo>> as alloc[2c0a7ca6721e12e8]::vec::spec_from_iter::SpecFromIter<core[bcca127a5acc307]::result::Result<rustc_const_eval[4e000bde99451921]::interpret::operand::OpTy<miri[6d1dc8fb05d65e34]::machine::Provenance>, rustc_middle[7f5432af343af345]::mir::interpret::error::InterpErrorInfo>, core[bcca127a5acc307]::iter::adapters::map::Map<core[bcca127a5acc307]::ops::range::Range<usize>, <rustc_const_eval[4e000bde99451921]::interpret::validity::ValidityVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine> as rustc_const_eval[4e000bde99451921]::interpret::visitor::ValueVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::walk_value::{closure#0}>>>::from_iter
+ at RUSTLIB/alloc/src/vec/spec_from_iter.rs:LL:CC
+  28: <alloc[2c0a7ca6721e12e8]::vec::Vec<core[bcca127a5acc307]::result::Result<rustc_const_eval[4e000bde99451921]::interpret::operand::OpTy<miri[6d1dc8fb05d65e34]::machine::Provenance>, rustc_middle[7f5432af343af345]::mir::interpret::error::InterpErrorInfo>> as core[bcca127a5acc307]::iter::traits::collect::FromIterator<core[bcca127a5acc307]::result::Result<rustc_const_eval[4e000bde99451921]::interpret::operand::OpTy<miri[6d1dc8fb05d65e34]::machine::Provenance>, rustc_middle[7f5432af343af345]::mir::interpret::error::InterpErrorInfo>>>::from_iter
+ at RUSTLIB/alloc/src/vec/mod.rs:LL:CC
+  29: <core[bcca127a5acc307]::iter::adapters::map::Map<core[bcca127a5acc307]::ops::range::Range<usize>, <rustc_const_eval[4e000bde99451921]::interpret::validity::ValidityVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine> as rustc_const_eval[4e000bde99451921]::interpret::visitor::ValueVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::walk_value::{closure#0}> as core[bcca127a5acc307]::iter::traits::iterator::Iterator>::collect
+ at RUSTLIB/core/src/iter/traits/iterator.rs:LL:CC
+  30: <rustc_const_eval[4e000bde99451921]::interpret::validity::ValidityVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine> as rustc_const_eval[4e000bde99451921]::interpret::visitor::ValueVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::walk_value
+ at /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/visitor.rs:LL:CC
+  31: <rustc_const_eval[4e000bde99451921]::interpret::validity::ValidityVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine> as rustc_const_eval[4e000bde99451921]::interpret::visitor::ValueVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::visit_value
+ at /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/validity.rs:LL:CC
+  32: <rustc_const_eval[4e000bde99451921]::interpret::validity::ValidityVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine> as rustc_const_eval[4e000bde99451921]::interpret::visitor::ValueVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::visit_field::{closure#0}
+ at /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/validity.rs:LL:CC
+  33: <rustc_const_eval[4e000bde99451921]::interpret::validity::ValidityVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::with_elem
+ at /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/validity.rs:LL:CC
+  34: <rustc_const_eval[4e000bde99451921]::interpret::validity::ValidityVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine> as rustc_const_eval[4e000bde99451921]::interpret::visitor::ValueVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::walk_value
+  35: <rustc_const_eval[4e000bde99451921]::interpret::validity::ValidityVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine> as rustc_const_eval[4e000bde99451921]::interpret::visitor::ValueVisitor<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::visit_value
+ at /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/validity.rs:LL:CC
+  36: <rustc_const_eval[4e000bde99451921]::interpret::eval_context::InterpCx<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::validate_operand_internal
+ at /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/validity.rs:LL:CC
+  37: <rustc_const_eval[4e000bde99451921]::interpret::eval_context::InterpCx<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::validate_operand
+ at /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/validity.rs:LL:CC
+  38: <rustc_const_eval[4e000bde99451921]::interpret::eval_context::InterpCx<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::copy_op
+ at /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/place.rs:LL:CC
+  39: <rustc_const_eval[4e000bde99451921]::interpret::eval_context::InterpCx<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::eval_rvalue_into_place
+ at /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/step.rs:LL:CC
+  40: <rustc_const_eval[4e000bde99451921]::interpret::eval_context::InterpCx<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::statement
+ at /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/step.rs:LL:CC
+  41: <rustc_const_eval[4e000bde99451921]::interpret::eval_context::InterpCx<miri[6d1dc8fb05d65e34]::machine::MiriMachine>>::step
+ at /home/ec2-user/rust/compiler/rustc_const_eval/src/interpret/step.rs:LL:CC
+  42: <rustc_const_eval[4e000bde99451921]::interpret::eval_context::InterpCx<miri[6d1dc8fb05d65e34]::machine::MiriMachine> as miri[6d1dc8fb05d65e34]::concurrency::thread::EvalContextExt>::run_threads
+ at /home/ec2-user/rust/src/tools/miri/src/concurrency/thread.rs:LL:CC
+  43: miri[6d1dc8fb05d65e34]::eval::eval_entry::{closure#0}
+ at /home/ec2-user/rust/src/tools/miri/src/eval.rs:LL:CC
+  44: <miri[6d1dc8fb05d65e34]::eval::eval_entry::{closure#0} as core[bcca127a5acc307]::ops::function::FnOnce<()>>::call_once
+ at RUSTLIB/core/src/ops/function.rs:LL:CC
+  45: <core[bcca127a5acc307]::panic::unwind_safe::AssertUnwindSafe<miri[6d1dc8fb05d65e34]::eval::eval_entry::{closure#0}> as core[bcca127a5acc307]::ops::function::FnOnce<()>>::call_once
+ at RUSTLIB/core/src/panic/unwind_safe.rs:LL:CC
+  46: std[af9fbe1a65df623f]::panicking::try::do_call
+ at RUSTLIB/std/src/panicking.rs:LL:CC
+  47: std[af9fbe1a65df623f]::panicking::try
+ at RUSTLIB/std/src/panicking.rs:LL:CC
+  48: std[af9fbe1a65df623f]::panic::catch_unwind
+ at RUSTLIB/std/src/panic.rs:LL:CC
+  49: miri[6d1dc8fb05d65e34]::eval::eval_entry
+ at /home/ec2-user/rust/src/tools/miri/src/eval.rs:LL:CC
+  50: <miri[c5b8d5d53c9350d5]::MiriCompilerCalls as rustc_driver_impl[7b3a653d0c94de7d]::Callbacks>::after_analysis::{closure#0}
+ at /home/ec2-user/rust/src/tools/miri/src/bin/miri.rs:LL:CC
+  51: <rustc_middle[7f5432af343af345]::ty::context::GlobalCtxt>::enter::{closure#0}
+ at /home/ec2-user/rust/compiler/rustc_middle/src/ty/context.rs:LL:CC
+  52: rustc_middle[7f5432af343af345]::ty::context::tls::tlv::with_tlv
+ at /home/ec2-user/rust/compiler/rustc_middle/src/ty/context/tls.rs:LL:CC
+  53: rustc_middle[7f5432af343af345]::ty::context::tls::enter_context
+ at /home/ec2-user/rust/compiler/rustc_middle/src/ty/context/tls.rs:LL:CC
+  54: <rustc_middle[7f5432af343af345]::ty::context::GlobalCtxt>::enter
+ at /home/ec2-user/rust/compiler/rustc_middle/src/ty/context.rs:LL:CC
+  55: <rustc_interface[cf278743588aa6f7]::queries::QueryResult<&rustc_middle[7f5432af343af345]::ty::context::GlobalCtxt>>::enter
+ at /home/ec2-user/rust/compiler/rustc_interface/src/queries.rs:LL:CC
+  56: <miri[c5b8d5d53c9350d5]::MiriCompilerCalls as rustc_driver_impl[7b3a653d0c94de7d]::Callbacks>::after_analysis
+ at /home/ec2-user/rust/src/tools/miri/src/bin/miri.rs:LL:CC
+  57: rustc_driver_impl[7b3a653d0c94de7d]::run_compiler::{closure#1}::{closure#2}
+ at /home/ec2-user/rust/compiler/rustc_driver_impl/src/lib.rs:LL:CC
+  58: <rustc_interface[cf278743588aa6f7]::interface::Compiler>::enter
+ at /home/ec2-user/rust/compiler/rustc_interface/src/queries.rs:LL:CC
+  59: rustc_driver_impl[7b3a653d0c94de7d]::run_compiler::{closure#1}
+ at /home/ec2-user/rust/compiler/rustc_driver_impl/src/lib.rs:LL:CC
+  60: rustc_interface[cf278743588aa6f7]::interface::run_compiler::{closure#0}::{closure#0}
+ at /home/ec2-user/rust/compiler/rustc_interface/src/interface.rs:LL:CC
+  61: rustc_span[bc7198e5f63b8cc4]::with_source_map
+ at /home/ec2-user/rust/compiler/rustc_span/src/lib.rs:LL:CC
+  62: rustc_interface[cf278743588aa6f7]::interface::run_compiler::{closure#0}
+ at /home/ec2-user/rust/compiler/rustc_interface/src/interface.rs:LL:CC
+  63: <scoped_tls[3e8267cb6b5069b8]::ScopedKey<rustc_span[bc7198e5f63b8cc4]::SessionGlobals>>::set
+ at CARGO_REGISTRY/.../lib.rs:LL:CC
+  64: rustc_span[bc7198e5f63b8cc4]::create_session_globals_then
+ at /home/ec2-user/rust/compiler/rustc_span/src/lib.rs:LL:CC
+  65: rustc_interface[cf278743588aa6f7]::util::run_in_thread_pool_with_globals::{closure#0}::{closure#0}
+ at /home/ec2-user/rust/compiler/rustc_interface/src/util.rs:LL:CC
+  66: std[af9fbe1a65df623f]::sys_common::backtrace::__rust_begin_short_backtrace
+ at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
+  67: <std[af9fbe1a65df623f]::thread::Builder>::spawn_unchecked_::{closure#1}::{closure#0}
+ at RUSTLIB/std/src/thread/mod.rs:LL:CC
+  68: <core[bcca127a5acc307]::panic::unwind_safe::AssertUnwindSafe<<std[af9fbe1a65df623f]::thread::Builder>::spawn_unchecked_<rustc_interface[cf278743588aa6f7]::util::run_in_thread_pool_with_globals<rustc_interface[cf278743588aa6f7]::interface::run_compiler<core[bcca127a5acc307]::result::Result<(), rustc_errors[be3e303c652a30fa]::ErrorGuaranteed>, rustc_driver_impl[7b3a653d0c94de7d]::run_compiler::{closure#1}>::{closure#0}, core[bcca127a5acc307]::result::Result<(), rustc_errors[be3e303c652a30fa]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[bcca127a5acc307]::result::Result<(), rustc_errors[be3e303c652a30fa]::ErrorGuaranteed>>::{closure#1}::{closure#0}> as core[bcca127a5acc307]::ops::function::FnOnce<()>>::call_once
+ at RUSTLIB/core/src/panic/unwind_safe.rs:LL:CC
+  69: std[af9fbe1a65df623f]::panicking::try::do_call
+ at RUSTLIB/std/src/panicking.rs:LL:CC
+  70: std[af9fbe1a65df623f]::panicking::try
+ at RUSTLIB/std/src/panicking.rs:LL:CC
+  71: std[af9fbe1a65df623f]::panic::catch_unwind
+ at RUSTLIB/std/src/panic.rs:LL:CC
+  72: <std[af9fbe1a65df623f]::thread::Builder>::spawn_unchecked_::{closure#1}
+ at RUSTLIB/std/src/thread/mod.rs:LL:CC
+  73: <<std[af9fbe1a65df623f]::thread::Builder>::spawn_unchecked_<rustc_interface[cf278743588aa6f7]::util::run_in_thread_pool_with_globals<rustc_interface[cf278743588aa6f7]::interface::run_compiler<core[bcca127a5acc307]::result::Result<(), rustc_errors[be3e303c652a30fa]::ErrorGuaranteed>, rustc_driver_impl[7b3a653d0c94de7d]::run_compiler::{closure#1}>::{closure#0}, core[bcca127a5acc307]::result::Result<(), rustc_errors[be3e303c652a30fa]::ErrorGuaranteed>>::{closure#0}::{closure#0}, core[bcca127a5acc307]::result::Result<(), rustc_errors[be3e303c652a30fa]::ErrorGuaranteed>>::{closure#1} as core[bcca127a5acc307]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+ at RUSTLIB/core/src/ops/function.rs:LL:CC
+  74: <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::h9d41c23f0c46b27e
+ at RUSTLIB/alloc/src/boxed.rs:LL:CC
+  75: <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once::hacc706a72dad6ed8
+ at RUSTLIB/alloc/src/boxed.rs:LL:CC
+  76: std::sys::PLATFORM::thread::Thread::new::thread_start::hcaf851207dd3788e
+ at RUSTLIB/std/src/sys/PLATFORM/thread.rs:LL:CC
+  77: start_thread
+  78: __clone
+  79: <unknown>
+
+error: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.69.0-dev running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z ui-testing
+
+query stack during panic:
+end of query stack
+
+Miri caused an ICE during evaluation. Here's the interpreter backtrace at the time of the panic:
+note: the place in the program where the ICE was triggered
+  --> $DIR/dyn-star-aggregate.rs:LL:CC
+   |
+LL |     let x = Foo(1) as dyn* Debug;
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: inside `main` at $DIR/dyn-star-aggregate.rs:LL:CC
+   = note: inside `<fn() as std::ops::FnOnce<()>>::call_once - shim(fn())` at RUSTLIB/core/src/ops/function.rs:LL:CC
+   = note: inside `std::sys_common::backtrace::__rust_begin_short_backtrace::<fn(), ()>` at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+   = note: inside `std::ops::function::impls::<impl std::ops::FnOnce<()> for &dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe>::call_once` at RUSTLIB/core/src/ops/function.rs:LL:CC
+   = note: inside `std::panicking::r#try::do_call::<&dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe, i32>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panicking::r#try::<i32, &dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panic::catch_unwind::<&dyn std::ops::Fn() -> i32 + std::marker::Sync + std::panic::RefUnwindSafe, i32>` at RUSTLIB/std/src/panic.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+   = note: inside `std::panicking::r#try::do_call::<[closure@std::rt::lang_start_internal::{closure#2}], isize>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panicking::r#try::<isize, [closure@std::rt::lang_start_internal::{closure#2}]>` at RUSTLIB/std/src/panicking.rs:LL:CC
+   = note: inside `std::panic::catch_unwind::<[closure@std::rt::lang_start_internal::{closure#2}], isize>` at RUSTLIB/std/src/panic.rs:LL:CC
+   = note: inside `std::rt::lang_start_internal` at RUSTLIB/std/src/rt.rs:LL:CC
+   = note: inside `std::rt::lang_start::<()>` at RUSTLIB/std/src/rt.rs:LL:CC
+

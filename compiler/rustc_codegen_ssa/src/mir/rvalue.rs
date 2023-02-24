@@ -270,9 +270,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     mir::CastKind::DynStar => {
                         let (lldata, llextra) = match operand.val {
-                            OperandValue::Ref(_, _, _) => todo!(),
+                            OperandValue::Ref(ptr, None, align) => {
+                                // Read the value as a `usize` -- this should be possible,
+                                // since the value is guaranteed to be a properly aligned
+                                // and sized.
+                                let isize_ptr_ty = bx.cx().type_ptr_to(bx.cx().type_isize());
+                                let ptr = bx.pointercast(ptr, isize_ptr_ty);
+                                let v = bx.load(bx.cx().type_isize(), ptr, align);
+                                (v, None)
+                            }
                             OperandValue::Immediate(v) => (v, None),
                             OperandValue::Pair(v, l) => (v, Some(l)),
+                            OperandValue::Ref(a, b, _) =>
+                                bug!("unexpected operand cast to dyn*: lldata={a:?} llextra={b:?}"),
                         };
                         let (lldata, llextra) =
                             base::cast_to_dyn_star(bx, lldata, operand.layout, cast.ty, llextra);

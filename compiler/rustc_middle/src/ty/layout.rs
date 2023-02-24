@@ -774,12 +774,7 @@ where
                         TyMaybeWithLayout::Ty(tcx.mk_mut_ptr(tcx.types.unit))
                     } else if i == 1 {
                         // FIXME(dyn-star) same FIXME as above applies here too
-                        TyMaybeWithLayout::Ty(
-                            tcx.mk_imm_ref(
-                                tcx.lifetimes.re_static,
-                                tcx.mk_array(tcx.types.usize, 3),
-                            ),
-                        )
+                        TyMaybeWithLayout::Ty(tcx.mk_imm_ptr(tcx.mk_array(tcx.types.usize, 3)))
                     } else {
                         bug!("no field {i} on dyn*")
                     }

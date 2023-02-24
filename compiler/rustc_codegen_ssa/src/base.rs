@@ -276,6 +276,10 @@ pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // FIXME(dyn-star): We can remove this when all supported LLVMs use opaque ptrs only.
     let unit_ptr = bx.cx().type_ptr_to(bx.cx().type_struct(&[], false));
     let src = match bx.cx().type_kind(bx.cx().backend_type(src_ty_and_layout)) {
+        // if `is_backend_immediate` is not true, then the value is
+        // represented by an `OperandValue::Ref`, and it's already
+        // been read into a usize.
+        _ if !bx.cx().is_backend_immediate(src_ty_and_layout) => src,
         TypeKind::Pointer => bx.pointercast(src, unit_ptr),
         TypeKind::Integer => bx.inttoptr(src, unit_ptr),
         // FIXME(dyn-star): We probably have to do a bitcast first, then inttoptr.

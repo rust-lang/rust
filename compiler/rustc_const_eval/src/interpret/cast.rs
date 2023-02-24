@@ -123,12 +123,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             DynStar => {
                 if let ty::Dynamic(data, _, ty::DynStar) = cast_ty.kind() {
                     // Initial cast from sized to dyn trait
+                    // Copy the data into the first field of the destination.
+                    // (Can be a non-immediate type, so we have to do a proper copy.)
+                    let data_dest = self.place_field(dest, 0)?;
+                    self.copy_op(src, &data_dest, true)?;
+
+                    // Copy the vtable into the second field of the destination.
                     let vtable = self.get_vtable_ptr(src.layout.ty, data.principal())?;
-                    let vtable = Scalar::from_maybe_pointer(vtable, self);
-                    let data = self.read_immediate(src)?.to_scalar();
-                    let _assert_pointer_like = data.to_pointer(self)?;
-                    let val = Immediate::ScalarPair(data, vtable);
-                    self.write_immediate(val, dest)?;
+                    let vtable_dest = self.place_field(dest, 1)?;
+                    self.write_pointer(vtable, &vtable_dest)?;
                 } else {
                     bug!()
                 }
