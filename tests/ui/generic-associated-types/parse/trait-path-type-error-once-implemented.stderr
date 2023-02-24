@@ -1,4 +1,4 @@
-error[E0107]: this associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
+error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/trait-path-type-error-once-implemented.rs:6:29
    |
 LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
@@ -14,7 +14,7 @@ help: add missing lifetime argument
 LL |   fn f2<'a>(arg : Box<dyn X<Y<'_, 1> = &'a ()>>) {}
    |                               +++
 
-error[E0107]: this associated type takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: associated type takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/trait-path-type-error-once-implemented.rs:6:29
    |
 LL |   fn f2<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}

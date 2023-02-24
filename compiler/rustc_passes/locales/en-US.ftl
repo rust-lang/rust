@@ -407,10 +407,10 @@ passes_duplicate_diagnostic_item =
 
 passes_duplicate_diagnostic_item_in_crate =
     duplicate diagnostic item in crate `{$crate_name}`: `{$name}`.
+    .note = the diagnostic item is first defined in crate `{$orig_crate_name}`.
 
 passes_diagnostic_item_first_defined =
     the diagnostic item is first defined here
-    .note = the diagnostic item is first defined in crate `{$orig_crate_name}`.
 
 passes_abi =
     abi: {$abi}

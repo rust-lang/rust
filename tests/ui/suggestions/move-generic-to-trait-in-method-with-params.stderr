@@ -1,4 +1,4 @@
-error[E0107]: this method takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/move-generic-to-trait-in-method-with-params.rs:14:7
    |
 LL |     1.bar::<i32>(0);

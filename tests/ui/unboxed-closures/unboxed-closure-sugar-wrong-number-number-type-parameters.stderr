@@ -1,4 +1,4 @@
-error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:5:16
    |
 LL | fn foo1(_: dyn Zero()) {
@@ -18,7 +18,7 @@ error[E0220]: associated type `Output` not found for `Zero`
 LL | fn foo1(_: dyn Zero()) {
    |                ^^^^^^ associated type `Output` not found
 
-error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:10:16
    |
 LL | fn foo2(_: dyn Zero<usize>) {
@@ -32,7 +32,7 @@ note: trait defined here, with 0 generic parameters
 LL | trait Zero { fn dummy(&self); }
    |       ^^^^
 
-error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:14:16
    |
 LL | fn foo3(_: dyn Zero <   usize   >) {
@@ -46,7 +46,7 @@ note: trait defined here, with 0 generic parameters
 LL | trait Zero { fn dummy(&self); }
    |       ^^^^
 
-error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:18:16
    |
 LL | fn foo4(_: dyn Zero(usize)) {
@@ -66,7 +66,7 @@ error[E0220]: associated type `Output` not found for `Zero`
 LL | fn foo4(_: dyn Zero(usize)) {
    |                ^^^^^^^^^^^ associated type `Output` not found
 
-error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:23:16
    |
 LL | fn foo5(_: dyn Zero (   usize   )) {

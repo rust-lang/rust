@@ -1,4 +1,4 @@
-error[E0107]: this struct takes 2 lifetime arguments but 1 lifetime argument was supplied
+error[E0107]: struct takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/constructor-lifetime-args.rs:17:5
    |
 LL |     S::<'static>(&0, &0);
@@ -16,7 +16,7 @@ help: add missing lifetime argument
 LL |     S::<'static, 'static>(&0, &0);
    |                +++++++++
 
-error[E0107]: this struct takes 2 lifetime arguments but 3 lifetime arguments were supplied
+error[E0107]: struct takes 2 lifetime arguments but 3 lifetime arguments were supplied
   --> $DIR/constructor-lifetime-args.rs:19:5
    |
 LL |     S::<'static, 'static, 'static>(&0, &0);
@@ -30,7 +30,7 @@ note: struct defined here, with 2 lifetime parameters: `'a`, `'b`
 LL | struct S<'a, 'b>(&'a u8, &'b u8);
    |        ^ --  --
 
-error[E0107]: this enum takes 2 lifetime arguments but 1 lifetime argument was supplied
+error[E0107]: enum takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/constructor-lifetime-args.rs:22:8
    |
 LL |     E::V::<'static>(&0);
@@ -48,7 +48,7 @@ help: add missing lifetime argument
 LL |     E::V::<'static, 'static>(&0);
    |                   +++++++++
 
-error[E0107]: this enum takes 2 lifetime arguments but 3 lifetime arguments were supplied
+error[E0107]: enum takes 2 lifetime arguments but 3 lifetime arguments were supplied
   --> $DIR/constructor-lifetime-args.rs:24:8
    |
 LL |     E::V::<'static, 'static, 'static>(&0);

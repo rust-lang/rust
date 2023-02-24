@@ -48,7 +48,7 @@ enum QueryResult<D: DepKind> {
 
 impl<K, D> QueryState<K, D>
 where
-    K: Eq + Hash + Clone + Debug,
+    K: Eq + Hash + Copy + Debug,
     D: DepKind,
 {
     pub fn all_inactive(&self) -> bool {
@@ -77,7 +77,7 @@ where
             for shard in shards.iter() {
                 for (k, v) in shard.iter() {
                     if let QueryResult::Started(ref job) = *v {
-                        let query = make_query(qcx, k.clone());
+                        let query = make_query(qcx, *k);
                         jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
                     }
                 }
@@ -91,7 +91,7 @@ where
             // really hurt much.)
             for (k, v) in self.active.try_lock()?.iter() {
                 if let QueryResult::Started(ref job) = *v {
-                    let query = make_query(qcx, k.clone());
+                    let query = make_query(qcx, *k);
                     jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
                 }
             }
@@ -111,7 +111,7 @@ impl<K, D: DepKind> Default for QueryState<K, D> {
 /// This will poison the relevant query if dropped.
 struct JobOwner<'tcx, K, D: DepKind>
 where
-    K: Eq + Hash + Clone,
+    K: Eq + Hash + Copy,
 {
     state: &'tcx QueryState<K, D>,
     key: K,
@@ -163,7 +163,7 @@ where
 
 impl<'tcx, K, D: DepKind> JobOwner<'tcx, K, D>
 where
-    K: Eq + Hash + Clone,
+    K: Eq + Hash + Copy,
 {
     /// Either gets a `JobOwner` corresponding the query, allowing us to
     /// start executing the query, or returns with the result of the query.
@@ -195,7 +195,7 @@ where
                 let job = qcx.current_query_job();
                 let job = QueryJob::new(id, span, job);
 
-                let key = entry.key().clone();
+                let key = *entry.key();
                 entry.insert(QueryResult::Started(job));
 
                 let owner = JobOwner { state, id, key };
@@ -274,7 +274,7 @@ where
 
 impl<'tcx, K, D> Drop for JobOwner<'tcx, K, D>
 where
-    K: Eq + Hash + Clone,
+    K: Eq + Hash + Copy,
     D: DepKind,
 {
     #[inline(never)]
@@ -291,7 +291,7 @@ where
                 QueryResult::Started(job) => job,
                 QueryResult::Poisoned => panic!(),
             };
-            shard.insert(self.key.clone(), QueryResult::Poisoned);
+            shard.insert(self.key, QueryResult::Poisoned);
             job
         };
         // Also signal the completion of the job, so waiters
@@ -310,7 +310,7 @@ pub(crate) struct CycleError<D: DepKind> {
 /// The result of `try_start`.
 enum TryGetJob<'tcx, K, D>
 where
-    K: Eq + Hash + Clone,
+    K: Eq + Hash + Copy,
     D: DepKind,
 {
     /// The query is not yet started. Contains a guard to the cache eventually used to start it.
@@ -358,10 +358,9 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    match JobOwner::<'_, Q::Key, Qcx::DepKind>::try_start(&qcx, state, span, key.clone()) {
+    match JobOwner::<'_, Q::Key, Qcx::DepKind>::try_start(&qcx, state, span, key) {
         TryGetJob::NotYetStarted(job) => {
-            let (result, dep_node_index) =
-                execute_job::<Q, Qcx>(qcx, key.clone(), dep_node, job.id);
+            let (result, dep_node_index) = execute_job::<Q, Qcx>(qcx, key, dep_node, job.id);
             if Q::FEEDABLE {
                 // We should not compute queries that also got a value via feeding.
                 // This can't happen, as query feeding adds the very dependencies to the fed query
@@ -551,7 +550,7 @@ where
     let prof_timer = qcx.dep_context().profiler().query_provider();
 
     // The dep-graph for this computation is already in-place.
-    let result = dep_graph.with_ignore(|| Q::compute(qcx, key.clone()));
+    let result = dep_graph.with_ignore(|| Q::compute(qcx, *key));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 

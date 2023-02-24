@@ -539,14 +539,6 @@ pub struct SYMBOLIC_LINK_REPARSE_BUFFER {
     pub PathBuffer: WCHAR,
 }
 
-/// NB: Use carefully! In general using this as a reference is likely to get the
-/// provenance wrong for the `PathBuffer` field!
-#[repr(C)]
-pub struct FILE_NAME_INFO {
-    pub FileNameLength: DWORD,
-    pub FileName: [WCHAR; 1],
-}
-
 #[repr(C)]
 pub struct MOUNT_POINT_REPARSE_BUFFER {
     pub SubstituteNameOffset: c_ushort,
