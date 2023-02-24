@@ -13,7 +13,7 @@ LL | enum Enum { A, B }
 help: ensure that all possible cases are being handled by adding an arm to handle the `Enum::B` case
    |
 LL ~     Enum::A => m!(),
-LL +     Enum::B => { todo!() },
+LL +     Enum::B => { todo!() }
    |
 
 error: aborting due to previous error

@@ -7,8 +7,8 @@ LL |     match (0u8, 0u8) {
    = note: the matched value is of type `(u8, u8)`
 help: ensure that all possible cases are being handled by adding an arm to handle the `(2_u8..=u8::MAX, _)` case
    |
-LL ~         (0 | 1, 2 | 3) => {},
-LL +         (2_u8..=u8::MAX, _) => { todo!() },
+LL ~         (0 | 1, 2 | 3) => {}
+LL +         (2_u8..=u8::MAX, _) => { todo!() }
    |
 
 error[E0004]: match is non-exhaustive
@@ -20,8 +20,8 @@ LL |     match ((0u8,),) {
    = note: the matched value is of type `((u8,),)`
 help: ensure that all possible cases are being handled by adding an arm to handle the `((4_u8..=u8::MAX))` case
    |
-LL ~         ((0 | 1,) | (2 | 3,),) => {},
-LL +         ((4_u8..=u8::MAX)) => { todo!() },
+LL ~         ((0 | 1,) | (2 | 3,),) => {}
+LL +         ((4_u8..=u8::MAX)) => { todo!() }
    |
 
 error[E0004]: match is non-exhaustive
@@ -33,8 +33,8 @@ LL |     match (Some(0u8),) {
    = note: the matched value is of type `(Option<u8>,)`
 help: ensure that all possible cases are being handled by adding an arm to handle the `(Some(2_u8..=u8::MAX))` case
    |
-LL ~         (None | Some(0 | 1),) => {},
-LL +         (Some(2_u8..=u8::MAX)) => { todo!() },
+LL ~         (None | Some(0 | 1),) => {}
+LL +         (Some(2_u8..=u8::MAX)) => { todo!() }
    |
 
 error: aborting due to 3 previous errors

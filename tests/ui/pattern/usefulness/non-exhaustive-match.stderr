@@ -24,8 +24,8 @@ LL |     match true {
    = note: the matched value is of type `bool`
 help: ensure that all possible cases are being handled by adding an arm to handle the `false` case
    |
-LL ~       true => {},
-LL +       false => { todo!() },
+LL ~       true => {}
+LL +       false => { todo!() }
    |
 
 error[E0004]: match is non-exhaustive
@@ -37,8 +37,8 @@ LL |     match Some(10) {
    = note: the matched value is of type `Option<i32>`
 help: ensure that all possible cases are being handled by adding an arm to handle the `Some(_)` case
    |
-LL ~       None => {},
-LL +       Some(_) => { todo!() },
+LL ~       None => {}
+LL +       Some(_) => { todo!() }
    |
 
 error[E0004]: match is non-exhaustive
@@ -50,9 +50,9 @@ LL |     match (2, 3, 4) {
    = note: the matched value is of type `(i32, i32, i32)`
 help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~       (_, _, 4) => {},
-LL +       (_, _, i32::MIN..=3_i32) => { todo!() },
-LL +       (_, _, 5_i32..=i32::MAX) => { todo!() },
+LL ~       (_, _, 4) => {}
+LL +       (_, _, i32::MIN..=3_i32) => { todo!() }
+LL +       (_, _, 5_i32..=i32::MAX) => { todo!() }
    |
 
 error[E0004]: match is non-exhaustive
@@ -65,8 +65,8 @@ LL |     match (T::A, T::A) {
 help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~       (T::B, T::A) => {}
-LL +       (T::A, T::A) => { todo!() },
-LL +       (T::B, T::B) => { todo!() },
+LL +       (T::A, T::A) => { todo!() }
+LL +       (T::B, T::B) => { todo!() }
    |
 
 error[E0004]: match is non-exhaustive
@@ -83,8 +83,8 @@ LL | enum T { A, B }
    = note: the matched value is of type `T`
 help: ensure that all possible cases are being handled by adding an arm to handle the `T::B` case
    |
-LL ~       T::A => {},
-LL +       T::B => { todo!() },
+LL ~       T::A => {}
+LL +       T::B => { todo!() }
    |
 
 error[E0004]: match is non-exhaustive
@@ -97,7 +97,7 @@ LL |     match *vec {
 help: ensure that all possible cases are being handled by adding an arm to handle the `[]` case
    |
 LL ~         [None] => {}
-LL +         [] => { todo!() },
+LL +         [] => { todo!() }
    |
 
 error[E0004]: match is non-exhaustive
@@ -110,7 +110,7 @@ LL |     match *vec {
 help: ensure that all possible cases are being handled by adding an arm to handle the `[_, _, _, _, ..]` case
    |
 LL ~         [] => (),
-LL +         [_, _, _, _, ..] => { todo!() },
+LL +         [_, _, _, _, ..] => { todo!() }
    |
 
 error: aborting due to 8 previous errors

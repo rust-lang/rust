@@ -5,7 +5,7 @@ fn main() {
         Some(1) => {}
         // hello
         Some(_) => {}
-        None => { todo!() },
+        None => { todo!() }
 
     }
 }

@@ -8,7 +8,7 @@ LL |     match UnstableEnum::Stable {
 help: ensure that all possible cases are being handled by adding an arm to handle the `UnstableEnum::Unstable` case
    |
 LL ~         UnstableEnum::Stable2 => {}
-LL +         UnstableEnum::Unstable => { todo!() },
+LL +         UnstableEnum::Unstable => { todo!() }
    |
 
 error: aborting due to previous error

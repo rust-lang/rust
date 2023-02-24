@@ -116,7 +116,7 @@ LL |         A, B, C,
 help: ensure that all possible cases are being handled by adding an arm to handle the `Foo::C` case
    |
 LL ~         Foo::B => {}
-LL +         Foo::C => { todo!() },
+LL +         Foo::C => { todo!() }
    |
 
 error: aborting due to previous error; 10 warnings emitted

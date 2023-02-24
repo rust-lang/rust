@@ -12,8 +12,8 @@ LL | pub struct Tag(pub Context, pub u16);
    = note: the matched value is of type `Tag`
 help: ensure that all possible cases are being handled by adding an arm to handle the `Tag(Context::Exif, _)` case
    |
-LL ~         Tag::ExifIFDPointer => {},
-LL +         Tag(Context::Exif, _) => { todo!() },
+LL ~         Tag::ExifIFDPointer => {}
+LL +         Tag(Context::Exif, _) => { todo!() }
    |
 
 error: aborting due to previous error

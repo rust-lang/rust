@@ -8,7 +8,7 @@ LL |     match Some(1) {
 help: ensure that all possible cases are being handled by adding an arm to handle the `None` case
    |
 LL ~         Some(_) => {}
-LL +         None => { todo!() },
+LL +         None => { todo!() }
    |
 
 error: aborting due to previous error

@@ -33,9 +33,9 @@ LL |     Struct { field: u32 }
 help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~     match NonExhaustiveEnum::Unit {
-LL +         NonExhaustiveEnum::Unit => { todo!() },
-LL +         NonExhaustiveEnum::Tuple(_) => { todo!() },
-LL +         NonExhaustiveEnum::Struct { .. } => { todo!() },
+LL +         NonExhaustiveEnum::Unit => { todo!() }
+LL +         NonExhaustiveEnum::Tuple(_) => { todo!() }
+LL +         NonExhaustiveEnum::Struct { .. } => { todo!() }
 LL +     }
    |
 
@@ -62,9 +62,9 @@ LL |     Struct { field: u32 }
 help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~     match NormalEnum::Unit {
-LL +         NormalEnum::Unit => { todo!() },
-LL +         NormalEnum::Tuple(_) => { todo!() },
-LL +         NormalEnum::Struct { .. } => { todo!() },
+LL +         NormalEnum::Unit => { todo!() }
+LL +         NormalEnum::Tuple(_) => { todo!() }
+LL +         NormalEnum::Struct { .. } => { todo!() }
 LL +     }
    |
 

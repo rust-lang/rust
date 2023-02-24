@@ -1081,10 +1081,10 @@ impl<'tcx> AddToDiagnostic for ArmSuggestions<'tcx> {
                 };
 
                 for pattern in arm_suggestions.iter().take(truncate_at) {
-                    writeln!(&mut suggestion, "{indentation}{pattern} => {{ todo!() }},").unwrap();
+                    writeln!(&mut suggestion, "{indentation}{pattern} => {{ todo!() }}").unwrap();
                 }
                 if need_wildcard {
-                    writeln!(&mut suggestion, "{indentation}_ => {{ todo!() }},").unwrap();
+                    writeln!(&mut suggestion, "{indentation}_ => {{ todo!() }}").unwrap();
                 }
                 suggestion.push_str(&postfix);
 

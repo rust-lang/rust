@@ -8,7 +8,7 @@ LL |     match (l1, l2) {
 help: ensure that all possible cases are being handled by adding an arm to handle the `(Some(&[]), Err(_))` case
    |
 LL ~         (None, Ok(&[_, _, ..])) => "None, Ok(at least two elements)",
-LL +         (Some(&[]), Err(_)) => { todo!() },
+LL +         (Some(&[]), Err(_)) => { todo!() }
    |
 
 error[E0004]: match is non-exhaustive
@@ -26,7 +26,7 @@ LL | enum T { A(U), B }
 help: ensure that all possible cases are being handled by adding an arm to handle the `T::A(U::C)` case
    |
 LL ~         T::B => { panic!("goodbye"); }
-LL +         T::A(U::C) => { todo!() },
+LL +         T::A(U::C) => { todo!() }
    |
 
 error: aborting due to 2 previous errors

@@ -19,9 +19,9 @@ LL |     C(bool),
 help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~         Foo::C(true) => {}
-LL +         Foo::A(false) => { todo!() },
-LL +         Foo::B(false) => { todo!() },
-LL +         Foo::C(false) => { todo!() },
+LL +         Foo::A(false) => { todo!() }
+LL +         Foo::B(false) => { todo!() }
+LL +         Foo::C(false) => { todo!() }
    |
 
 error: aborting due to previous error

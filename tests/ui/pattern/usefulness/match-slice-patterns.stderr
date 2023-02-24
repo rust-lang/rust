@@ -8,7 +8,7 @@ LL |     match list {
 help: ensure that all possible cases are being handled by adding an arm to handle the `&[_, Some(_), .., None, _]` case
    |
 LL ~         &[.., Some(_), _] => {}
-LL +         &[_, Some(_), .., None, _] => { todo!() },
+LL +         &[_, Some(_), .., None, _] => { todo!() }
    |
 
 error: aborting due to previous error

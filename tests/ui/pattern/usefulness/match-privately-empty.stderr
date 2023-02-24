@@ -8,7 +8,7 @@ LL |     match private::DATA {
 help: ensure that all possible cases are being handled by adding an arm to handle the `Some(Private { misc: true, .. })` case
    |
 LL ~         }) => {}
-LL +         Some(Private { misc: true, .. }) => { todo!() },
+LL +         Some(Private { misc: true, .. }) => { todo!() }
    |
 
 error: aborting due to previous error

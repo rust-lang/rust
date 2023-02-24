@@ -8,7 +8,7 @@ LL |     println!("foo {:}", match tup {
 help: ensure that all possible cases are being handled by adding an arm to handle the `(true, false)` case
    |
 LL ~         (true, true) => "baz",
-LL +         (true, false) => { todo!() },
+LL +         (true, false) => { todo!() }
    |
 
 error: aborting due to previous error

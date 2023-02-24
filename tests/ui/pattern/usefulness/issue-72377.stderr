@@ -8,10 +8,10 @@ LL |     match (x, y) {
 help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~         (X::A, Some(X::C)) | (X::C, Some(X::A)) => false,
-LL +         (X::A, Some(X::A)) => { todo!() },
-LL +         (X::A, Some(X::B)) => { todo!() },
-LL +         (X::B, Some(X::B)) => { todo!() },
-LL +         _ => { todo!() },
+LL +         (X::A, Some(X::A)) => { todo!() }
+LL +         (X::A, Some(X::B)) => { todo!() }
+LL +         (X::B, Some(X::B)) => { todo!() }
+LL +         _ => { todo!() }
    |
 
 error: aborting due to previous error

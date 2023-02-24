@@ -92,7 +92,7 @@ LL |     match 0i8 {
 help: ensure that all possible cases are being handled by adding an arm to handle the `0_i8` case
    |
 LL ~         1 ..= i8::MAX => {}
-LL +         0_i8 => { todo!() },
+LL +         0_i8 => { todo!() }
    |
 
 error[E0004]: match is non-exhaustive
@@ -141,7 +141,7 @@ LL |     match (0u8, true) {
 help: ensure that all possible cases are being handled by adding an arm to handle the `(126_u8..=127_u8, false)` case
    |
 LL ~         (0 ..= 255, true) => {}
-LL +         (126_u8..=127_u8, false) => { todo!() },
+LL +         (126_u8..=127_u8, false) => { todo!() }
    |
 
 error: aborting due to 12 previous errors

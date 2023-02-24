@@ -55,8 +55,8 @@ LL |     #[non_exhaustive] Struct { x: ! }
 help: ensure that all possible cases are being handled by adding more match arms
    |
 LL ~     match x {
-LL +         UninhabitedVariants::Tuple(_) => { todo!() },
-LL +         UninhabitedVariants::Struct { .. } => { todo!() },
+LL +         UninhabitedVariants::Tuple(_) => { todo!() }
+LL +         UninhabitedVariants::Struct { .. } => { todo!() }
 LL ~     }
    |
 

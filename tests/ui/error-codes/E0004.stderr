@@ -14,8 +14,8 @@ LL |     HastaLaVistaBaby,
    = note: the matched value is of type `Terminator`
 help: ensure that all possible cases are being handled by adding an arm to handle the `Terminator::HastaLaVistaBaby` case
    |
-LL ~         Terminator::TalkToMyHand => {},
-LL +         Terminator::HastaLaVistaBaby => { todo!() },
+LL ~         Terminator::TalkToMyHand => {}
+LL +         Terminator::HastaLaVistaBaby => { todo!() }
    |
 
 error: aborting due to previous error

@@ -15,7 +15,7 @@ LL |     C(PC),
 help: ensure that all possible cases are being handled by adding an arm to handle the `P::C(PC::QA)` case
    |
 LL ~         P::C(PC::Q) => (),
-LL +         P::C(PC::QA) => { todo!() },
+LL +         P::C(PC::QA) => { todo!() }
    |
 
 error: aborting due to previous error

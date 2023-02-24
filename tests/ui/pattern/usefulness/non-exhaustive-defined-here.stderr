@@ -18,9 +18,9 @@ LL |     C
    = note: the matched value is of type `E`
 help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~         E::A => {},
-LL +         E::B => { todo!() },
-LL +         E::C => { todo!() },
+LL ~         E::A => {}
+LL +         E::B => { todo!() }
+LL +         E::C => { todo!() }
    |
 
 error[E0005]: refutable pattern in local binding
@@ -68,9 +68,9 @@ LL |     C
    = note: the matched value is of type `&E`
 help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~         E::A => {},
-LL +         &E::B => { todo!() },
-LL +         &E::C => { todo!() },
+LL ~         E::A => {}
+LL +         &E::B => { todo!() }
+LL +         &E::C => { todo!() }
    |
 
 error[E0005]: refutable pattern in local binding
@@ -118,9 +118,9 @@ LL |     C
    = note: the matched value is of type `&&mut &E`
 help: ensure that all possible cases are being handled by adding more match arms
    |
-LL ~         E::A => {},
-LL +         &&mut &E::B => { todo!() },
-LL +         &&mut &E::C => { todo!() },
+LL ~         E::A => {}
+LL +         &&mut &E::B => { todo!() }
+LL +         &&mut &E::C => { todo!() }
    |
 
 error[E0005]: refutable pattern in local binding
@@ -165,8 +165,8 @@ LL |     None,
    = note: the matched value is of type `Opt`
 help: ensure that all possible cases are being handled by adding an arm to handle the `Opt::None` case
    |
-LL ~         Opt::Some(ref _x) => {},
-LL +         Opt::None => { todo!() },
+LL ~         Opt::Some(ref _x) => {}
+LL +         Opt::None => { todo!() }
    |
 
 error[E0005]: refutable pattern in local binding

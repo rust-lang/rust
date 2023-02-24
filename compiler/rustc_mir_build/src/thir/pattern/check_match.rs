@@ -629,7 +629,7 @@ fn non_exhaustive_match<'p, 'tcx>(
     let mut suggestion_span = None;
 
     // If the user wrote something like `match x { 1 => 2 }`, we suggest something that stays a one-liner
-    let mut do_oneliner = false;
+    let mut is_oneliner = false;
 
     let sm = cx.tcx.sess.source_map();
     match arms {
@@ -644,14 +644,18 @@ fn non_exhaustive_match<'p, 'tcx>(
             postfix.push_str("}");
             suggestion_span = Some(span.shrink_to_hi().with_hi(expr_span.hi()));
         }
-        [hir::Arm {span,  ..}] => {
+        [hir::Arm {span, body,  ..}] => {
             if let Some(indent) = sm.indentation_before(*span)
                 && let Ok(with_trailing) = sm.span_extend_while(*span, |c| c.is_whitespace() || c == ',')
-                && sm.is_multiline(with_trailing) {
-                prefix.push_str(",\n");
+                && sm.is_multiline(with_trailing)
+            {
+                if !(matches!(body.kind, hir::ExprKind::Block(..)) && span.eq_ctxt(body.span)) {
+                    prefix.push_str(",");
+                }
+                prefix.push_str("\n");
                 indentation.push_str(&indent);
             } else {
-                do_oneliner = true;
+                is_oneliner = true;
             };
             suggestion_span = Some(span.shrink_to_hi());
          }
@@ -663,7 +667,7 @@ fn non_exhaustive_match<'p, 'tcx>(
                 prefix.push_str("\n");
                 indentation.push_str(&indent);
             } else {
-                do_oneliner = true;
+                is_oneliner = true;
             };
             suggestion_span = Some(last.span.shrink_to_hi());
         }
@@ -671,7 +675,7 @@ fn non_exhaustive_match<'p, 'tcx>(
     }
 
     let suggest_arms = if let Some(span) = suggestion_span {
-        if do_oneliner {
+        if is_oneliner {
             errors::ArmSuggestions::OneLiner {
                 span,
                 pattern: if let [pat] = &*arm_suggestions {

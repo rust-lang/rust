@@ -15,7 +15,7 @@ LL |     B { x: Option<isize> },
 help: ensure that all possible cases are being handled by adding an arm to handle the `A::B { x: Some(_) }` case
    |
 LL ~         A::B { x: None } => {}
-LL +         A::B { x: Some(_) } => { todo!() },
+LL +         A::B { x: Some(_) } => { todo!() }
    |
 
 error: aborting due to previous error
