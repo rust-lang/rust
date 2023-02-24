@@ -273,7 +273,6 @@
 #![feature(utf8_chunks)]
 //
 // Library features (core):
-#![feature(atomic_mut_ptr)]
 #![feature(char_internals)]
 #![feature(core_intrinsics)]
 #![feature(duration_constants)]
