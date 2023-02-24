@@ -26,7 +26,6 @@ std_detect = { path = "../stdarch/crates/std_detect", default-features = false, 
 addr2line = { version = "0.16.0", optional = true, default-features = false }
 rustc-demangle = { version = "0.1.21", features = ['rustc-dep-of-std'] }
 miniz_oxide = { version = "0.4.0", optional = true, default-features = false }
-autodiff = { path = "../autodiff" }
 
 [dependencies.object]
 version = "0.26.1"
