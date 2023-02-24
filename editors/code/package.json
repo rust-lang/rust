@@ -226,7 +226,7 @@
             },
             {
                 "command": "rust-analyzer.openDocs",
-                "title": "Open docs under cursor",
+                "title": "Open Docs",
                 "category": "rust-analyzer"
             },
             {
@@ -236,7 +236,7 @@
             },
             {
                 "command": "rust-analyzer.peekTests",
-                "title": "Peek related tests",
+                "title": "Peek Related Tests",
                 "category": "rust-analyzer"
             },
             {
@@ -1869,8 +1869,13 @@
             "editor/context": [
                 {
                     "command": "rust-analyzer.peekTests",
-                    "when": "inRustProject",
+                    "when": "inRustProject && editorTextFocus && editorLangId == rust",
                     "group": "navigation@1000"
+                },
+                {
+                    "command": "rust-analyzer.openDocs",
+                    "when": "inRustProject && editorTextFocus && editorLangId == rust",
+                    "group": "navigation@1001"
                 }
             ]
         },
