@@ -227,4 +227,6 @@ fn evens_squared(n: usize) -> _ {
 }
 
 const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
-//~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+//~^ ERROR the trait bound
+//~| ERROR the trait bound
+//~| ERROR the placeholder

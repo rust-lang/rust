@@ -437,17 +437,37 @@ LL | fn evens_squared(n: usize) -> _ {
    |                               not allowed in type signatures
    |                               help: replace with an appropriate return type: `impl Iterator<Item = usize>`
 
+error[E0277]: the trait bound `std::ops::Range<{integer}>: Iterator` is not satisfied
+  --> $DIR/typeck_type_placeholder_item.rs:229:22
+   |
+LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
+   |                      ^^^^^^ `std::ops::Range<{integer}>` is not an iterator
+   |
+   = help: the trait `~const Iterator` is not implemented for `std::ops::Range<{integer}>`
+note: the trait `Iterator` is implemented for `std::ops::Range<{integer}>`, but that implementation is not `const`
+  --> $DIR/typeck_type_placeholder_item.rs:229:14
+   |
+LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
+   |              ^^^^^^^
+
+error[E0277]: the trait bound `Filter<std::ops::Range<{integer}>, [closure@$DIR/typeck_type_placeholder_item.rs:229:29: 229:32]>: Iterator` is not satisfied
+  --> $DIR/typeck_type_placeholder_item.rs:229:45
+   |
+LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
+   |                                             ^^^ `Filter<std::ops::Range<{integer}>, [closure@$DIR/typeck_type_placeholder_item.rs:229:29: 229:32]>` is not an iterator
+   |
+   = help: the trait `~const Iterator` is not implemented for `Filter<std::ops::Range<{integer}>, [closure@$DIR/typeck_type_placeholder_item.rs:229:29: 229:32]>`
+note: the trait `Iterator` is implemented for `Filter<std::ops::Range<{integer}>, [closure@$DIR/typeck_type_placeholder_item.rs:229:29: 229:32]>`, but that implementation is not `const`
+  --> $DIR/typeck_type_placeholder_item.rs:229:14
+   |
+LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/typeck_type_placeholder_item.rs:229:10
    |
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |          ^ not allowed in type signatures
-   |
-note: however, the inferred type `Map<Filter<Range<i32>, [closure@typeck_type_placeholder_item.rs:229:29]>, [closure@typeck_type_placeholder_item.rs:229:49]>` cannot be named
-  --> $DIR/typeck_type_placeholder_item.rs:229:14
-   |
-LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/typeck_type_placeholder_item.rs:140:31
@@ -657,7 +677,7 @@ LL |     const D: _ = 42;
    |              not allowed in type signatures
    |              help: replace with the correct type: `i32`
 
-error: aborting due to 71 previous errors
+error: aborting due to 73 previous errors
 
-Some errors have detailed explanations: E0121, E0282, E0403.
+Some errors have detailed explanations: E0121, E0277, E0282, E0403.
 For more information about an error, try `rustc --explain E0121`.
