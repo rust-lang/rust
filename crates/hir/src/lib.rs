@@ -3384,7 +3384,7 @@ impl Type {
     }
 
     /// Combines lifetime indicators, type and constant parameters into a single `Iterator`
-    pub fn lifetime_and_type_arguments<'a>(
+    pub fn lifetime_type_const_paramaters<'a>(
         &'a self,
         db: &'a dyn HirDatabase,
     ) -> impl Iterator<Item = SmolStr> + 'a {

@@ -370,7 +370,7 @@ pub(crate) fn runnable_impl(
     let nav = def.try_to_nav(sema.db)?;
     let ty = def.self_ty(sema.db);
     let adt_name = ty.as_adt()?.name(sema.db);
-    let mut ty_args = ty.lifetime_and_type_arguments(sema.db).peekable();
+    let mut ty_args = ty.lifetime_type_const_paramaters(sema.db).peekable();
     let params = if ty_args.peek().is_some() {
         format!("<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)))
     } else {
@@ -436,7 +436,7 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
                 let ty = imp.self_ty(db);
                 if let Some(adt) = ty.as_adt() {
                     let name = adt.name(db);
-                    let mut ty_args = ty.lifetime_and_type_arguments(db).peekable();
+                    let mut ty_args = ty.lifetime_type_const_paramaters(db).peekable();
                     format_to!(path, "{}", name);
                     if ty_args.peek().is_some() {
                         format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));
