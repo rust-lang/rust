@@ -1,4 +1,4 @@
-print-type-size type: `[async fn body@$DIR/async.rs:10:36: 13:2]`: 8194 bytes, alignment: 1 bytes
+print-type-size type: `[async fn body@$DIR/async.rs:14:36: 17:2]`: 8194 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 8192 bytes
 print-type-size         upvar `.arg`: 8192 bytes
@@ -9,14 +9,14 @@ print-type-size     variant `Returned`: 8192 bytes
 print-type-size         upvar `.arg`: 8192 bytes
 print-type-size     variant `Panicked`: 8192 bytes
 print-type-size         upvar `.arg`: 8192 bytes
-print-type-size type: `[async fn body@$DIR/async.rs:8:17: 8:19]`: 1 bytes, alignment: 1 bytes
+print-type-size type: `[async fn body@$DIR/async.rs:12:17: 12:19]`: 1 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
 print-type-size     variant `Unresumed`: 0 bytes
 print-type-size     variant `Returned`: 0 bytes
 print-type-size     variant `Panicked`: 0 bytes
-print-type-size type: `std::mem::ManuallyDrop<[async fn body@$DIR/async.rs:8:17: 8:19]>`: 1 bytes, alignment: 1 bytes
+print-type-size type: `std::mem::ManuallyDrop<[async fn body@$DIR/async.rs:12:17: 12:19]>`: 1 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 1 bytes
-print-type-size type: `std::mem::MaybeUninit<[async fn body@$DIR/async.rs:8:17: 8:19]>`: 1 bytes, alignment: 1 bytes
+print-type-size type: `std::mem::MaybeUninit<[async fn body@$DIR/async.rs:12:17: 12:19]>`: 1 bytes, alignment: 1 bytes
 print-type-size     variant `MaybeUninit`: 1 bytes
 print-type-size         field `.uninit`: 0 bytes
 print-type-size         field `.value`: 1 bytes
