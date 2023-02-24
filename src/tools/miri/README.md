@@ -590,7 +590,7 @@ extern "Rust" {
     /// `out` must point to at least `out_size` many bytes, and the result will be stored there
     /// with a null terminator.
     /// Returns 0 if the `out` buffer was large enough, and the required size otherwise.
-    fn miri_host_to_target_path(path: *const i8, out: *mut i8, out_size: usize) -> usize;
+    fn miri_host_to_target_path(path: *const c_char, out: *mut c_char, out_size: usize) -> usize;
 }
 ```
 
