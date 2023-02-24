@@ -3316,6 +3316,7 @@ declare_lint! {
     ///
     /// ```rust
     /// # #![allow(unused)]
+    /// #![warn(ref_binop_on_copy_type)]
     /// pub fn slice_of_ints(input: &[(usize, usize, usize, usize)]) -> usize {
     ///     input
     ///         .iter()
@@ -3335,7 +3336,7 @@ declare_lint! {
     /// smaller than a 64 bit pointer, we suggest dereferencing the value so the compiler will have
     /// a better chance of producing optimal instructions.
     REF_BINOP_ON_COPY_TYPE,
-    Deny,
+    Allow,
     "detects binary operations on references to `Copy` types like `&42 < &50`",
 }
 
