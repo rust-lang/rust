@@ -223,12 +223,12 @@ pub fn spin_loop() {
 ///
 /// # When is this useful?
 ///
-/// First and foremost: `black_box` does _not_ guarantee any exact behavior and, in some cases, may
-/// do nothing at all. As such, it **must not be relied upon to control critical program behavior.**
+/// First and foremost: `black_box` does _not_ guarantee any exact behavior beyond behaving as the identity function
+/// and, in some cases, does nothing at all. As such, it **must not be relied upon to control critical program behavior.**
 /// This _immediately_ precludes any direct use of this function for cryptographic or security
 /// purposes.
 ///
-/// While not suitable in those mission-critical cases, `back_box`'s functionality can generally be
+/// While not suitable in those mission-critical cases, `black_box`'s functionality can generally be
 /// relied upon for benchmarking, and should be used there. It will try to ensure that the
 /// compiler doesn't optimize away part of the intended test code based on context. For
 /// example:
