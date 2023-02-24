@@ -6,6 +6,7 @@ mod suggestions;
 
 pub use _impl::*;
 use rustc_errors::ErrorGuaranteed;
+use rustc_infer::traits::PredicateObligations;
 pub use suggestions::*;
 
 use crate::coercion::DynamicCoerceMany;
@@ -324,6 +325,10 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         // FIXME: normalization and escaping regions
         let ty = if !ty.has_escaping_bound_vars() { self.normalize(span, ty) } else { ty };
         self.write_ty(hir_id, ty)
+    }
+
+    fn register_predicate_obligations(&self, obligations: PredicateObligations<'tcx>) {
+        self.register_predicates(obligations)
     }
 
     fn infcx(&self) -> Option<&infer::InferCtxt<'tcx>> {

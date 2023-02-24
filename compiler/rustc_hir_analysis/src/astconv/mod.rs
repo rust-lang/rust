@@ -28,8 +28,8 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::ObligationCause;
+use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_infer::traits::{ObligationCause, PredicateObligations};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
@@ -46,7 +46,9 @@ use rustc_trait_selection::traits::error_reporting::{
     report_object_safety_error, suggestions::NextTypeParamName,
 };
 use rustc_trait_selection::traits::wf::object_region_bounds;
-use rustc_trait_selection::traits::{self, astconv_object_safety_violations, ObligationCtxt};
+use rustc_trait_selection::traits::{
+    self, astconv_object_safety_violations, NormalizeExt, ObligationCtxt,
+};
 
 use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeSet;
@@ -126,6 +128,8 @@ pub trait AstConv<'tcx> {
     fn set_tainted_by_errors(&self, e: ErrorGuaranteed);
 
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span);
+
+    fn register_predicate_obligations(&self, obligations: PredicateObligations<'tcx>);
 
     fn astconv(&self) -> &dyn AstConv<'tcx>
     where
@@ -2234,7 +2238,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut fulfillment_errors = Vec::new();
         let mut applicable_candidates: Vec<_> = candidates
             .iter()
-            .filter_map(|&(impl_, (assoc_item, def_scope))| {
+            .filter_map(|&(impl_, item)| {
                 infcx.probe(|_| {
                     let ocx = ObligationCtxt::new_in_snapshot(&infcx);
 
@@ -2250,15 +2254,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_bounds = tcx.predicates_of(impl_);
                     let impl_bounds = impl_bounds.instantiate(tcx, impl_substs);
-
                     let impl_bounds = ocx.normalize(&cause, param_env, impl_bounds);
-
                     let impl_obligations = traits::predicates_for_generics(
                         |_, _| cause.clone(),
                         param_env,
                         impl_bounds,
                     );
-
                     ocx.register_obligations(impl_obligations);
 
                     let mut errors = ocx.select_where_possible();
@@ -2267,8 +2268,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         return None;
                     }
 
-                    // FIXME(fmease): Unsolved vars can escape this InferCtxt snapshot.
-                    Some((assoc_item, def_scope, infcx.resolve_vars_if_possible(impl_substs)))
+                    let impl_substs = if !self.allow_ty_infer() {
+                        let substs = infcx.resolve_vars_if_possible(impl_substs);
+                        assert!(!substs.needs_infer());
+                        Some(substs)
+                    } else {
+                        None
+                    };
+
+                    Some((item, impl_, impl_substs))
                 })
             })
             .collect();
@@ -2276,17 +2284,50 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if applicable_candidates.len() > 1 {
             return Err(self.complain_about_ambiguous_inherent_assoc_type(
                 name,
-                applicable_candidates.into_iter().map(|(candidate, ..)| candidate).collect(),
+                applicable_candidates.into_iter().map(|((candidate, ..), ..)| candidate).collect(),
                 span,
             ));
         }
 
-        if let Some((assoc_item, def_scope, impl_substs)) = applicable_candidates.pop() {
+        if let Some(((assoc_item, def_scope), impl_, probe_impl_substs)) =
+            applicable_candidates.pop()
+        {
             self.check_assoc_ty(assoc_item, name, def_scope, block, span);
 
-            // FIXME(inherent_associated_types): To fully *confirm* the *probed* candidate, we still
-            // need to relate the Self-type with fresh item substs & register region obligations for
-            // regionck to prove/disprove.
+            // FIXME(fmease, inherent_associated_types): Register WF obligations for the Self type.
+            // At the moment, we don't regionck the Self type or the substitutions.
+
+            let impl_substs;
+            if let Some(probe_impl_substs) = probe_impl_substs {
+                impl_substs = probe_impl_substs;
+            } else {
+                impl_substs = infcx.fresh_item_substs(impl_);
+
+                let impl_bounds = tcx.predicates_of(impl_);
+                let impl_bounds = impl_bounds.instantiate(tcx, impl_substs);
+                let InferOk { value: impl_bounds, obligations: norm_obligations } =
+                    infcx.at(&cause, param_env).normalize(impl_bounds);
+                self.register_predicate_obligations(norm_obligations);
+                let impl_obligations =
+                    traits::predicates_for_generics(|_, _| cause.clone(), param_env, impl_bounds);
+                self.register_predicate_obligations(impl_obligations.collect());
+
+                let impl_ty = tcx.type_of(impl_);
+                let impl_ty = impl_ty.subst(tcx, impl_substs);
+                let InferOk { value: impl_ty, obligations: norm_obligations } =
+                    infcx.at(&cause, param_env).normalize(impl_ty);
+                self.register_predicate_obligations(norm_obligations);
+
+                match infcx.at(&cause, param_env).eq(impl_ty, self_ty) {
+                    Ok(ok) => self.register_predicate_obligations(ok.obligations),
+                    Err(_) => {
+                        tcx.sess.delay_span_bug(
+                            span,
+                            &format!("{self_ty:?} was a subtype of {impl_ty:?} but now it is not?"),
+                        );
+                    }
+                }
+            }
 
             let item_substs =
                 self.create_substs_for_associated_item(span, assoc_item, segment, impl_substs);
