@@ -185,6 +185,16 @@ pub fn elaborate_drop<'b, 'tcx, D>(
     D: DropElaborator<'b, 'tcx>,
     'tcx: 'b,
 {
+    use rustc_span::DesugaringKind;
+    let span = elaborator.tcx().with_stable_hashing_context(|hcx| {
+        source_info.span.mark_with_reason(
+            None,
+            DesugaringKind::Drop,
+            elaborator.tcx().sess.edition(),
+            hcx,
+        )
+    });
+    let source_info = SourceInfo { span, ..source_info };
     DropCtxt { elaborator, source_info, place, path, succ, unwind }.elaborate_drop(bb)
 }
 

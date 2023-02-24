@@ -36,7 +36,7 @@ use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::UNUSED_MUT;
-use rustc_span::{Span, Symbol};
+use rustc_span::{DesugaringKind, Span, Symbol};
 
 use either::Either;
 use smallvec::SmallVec;
@@ -578,7 +578,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             StatementKind::Assign(box (lhs, rhs)) => {
                 // FIXME: drop-elaboration checks the discriminant of an enum after it has been
                 // moved out. This is a known isses and should be fixed in the future.
-                if !matches!(rhs, Rvalue::Discriminant(_)) {
+                if !(matches!(rhs, Rvalue::Discriminant(_)) && span.desugaring_kind() == Some(DesugaringKind::Drop)) {
                     self.consume_rvalue(location, (rhs, span), flow_state);
                 }
 

@@ -1152,6 +1152,8 @@ pub enum DesugaringKind {
     ForLoop,
     WhileLoop,
     Replace,
+    /// Code inserted by the compiler as part of drop elaboration
+    Drop,
 }
 
 impl DesugaringKind {
@@ -1168,6 +1170,7 @@ impl DesugaringKind {
             DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::WhileLoop => "`while` loop",
             DesugaringKind::Replace => "drop and replace",
+            DesugaringKind::Drop => "drop elaboration",
         }
     }
 }
