@@ -1,4 +1,4 @@
-error[E0107]: this function takes 2 generic arguments but 1 generic argument was supplied
+error[E0107]: function takes 2 generic arguments but 1 generic argument was supplied
   --> $DIR/incorrect-number-of-const-args.rs:6:5
    |
 LL |     foo::<0>();
@@ -16,7 +16,7 @@ help: add missing generic argument
 LL |     foo::<0, Y>();
    |            +++
 
-error[E0107]: this function takes 2 generic arguments but 3 generic arguments were supplied
+error[E0107]: function takes 2 generic arguments but 3 generic arguments were supplied
   --> $DIR/incorrect-number-of-const-args.rs:9:5
    |
 LL |     foo::<0, 0, 0>();

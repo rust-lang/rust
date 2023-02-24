@@ -1,4 +1,4 @@
-error[E0107]: this associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
+error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
   --> $DIR/issue-85347.rs:3:42
    |
 LL |     type Bar<'a>: Deref<Target = <Self>::Bar<Target = Self>>;

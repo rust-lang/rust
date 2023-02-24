@@ -1,4 +1,4 @@
-error[E0107]: this trait takes at most 3 generic arguments but 6 generic arguments were supplied
+error[E0107]: trait takes at most 3 generic arguments but 6 generic arguments were supplied
   --> $DIR/issue-101739-2.rs:18:14
    |
 LL |           Dst: BikeshedIntrinsicFrom<

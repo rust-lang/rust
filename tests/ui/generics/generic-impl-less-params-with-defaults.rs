@@ -9,5 +9,5 @@ impl<A, B, C> Foo<A, B, C> {
 
 fn main() {
     Foo::<isize>::new();
-    //~^ ERROR this struct takes at least 2 generic arguments but 1 generic argument
+    //~^ ERROR struct takes at least 2 generic arguments but 1 generic argument
 }
