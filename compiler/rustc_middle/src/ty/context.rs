@@ -17,6 +17,7 @@ use crate::mir::{
 };
 use crate::thir::Thir;
 use crate::traits;
+use crate::traits::solve;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData};
 use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::{
@@ -537,6 +538,9 @@ pub struct GlobalCtxt<'tcx> {
     /// Merge this with `selection_cache`?
     pub evaluation_cache: traits::EvaluationCache<'tcx>,
 
+    /// Caches the results of goal evaluation in the new solver.
+    pub new_solver_evaluation_cache: solve::EvaluationCache<'tcx>,
+
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
@@ -712,6 +716,7 @@ impl<'tcx> TyCtxt<'tcx> {
             pred_rcache: Default::default(),
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
+            new_solver_evaluation_cache: Default::default(),
             data_layout,
             alloc_map: Lock::new(interpret::AllocMap::new()),
         }
