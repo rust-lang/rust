@@ -50,7 +50,7 @@ mod cstore_impl;
 /// A `MetadataBlob` internally is just a reference counted pointer to
 /// the actual data, so cloning it is cheap.
 #[derive(Clone)]
-pub(crate) struct MetadataBlob(Lrc<MetadataRef>);
+pub struct MetadataBlob(Lrc<MetadataRef>);
 
 // This is needed so we can create an OwningRef into the blob.
 // The data behind a `MetadataBlob` has a stable address because it is
