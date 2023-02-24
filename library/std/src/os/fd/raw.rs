@@ -16,9 +16,7 @@ use crate::os::unix::io::OwnedFd;
 use crate::os::wasi::io::OwnedFd;
 use crate::sys_common::{AsInner, IntoInner};
 #[cfg(target_os = "hermit")]
-use hermit_abi::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
-#[cfg(not(target_os = "hermit"))]
-use libc::{STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
+use hermit_abi as libc;
 
 /// Raw file descriptors.
 #[rustc_allowed_through_unstable_modules]
@@ -189,7 +187,7 @@ impl IntoRawFd for fs::File {
 impl AsRawFd for io::Stdin {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        STDIN_FILENO
+        libc::STDIN_FILENO
     }
 }
 
@@ -197,7 +195,7 @@ impl AsRawFd for io::Stdin {
 impl AsRawFd for io::Stdout {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        STDOUT_FILENO
+        libc::STDOUT_FILENO
     }
 }
 
@@ -205,7 +203,7 @@ impl AsRawFd for io::Stdout {
 impl AsRawFd for io::Stderr {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        STDERR_FILENO
+        libc::STDERR_FILENO
     }
 }
 
@@ -213,7 +211,7 @@ impl AsRawFd for io::Stderr {
 impl<'a> AsRawFd for io::StdinLock<'a> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        STDIN_FILENO
+        libc::STDIN_FILENO
     }
 }
 
@@ -221,7 +219,7 @@ impl<'a> AsRawFd for io::StdinLock<'a> {
 impl<'a> AsRawFd for io::StdoutLock<'a> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        STDOUT_FILENO
+        libc::STDOUT_FILENO
     }
 }
 
@@ -229,7 +227,7 @@ impl<'a> AsRawFd for io::StdoutLock<'a> {
 impl<'a> AsRawFd for io::StderrLock<'a> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
-        STDERR_FILENO
+        libc::STDERR_FILENO
     }
 }
 
