@@ -86,4 +86,4 @@ series = {SC '22}
 }
 ```
 
-Both [Julia bindings](https://github.com/wsmoses/Enzyme.jl) and [Rust bindings](https://github.com/rust-ml/oxide-enzyme) are available for Enzyme.
+Both [Julia bindings](https://github.com/EnzymeAD/Enzyme.jl#readme) and [Rust bindings](https://github.com/EnzymeAD/rust#readme) are available for Enzyme.
