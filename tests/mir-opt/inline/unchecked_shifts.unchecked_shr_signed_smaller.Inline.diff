@@ -1,0 +1,115 @@
+- // MIR for `unchecked_shr_signed_smaller` before Inline
++ // MIR for `unchecked_shr_signed_smaller` after Inline
+  
+  fn unchecked_shr_signed_smaller(_1: i16, _2: u32) -> i16 {
+      debug a => _1;                       // in scope 0 at $DIR/unchecked_shifts.rs:+0:44: +0:45
+      debug b => _2;                       // in scope 0 at $DIR/unchecked_shifts.rs:+0:52: +0:53
+      let mut _0: i16;                     // return place in scope 0 at $DIR/unchecked_shifts.rs:+0:63: +0:66
+      let mut _3: i16;                     // in scope 0 at $DIR/unchecked_shifts.rs:+1:5: +1:6
+      let mut _4: u32;                     // in scope 0 at $DIR/unchecked_shifts.rs:+1:21: +1:22
++     scope 1 (inlined core::num::<impl i16>::unchecked_shr) { // at $DIR/unchecked_shifts.rs:16:7: 16:23
++         debug self => _3;                // in scope 1 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         debug rhs => _4;                 // in scope 1 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         let mut _5: i16;                 // in scope 1 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         let mut _6: std::option::Option<i16>; // in scope 1 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         let mut _7: std::result::Result<i16, std::num::TryFromIntError>; // in scope 1 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         scope 2 {
++             scope 3 (inlined Result::<i16, TryFromIntError>::ok) { // at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++                 debug self => _7;        // in scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
++                 let mut _8: isize;       // in scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
++                 let _9: i16;             // in scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
++                 scope 4 {
++                     debug x => _9;       // in scope 4 at $SRC_DIR/core/src/result.rs:LL:COL
++                 }
++                 scope 5 {
++                     scope 6 {
++                         debug x => const TryFromIntError(()); // in scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
++                     }
++                 }
++             }
++             scope 7 (inlined #[track_caller] Option::<i16>::unwrap_unchecked) { // at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++                 debug self => _6;        // in scope 7 at $SRC_DIR/core/src/option.rs:LL:COL
++                 let mut _10: &std::option::Option<i16>; // in scope 7 at $SRC_DIR/core/src/option.rs:LL:COL
++                 let mut _11: isize;      // in scope 7 at $SRC_DIR/core/src/option.rs:LL:COL
++                 scope 8 {
++                     debug val => _5;     // in scope 8 at $SRC_DIR/core/src/option.rs:LL:COL
++                 }
++                 scope 9 {
++                     scope 11 (inlined unreachable_unchecked) { // at $SRC_DIR/core/src/option.rs:LL:COL
++                         scope 12 {
++                             scope 13 (inlined unreachable_unchecked::runtime) { // at $SRC_DIR/core/src/intrinsics.rs:LL:COL
++                             }
++                         }
++                     }
++                 }
++                 scope 10 (inlined Option::<i16>::is_some) { // at $SRC_DIR/core/src/option.rs:LL:COL
++                     debug self => _10;   // in scope 10 at $SRC_DIR/core/src/option.rs:LL:COL
++                 }
++             }
++         }
++     }
+  
+      bb0: {
+          StorageLive(_3);                 // scope 0 at $DIR/unchecked_shifts.rs:+1:5: +1:6
+          _3 = _1;                         // scope 0 at $DIR/unchecked_shifts.rs:+1:5: +1:6
+          StorageLive(_4);                 // scope 0 at $DIR/unchecked_shifts.rs:+1:21: +1:22
+          _4 = _2;                         // scope 0 at $DIR/unchecked_shifts.rs:+1:21: +1:22
+-         _0 = core::num::<impl i16>::unchecked_shr(move _3, move _4) -> bb1; // scope 0 at $DIR/unchecked_shifts.rs:+1:5: +1:23
++         StorageLive(_5);                 // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         StorageLive(_6);                 // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         StorageLive(_7);                 // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         _7 = <u32 as TryInto<i16>>::try_into(_4) -> bb1; // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
+                                           // mir::Constant
+-                                          // + span: $DIR/unchecked_shifts.rs:16:7: 16:20
+-                                          // + literal: Const { ty: unsafe fn(i16, u32) -> i16 {core::num::<impl i16>::unchecked_shr}, val: Value(<ZST>) }
++                                          // + span: $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++                                          // + literal: Const { ty: fn(u32) -> Result<i16, <u32 as TryInto<i16>>::Error> {<u32 as TryInto<i16>>::try_into}, val: Value(<ZST>) }
+      }
+  
+      bb1: {
++         StorageLive(_9);                 // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         _8 = discriminant(_7);           // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
++         switchInt(move _8) -> [0: bb6, 1: bb4, otherwise: bb5]; // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
++     }
++ 
++     bb2: {
++         StorageDead(_9);                 // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         StorageDead(_7);                 // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         StorageLive(_10);                // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         _11 = discriminant(_6);          // scope 7 at $SRC_DIR/core/src/option.rs:LL:COL
++         switchInt(move _11) -> [1: bb7, otherwise: bb5]; // scope 7 at $SRC_DIR/core/src/option.rs:LL:COL
++     }
++ 
++     bb3: {
++         StorageDead(_5);                 // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
+          StorageDead(_4);                 // scope 0 at $DIR/unchecked_shifts.rs:+1:22: +1:23
+          StorageDead(_3);                 // scope 0 at $DIR/unchecked_shifts.rs:+1:22: +1:23
+          return;                          // scope 0 at $DIR/unchecked_shifts.rs:+2:2: +2:2
++     }
++ 
++     bb4: {
++         _6 = Option::<i16>::None;        // scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
++         goto -> bb2;                     // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
++     }
++ 
++     bb5: {
++         unreachable;                     // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
++     }
++ 
++     bb6: {
++         _9 = move ((_7 as Ok).0: i16);   // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
++         _6 = Option::<i16>::Some(move _9); // scope 4 at $SRC_DIR/core/src/result.rs:LL:COL
++         goto -> bb2;                     // scope 3 at $SRC_DIR/core/src/result.rs:LL:COL
++     }
++ 
++     bb7: {
++         _5 = move ((_6 as Some).0: i16); // scope 7 at $SRC_DIR/core/src/option.rs:LL:COL
++         StorageDead(_10);                // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         StorageDead(_6);                 // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++         _0 = unchecked_shr::<i16>(_3, move _5) -> bb3; // scope 2 at $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++                                          // mir::Constant
++                                          // + span: $SRC_DIR/core/src/num/int_macros.rs:LL:COL
++                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(i16, i16) -> i16 {unchecked_shr::<i16>}, val: Value(<ZST>) }
+      }
+  }
+  

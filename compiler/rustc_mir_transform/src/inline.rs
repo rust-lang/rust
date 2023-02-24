@@ -424,13 +424,6 @@ impl<'tcx> Inliner<'tcx> {
         debug!("    final inline threshold = {}", threshold);
 
         // FIXME: Give a bonus to functions with only a single caller
-        let diverges = matches!(
-            callee_body.basic_blocks[START_BLOCK].terminator().kind,
-            TerminatorKind::Unreachable | TerminatorKind::Call { target: None, .. }
-        );
-        if diverges && !matches!(callee_attrs.inline, InlineAttr::Always) {
-            return Err("callee diverges unconditionally");
-        }
 
         let mut checker = CostChecker {
             tcx: self.tcx,
