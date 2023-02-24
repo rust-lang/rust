@@ -104,6 +104,8 @@ run_tests
 case $HOST_TARGET in
   x86_64-unknown-linux-gnu)
     MIRI_TEST_TARGET=i686-unknown-linux-gnu run_tests
+    MIRI_TEST_TARGET=aarch64-unknown-linux-gnu run_tests
+    MIRI_TEST_TARGET=arm-unknown-linux-gnueabi run_tests
     MIRI_TEST_TARGET=aarch64-apple-darwin run_tests
     MIRI_TEST_TARGET=i686-pc-windows-msvc run_tests
     MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple atomic data_race env/var
