@@ -134,7 +134,7 @@ impl Header {
     }
 }
 
-pub(crate) fn strip_sig_attributes(args: Vec<&FnArg>, do_skip: bool, header: &Header) -> (Vec<FnArg>, Vec<Activity>) {
+pub(crate) fn strip_sig_attributes(args: Vec<&FnArg>, do_skip: bool, _header: &Header) -> (Vec<FnArg>, Vec<Activity>) {
     let mut args = args.into_iter().cloned().collect::<Vec<_>>();
     let mut arg_it = args.iter_mut();
     let mut acts = Vec::new();

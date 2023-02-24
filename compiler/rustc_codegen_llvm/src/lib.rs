@@ -198,7 +198,6 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         modules: Vec<FatLTOInput<Self>>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
         ) -> Result<LtoModuleCodegen<Self>, FatalError> {
-        println!("Fat LTO");
         back::lto::run_fat(cgcx, modules, cached_modules)
     }
     fn run_thin_lto(

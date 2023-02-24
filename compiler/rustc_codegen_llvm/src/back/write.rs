@@ -600,8 +600,8 @@ pub(crate) unsafe fn extract_return_type<'a>(
     //let llmod = module.module_llvm.llmod();
     let context = llvm::LLVMGetModuleContext(llmod);
     let f_type = LLVMTypeOf(fnc);
-    dbg!("Unpacking", fnc_name.clone());
-    dbg!("From: ", f_type, " into ", u_type);
+    //dbg!("Unpacking", fnc_name.clone());
+    //dbg!("From: ", f_type, " into ", u_type);
 
     let inner_param_num = LLVMCountParams(fnc);
     let (outer_fnc, outer_bb, mut outer_args, _inner_args, c_inner_fnc_name) =
@@ -630,7 +630,7 @@ pub(crate) unsafe fn extract_return_type<'a>(
     LLVMDisposeBuilder(builder);
 
     let _fnc_ok = LLVMVerifyFunction(outer_fnc, llvm::LLVMVerifierFailureAction::LLVMAbortProcessAction);
-    dbg!(outer_fnc);
+    //dbg!(outer_fnc);
     //assert!(fnc_ok);
     //if let Err(e) = verify_function(outer_fnc) {
     //    panic!("Creating a wrapper function failed! {}", e);
@@ -678,13 +678,11 @@ pub(crate) unsafe fn enzyme_ad(llmod: &llvm::Module, llcx: &llvm::Context, item:
     let f_return_type = LLVMGetReturnType(LLVMGetElementType(f_type));
     let void_type = LLVMVoidTypeInContext(llcx);
     if item.attrs.mode == DiffMode::Reverse && f_return_type != void_type{
-        dbg!("Reverse Mode sanitizer");
-        dbg!(f_type);
-        dbg!(f_return_type);
+        //dbg!("Reverse Mode sanitizer");
+        //dbg!(f_type);
+        //dbg!(f_return_type);
         let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
-        dbg!("checked");
         if num_elem_in_ret_struct == 1 {
-            dbg!("Unwrapping");
             let u_type = LLVMTypeOf(target_fnc);
             res = extract_return_type(llmod, res, u_type, rust_name2.clone());// TODO: check if name or name2
         }

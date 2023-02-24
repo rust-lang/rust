@@ -5,6 +5,13 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+
+[profile.release]
+lto = "fat"
+
+[profile.dev]
+lto = "fat"
+
 [lib]
 name = "autodiff"
 proc-macro = true
@@ -18,3 +25,4 @@ syn = { version = "1", features = ["extra-traits", "full", "visit", "visit-mut"]
 [dev-dependencies]
 macrotest = "1"
 trybuild = "1"
+ndarray = "0.15"

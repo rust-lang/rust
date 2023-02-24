@@ -38,7 +38,6 @@ members = [
   "src/tools/html-checker",
   "src/tools/bump-stage0",
   "src/tools/lld-wrapper",
-  "library/autodiff",
 ]
 
 exclude = [
@@ -55,6 +54,7 @@ exclude = [
   "src/tools/x",
   # stdarch has its own Cargo workspace
   "library/stdarch",
+  "library/autodiff",
 ]
 
 [profile.release.package.compiler_builtins]

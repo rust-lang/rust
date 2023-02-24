@@ -556,7 +556,7 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
         let child = typetree_from_ty(inner_ty, tcx, depth + 1);
 
         let tt = Type { offset: -1, kind: Kind::Pointer, size: 8, child, };
-        println!("{:depth$} add indirection {:?}", "", tt);
+        //println!("{:depth$} add indirection {:?}", "", tt);
 
         return TypeTree(vec![tt]);
     }
@@ -604,7 +604,7 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
                 FieldsShape::Arbitrary{ offsets: o, memory_index: m } => (o,m),
                 _ => panic!(""),
             };
-            println!("{:depth$} combine fields", "");
+            //println!("{:depth$} combine fields", "");
 
             let fields = adt_def.all_fields();
             let fields = fields.into_iter().zip(offsets.into_iter()).filter_map(|(field, offset)| {
@@ -627,13 +627,13 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
 
                 //inner_tt.offset = offset;
 
-                println!("{:depth$} -> {:?}", "", child);
+                //println!("{:depth$} -> {:?}", "", child);
 
                 Some(child)
             }).flatten().collect::<Vec<Type>>();
 
             let ret_tt = TypeTree(fields);
-            println!("{:depth$} into {:?}", "", ret_tt);
+            //println!("{:depth$} into {:?}", "", ret_tt);
             return ret_tt;
         } else {
             unimplemented!("adt that isn't a struct");
@@ -664,7 +664,7 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
                 x.0.into_iter().map(move |x| x.add_offset((idx * size) as isize))
             ).flatten().collect());
 
-        println!("{:depth$} repeated array into {:?}", "", tt);
+        //println!("{:depth$} repeated array into {:?}", "", tt);
 
         return tt;
     }
@@ -676,7 +676,7 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
         return subtt;
     }
 
-    println!("Warning: create empty typetree for {}", ty);
+    //println!("Warning: create empty typetree for {}", ty);
     typetree_empty()
 }
 
