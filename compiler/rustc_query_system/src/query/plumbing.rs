@@ -579,7 +579,7 @@ pub(crate) fn incremental_verify_ich<Tcx, V: Debug>(
 where
     Tcx: DepContext,
 {
-    assert!(
+    debug_assert!(
         tcx.dep_graph().is_green(dep_node),
         "fingerprint for green query instance not loaded from cache: {dep_node:?}",
     );
