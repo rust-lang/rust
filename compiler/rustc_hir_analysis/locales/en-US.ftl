@@ -132,3 +132,26 @@ hir_analysis_where_clause_on_main = `main` function is not allowed to have a `wh
 
 hir_analysis_track_caller_on_main = `main` function is not allowed to be `#[track_caller]`
     .label = `main` function is not allowed to be `#[track_caller]`
+
+hir_analysis_start_not_track_caller = `start` is not allowed to be `#[track_caller]`
+    .label = `start` is not allowed to be `#[track_caller]`
+
+hir_analysis_start_not_async = `start` is not allowed to be `async`
+    .label = `start` is not allowed to be `async`
+
+hir_analysis_start_function_where = start function is not allowed to have a `where` clause
+    .label = start function cannot have a `where` clause
+
+hir_analysis_start_function_parameters = start function is not allowed to have type parameters
+    .label = start function cannot have type parameters
+
+hir_analysis_main_function_return_type_generic = `main` function return type is not allowed to have generic parameters
+
+hir_analysis_main_function_async = `main` function is not allowed to be `async`
+    .label = `main` function is not allowed to be `async`
+
+hir_analysis_main_function_generic_parameters = `main` function is not allowed to have generic parameters
+    .label = `main` cannot have generic parameters
+
+hir_analysis_variadic_function_compatible_convention = C-variadic function must have a compatible calling convention, like {$conventions}
+    .label = C-variadic function must have a compatible calling convention
