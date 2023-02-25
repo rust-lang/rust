@@ -745,3 +745,7 @@ passes_proc_macro_invalid_abi = proc macro functions may not be `extern "{$abi}"
 passes_proc_macro_unsafe = proc macro functions may not be `unsafe`
 
 passes_skipping_const_checks = skipping const checks
+
+passes_invalid_macro_export_arguments = `{$name}` isn't a valid `#[macro_export]` argument
+
+passes_invalid_macro_export_arguments_too_many_items = `#[macro_export]` can only take 1 or 0 arguments

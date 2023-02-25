@@ -641,8 +641,16 @@ pub struct MacroUse {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(passes_macro_export)]
-pub struct MacroExport;
+pub enum MacroExport {
+    #[diag(passes_macro_export)]
+    Normal,
+
+    #[diag(passes_invalid_macro_export_arguments)]
+    UnknownItem { name: Symbol },
+
+    #[diag(passes_invalid_macro_export_arguments_too_many_items)]
+    TooManyItems,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(passes_plugin_registrar)]
