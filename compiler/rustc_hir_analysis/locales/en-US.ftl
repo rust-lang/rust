@@ -131,7 +131,7 @@ hir_analysis_where_clause_on_main = `main` function is not allowed to have a `wh
     .label = `main` cannot have a `where` clause
 
 hir_analysis_track_caller_on_main = `main` function is not allowed to be `#[track_caller]`
-    .label = `main` function is not allowed to be `#[track_caller]`
+    .suggestion = remove this annotation
 
 hir_analysis_start_not_track_caller = `start` is not allowed to be `#[track_caller]`
     .label = `start` is not allowed to be `#[track_caller]`
