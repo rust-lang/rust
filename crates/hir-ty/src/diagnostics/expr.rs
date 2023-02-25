@@ -5,11 +5,11 @@
 use std::fmt;
 use std::sync::Arc;
 
+use either::Either;
 use hir_def::lang_item::LangItem;
 use hir_def::{resolver::HasResolver, AdtId, AssocItemId, DefWithBodyId, HasModule};
 use hir_def::{ItemContainerId, Lookup};
 use hir_expand::name;
-use itertools::Either;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use typed_arena::Arena;

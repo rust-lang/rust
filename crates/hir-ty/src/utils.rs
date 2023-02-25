@@ -5,6 +5,7 @@ use std::iter;
 
 use base_db::CrateId;
 use chalk_ir::{cast::Cast, fold::Shift, BoundVar, DebruijnIndex};
+use either::Either;
 use hir_def::{
     db::DefDatabase,
     generics::{
@@ -19,7 +20,6 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use intern::Interned;
-use itertools::Either;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
 

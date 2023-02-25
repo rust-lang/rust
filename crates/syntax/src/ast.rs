@@ -13,7 +13,7 @@ pub mod prec;
 
 use std::marker::PhantomData;
 
-use itertools::Either;
+use either::Either;
 
 use crate::{
     syntax_node::{SyntaxNode, SyntaxNodeChildren, SyntaxToken},

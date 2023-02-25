@@ -17,6 +17,7 @@ use std::ops::Index;
 use std::sync::Arc;
 
 use chalk_ir::{cast::Cast, ConstValue, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
+use either::Either;
 use hir_def::{
     body::Body,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
@@ -31,7 +32,6 @@ use hir_def::{
     ItemContainerId, Lookup, TraitId, TypeAliasId, VariantId,
 };
 use hir_expand::name::name;
-use itertools::Either;
 use la_arena::ArenaMap;
 use rustc_hash::FxHashMap;
 use stdx::always;
