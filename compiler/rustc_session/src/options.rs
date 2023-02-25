@@ -1489,6 +1489,8 @@ options! {
         "keep hygiene data after analysis (default: no)"),
     layout_seed: Option<u64> = (None, parse_opt_number, [TRACKED],
         "seed layout randomization"),
+    link_directives: bool = (true, parse_bool, [TRACKED],
+        "honor #[link] directives in the compiled crate (default: yes)"),
     link_native_libraries: bool = (true, parse_bool, [UNTRACKED],
         "link native libraries in the linker invocation (default: yes)"),
     link_only: bool = (false, parse_bool, [TRACKED],
