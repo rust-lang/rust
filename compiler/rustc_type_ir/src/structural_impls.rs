@@ -13,17 +13,22 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 ///////////////////////////////////////////////////////////////////////////
-// Atomic structs
-//
-// For things that don't carry any arena-allocated data (and are
-// copy...), just add them to this list.
-
-TrivialTypeTraversalImpls! {
-    (),
-}
-
-///////////////////////////////////////////////////////////////////////////
 // Traversable implementations for upstream types.
+
+// `()` is (obviously) a no-op traversal and therefore the auto-deref specialisation normally
+// negates any need for explicit implementation, however `ProjectionElem`'s implementation
+// requires its second type parameter to implement these traits and (annoyingly)
+// `ProjectionKind` (currently) uses unit type for that parameter.
+impl<I: Interner> TypeFoldable<I> for () {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, _: &mut F) -> Result<(), F::Error> {
+        Ok(())
+    }
+}
+impl<I: Interner> TypeVisitable<I> for () {
+    fn visit_with<V: TypeVisitor<I>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
+        ControlFlow::Continue(())
+    }
+}
 
 // We provide implementations for 2- and 3-element tuples, however (absent specialisation)
 // we can only provide for one case: we choose our implementations to be where all elements

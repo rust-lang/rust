@@ -235,6 +235,7 @@ CloneLiftImpls! {
     crate::traits::Reveal,
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::AdtKind,
+    crate::ty::BoundConstness,
     crate::ty::BoundRegionKind,
     crate::ty::AssocItem,
     crate::ty::AssocKind,
@@ -259,14 +260,6 @@ CloneLiftImpls! {
     rustc_target::abi::Size,
     ty::BoundVar,
     ty::Placeholder<ty::BoundVar>,
-}
-
-// For things about which the type library does not know, or does not
-// provide any traversal implementations, we need to provide both a Lift
-// implementation and traversal implementations (the latter only for
-// TyCtxt<'_> interners).
-TrivialTypeTraversalAndLiftImpls! {
-    crate::ty::BoundConstness,
 }
 
 CloneLiftImpls! {
