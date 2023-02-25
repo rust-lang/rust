@@ -31,6 +31,8 @@
 
 #include "RustDebugInfo.h"
 
+using namespace llvm;
+
 TypeTree parseDIType(DIType &Type, Instruction &I, DataLayout &DL);
 
 TypeTree parseDIType(DIBasicType &Type, Instruction &I, DataLayout &DL) {

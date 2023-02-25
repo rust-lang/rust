@@ -55,6 +55,8 @@
 
 #include <math.h>
 
+using namespace llvm;
+
 extern "C" {
 /// Maximum offset for type trees to keep
 llvm::cl::opt<int> MaxIntOffset("enzyme-max-int-offset", cl::init(100),
