@@ -69,7 +69,7 @@ pub trait Traversable {
 
 impl Traversable for Foldable {
     fn traversable(interner: &impl ToTokens) -> TokenStream {
-        quote! { ::rustc_middle::ty::fold::TypeFoldable<#interner> }
+        quote! { ::rustc_type_ir::fold::TypeFoldable<#interner> }
     }
     fn supertraits(interner: &impl ToTokens) -> TokenStream {
         Visitable::traversable(interner)
@@ -78,7 +78,7 @@ impl Traversable for Foldable {
         if noop {
             bind
         } else {
-            quote! { ::rustc_middle::ty::prefer_noop_traversal_if_applicable!(#bind.try_fold_with(folder))? }
+            quote! { ::rustc_type_ir::prefer_noop_traversal_if_applicable!(#bind.try_fold_with(folder))? }
         }
     }
     fn arm(
@@ -94,7 +94,7 @@ impl Traversable for Foldable {
         body: impl ToTokens,
     ) -> TokenStream {
         quote! {
-            fn try_fold_with<#traverser: ::rustc_middle::ty::fold::FallibleTypeFolder<#interner>>(
+            fn try_fold_with<#traverser: ::rustc_type_ir::fold::FallibleTypeFolder<#interner>>(
                 self,
                 folder: &mut #traverser
             ) -> ::core::result::Result<Self, #traverser::Error> {
@@ -106,7 +106,7 @@ impl Traversable for Foldable {
 
 impl Traversable for Visitable {
     fn traversable(interner: &impl ToTokens) -> TokenStream {
-        quote! { ::rustc_middle::ty::visit::TypeVisitable<#interner> }
+        quote! { ::rustc_type_ir::visit::TypeVisitable<#interner> }
     }
     fn supertraits(_: &impl ToTokens) -> TokenStream {
         quote! { ::core::clone::Clone + ::core::fmt::Debug }
@@ -115,7 +115,7 @@ impl Traversable for Visitable {
         if noop {
             quote! {}
         } else {
-            quote! { ::rustc_middle::ty::prefer_noop_traversal_if_applicable!(#bind.visit_with(visitor))?; }
+            quote! { ::rustc_type_ir::prefer_noop_traversal_if_applicable!(#bind.visit_with(visitor))?; }
         }
     }
     fn arm(
@@ -130,7 +130,7 @@ impl Traversable for Visitable {
         body: impl ToTokens,
     ) -> TokenStream {
         quote! {
-            fn visit_with<#traverser: ::rustc_middle::ty::visit::TypeVisitor<#interner>>(
+            fn visit_with<#traverser: ::rustc_type_ir::visit::TypeVisitor<#interner>>(
                 &self,
                 visitor: &mut #traverser
             ) -> ::core::ops::ControlFlow<#traverser::BreakTy> {
@@ -144,7 +144,7 @@ impl Traversable for Visitable {
 pub fn traversable_derive<T: Traversable>(
     mut structure: synstructure::Structure<'_>,
 ) -> TokenStream {
-    let skip_traversal = quote! { ::rustc_middle::ty::SkipTraversalAutoImplOnly };
+    let skip_traversal = quote! { ::rustc_type_ir::SkipTraversalAutoImplOnly };
 
     let interner = gen_interner(&mut structure);
     let traverser = gen_param("T", &structure.ast().generics);
