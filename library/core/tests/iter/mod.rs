@@ -102,3 +102,50 @@ pub fn extend_for_unit() {
     }
     assert_eq!(x, 5);
 }
+
+#[test]
+#[cfg(not(bootstrap))]
+fn test_const_iter_slice() {
+    const ARRAY: [usize; 5] = [1, 2, 3, 4, 5];
+    const X: usize = {
+        let mut sum = 0;
+        for val in ARRAY.iter() {
+            sum += val;
+        }
+        sum
+    };
+    //FIXME(const_trait_impl): Change to .sum once it is const
+    const fn sum(a: usize, b: &usize) -> usize {
+        a + b
+    }
+    const Y: usize = ARRAY.iter().fold(0, sum);
+
+    const _: () = assert!(X == 15);
+    assert_eq!(15, X);
+    const _: () = assert!(Y == 15);
+    assert_eq!(15, Y);
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+fn test_const_iter_zst_slice() {
+    const X: usize = {
+        let arr = [(); usize::MAX];
+        let mut sum = 0;
+        for _ in arr.iter() {
+            sum += 1;
+        }
+        sum
+    };
+    assert_eq!(usize::MAX, X);
+
+    const Y: usize = {
+        let arr = [(); usize::MAX - 1];
+        let mut sum = 0;
+        for _ in arr.iter() {
+            sum += 1;
+        }
+        sum
+    };
+    assert_eq!(usize::MAX - 1, Y);
+}

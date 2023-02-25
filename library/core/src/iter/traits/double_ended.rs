@@ -370,6 +370,28 @@ pub trait DoubleEndedIterator: Iterator {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+#[cfg(not(bootstrap))]
+impl<'a, I: ~const DoubleEndedIterator + ?Sized> const DoubleEndedIterator for &'a mut I {
+    fn next_back(&mut self) -> Option<I::Item> {
+        (**self).next_back()
+    }
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize>
+    where
+        Self::Item: ~const Destruct,
+    {
+        (**self).advance_back_by(n)
+    }
+    fn nth_back(&mut self, n: usize) -> Option<I::Item>
+    where
+        Self::Item: ~const Destruct,
+    {
+        (**self).nth_back(n)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
     fn next_back(&mut self) -> Option<I::Item> {
         (**self).next_back()

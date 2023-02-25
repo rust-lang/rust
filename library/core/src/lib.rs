@@ -98,6 +98,7 @@
 #![warn(multiple_supertrait_upcastable)]
 //
 // Library features:
+#![feature(const_assume)]
 #![feature(const_align_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_align_of_val_raw)]
@@ -143,6 +144,7 @@
 #![feature(const_ptr_sub_ptr)]
 #![feature(const_replace)]
 #![feature(const_result_drop)]
+#![feature(const_pointer_byte_offsets)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_is_null)]
 #![feature(const_ptr_read)]

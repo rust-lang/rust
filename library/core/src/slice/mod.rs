@@ -737,8 +737,9 @@ impl<T> [T] {
     /// assert_eq!(iterator.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
     #[inline]
-    pub fn iter(&self) -> Iter<'_, T> {
+    pub const fn iter(&self) -> Iter<'_, T> {
         Iter::new(self)
     }
 

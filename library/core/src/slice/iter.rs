@@ -4,12 +4,13 @@
 mod macros;
 
 use crate::cmp;
-use crate::cmp::Ordering;
 use crate::fmt;
 use crate::intrinsics::assume;
 use crate::iter::{
     FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, UncheckedIterator,
 };
+#[cfg(not(bootstrap))]
+use crate::marker::Destruct;
 use crate::marker::{PhantomData, Send, Sized, Sync};
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
@@ -18,7 +19,8 @@ use crate::ptr::NonNull;
 use super::{from_raw_parts, from_raw_parts_mut};
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a [T] {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<'a, T> const IntoIterator for &'a [T] {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -80,8 +82,9 @@ unsafe impl<T: Sync> Sync for Iter<'_, T> {}
 unsafe impl<T: Sync> Send for Iter<'_, T> {}
 
 impl<'a, T> Iter<'a, T> {
+    #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
     #[inline]
-    pub(super) fn new(slice: &'a [T]) -> Self {
+    pub(super) const fn new(slice: &'a [T]) -> Self {
         let ptr = slice.as_ptr();
         // SAFETY: Similar to `IterMut::new`.
         unsafe {
@@ -121,21 +124,23 @@ impl<'a, T> Iter<'a, T> {
     #[must_use]
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     #[inline]
-    pub fn as_slice(&self) -> &'a [T] {
+    #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+    pub const fn as_slice(&self) -> &'a [T] {
         self.make_slice()
     }
 }
 
 iterator! {struct Iter -> *const T, &'a T, const, {/* no mut */}, {
-    fn is_sorted_by<F>(self, mut compare: F) -> bool
-    where
-        Self: Sized,
-        F: FnMut(&Self::Item, &Self::Item) -> Option<Ordering>,
-    {
-        self.as_slice().windows(2).all(|w| {
-            compare(&&w[0], &&w[1]).map(|o| o != Ordering::Greater).unwrap_or(false)
-        })
-    }
+    // FIXME(const_trait_impl)
+    // fn is_sorted_by<F>(self, mut compare: F) -> bool
+    // where
+    //     Self: Sized,
+    //     F: FnMut(&Self::Item, &Self::Item) -> Option<Ordering>,
+    // {
+    //     self.as_slice().windows(2).all(|w| {
+    //         compare(&&w[0], &&w[1]).map(|o| o != Ordering::Greater).unwrap_or(false)
+    //     })
+    // }
 }}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -202,7 +207,7 @@ unsafe impl<T: Send> Send for IterMut<'_, T> {}
 
 impl<'a, T> IterMut<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a mut [T]) -> Self {
+    pub(super) const fn new(slice: &'a mut [T]) -> Self {
         let ptr = slice.as_mut_ptr();
         // SAFETY: There are several things here:
         //

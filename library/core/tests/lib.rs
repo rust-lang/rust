@@ -21,6 +21,7 @@
 #![feature(const_maybe_uninit_assume_init_read)]
 #![feature(const_nonnull_new)]
 #![feature(const_num_from_num)]
+#![feature(const_ops)]
 #![feature(const_pointer_byte_offsets)]
 #![feature(const_pointer_is_aligned)]
 #![feature(const_ptr_as_ref)]
