@@ -22,7 +22,7 @@ macro_rules! register_diagnostics {
         pub fn error_codes() -> Vec<(&'static str, Option<&'static str>)> {
             let mut errors: Vec<(&str, Option<&str>)> = vec![
                 $((stringify!($error_code), Some($message)),)+
-                $((stringify!($undocumented), None),)+
+                $((stringify!($undocumented), None),)*
             ];
             errors.sort();
             errors
