@@ -759,7 +759,7 @@ pub enum LocalKind {
     ReturnPointer,
 }
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct VarBindingForm<'tcx> {
     /// Is variable bound via `x`, `mut x`, `ref x`, or `ref mut x`?
     pub binding_mode: ty::BindingMode,
@@ -776,12 +776,16 @@ pub struct VarBindingForm<'tcx> {
     /// (a) the right-hand side isn't evaluated as a place expression.
     /// (b) it gives a way to separate this case from the remaining cases
     ///     for diagnostics.
+    // FIXME: provide actual justification for `#[skip_traversal]`, or else remove
+    #[skip_traversal(
+        despite_potential_miscompilation_because = "potential oversight since 0193d1f"
+    )]
     pub opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
     /// The span of the pattern in which this variable was bound.
     pub pat_span: Span,
 }
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum BindingForm<'tcx> {
     /// This is a binding for a non-`self` binding, or a `self` that has an explicit type.
     Var(VarBindingForm<'tcx>),
@@ -791,7 +795,7 @@ pub enum BindingForm<'tcx> {
     RefForGuard,
 }
 
-TrivialTypeTraversalImpls! { BindingForm<'tcx> }
+TrivialLiftImpls! { BindingForm<'tcx> }
 
 mod binding_form_impl {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
