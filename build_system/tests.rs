@@ -137,7 +137,9 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         LIBCORE_TESTS.clean(&runner.dirs);
 
         if runner.is_native {
-            spawn_and_wait(LIBCORE_TESTS.test(&runner.target_compiler, &runner.dirs));
+            let mut test_cmd = LIBCORE_TESTS.test(&runner.target_compiler, &runner.dirs);
+            test_cmd.arg("--").arg("-q");
+            spawn_and_wait(test_cmd);
         } else {
             eprintln!("Cross-Compiling: Not running tests");
             let mut build_cmd = LIBCORE_TESTS.build(&runner.target_compiler, &runner.dirs);
