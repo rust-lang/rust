@@ -1492,7 +1492,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => self.check_expr_with_expectation(&e, NoExpectation),
         });
-        let tuple = self.tcx.mk_tup(elt_ts_iter);
+        let tuple = self.tcx.mk_tup_from_iter(elt_ts_iter);
         if let Err(guar) = tuple.error_reported() {
             self.tcx.ty_error(guar)
         } else {

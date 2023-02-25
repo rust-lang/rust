@@ -574,7 +574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // `<Foo as Iterator>::Item = String`.
                         let projection_ty = pred.skip_binder().projection_ty;
 
-                        let substs_with_infer_self = tcx.mk_substs(
+                        let substs_with_infer_self = tcx.mk_substs_from_iter(
                             iter::once(tcx.mk_ty_var(ty::TyVid::from_u32(0)).into())
                                 .chain(projection_ty.substs.iter().skip(1)),
                         );
@@ -1252,7 +1252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Adt(def, substs) = target_ty.kind() {
                 // If there are any inferred arguments, (`{integer}`), we should replace
                 // them with underscores to allow the compiler to infer them
-                let infer_substs = self.tcx.mk_substs(substs.into_iter().map(|arg| {
+                let infer_substs = self.tcx.mk_substs_from_iter(substs.into_iter().map(|arg| {
                     if !arg.is_suggestable(self.tcx, true) {
                         has_unsuggestable_args = true;
                         match arg.unpack() {

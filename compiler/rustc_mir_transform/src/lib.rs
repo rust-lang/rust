@@ -192,7 +192,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 let arguments = (0..num_args).map(|x| {
                     let mut place_elems = place_elems.to_vec();
                     place_elems.push(ProjectionElem::Field(x.into(), fields[x]));
-                    let projection = tcx.intern_place_elems(&place_elems);
+                    let projection = tcx.mk_place_elems(&place_elems);
                     let place = Place {
                         local: place.local,
                         projection,

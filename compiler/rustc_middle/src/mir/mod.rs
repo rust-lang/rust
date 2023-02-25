@@ -1620,7 +1620,7 @@ impl<'tcx> Place<'tcx> {
             &v
         };
 
-        Place { local: self.local, projection: tcx.intern_place_elems(new_projections) }
+        Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
     }
 }
 
@@ -2530,13 +2530,14 @@ impl<'tcx> ConstantKind<'tcx> {
         {
             InternalSubsts::identity_for_item(tcx, parent_did.to_def_id())
         } else {
-            tcx.intern_substs(&[])
+            List::empty()
         };
         debug!(?parent_substs);
 
         let did = def.did.to_def_id();
         let child_substs = InternalSubsts::identity_for_item(tcx, did);
-        let substs = tcx.mk_substs(parent_substs.into_iter().chain(child_substs.into_iter()));
+        let substs =
+            tcx.mk_substs_from_iter(parent_substs.into_iter().chain(child_substs.into_iter()));
         debug!(?substs);
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);

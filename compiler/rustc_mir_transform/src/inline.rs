@@ -888,7 +888,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
         location: Location,
     ) {
         if let ProjectionElem::Field(f, ty) = elem {
-            let parent = Place { local, projection: self.tcx.intern_place_elems(proj_base) };
+            let parent = Place { local, projection: self.tcx.mk_place_elems(proj_base) };
             let parent_ty = parent.ty(&self.callee_body.local_decls, self.tcx);
             let check_equal = |this: &mut Self, f_ty| {
                 if !util::is_equal_up_to_subtyping(this.tcx, this.param_env, ty, f_ty) {

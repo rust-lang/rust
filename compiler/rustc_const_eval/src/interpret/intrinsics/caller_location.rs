@@ -96,7 +96,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let loc_ty = self
             .tcx
             .type_of(self.tcx.require_lang_item(LangItem::PanicLocation, None))
-            .subst(*self.tcx, self.tcx.intern_substs(&[self.tcx.lifetimes.re_erased.into()]));
+            .subst(*self.tcx, self.tcx.mk_substs(&[self.tcx.lifetimes.re_erased.into()]));
         let loc_layout = self.layout_of(loc_ty).unwrap();
         let location = self.allocate(loc_layout, MemoryKind::CallerLocation).unwrap();
 

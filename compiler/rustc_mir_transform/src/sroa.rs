@@ -122,7 +122,7 @@ impl<'tcx> ReplacementMap<'tcx> {
         let &[PlaceElem::Field(f, _), ref rest @ ..] = place.projection else { return None; };
         let fields = self.fragments[place.local].as_ref()?;
         let (_, new_local) = fields[f]?;
-        Some(Place { local: new_local, projection: tcx.intern_place_elems(&rest) })
+        Some(Place { local: new_local, projection: tcx.mk_place_elems(&rest) })
     }
 
     fn place_fragments(

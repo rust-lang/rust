@@ -281,7 +281,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
     let elaborated_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&predicates),
+        tcx.mk_predicates(&predicates),
         unnormalized_env.reveal(),
         unnormalized_env.constness(),
     );
@@ -333,10 +333,9 @@ pub fn normalize_param_env_or_error<'tcx>(
     // Not sure whether it is better to include the unnormalized TypeOutlives predicates
     // here. I believe they should not matter, because we are ignoring TypeOutlives param-env
     // predicates here anyway. Keeping them here anyway because it seems safer.
-    let outlives_env: Vec<_> =
-        non_outlives_predicates.iter().chain(&outlives_predicates).cloned().collect();
+    let outlives_env = non_outlives_predicates.iter().chain(&outlives_predicates).cloned();
     let outlives_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&outlives_env),
+        tcx.mk_predicates_from_iter(outlives_env),
         unnormalized_env.reveal(),
         unnormalized_env.constness(),
     );
@@ -356,7 +355,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
     ty::ParamEnv::new(
-        tcx.intern_predicates(&predicates),
+        tcx.mk_predicates(&predicates),
         unnormalized_env.reveal(),
         unnormalized_env.constness(),
     )

@@ -910,7 +910,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             std::iter::once(self.get_variant(&kind, item_id, did)).collect()
         };
 
-        tcx.alloc_adt_def(did, adt_kind, variants, repr)
+        tcx.mk_adt_def(did, adt_kind, variants, repr)
     }
 
     fn get_generics(self, item_id: DefIndex, sess: &Session) -> ty::Generics {

@@ -62,7 +62,9 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Substitution<RustInterner<'tcx>>> for Subst
 
 impl<'tcx> LowerInto<'tcx, SubstsRef<'tcx>> for &chalk_ir::Substitution<RustInterner<'tcx>> {
     fn lower_into(self, interner: RustInterner<'tcx>) -> SubstsRef<'tcx> {
-        interner.tcx.mk_substs(self.iter(interner).map(|subst| subst.lower_into(interner)))
+        interner
+            .tcx
+            .mk_substs_from_iter(self.iter(interner).map(|subst| subst.lower_into(interner)))
     }
 }
 
@@ -487,7 +489,7 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
             TyKind::InferenceVar(_, _) => unimplemented!(),
             TyKind::Dyn(_) => unimplemented!(),
         };
-        interner.tcx.mk_ty(kind)
+        interner.tcx.mk_ty_from_kind(kind)
     }
 }
 
