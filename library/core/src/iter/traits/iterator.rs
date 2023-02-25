@@ -789,6 +789,7 @@ pub trait Iterator {
     ///     println!("{x}");
     /// }
     /// ```
+    #[rustc_diagnostic_item = "IteratorMap"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_do_not_const_check]
