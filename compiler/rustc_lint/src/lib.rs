@@ -63,6 +63,7 @@ mod late;
 mod let_underscore;
 mod levels;
 mod lints;
+mod map_unit_fn;
 mod methods;
 mod multiple_supertrait_upcastable;
 mod non_ascii_idents;
@@ -100,6 +101,7 @@ use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
 use internal::*;
 use let_underscore::*;
+use map_unit_fn::*;
 use methods::*;
 use multiple_supertrait_upcastable::*;
 use non_ascii_idents::*;
@@ -239,6 +241,7 @@ late_lint_methods!(
             NamedAsmLabels: NamedAsmLabels,
             OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
             MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
+            MapUnitFn: MapUnitFn,
         ]
     ]
 );
@@ -298,7 +301,8 @@ fn register_builtins(store: &mut LintStore) {
         UNUSED_LABELS,
         UNUSED_PARENS,
         UNUSED_BRACES,
-        REDUNDANT_SEMICOLONS
+        REDUNDANT_SEMICOLONS,
+        MAP_UNIT_FN
     );
 
     add_lint_group!("let_underscore", LET_UNDERSCORE_DROP, LET_UNDERSCORE_LOCK);
