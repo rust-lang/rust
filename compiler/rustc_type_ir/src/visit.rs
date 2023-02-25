@@ -44,9 +44,10 @@
 use rustc_data_structures::sync::Lrc;
 use rustc_index::{Idx, IndexVec};
 use std::fmt;
+use std::marker::PhantomData;
 use std::ops::ControlFlow;
 
-use crate::Interner;
+use crate::{Interner, TriviallyTraverses};
 
 /// This trait is implemented for every type that can be visited,
 /// providing the skeleton of the traversal.
@@ -117,6 +118,40 @@ pub trait TypeVisitor<I: Interner>: Sized {
         I::Predicate: TypeSuperVisitable<I>,
     {
         p.super_visit_with(self)
+    }
+}
+
+pub trait SpecTypeVisitable {
+    type Interner: Interner;
+    type Item: ?Sized;
+    fn spec_visit_with<V: TypeVisitor<Self::Interner>>(
+        self,
+        value: &Self::Item,
+        visitor: &mut V,
+    ) -> ControlFlow<V::BreakTy>;
+}
+
+impl<I: Interner, T: ?Sized + TypeVisitable<I>> SpecTypeVisitable for PhantomData<(I, &T)> {
+    type Interner = I;
+    type Item = T;
+
+    #[inline(always)]
+    fn spec_visit_with<V: TypeVisitor<I>>(
+        self,
+        value: &T,
+        visitor: &mut V,
+    ) -> ControlFlow<V::BreakTy> {
+        value.visit_with(visitor)
+    }
+}
+
+impl<I: TriviallyTraverses<T>, T: ?Sized> SpecTypeVisitable for &PhantomData<(I, &T)> {
+    type Interner = I;
+    type Item = T;
+
+    #[inline(always)]
+    fn spec_visit_with<V: TypeVisitor<I>>(self, _: &T, _: &mut V) -> ControlFlow<V::BreakTy> {
+        ControlFlow::Continue(())
     }
 }
 
