@@ -611,8 +611,8 @@ function initSearch(rawSearchIndex) {
      *
      * The supported syntax by this parser is as follow:
      *
-     * ident = *(ALPHA / DIGIT / "_") [!]
-     * path = ident *(DOUBLE-COLON ident)
+     * ident = *(ALPHA / DIGIT / "_")
+     * path = ident *(DOUBLE-COLON ident) [!]
      * arg = path [generics]
      * arg-without-generic = path
      * type-sep = COMMA/WS *(COMMA/WS)
