@@ -400,6 +400,17 @@ impl<T: fmt::Debug> fmt::Debug for BinaryHeap<T> {
     }
 }
 
+struct RebuildOnDrop<'a, T: Ord> {
+    heap: &'a mut BinaryHeap<T>,
+    rebuild_from: usize,
+}
+
+impl<'a, T: Ord> Drop for RebuildOnDrop<'a, T> {
+    fn drop(&mut self) {
+        self.heap.rebuild_tail(self.rebuild_from);
+    }
+}
+
 impl<T: Ord> BinaryHeap<T> {
     /// Creates an empty `BinaryHeap` as a max-heap.
     ///
@@ -851,30 +862,19 @@ impl<T: Ord> BinaryHeap<T> {
     where
         F: FnMut(&T) -> bool,
     {
-        struct RebuildOnDrop<'a, T: Ord> {
-            heap: &'a mut BinaryHeap<T>,
-            first_removed: usize,
-        }
-
-        let mut guard = RebuildOnDrop { first_removed: self.len(), heap: self };
-
+        // rebuild_start will be updated to the first touched element below, and the rebuild will
+        // only be done for the tail.
+        let mut guard = RebuildOnDrop { rebuild_from: self.len(), heap: self };
         let mut i = 0;
+
         guard.heap.data.retain(|e| {
             let keep = f(e);
-            if !keep && i < guard.first_removed {
-                guard.first_removed = i;
+            if !keep && i < guard.rebuild_from {
+                guard.rebuild_from = i;
             }
             i += 1;
             keep
         });
-
-        impl<'a, T: Ord> Drop for RebuildOnDrop<'a, T> {
-            fn drop(&mut self) {
-                // data[..first_removed] is untouched, so we only need to
-                // rebuild the tail:
-                self.heap.rebuild_tail(self.first_removed);
-            }
-        }
     }
 }
 
