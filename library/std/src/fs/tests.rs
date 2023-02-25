@@ -1595,3 +1595,19 @@ fn test_read_dir_infinite_loop() {
     // Check for duplicate errors
     assert!(dir.filter(|e| e.is_err()).take(2).count() < 2);
 }
+
+#[test]
+fn rename_directory() {
+    let tmpdir = tmpdir();
+    let old_path = tmpdir.join("foo/bar/baz");
+    fs::create_dir_all(&old_path).unwrap();
+    let test_file = &old_path.join("temp.txt");
+
+    File::create(test_file).unwrap();
+
+    let new_path = tmpdir.join("quux/blat");
+    fs::create_dir_all(&new_path).unwrap();
+    fs::rename(&old_path, &new_path.join("newdir")).unwrap();
+    assert!(new_path.join("newdir").is_dir());
+    assert!(new_path.join("newdir/temp.txt").exists());
+}
