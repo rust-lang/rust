@@ -49,18 +49,28 @@ impl VisitMut for Normalizer {
 
         let n = if i.leading_colon.is_some() && i.segments.len() >= 2 {
             let segment = &i.segments[0];
-            if *segment == parse_quote! { rustc_middle } {
-                if i.segments.len() >= 3 && i.segments[1] == parse_quote! { ty } {
-                    let segment = &i.segments[2];
-                    if *segment == parse_quote! { fold } || *segment == parse_quote! { visit } {
-                        3
-                    } else {
-                        2
-                    }
-                } else {
+            if *segment == parse_quote! { rustc_type_ir } {
+                let segment = &i.segments[1];
+                if i.segments.len() > 2 && *segment == parse_quote! { fold }
+                    || *segment == parse_quote! { visit }
+                {
+                    2
+                } else if *segment == parse_quote! { Interner }
+                    || segment.ident == "TriviallyTraverses"
+                    || *segment == parse_quote! { noop_if_trivially_traversable }
+                {
                     1
+                } else {
+                    return;
                 }
-            } else if *segment == parse_quote! { core } {
+            } else if *segment == parse_quote! { rustc_middle } {
+                let segment = &i.segments[1];
+                if i.segments.len() > 2 && *segment == parse_quote! { ty } {
+                    2
+                } else {
+                    return;
+                }
+            } else if i.segments.len() > 2 && *segment == parse_quote! { core } {
                 let segment = &i.segments[1];
                 if *segment == parse_quote! { ops } {
                     2
