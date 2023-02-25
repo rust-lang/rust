@@ -475,7 +475,7 @@ rustc_queries! {
         }
     }
 
-    query closure_captures(key: LocalDefId) -> &'tcx [&'tcx ty::CapturedPlace<'tcx>] {
+    query closure_typeinfo(key: LocalDefId) -> ty::ClosureTypeInfo<'tcx> {
         desc {
             |tcx| "finding symbols for captures of closure `{}`",
             tcx.def_path_str(key.to_def_id())

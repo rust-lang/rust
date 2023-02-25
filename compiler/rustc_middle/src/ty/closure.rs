@@ -6,7 +6,6 @@ use crate::{mir, ty};
 use std::fmt::Write;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, LangItem};
 use rustc_span::symbol::Ident;
@@ -234,14 +233,39 @@ impl<'tcx> CapturedPlace<'tcx> {
     }
 }
 
-fn closure_captures<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def: LocalDefId,
-) -> &'tcx [&'tcx ty::CapturedPlace<'tcx>] {
-    let (DefKind::Closure | DefKind::Generator) = tcx.def_kind(def) else { return &[] };
+#[derive(Copy, Clone, Debug, HashStable)]
+pub struct ClosureTypeInfo<'tcx> {
+    user_provided_sig: ty::CanonicalPolyFnSig<'tcx>,
+    captures: &'tcx [&'tcx ty::CapturedPlace<'tcx>],
+    kind_origin: Option<&'tcx (Span, HirPlace<'tcx>)>,
+}
+
+fn closure_typeinfo<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ClosureTypeInfo<'tcx> {
+    debug_assert!(tcx.is_closure(def.to_def_id()));
     let typeck_results = tcx.typeck(def);
+    let user_provided_sig = typeck_results.user_provided_sigs[&def];
     let captures = typeck_results.closure_min_captures_flattened(def);
-    tcx.arena.alloc_from_iter(captures)
+    let captures = tcx.arena.alloc_from_iter(captures);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def);
+    let kind_origin = typeck_results.closure_kind_origins().get(hir_id);
+    ClosureTypeInfo { user_provided_sig, captures, kind_origin }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn closure_kind_origin(self, def_id: LocalDefId) -> Option<&'tcx (Span, HirPlace<'tcx>)> {
+        self.closure_typeinfo(def_id).kind_origin
+    }
+
+    pub fn closure_user_provided_sig(self, def_id: LocalDefId) -> ty::CanonicalPolyFnSig<'tcx> {
+        self.closure_typeinfo(def_id).user_provided_sig
+    }
+
+    pub fn closure_captures(self, def_id: LocalDefId) -> &'tcx [&'tcx ty::CapturedPlace<'tcx>] {
+        if !self.is_closure(def_id.to_def_id()) {
+            return &[];
+        };
+        self.closure_typeinfo(def_id).captures
+    }
 }
 
 /// Return true if the `proj_possible_ancestor` represents an ancestor path
@@ -434,5 +458,5 @@ impl BorrowKind {
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { closure_captures, ..*providers }
+    *providers = ty::query::Providers { closure_typeinfo, ..*providers }
 }
