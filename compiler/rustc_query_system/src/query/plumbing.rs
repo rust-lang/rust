@@ -347,6 +347,7 @@ where
     }
 }
 
+#[inline(never)]
 fn try_execute_query<Q, Qcx>(
     qcx: Qcx,
     span: Span,
