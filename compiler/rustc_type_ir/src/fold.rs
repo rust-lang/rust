@@ -290,6 +290,16 @@ impl<I: TriviallyTraverses<T>, T> SpecTypeFoldable for &PhantomData<(I, T)> {
 ///////////////////////////////////////////////////////////////////////////
 // Traversable implementations for upstream types.
 
+// `()` is (obviously) a no-op traversal and therefore the auto-deref specialisation normally
+// negates any need for explicit implementation, however there are implementations of
+// `QueryTypeOp` that have have unit `QueryResponse` -- and that associated type must be
+// traversable for some generic operations to work upon it.
+impl<I: Interner> TypeFoldable<I> for () {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, _: &mut F) -> Result<(), F::Error> {
+        Ok(())
+    }
+}
+
 // We provide implementations for 2- and 3-element tuples, however (absent specialisation)
 // we can only provide for one case: we choose our implementations to be where all elements
 // themselves implement the respective traits; thus if an element is a no-op traversal, it
