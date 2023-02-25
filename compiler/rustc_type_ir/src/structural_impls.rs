@@ -22,16 +22,20 @@ TrivialTypeTraversalImpls! {
     (),
     bool,
     usize,
-    u16,
-    u32,
-    u64,
-    String,
-    crate::DebruijnIndex,
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Traversal implementations.
+// Traversable implementations for upstream types.
 
+// We provide implementations for 2- and 3-element tuples, however (absent specialisation)
+// we can only provide for one case: we choose our implementations to be where all elements
+// themselves implement the respective traits; thus if an element is a no-op traversal, it
+// must provide explicit implementations even though the auto-deref specialisation normally
+// would normally negate any need. The derive macros can be used for this purpose however.
+//
+// Note that if all elements are no-op traversals then the tuple itself will auto-implement
+// the `SkipTraversalAutoImplOnly` trait and these implementations will be bypassed;
+// consequently explicit implementations on the element types would not then be required.
 impl<I: Interner, T: TypeFoldable<I>, U: TypeFoldable<I>> TypeFoldable<I> for (T, U) {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<(T, U), F::Error> {
         Ok((self.0.try_fold_with(folder)?, self.1.try_fold_with(folder)?))
@@ -70,19 +74,15 @@ impl<I: Interner, A: TypeVisitable<I>, B: TypeVisitable<I>, C: TypeVisitable<I>>
     }
 }
 
-EnumTypeTraversalImpl! {
-    impl<I, T> TypeFoldable<I> for Option<T> {
-        (Some)(a),
-        (None),
-    } where I: Interner, T: TypeFoldable<I>
-}
-EnumTypeTraversalImpl! {
-    impl<I, T> TypeVisitable<I> for Option<T> {
-        (Some)(a),
-        (None),
-    } where I: Interner, T: TypeVisitable<I>
-}
-
+// As noted above for tuples, (absent specialisation) we can only provide implementations for
+// `Result` in one case: we choose our implementations to be where both the `Ok` and `Err`
+// types themselves implement the respective traits; thus if one of those types is a no-op
+// traversal, it must provide explicit implementations even though the aute-deref specialisation
+// normally would negate any need. The derive macros can be used for this purpose however.
+//
+// Note that if both elements are no-op traversals then the `Result` itself will auto-implement
+// the `SkipTraversalAutoImplOnly` trait and these implementations will be bypassed;
+// consequently explicit implementations on the element types would not then be required.
 EnumTypeTraversalImpl! {
     impl<I, T, E> TypeFoldable<I> for Result<T, E> {
         (Ok)(a),
@@ -94,6 +94,19 @@ EnumTypeTraversalImpl! {
         (Ok)(a),
         (Err)(a),
     } where I: Interner, T: TypeVisitable<I>, E: TypeVisitable<I>,
+}
+
+EnumTypeTraversalImpl! {
+    impl<I, T> TypeFoldable<I> for Option<T> {
+        (Some)(a),
+        (None),
+    } where I: Interner, T: TypeFoldable<I>
+}
+EnumTypeTraversalImpl! {
+    impl<I, T> TypeVisitable<I> for Option<T> {
+        (Some)(a),
+        (None),
+    } where I: Interner, T: TypeVisitable<I>
 }
 
 impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Rc<T> {

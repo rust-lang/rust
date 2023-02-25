@@ -304,7 +304,7 @@ impl From<ErrorGuaranteed> for OverflowError {
     }
 }
 
-TrivialTypeTraversalAndLiftImpls! {
+CloneLiftImpls! {
     OverflowError,
 }
 

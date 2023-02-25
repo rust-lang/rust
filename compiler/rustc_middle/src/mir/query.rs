@@ -370,7 +370,7 @@ pub enum ConstraintCategory<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
+#[derive(TyEncodable, TyDecodable, HashStable)]
 pub enum ReturnConstraint {
     Normal,
     ClosureUpvar(Field),

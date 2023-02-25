@@ -27,7 +27,7 @@ impl From<ErrorGuaranteed> for ErrorHandled {
     }
 }
 
-TrivialTypeTraversalAndLiftImpls! {
+CloneLiftImpls! {
     ErrorHandled,
 }
 

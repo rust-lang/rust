@@ -8,7 +8,7 @@ use crate::mir::{Field, ProjectionKind};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use crate::ty::{self, AliasTy, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
+use crate::ty::{self, AliasTy, Lift, Term, TermKind, Ty, TyCtxt};
 use rustc_hir::def::Namespace;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_target::abi::TyAndLayout;
@@ -208,13 +208,7 @@ CloneLiftImpls! {
     u64,
     String,
     rustc_type_ir::DebruijnIndex,
-}
 
-// For things about which the type library does not know, or does not
-// provide any traversal implementations, we need to provide both a Lift
-// implementation and traversal implementations (the latter only for
-// TyCtxt<'_> interners).
-TrivialTypeTraversalAndLiftImpls! {
     ::rustc_target::abi::VariantIdx,
     crate::middle::region::Scope,
     crate::ty::FloatTy,
@@ -223,14 +217,10 @@ TrivialTypeTraversalAndLiftImpls! {
     ::rustc_ast::NodeId,
     ::rustc_span::symbol::Symbol,
     ::rustc_hir::def::Res,
-    ::rustc_hir::def_id::DefId,
-    ::rustc_hir::def_id::LocalDefId,
     ::rustc_hir::HirId,
     ::rustc_hir::MatchSource,
     ::rustc_hir::Mutability,
-    ::rustc_hir::Unsafety,
     ::rustc_target::asm::InlineAsmRegOrRegClass,
-    ::rustc_target::spec::abi::Abi,
     crate::mir::coverage::ExpressionOperandId,
     crate::mir::coverage::CounterValueReference,
     crate::mir::coverage::InjectedExpressionId,
@@ -241,11 +231,6 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::traits::Reveal,
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::AdtKind,
-    crate::ty::BoundConstness,
-    // Including `BoundRegionKind` is a *bit* dubious, but direct
-    // references to bound region appear in `ty::Error`, and aren't
-    // really meant to be folded. In general, we can only fold a fully
-    // general `Region`.
     crate::ty::BoundRegionKind,
     crate::ty::AssocItem,
     crate::ty::AssocKind,
@@ -262,7 +247,6 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::RegionVid,
     crate::ty::UniverseIndex,
     crate::ty::Variance,
-    ::rustc_span::Span,
     ::rustc_span::symbol::Ident,
     ::rustc_errors::ErrorGuaranteed,
     Field,
@@ -272,7 +256,20 @@ TrivialTypeTraversalAndLiftImpls! {
     ty::Placeholder<ty::BoundVar>,
 }
 
+// For things about which the type library does not know, or does not
+// provide any traversal implementations, we need to provide both a Lift
+// implementation and traversal implementations (the latter only for
+// TyCtxt<'_> interners).
 TrivialTypeTraversalAndLiftImpls! {
+    ::rustc_hir::def_id::DefId,
+    ::rustc_hir::def_id::LocalDefId,
+    ::rustc_hir::Unsafety,
+    ::rustc_target::spec::abi::Abi,
+    crate::ty::BoundConstness,
+    ::rustc_span::Span,
+}
+
+CloneLiftImpls! {
     for<'tcx> {
         ty::ValTree<'tcx>,
     }
@@ -371,25 +368,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
 
 ///////////////////////////////////////////////////////////////////////////
 // Traversal implementations.
-
-/// AdtDefs are basically the same as a DefId.
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::AdtDef<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        _folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(self)
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::AdtDef<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
-        &self,
-        _visitor: &mut V,
-    ) -> ControlFlow<V::BreakTy> {
-        ControlFlow::Continue(())
-    }
-}
 
 impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> TypeFoldable<TyCtxt<'tcx>> for ty::Binder<'tcx, T> {
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
@@ -678,24 +656,6 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     ) -> ControlFlow<V::BreakTy> {
         self.ty().visit_with(visitor)?;
         self.kind().visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for InferConst<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        _folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(self)
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for InferConst<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
-        &self,
-        _visitor: &mut V,
-    ) -> ControlFlow<V::BreakTy> {
-        ControlFlow::Continue(())
     }
 }
 

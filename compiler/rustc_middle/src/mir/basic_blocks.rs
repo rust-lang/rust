@@ -174,7 +174,7 @@ impl<'tcx> graph::WithPredecessors for BasicBlocks<'tcx> {
     }
 }
 
-TrivialTypeTraversalAndLiftImpls! {
+CloneLiftImpls! {
     Cache,
 }
 

@@ -5,7 +5,6 @@ use rustc_hir::HirId;
 use rustc_target::abi::VariantIdx;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub enum PlaceBase {
     /// A temporary variable.
     Rvalue,
@@ -18,7 +17,6 @@ pub enum PlaceBase {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub enum ProjectionKind {
     /// A dereference of a pointer, reference or `Box<T>` of the given type.
     Deref,

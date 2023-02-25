@@ -7,7 +7,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 
 #[derive(Hash, Debug, Clone, Copy, Ord, PartialOrd, PartialEq, Eq)]
-#[derive(TyDecodable, TyEncodable, HashStable, TypeVisitable, TypeFoldable)]
+#[derive(TyDecodable, TyEncodable, HashStable)]
 pub enum CastKind {
     /// thir::ExprKind::As
     As,
@@ -28,7 +28,7 @@ impl From<ErrorGuaranteed> for NotConstEvaluatable {
     }
 }
 
-TrivialTypeTraversalAndLiftImpls! {
+CloneLiftImpls! {
     NotConstEvaluatable,
 }
 

@@ -20,7 +20,6 @@ use self::BorrowKind::*;
 pub const CAPTURE_STRUCT_LOCAL: mir::Local = mir::Local::from_u32(1);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub struct UpvarPath {
     pub hir_id: hir::HirId,
 }
@@ -29,7 +28,6 @@ pub struct UpvarPath {
 /// the original var ID (that is, the root variable that is referenced
 /// by the upvar) and the ID of the closure expression.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub struct UpvarId {
     pub var_path: UpvarPath,
     pub closure_expr_id: LocalDefId,
@@ -44,7 +42,6 @@ impl UpvarId {
 /// Information describing the capture of an upvar. This is computed
 /// during `typeck`, specifically by `regionck`.
 #[derive(PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub enum UpvarCapture {
     /// Upvar is captured by value. This is always true when the
     /// closure is labeled `move`, but can also be true in other cases
@@ -298,7 +295,6 @@ pub fn is_ancestor_or_same_capture(
 /// for a particular capture as well as identifying the part of the source code
 /// that triggered this capture to occur.
 #[derive(PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub struct CaptureInfo {
     /// Expr Id pointing to use that resulted in selecting the current capture kind
     ///
@@ -377,7 +373,6 @@ pub fn place_to_string_for_capture<'tcx>(tcx: TyCtxt<'tcx>, place: &HirPlace<'tc
 }
 
 #[derive(Clone, PartialEq, Debug, TyEncodable, TyDecodable, Copy, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     ImmBorrow,

@@ -95,7 +95,7 @@ impl From<InjectedExpressionId> for ExpressionOperandId {
     }
 }
 
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum CoverageKind {
     Counter {
         function_source_hash: u64,
@@ -147,7 +147,6 @@ impl Debug for CoverageKind {
 }
 
 #[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub struct CodeRegion {
     pub file_name: Symbol,
     pub start_line: u32,
@@ -167,7 +166,6 @@ impl Debug for CodeRegion {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub enum Op {
     Subtract,
     Add,

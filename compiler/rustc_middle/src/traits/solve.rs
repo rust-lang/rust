@@ -44,7 +44,7 @@ pub struct Response<'tcx> {
     pub certainty: Certainty,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Certainty {
     Yes,
     Maybe(MaybeCause),
@@ -74,7 +74,7 @@ impl Certainty {
 }
 
 /// Why we failed to evaluate a goal.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, TypeFoldable, TypeVisitable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum MaybeCause {
     /// We failed due to ambiguity. This ambiguity can either
     /// be a true ambiguity, i.e. there are multiple different answers,
