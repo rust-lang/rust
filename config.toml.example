@@ -666,6 +666,9 @@ changelog-seen = 2
 # LTO entirely.
 #lto = "thin-local"
 
+# Build compiler with the optimization enabled and -Zvalidate-mir, currently only for `std`
+#validate-mir-opts = 3
+
 # =============================================================================
 # Options for specific targets
 #

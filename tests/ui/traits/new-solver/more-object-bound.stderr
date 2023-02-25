@@ -1,0 +1,19 @@
+error[E0283]: type annotations needed: cannot satisfy `dyn Trait<A = A, B = B>: Trait`
+  --> $DIR/more-object-bound.rs:12:5
+   |
+LL |     foo::<A, B, dyn Trait<A = A, B = B>>(x)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: cannot satisfy `dyn Trait<A = A, B = B>: Trait`
+note: required by a bound in `foo`
+  --> $DIR/more-object-bound.rs:18:8
+   |
+LL | fn foo<A, B, T: ?Sized>(x: T::A) -> B
+   |    --- required by a bound in this function
+LL | where
+LL |     T: Trait<B = B>,
+   |        ^^^^^^^^^^^^ required by this bound in `foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.
