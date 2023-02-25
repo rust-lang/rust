@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 mdbook = { version = "0.4", default-features = false, features = ["search"] }
+rustc_error_codes = { version = "0.0.0", path = "../../../compiler/rustc_error_codes" }
 
 [[bin]]
 name = "error_index_generator"

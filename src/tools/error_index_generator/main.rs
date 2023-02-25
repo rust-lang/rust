@@ -2,9 +2,6 @@
 
 extern crate rustc_driver;
 
-// We use the function we generate from `register_diagnostics!`.
-use crate::error_codes::error_codes;
-
 use std::env;
 use std::error::Error;
 use std::fs::{self, File};
@@ -16,22 +13,6 @@ use std::str::FromStr;
 
 use mdbook::book::{parse_summary, BookItem, Chapter};
 use mdbook::{Config, MDBook};
-
-macro_rules! register_diagnostics {
-    ($($error_code:ident: $message:expr,)+ ; $($undocumented:ident,)* ) => {
-        pub fn error_codes() -> Vec<(&'static str, Option<&'static str>)> {
-            let mut errors: Vec<(&str, Option<&str>)> = vec![
-                $((stringify!($error_code), Some($message)),)+
-                $((stringify!($undocumented), None),)*
-            ];
-            errors.sort();
-            errors
-        }
-    }
-}
-
-#[path = "../../../compiler/rustc_error_codes/src/error_codes.rs"]
-mod error_codes;
 
 enum OutputFormat {
     HTML,
@@ -102,7 +83,7 @@ This page lists all the error codes emitted by the Rust compiler.
 "
     );
 
-    let err_codes = error_codes();
+    let err_codes = rustc_error_codes::DIAGNOSTICS;
     let mut chapters = Vec::with_capacity(err_codes.len());
 
     for (err_code, explanation) in err_codes.iter() {
