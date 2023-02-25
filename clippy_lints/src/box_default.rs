@@ -117,7 +117,8 @@ fn given_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         ) => {
             if let Some(index) = args.iter().position(|arg| arg.hir_id == expr.hir_id) &&
                 let Some(sig) = expr_sig(cx, path) &&
-                let Some(input) = sig.input(index)
+                let Some(input) = sig.input(index) &&
+                !cx.typeck_results().expr_ty_adjusted(expr).boxed_ty().is_trait()
             {
                 input.no_bound_vars().is_some()
             } else {
