@@ -603,7 +603,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                 );
             }
             StatementKind::Intrinsic(box kind) => match kind {
-                NonDivergingIntrinsic::Assume(op) => self.consume_operand(location, (op, span), flow_state),
+                NonDivergingIntrinsic::Assume(op) => self.consume_operand(location, (op, span), flow_state, RequireInit::Yes),
                 NonDivergingIntrinsic::CopyNonOverlapping(..) => span_bug!(
                     span,
                     "Unexpected CopyNonOverlapping, should only appear after lower_intrinsics",
@@ -647,7 +647,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
 
         match &term.kind {
             TerminatorKind::SwitchInt { discr, targets: _ } => {
-                self.consume_operand(loc, (discr, span), flow_state);
+                self.consume_operand(loc, (discr, span), flow_state, RequireInit::Yes);
             }
             TerminatorKind::Drop { place, target: _, unwind: _ } => {
                 debug!(
@@ -682,33 +682,43 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                 fn_span: _,
             } => {
                 self.mutate_place(loc, (*destination, span), Deep, flow_state);
-                self.consume_operand(loc, (func, span), flow_state);
+                self.consume_operand(loc, (func, span), flow_state, RequireInit::Yes);
 
-                // drop glue for box does not pass borrowck
+                // the initialization dataflow analysis can't understand that drop elaboration
+                // inserts checks to determine whether a target is initialized before calling
+                // box_free. In other words, it can't correlate the value of the drop flag with
+                // the initialization status of the target.
+                // As a temporary fix, just trust that it does the right thing.
+                // Note that this is the same behavior of Drop actually, where the borrow checker
+                // doesn't check that the target is initialized and relies on drop elab to
+                // remove uninitialized ones.
                 let func_ty = func.ty(self.body, self.infcx.tcx);
                 use rustc_hir::lang_items::LangItem;
-                if let ty::FnDef(func_id, _) = func_ty.kind() {
-                    if Some(func_id) == self.infcx.tcx.lang_items().get(LangItem::BoxFree).as_ref()
+                let require_init = match func_ty.kind() {
+                    ty::FnDef(func_id, _)
+                        if Some(func_id)
+                            == self.infcx.tcx.lang_items().get(LangItem::BoxFree).as_ref() =>
                     {
-                        return;
+                        RequireInit::No
                     }
-                }
+                    _ => RequireInit::Yes,
+                };
 
                 for arg in args {
-                    self.consume_operand(loc, (arg, span), flow_state);
+                    self.consume_operand(loc, (arg, span), flow_state, require_init);
                 }
             }
             TerminatorKind::Assert { cond, expected: _, msg, target: _, cleanup: _ } => {
-                self.consume_operand(loc, (cond, span), flow_state);
+                self.consume_operand(loc, (cond, span), flow_state, RequireInit::Yes);
                 use rustc_middle::mir::AssertKind;
                 if let AssertKind::BoundsCheck { len, index } = msg {
-                    self.consume_operand(loc, (len, span), flow_state);
-                    self.consume_operand(loc, (index, span), flow_state);
+                    self.consume_operand(loc, (len, span), flow_state, RequireInit::Yes);
+                    self.consume_operand(loc, (index, span), flow_state, RequireInit::Yes);
                 }
             }
 
             TerminatorKind::Yield { value, resume: _, resume_arg, drop: _ } => {
-                self.consume_operand(loc, (value, span), flow_state);
+                self.consume_operand(loc, (value, span), flow_state, RequireInit::Yes);
                 self.mutate_place(loc, (*resume_arg, span), Deep, flow_state);
             }
 
@@ -723,7 +733,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                 for op in operands {
                     match op {
                         InlineAsmOperand::In { reg: _, value } => {
-                            self.consume_operand(loc, (value, span), flow_state);
+                            self.consume_operand(loc, (value, span), flow_state, RequireInit::Yes);
                         }
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
                             if let Some(place) = place {
@@ -731,7 +741,12 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                             }
                         }
                         InlineAsmOperand::InOut { reg: _, late: _, in_value, out_place } => {
-                            self.consume_operand(loc, (in_value, span), flow_state);
+                            self.consume_operand(
+                                loc,
+                                (in_value, span),
+                                flow_state,
+                                RequireInit::Yes,
+                            );
                             if let &Some(out_place) = out_place {
                                 self.mutate_place(
                                     loc,
@@ -872,6 +887,14 @@ enum WriteKind {
     MutableBorrow(BorrowKind),
     Mutate,
     Move,
+}
+
+/// Whether to require a place to be initialized
+/// when checking permissions.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum RequireInit {
+    Yes,
+    No,
 }
 
 /// When checking permissions for a place access, this flag is used to indicate that an immutable
@@ -1244,7 +1267,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             | Rvalue::UnaryOp(_ /*un_op*/, operand)
             | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/)
             | Rvalue::ShallowInitBox(operand, _ /*ty*/) => {
-                self.consume_operand(location, (operand, span), flow_state)
+                self.consume_operand(location, (operand, span), flow_state, RequireInit::Yes)
             }
 
             &Rvalue::CopyForDeref(place) => {
@@ -1288,8 +1311,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             Rvalue::BinaryOp(_bin_op, box (operand1, operand2))
             | Rvalue::CheckedBinaryOp(_bin_op, box (operand1, operand2)) => {
-                self.consume_operand(location, (operand1, span), flow_state);
-                self.consume_operand(location, (operand2, span), flow_state);
+                self.consume_operand(location, (operand1, span), flow_state, RequireInit::Yes);
+                self.consume_operand(location, (operand2, span), flow_state, RequireInit::Yes);
             }
 
             Rvalue::NullaryOp(_op, _ty) => {
@@ -1316,7 +1339,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
 
                 for operand in operands {
-                    self.consume_operand(location, (operand, span), flow_state);
+                    self.consume_operand(location, (operand, span), flow_state, RequireInit::Yes);
                 }
             }
         }
@@ -1422,6 +1445,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         location: Location,
         (operand, span): (&'cx Operand<'tcx>, Span),
         flow_state: &Flows<'cx, 'tcx>,
+        require_init: RequireInit,
     ) {
         match *operand {
             Operand::Copy(place) => {
@@ -1435,13 +1459,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     flow_state,
                 );
 
-                // Finally, check if path was already moved.
-                self.check_if_path_or_subpath_is_moved(
-                    location,
-                    InitializationRequiringAction::Use,
-                    (place.as_ref(), span),
-                    flow_state,
-                );
+                if let RequireInit::Yes = require_init {
+                    // Finally, check if path was already moved.
+                    self.check_if_path_or_subpath_is_moved(
+                        location,
+                        InitializationRequiringAction::Use,
+                        (place.as_ref(), span),
+                        flow_state,
+                    );
+                }
             }
             Operand::Move(place) => {
                 // move of place: check if this is move of already borrowed path
@@ -1453,13 +1479,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     flow_state,
                 );
 
-                // Finally, check if path was already moved.
-                self.check_if_path_or_subpath_is_moved(
-                    location,
-                    InitializationRequiringAction::Use,
-                    (place.as_ref(), span),
-                    flow_state,
-                );
+                if let RequireInit::Yes = require_init {
+                    // Finally, check if path was already moved.
+                    self.check_if_path_or_subpath_is_moved(
+                        location,
+                        InitializationRequiringAction::Use,
+                        (place.as_ref(), span),
+                        flow_state,
+                    );
+                }
             }
             Operand::Constant(_) => {}
         }
