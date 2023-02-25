@@ -1937,7 +1937,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
-    pub fn append(&mut self, other: &mut Self) {
+    pub fn append<B: Allocator>(&mut self, other: &mut Vec<T, B>) {
         unsafe {
             self.append_elements(other.as_slice() as _);
             other.set_len(0);
