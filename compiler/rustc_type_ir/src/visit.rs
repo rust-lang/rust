@@ -158,6 +158,16 @@ impl<I: TriviallyTraverses<T>, T: ?Sized> SpecTypeVisitable for &PhantomData<(I,
 ///////////////////////////////////////////////////////////////////////////
 // Traversable implementations for upstream types.
 
+// `()` is (obviously) a no-op traversal and therefore the auto-deref specialisation normally
+// negates any need for explicit implementation, however there are implementations of
+// `QueryTypeOp` that have have unit `QueryResponse` -- and that associated type must be
+// traversable for some generic operations to work upon it.
+impl<I: Interner> TypeVisitable<I> for () {
+    fn visit_with<V: TypeVisitor<I>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
+        ControlFlow::Continue(())
+    }
+}
+
 // We provide implementations for 2- and 3-element tuples, however (absent specialisation)
 // we can only provide for one case: we choose our implementations to be where all elements
 // themselves implement the respective traits; thus if an element is a no-op traversal, it
