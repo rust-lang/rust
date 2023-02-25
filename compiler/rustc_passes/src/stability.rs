@@ -748,7 +748,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                         let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
                         c.visit_ty(self_ty);
                         c.visit_trait_ref(t);
-                        if c.fully_stable {
+
+                        // do not lint when the trait isn't resolved, since resolution error should
+                        // be fixed first
+                        if t.path.res != Res::Err && c.fully_stable {
                             self.tcx.struct_span_lint_hir(
                                 INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
                                 item.hir_id(),
