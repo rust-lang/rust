@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use std::ops::ControlFlow;
 
-pub use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
+pub use rustc_type_ir::visit::{SpecTypeVisitable, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 
 pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     /// Returns `true` if `self` has any late-bound regions that are either

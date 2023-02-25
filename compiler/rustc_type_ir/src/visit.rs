@@ -38,9 +38,10 @@
 //!     - ty.super_visit_with(visitor)
 //! - u.visit_with(visitor)
 //! ```
-use crate::Interner;
+use crate::{Interner, SkipTraversalAutoImplOnly};
 
 use std::fmt;
+use std::marker::PhantomData;
 use std::ops::ControlFlow;
 
 /// This trait is implemented for every type that can be visited,
@@ -111,5 +112,36 @@ pub trait TypeVisitor<I: Interner>: Sized {
         I::Predicate: TypeSuperVisitable<I>,
     {
         p.super_visit_with(self)
+    }
+}
+
+pub trait SpecTypeVisitable<I: Interner> {
+    type Item: ?Sized;
+    fn spec_visit_with<V: TypeVisitor<I>>(
+        self,
+        value: &Self::Item,
+        visitor: &mut V,
+    ) -> ControlFlow<V::BreakTy>;
+}
+
+impl<I: Interner, T: ?Sized + TypeVisitable<I>> SpecTypeVisitable<I> for PhantomData<&T> {
+    type Item = T;
+
+    #[inline(always)]
+    fn spec_visit_with<V: TypeVisitor<I>>(
+        self,
+        value: &T,
+        visitor: &mut V,
+    ) -> ControlFlow<V::BreakTy> {
+        value.visit_with(visitor)
+    }
+}
+
+impl<I: Interner, T: ?Sized + SkipTraversalAutoImplOnly> SpecTypeVisitable<I> for &PhantomData<&T> {
+    type Item = T;
+
+    #[inline(always)]
+    fn spec_visit_with<V: TypeVisitor<I>>(self, _: &T, _: &mut V) -> ControlFlow<V::BreakTy> {
+        ControlFlow::Continue(())
     }
 }

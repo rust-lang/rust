@@ -42,7 +42,8 @@
 //!     - ty.super_fold_with(folder)
 //! - u.fold_with(folder)
 //! ```
-use crate::{visit::TypeVisitable, Interner};
+use crate::{visit::TypeVisitable, Interner, SkipTraversalAutoImplOnly};
+use std::marker::PhantomData;
 
 /// This trait is implemented for every type that can be folded,
 /// providing the skeleton of the traversal.
@@ -235,5 +236,40 @@ where
         I::Predicate: TypeSuperFoldable<I>,
     {
         Ok(self.fold_predicate(p))
+    }
+}
+
+pub trait SpecTypeFoldable<I: Interner> {
+    type Item;
+    fn spec_try_fold_with<F: FallibleTypeFolder<I>>(
+        self,
+        value: Self::Item,
+        folder: &mut F,
+    ) -> Result<Self::Item, F::Error>;
+}
+
+impl<I: Interner, T: TypeFoldable<I>> SpecTypeFoldable<I> for PhantomData<T> {
+    type Item = T;
+
+    #[inline(always)]
+    fn spec_try_fold_with<F: FallibleTypeFolder<I>>(
+        self,
+        value: T,
+        folder: &mut F,
+    ) -> Result<T, F::Error> {
+        value.try_fold_with(folder)
+    }
+}
+
+impl<I: Interner, T: SkipTraversalAutoImplOnly> SpecTypeFoldable<I> for &PhantomData<T> {
+    type Item = T;
+
+    #[inline(always)]
+    fn spec_try_fold_with<F: FallibleTypeFolder<I>>(
+        self,
+        value: T,
+        _: &mut F,
+    ) -> Result<T, F::Error> {
+        Ok(value)
     }
 }

@@ -174,3 +174,31 @@ macro_rules! EnumTypeTraversalImpl {
         )
     };
 }
+
+#[inline(always)]
+pub fn unreachable_phantom_constraint<T>(_: T) -> std::marker::PhantomData<T> {
+    unreachable!()
+}
+
+#[macro_export]
+macro_rules! prefer_noop_traversal_if_applicable {
+    ($val:tt.try_fold_with($folder:expr)) => {{
+        use $crate::fold::SpecTypeFoldable as _;
+        $crate::prefer_noop_traversal_if_applicable!($val.spec_try_fold_with($folder))
+    }};
+    ($val:tt.visit_with($visitor:expr)) => {{
+        use $crate::visit::SpecTypeVisitable as _;
+        $crate::prefer_noop_traversal_if_applicable!($val.spec_visit_with($visitor))
+    }};
+    ($val:tt.$method:ident($traverser:expr)) => {{
+        let val = $val;
+
+        #[allow(unreachable_code)]
+        let p = 'p: {
+            break 'p ::core::marker::PhantomData;
+            break 'p $crate::macros::unreachable_phantom_constraint(val);
+        };
+
+        (&&p).$method(val, $traverser)
+    }};
+}

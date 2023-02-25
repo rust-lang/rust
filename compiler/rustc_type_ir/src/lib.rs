@@ -1,4 +1,5 @@
 #![feature(associated_type_defaults)]
+#![feature(auto_traits)]
 #![feature(fmt_helpers_for_derive)]
 #![feature(min_specialization)]
 #![feature(never_type)]
@@ -27,7 +28,7 @@ pub mod ty_info;
 pub mod visit;
 
 #[macro_use]
-mod macros;
+pub mod macros;
 mod structural_impls;
 
 pub use codec::*;
@@ -68,6 +69,23 @@ pub trait Interner: Sized {
     type RegionVid: Clone + Debug + Hash + Ord;
     type PlaceholderRegion: Clone + Debug + Hash + Ord;
 }
+
+/// Marker trait for types that do not need to be traversed by folders or visitors,
+/// because they do not contain anything that could be of interest.
+///
+/// Negative implementations of this trait should be provided by types that *are*
+/// of interest for folders and visitors, namely for any given `I: Interner`:
+///     * `I::Binder<T>`
+///     * `I::Ty`
+///     * `I::Const`
+///     * `I::Region`
+///     * `I::Predicate`
+///
+/// Manually implementing this trait is DANGEROUS and should NEVER be done, as it
+/// can lead to miscompilation. Even if the type for which you wish to implement
+/// this trait does not today contain anything of interest to folders or visitors,
+/// a field added or changed in future may cause breakage.
+pub auto trait SkipTraversalAutoImplOnly {}
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`
 /// that produces `T` items. You could combine them with

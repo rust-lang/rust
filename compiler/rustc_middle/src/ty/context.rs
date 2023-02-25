@@ -68,7 +68,7 @@ use rustc_target::abi::{Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 use rustc_type_ir::sty::TyKind::*;
 use rustc_type_ir::WithCachedTypeInfo;
-use rustc_type_ir::{CollectAndApply, DynKind, Interner, TypeFlags};
+use rustc_type_ir::{CollectAndApply, DynKind, Interner, SkipTraversalAutoImplOnly, TypeFlags};
 
 use std::any::Any;
 use std::assert_matches::debug_assert_matches;
@@ -129,6 +129,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type RegionVid = ty::RegionVid;
     type PlaceholderRegion = ty::PlaceholderRegion;
 }
+
+impl<T> !SkipTraversalAutoImplOnly for Binder<'_, T> {}
+impl !SkipTraversalAutoImplOnly for Ty<'_> {}
+impl !SkipTraversalAutoImplOnly for ty::Const<'_> {}
+impl !SkipTraversalAutoImplOnly for Region<'_> {}
+impl !SkipTraversalAutoImplOnly for Predicate<'_> {}
 
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;
 
