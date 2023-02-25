@@ -1191,7 +1191,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
 
 fn should_encode_const(def_kind: DefKind) -> bool {
     match def_kind {
-        DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => true,
+        DefKind::Const | DefKind::AssocConst | DefKind::AnonConst | DefKind::InlineConst => true,
 
         DefKind::Struct
         | DefKind::Union
@@ -1210,7 +1210,6 @@ fn should_encode_const(def_kind: DefKind) -> bool {
         | DefKind::Closure
         | DefKind::Generator
         | DefKind::ConstParam
-        | DefKind::InlineConst
         | DefKind::AssocTy
         | DefKind::TyParam
         | DefKind::Trait
