@@ -520,7 +520,6 @@ pub enum FakeReadCause {
 }
 
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub struct Coverage {
     pub kind: CoverageKind,
 }
@@ -536,7 +535,6 @@ pub struct CopyNonOverlapping<'tcx> {
 
 /// Represents how a `TerminatorKind::Call` was constructed, used for diagnostics
 #[derive(Clone, Copy, TyEncodable, TyDecodable, Debug, PartialEq, Hash, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub enum CallSource {
     /// This came from something such as `a > b` or `a + b`. In THIR, if `from_hir_call`
     /// is false then this is the desugaring.
@@ -850,7 +848,6 @@ pub struct SwitchTargets {
 
 /// Action to be taken when a stack unwind happens.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub enum UnwindAction {
     /// No action is to be taken. Continue unwinding.
     ///
@@ -869,7 +866,6 @@ pub enum UnwindAction {
 
 /// The reason we are terminating the process during unwinding.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub enum UnwindTerminateReason {
     /// Unwinding is just not possible given the ABI of this function.
     Abi,
@@ -1362,7 +1358,7 @@ pub enum NullOp<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
+#[derive(HashStable, TyEncodable, TyDecodable)]
 pub enum UnOp {
     /// The `!` operator for logical inversion
     Not,
@@ -1371,7 +1367,7 @@ pub enum UnOp {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, HashStable)]
 pub enum BinOp {
     /// The `+` operator (addition)
     Add,

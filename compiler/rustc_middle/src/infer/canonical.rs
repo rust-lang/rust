@@ -364,11 +364,6 @@ impl<'tcx, R> QueryResponse<'tcx, R> {
 pub type QueryOutlivesConstraint<'tcx> =
     (ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>, ConstraintCategory<'tcx>);
 
-TrivialTypeTraversalImpls! {
-    crate::infer::canonical::Certainty,
-    crate::infer::canonical::CanonicalTyVarKind,
-}
-
 impl<'tcx> CanonicalVarValues<'tcx> {
     // Given a list of canonical variables, construct a set of values which are
     // the identity response.

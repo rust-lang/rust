@@ -82,8 +82,6 @@ impl Into<ErrorGuaranteed> for ReportedErrorInfo {
     }
 }
 
-TrivialTypeTraversalImpls! { ErrorHandled }
-
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 /// `Ok(None)` indicates the constant was fine, but the valtree couldn't be constructed.

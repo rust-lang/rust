@@ -6,7 +6,7 @@ use crate::ty::{
 use rustc_errors::ErrorGuaranteed;
 
 #[derive(Hash, Debug, Clone, Copy, Ord, PartialOrd, PartialEq, Eq)]
-#[derive(TyDecodable, TyEncodable, HashStable, TypeVisitable, TypeFoldable)]
+#[derive(TyDecodable, TyEncodable, HashStable)]
 pub enum CastKind {
     /// thir::ExprKind::As
     As,
@@ -26,8 +26,6 @@ impl From<ErrorGuaranteed> for NotConstEvaluatable {
         NotConstEvaluatable::Error(e)
     }
 }
-
-TrivialTypeTraversalImpls! { NotConstEvaluatable }
 
 pub type BoundAbstractConst<'tcx> = Result<Option<EarlyBinder<ty::Const<'tcx>>>, ErrorGuaranteed>;
 

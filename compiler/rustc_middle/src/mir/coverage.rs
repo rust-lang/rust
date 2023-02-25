@@ -53,7 +53,7 @@ impl ExpressionId {
 /// but the zero/counter/expression distinction is also useful for representing
 /// the value of code/gap mappings, and the true/false arms of branch mappings.
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum CovTerm {
     Zero,
     Counter(CounterId),
@@ -70,7 +70,7 @@ impl Debug for CovTerm {
     }
 }
 
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum CoverageKind {
     /// Marks the point in MIR control flow represented by a coverage counter.
     ///
@@ -102,7 +102,6 @@ impl Debug for CoverageKind {
 }
 
 #[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub struct CodeRegion {
     pub file_name: Symbol,
     pub start_line: u32,
@@ -122,7 +121,6 @@ impl Debug for CodeRegion {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub enum Op {
     Subtract,
     Add,
@@ -139,7 +137,7 @@ impl Op {
 }
 
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
 pub struct Expression {
     pub lhs: CovTerm,
     pub op: Op,
@@ -147,7 +145,7 @@ pub struct Expression {
 }
 
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
 pub struct Mapping {
     pub code_region: CodeRegion,
 
@@ -164,7 +162,7 @@ pub struct Mapping {
 /// to be used in conjunction with the individual coverage statements injected
 /// into the function's basic blocks.
 #[derive(Clone, Debug)]
-#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
 pub struct FunctionCoverageInfo {
     pub function_source_hash: u64,
     pub num_counters: usize,
