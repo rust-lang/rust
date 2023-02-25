@@ -2,7 +2,7 @@ error[E0380]: auto traits cannot have associated items
   --> $DIR/issue-105732.rs:4:8
    |
 LL | auto trait Foo {
-   |            --- auto trait cannot have associated items
+   |            --- auto traits cannot have associated items
 LL |     fn g(&self);
    |     ---^-------- help: remove these associated items
 
