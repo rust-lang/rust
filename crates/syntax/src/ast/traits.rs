@@ -1,7 +1,7 @@
 //! Various traits that are implemented by ast nodes.
 //!
 //! The implementations are usually trivial, and live in generated.rs
-use itertools::Either;
+use either::Either;
 
 use crate::{
     ast::{self, support, AstChildren, AstNode, AstToken},

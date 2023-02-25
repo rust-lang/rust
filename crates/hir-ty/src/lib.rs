@@ -42,9 +42,9 @@ use chalk_ir::{
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
     NoSolution, TyData,
 };
+use either::Either;
 use hir_def::{expr::ExprId, type_ref::Rawness, TypeOrConstParamId};
 use hir_expand::name;
-use itertools::Either;
 use la_arena::{Arena, Idx};
 use rustc_hash::FxHashSet;
 use traits::FnTrait;

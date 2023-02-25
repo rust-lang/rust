@@ -16,6 +16,7 @@ use chalk_ir::{
     cast::Cast, fold::Shift, fold::TypeFoldable, interner::HasInterner, Mutability, Safety,
 };
 
+use either::Either;
 use hir_def::{
     adt::StructKind,
     body::{Expander, LowerCtx},
@@ -35,7 +36,6 @@ use hir_def::{
 };
 use hir_expand::{name::Name, ExpandResult};
 use intern::Interned;
-use itertools::Either;
 use la_arena::{Arena, ArenaMap};
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
@@ -1583,10 +1583,10 @@ pub(crate) fn generic_defaults_recover(
         .iter_id()
         .map(|id| {
             let val = match id {
-                itertools::Either::Left(_) => {
+                Either::Left(_) => {
                     GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner)
                 }
-                itertools::Either::Right(id) => unknown_const_as_generic(db.const_param_ty(id)),
+                Either::Right(id) => unknown_const_as_generic(db.const_param_ty(id)),
             };
             crate::make_binders(db, &generic_params, val)
         })
