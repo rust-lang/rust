@@ -674,7 +674,7 @@ pub enum LocalKind {
     ReturnPointer,
 }
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct VarBindingForm<'tcx> {
     /// Is variable bound via `x`, `mut x`, `ref x`, or `ref mut x`?
     pub binding_mode: ty::BindingMode,
@@ -696,7 +696,7 @@ pub struct VarBindingForm<'tcx> {
     pub pat_span: Span,
 }
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub enum BindingForm<'tcx> {
     /// This is a binding for a non-`self` binding, or a `self` that has an explicit type.
     Var(VarBindingForm<'tcx>),
@@ -706,7 +706,7 @@ pub enum BindingForm<'tcx> {
     RefForGuard,
 }
 
-TrivialTypeTraversalAndLiftImpls! {
+CloneLiftImpls! {
     for<'tcx> {
         BindingForm<'tcx>,
     }
