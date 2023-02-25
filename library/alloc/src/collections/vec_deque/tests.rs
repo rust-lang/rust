@@ -1130,3 +1130,15 @@ fn issue_80303() {
     assert_eq!(vda, vdb);
     assert_eq!(hash_code(vda), hash_code(vdb));
 }
+
+#[test]
+fn issue_108453_shrink_to() {
+    let mut deque = VecDeque::with_capacity(10);
+
+    deque.push_back(1u8);
+    deque.push_front(10);
+    deque.push_front(9);
+    deque.shrink_to(9);
+
+    assert_eq!(deque, [9, 10, 1]);
+}

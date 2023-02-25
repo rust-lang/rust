@@ -981,7 +981,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 unsafe {
                     self.copy_nonoverlapping(target_cap, 0, len);
                 }
-            } else if self.head >= target_cap {
+            } else if !self.is_contiguous() {
                 //  H := head
                 //  L := last element
                 //            L                   H
