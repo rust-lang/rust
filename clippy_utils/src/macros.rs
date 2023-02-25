@@ -391,11 +391,18 @@ impl FormatString {
         };
 
         let mut unescaped = String::with_capacity(inner.len());
+        // Sometimes the original string comes from a macro which accepts a malformed string, such as in a
+        // #[display(""somestring)] attribute (accepted by the `displaythis` crate). Reconstructing the
+        // string from the span will not be possible, so we will just return None here.
+        let mut unparsable = false;
         unescape_literal(inner, mode, &mut |_, ch| match ch {
             Ok(ch) => unescaped.push(ch),
             Err(e) if !e.is_fatal() => (),
-            Err(e) => panic!("{e:?}"),
+            Err(_) => unparsable = true,
         });
+        if unparsable {
+            return None;
+        }
 
         let mut parts = Vec::new();
         let _: Option<!> = for_each_expr(pieces, |expr| {
