@@ -399,3 +399,34 @@ pub(crate) enum CannotCaptureLateBoundInAnonConst {
         def_span: Span,
     },
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_variances_of)]
+pub(crate) struct VariancesOf {
+    #[primary_span]
+    pub span: Span,
+    pub variances_of: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_pass_to_variadic_function, code = "E0617")]
+pub(crate) struct PassToVariadicFunction<'tcx, 'a> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub cast_ty: &'a str,
+    #[suggestion(code = "{replace}", applicability = "machine-applicable")]
+    pub sugg_span: Option<Span>,
+    pub replace: String,
+    #[help]
+    pub help: Option<()>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cast_thin_pointer_to_fat_pointer, code = "E0607")]
+pub(crate) struct CastThinPointerToFatPointer<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub expr_ty: Ty<'tcx>,
+    pub cast_ty: String,
+}
