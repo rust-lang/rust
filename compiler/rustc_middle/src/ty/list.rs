@@ -45,6 +45,14 @@ extern "C" {
     type OpaqueListContents;
 }
 
+// Auto-traits are not automatically implemented for extern types[1], so
+// we manually implement it here to ensure that `List`s are automatically
+// skipped when appropriate (the `data` field will still ensure the auto
+// trait is not implemented for the `List` when it is not appropriate).
+//
+// [1]: https://github.com/rust-lang/rust/issues/43467#issuecomment-1207257995
+impl super::TriviallyTraversable for OpaqueListContents {}
+
 impl<T> List<T> {
     /// Returns a reference to the (unique, static) empty list.
     #[inline(always)]

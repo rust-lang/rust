@@ -165,8 +165,6 @@ pub struct CoroutineLayout<'tcx> {
     /// Which saved locals are storage-live at the same time. Locals that do not
     /// have conflicts with each other are allowed to overlap in the computed
     /// layout.
-    #[type_foldable(identity)]
-    #[type_visitable(ignore)]
     pub storage_conflicts: BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal>,
 }
 

@@ -66,6 +66,25 @@ pub trait Interner: Sized {
     fn ty_and_mut_to_parts(ty_and_mut: Self::TypeAndMut) -> (Self::Ty, Mutability);
 }
 
+/// Marker to signify that the interner type `Self` trivially traverses type `T`,
+/// which is to say that traversing (folding or visiting) values of type `T` is
+/// *guaranteed* to be a no-op because `T` does not contain anything that could be
+/// of interest to a traverser (folder or visitor). Per the traverser traits'
+/// methods, traversers are only capable of taking an interest in the following
+/// five types:
+///
+/// * Self::Binder<B> for any type B
+/// * Self::Ty
+/// * Self::Region
+/// * Self::Const
+/// * Self::Predicate
+//
+// If and when implementations of the super-traverser traits are uplifted to
+// this library, the `B` above will likely be restricted to types of interest.
+// For now, that is an implementation detail of `rustc_middle` and is therefore
+// omitted from this library's documentation.
+pub trait TriviallyTraverses<T: ?Sized>: Interner {}
+
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`
 /// that produces `T` items. You could combine them with
 /// `f(&iter.collect::<Vec<_>>())`, but this requires allocating memory for the

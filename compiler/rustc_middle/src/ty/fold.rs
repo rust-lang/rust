@@ -4,7 +4,10 @@ use rustc_hir::def_id::DefId;
 
 use std::collections::BTreeMap;
 
-pub use rustc_type_ir::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
+pub use rustc_type_ir::{
+    fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable},
+    Interner,
+};
 
 ///////////////////////////////////////////////////////////////////////////
 // Some sample folders

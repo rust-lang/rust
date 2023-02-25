@@ -47,9 +47,10 @@
 
 use rustc_data_structures::sync::Lrc;
 use rustc_index::{Idx, IndexVec};
+use std::marker::PhantomData;
 use std::mem;
 
-use crate::{visit::TypeVisitable, Interner};
+use crate::{visit::TypeVisitable, Interner, TriviallyTraverses};
 
 /// This trait is implemented for every type that can be folded,
 /// providing the skeleton of the traversal.
@@ -245,6 +246,44 @@ where
         I::Predicate: TypeSuperFoldable<I>,
     {
         Ok(self.fold_predicate(p))
+    }
+}
+
+pub trait SpecTypeFoldable {
+    type Interner: Interner;
+    type Item;
+    fn spec_try_fold_with<F: FallibleTypeFolder<Self::Interner>>(
+        self,
+        value: Self::Item,
+        folder: &mut F,
+    ) -> Result<Self::Item, F::Error>;
+}
+
+impl<I: Interner, T: TypeFoldable<I>> SpecTypeFoldable for PhantomData<(I, T)> {
+    type Interner = I;
+    type Item = T;
+
+    #[inline(always)]
+    fn spec_try_fold_with<F: FallibleTypeFolder<I>>(
+        self,
+        value: T,
+        folder: &mut F,
+    ) -> Result<T, F::Error> {
+        value.try_fold_with(folder)
+    }
+}
+
+impl<I: TriviallyTraverses<T>, T> SpecTypeFoldable for &PhantomData<(I, T)> {
+    type Interner = I;
+    type Item = T;
+
+    #[inline(always)]
+    fn spec_try_fold_with<F: FallibleTypeFolder<I>>(
+        self,
+        value: T,
+        _: &mut F,
+    ) -> Result<T, F::Error> {
+        Ok(value)
     }
 }
 

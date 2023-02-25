@@ -64,6 +64,7 @@
 #![feature(trait_alias)]
 #![feature(ptr_alignment_type)]
 #![feature(macro_metavar_expr)]
+#![feature(auto_traits)]
 #![recursion_limit = "512"]
 #![allow(rustc::potential_query_instability)]
 #![allow(internal_features)]

@@ -67,7 +67,7 @@ use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx}
 use rustc_target::spec::abi;
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::WithCachedTypeInfo;
-use rustc_type_ir::{CollectAndApply, Interner, TypeFlags};
+use rustc_type_ir::{CollectAndApply, Interner, TriviallyTraverses, TypeFlags};
 
 use std::any::Any;
 use std::borrow::Borrow;
@@ -134,6 +134,22 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         (ty, mutbl)
     }
 }
+
+/// Marker trait for types that do not need to be traversed by folders or visitors,
+/// because they do not contain anything that could be of interest.
+///
+/// Manually implementing this trait is DANGEROUS and should NEVER be done, as it
+/// can lead to miscompilation. Even if the type for which you wish to implement
+/// this trait does not today contain anything of interest to folders or visitors,
+/// a field added or changed in future may cause breakage.
+pub auto trait TriviallyTraversable {}
+impl<T: ?Sized + TriviallyTraversable> TriviallyTraverses<T> for TyCtxt<'_> {}
+
+impl<T> !TriviallyTraversable for Binder<'_, T> {}
+impl !TriviallyTraversable for Ty<'_> {}
+impl !TriviallyTraversable for ty::Const<'_> {}
+impl !TriviallyTraversable for Region<'_> {}
+impl !TriviallyTraversable for Predicate<'_> {}
 
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;
 

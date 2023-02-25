@@ -74,18 +74,16 @@ decl_derive!([TyEncodable] => serialize::type_encodable_derive);
 decl_derive!([MetadataDecodable] => serialize::meta_decodable_derive);
 decl_derive!([MetadataEncodable] => serialize::meta_encodable_derive);
 decl_derive!(
-    [TypeFoldable, attributes(type_foldable)] =>
+    [TypeFoldable] =>
     /// Derives `TypeFoldable` for the annotated `struct` or `enum` (`union` is not supported).
     ///
-    /// Folds will produce a value of the same struct or enum variant as the input, with each field
-    /// respectively folded (in definition order) using the `TypeFoldable` implementation for its
-    /// type. However, if a field of a struct or of an enum variant is annotated with
-    /// `#[type_foldable(identity)]` then that field will retain its incumbent value (and its type
-    /// is not required to implement `TypeFoldable`). However use of this attribute is dangerous
-    /// and should be used with extreme caution: should the type of the annotated field contain
-    /// (now or in the future) a type that is of interest to a folder, it will not get folded (which
-    /// may result in unexpected, hard-to-track bugs that could result in unsoundness).
-    ///
+    /// Folds will produce a value of the same struct or enum variant as the input, with trivial
+    /// fields unchanged and all non-trivial fields respectively folded (in definition order) using
+    /// the `TypeFoldable` implementation for its type. A field of type `T` is "trivial" if `T`
+    /// both does not reference any generic type parameters and either
+    /// - does not reference any `'tcx` lifetime parameter; or
+    /// - does not contain anything that could be of interest to folders.
+    /// 
     /// If the annotated type has a `'tcx` lifetime parameter, then that will be used as the
     /// lifetime for the type context/interner; otherwise the lifetime of the type context/interner
     /// will be unrelated to the annotated type. It therefore matters how any lifetime parameters of
@@ -100,17 +98,15 @@ decl_derive!(
     traversable::traversable_derive::<traversable::Foldable>
 );
 decl_derive!(
-    [TypeVisitable, attributes(type_visitable)] =>
+    [TypeVisitable] =>
     /// Derives `TypeVisitable` for the annotated `struct` or `enum` (`union` is not supported).
     ///
-    /// Each field of the struct or enum variant will be visited (in definition order) using the
-    /// `TypeVisitable` implementation for its type. However, if a field of a struct or of an enum
-    /// variant is annotated with `#[type_visitable(ignore)]` then that field will not be visited
-    /// (and its type is not required to implement `TypeVisitable`). However use of this attribute
-    /// is dangerous and should be used with extreme caution: should the type of the annotated
-    /// field (now or in the future) a type that is of interest to a visitor, it will not get
-    /// visited (which may result in unexpected, hard-to-track bugs that could result in
-    /// unsoundness).
+    /// Each non-trivial field of the struct or enum variant will be visited (in definition order)
+    /// using the `TypeVisitable` implementation for its type; trivial fields will be ignored. A
+    /// field of type `T` is "trivial" if `T` both does not reference any generic type parameters
+    /// and either
+    /// - does not reference any `'tcx` lifetime parameter; or
+    /// - does not contain anything that could be of interest to visitors.
     ///
     /// If the annotated type has a `'tcx` lifetime parameter, then that will be used as the
     /// lifetime for the type context/interner; otherwise the lifetime of the type context/interner
