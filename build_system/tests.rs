@@ -124,7 +124,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         if runner.is_native {
             eprintln!("[TEST] rust-random/rand");
             let mut test_cmd = RAND.test(&runner.target_compiler, &runner.dirs);
-            test_cmd.arg("--workspace");
+            test_cmd.arg("--workspace").arg("--").arg("-q");
             spawn_and_wait(test_cmd);
         } else {
             eprintln!("[AOT] rust-random/rand");
