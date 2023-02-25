@@ -462,7 +462,7 @@ macro_rules! define_queries {
             use std::marker::PhantomData;
 
             $(
-                #[derive(Copy, Clone, Debug)]
+                #[derive(Copy, Clone)]
                 pub struct $name<'tcx> {
                     data: PhantomData<&'tcx ()>
                 }

@@ -468,9 +468,9 @@ where
 
             dep_graph.with_task(
                 dep_node,
-                qcx,
-                (key, query),
-                |qcx, (key, query)| query.compute(qcx, key),
+                (qcx, query),
+                key,
+                |(qcx, query), key| query.compute(qcx, key),
                 query.hash_result(),
             )
         });

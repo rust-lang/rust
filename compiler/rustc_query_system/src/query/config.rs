@@ -14,7 +14,7 @@ pub type HashResult<V> = Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerp
 
 pub type TryLoadFromDisk<Qcx, V> = Option<fn(Qcx, SerializedDepNodeIndex) -> Option<V>>;
 
-pub trait QueryConfig<Qcx: QueryContext>: Copy + Debug {
+pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn name(self) -> &'static str;
 
     // `Key` and `Value` are `Copy` instead of `Clone` to ensure copying them stays cheap,
