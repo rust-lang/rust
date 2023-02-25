@@ -1189,6 +1189,8 @@ pub enum CastKind {
     IntToFloat,
     PtrToPtr,
     FnPtrToPtr,
+    /// Reinterpret the bits of the input as a different type.
+    Transmute,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

@@ -1789,7 +1789,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    fn codegen_transmute_into(
+    pub(crate) fn codegen_transmute_into(
         &mut self,
         bx: &mut Bx,
         src: &mir::Operand<'tcx>,

@@ -38,6 +38,18 @@ pub fn non_const<T>() -> usize {
     size_of_t()
 }
 
+// EMIT_MIR lower_intrinsics.transmute_inhabited.LowerIntrinsics.diff
+pub fn transmute_inhabited(c: std::cmp::Ordering) -> i8 {
+    unsafe { std::mem::transmute(c) }
+}
+
+pub enum Never {}
+
+// EMIT_MIR lower_intrinsics.transmute_uninhabited.LowerIntrinsics.diff
+pub unsafe fn transmute_uninhabited(u: ()) -> Never {
+    unsafe { std::mem::transmute::<(), Never>(u) }
+}
+
 pub enum E {
     A,
     B,

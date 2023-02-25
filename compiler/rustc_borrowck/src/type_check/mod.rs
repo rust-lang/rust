@@ -2242,6 +2242,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             }
                         }
                     }
+                    CastKind::Transmute => {
+                        span_mirbug!(
+                            self,
+                            rvalue,
+                            "Unexpected CastKind::Transmute, should only appear after lowering_intrinsics",
+                        );
+                    }
                 }
             }
 

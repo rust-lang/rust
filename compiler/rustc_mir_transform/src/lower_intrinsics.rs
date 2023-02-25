@@ -2,6 +2,7 @@
 
 use crate::MirPass;
 use rustc_middle::mir::*;
+use rustc_middle::ty::inhabitedness::inhabited_predicate::InhabitedPredicate;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
@@ -160,6 +161,30 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                 ))),
                             });
                             terminator.kind = TerminatorKind::Goto { target };
+                        }
+                    }
+                    sym::transmute => {
+                        let dst_ty = destination.ty(local_decls, tcx).ty;
+                        if let Some(target) = *target {
+                            let mut args = args.drain(..);
+                            block.statements.push(Statement {
+                                source_info: terminator.source_info,
+                                kind: StatementKind::Assign(Box::new((
+                                    *destination,
+                                    Rvalue::Cast(CastKind::Transmute, args.next().unwrap(), dst_ty),
+                                ))),
+                            });
+                            assert_eq!(args.next(), None, "Extra argument for transmute intrinsic");
+                            drop(args);
+                            terminator.kind = TerminatorKind::Goto { target };
+                        } else {
+                            debug_assert!(!matches!(
+                                dst_ty.inhabited_predicate(tcx),
+                                InhabitedPredicate::True
+                            ));
+                            // `transmute::<_, !>(x)` is UB for anything inhabited,
+                            // and must be unreachable if `x` is uninhabited.
+                            terminator.kind = TerminatorKind::Unreachable;
                         }
                     }
                     _ if intrinsic_name.as_str().starts_with("simd_shuffle") => {

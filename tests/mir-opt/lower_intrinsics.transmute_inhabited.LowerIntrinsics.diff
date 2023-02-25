@@ -1,0 +1,27 @@
+- // MIR for `transmute_inhabited` before LowerIntrinsics
++ // MIR for `transmute_inhabited` after LowerIntrinsics
+  
+  fn transmute_inhabited(_1: std::cmp::Ordering) -> i8 {
+      debug c => _1;                       // in scope 0 at $DIR/lower_intrinsics.rs:+0:28: +0:29
+      let mut _0: i8;                      // return place in scope 0 at $DIR/lower_intrinsics.rs:+0:54: +0:56
+      let mut _2: std::cmp::Ordering;      // in scope 0 at $DIR/lower_intrinsics.rs:+1:34: +1:35
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:+1:34: +1:35
+          _2 = _1;                         // scope 1 at $DIR/lower_intrinsics.rs:+1:34: +1:35
+-         _0 = transmute::<std::cmp::Ordering, i8>(move _2) -> bb1; // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:36
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:43:14: 43:33
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(std::cmp::Ordering) -> i8 {transmute::<std::cmp::Ordering, i8>}, val: Value(<ZST>) }
++         _0 = move _2 as i8 (Transmute);  // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:36
++         goto -> bb1;                     // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:36
+      }
+  
+      bb1: {
+          StorageDead(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:+1:35: +1:36
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:+2:2: +2:2
+      }
+  }
+  
