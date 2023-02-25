@@ -267,4 +267,41 @@ impl Default for NonExhaustiveEnum {
     }
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/10396
+
+#[derive(Default)]
+struct DefaultType;
+
+struct GenericType<T = DefaultType> {
+    t: T,
+}
+
+impl Default for GenericType {
+    fn default() -> Self {
+        Self { t: Default::default() }
+    }
+}
+
+struct InnerGenericType<T> {
+    t: T,
+}
+
+impl Default for InnerGenericType<DefaultType> {
+    fn default() -> Self {
+        Self { t: Default::default() }
+    }
+}
+
+struct OtherGenericType<T = DefaultType> {
+    inner: InnerGenericType<T>,
+}
+
+impl Default for OtherGenericType {
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+        }
+    }
+}
+
 fn main() {}
