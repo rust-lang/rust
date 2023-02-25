@@ -2,7 +2,7 @@
 // check that we clear the "ADT master drop flag" even when there are
 // no fields to be dropped.
 
-// EMIT_MIR issue_41888.main.ElaborateDrops.after.mir
+// EMIT_MIR issue_41888.main.ElaborateDrops.diff
 fn main() {
     let e;
     if cond() {
