@@ -608,6 +608,7 @@ symbols! {
         derive_default_enum,
         destruct,
         destructuring_assignment,
+        diag,
         diagnostic,
         direct,
         discriminant_kind,

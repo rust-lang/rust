@@ -3,7 +3,7 @@
 
 use crate::lints::{
     BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistantDocKeyword,
-    QueryInstability, TyQualified, TykindDiag, TykindKind, UntranslatableDiag,
+    QueryInstability, StringInDiagnostic, TyQualified, TykindDiag, TykindKind, UntranslatableDiag,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
@@ -338,7 +338,14 @@ declare_tool_lint! {
     report_in_external_macro: true
 }
 
-declare_lint_pass!(Diagnostics => [ UNTRANSLATABLE_DIAGNOSTIC, DIAGNOSTIC_OUTSIDE_OF_IMPL ]);
+declare_tool_lint! {
+    pub rustc::STRING_IN_DIAGNOSTIC,
+    Warn,
+    "prevent the use of `String` in diagnostics, which could indicate incorrect eager conversion",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(Diagnostics => [ UNTRANSLATABLE_DIAGNOSTIC, DIAGNOSTIC_OUTSIDE_OF_IMPL, STRING_IN_DIAGNOSTIC ]);
 
 impl LateLintPass<'_> for Diagnostics {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
@@ -391,6 +398,29 @@ impl LateLintPass<'_> for Diagnostics {
         debug!(?found_diagnostic_message);
         if !found_parent_with_attr && !found_diagnostic_message {
             cx.emit_spanned_lint(UNTRANSLATABLE_DIAGNOSTIC, span, UntranslatableDiag);
+        }
+    }
+}
+
+impl EarlyLintPass for Diagnostics {
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
+        if cx.sess().find_by_name(&item.attrs, sym::diag).is_none() {
+            return;
+        }
+
+        let variants = match &item.kind {
+            ast::ItemKind::Struct(variant, _) => vec![variant],
+            ast::ItemKind::Enum(enum_def, _) => enum_def.variants.iter().map(|v| &v.data).collect(),
+            _ => vec![],
+        };
+
+        for field in variants.iter().flat_map(|d| d.fields()) {
+            if let ast::TyKind::Path(_, path) = &field.ty.kind
+                && let [path] = path.segments.as_ref()
+                && path.ident.name == sym::String
+            {
+                cx.emit_spanned_lint(STRING_IN_DIAGNOSTIC, path.span(), StringInDiagnostic);
+            }
         }
     }
 }

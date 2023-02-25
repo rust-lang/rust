@@ -90,6 +90,9 @@ lint_non_existant_doc_keyword = found non-existing keyword `{$keyword}` used in 
 lint_diag_out_of_impl =
     diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
 
+lint_string_in_diag = use of String in diagnostic
+    .note = this could indicate incorrectly eagerly converting to a string
+
 lint_untranslatable_diag = diagnostics should be created using translatable messages
 
 lint_bad_opt_access = {$msg}

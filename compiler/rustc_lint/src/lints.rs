@@ -801,6 +801,11 @@ pub struct NonExistantDocKeyword {
 pub struct DiagOutOfImpl;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_string_in_diag)]
+#[note]
+pub struct StringInDiagnostic;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_untranslatable_diag)]
 pub struct UntranslatableDiag;
 
