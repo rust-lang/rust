@@ -504,6 +504,15 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
                 return None;
             }
+            // Do not try creating references, nor any types with potentially-complex
+            // invariants. This avoids an issue where checking validity would do a
+            // bunch of work generating a nice message about the invariant violation,
+            // only to not show it to anyone (since this isn't the lint).
+            Rvalue::Cast(CastKind::Transmute, op, dst_ty) if !dst_ty.is_primitive() => {
+                trace!("skipping Transmute of {:?} to {:?}", op, dst_ty);
+
+                return None;
+            }
 
             // There's no other checking to do at this time.
             Rvalue::Aggregate(..)

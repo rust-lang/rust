@@ -108,13 +108,13 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/ub-enum.rs:96:77
    |
 LL | const BAD_UNINHABITED_WITH_DATA1: Result<(i32, Never), (i32, !)> = unsafe { mem::transmute(0u64) };
-   |                                                                             ^^^^^^^^^^^^^^^^^^^^ transmuting to uninhabited type
+   |                                                                             ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(Ok)>.0.1: encountered a value of uninhabited type Never
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/ub-enum.rs:98:77
    |
 LL | const BAD_UNINHABITED_WITH_DATA2: Result<(i32, !), (i32, Never)> = unsafe { mem::transmute(0u64) };
-   |                                                                             ^^^^^^^^^^^^^^^^^^^^ transmuting to uninhabited type
+   |                                                                             ^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(Ok)>.0.1: encountered a value of the never type `!`
 
 error: aborting due to 13 previous errors
 

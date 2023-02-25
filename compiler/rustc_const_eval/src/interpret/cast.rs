@@ -133,6 +133,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     bug!()
                 }
             }
+
+            Transmute => {
+                assert!(src.layout.is_sized());
+                assert!(dest.layout.is_sized());
+                if src.layout.size != dest.layout.size {
+                    throw_ub_format!(
+                        "transmuting from {}-byte type to {}-byte type: `{}` -> `{}`",
+                        src.layout.size.bytes(),
+                        dest.layout.size.bytes(),
+                        src.layout.ty,
+                        dest.layout.ty,
+                    );
+                }
+
+                self.copy_op(src, dest, /*allow_transmute*/ true)?;
+            }
         }
         Ok(())
     }

@@ -137,6 +137,10 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
     fn parse_rvalue(&self, expr_id: ExprId) -> PResult<Rvalue<'tcx>> {
         parse_by_kind!(self, expr_id, expr, "rvalue",
             @call("mir_discriminant", args) => self.parse_place(args[0]).map(Rvalue::Discriminant),
+            @call("mir_cast_transmute", args) => {
+                let source = self.parse_operand(args[0])?;
+                Ok(Rvalue::Cast(CastKind::Transmute, source, expr.ty))
+            },
             @call("mir_checked", args) => {
                 parse_by_kind!(self, args[0], _, "binary op",
                     ExprKind::Binary { op, lhs, rhs } => Ok(Rvalue::CheckedBinaryOp(

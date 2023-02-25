@@ -1,0 +1,23 @@
+- // MIR for `unreachable_box` before ConstProp
++ // MIR for `unreachable_box` after ConstProp
+  
+  fn unreachable_box() -> ! {
+      let mut _0: !;                       // return place in scope 0 at $DIR/transmute.rs:+0:36: +0:37
+      let mut _1: !;                       // in scope 0 at $DIR/transmute.rs:+0:38: +3:2
+      let _2: std::boxed::Box<Never>;      // in scope 0 at $DIR/transmute.rs:+1:9: +1:10
+      let mut _3: !;                       // in scope 0 at $DIR/transmute.rs:+2:5: +2:16
+      scope 1 {
+          debug x => _2;                   // in scope 1 at $DIR/transmute.rs:+1:9: +1:10
+      }
+      scope 2 {
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/transmute.rs:+0:38: +3:2
+          StorageLive(_2);                 // scope 0 at $DIR/transmute.rs:+1:9: +1:10
+          _2 = const 1_usize as std::boxed::Box<Never> (Transmute); // scope 2 at $DIR/transmute.rs:+1:34: +1:52
+          StorageLive(_3);                 // scope 1 at $DIR/transmute.rs:+2:5: +2:16
+          unreachable;                     // scope 1 at $DIR/transmute.rs:+2:11: +2:13
+      }
+  }
+  

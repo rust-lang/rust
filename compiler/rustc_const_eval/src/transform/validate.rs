@@ -621,6 +621,33 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
+                    CastKind::Transmute => {
+                        if let MirPhase::Runtime(..) = self.mir_phase {
+                            // Unlike `mem::transmute`, a MIR `Transmute` is well-formed
+                            // for any two `Sized` types, just potentially UB to run.
+
+                            if !op_ty.is_sized(self.tcx, self.param_env) {
+                                self.fail(
+                                    location,
+                                    format!("Cannot transmute from non-`Sized` type {op_ty:?}"),
+                                );
+                            }
+                            if !target_type.is_sized(self.tcx, self.param_env) {
+                                self.fail(
+                                    location,
+                                    format!("Cannot transmute to non-`Sized` type {target_type:?}"),
+                                );
+                            }
+                        } else {
+                            self.fail(
+                                location,
+                                format!(
+                                    "Transmute is not supported in non-runtime phase {:?}.",
+                                    self.mir_phase
+                                ),
+                            );
+                        }
+                    }
                 }
             }
             Rvalue::Repeat(_, _)

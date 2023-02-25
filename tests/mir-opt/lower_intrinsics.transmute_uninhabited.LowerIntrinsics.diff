@@ -1,0 +1,22 @@
+- // MIR for `transmute_uninhabited` before LowerIntrinsics
++ // MIR for `transmute_uninhabited` after LowerIntrinsics
+  
+  fn transmute_uninhabited(_1: ()) -> Never {
+      debug u => _1;                       // in scope 0 at $DIR/lower_intrinsics.rs:+0:37: +0:38
+      let mut _0: Never;                   // return place in scope 0 at $DIR/lower_intrinsics.rs:+0:47: +0:52
+      let mut _2: ();                      // in scope 0 at $DIR/lower_intrinsics.rs:+1:47: +1:48
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:+1:47: +1:48
+          _2 = _1;                         // scope 1 at $DIR/lower_intrinsics.rs:+1:47: +1:48
+-         _0 = transmute::<(), Never>(move _2); // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:49
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:48:14: 48:46
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(()) -> Never {transmute::<(), Never>}, val: Value(<ZST>) }
++         _0 = move _2 as Never (Transmute); // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:49
++         unreachable;                     // scope 1 at $DIR/lower_intrinsics.rs:+1:14: +1:49
+      }
+  }
+  

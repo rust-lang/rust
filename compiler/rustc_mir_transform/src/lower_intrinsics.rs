@@ -221,6 +221,32 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }
+                    sym::transmute => {
+                        let dst_ty = destination.ty(local_decls, tcx).ty;
+                        let Ok([arg]) = <[_; 1]>::try_from(std::mem::take(args)) else {
+                            span_bug!(
+                                terminator.source_info.span,
+                                "Wrong number of arguments for transmute intrinsic",
+                            );
+                        };
+
+                        // Always emit the cast, even if we transmute to an uninhabited type,
+                        // because that lets CTFE and codegen generate better error messages
+                        // when such a transmute actually ends up reachable.
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::Cast(CastKind::Transmute, arg, dst_ty),
+                            ))),
+                        });
+
+                        if let Some(target) = *target {
+                            terminator.kind = TerminatorKind::Goto { target };
+                        } else {
+                            terminator.kind = TerminatorKind::Unreachable;
+                        }
+                    }
                     _ if intrinsic_name.as_str().starts_with("simd_shuffle") => {
                         validate_simd_shuffle(tcx, args, terminator.source_info.span);
                     }

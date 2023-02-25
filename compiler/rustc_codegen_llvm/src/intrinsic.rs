@@ -378,7 +378,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
 
-            _ => bug!("unknown intrinsic '{}'", name),
+            _ => bug!("unknown intrinsic '{}' -- should it have been lowered earlier?", name),
         };
 
         if !fn_abi.ret.is_ignore() {

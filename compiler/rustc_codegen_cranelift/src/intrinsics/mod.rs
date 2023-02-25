@@ -557,16 +557,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
             fx.bcx.ins().band(ptr, mask);
         }
 
-        sym::transmute => {
-            intrinsic_args!(fx, args => (from); intrinsic);
-
-            if ret.layout().abi.is_uninhabited() {
-                crate::base::codegen_panic(fx, "Transmuting to uninhabited type.", source_info);
-                return;
-            }
-
-            ret.write_cvalue_transmute(fx, from);
-        }
         sym::write_bytes | sym::volatile_set_memory => {
             intrinsic_args!(fx, args => (dst, val, count); intrinsic);
             let val = val.load_scalar(fx);
