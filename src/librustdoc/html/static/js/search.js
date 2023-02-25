@@ -325,10 +325,11 @@ function initSearch(rawSearchIndex) {
                 } else if (c === ":") { // If we allow paths ("str::string" for example).
                     if (!isPathStart(parserState)) {
                         break;
+                    } else if (foundExclamation) {
+                        throw new Error("`!` cannot be followed by `::`");
                     }
                     // Skip current ":".
                     parserState.pos += 1;
-                    foundExclamation = false;
                 } else {
                     throw new Error(`Unexpected \`${c}\``);
                 }
@@ -591,8 +592,8 @@ function initSearch(rawSearchIndex) {
      *
      * The supported syntax by this parser is as follow:
      *
-     * ident = *(ALPHA / DIGIT / "_") [!]
-     * path = ident *(DOUBLE-COLON ident)
+     * ident = *(ALPHA / DIGIT / "_")
+     * path = ident *(DOUBLE-COLON ident) [!]
      * arg = path [generics]
      * arg-without-generic = path
      * type-sep = COMMA/WS *(COMMA/WS)
