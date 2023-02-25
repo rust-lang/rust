@@ -154,8 +154,6 @@ use crate::collections::TryReserveError;
 use crate::slice;
 use crate::vec::{self, AsVecIntoIter, Vec};
 
-use super::SpecExtend;
-
 #[cfg(test)]
 mod tests;
 
@@ -1715,7 +1713,8 @@ impl<'a, T> IntoIterator for &'a BinaryHeap<T> {
 impl<T: Ord> Extend<T> for BinaryHeap<T> {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        <Self as SpecExtend<I>>::spec_extend(self, iter);
+        let guard = RebuildOnDrop { rebuild_from: self.len(), heap: self };
+        guard.heap.data.extend(iter);
     }
 
     #[inline]
@@ -1726,37 +1725,6 @@ impl<T: Ord> Extend<T> for BinaryHeap<T> {
     #[inline]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
-    }
-}
-
-impl<T: Ord, I: IntoIterator<Item = T>> SpecExtend<I> for BinaryHeap<T> {
-    default fn spec_extend(&mut self, iter: I) {
-        self.extend_desugared(iter.into_iter());
-    }
-}
-
-impl<T: Ord> SpecExtend<Vec<T>> for BinaryHeap<T> {
-    fn spec_extend(&mut self, ref mut other: Vec<T>) {
-        let start = self.data.len();
-        self.data.append(other);
-        self.rebuild_tail(start);
-    }
-}
-
-impl<T: Ord> SpecExtend<BinaryHeap<T>> for BinaryHeap<T> {
-    fn spec_extend(&mut self, ref mut other: BinaryHeap<T>) {
-        self.append(other);
-    }
-}
-
-impl<T: Ord> BinaryHeap<T> {
-    fn extend_desugared<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        let iterator = iter.into_iter();
-        let (lower, _) = iterator.size_hint();
-
-        self.reserve(lower);
-
-        iterator.for_each(move |elem| self.push(elem));
     }
 }
 
