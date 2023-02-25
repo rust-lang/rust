@@ -129,3 +129,7 @@ expand_module_multiple_candidates =
     .help = delete or rename one of them to remove the ambiguity
 
 expand_trace_macro = trace_macro
+
+expand_proc_macro_panicked =
+    proc macro panicked
+    .help = message: {$message}
