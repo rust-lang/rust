@@ -42,7 +42,6 @@ macro_rules! TrivialTypeTraversalImpls {
 
 TrivialTypeTraversalImpls! {
     (),
-    bool,
     usize,
     crate::AliasRelationDirection,
     crate::UniverseIndex,
