@@ -1,4 +1,5 @@
 // run-rustfix
+// normalize-stderr-test "takes `\d` bytes" -> "takes `N` bytes"
 #![deny(ref_binop_on_copy_type)]
 // #105259
 
