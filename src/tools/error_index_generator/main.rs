@@ -55,11 +55,8 @@ fn render_markdown(output_path: &Path) -> Result<(), Box<dyn Error>> {
 
     write!(output_file, "# Rust Compiler Error Index\n")?;
 
-    for (err_code, description) in error_codes().iter() {
-        match description {
-            Some(ref desc) => write!(output_file, "## {}\n{}\n", err_code, desc)?,
-            None => {}
-        }
+    for (err_code, description) in rustc_error_codes::DIAGNOSTICS.iter() {
+        write!(output_file, "## {}\n{}\n", err_code, description)?
     }
 
     Ok(())
@@ -109,23 +106,19 @@ This page lists all the error codes emitted by the Rust compiler.
     let mut chapters = Vec::with_capacity(err_codes.len());
 
     for (err_code, explanation) in err_codes.iter() {
-        if let Some(explanation) = explanation {
-            introduction.push_str(&format!(" * [{0}](./{0}.html)\n", err_code));
+        introduction.push_str(&format!(" * [{0}](./{0}.html)\n", err_code));
 
-            let content = add_rust_attribute_on_codeblock(explanation);
-            chapters.push(BookItem::Chapter(Chapter {
-                name: err_code.to_string(),
-                content: format!("# Error code {}\n\n{}\n", err_code, content),
-                number: None,
-                sub_items: Vec::new(),
-                // We generate it into the `error_codes` folder.
-                path: Some(PathBuf::from(&format!("{}.html", err_code))),
-                source_path: None,
-                parent_names: Vec::new(),
-            }));
-        } else {
-            introduction.push_str(&format!(" * {}\n", err_code));
-        }
+        let content = add_rust_attribute_on_codeblock(explanation);
+        chapters.push(BookItem::Chapter(Chapter {
+            name: err_code.to_string(),
+            content: format!("# Error code {}\n\n{}\n", err_code, content),
+            number: None,
+            sub_items: Vec::new(),
+            // We generate it into the `error_codes` folder.
+            path: Some(PathBuf::from(&format!("{}.html", err_code))),
+            source_path: None,
+            parent_names: Vec::new(),
+        }));
     }
 
     let mut config = Config::from_str(include_str!("book_config.toml"))?;

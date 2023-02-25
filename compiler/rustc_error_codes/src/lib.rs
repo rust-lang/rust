@@ -5,10 +5,9 @@
 //! the goal being to make their maintenance easier.
 
 macro_rules! register_diagnostics {
-    ($($ecode:ident: $message:expr,)* ; $($code:ident,)*) => (
-        pub static DIAGNOSTICS: &[(&str, Option<&str>)] = &[
-            $( (stringify!($ecode), Some($message)), )*
-            $( (stringify!($code), None), )*
+    ($($ecode:ident: $message:expr,)*) => (
+        pub static DIAGNOSTICS: &[(&str, &str)] = &[
+            $( (stringify!($ecode), $message), )*
         ];
     )
 }
