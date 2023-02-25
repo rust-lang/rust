@@ -6,8 +6,6 @@ pub enum BindingMode {
     BindByValue(Mutability),
 }
 
-TrivialTypeTraversalImpls! { BindingMode }
-
 impl BindingMode {
     pub fn convert(BindingAnnotation(by_ref, mutbl): BindingAnnotation) -> BindingMode {
         match by_ref {

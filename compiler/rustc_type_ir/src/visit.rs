@@ -156,8 +156,17 @@ impl<I: TriviallyTraverses<T>, T: ?Sized> SpecTypeVisitable for &PhantomData<(I,
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Traversal implementations.
+// Traversable implementations for upstream types.
 
+// We provide implementations for 2- and 3-element tuples, however (absent specialisation)
+// we can only provide for one case: we choose our implementations to be where all elements
+// themselves implement the respective traits; thus if an element is a no-op traversal, it
+// must provide explicit implementations even though the auto-deref specialisation would
+// normally negate any such need. The derive macros can be used for this purpose however.
+//
+// Note that if all elements are no-op traversals then the tuple itself will auto-implement
+// the `BoringTraversable` trait and these implementations will be bypassed; consequently
+// explicit implementations on the element types would not then be required.
 impl<I: Interner, T: TypeVisitable<I>, U: TypeVisitable<I>> TypeVisitable<I> for (T, U) {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.0.visit_with(visitor)?;

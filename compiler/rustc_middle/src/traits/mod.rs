@@ -471,7 +471,7 @@ pub enum IsConstable {
     Ctor,
 }
 
-crate::TrivialTypeTraversalAndLiftImpls! {
+crate::TrivialLiftImpls! {
     IsConstable,
 }
 
@@ -480,7 +480,6 @@ crate::TrivialTypeTraversalAndLiftImpls! {
 /// we can walk in order to obtain precise spans for any
 /// 'nested' types (e.g. `Foo` in `Option<Foo>`).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, Encodable, Decodable)]
-#[derive(TypeVisitable, TypeFoldable)]
 pub enum WellFormedLoc {
     /// Use the type of the provided definition.
     Ty(LocalDefId),
@@ -757,8 +756,6 @@ pub enum BuiltinImplSource {
     TupleUnsizing,
 }
 
-TrivialTypeTraversalImpls! { BuiltinImplSource }
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash, HashStable, PartialOrd, Ord)]
 pub enum ObjectSafetyViolation {
     /// `Self: Sized` declared on the trait.
@@ -956,7 +953,7 @@ pub enum CodegenObligationError {
     FulfillmentError,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable)]
 pub enum DefiningAnchor {
     /// `DefId` of the item.
     Bind(LocalDefId),

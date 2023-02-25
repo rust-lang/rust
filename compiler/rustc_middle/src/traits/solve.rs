@@ -49,7 +49,7 @@ pub struct Response<'tcx> {
     pub external_constraints: ExternalConstraints<'tcx>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable)]
 pub enum Certainty {
     Yes,
     Maybe(MaybeCause),
@@ -89,7 +89,7 @@ impl Certainty {
 }
 
 /// Why we failed to evaluate a goal.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable)]
 pub enum MaybeCause {
     /// We failed due to ambiguity. This ambiguity can either
     /// be a true ambiguity, i.e. there are multiple different answers,

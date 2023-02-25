@@ -284,7 +284,6 @@ impl fmt::Display for ImplPolarity {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
-#[derive(TypeFoldable, TypeVisitable)]
 pub enum Asyncness {
     Yes,
     No,

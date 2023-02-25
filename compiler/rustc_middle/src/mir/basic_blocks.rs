@@ -181,8 +181,6 @@ impl<'tcx> graph::WithPredecessors for BasicBlocks<'tcx> {
     }
 }
 
-TrivialTypeTraversalImpls! { Cache }
-
 impl<S: Encoder> Encodable<S> for Cache {
     #[inline]
     fn encode(&self, _s: &mut S) {}
