@@ -16,7 +16,7 @@ use rustc_ast::token::CommentKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
-use rustc_errors::{Applicability, Handler, SuggestionStyle};
+use rustc_errors::{Applicability, Handler, SuggestionStyle, TerminalUrl};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AnonConst, Expr};
@@ -707,7 +707,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
 
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
                 let fallback_bundle =
-                    rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+                    rustc_errors::fallback_fluent_bundle(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
                 let emitter = EmitterWriter::new(
                     Box::new(io::sink()),
                     None,
@@ -719,6 +719,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                     None,
                     false,
                     false,
+                    TerminalUrl::No,
                 );
                 let handler = Handler::with_emitter(false, None, Box::new(emitter));
                 let sess = ParseSess::with_span_handler(handler, sm);

@@ -3,7 +3,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{def_path_def_ids, is_lint_allowed, match_any_def_paths, peel_hir_expr_refs};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -44,7 +44,7 @@ impl_lint_pass!(UnnecessaryDefPath => [UNNECESSARY_DEF_PATH]);
 
 #[derive(Default)]
 pub struct UnnecessaryDefPath {
-    array_def_ids: FxHashSet<(DefId, Span)>,
+    array_def_ids: FxIndexSet<(DefId, Span)>,
     linted_def_ids: FxHashSet<DefId>,
 }
 
@@ -229,11 +229,11 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
             Res::Def(DefKind::Static(_), def_id) => read_mir_alloc_def_path(
                 cx,
                 cx.tcx.eval_static_initializer(def_id).ok()?.inner(),
-                cx.tcx.type_of(def_id),
+                cx.tcx.type_of(def_id).subst_identity(),
             ),
             Res::Def(DefKind::Const, def_id) => match cx.tcx.const_eval_poly(def_id).ok()? {
                 ConstValue::ByRef { alloc, offset } if offset.bytes() == 0 => {
-                    read_mir_alloc_def_path(cx, alloc.inner(), cx.tcx.type_of(def_id))
+                    read_mir_alloc_def_path(cx, alloc.inner(), cx.tcx.type_of(def_id).subst_identity())
                 },
                 _ => None,
             },

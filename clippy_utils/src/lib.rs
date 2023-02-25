@@ -104,7 +104,7 @@ use rustc_middle::ty::fast_reject::SimplifiedType::{
     PtrSimplifiedType, SliceSimplifiedType, StrSimplifiedType, UintSimplifiedType,
 };
 use rustc_middle::ty::{
-    layout::IntegerExt, BorrowKind, ClosureKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeVisitable, UpvarCapture,
+    layout::IntegerExt, BorrowKind, ClosureKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, UpvarCapture,
 };
 use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -317,7 +317,7 @@ pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) 
 /// Checks if a method is defined in an impl of a diagnostic item
 pub fn is_diag_item_method(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
     if let Some(impl_did) = cx.tcx.impl_of_method(def_id) {
-        if let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def() {
+        if let Some(adt) = cx.tcx.type_of(impl_did).subst_identity().ty_adt_def() {
             return cx.tcx.is_diagnostic_item(diag_item, adt.did());
         }
     }
@@ -552,7 +552,7 @@ fn non_local_item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol)
             .filter(|item| item.ident.name == name)
             .map(|child| child.res.expect_non_local())
             .collect(),
-        DefKind::Impl => tcx
+        DefKind::Impl { .. } => tcx
             .associated_item_def_ids(def_id)
             .iter()
             .copied()
@@ -812,7 +812,7 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
     if let QPath::TypeRelative(_, method) = path {
         if method.ident.name == sym::new {
             if let Some(impl_did) = cx.tcx.impl_of_method(def_id) {
-                if let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def() {
+                if let Some(adt) = cx.tcx.type_of(impl_did).subst_identity().ty_adt_def() {
                     return std_types_symbols.iter().any(|&symbol| {
                         cx.tcx.is_diagnostic_item(symbol, adt.did()) || Some(adt.did()) == cx.tcx.lang_items().string()
                     });

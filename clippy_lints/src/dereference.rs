@@ -27,7 +27,7 @@ use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{
     self, Binder, BoundVariableKind, Clause, EarlyBinder, FnSig, GenericArgKind, List, ParamEnv, ParamTy,
-    PredicateKind, ProjectionPredicate, Ty, TyCtxt, TypeVisitable, TypeckResults,
+    PredicateKind, ProjectionPredicate, Ty, TyCtxt, TypeVisitableExt, TypeckResults,
 };
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span, Symbol};
@@ -735,7 +735,7 @@ fn walk_parents<'tcx>(
                 span,
                 ..
             }) if span.ctxt() == ctxt => {
-                let ty = cx.tcx.type_of(owner_id.def_id);
+                let ty = cx.tcx.type_of(owner_id.def_id).subst_identity();
                 Some(ty_auto_deref_stability(cx.tcx, cx.param_env, ty, precedence).position_for_result(cx))
             },
 
@@ -781,7 +781,7 @@ fn walk_parents<'tcx>(
                             cx.tcx,
                             // Use the param_env of the target type.
                             cx.tcx.param_env(adt.did()),
-                            cx.tcx.type_of(field_def.did),
+                            cx.tcx.type_of(field_def.did).subst_identity(),
                             precedence,
                         )
                         .position_for_arg()

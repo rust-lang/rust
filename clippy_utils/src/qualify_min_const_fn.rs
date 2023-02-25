@@ -30,12 +30,14 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
                     ty::Clause::RegionOutlives(_)
                     | ty::Clause::TypeOutlives(_)
                     | ty::Clause::Projection(_)
-                    | ty::Clause::Trait(..),
+                    | ty::Clause::Trait(..)
+                    | ty::Clause::ConstArgHasType(..),
                 )
                 | ty::PredicateKind::WellFormed(_)
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
+                ty::PredicateKind::AliasEq(..) => panic!("alias eq predicate on function: {predicate:#?}"),
                 ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {predicate:#?}"),
                 ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {predicate:#?}"),
                 ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {predicate:#?}"),
