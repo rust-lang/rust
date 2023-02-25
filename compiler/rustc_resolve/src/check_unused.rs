@@ -34,7 +34,7 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{pluralize, MultiSpan};
 use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
 struct UnusedImport<'a> {
@@ -72,10 +72,8 @@ struct ExternCrateToLint {
     has_attrs: bool,
     /// Name used to refer to the crate.
     ident: Ident,
-    /// If `Some`, then this is renamed (`extern crate orig_name as
-    /// crate_name`), and -- perhaps surprisingly -- this stores the
-    /// *original* name (`item.name` will contain the new name)
-    orig_name: Option<Symbol>,
+    /// Whether the statement renames the crate `extern crate orig_name as new_name;`.
+    renames: bool,
 }
 
 impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
@@ -130,7 +128,7 @@ impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                     span_with_attributes: item.span_with_attributes(),
                     has_attrs: !item.attrs.is_empty(),
                     ident: item.ident,
-                    orig_name,
+                    renames: orig_name.is_some(),
                 });
             }
             _ => {}
@@ -423,18 +421,16 @@ impl Resolver<'_, '_> {
             // If the extern crate is renamed, then we cannot suggest replacing it with a use as this
             // would not insert the new name into the prelude, where other imports in the crate may be
             // expecting it.
-            if extern_crate.orig_name.is_some() {
+            if extern_crate.renames {
                 continue;
             }
 
             // If the extern crate isn't in the extern prelude,
             // there is no way it can be written as a `use`.
-            let usage_name =
-                extern_crate.orig_name.map_or(extern_crate.ident, Ident::with_dummy_span);
             if !visitor
                 .r
                 .extern_prelude
-                .get(&usage_name)
+                .get(&extern_crate.ident)
                 .map_or(false, |entry| !entry.introduced_by_item)
             {
                 continue;
