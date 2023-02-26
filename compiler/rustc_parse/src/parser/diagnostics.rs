@@ -165,8 +165,6 @@ enum IsStandalone {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum IncOrDec {
     Inc,
-    // FIXME: `i--` recovery isn't implemented yet
-    // #[allow(dead_code)]
     Dec,
 }
 
@@ -1331,7 +1329,7 @@ impl<'a> Parser<'a> {
 
         Ok(())
     }
-    #[allow(dead_code)]
+
     pub(super) fn recover_from_prefix_increment(
         &mut self,
         operand_expr: P<Expr>,
@@ -1342,7 +1340,7 @@ impl<'a> Parser<'a> {
         let kind = IncDecRecovery { standalone, op: IncOrDec::Inc, fixity: UnaryFixity::Pre };
         self.recover_from_inc_dec(operand_expr, kind, op_span)
     }
-    #[allow(dead_code)]
+
     pub(super) fn recover_from_postfix_increment(
         &mut self,
         operand_expr: P<Expr>,

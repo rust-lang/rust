@@ -286,7 +286,7 @@ impl<'a> Parser<'a> {
                 && self.prev_token.span.between(self.token.span).is_empty()
             {
                 let op_span = self.prev_token.span.to(self.token.span);
-                // Eat the second `+`
+                // Eat the second `-`
                 self.bump();
                 lhs = self.recover_from_postfix_decrement(lhs, op_span, starts_stmt)?;
                 continue;
@@ -602,14 +602,14 @@ impl<'a> Parser<'a> {
                 let operand_expr = this.parse_dot_or_call_expr(Default::default())?;
                 this.recover_from_prefix_increment(operand_expr, pre_span, starts_stmt)
             }
-            // Recover from `++x`:
+            // Recover from `--x`:
             token::BinOp(token::Minus)
                 if this.look_ahead(1, |t| *t == token::BinOp(token::Minus)) =>
             {
                 let starts_stmt = this.prev_token == token::Semi
                     || this.prev_token == token::CloseDelim(Delimiter::Brace);
                 let pre_span = this.token.span.to(this.look_ahead(1, |t| t.span));
-                // Eat both `+`s.
+                // Eat both `-`s.
                 this.bump();
                 this.bump();
 
