@@ -947,7 +947,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // There are three cases of interest:
         //   All elements are out of desired bounds
         //   Elements are contiguous, and tail is out of desired bounds
-        //   Elements are discontiguous, and head is out of desired bounds
+        //   Elements are discontiguous
         //
         // At all other times, element positions are unaffected.
 
@@ -987,7 +987,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 self.copy_nonoverlapping(target_cap, 0, len);
             }
         } else if !self.is_contiguous() {
-            // Head is out of bounds, tail is in bounds.
+            // The head slice is at least partially out of bounds, tail is in bounds.
             // Copy the head backwards so it lines up with the target capacity.
             // This won't overlap because `target_cap >= self.len`.
             //
