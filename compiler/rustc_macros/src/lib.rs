@@ -20,8 +20,7 @@ mod newtype;
 mod query;
 mod serialize;
 mod symbols;
-mod type_foldable;
-mod type_visitable;
+mod traversable;
 
 #[proc_macro]
 pub fn rustc_queries(input: TokenStream) -> TokenStream {
@@ -144,7 +143,7 @@ decl_derive!(
     /// and
     ///
     /// `impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Bar<'tcx>`
-    type_foldable::type_foldable_derive
+    traversable::traversable_derive::<traversable::Foldable>
 );
 decl_derive!(
     [TypeVisitable, attributes(type_visitable)] =>
@@ -170,7 +169,7 @@ decl_derive!(
     /// and
     ///
     /// `impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Bar<'tcx>`
-    type_visitable::type_visitable_derive
+    traversable::traversable_derive::<traversable::Visitable>
 );
 decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
 decl_derive!(
