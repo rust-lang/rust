@@ -12,7 +12,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/inline_compatibility.rs:+1:9: +1:10
           _1 = sum(const 4_u32, const 4_u32, const 30_u32, const 200_u32, const 1000_u32) -> bb1; // scope 0 at $DIR/inline_compatibility.rs:+1:13: +1:52
                                            // mir::Constant
-                                           // + span: $DIR/inline_compatibility.rs:42:13: 42:16
+                                           // + span: $DIR/inline_compatibility.rs:41:13: 41:16
                                            // + literal: Const { ty: unsafe extern "C" fn(u32, ...) -> u32 {sum}, val: Value(<ZST>) }
       }
   
