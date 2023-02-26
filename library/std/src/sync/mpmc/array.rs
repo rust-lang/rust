@@ -464,14 +464,15 @@ impl<T> Channel<T> {
     /// ordering or stronger.
     pub(crate) unsafe fn disconnect_receivers(&self) -> bool {
         let tail = self.tail.fetch_or(self.mark_bit, Ordering::SeqCst);
-        self.discard_all_messages(tail);
-
-        if tail & self.mark_bit == 0 {
+        let disconnected = if tail & self.mark_bit == 0 {
             self.senders.disconnect();
             true
         } else {
             false
-        }
+        };
+
+        self.discard_all_messages(tail);
+        disconnected
     }
 
     /// Discards all messages.
