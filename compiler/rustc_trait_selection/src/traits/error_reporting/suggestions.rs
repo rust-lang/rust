@@ -3107,6 +3107,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 self.tcx.def_span(def_id),
                                 "required because it's used within this closure",
                             ),
+                            ty::Str => err.note("`str` is considered to contain a `[u8]` slice for auto trait purposes"),
                             _ => err.note(&msg),
                         };
                     }

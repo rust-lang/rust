@@ -2300,11 +2300,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(_)
-            | ty::Str
             | ty::Error(_)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Never
             | ty::Char => ty::Binder::dummy(Vec::new()),
+
+            // Treat this like `struct str([u8]);`
+            ty::Str => ty::Binder::dummy(vec![self.tcx().mk_slice(self.tcx().types.u8)]),
 
             ty::Placeholder(..)
             | ty::Dynamic(..)
