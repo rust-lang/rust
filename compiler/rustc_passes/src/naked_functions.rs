@@ -219,7 +219,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
                 hir::intravisit::walk_expr(self, expr);
             }
 
-            ExprKind::Err => {
+            ExprKind::Err(_) => {
                 self.items.push((ItemKind::Err, span));
             }
         }

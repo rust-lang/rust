@@ -1082,11 +1082,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         hir::TypeBindingKind::Constraint { bounds }
                     }
                     DesugarKind::Error(position) => {
-                        self.tcx.sess.emit_err(errors::MisplacedAssocTyBinding {
+                        let guar = self.tcx.sess.emit_err(errors::MisplacedAssocTyBinding {
                             span: constraint.span,
                             position: DiagnosticArgFromDisplay(position),
                         });
-                        let err_ty = &*self.arena.alloc(self.ty(constraint.span, hir::TyKind::Err));
+                        let err_ty =
+                            &*self.arena.alloc(self.ty(constraint.span, hir::TyKind::Err(guar)));
                         hir::TypeBindingKind::Equality { term: err_ty.into() }
                     }
                 }
@@ -1255,7 +1256,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_ty_direct(&mut self, t: &Ty, itctx: &ImplTraitContext) -> hir::Ty<'hir> {
         let kind = match &t.kind {
             TyKind::Infer => hir::TyKind::Infer,
-            TyKind::Err => hir::TyKind::Err,
+            TyKind::Err => {
+                hir::TyKind::Err(self.tcx.sess.delay_span_bug(t.span, "TyKind::Err lowered"))
+            }
             TyKind::Slice(ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),
             TyKind::Ptr(mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
             TyKind::Ref(region, mt) => {
@@ -1381,7 +1384,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         path
                     }
                     ImplTraitContext::FeatureGated(position, feature) => {
-                        self.tcx
+                        let guar = self
+                            .tcx
                             .sess
                             .create_feature_err(
                                 MisplacedImplTrait {
@@ -1391,24 +1395,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 *feature,
                             )
                             .emit();
-                        hir::TyKind::Err
+                        hir::TyKind::Err(guar)
                     }
                     ImplTraitContext::Disallowed(position) => {
-                        self.tcx.sess.emit_err(MisplacedImplTrait {
+                        let guar = self.tcx.sess.emit_err(MisplacedImplTrait {
                             span: t.span,
                             position: DiagnosticArgFromDisplay(position),
                         });
-                        hir::TyKind::Err
+                        hir::TyKind::Err(guar)
                     }
                 }
             }
             TyKind::MacCall(_) => panic!("`TyKind::MacCall` should have been expanded by now"),
             TyKind::CVarArgs => {
-                self.tcx.sess.delay_span_bug(
+                let guar = self.tcx.sess.delay_span_bug(
                     t.span,
                     "`TyKind::CVarArgs` should have been handled elsewhere",
                 );
-                hir::TyKind::Err
+                hir::TyKind::Err(guar)
             }
         };
 

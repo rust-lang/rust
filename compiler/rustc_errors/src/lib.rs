@@ -42,7 +42,7 @@ pub use rustc_error_messages::{
 pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_macros::fluent_messages;
 use rustc_span::source_map::SourceMap;
-use rustc_span::HashStableContext;
+pub use rustc_span::ErrorGuaranteed;
 use rustc_span::{Loc, Span};
 
 use std::borrow::Cow;
@@ -1845,18 +1845,4 @@ pub enum TerminalUrl {
     No,
     Yes,
     Auto,
-}
-
-/// Useful type to use with `Result<>` indicate that an error has already
-/// been reported to the user, so no need to continue checking.
-#[derive(Clone, Copy, Debug, Encodable, Decodable, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[derive(HashStable_Generic)]
-pub struct ErrorGuaranteed(());
-
-impl ErrorGuaranteed {
-    /// To be used only if you really know what you are doing... ideally, we would find a way to
-    /// eliminate all calls to this method.
-    pub fn unchecked_claim_error_was_emitted() -> Self {
-        ErrorGuaranteed(())
-    }
 }

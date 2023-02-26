@@ -2149,3 +2149,17 @@ where
         Hash::hash(&len, hasher);
     }
 }
+
+/// Useful type to use with `Result<>` indicate that an error has already
+/// been reported to the user, so no need to continue checking.
+#[derive(Clone, Copy, Debug, Encodable, Decodable, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(HashStable_Generic)]
+pub struct ErrorGuaranteed(());
+
+impl ErrorGuaranteed {
+    /// To be used only if you really know what you are doing... ideally, we would find a way to
+    /// eliminate all calls to this method.
+    pub fn unchecked_claim_error_was_emitted() -> Self {
+        ErrorGuaranteed(())
+    }
+}
