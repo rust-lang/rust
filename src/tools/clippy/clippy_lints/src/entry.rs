@@ -6,7 +6,7 @@ use clippy_utils::{
     source::{reindent_multiline, snippet_indent, snippet_with_applicability, snippet_with_context},
     SpanlessEq,
 };
-use core::fmt::Write;
+use core::fmt::{self, Write};
 use rustc_errors::Applicability;
 use rustc_hir::{
     hir_id::HirIdSet,
@@ -65,6 +65,10 @@ declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 impl<'tcx> LateLintPass<'tcx> for HashMapPass {
     #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if expr.span.from_expansion() {
+            return;
+        }
+
         let Some(higher::If { cond: cond_expr, then: then_expr, r#else: else_expr }) = higher::If::hir(expr) else {
             return
         };
@@ -532,7 +536,7 @@ impl<'tcx> InsertSearchResults<'tcx> {
             if is_expr_used_or_unified(cx.tcx, insertion.call) {
                 write_wrapped(&mut res, insertion, ctxt, app);
             } else {
-                let _ = write!(
+                let _: fmt::Result = write!(
                     res,
                     "e.insert({})",
                     snippet_with_context(cx, insertion.value.span, ctxt, "..", app).0
@@ -548,7 +552,7 @@ impl<'tcx> InsertSearchResults<'tcx> {
         (
             self.snippet(cx, span, app, |res, insertion, ctxt, app| {
                 // Insertion into a map would return `Some(&mut value)`, but the entry returns `&mut value`
-                let _ = write!(
+                let _: fmt::Result = write!(
                     res,
                     "Some(e.insert({}))",
                     snippet_with_context(cx, insertion.value.span, ctxt, "..", app).0
@@ -562,7 +566,7 @@ impl<'tcx> InsertSearchResults<'tcx> {
         (
             self.snippet(cx, span, app, |res, insertion, ctxt, app| {
                 // Insertion into a map would return `None`, but the entry returns a mutable reference.
-                let _ = if is_expr_final_block_expr(cx.tcx, insertion.call) {
+                let _: fmt::Result = if is_expr_final_block_expr(cx.tcx, insertion.call) {
                     write!(
                         res,
                         "e.insert({});\n{}None",

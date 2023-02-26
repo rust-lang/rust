@@ -22,8 +22,8 @@ error: this could be rewritten as `let...else`
   --> $DIR/manual_let_else_match.rs:44:9
    |
 LL | /         let v = match h() {
-LL | |             (Some(_), Some(_)) | (None, None) => continue,
 LL | |             (Some(v), None) | (None, Some(v)) => v,
+LL | |             (Some(_), Some(_)) | (None, None) => continue,
 LL | |         };
    | |__________^ help: consider writing: `let ((Some(v), None) | (None, Some(v))) = h() else { continue };`
 
@@ -31,8 +31,8 @@ error: this could be rewritten as `let...else`
   --> $DIR/manual_let_else_match.rs:49:9
    |
 LL | /         let v = match build_enum() {
-LL | |             _ => continue,
 LL | |             Variant::Bar(v) | Variant::Baz(v) => v,
+LL | |             _ => continue,
 LL | |         };
    | |__________^ help: consider writing: `let (Variant::Bar(v) | Variant::Baz(v)) = build_enum() else { continue };`
 
@@ -63,5 +63,14 @@ LL | |         _ => return,
 LL | |     };
    | |______^ help: consider writing: `let (Variant::Bar(_) | Variant::Baz(_)) = f else { return };`
 
-error: aborting due to 7 previous errors
+error: this could be rewritten as `let...else`
+  --> $DIR/manual_let_else_match.rs:76:5
+   |
+LL | /     let data = match data.as_slice() {
+LL | |         [data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0] => data,
+LL | |         _ => return,
+LL | |     };
+   | |______^ help: consider writing: `let ([data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0]) = data.as_slice() else { return };`
+
+error: aborting due to 8 previous errors
 

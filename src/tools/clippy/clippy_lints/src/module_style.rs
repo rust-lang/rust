@@ -134,7 +134,7 @@ fn process_paths_for_mod_files<'a>(
     mod_folders: &mut FxHashSet<&'a OsStr>,
 ) {
     let mut comp = path.components().rev().peekable();
-    let _ = comp.next();
+    let _: Option<_> = comp.next();
     if path.ends_with("mod.rs") {
         mod_folders.insert(comp.peek().map(|c| c.as_os_str()).unwrap_or_default());
     }
