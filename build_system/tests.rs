@@ -1,4 +1,4 @@
-use super::build_sysroot::{self, SYSROOT_SRC};
+use super::build_sysroot;
 use super::config;
 use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
@@ -114,8 +114,9 @@ pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
 pub(crate) static PORTABLE_SIMD: CargoProject =
     CargoProject::new(&PORTABLE_SIMD_REPO.source_dir(), "portable_simd");
 
-pub(crate) static LIBCORE_TESTS: CargoProject =
-    CargoProject::new(&SYSROOT_SRC.join("library/core/tests"), "core_tests");
+pub(crate) static LIBCORE_TESTS_SRC: RelPath = RelPath::DOWNLOAD.join("coretests_src");
+
+pub(crate) static LIBCORE_TESTS: CargoProject = CargoProject::new(&LIBCORE_TESTS_SRC, "core_tests");
 
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::custom("test.rust-random/rand", &|runner| {
