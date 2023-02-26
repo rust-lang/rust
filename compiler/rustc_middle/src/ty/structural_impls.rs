@@ -7,7 +7,9 @@ use crate::mir::interpret;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use crate::ty::{self, AliasTy, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
+use crate::ty::{
+    self, noop_if_trivially_traversable, AliasTy, InferConst, Lift, Term, TermKind, Ty, TyCtxt,
+};
 use rustc_hir::def::Namespace;
 use rustc_target::abi::TyAndLayout;
 use rustc_type_ir::{ConstKind, DebugWithInfcx, InferCtxtLike, WithInfcx};
@@ -770,16 +772,31 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     ) -> Result<Self, F::Error> {
         let ty = self.ty().try_fold_with(folder)?;
         let kind = match self.kind() {
-            ConstKind::Param(p) => ConstKind::Param(p.try_fold_with(folder)?),
-            ConstKind::Infer(i) => ConstKind::Infer(i.try_fold_with(folder)?),
-            ConstKind::Bound(d, b) => {
-                ConstKind::Bound(d.try_fold_with(folder)?, b.try_fold_with(folder)?)
-            }
-            ConstKind::Placeholder(p) => ConstKind::Placeholder(p.try_fold_with(folder)?),
-            ConstKind::Unevaluated(uv) => ConstKind::Unevaluated(uv.try_fold_with(folder)?),
-            ConstKind::Value(v) => ConstKind::Value(v.try_fold_with(folder)?),
-            ConstKind::Error(e) => ConstKind::Error(e.try_fold_with(folder)?),
-            ConstKind::Expr(e) => ConstKind::Expr(e.try_fold_with(folder)?),
+            ConstKind::Param(p) => ConstKind::Param(noop_if_trivially_traversable!(
+                p.try_fold_with::<TyCtxt<'tcx>>(folder)
+            )?),
+            ConstKind::Infer(i) => ConstKind::Infer(noop_if_trivially_traversable!(
+                i.try_fold_with::<TyCtxt<'tcx>>(folder)
+            )?),
+            ConstKind::Bound(d, b) => ConstKind::Bound(
+                noop_if_trivially_traversable!(d.try_fold_with::<TyCtxt<'tcx>>(folder))?,
+                noop_if_trivially_traversable!(b.try_fold_with::<TyCtxt<'tcx>>(folder))?,
+            ),
+            ConstKind::Placeholder(p) => ConstKind::Placeholder(noop_if_trivially_traversable!(
+                p.try_fold_with::<TyCtxt<'tcx>>(folder)
+            )?),
+            ConstKind::Unevaluated(uv) => ConstKind::Unevaluated(noop_if_trivially_traversable!(
+                uv.try_fold_with::<TyCtxt<'tcx>>(folder)
+            )?),
+            ConstKind::Value(v) => ConstKind::Value(noop_if_trivially_traversable!(
+                v.try_fold_with::<TyCtxt<'tcx>>(folder)
+            )?),
+            ConstKind::Error(e) => ConstKind::Error(noop_if_trivially_traversable!(
+                e.try_fold_with::<TyCtxt<'tcx>>(folder)
+            )?),
+            ConstKind::Expr(e) => ConstKind::Expr(noop_if_trivially_traversable!(
+                e.try_fold_with::<TyCtxt<'tcx>>(folder)
+            )?),
         };
         if ty != self.ty() || kind != self.kind() {
             Ok(folder.interner().mk_ct_from_kind(kind, ty))
@@ -795,18 +812,32 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
         visitor: &mut V,
     ) -> ControlFlow<V::BreakTy> {
         self.ty().visit_with(visitor)?;
-        match self.kind() {
-            ConstKind::Param(p) => p.visit_with(visitor),
-            ConstKind::Infer(i) => i.visit_with(visitor),
-            ConstKind::Bound(d, b) => {
-                d.visit_with(visitor)?;
-                b.visit_with(visitor)
+        match &self.kind() {
+            ConstKind::Param(p) => {
+                noop_if_trivially_traversable!(p.visit_with::<TyCtxt<'tcx>>(visitor))
             }
-            ConstKind::Placeholder(p) => p.visit_with(visitor),
-            ConstKind::Unevaluated(uv) => uv.visit_with(visitor),
-            ConstKind::Value(v) => v.visit_with(visitor),
-            ConstKind::Error(e) => e.visit_with(visitor),
-            ConstKind::Expr(e) => e.visit_with(visitor),
+            ConstKind::Infer(i) => {
+                noop_if_trivially_traversable!(i.visit_with::<TyCtxt<'tcx>>(visitor))
+            }
+            ConstKind::Bound(d, b) => {
+                noop_if_trivially_traversable!(d.visit_with::<TyCtxt<'tcx>>(visitor))?;
+                noop_if_trivially_traversable!(b.visit_with::<TyCtxt<'tcx>>(visitor))
+            }
+            ConstKind::Placeholder(p) => {
+                noop_if_trivially_traversable!(p.visit_with::<TyCtxt<'tcx>>(visitor))
+            }
+            ConstKind::Unevaluated(uv) => {
+                noop_if_trivially_traversable!(uv.visit_with::<TyCtxt<'tcx>>(visitor))
+            }
+            ConstKind::Value(v) => {
+                noop_if_trivially_traversable!(v.visit_with::<TyCtxt<'tcx>>(visitor))
+            }
+            ConstKind::Error(e) => {
+                noop_if_trivially_traversable!(e.visit_with::<TyCtxt<'tcx>>(visitor))
+            }
+            ConstKind::Expr(e) => {
+                noop_if_trivially_traversable!(e.visit_with::<TyCtxt<'tcx>>(visitor))
+            }
         }
     }
 }

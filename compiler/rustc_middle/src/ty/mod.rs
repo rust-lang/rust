@@ -1583,16 +1583,23 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         Ok(ParamEnv::new(
-            self.caller_bounds().try_fold_with(folder)?,
-            self.reveal().try_fold_with(folder)?,
+            noop_if_trivially_traversable!(
+                { self.caller_bounds() }.try_fold_with::<TyCtxt<'tcx>>(folder)
+            )?,
+            noop_if_trivially_traversable!(
+                { self.reveal() }.try_fold_with::<TyCtxt<'tcx>>(folder)
+            )?,
         ))
     }
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.caller_bounds().visit_with(visitor)?;
-        self.reveal().visit_with(visitor)
+        noop_if_trivially_traversable!(
+            { &self.caller_bounds() }.visit_with::<TyCtxt<'tcx>>(visitor)
+        )?;
+        noop_if_trivially_traversable!({ &self.reveal() }.visit_with::<TyCtxt<'tcx>>(visitor))?;
+        ControlFlow::Continue(())
     }
 }
 
