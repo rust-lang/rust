@@ -1,5 +1,5 @@
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:39:17
+  --> $DIR/diagnostics.rs:41:17
    |
 LL |         handler.struct_err("untranslatable diagnostic")
    |                 ^^^^^^^^^^
@@ -11,15 +11,15 @@ LL | #![deny(rustc::untranslatable_diagnostic)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:59:14
+  --> $DIR/diagnostics.rs:61:14
    |
 LL |         diag.note("untranslatable diagnostic");
    |              ^^^^
 
 error: diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
-  --> $DIR/diagnostics.rs:76:25
+  --> $DIR/diagnostics.rs:78:25
    |
-LL |     let _diag = handler.struct_err(fluent::compiletest_example);
+LL |     let _diag = handler.struct_err(crate::fluent_generated::no_crate_example);
    |                         ^^^^^^^^^^
    |
 note: the lint level is defined here
@@ -29,13 +29,13 @@ LL | #![deny(rustc::diagnostic_outside_of_impl)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
-  --> $DIR/diagnostics.rs:79:25
+  --> $DIR/diagnostics.rs:81:25
    |
 LL |     let _diag = handler.struct_err("untranslatable diagnostic");
    |                         ^^^^^^^^^^
 
 error: diagnostics should be created using translatable messages
-  --> $DIR/diagnostics.rs:79:25
+  --> $DIR/diagnostics.rs:81:25
    |
 LL |     let _diag = handler.struct_err("untranslatable diagnostic");
    |                         ^^^^^^^^^^

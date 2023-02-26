@@ -161,7 +161,7 @@ fn type_op_normalize<'tcx, T>(
     key: ParamEnvAnd<'tcx, Normalize<T>>,
 ) -> Fallible<T>
 where
-    T: fmt::Debug + TypeFoldable<'tcx> + Lift<'tcx>,
+    T: fmt::Debug + TypeFoldable<TyCtxt<'tcx>> + Lift<'tcx>,
 {
     let (param_env, Normalize { value }) = key.into_parts();
     let Normalized { value, obligations } =

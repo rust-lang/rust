@@ -13,8 +13,8 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
-use rustc_middle::ty::fold::{ir::TypeFolder, TypeFoldable, TypeSuperFoldable};
-use rustc_middle::ty::visit::TypeSuperVisitable;
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::TypeckResults;
 use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -561,7 +561,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             struct RecursionChecker {
                 def_id: LocalDefId,
             }
-            impl<'tcx> ty::ir::TypeVisitor<TyCtxt<'tcx>> for RecursionChecker {
+            impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for RecursionChecker {
                 type BreakTy = ();
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                     if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *t.kind() {
@@ -685,7 +685,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn resolve<T>(&mut self, x: T, span: &dyn Locatable) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let mut resolver = Resolver::new(self.fcx, span, self.body);
         let x = x.fold_with(&mut resolver);
@@ -797,7 +797,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
                 debug!("Resolver::fold_ty: input type `{:?}` not fully resolvable", t);
                 let e = self.report_error(t);
                 self.replaced_with_error = Some(e);
-                self.interner().ty_error_with_guaranteed(e)
+                self.interner().ty_error(e)
             }
         }
     }

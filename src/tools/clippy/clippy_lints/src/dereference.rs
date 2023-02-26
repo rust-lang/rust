@@ -27,7 +27,7 @@ use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{
     self, Binder, BoundVariableKind, Clause, EarlyBinder, FnSig, GenericArgKind, List, ParamTy, PredicateKind,
-    ProjectionPredicate, Ty, TyCtxt, TypeVisitable, TypeckResults,
+    ProjectionPredicate, Ty, TyCtxt, TypeVisitableExt, TypeckResults,
 };
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span, Symbol};
@@ -1022,7 +1022,7 @@ fn binding_ty_auto_deref_stability<'tcx>(
                     ))
                     .is_sized(cx.tcx, cx.param_env.without_caller_bounds()),
             ),
-            TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(..) | TyKind::TraitObject(..) | TyKind::Err => {
+            TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(..) | TyKind::TraitObject(..) | TyKind::Err(_) => {
                 Position::ReborrowStable(precedence)
             },
         };
@@ -1038,7 +1038,7 @@ fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
             if self.0
                 || matches!(
                     ty.kind,
-                    TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(_) | TyKind::Err
+                    TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(_) | TyKind::Err(_)
                 )
             {
                 self.0 = true;

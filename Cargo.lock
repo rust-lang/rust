@@ -90,15 +90,6 @@ dependencies = [
 
 [[package]]
 name = "ansi_term"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
-dependencies = [
- "winapi",
-]
-
-[[package]]
-name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
@@ -390,7 +381,6 @@ dependencies = [
  "os_info",
  "pasetors",
  "pathdiff",
- "percent-encoding",
  "pretty_env_logger",
  "rustc-workspace-hack",
  "rustfix",
@@ -891,11 +881,11 @@ dependencies = [
  "diff",
  "getopts",
  "glob",
- "lazy_static",
  "lazycell",
  "libc",
- "miow 0.3.7",
+ "miow 0.5.0",
  "miropt-test-tools",
+ "once_cell",
  "regex",
  "rustfix",
  "serde",
@@ -1217,12 +1207,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
 
 [[package]]
-name = "difference"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
-
-[[package]]
 name = "digest"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1379,6 +1363,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "elsa"
+version = "1.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f74077c3c3aedb99a2683919698285596662518ea13e5eedcf8bdd43b0d0453b"
+dependencies = [
+ "stable_deref_trait",
+]
+
+[[package]]
 name = "ena"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1452,6 +1445,7 @@ name = "error_index_generator"
 version = "0.0.0"
 dependencies = [
  "mdbook",
+ "rustc_error_codes",
 ]
 
 [[package]]
@@ -1934,8 +1928,16 @@ version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee512640fe35acbfb4bb779db6f0d80704c2cacfa2e39b601ef3e3f47d1ae4c7"
 dependencies = [
- "compiler_builtins",
  "libc",
+]
+
+[[package]]
+name = "hermit-abi"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "856b5cb0902c2b6d65d5fd97dfa30f9b70c7538e770b98eab5ed52d8db923e01"
+dependencies = [
+ "compiler_builtins",
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
 ]
@@ -3184,14 +3186,14 @@ checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 
 [[package]]
 name = "pretty_assertions"
-version = "0.6.1"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f81e1644e1b54f5a68959a29aa86cde704219254669da328ecfdf6a1f09d427"
+checksum = "a25e9bcb20aa780fd0bb16b72403a9064d6b3f22f026946029acb941a50af755"
 dependencies = [
- "ansi_term 0.11.0",
  "ctor",
- "difference",
+ "diff",
  "output_vt100",
+ "yansi",
 ]
 
 [[package]]
@@ -3689,6 +3691,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "thin-vec",
  "tracing",
 ]
 
@@ -3698,6 +3701,7 @@ version = "0.0.0"
 dependencies = [
  "rustc_ast",
  "rustc_span",
+ "thin-vec",
 ]
 
 [[package]]
@@ -3882,6 +3886,7 @@ dependencies = [
  "arrayvec 0.7.0",
  "bitflags",
  "cfg-if",
+ "elsa",
  "ena",
  "indexmap",
  "jobserver",
@@ -3918,26 +3923,47 @@ version = "0.0.0"
 dependencies = [
  "libc",
  "rustc_ast",
+ "rustc_ast_lowering",
+ "rustc_ast_passes",
  "rustc_ast_pretty",
+ "rustc_attr",
+ "rustc_borrowck",
+ "rustc_builtin_macros",
  "rustc_codegen_ssa",
+ "rustc_const_eval",
  "rustc_data_structures",
  "rustc_error_codes",
+ "rustc_error_messages",
  "rustc_errors",
+ "rustc_expand",
  "rustc_feature",
  "rustc_hir",
  "rustc_hir_analysis",
  "rustc_hir_pretty",
+ "rustc_hir_typeck",
+ "rustc_incremental",
+ "rustc_infer",
  "rustc_interface",
  "rustc_lint",
  "rustc_log",
  "rustc_macros",
  "rustc_metadata",
  "rustc_middle",
+ "rustc_mir_build",
+ "rustc_mir_dataflow",
+ "rustc_monomorphize",
  "rustc_parse",
+ "rustc_passes",
  "rustc_plugin_impl",
+ "rustc_privacy",
+ "rustc_query_system",
+ "rustc_resolve",
  "rustc_session",
  "rustc_span",
+ "rustc_symbol_mangling",
  "rustc_target",
+ "rustc_trait_selection",
+ "rustc_ty_utils",
  "serde_json",
  "tracing",
  "winapi",
@@ -4071,6 +4097,7 @@ dependencies = [
  "rustc_trait_selection",
  "rustc_type_ir",
  "smallvec",
+ "thin-vec",
  "tracing",
 ]
 
@@ -4127,6 +4154,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
+ "thin-vec",
  "tracing",
 ]
 
@@ -4826,7 +4854,6 @@ dependencies = [
  "serde_json",
  "smallvec",
  "tempfile",
- "thin-vec",
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
@@ -5276,7 +5303,7 @@ dependencies = [
  "dlmalloc",
  "fortanix-sgx-abi",
  "hashbrown 0.12.3",
- "hermit-abi 0.2.6",
+ "hermit-abi 0.3.0",
  "libc",
  "miniz_oxide",
  "object 0.29.0",
@@ -5471,10 +5498,8 @@ dependencies = [
 name = "test"
 version = "0.0.0"
 dependencies = [
- "cfg-if",
  "core",
  "getopts",
- "libc",
  "panic_abort",
  "panic_unwind",
  "proc_macro",
@@ -5502,9 +5527,9 @@ checksum = "b1141d4d61095b28419e22cb0bbf02755f5e54e0526f97f1e3d1d160e60885fb"
 
 [[package]]
 name = "thin-vec"
-version = "0.2.9"
+version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ceb05e71730d396f960f8f3901cdb41be2d339b303e9d7d3a07c5ff0536e671b"
+checksum = "aac81b6fd6beb5884b0cf3321b8117e6e5d47ecb6fc89f414cfdcca8b2fe2dd8"
 
 [[package]]
 name = "thiserror"
@@ -5749,7 +5774,7 @@ version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "245da694cc7fc4729f3f418b304cb57789f1bed2a78c575407ab8a23f53cb4d3"
 dependencies = [
- "ansi_term 0.12.1",
+ "ansi_term",
  "lazy_static",
  "matchers",
  "parking_lot 0.11.2",
@@ -5768,7 +5793,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ce989c9962c7f61fe084dd4a230eec784649dfc2392467c790007c3a6e134e7"
 dependencies = [
- "ansi_term 0.12.1",
+ "ansi_term",
  "atty",
  "tracing-core",
  "tracing-log",

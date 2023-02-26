@@ -13,7 +13,7 @@ LL |     G: SomeTrait,
    |        ^^^^^^^^^ required by this bound in `Other::<'a, G>::new`
 LL | {
 LL |     pub fn new(g: G) -> Self {
-   |            --- required by a bound in this
+   |            --- required by a bound in this associated function
 help: consider borrowing here
    |
 LL |     let o = Other::new(&f);

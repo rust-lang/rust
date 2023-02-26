@@ -45,7 +45,7 @@ fn numeric_intrinsic<Prov>(name: Symbol, bits: u128, kind: Primitive) -> Scalar<
 pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAllocation<'tcx> {
     let path = crate::util::type_name(tcx, ty);
     let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes());
-    tcx.intern_const_alloc(alloc)
+    tcx.mk_const_alloc(alloc)
 }
 
 /// The logic for all nullary intrinsics is implemented here. These intrinsics don't get evaluated

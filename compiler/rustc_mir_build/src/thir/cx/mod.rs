@@ -133,9 +133,8 @@ impl<'tcx> Cx<'tcx> {
                     bug!("closure expr does not have closure type: {:?}", closure_ty);
                 };
 
-                let bound_vars = self
-                    .tcx
-                    .intern_bound_variable_kinds(&[ty::BoundVariableKind::Region(ty::BrEnv)]);
+                let bound_vars =
+                    self.tcx.mk_bound_variable_kinds(&[ty::BoundVariableKind::Region(ty::BrEnv)]);
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                     kind: ty::BrEnv,

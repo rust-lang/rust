@@ -17,7 +17,8 @@ use rustc_hir::{GenericArg, GenericParam, GenericParamKind, HirIdMap, LifetimeNa
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::*;
-use rustc_middle::ty::{self, ir::TypeVisitor, DefIdTree, TyCtxt, TypeSuperVisitable};
+use rustc_middle::ty::{self, DefIdTree, TyCtxt, TypeSuperVisitable, TypeVisitor};
+use rustc_session::lint;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
@@ -923,17 +924,16 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         origin,
                         ..
                     }) => {
-
                         let (bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) =
                             bound_generic_params
-                            .iter()
-                            .enumerate()
-                            .map(|(late_bound_idx, param)| {
-                                let pair = ResolvedArg::late(late_bound_idx as u32, param);
-                                let r = late_arg_as_bound_arg(this.tcx, &pair.1, param);
-                                (pair, r)
-                            })
-                            .unzip();
+                                .iter()
+                                .enumerate()
+                                .map(|(late_bound_idx, param)| {
+                                    let pair = ResolvedArg::late(late_bound_idx as u32, param);
+                                    let r = late_arg_as_bound_arg(this.tcx, &pair.1, param);
+                                    (pair, r)
+                                })
+                                .unzip();
                         this.record_late_bound_vars(hir_id, binders.clone());
                         // Even if there are no lifetimes defined here, we still wrap it in a binder
                         // scope. If there happens to be a nested poly trait ref (an error), that
@@ -968,20 +968,22 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                                     continue;
                                 }
                                 this.insert_lifetime(lt, ResolvedArg::StaticLifetime);
-                                this.tcx
-                                    .sess
-                                    .struct_span_warn(
-                                        lifetime.ident.span,
-                                        &format!(
-                                            "unnecessary lifetime parameter `{}`",
+                                this.tcx.struct_span_lint_hir(
+                                    lint::builtin::UNUSED_LIFETIMES,
+                                    lifetime.hir_id,
+                                    lifetime.ident.span,
+                                    format!(
+                                        "unnecessary lifetime parameter `{}`",
+                                        lifetime.ident
+                                    ),
+                                    |lint| {
+                                        let help = &format!(
+                                            "you can use the `'static` lifetime directly, in place of `{}`",
                                             lifetime.ident,
-                                        ),
-                                    )
-                                    .help(&format!(
-                                        "you can use the `'static` lifetime directly, in place of `{}`",
-                                        lifetime.ident,
-                                    ))
-                                    .emit();
+                                        );
+                                        lint.help(help)
+                                    },
+                                );
                             }
                         }
                     }

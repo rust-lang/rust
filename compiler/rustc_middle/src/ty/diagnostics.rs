@@ -3,10 +3,9 @@
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    ir::{FallibleTypeFolder, TypeVisitor},
-    visit::TypeVisitable,
-    AliasTy, Const, ConstKind, DefIdTree, InferConst, InferTy, Opaque, PolyTraitPredicate,
-    Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
+    AliasTy, Const, ConstKind, DefIdTree, FallibleTypeFolder, InferConst, InferTy, Opaque,
+    PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -95,7 +94,7 @@ pub trait IsSuggestable<'tcx>: Sized {
 
 impl<'tcx, T> IsSuggestable<'tcx> for T
 where
-    T: TypeVisitable<'tcx> + TypeFoldable<'tcx>,
+    T: TypeVisitable<TyCtxt<'tcx>> + TypeFoldable<TyCtxt<'tcx>>,
 {
     fn is_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> bool {
         self.visit_with(&mut IsSuggestableVisitor { tcx, infer_suggestable }).is_continue()
@@ -611,4 +610,12 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
 
         c.try_super_fold_with(self)
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_const_not_used_in_type_alias)]
+pub(super) struct ConstNotUsedTraitAlias {
+    pub ct: String,
+    #[primary_span]
+    pub span: Span,
 }

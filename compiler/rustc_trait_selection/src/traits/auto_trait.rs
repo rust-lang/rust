@@ -8,9 +8,8 @@ use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
 use crate::traits::project::ProjectAndUnifyResult;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::ty::fold::{ir::TypeFolder, TypeSuperFoldable};
-#[cfg(not(bootstrap))]
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{ImplPolarity, Region, RegionVid};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
@@ -351,14 +350,14 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             )
             .map(|o| o.predicate);
             new_env = ty::ParamEnv::new(
-                tcx.mk_predicates(normalized_preds),
+                tcx.mk_predicates_from_iter(normalized_preds),
                 param_env.reveal(),
                 param_env.constness(),
             );
         }
 
         let final_user_env = ty::ParamEnv::new(
-            tcx.mk_predicates(user_computed_preds.into_iter()),
+            tcx.mk_predicates_from_iter(user_computed_preds.into_iter()),
             user_env.reveal(),
             user_env.constness(),
         );

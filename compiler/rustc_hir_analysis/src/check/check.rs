@@ -23,6 +23,7 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
     self, AdtDef, DefIdTree, ParamEnv, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt,
 };
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
@@ -255,7 +256,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
         selftys: Vec<(Span, Option<String>)>,
     }
 
-    impl<'tcx> ty::visit::ir::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueVisitor<'tcx> {
+    impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueVisitor<'tcx> {
         type BreakTy = Ty<'tcx>;
 
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -1418,7 +1419,7 @@ fn opaque_type_cycle_error(
                     opaques: Vec<DefId>,
                     closures: Vec<DefId>,
                 }
-                impl<'tcx> ty::visit::ir::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector {
+                impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector {
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                         match *t.kind() {
                             ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
@@ -1460,7 +1461,7 @@ fn opaque_type_cycle_error(
                                     span,
                                     format!(
                                         "{} captures itself here",
-                                        tcx.def_kind(closure_def_id).descr(closure_def_id)
+                                        tcx.def_descr(closure_def_id)
                                     ),
                                 );
                             }

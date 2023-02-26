@@ -20,7 +20,7 @@ use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{self, InferOk};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
-use rustc_middle::ty::{self, GenericParamDefKind, Ty, TypeVisitable};
+use rustc_middle::ty::{self, GenericParamDefKind, Ty, TypeVisitableExt};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -380,6 +380,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             return None;
         };
+
+        if method_item.kind != ty::AssocKind::Fn {
+            self.tcx.sess.delay_span_bug(tcx.def_span(method_item.def_id), "not a method");
+            return None;
+        }
+
         let def_id = method_item.def_id;
         let generics = tcx.generics_of(def_id);
 

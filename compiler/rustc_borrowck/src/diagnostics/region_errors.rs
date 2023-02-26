@@ -660,10 +660,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             errci.outlived_fr,
         );
 
-        let (_, escapes_from) = self
-            .infcx
-            .tcx
-            .article_and_description(self.regioncx.universal_regions().defining_ty.def_id());
+        let escapes_from =
+            self.infcx.tcx.def_descr(self.regioncx.universal_regions().defining_ty.def_id());
 
         // Revert to the normal error in these cases.
         // Assignments aren't "escapes" in function items.
@@ -757,8 +755,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             ..
         } = errci;
 
-        let (_, mir_def_name) =
-            self.infcx.tcx.article_and_description(self.mir_def_id().to_def_id());
+        let mir_def_name = self.infcx.tcx.def_descr(self.mir_def_id().to_def_id());
 
         let err = LifetimeOutliveErr { span: *span };
         let mut diag = self.infcx.tcx.sess.create_err(err);

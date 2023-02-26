@@ -9,7 +9,7 @@ note: required by a bound in `A`
   --> $DIR/unused-substs-1.rs:9:11
    |
 LL | struct A<const N: usize>
-   |        - required by a bound in this
+   |        - required by a bound in this unit struct
 LL | where
 LL |     A<N>: Bar<N>;
    |           ^^^^^^ required by this bound in `A`

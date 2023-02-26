@@ -7,7 +7,7 @@ where
     S: MyTrait,
     T: MyTrait<Assoc == S::Assoc>,
     //~^ ERROR: expected one of `,` or `>`, found `==`
-    //~| ERROR: this trait takes 0 generic arguments but 1 generic argument was supplied
+    //~| ERROR: trait takes 0 generic arguments but 1 generic argument was supplied
 {
 }
 

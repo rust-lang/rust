@@ -71,7 +71,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
 
     let drop_impl_span = tcx.def_span(drop_impl_did);
     let item_span = tcx.def_span(self_type_did);
-    let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
+    let self_descr = tcx.def_descr(self_type_did);
     let mut err =
         struct_span_err!(tcx.sess, drop_impl_span, E0366, "`Drop` impls cannot be specialized");
     match arg {
@@ -217,7 +217,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 
         if !assumptions_in_impl_context.iter().copied().any(predicate_matches_closure) {
             let item_span = tcx.def_span(self_type_did);
-            let self_descr = tcx.def_kind(self_type_did).descr(self_type_did.to_def_id());
+            let self_descr = tcx.def_descr(self_type_did.to_def_id());
             let reported = struct_span_err!(
                 tcx.sess,
                 predicate_sp,

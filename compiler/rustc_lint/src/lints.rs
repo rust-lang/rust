@@ -2,13 +2,16 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 use std::num::NonZeroU32;
 
+use crate::fluent_generated as fluent;
 use rustc_errors::{
-    fluent, AddToDiagnostic, Applicability, DecorateLint, DiagnosticMessage,
-    DiagnosticStyledString, SuggestionStyle,
+    AddToDiagnostic, Applicability, DecorateLint, DiagnosticMessage, DiagnosticStyledString,
+    SuggestionStyle,
 };
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::{PolyExistentialTraitRef, Predicate, Ty, TyCtxt};
+use rustc_middle::ty::{
+    inhabitedness::InhabitedPredicate, PolyExistentialTraitRef, Predicate, Ty, TyCtxt,
+};
 use rustc_session::parse::ParseSess;
 use rustc_span::{edition::Edition, sym, symbol::Ident, Span, Symbol};
 
@@ -21,7 +24,7 @@ use crate::{
 #[diag(lint_array_into_iter)]
 pub struct ArrayIntoIterDiag<'a> {
     pub target: &'a str,
-    #[suggestion(use_iter_suggestion, code = "iter", applicability = "machine-applicable")]
+    #[suggestion(lint_use_iter_suggestion, code = "iter", applicability = "machine-applicable")]
     pub suggestion: Span,
     #[subdiagnostic]
     pub sub: Option<ArrayIntoIterDiagSub>,
@@ -29,12 +32,15 @@ pub struct ArrayIntoIterDiag<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum ArrayIntoIterDiagSub {
-    #[suggestion(remove_into_iter_suggestion, code = "", applicability = "maybe-incorrect")]
+    #[suggestion(lint_remove_into_iter_suggestion, code = "", applicability = "maybe-incorrect")]
     RemoveIntoIter {
         #[primary_span]
         span: Span,
     },
-    #[multipart_suggestion(use_explicit_into_iter_suggestion, applicability = "maybe-incorrect")]
+    #[multipart_suggestion(
+        lint_use_explicit_into_iter_suggestion,
+        applicability = "maybe-incorrect"
+    )]
     UseExplicitIntoIter {
         #[suggestion_part(code = "IntoIterator::into_iter(")]
         start_span: Span,
@@ -161,13 +167,13 @@ pub struct BuiltinDeprecatedAttrLink<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum BuiltinDeprecatedAttrLinkSuggestion<'a> {
-    #[suggestion(msg_suggestion, code = "", applicability = "machine-applicable")]
+    #[suggestion(lint_msg_suggestion, code = "", applicability = "machine-applicable")]
     Msg {
         #[primary_span]
         suggestion: Span,
         msg: &'a str,
     },
-    #[suggestion(default_suggestion, code = "", applicability = "machine-applicable")]
+    #[suggestion(lint_default_suggestion, code = "", applicability = "machine-applicable")]
     Default {
         #[primary_span]
         suggestion: Span,
@@ -199,9 +205,9 @@ pub struct BuiltinUnusedDocComment<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum BuiltinUnusedDocCommentSub {
-    #[help(plain_help)]
+    #[help(lint_plain_help)]
     PlainHelp,
-    #[help(block_help)]
+    #[help(lint_block_help)]
     BlockHelp,
 }
 
@@ -240,7 +246,7 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
         self,
         diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
     ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
-        diag.span_label(self.label, fluent::label);
+        diag.span_label(self.label, fluent::lint_label);
         rustc_session::parse::add_feature_diagnostics(
             diag,
             &self.parse_sess,
@@ -335,7 +341,7 @@ impl AddToDiagnostic for BuiltinTypeAliasGenericBoundsSuggestion {
         ) -> rustc_errors::SubdiagnosticMessage,
     {
         diag.multipart_suggestion(
-            fluent::suggestion,
+            fluent::lint_suggestion,
             self.suggestions,
             Applicability::MachineApplicable,
         );
@@ -386,7 +392,7 @@ pub struct BuiltinExplicitOutlives {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion)]
+#[multipart_suggestion(lint_suggestion)]
 pub struct BuiltinExplicitOutlivesSuggestion {
     #[suggestion_part(code = "")]
     pub spans: Vec<Span>,
@@ -405,11 +411,11 @@ pub struct BuiltinIncompleteFeatures {
 }
 
 #[derive(Subdiagnostic)]
-#[help(help)]
+#[help(lint_help)]
 pub struct BuiltinIncompleteFeaturesHelp;
 
 #[derive(Subdiagnostic)]
-#[note(note)]
+#[note(lint_note)]
 pub struct BuiltinIncompleteFeaturesNote {
     pub n: NonZeroU32,
 }
@@ -419,6 +425,7 @@ pub struct BuiltinUnpermittedTypeInit<'a> {
     pub ty: Ty<'a>,
     pub label: Span,
     pub sub: BuiltinUnpermittedTypeInitSub,
+    pub tcx: TyCtxt<'a>,
 }
 
 impl<'a> DecorateLint<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
@@ -428,7 +435,13 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
     ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
         diag.set_arg("ty", self.ty);
         diag.span_label(self.label, fluent::lint_builtin_unpermitted_type_init_label);
-        diag.span_label(self.label, fluent::lint_builtin_unpermitted_type_init_label_suggestion);
+        if let InhabitedPredicate::True = self.ty.inhabited_predicate(self.tcx) {
+            // Only suggest late `MaybeUninit::assume_init` initialization if the type is inhabited.
+            diag.span_label(
+                self.label,
+                fluent::lint_builtin_unpermitted_type_init_label_suggestion,
+            );
+        }
         self.sub.add_to_diagnostic(diag);
         diag
     }
@@ -473,9 +486,9 @@ pub enum BuiltinClashingExtern<'a> {
     SameName {
         this: Symbol,
         orig: Symbol,
-        #[label(previous_decl_label)]
+        #[label(lint_previous_decl_label)]
         previous_decl_label: Span,
-        #[label(mismatch_label)]
+        #[label(lint_mismatch_label)]
         mismatch_label: Span,
         #[subdiagnostic]
         sub: BuiltinClashingExternSub<'a>,
@@ -484,9 +497,9 @@ pub enum BuiltinClashingExtern<'a> {
     DiffName {
         this: Symbol,
         orig: Symbol,
-        #[label(previous_decl_label)]
+        #[label(lint_previous_decl_label)]
         previous_decl_label: Span,
-        #[label(mismatch_label)]
+        #[label(lint_mismatch_label)]
         mismatch_label: Span,
         #[subdiagnostic]
         sub: BuiltinClashingExternSub<'a>,
@@ -562,7 +575,7 @@ pub struct SupertraitAsDerefTarget<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[label(label)]
+#[label(lint_label)]
 pub struct SupertraitAsDerefTargetLabel {
     #[primary_span]
     pub label: Span,
@@ -595,7 +608,7 @@ pub struct Expectation {
 }
 
 #[derive(Subdiagnostic)]
-#[note(rationale)]
+#[note(lint_rationale)]
 pub struct ExpectationNote {
     pub rationale: Symbol,
 }
@@ -616,13 +629,13 @@ pub struct ForLoopsOverFalliblesDiag<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum ForLoopsOverFalliblesLoopSub<'a> {
-    #[suggestion(remove_next, code = ".by_ref()", applicability = "maybe-incorrect")]
+    #[suggestion(lint_remove_next, code = ".by_ref()", applicability = "maybe-incorrect")]
     RemoveNext {
         #[primary_span]
         suggestion: Span,
         recv_snip: String,
     },
-    #[multipart_suggestion(use_while_let, applicability = "maybe-incorrect")]
+    #[multipart_suggestion(lint_use_while_let, applicability = "maybe-incorrect")]
     UseWhileLet {
         #[suggestion_part(code = "while let {var}(")]
         start_span: Span,
@@ -633,14 +646,14 @@ pub enum ForLoopsOverFalliblesLoopSub<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(use_question_mark, code = "?", applicability = "maybe-incorrect")]
+#[suggestion(lint_use_question_mark, code = "?", applicability = "maybe-incorrect")]
 pub struct ForLoopsOverFalliblesQuestionMark {
     #[primary_span]
     pub suggestion: Span,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion, applicability = "maybe-incorrect")]
+#[multipart_suggestion(lint_suggestion, applicability = "maybe-incorrect")]
 pub struct ForLoopsOverFalliblesSuggestion<'a> {
     pub var: &'a str,
     #[suggestion_part(code = "if let {var}(")]
@@ -699,13 +712,13 @@ impl AddToDiagnostic for HiddenUnicodeCodepointsDiagSub {
         match self {
             HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
                 diag.multipart_suggestion_with_style(
-                    fluent::suggestion_remove,
+                    fluent::lint_suggestion_remove,
                     spans.iter().map(|(_, span)| (*span, "".to_string())).collect(),
                     Applicability::MachineApplicable,
                     SuggestionStyle::HideCodeAlways,
                 );
                 diag.multipart_suggestion(
-                    fluent::suggestion_escape,
+                    fluent::lint_suggestion_escape,
                     spans
                         .into_iter()
                         .map(|(c, span)| {
@@ -728,11 +741,27 @@ impl AddToDiagnostic for HiddenUnicodeCodepointsDiagSub {
                         .collect::<Vec<String>>()
                         .join(", "),
                 );
-                diag.note(fluent::suggestion_remove);
-                diag.note(fluent::no_suggestion_note_escape);
+                diag.note(fluent::lint_suggestion_remove);
+                diag.note(fluent::lint_no_suggestion_note_escape);
             }
         }
     }
+}
+
+// map_unit_fn.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_map_unit_fn)]
+#[note]
+pub struct MappingToUnit {
+    #[label(lint_function_label)]
+    pub function_label: Span,
+    #[label(lint_argument_label)]
+    pub argument_label: Span,
+    #[label(lint_map_label)]
+    pub map_label: Span,
+    #[suggestion(style = "verbose", code = "{replace}", applicability = "maybe-incorrect")]
+    pub suggestion: Span,
+    pub replace: String,
 }
 
 // internal.rs
@@ -874,7 +903,7 @@ pub struct RenamedOrRemovedLint<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(suggestion, code = "{replace}", applicability = "machine-applicable")]
+#[suggestion(lint_suggestion, code = "{replace}", applicability = "machine-applicable")]
 pub struct RenamedOrRemovedLintSuggestion<'a> {
     #[primary_span]
     pub suggestion: Span,
@@ -890,7 +919,7 @@ pub struct UnknownLint {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(suggestion, code = "{replace}", applicability = "maybe-incorrect")]
+#[suggestion(lint_suggestion, code = "{replace}", applicability = "maybe-incorrect")]
 pub struct UnknownLintSuggestion {
     #[primary_span]
     pub suggestion: Span,
@@ -910,9 +939,9 @@ pub struct IgnoredUnlessCrateSpecified<'a> {
 #[note]
 #[help]
 pub struct CStringPtr {
-    #[label(as_ptr_label)]
+    #[label(lint_as_ptr_label)]
     pub as_ptr: Span,
-    #[label(unwrap_label)]
+    #[label(lint_unwrap_label)]
     pub unwrap: Span,
 }
 
@@ -943,7 +972,7 @@ pub struct ConfusableIdentifierPair {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_mixed_script_confusables)]
-#[note(includes_note)]
+#[note(lint_includes_note)]
 #[note]
 pub struct MixedScriptConfusables {
     pub set: String,
@@ -963,17 +992,17 @@ impl<'a> DecorateLint<'a, ()> for NonFmtPanicUnused {
         diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
     ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
         diag.set_arg("count", self.count);
-        diag.note(fluent::note);
+        diag.note(fluent::lint_note);
         if let Some(span) = self.suggestion {
             diag.span_suggestion(
                 span.shrink_to_hi(),
-                fluent::add_args_suggestion,
+                fluent::lint_add_args_suggestion,
                 ", ...",
                 Applicability::HasPlaceholders,
             );
             diag.span_suggestion(
                 span.shrink_to_lo(),
-                fluent::add_fmt_suggestion,
+                fluent::lint_add_fmt_suggestion,
                 "\"{}\", ",
                 Applicability::MachineApplicable,
             );
@@ -1007,12 +1036,12 @@ pub struct NonCamelCaseType<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum NonCamelCaseTypeSub {
-    #[label(label)]
+    #[label(lint_label)]
     Label {
         #[primary_span]
         span: Span,
     },
-    #[suggestion(suggestion, code = "{replace}", applicability = "maybe-incorrect")]
+    #[suggestion(lint_suggestion, code = "{replace}", applicability = "maybe-incorrect")]
     Suggestion {
         #[primary_span]
         span: Span,
@@ -1048,15 +1077,15 @@ impl AddToDiagnostic for NonSnakeCaseDiagSub {
     {
         match self {
             NonSnakeCaseDiagSub::Label { span } => {
-                diag.span_label(span, fluent::label);
+                diag.span_label(span, fluent::lint_label);
             }
             NonSnakeCaseDiagSub::Help => {
-                diag.help(fluent::help);
+                diag.help(fluent::lint_help);
             }
             NonSnakeCaseDiagSub::ConvertSuggestion { span, suggestion } => {
                 diag.span_suggestion(
                     span,
-                    fluent::convert_suggestion,
+                    fluent::lint_convert_suggestion,
                     suggestion,
                     Applicability::MaybeIncorrect,
                 );
@@ -1064,16 +1093,16 @@ impl AddToDiagnostic for NonSnakeCaseDiagSub {
             NonSnakeCaseDiagSub::RenameOrConvertSuggestion { span, suggestion } => {
                 diag.span_suggestion(
                     span,
-                    fluent::rename_or_convert_suggestion,
+                    fluent::lint_rename_or_convert_suggestion,
                     suggestion,
                     Applicability::MaybeIncorrect,
                 );
             }
             NonSnakeCaseDiagSub::SuggestionAndNote { span } => {
-                diag.note(fluent::cannot_convert_note);
+                diag.note(fluent::lint_cannot_convert_note);
                 diag.span_suggestion(
                     span,
-                    fluent::rename_suggestion,
+                    fluent::lint_rename_suggestion,
                     "",
                     Applicability::MaybeIncorrect,
                 );
@@ -1093,12 +1122,12 @@ pub struct NonUpperCaseGlobal<'a> {
 
 #[derive(Subdiagnostic)]
 pub enum NonUpperCaseGlobalSub {
-    #[label(label)]
+    #[label(lint_label)]
     Label {
         #[primary_span]
         span: Span,
     },
-    #[suggestion(suggestion, code = "{replace}", applicability = "maybe-incorrect")]
+    #[suggestion(lint_suggestion, code = "{replace}", applicability = "maybe-incorrect")]
     Suggestion {
         #[primary_span]
         span: Span,
@@ -1216,11 +1245,11 @@ impl AddToDiagnostic for OverflowingBinHexSign {
     {
         match self {
             OverflowingBinHexSign::Positive => {
-                diag.note(fluent::positive_note);
+                diag.note(fluent::lint_positive_note);
             }
             OverflowingBinHexSign::Negative => {
-                diag.note(fluent::negative_note);
-                diag.note(fluent::negative_becomes_note);
+                diag.note(fluent::lint_negative_note);
+                diag.note(fluent::lint_negative_becomes_note);
             }
         }
     }
@@ -1229,7 +1258,7 @@ impl AddToDiagnostic for OverflowingBinHexSign {
 #[derive(Subdiagnostic)]
 pub enum OverflowingBinHexSub<'a> {
     #[suggestion(
-        suggestion,
+        lint_suggestion,
         code = "{sans_suffix}{suggestion_ty}",
         applicability = "machine-applicable"
     )]
@@ -1239,7 +1268,7 @@ pub enum OverflowingBinHexSub<'a> {
         suggestion_ty: &'a str,
         sans_suffix: &'a str,
     },
-    #[help(help)]
+    #[help(lint_help)]
     Help { suggestion_ty: &'a str },
 }
 
@@ -1256,7 +1285,7 @@ pub struct OverflowingInt<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[help(help)]
+#[help(lint_help)]
 pub struct OverflowingIntHelp<'a> {
     pub suggestion_ty: &'a str,
 }
@@ -1308,13 +1337,13 @@ impl<'a> DecorateLint<'a, ()> for ImproperCTypes<'_> {
     ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
         diag.set_arg("ty", self.ty);
         diag.set_arg("desc", self.desc);
-        diag.span_label(self.label, fluent::label);
+        diag.span_label(self.label, fluent::lint_label);
         if let Some(help) = self.help {
             diag.help(help);
         }
         diag.note(self.note);
         if let Some(note) = self.span_note {
-            diag.span_note(note, fluent::note);
+            diag.span_note(note, fluent::lint_note);
         }
         diag
     }
@@ -1407,7 +1436,7 @@ pub struct UnusedDef<'a, 'b> {
 #[derive(Subdiagnostic)]
 pub enum UnusedDefSuggestion {
     #[suggestion(
-        suggestion,
+        lint_suggestion,
         style = "verbose",
         code = "let _ = ",
         applicability = "machine-applicable"
@@ -1451,13 +1480,13 @@ pub struct PathStatementDrop {
 
 #[derive(Subdiagnostic)]
 pub enum PathStatementDropSub {
-    #[suggestion(suggestion, code = "drop({snippet});", applicability = "machine-applicable")]
+    #[suggestion(lint_suggestion, code = "drop({snippet});", applicability = "machine-applicable")]
     Suggestion {
         #[primary_span]
         span: Span,
         snippet: String,
     },
-    #[help(help)]
+    #[help(lint_help)]
     Help {
         #[primary_span]
         span: Span,
@@ -1478,7 +1507,7 @@ pub struct UnusedDelim<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(suggestion, applicability = "machine-applicable")]
+#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
 pub struct UnusedDelimSuggestion {
     #[suggestion_part(code = "{start_replace}")]
     pub start_span: Span,

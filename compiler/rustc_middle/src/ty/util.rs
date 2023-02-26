@@ -4,8 +4,8 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
-    self, ir::TypeFolder, DefIdTree, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable,
+    self, DefIdTree, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt,
 };
 use crate::ty::{GenericArgKind, SubstsRef};
 use rustc_apfloat::Float as _;
@@ -761,6 +761,40 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         (generator_layout, generator_saved_local_names)
     }
+
+    /// Query and get an English description for the item's kind.
+    pub fn def_descr(self, def_id: DefId) -> &'static str {
+        self.def_kind_descr(self.def_kind(def_id), def_id)
+    }
+
+    /// Get an English description for the item's kind.
+    pub fn def_kind_descr(self, def_kind: DefKind, def_id: DefId) -> &'static str {
+        match def_kind {
+            DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "method",
+            DefKind::Generator => match self.generator_kind(def_id).unwrap() {
+                rustc_hir::GeneratorKind::Async(..) => "async closure",
+                rustc_hir::GeneratorKind::Gen => "generator",
+            },
+            _ => def_kind.descr(def_id),
+        }
+    }
+
+    /// Gets an English article for the [`TyCtxt::def_descr`].
+    pub fn def_descr_article(self, def_id: DefId) -> &'static str {
+        self.def_kind_descr_article(self.def_kind(def_id), def_id)
+    }
+
+    /// Gets an English article for the [`TyCtxt::def_kind_descr`].
+    pub fn def_kind_descr_article(self, def_kind: DefKind, def_id: DefId) -> &'static str {
+        match def_kind {
+            DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "a",
+            DefKind::Generator => match self.generator_kind(def_id).unwrap() {
+                rustc_hir::GeneratorKind::Async(..) => "an",
+                rustc_hir::GeneratorKind::Gen => "a",
+            },
+            _ => def_kind.article(),
+        }
+    }
 }
 
 struct OpaqueTypeExpander<'tcx> {
@@ -1349,8 +1383,8 @@ pub fn fold_list<'tcx, F, T>(
     intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> &'tcx ty::List<T>,
 ) -> Result<&'tcx ty::List<T>, F::Error>
 where
-    F: FallibleTypeFolder<'tcx>,
-    T: TypeFoldable<'tcx> + PartialEq + Copy,
+    F: FallibleTypeFolder<TyCtxt<'tcx>>,
+    T: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy,
 {
     let mut iter = list.iter();
     // Look for the first element that changed

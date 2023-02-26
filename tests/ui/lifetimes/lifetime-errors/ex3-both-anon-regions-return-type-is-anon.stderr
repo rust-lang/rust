@@ -6,7 +6,7 @@ LL |   fn foo<'a>(&self, x: &i32) -> &i32 {
    |              |
    |              let's call the lifetime of this reference `'2`
 LL |     x
-   |     ^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |     ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |

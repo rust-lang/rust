@@ -42,12 +42,12 @@ pub struct Canonical<'tcx, V> {
 
 pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;
 
-impl<'tcx> ty::ir::TypeFoldable<TyCtxt<'tcx>> for CanonicalVarInfos<'tcx> {
-    fn try_fold_with<F: ty::FallibleTypeFolder<'tcx>>(
+impl<'tcx> ty::TypeFoldable<TyCtxt<'tcx>> for CanonicalVarInfos<'tcx> {
+    fn try_fold_with<F: ty::FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_canonical_var_infos(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.mk_canonical_var_infos(v))
     }
 }
 
@@ -342,7 +342,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
         infos: CanonicalVarInfos<'tcx>,
     ) -> CanonicalVarValues<'tcx> {
         CanonicalVarValues {
-            var_values: tcx.mk_substs(infos.iter().enumerate().map(
+            var_values: tcx.mk_substs_from_iter(infos.iter().enumerate().map(
                 |(i, info)| -> ty::GenericArg<'tcx> {
                     match info.kind {
                         CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => {

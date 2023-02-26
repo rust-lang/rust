@@ -73,7 +73,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let fn_sig =
                     self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
                 let extra_args = &args[fn_sig.inputs().len()..];
-                let extra_args = self.tcx.mk_type_list(extra_args.iter().map(|arg| arg.layout.ty));
+                let extra_args =
+                    self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout.ty));
 
                 let (fn_val, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
                     ty::FnPtr(_sig) => {

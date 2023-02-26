@@ -1,11 +1,3 @@
-warning: unnecessary lifetime parameter `'a`
-  --> $DIR/static-lifetime-bound.rs:1:6
-   |
-LL | fn f<'a: 'static>(_: &'a i32) {}
-   |      ^^
-   |
-   = help: you can use the `'static` lifetime directly, in place of `'a`
-
 error[E0597]: `x` does not live long enough
   --> $DIR/static-lifetime-bound.rs:5:7
    |
@@ -19,6 +11,6 @@ LL |     f(&x);
 LL | }
    | - `x` dropped here while still borrowed
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0597`.

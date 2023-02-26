@@ -124,9 +124,7 @@ impl QueryContext for QueryCtxt<'_> {
             };
 
             // Use the `ImplicitCtxt` while we execute the query.
-            tls::enter_context(&new_icx, || {
-                rustc_data_structures::stack::ensure_sufficient_stack(compute)
-            })
+            tls::enter_context(&new_icx, compute)
         })
     }
 

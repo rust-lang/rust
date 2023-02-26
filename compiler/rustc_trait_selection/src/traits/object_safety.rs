@@ -18,10 +18,10 @@ use rustc_errors::{DelayDm, FatalError, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
+use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{
-    self, ir::TypeVisitor, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
-use rustc_middle::ty::{Predicate, ToPredicate};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -666,8 +666,9 @@ fn object_ty_for_trait<'tcx>(
     elaborated_predicates.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
     elaborated_predicates.dedup();
 
-    let existential_predicates = tcx
-        .mk_poly_existential_predicates(iter::once(trait_predicate).chain(elaborated_predicates));
+    let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(
+        iter::once(trait_predicate).chain(elaborated_predicates),
+    );
     debug!(?existential_predicates);
 
     tcx.mk_dynamic(existential_predicates, lifetime, ty::Dyn)
@@ -766,11 +767,11 @@ fn receiver_is_dispatchable<'tcx>(
             ty::Binder::dummy(tcx.mk_trait_ref(trait_def_id, substs)).to_predicate(tcx)
         };
 
-        let caller_bounds: Vec<Predicate<'tcx>> =
-            param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]).collect();
+        let caller_bounds =
+            param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]);
 
         ty::ParamEnv::new(
-            tcx.intern_predicates(&caller_bounds),
+            tcx.mk_predicates_from_iter(caller_bounds),
             param_env.reveal(),
             param_env.constness(),
         )
@@ -790,7 +791,7 @@ fn receiver_is_dispatchable<'tcx>(
     infcx.predicate_must_hold_modulo_regions(&obligation)
 }
 
-fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
+fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     value: T,

@@ -7,10 +7,10 @@ use crate::mir::interpret::{
 };
 use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{ir::TypeFoldable, FallibleTypeFolder};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::visit::{TypeVisitable, TypeVisitor};
-use crate::ty::{self, ir, DefIdTree, List, Ty, TyCtxt};
+use crate::ty::visit::{TypeVisitable, TypeVisitableExt, TypeVisitor};
+use crate::ty::{self, DefIdTree, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, ScalarInt, UserTypeAnnotationIndex};
 use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 
@@ -1620,7 +1620,7 @@ impl<'tcx> Place<'tcx> {
             &v
         };
 
-        Place { local: self.local, projection: tcx.intern_place_elems(new_projections) }
+        Place { local: self.local, projection: tcx.mk_place_elems(new_projections) }
     }
 }
 
@@ -2530,13 +2530,14 @@ impl<'tcx> ConstantKind<'tcx> {
         {
             InternalSubsts::identity_for_item(tcx, parent_did.to_def_id())
         } else {
-            tcx.intern_substs(&[])
+            List::empty()
         };
         debug!(?parent_substs);
 
         let did = def.did.to_def_id();
         let child_substs = InternalSubsts::identity_for_item(tcx, did);
-        let substs = tcx.mk_substs(parent_substs.into_iter().chain(child_substs.into_iter()));
+        let substs =
+            tcx.mk_substs_from_iter(parent_substs.into_iter().chain(child_substs.into_iter()));
         debug!(?substs);
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
@@ -2755,7 +2756,10 @@ impl UserTypeProjection {
 }
 
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for UserTypeProjection {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         Ok(UserTypeProjection {
             base: self.base.try_fold_with(folder)?,
             projs: self.projs.try_fold_with(folder)?,
@@ -2763,8 +2767,11 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for UserTypeProjection {
     }
 }
 
-impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for UserTypeProjection {
-    fn visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> ControlFlow<Vs::BreakTy> {
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for UserTypeProjection {
+    fn visit_with<Vs: TypeVisitor<TyCtxt<'tcx>>>(
+        &self,
+        visitor: &mut Vs,
+    ) -> ControlFlow<Vs::BreakTy> {
         self.base.visit_with(visitor)
         // Note: there's nothing in `self.proj` to visit.
     }

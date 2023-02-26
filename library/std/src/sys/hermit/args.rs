@@ -1,6 +1,6 @@
 use crate::ffi::{c_char, CStr, OsString};
 use crate::fmt;
-use crate::os::unix::ffi::OsStringExt;
+use crate::os::hermit::ffi::OsStringExt;
 use crate::ptr;
 use crate::sync::atomic::{
     AtomicIsize, AtomicPtr,

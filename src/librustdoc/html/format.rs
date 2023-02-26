@@ -775,7 +775,7 @@ pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Cont
     let fqp = fqp.iter().map(|sym| sym.as_str()).join("::");
     if let &Some(UrlFragment::Item(id)) = fragment {
         let name = cx.tcx().item_name(id);
-        let descr = cx.tcx().def_kind(id).descr(id);
+        let descr = cx.tcx().def_descr(id);
         format!("{descr} {fqp}::{name}")
     } else {
         format!("{shortty} {fqp}")

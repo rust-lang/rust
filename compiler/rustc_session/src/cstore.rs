@@ -6,10 +6,9 @@ use crate::search_paths::PathKind;
 use crate::utils::NativeLibKind;
 use crate::Session;
 use rustc_ast as ast;
-use rustc_data_structures::sync::{self, MetadataRef, RwLock};
+use rustc_data_structures::sync::{self, AppendOnlyVec, MetadataRef, RwLock};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
-use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -252,10 +251,9 @@ pub trait CrateStore: std::fmt::Debug {
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync + sync::Send;
 
-#[derive(Debug)]
 pub struct Untracked {
     pub cstore: RwLock<Box<CrateStoreDyn>>,
     /// Reference span for definitions.
-    pub source_span: RwLock<IndexVec<LocalDefId, Span>>,
+    pub source_span: AppendOnlyVec<LocalDefId, Span>,
     pub definitions: RwLock<Definitions>,
 }

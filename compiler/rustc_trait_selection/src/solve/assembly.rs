@@ -1,6 +1,5 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
-use super::infcx_ext::InferCtxtExt;
 #[cfg(doc)]
 use super::trait_goals::structural_traits::*;
 use super::{CanonicalResponse, Certainty, EvalCtxt, Goal, MaybeCause, QueryResult};
@@ -83,7 +82,7 @@ pub(super) enum CandidateSource {
 }
 
 /// Methods used to assemble candidates for either trait or projection goals.
-pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
+pub(super) trait GoalKind<'tcx>: TypeFoldable<TyCtxt<'tcx>> + Copy + Eq {
     fn self_ty(self) -> Ty<'tcx>;
 
     fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self;
@@ -98,6 +97,15 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy + Eq {
         goal: Goal<'tcx, Self>,
         assumption: ty::Predicate<'tcx>,
         requirements: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) -> QueryResult<'tcx>;
+
+    // Consider a clause specifically for a `dyn Trait` self type. This requires
+    // additionally checking all of the supertraits and object bounds to hold,
+    // since they're not implied by the well-formedness of the object type.
+    fn consider_object_bound_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        assumption: ty::Predicate<'tcx>,
     ) -> QueryResult<'tcx>;
 
     fn consider_impl_candidate(
@@ -206,7 +214,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, G>,
     ) -> Vec<Candidate<'tcx>> {
-        debug_assert_eq!(goal, self.infcx.resolve_vars_if_possible(goal));
+        debug_assert_eq!(goal, self.resolve_vars_if_possible(goal));
 
         // HACK: `_: Trait` is ambiguous, because it may be satisfied via a builtin rule,
         // object bound, alias bound, etc. We are unable to determine this until we can at
@@ -250,8 +258,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let &ty::Alias(ty::Projection, projection_ty) = goal.predicate.self_ty().kind() else {
             return
         };
-        self.infcx.probe(|_| {
-            let normalized_ty = self.infcx.next_ty_infer();
+        self.probe(|this| {
+            let normalized_ty = this.next_ty_infer();
             let normalizes_to_goal = goal.with(
                 tcx,
                 ty::Binder::dummy(ty::ProjectionPredicate {
@@ -259,16 +267,16 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     term: normalized_ty.into(),
                 }),
             );
-            let normalization_certainty = match self.evaluate_goal(normalizes_to_goal) {
+            let normalization_certainty = match this.evaluate_goal(normalizes_to_goal) {
                 Ok((_, certainty)) => certainty,
                 Err(NoSolution) => return,
             };
-            let normalized_ty = self.infcx.resolve_vars_if_possible(normalized_ty);
+            let normalized_ty = this.resolve_vars_if_possible(normalized_ty);
 
             // NOTE: Alternatively we could call `evaluate_goal` here and only have a `Normalized` candidate.
             // This doesn't work as long as we use `CandidateSource` in winnowing.
             let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
-            let normalized_candidates = self.assemble_and_evaluate_candidates(goal);
+            let normalized_candidates = this.assemble_and_evaluate_candidates(goal);
             for mut normalized_candidate in normalized_candidates {
                 normalized_candidate.result =
                     normalized_candidate.result.unchecked_map(|mut response| {
@@ -456,7 +464,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         for assumption in
             elaborate_predicates(tcx, bounds.iter().map(|bound| bound.with_self_ty(tcx, self_ty)))
         {
-            match G::consider_implied_clause(self, goal, assumption.predicate, []) {
+            match G::consider_object_bound_candidate(self, goal, assumption.predicate) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::BuiltinImpl, result })
                 }

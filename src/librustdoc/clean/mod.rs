@@ -22,9 +22,9 @@ use rustc_hir::PredicateOrigin;
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_bound_vars as rbv;
-use rustc_middle::ty::fold::ir::TypeFolder;
+use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::InternalSubsts;
-use rustc_middle::ty::TypeVisitable;
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, AdtKind, DefIdTree, EarlyBinder, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
@@ -77,7 +77,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     // This covers the case where somebody does an import which should pull in an item,
     // but there's already an item with the same namespace and same name. Rust gives
     // priority to the not-imported one, so we should, too.
-    items.extend(doc.items.iter().flat_map(|(item, renamed, import_id)| {
+    items.extend(doc.items.values().flat_map(|(item, renamed, import_id)| {
         // First, lower everything other than imports.
         if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
             return Vec::new();
@@ -90,7 +90,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         }
         v
     }));
-    items.extend(doc.items.iter().flat_map(|(item, renamed, _)| {
+    items.extend(doc.items.values().flat_map(|(item, renamed, _)| {
         // Now we actually lower the imports, skipping everything else.
         if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
             let name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
@@ -1661,7 +1661,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         }
         TyKind::BareFn(barefn) => BareFunction(Box::new(clean_bare_fn_ty(barefn, cx))),
         // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
-        TyKind::Infer | TyKind::Err | TyKind::Typeof(..) => Infer,
+        TyKind::Infer | TyKind::Err(_) | TyKind::Typeof(..) => Infer,
     }
 }
 
@@ -2114,17 +2114,29 @@ fn get_all_import_attributes<'hir>(
     attributes: &mut Vec<ast::Attribute>,
     is_inline: bool,
 ) {
+    let mut first = true;
     let hir_map = tcx.hir();
     let mut visitor = OneLevelVisitor::new(hir_map, target_def_id);
     let mut visited = FxHashSet::default();
+
     // If the item is an import and has at least a path with two parts, we go into it.
     while let hir::ItemKind::Use(path, _) = item.kind && visited.insert(item.hir_id()) {
-        // We add the attributes from this import into the list.
-        add_without_unwanted_attributes(attributes, hir_map.attrs(item.hir_id()), is_inline);
+        if first {
+            // This is the "original" reexport so we get all its attributes without filtering them.
+            attributes.extend_from_slice(hir_map.attrs(item.hir_id()));
+            first = false;
+        } else {
+            add_without_unwanted_attributes(attributes, hir_map.attrs(item.hir_id()), is_inline);
+        }
 
-        let def_id = if path.segments.len() > 1 {
-            match path.segments[path.segments.len() - 2].res {
+        let def_id = if let [.., parent_segment, _] = &path.segments {
+            match parent_segment.res {
                 hir::def::Res::Def(_, def_id) => def_id,
+                _ if parent_segment.ident.name == kw::Crate => {
+                    // In case the "parent" is the crate, it'll give `Res::Err` so we need to
+                    // circumvent it this way.
+                    tcx.parent(item.owner_id.def_id.to_def_id())
+                }
                 _ => break,
             }
         } else {
@@ -2341,9 +2353,7 @@ fn clean_maybe_renamed_item<'tcx>(
         if let Some(import_id) = import_id &&
             let Some(hir::Node::Item(use_node)) = cx.tcx.hir().find_by_def_id(import_id)
         {
-            // First, we add the attributes from the current import.
-            extra_attrs.extend_from_slice(inline::load_attrs(cx, import_id.to_def_id()));
-            let is_inline = extra_attrs.lists(sym::doc).get_word_attr(sym::inline).is_some();
+            let is_inline = inline::load_attrs(cx, import_id.to_def_id()).lists(sym::doc).get_word_attr(sym::inline).is_some();
             // Then we get all the various imports' attributes.
             get_all_import_attributes(use_node, cx.tcx, item.owner_id.def_id, &mut extra_attrs, is_inline);
             add_without_unwanted_attributes(&mut extra_attrs, inline::load_attrs(cx, def_id), is_inline);

@@ -3,7 +3,7 @@ use super::{ObligationEmittingRelation, SubregionOrigin};
 
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::mem;
@@ -126,7 +126,7 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
 
             (&ty::Error(e), _) | (_, &ty::Error(e)) => {
                 infcx.set_tainted_by_errors(e);
-                Ok(self.tcx().ty_error_with_guaranteed(e))
+                Ok(self.tcx().ty_error(e))
             }
 
             (
@@ -228,10 +228,7 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
 }
 
 impl<'tcx> ObligationEmittingRelation<'tcx> for Sub<'_, '_, 'tcx> {
-    fn register_predicates(
-        &mut self,
-        obligations: impl IntoIterator<Item = impl ty::ToPredicate<'tcx>>,
-    ) {
+    fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ty::ToPredicate<'tcx>>) {
         self.fields.register_predicates(obligations);
     }
 

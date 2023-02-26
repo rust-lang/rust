@@ -30,6 +30,7 @@ use rustc_middle::mir::mono::CodegenUnitNameBuilder;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::*;
 use rustc_span::symbol::{sym, Symbol};
+use thin_vec::ThinVec;
 
 #[allow(missing_docs)]
 pub fn assert_module_sources(tcx: TyCtxt<'_>) {
@@ -138,7 +139,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
     }
 
     fn field(&self, attr: &ast::Attribute, name: Symbol) -> Symbol {
-        for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
+        for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
             if item.has_name(name) {
                 if let Some(value) = item.value_str() {
                     return value;

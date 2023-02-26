@@ -2,7 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/method-chain.rs:15:33
    |
 LL |     Foo.bar().bar().bar().bar().baz();
-   |                                 ^^^ cannot infer the value of the const parameter `N` declared on the associated function `baz`
+   |                                 ^^^ cannot infer the value of the const parameter `N` declared on the method `baz`
    |
 help: consider specifying the generic argument
    |

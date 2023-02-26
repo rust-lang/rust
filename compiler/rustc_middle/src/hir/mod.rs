@@ -121,13 +121,13 @@ pub fn provide(providers: &mut Providers) {
         let node = owner.node();
         Some(Owner { node, hash_without_bodies: owner.nodes.hash_without_bodies })
     };
-    providers.local_def_id_to_hir_id = |tcx, id| {
+    providers.opt_local_def_id_to_hir_id = |tcx, id| {
         let owner = tcx.hir_crate(()).owners[id].map(|_| ());
-        match owner {
+        Some(match owner {
             MaybeOwner::Owner(_) => HirId::make_owner(id),
             MaybeOwner::Phantom => bug!("No HirId for {:?}", id),
             MaybeOwner::NonOwner(hir_id) => hir_id,
-        }
+        })
     };
     providers.hir_owner_nodes = |tcx, id| tcx.hir_crate(()).owners[id.def_id].map(|i| &i.nodes);
     providers.hir_owner_parent = |tcx, id| {

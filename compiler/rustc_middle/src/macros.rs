@@ -69,8 +69,8 @@ macro_rules! CloneLiftImpls {
 macro_rules! TrivialTypeTraversalImpls {
     (for <$tcx:lifetime> { $($ty:ty,)+ }) => {
         $(
-            impl<$tcx> $crate::ty::fold::ir::TypeFoldable<$crate::ty::TyCtxt<$tcx>> for $ty {
-                fn try_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$tcx>>(
+            impl<$tcx> $crate::ty::fold::TypeFoldable<$crate::ty::TyCtxt<$tcx>> for $ty {
+                fn try_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$crate::ty::TyCtxt<$tcx>>>(
                     self,
                     _: &mut F,
                 ) -> ::std::result::Result<Self, F::Error> {
@@ -78,7 +78,7 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
 
                 #[inline]
-                fn fold_with<F: $crate::ty::fold::TypeFolder<$tcx>>(
+                fn fold_with<F: $crate::ty::fold::TypeFolder<$crate::ty::TyCtxt<$tcx>>>(
                     self,
                     _: &mut F,
                 ) -> Self {
@@ -86,9 +86,9 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
             }
 
-            impl<$tcx> $crate::ty::visit::ir::TypeVisitable<$crate::ty::TyCtxt<$tcx>> for $ty {
+            impl<$tcx> $crate::ty::visit::TypeVisitable<$crate::ty::TyCtxt<$tcx>> for $ty {
                 #[inline]
-                fn visit_with<F: $crate::ty::visit::TypeVisitor<$tcx>>(
+                fn visit_with<F: $crate::ty::visit::TypeVisitor<$crate::ty::TyCtxt<$tcx>>>(
                     &self,
                     _: &mut F)
                     -> ::std::ops::ControlFlow<F::BreakTy>

@@ -922,13 +922,13 @@ impl AtomicBool {
     ///
     /// let mut atomic = AtomicBool::new(true);
     /// unsafe {
-    ///     my_atomic_op(atomic.as_mut_ptr());
+    ///     my_atomic_op(atomic.as_ptr());
     /// }
     /// # }
     /// ```
     #[inline]
     #[unstable(feature = "atomic_mut_ptr", reason = "recently added", issue = "66893")]
-    pub const fn as_mut_ptr(&self) -> *mut bool {
+    pub const fn as_ptr(&self) -> *mut bool {
         self.v.get().cast()
     }
 
@@ -1814,12 +1814,12 @@ impl<T> AtomicPtr<T> {
     ///
     /// // SAFETY: Safe as long as `my_atomic_op` is atomic.
     /// unsafe {
-    ///     my_atomic_op(atomic.as_mut_ptr());
+    ///     my_atomic_op(atomic.as_ptr());
     /// }
     /// ```
     #[inline]
     #[unstable(feature = "atomic_mut_ptr", reason = "recently added", issue = "66893")]
-    pub const fn as_mut_ptr(&self) -> *mut *mut T {
+    pub const fn as_ptr(&self) -> *mut *mut T {
         self.p.get()
     }
 }
@@ -2719,7 +2719,7 @@ macro_rules! atomic_int {
             ///
             /// // SAFETY: Safe as long as `my_atomic_op` is atomic.
             /// unsafe {
-            ///     my_atomic_op(atomic.as_mut_ptr());
+            ///     my_atomic_op(atomic.as_ptr());
             /// }
             /// # }
             /// ```
@@ -2727,7 +2727,7 @@ macro_rules! atomic_int {
             #[unstable(feature = "atomic_mut_ptr",
                    reason = "recently added",
                    issue = "66893")]
-            pub const fn as_mut_ptr(&self) -> *mut $int_type {
+            pub const fn as_ptr(&self) -> *mut $int_type {
                 self.v.get()
             }
         }

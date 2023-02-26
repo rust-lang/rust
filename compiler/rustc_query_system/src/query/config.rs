@@ -19,7 +19,9 @@ pub type TryLoadFromDisk<Qcx, Q> =
 pub trait QueryConfig<Qcx: QueryContext> {
     const NAME: &'static str;
 
-    type Key: DepNodeParams<Qcx::DepContext> + Eq + Hash + Clone + Debug;
+    // `Key` and `Value` are `Copy` instead of `Clone` to ensure copying them stays cheap,
+    // but it isn't necessary.
+    type Key: DepNodeParams<Qcx::DepContext> + Eq + Hash + Copy + Debug;
     type Value: Debug + Copy;
 
     type Cache: QueryCache<Key = Self::Key, Value = Self::Value>;

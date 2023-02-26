@@ -51,13 +51,13 @@ LL | |     fn foo_with_impl(&self) {}
 LL | | }
    | |_^
 
-error: missing documentation for an associated function
+error: missing documentation for a method
   --> $DIR/missing_doc_impl.rs:44:5
    |
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
 
-error: missing documentation for an associated function
+error: missing documentation for a method
   --> $DIR/missing_doc_impl.rs:45:5
    |
 LL |     fn foo_with_impl(&self) {}

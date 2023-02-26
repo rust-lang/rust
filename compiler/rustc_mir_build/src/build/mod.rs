@@ -20,7 +20,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::{
     self, BindingMode, Expr, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir,
 };
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable, TypeckResults};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeckResults};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_span::Symbol;
@@ -639,7 +639,7 @@ fn construct_error(
     let hir_id = tcx.hir().local_def_id_to_hir_id(def);
     let generator_kind = tcx.generator_kind(def);
 
-    let ty = tcx.ty_error();
+    let ty = tcx.ty_error(err);
     let num_params = match body_owner_kind {
         hir::BodyOwnerKind::Fn => tcx.fn_sig(def).skip_binder().inputs().skip_binder().len(),
         hir::BodyOwnerKind::Closure => {
@@ -859,7 +859,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let use_place = Place {
                         local: ty::CAPTURE_STRUCT_LOCAL,
-                        projection: tcx.intern_place_elems(&projs),
+                        projection: tcx.mk_place_elems(&projs),
                     };
                     self.var_debug_info.push(VarDebugInfo {
                         name: *sym,

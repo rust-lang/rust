@@ -14,11 +14,11 @@ note: candidate #2 is defined in an impl of the trait `await` for the type `r#fn
    |
 LL |     fn r#struct(&self) {
    |     ^^^^^^^^^^^^^^^^^^
-help: disambiguate the associated function for candidate #1
+help: disambiguate the method for candidate #1
    |
 LL |     async::r#struct(&r#fn {});
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~
-help: disambiguate the associated function for candidate #2
+help: disambiguate the method for candidate #2
    |
 LL |     await::r#struct(&r#fn {});
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~

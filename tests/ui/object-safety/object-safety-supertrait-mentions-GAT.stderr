@@ -1,5 +1,10 @@
 error[E0311]: the parameter type `Self` may not live long enough
    |
+note: the parameter type `Self` must be valid for the lifetime `'a` as defined here...
+  --> $DIR/object-safety-supertrait-mentions-GAT.rs:9:26
+   |
+LL | trait SuperTrait<T>: for<'a> GatTrait<Gat<'a> = T> {
+   |                          ^^
    = help: consider adding an explicit lifetime bound `Self: 'a`...
    = note: ...so that the type `Self` will meet its required lifetime bounds...
 note: ...that is required by this bound

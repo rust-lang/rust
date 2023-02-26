@@ -944,65 +944,72 @@ impl<T, A: Allocator> VecDeque<T, A> {
             return;
         }
 
-        if target_cap < self.capacity() {
-            // There are three cases of interest:
-            //   All elements are out of desired bounds
-            //   Elements are contiguous, and head is out of desired bounds
-            //   Elements are discontiguous, and tail is out of desired bounds
-            //
-            // At all other times, element positions are unaffected.
-            //
-            // Indicates that elements at the head should be moved.
+        // There are three cases of interest:
+        //   All elements are out of desired bounds
+        //   Elements are contiguous, and tail is out of desired bounds
+        //   Elements are discontiguous
+        //
+        // At all other times, element positions are unaffected.
 
-            let tail_outside = (target_cap + 1..=self.capacity()).contains(&(self.head + self.len));
-            // Move elements from out of desired bounds (positions after target_cap)
-            if self.len == 0 {
-                self.head = 0;
-            } else if self.head >= target_cap && tail_outside {
-                //  H := head
-                //  L := last element
-                //                    H           L
-                //   [. . . . . . . . o o o o o o o . ]
-                //    H           L
-                //   [o o o o o o o . ]
-                unsafe {
-                    // nonoverlapping because self.head >= target_cap >= self.len
-                    self.copy_nonoverlapping(self.head, 0, self.len);
-                }
-                self.head = 0;
-            } else if self.head < target_cap && tail_outside {
-                //  H := head
-                //  L := last element
-                //          H           L
-                //   [. . . o o o o o o o . . . . . . ]
-                //      L   H
-                //   [o o . o o o o o ]
-                let len = self.head + self.len - target_cap;
-                unsafe {
-                    self.copy_nonoverlapping(target_cap, 0, len);
-                }
-            } else if self.head >= target_cap {
-                //  H := head
-                //  L := last element
-                //            L                   H
-                //   [o o o o o . . . . . . . . . o o ]
-                //            L   H
-                //   [o o o o o . o o ]
-                let len = self.capacity() - self.head;
-                let new_head = target_cap - len;
-                unsafe {
-                    // can't use copy_nonoverlapping here for the same reason
-                    // as in `handle_capacity_increase()`
-                    self.copy(self.head, new_head, len);
-                }
-                self.head = new_head;
+        // `head` and `len` are at most `isize::MAX` and `target_cap < self.capacity()`, so nothing can
+        // overflow.
+        let tail_outside = (target_cap + 1..=self.capacity()).contains(&(self.head + self.len));
+
+        if self.len == 0 {
+            self.head = 0;
+        } else if self.head >= target_cap && tail_outside {
+            // Head and tail are both out of bounds, so copy all of them to the front.
+            //
+            //  H := head
+            //  L := last element
+            //                    H           L
+            //   [. . . . . . . . o o o o o o o . ]
+            //    H           L
+            //   [o o o o o o o . ]
+            unsafe {
+                // nonoverlapping because `self.head >= target_cap >= self.len`.
+                self.copy_nonoverlapping(self.head, 0, self.len);
             }
-
-            self.buf.shrink_to_fit(target_cap);
-
-            debug_assert!(self.head < self.capacity() || self.capacity() == 0);
-            debug_assert!(self.len <= self.capacity());
+            self.head = 0;
+        } else if self.head < target_cap && tail_outside {
+            // Head is in bounds, tail is out of bounds.
+            // Copy the overflowing part to the beginning of the
+            // buffer. This won't overlap because `target_cap >= self.len`.
+            //
+            //  H := head
+            //  L := last element
+            //          H           L
+            //   [. . . o o o o o o o . . . . . . ]
+            //      L   H
+            //   [o o . o o o o o ]
+            let len = self.head + self.len - target_cap;
+            unsafe {
+                self.copy_nonoverlapping(target_cap, 0, len);
+            }
+        } else if !self.is_contiguous() {
+            // The head slice is at least partially out of bounds, tail is in bounds.
+            // Copy the head backwards so it lines up with the target capacity.
+            // This won't overlap because `target_cap >= self.len`.
+            //
+            //  H := head
+            //  L := last element
+            //            L                   H
+            //   [o o o o o . . . . . . . . . o o ]
+            //            L   H
+            //   [o o o o o . o o ]
+            let head_len = self.capacity() - self.head;
+            let new_head = target_cap - head_len;
+            unsafe {
+                // can't use `copy_nonoverlapping()` here because the new and old
+                // regions for the head might overlap.
+                self.copy(self.head, new_head, head_len);
+            }
+            self.head = new_head;
         }
+        self.buf.shrink_to_fit(target_cap);
+
+        debug_assert!(self.head < self.capacity() || self.capacity() == 0);
+        debug_assert!(self.len <= self.capacity());
     }
 
     /// Shortens the deque, keeping the first `len` elements and dropping

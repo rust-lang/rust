@@ -21,7 +21,7 @@ pub trait QueryStorage {
 }
 
 pub trait QueryCache: QueryStorage + Sized {
-    type Key: Hash + Eq + Clone + Debug;
+    type Key: Hash + Eq + Copy + Debug;
 
     /// Checks if the query is already computed and in the cache.
     /// It returns the shard index and a lock guard to the shard,
@@ -61,7 +61,7 @@ impl<K: Eq + Hash, V: Copy + Debug> QueryStorage for DefaultCache<K, V> {
 
 impl<K, V> QueryCache for DefaultCache<K, V>
 where
-    K: Eq + Hash + Clone + Debug,
+    K: Eq + Hash + Copy + Debug,
     V: Copy + Debug,
 {
     type Key = K;
@@ -179,7 +179,7 @@ impl<K: Eq + Idx, V: Copy + Debug> QueryStorage for VecCache<K, V> {
 
 impl<K, V> QueryCache for VecCache<K, V>
 where
-    K: Eq + Idx + Clone + Debug,
+    K: Eq + Idx + Copy + Debug,
     V: Copy + Debug,
 {
     type Key = K;

@@ -68,5 +68,4 @@ size: (1000, 1000) // Popover only appears when the screen width is >700px.
 assert-false: "#help"
 click: "#help-button > a"
 click: ".popover a[href='https://doc.rust-lang.org/rustdoc/']"
-wait-for: 2000
-assert-document-property: {"URL": "https://doc.rust-lang.org/rustdoc/"}
+wait-for-document-property: {"URL": "https://doc.rust-lang.org/rustdoc/"}

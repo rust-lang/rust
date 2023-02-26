@@ -18,6 +18,7 @@ use crate::errors::{
     UseEqInstead,
 };
 
+use crate::fluent_generated as fluent;
 use crate::lexer::UnmatchedBrace;
 use crate::parser;
 use rustc_ast as ast;
@@ -32,10 +33,9 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    fluent, Applicability, DiagnosticBuilder, DiagnosticMessage, FatalError, Handler, MultiSpan,
-    PResult,
+    pluralize, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed,
+    FatalError, Handler, IntoDiagnostic, MultiSpan, PResult,
 };
-use rustc_errors::{pluralize, Diagnostic, ErrorGuaranteed, IntoDiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
@@ -693,7 +693,7 @@ impl<'a> Parser<'a> {
                 span: self.prev_token.span.shrink_to_lo(),
                 tokens: None,
             };
-            let struct_expr = snapshot.parse_struct_expr(None, path, false);
+            let struct_expr = snapshot.parse_expr_struct(None, path, false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
                 (Ok(expr), Err(mut err)) => {
@@ -708,7 +708,7 @@ impl<'a> Parser<'a> {
                     err.delay_as_bug();
                     self.restore_snapshot(snapshot);
                     let mut tail = self.mk_block(
-                        vec![self.mk_stmt_err(expr.span)],
+                        thin_vec![self.mk_stmt_err(expr.span)],
                         s,
                         lo.to(self.prev_token.span),
                     );
@@ -1624,7 +1624,7 @@ impl<'a> Parser<'a> {
             // Handle `await { <expr> }`.
             // This needs to be handled separately from the next arm to avoid
             // interpreting `await { <expr> }?` as `<expr>?.await`.
-            self.parse_block_expr(None, self.token.span, BlockCheckMode::Default)
+            self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)
         } else {
             self.parse_expr()
         }
@@ -2175,7 +2175,7 @@ impl<'a> Parser<'a> {
     /// the parameters are *names* (so we don't emit errors about not being able to find `b` in
     /// the local scope), but if we find the same name multiple times, like in `fn foo(i8, i8)`,
     /// we deduplicate them to not complain about duplicated parameter names.
-    pub(super) fn deduplicate_recovered_params_names(&self, fn_inputs: &mut Vec<Param>) {
+    pub(super) fn deduplicate_recovered_params_names(&self, fn_inputs: &mut ThinVec<Param>) {
         let mut seen_inputs = FxHashSet::default();
         for input in fn_inputs.iter_mut() {
             let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err) =
@@ -2199,7 +2199,7 @@ impl<'a> Parser<'a> {
     /// like the user has forgotten them.
     pub fn handle_ambiguous_unbraced_const_arg(
         &mut self,
-        args: &mut Vec<AngleBracketedArg>,
+        args: &mut ThinVec<AngleBracketedArg>,
     ) -> PResult<'a, bool> {
         // If we haven't encountered a closing `>`, then the argument is malformed.
         // It's likely that the user has written a const expression without enclosing it

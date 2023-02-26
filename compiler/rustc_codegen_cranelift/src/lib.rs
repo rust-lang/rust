@@ -86,7 +86,7 @@ mod prelude {
     pub(crate) use rustc_middle::ty::layout::{self, LayoutOf, TyAndLayout};
     pub(crate) use rustc_middle::ty::{
         self, FloatTy, Instance, InstanceDef, IntTy, ParamEnv, Ty, TyCtxt, TypeAndMut,
-        TypeFoldable, UintTy,
+        TypeFoldable, TypeVisitableExt, UintTy,
     };
     pub(crate) use rustc_target::abi::{Abi, Scalar, Size, VariantIdx};
 
@@ -172,6 +172,11 @@ pub struct CraneliftCodegenBackend {
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
+    fn locale_resource(&self) -> &'static str {
+        // FIXME(rust-lang/rust#100717) - cranelift codegen backend is not yet translated
+        ""
+    }
+
     fn init(&self, sess: &Session) {
         use rustc_session::config::Lto;
         match sess.lto() {

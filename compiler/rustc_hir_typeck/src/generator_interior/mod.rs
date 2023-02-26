@@ -16,7 +16,7 @@ use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind};
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::middle::region::{self, Scope, ScopeData, YieldData};
 use rustc_middle::ty::fold::FnMutDelegate;
-use rustc_middle::ty::{self, BoundVariableKind, RvalueScopes, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, BoundVariableKind, RvalueScopes, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
@@ -311,8 +311,8 @@ pub fn resolve_interior<'a, 'tcx>(
     };
 
     // Extract type components to build the witness type.
-    let type_list = fcx.tcx.mk_type_list(type_causes.iter().map(|cause| cause.ty));
-    let bound_vars = fcx.tcx.intern_bound_variable_kinds(&bound_vars);
+    let type_list = fcx.tcx.mk_type_list_from_iter(type_causes.iter().map(|cause| cause.ty));
+    let bound_vars = fcx.tcx.mk_bound_variable_kinds(&bound_vars);
     let witness =
         fcx.tcx.mk_generator_witness(ty::Binder::bind_with_vars(type_list, bound_vars.clone()));
 

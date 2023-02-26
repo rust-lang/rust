@@ -32,14 +32,14 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
 LL | use method::B;
    |
 
-error[E0624]: associated function `a` is private
+error[E0624]: method `a` is private
   --> $DIR/item-privacy.rs:72:7
    |
 LL |         fn a(&self) { }
-   |         ----------- private associated function defined here
+   |         ----------- private method defined here
 ...
 LL |     c.a();
-   |       ^ private associated function
+   |       ^ private method
 
 error[E0599]: no function or associated item named `a` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:78:8
@@ -72,14 +72,14 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
 LL | use method::B;
    |
 
-error[E0624]: associated function `a` is private
+error[E0624]: method `a` is private
   --> $DIR/item-privacy.rs:84:14
    |
 LL |         fn a(&self) { }
-   |         ----------- private associated function defined here
+   |         ----------- private method defined here
 ...
 LL |     <dyn C>::a(&S);
-   |              ^ private associated function
+   |              ^ private method
 
 error[E0599]: no associated item named `A` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:97:8

@@ -30,10 +30,10 @@ use rustc_middle::hir::map;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{
-    self, ir::TypeFolder, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind,
-    DefIdTree, GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, InternalSubsts,
-    IsSuggestable, ToPredicate, Ty, TyCtxt, TypeAndMut, TypeFoldable, TypeSuperFoldable,
-    TypeckResults,
+    self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
+    GeneratorDiagnosticData, GeneratorInteriorTypeCause, Infer, InferTy, InternalSubsts,
+    IsSuggestable, ToPredicate, Ty, TyCtxt, TypeAndMut, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt, TypeckResults,
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -927,7 +927,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 DefKind::Ctor(CtorOf::Variant, _) => {
                     "use parentheses to construct this tuple variant".to_string()
                 }
-                kind => format!("use parentheses to call this {}", kind.descr(def_id)),
+                kind => format!(
+                    "use parentheses to call this {}",
+                    self.tcx.def_kind_descr(kind, def_id)
+                ),
             },
             DefIdOrName::Name(name) => format!("use parentheses to call this {name}"),
         };
@@ -2139,7 +2142,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 err.note(&format!(
                     "{}s cannot be accessed directly on a `trait`, they can only be \
                         accessed through a specific `impl`",
-                    assoc_item.kind.as_def_kind().descr(item_def_id)
+                    self.tcx.def_kind_descr(assoc_item.kind.as_def_kind(), item_def_id)
                 ));
                 err.span_suggestion(
                     span,
@@ -2784,7 +2787,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             _ => true,
                         };
                     if ident.span.is_visible(sm) && !ident.span.overlaps(span) && !same_line {
-                        multispan.push_span_label(ident.span, "required by a bound in this");
+                        multispan.push_span_label(
+                            ident.span,
+                            format!(
+                                "required by a bound in this {}",
+                                tcx.def_kind(item_def_id).descr(item_def_id)
+                            ),
+                        );
                     }
                 }
                 let descr = format!("required by a bound in `{item_name}`");
@@ -3098,6 +3107,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 self.tcx.def_span(def_id),
                                 "required because it's used within this closure",
                             ),
+                            ty::Str => err.note("`str` is considered to contain a `[u8]` slice for auto trait purposes"),
                             _ => err.note(&msg),
                         };
                     }
@@ -3525,7 +3535,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         {
             if let hir::Expr { kind: hir::ExprKind::Block(..), .. } = expr {
                 let expr = expr.peel_blocks();
-                let ty = typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error());
+                let ty = typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error_misc());
                 let span = expr.span;
                 if Some(span) != err.span.primary_span() {
                     err.span_label(
@@ -3628,7 +3638,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut assocs = vec![];
         let mut expr = expr;
         let mut prev_ty = self.resolve_vars_if_possible(
-            typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error()),
+            typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error_misc()),
         );
         while let hir::ExprKind::MethodCall(_path_segment, rcvr_expr, _args, span) = expr.kind {
             // Point at every method call in the chain with the resulting type.
@@ -3639,7 +3649,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 self.probe_assoc_types_at_expr(&type_diffs, span, prev_ty, expr.hir_id, param_env);
             assocs.push(assocs_in_this_method);
             prev_ty = self.resolve_vars_if_possible(
-                typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error()),
+                typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error_misc()),
             );
 
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
@@ -3657,7 +3667,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let hir::Node::Param(param) = parent {
                     // ...and it is a an fn argument.
                     let prev_ty = self.resolve_vars_if_possible(
-                        typeck_results.node_type_opt(param.hir_id).unwrap_or(tcx.ty_error()),
+                        typeck_results.node_type_opt(param.hir_id).unwrap_or(tcx.ty_error_misc()),
                     );
                     let assocs_in_this_method = self.probe_assoc_types_at_expr(&type_diffs, param.ty_span, prev_ty, param.hir_id, param_env);
                     if assocs_in_this_method.iter().any(|a| a.is_some()) {

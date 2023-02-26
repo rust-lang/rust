@@ -4,7 +4,6 @@ mod test_lifetime_param {
     type Ty<'a> = impl Sized + 'a;
     fn defining(a: &str) -> Ty<'_> { a }
     fn assert_static<'a: 'static>() {}
-    //~^ WARN: unnecessary lifetime parameter `'a`
     fn test<'a>() where Ty<'a>: 'static { assert_static::<'a>() }
     //~^ ERROR: lifetime may not live long enough
 }
@@ -13,14 +12,12 @@ mod test_higher_kinded_lifetime_param {
     type Ty<'a> = impl Sized + 'a;
     fn defining(a: &str) -> Ty<'_> { a }
     fn assert_static<'a: 'static>() {}
-    //~^ WARN: unnecessary lifetime parameter `'a`
     fn test<'a>() where for<'b> Ty<'b>: 'a { assert_static::<'a>() }
     //~^ ERROR: lifetime may not live long enough
 }
 
 mod test_higher_kinded_lifetime_param2 {
     fn assert_static<'a: 'static>() {}
-    //~^ WARN: unnecessary lifetime parameter `'a`
     fn test<'a>() { assert_static::<'a>() }
     //~^ ERROR: lifetime may not live long enough
 }

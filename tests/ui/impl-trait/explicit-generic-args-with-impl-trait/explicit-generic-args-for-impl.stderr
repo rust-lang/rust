@@ -1,4 +1,4 @@
-error[E0107]: this function takes 1 generic argument but 2 generic arguments were supplied
+error[E0107]: function takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/explicit-generic-args-for-impl.rs:4:5
    |
 LL |     foo::<str, String>("".to_string());

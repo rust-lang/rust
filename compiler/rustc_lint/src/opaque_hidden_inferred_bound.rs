@@ -149,7 +149,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
 struct OpaqueHiddenInferredBoundLint<'tcx> {
     ty: Ty<'tcx>,
     proj_ty: Ty<'tcx>,
-    #[label(specifically)]
+    #[label(lint_specifically)]
     assoc_pred_span: Span,
     #[subdiagnostic]
     add_bound: Option<AddBound<'tcx>>,

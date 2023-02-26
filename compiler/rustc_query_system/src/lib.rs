@@ -15,6 +15,9 @@ extern crate rustc_data_structures;
 #[macro_use]
 extern crate rustc_macros;
 
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_macros::fluent_messages;
+
 pub mod cache;
 pub mod dep_graph;
 mod error;
@@ -26,3 +29,5 @@ pub use error::HandleCycleError;
 pub use error::LayoutOfDepth;
 pub use error::QueryOverflow;
 pub use values::Value;
+
+fluent_messages! { "../locales/en-US.ftl" }

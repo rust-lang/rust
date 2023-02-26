@@ -1,4 +1,4 @@
-error[E0107]: this struct takes 2 lifetime arguments but 1 lifetime argument was supplied
+error[E0107]: struct takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/E0107.rs:13:11
    |
 LL |     buzz: Buzz<'a>,
@@ -16,7 +16,7 @@ help: add missing lifetime argument
 LL |     buzz: Buzz<'a, 'a>,
    |                  ++++
 
-error[E0107]: this enum takes 0 lifetime arguments but 1 lifetime argument was supplied
+error[E0107]: enum takes 0 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/E0107.rs:17:10
    |
 LL |     bar: Bar<'a>,
@@ -30,7 +30,7 @@ note: enum defined here, with 0 lifetime parameters
 LL | enum Bar {
    |      ^^^
 
-error[E0107]: this struct takes 1 lifetime argument but 3 lifetime arguments were supplied
+error[E0107]: struct takes 1 lifetime argument but 3 lifetime arguments were supplied
   --> $DIR/E0107.rs:21:11
    |
 LL |     foo2: Foo<'a, 'b, 'c>,
@@ -44,7 +44,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
 LL | struct Foo<'a>(&'a str);
    |        ^^^ --
 
-error[E0107]: this struct takes 1 lifetime argument but 2 lifetime arguments were supplied
+error[E0107]: struct takes 1 lifetime argument but 2 lifetime arguments were supplied
   --> $DIR/E0107.rs:25:11
    |
 LL |     qux1: Qux<'a, 'b, i32>,
@@ -58,7 +58,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
 LL | struct Qux<'a, T>(&'a T);
    |        ^^^ --
 
-error[E0107]: this struct takes 1 lifetime argument but 2 lifetime arguments were supplied
+error[E0107]: struct takes 1 lifetime argument but 2 lifetime arguments were supplied
   --> $DIR/E0107.rs:29:11
    |
 LL |     qux2: Qux<'a, i32, 'b>,
@@ -72,7 +72,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
 LL | struct Qux<'a, T>(&'a T);
    |        ^^^ --
 
-error[E0107]: this struct takes 1 lifetime argument but 3 lifetime arguments were supplied
+error[E0107]: struct takes 1 lifetime argument but 3 lifetime arguments were supplied
   --> $DIR/E0107.rs:33:11
    |
 LL |     qux3: Qux<'a, 'b, 'c, i32>,
@@ -86,7 +86,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
 LL | struct Qux<'a, T>(&'a T);
    |        ^^^ --
 
-error[E0107]: this struct takes 1 lifetime argument but 3 lifetime arguments were supplied
+error[E0107]: struct takes 1 lifetime argument but 3 lifetime arguments were supplied
   --> $DIR/E0107.rs:37:11
    |
 LL |     qux4: Qux<'a, i32, 'b, 'c>,
@@ -100,7 +100,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
 LL | struct Qux<'a, T>(&'a T);
    |        ^^^ --
 
-error[E0107]: this struct takes 1 lifetime argument but 3 lifetime arguments were supplied
+error[E0107]: struct takes 1 lifetime argument but 3 lifetime arguments were supplied
   --> $DIR/E0107.rs:41:11
    |
 LL |     qux5: Qux<'a, 'b, i32, 'c>,
@@ -114,7 +114,7 @@ note: struct defined here, with 1 lifetime parameter: `'a`
 LL | struct Qux<'a, T>(&'a T);
    |        ^^^ --
 
-error[E0107]: this struct takes 0 lifetime arguments but 2 lifetime arguments were supplied
+error[E0107]: struct takes 0 lifetime arguments but 2 lifetime arguments were supplied
   --> $DIR/E0107.rs:45:11
    |
 LL |     quux: Quux<'a, i32, 'b>,
@@ -128,7 +128,7 @@ note: struct defined here, with 0 lifetime parameters
 LL | struct Quux<T>(T);
    |        ^^^^
 
-error[E0107]: this trait takes 0 generic arguments but 2 generic arguments were supplied
+error[E0107]: trait takes 0 generic arguments but 2 generic arguments were supplied
   --> $DIR/E0107.rs:55:27
    |
 LL | fn trait_bound_generic<I: T<u8, u16>>(_i: I) {

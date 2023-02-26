@@ -3,8 +3,7 @@ use std::ops::ControlFlow;
 use rustc_data_structures::intern::Interned;
 
 use crate::ty::{
-    ir::{self, TypeFoldable, TypeVisitable},
-    FallibleTypeFolder, Ty, TyCtxt, TypeFolder, TypeVisitor,
+    FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -27,21 +26,22 @@ pub struct ExternalConstraintsData<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        Ok(ir::FallibleTypeFolder::interner(folder).intern_external_constraints(
-            ExternalConstraintsData {
-                regions: (),
-                opaque_types: self
-                    .opaque_types
-                    .iter()
-                    .map(|opaque| opaque.try_fold_with(folder))
-                    .collect::<Result<_, F::Error>>()?,
-            },
-        ))
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        Ok(FallibleTypeFolder::interner(folder).mk_external_constraints(ExternalConstraintsData {
+            regions: (),
+            opaque_types: self
+                .opaque_types
+                .iter()
+                .map(|opaque| opaque.try_fold_with(folder))
+                .collect::<Result<_, F::Error>>()?,
+        }))
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
-        ir::TypeFolder::interner(folder).intern_external_constraints(ExternalConstraintsData {
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        TypeFolder::interner(folder).mk_external_constraints(ExternalConstraintsData {
             regions: (),
             opaque_types: self.opaque_types.iter().map(|opaque| opaque.fold_with(folder)).collect(),
         })
@@ -49,7 +49,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
-    fn visit_with<V: TypeVisitor<'tcx>>(
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
         &self,
         visitor: &mut V,
     ) -> std::ops::ControlFlow<V::BreakTy> {

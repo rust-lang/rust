@@ -1341,6 +1341,7 @@ pub fn build_session(
     io: CompilerIO,
     bundle: Option<Lrc<rustc_errors::FluentBundle>>,
     registry: rustc_errors::registry::Registry,
+    fluent_resources: Vec<&'static str>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     target_override: Option<Target>,
@@ -1385,7 +1386,7 @@ pub fn build_session(
     ));
 
     let fallback_bundle = fallback_fluent_bundle(
-        rustc_errors::DEFAULT_LOCALE_RESOURCES,
+        fluent_resources,
         sopts.unstable_opts.translate_directionality_markers,
     );
     let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
@@ -1630,7 +1631,10 @@ pub enum IncrCompSession {
 }
 
 fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler {
-    let fallback_bundle = fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
+    // FIXME(#100717): early errors aren't translated at the moment, so this is fine, but it will
+    // need to reference every crate that might emit an early error for translation to work.
+    let fallback_bundle =
+        fallback_fluent_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();

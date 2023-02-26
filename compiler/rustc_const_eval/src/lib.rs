@@ -34,9 +34,13 @@ pub mod interpret;
 pub mod transform;
 pub mod util;
 
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_macros::fluent_messages;
 use rustc_middle::ty;
 use rustc_middle::ty::query::Providers;
 use rustc_target::abi::InitKind;
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     const_eval::provide(providers);

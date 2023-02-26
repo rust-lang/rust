@@ -9,7 +9,7 @@ pub(crate) mod lowering;
 use rustc_middle::infer::canonical::{CanonicalTyVarKind, CanonicalVarKind};
 use rustc_middle::traits::ChalkRustInterner;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, TyCtxt, TypeFoldable, TypeVisitable};
 
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalVarValues, Certainty, QueryRegionConstraints, QueryResponse,
@@ -96,37 +96,34 @@ pub(crate) fn evaluate_goal<'tcx>(
         use rustc_middle::infer::canonical::CanonicalVarInfo;
 
         let mut reverse_param_substitutor = ReverseParamsSubstitutor::new(tcx, params);
-        let var_values = tcx.mk_substs(
+        let var_values = tcx.mk_substs_from_iter(
             subst
                 .as_slice(interner)
                 .iter()
                 .map(|p| p.lower_into(interner).fold_with(&mut reverse_param_substitutor)),
         );
-        let variables: Vec<_> = binders
-            .iter(interner)
-            .map(|var| {
-                let kind = match var.kind {
-                    chalk_ir::VariableKind::Ty(ty_kind) => CanonicalVarKind::Ty(match ty_kind {
-                        chalk_ir::TyVariableKind::General => CanonicalTyVarKind::General(
-                            ty::UniverseIndex::from_usize(var.skip_kind().counter),
-                        ),
-                        chalk_ir::TyVariableKind::Integer => CanonicalTyVarKind::Int,
-                        chalk_ir::TyVariableKind::Float => CanonicalTyVarKind::Float,
-                    }),
-                    chalk_ir::VariableKind::Lifetime => CanonicalVarKind::Region(
+        let variables = binders.iter(interner).map(|var| {
+            let kind = match var.kind {
+                chalk_ir::VariableKind::Ty(ty_kind) => CanonicalVarKind::Ty(match ty_kind {
+                    chalk_ir::TyVariableKind::General => CanonicalTyVarKind::General(
                         ty::UniverseIndex::from_usize(var.skip_kind().counter),
                     ),
-                    // FIXME(compiler-errors): We don't currently have a way of turning
-                    // a Chalk ty back into a rustc ty, right?
-                    chalk_ir::VariableKind::Const(_) => todo!(),
-                };
-                CanonicalVarInfo { kind }
-            })
-            .collect();
+                    chalk_ir::TyVariableKind::Integer => CanonicalTyVarKind::Int,
+                    chalk_ir::TyVariableKind::Float => CanonicalTyVarKind::Float,
+                }),
+                chalk_ir::VariableKind::Lifetime => {
+                    CanonicalVarKind::Region(ty::UniverseIndex::from_usize(var.skip_kind().counter))
+                }
+                // FIXME(compiler-errors): We don't currently have a way of turning
+                // a Chalk ty back into a rustc ty, right?
+                chalk_ir::VariableKind::Const(_) => todo!(),
+            };
+            CanonicalVarInfo { kind }
+        });
         let max_universe = binders.iter(interner).map(|v| v.skip_kind().counter).max().unwrap_or(0);
         let sol = Canonical {
             max_universe: ty::UniverseIndex::from_usize(max_universe),
-            variables: tcx.intern_canonical_var_infos(&variables),
+            variables: tcx.mk_canonical_var_infos_from_iter(variables),
             value: QueryResponse {
                 var_values: CanonicalVarValues { var_values },
                 region_constraints: QueryRegionConstraints::default(),

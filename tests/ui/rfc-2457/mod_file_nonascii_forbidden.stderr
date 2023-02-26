@@ -12,7 +12,7 @@ error[E0754]: trying to load file for module `řųśť` with non-ascii identifie
 LL | mod řųśť;
    |     ^^^^
    |
-   = help: consider using `#[path]` attribute to specify filesystem path
+   = help: consider using the `#[path]` attribute to specify filesystem path
 
 error: aborting due to 2 previous errors
 

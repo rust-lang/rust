@@ -13,7 +13,7 @@ extern "C" {
 
 struct Foo; //~ ERROR: struct `Foo` is never constructed
 impl Foo {
-    fn foo(&self) { //~ ERROR: associated function `foo` is never used
+    fn foo(&self) { //~ ERROR: method `foo` is never used
         bar()
     }
 }

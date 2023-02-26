@@ -28,7 +28,9 @@ use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArg
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::{Lrc, MappedReadGuard};
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{
+    Applicability, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, SubdiagnosticMessage,
+};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
@@ -37,6 +39,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::TraitCandidate;
 use rustc_index::vec::IndexVec;
+use rustc_macros::fluent_messages;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
@@ -57,7 +60,7 @@ use std::collections::BTreeSet;
 use std::{fmt, ptr};
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
-use imports::{Import, ImportKind, ImportResolver, NameResolution};
+use imports::{Import, ImportKind, NameResolution};
 use late::{HasGenericParams, PathSource, PatternSource};
 use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 
@@ -76,6 +79,8 @@ mod imports;
 mod late;
 mod macros;
 pub mod rustdoc;
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 enum Weak {
     Yes,
@@ -1156,7 +1161,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
 
         // A relative span's parent must be an absolute span.
         debug_assert_eq!(span.data_untracked().parent, None);
-        let _id = self.tcx.untracked().source_span.write().push(span);
+        let _id = self.tcx.untracked().source_span.push(span);
         debug_assert_eq!(_id, def_id);
 
         // Some things for which we allocate `LocalDefId`s don't correspond to
@@ -1486,9 +1491,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
         self.tcx.sess.time("resolve_crate", || {
-            self.tcx
-                .sess
-                .time("finalize_imports", || ImportResolver { r: self }.finalize_imports());
+            self.tcx.sess.time("finalize_imports", || self.finalize_imports());
             self.tcx.sess.time("compute_effective_visibilities", || {
                 EffectiveVisibilitiesVisitor::compute_effective_visibilities(self, krate)
             });

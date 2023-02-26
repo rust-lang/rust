@@ -27,7 +27,7 @@ note: required by a bound in `foo`
   --> $DIR/issue-47706.rs:22:8
    |
 LL | fn foo<F>(f: F)
-   |    --- required by a bound in this
+   |    --- required by a bound in this function
 LL | where
 LL |     F: Fn(),
    |        ^^^^ required by this bound in `foo`

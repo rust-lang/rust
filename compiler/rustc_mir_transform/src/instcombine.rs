@@ -30,6 +30,7 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
                         ctx.combine_bool_cmp(&statement.source_info, rvalue);
                         ctx.combine_ref_deref(&statement.source_info, rvalue);
                         ctx.combine_len(&statement.source_info, rvalue);
+                        ctx.combine_cast(&statement.source_info, rvalue);
                     }
                     _ => {}
                 }
@@ -120,7 +121,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
 
                 *rvalue = Rvalue::Use(Operand::Copy(Place {
                     local: base.local,
-                    projection: self.tcx.intern_place_elems(base.projection),
+                    projection: self.tcx.mk_place_elems(base.projection),
                 }));
             }
         }
@@ -138,6 +139,14 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
                 let literal = ConstantKind::from_const(len, self.tcx);
                 let constant = Constant { span: source_info.span, literal, user_ty: None };
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
+            }
+        }
+    }
+
+    fn combine_cast(&self, _source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+        if let Rvalue::Cast(_kind, operand, ty) = rvalue {
+            if operand.ty(self.local_decls, self.tcx) == *ty {
+                *rvalue = Rvalue::Use(operand.clone());
             }
         }
     }

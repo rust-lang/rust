@@ -8,7 +8,8 @@ use rustc_hir as hir;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IgnoreRegions;
 use rustc_middle::ty::{
-    self, ir::TypeVisitor, AliasKind, ImplPolarity, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    self, AliasKind, ImplPolarity, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor,
 };
 use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -531,7 +532,7 @@ fn lint_auto_trait_impl<'tcx>(
         }),
         |lint| {
             let item_span = tcx.def_span(self_type_did);
-            let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
+            let self_descr = tcx.def_descr(self_type_did);
             match arg {
                 ty::util::NotUniqueParam::DuplicateParam(arg) => {
                     lint.note(&format!("`{}` is mentioned multiple times", arg));

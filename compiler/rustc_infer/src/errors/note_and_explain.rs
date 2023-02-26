@@ -1,7 +1,6 @@
+use crate::fluent_generated as fluent;
 use crate::infer::error_reporting::nice_region_error::find_anon_type;
-use rustc_errors::{
-    self, fluent, AddToDiagnostic, Diagnostic, IntoDiagnosticArg, SubdiagnosticMessage,
-};
+use rustc_errors::{self, AddToDiagnostic, Diagnostic, IntoDiagnosticArg, SubdiagnosticMessage};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{symbol::kw, Span};
 

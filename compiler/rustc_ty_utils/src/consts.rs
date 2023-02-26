@@ -5,7 +5,7 @@ use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::thir::visit;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::ty::abstract_const::CastKind;
-use rustc_middle::ty::{self, Expr, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Expr, TyCtxt, TypeVisitableExt};
 use rustc_middle::{mir, thir};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
@@ -144,7 +144,7 @@ fn recurse_build<'tcx>(
             for &id in args.iter() {
                 new_args.push(recurse_build(tcx, body, id, root_span)?);
             }
-            let new_args = tcx.intern_const_list(&new_args);
+            let new_args = tcx.mk_const_list(&new_args);
             tcx.mk_const(Expr::FunctionCall(fun, new_args), node.ty)
         }
         &ExprKind::Binary { op, lhs, rhs } if check_binop(op) => {

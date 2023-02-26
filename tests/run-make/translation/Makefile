@@ -6,8 +6,10 @@ include ../../run-make-fulldeps/tools.mk
 
 SYSROOT:=$(shell $(RUSTC) --print sysroot)
 FAKEROOT=$(TMPDIR)/fakeroot
+RUSTC_LOG:=rustc_error_messages
+export RUSTC_TRANSLATION_NO_DEBUG_ASSERT:=1
 
-all: normal custom sysroot
+all: normal custom missing broken sysroot sysroot-invalid sysroot-missing
 
 # Check that the test works normally, using the built-in fallback bundle.
 normal: test.rs
@@ -32,6 +34,7 @@ broken: test.rs broken.ftl
 # identifier by making a local copy of the sysroot and adding the custom locale
 # to it.
 sysroot: test.rs working.ftl
+	rm -rf $(FAKEROOT)
 	mkdir $(FAKEROOT)
 	ln -s $(SYSROOT)/* $(FAKEROOT)
 	rm -f $(FAKEROOT)/lib
@@ -51,12 +54,12 @@ sysroot: test.rs working.ftl
 # found. This test might start failing if there actually exists a Klingon
 # translation of rustc's error messages.
 sysroot-missing: 
-	$(RUSTC) $< -Ztranslate-lang=tlh 2>&1 || grep "missing locale directory"
+	$(RUSTC) $< -Ztranslate-lang=tlh 2>&1 | grep "missing locale directory"
 
-# Check that the compiler errors out when the sysroot requested cannot be
-# found. This test might start failing if there actually exists a Klingon
-# translation of rustc's error messages.
+# Check that the compiler errors out when the directory for the locale in the
+# sysroot is actually a file.
 sysroot-invalid: test.rs working.ftl
+	rm -rf $(FAKEROOT)
 	mkdir $(FAKEROOT)
 	ln -s $(SYSROOT)/* $(FAKEROOT)
 	rm -f $(FAKEROOT)/lib
@@ -68,5 +71,6 @@ sysroot-invalid: test.rs working.ftl
 	rm -f $(FAKEROOT)/lib/rustlib/src
 	mkdir $(FAKEROOT)/lib/rustlib/src
 	ln -s $(SYSROOT)/lib/rustlib/src/* $(FAKEROOT)/lib/rustlib/src
-	touch $(FAKEROOT)/share/locale/zh-CN/
-	$(RUSTC) $< --sysroot $(FAKEROOT) -Ztranslate-lang=zh-CN 2>&1 || grep "`\$sysroot/share/locales/\$locale` is not a directory"
+	mkdir -p $(FAKEROOT)/share/locale
+	touch $(FAKEROOT)/share/locale/zh-CN
+	$(RUSTC) $< --sysroot $(FAKEROOT) -Ztranslate-lang=zh-CN 2>&1 | grep "`\$sysroot/share/locales/\$locale` is not a directory"

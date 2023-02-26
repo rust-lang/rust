@@ -21,8 +21,10 @@ extern crate tracing;
 
 use crate::deriving::*;
 
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_expand::base::{MacroExpanderFn, ResolverExpand, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
+use rustc_macros::fluent_messages;
 use rustc_span::symbol::sym;
 
 mod alloc_error_handler;
@@ -53,6 +55,8 @@ pub mod cmdline_attrs;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;
+
+fluent_messages! { "../locales/en-US.ftl" }
 
 pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     let mut register = |name, kind| resolver.register_builtin_macro(name, kind);

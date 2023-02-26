@@ -105,7 +105,7 @@ pub trait TypeRelation<'tcx>: Sized {
         T: Relate<'tcx>;
 }
 
-pub trait Relate<'tcx>: TypeFoldable<'tcx> + PartialEq + Copy {
+pub trait Relate<'tcx>: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: Self,
@@ -144,7 +144,7 @@ pub fn relate_substs<'tcx, R: TypeRelation<'tcx>>(
     a_subst: SubstsRef<'tcx>,
     b_subst: SubstsRef<'tcx>,
 ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
-    relation.tcx().mk_substs(iter::zip(a_subst, b_subst).map(|(a, b)| {
+    relation.tcx().mk_substs_from_iter(iter::zip(a_subst, b_subst).map(|(a, b)| {
         relation.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)
     }))
 }
@@ -171,7 +171,7 @@ pub fn relate_substs_with_variances<'tcx, R: TypeRelation<'tcx>>(
         relation.relate_with_variance(variance, variance_info, a, b)
     });
 
-    tcx.mk_substs(params)
+    tcx.mk_substs_from_iter(params)
 }
 
 impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
@@ -222,7 +222,7 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
                 r => r,
             });
         Ok(ty::FnSig {
-            inputs_and_output: tcx.mk_type_list(inputs_and_output)?,
+            inputs_and_output: tcx.mk_type_list_from_iter(inputs_and_output)?,
             c_variadic: a.c_variadic,
             unsafety,
             abi,
@@ -352,7 +352,8 @@ impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
     ) -> RelateResult<'tcx, GeneratorWitness<'tcx>> {
         assert_eq!(a.0.len(), b.0.len());
         let tcx = relation.tcx();
-        let types = tcx.mk_type_list(iter::zip(a.0, b.0).map(|(a, b)| relation.relate(a, b)))?;
+        let types =
+            tcx.mk_type_list_from_iter(iter::zip(a.0, b.0).map(|(a, b)| relation.relate(a, b)))?;
         Ok(GeneratorWitness(types))
     }
 }
@@ -412,7 +413,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             bug!("bound types encountered in super_relate_tys")
         }
 
-        (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(tcx.ty_error_with_guaranteed(guar)),
+        (&ty::Error(guar), _) | (_, &ty::Error(guar)) => Ok(tcx.ty_error(guar)),
 
         (&ty::Never, _)
         | (&ty::Char, _)
@@ -528,7 +529,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
 
         (&ty::Tuple(as_), &ty::Tuple(bs)) => {
             if as_.len() == bs.len() {
-                Ok(tcx.mk_tup(iter::zip(as_, bs).map(|(a, b)| relation.relate(a, b)))?)
+                Ok(tcx.mk_tup_from_iter(iter::zip(as_, bs).map(|(a, b)| relation.relate(a, b)))?)
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(expected_found(relation, as_.len(), bs.len())))
             } else {
@@ -673,7 +674,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
                     for (a_arg, b_arg) in aa.iter().zip(ba.iter()) {
                         related_args.push(r.consts(a_arg, b_arg)?);
                     }
-                    let related_args = tcx.intern_const_list(&related_args);
+                    let related_args = tcx.mk_const_list(&related_args);
                     Expr::FunctionCall(func, related_args)
                 }
                 _ => return Err(TypeError::ConstMismatch(expected_found(r, a, b))),
@@ -720,7 +721,7 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
                 _ => Err(TypeError::ExistentialMismatch(expected_found(relation, a, b))),
             }
         });
-        tcx.mk_poly_existential_predicates(v)
+        tcx.mk_poly_existential_predicates_from_iter(v)
     }
 }
 

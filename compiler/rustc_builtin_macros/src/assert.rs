@@ -11,6 +11,7 @@ use rustc_expand::base::{DummyResult, ExtCtxt, MacEager, MacResult};
 use rustc_parse::parser::Parser;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use thin_vec::thin_vec;
 
 pub fn expand_assert<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
@@ -79,7 +80,7 @@ pub fn expand_assert<'cx>(
         let then = cx.expr_call_global(
             call_site_span,
             cx.std_path(&[sym::panicking, sym::panic]),
-            vec![cx.expr_str(
+            thin_vec![cx.expr_str(
                 DUMMY_SP,
                 Symbol::intern(&format!(
                     "assertion failed: {}",

@@ -72,7 +72,7 @@ use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::relate::{self, RelateResult, TypeRelation};
 use rustc_middle::ty::{
     self, error::TypeError, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable,
+    TypeVisitable, TypeVisitableExt,
 };
 use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
@@ -129,21 +129,16 @@ pub(super) fn note_and_explain_region<'tcx>(
     alt_span: Option<Span>,
 ) {
     let (description, span) = match *region {
-        ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
-            msg_span_from_free_region(tcx, region, alt_span)
+        ty::ReEarlyBound(_) | ty::ReFree(_) | ty::RePlaceholder(_) | ty::ReStatic => {
+            msg_span_from_named_region(tcx, region, alt_span)
         }
-
-        ty::RePlaceholder(_) => return,
 
         ty::ReError(_) => return,
 
-        // FIXME(#13998) RePlaceholder should probably print like
-        // ReFree rather than dumping Debug output on the user.
-        //
         // We shouldn't really be having unification failures with ReVar
         // and ReLateBound though.
         ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
-            (format!("lifetime {:?}", region), alt_span)
+            (format!("lifetime `{region}`"), alt_span)
         }
     };
 
@@ -157,12 +152,12 @@ fn explain_free_region<'tcx>(
     region: ty::Region<'tcx>,
     suffix: &str,
 ) {
-    let (description, span) = msg_span_from_free_region(tcx, region, None);
+    let (description, span) = msg_span_from_named_region(tcx, region, None);
 
     label_msg_span(err, prefix, description, span, suffix);
 }
 
-fn msg_span_from_free_region<'tcx>(
+fn msg_span_from_named_region<'tcx>(
     tcx: TyCtxt<'tcx>,
     region: ty::Region<'tcx>,
     alt_span: Option<Span>,
@@ -173,6 +168,18 @@ fn msg_span_from_free_region<'tcx>(
             (msg, Some(span))
         }
         ty::ReStatic => ("the static lifetime".to_owned(), alt_span),
+        ty::RePlaceholder(ty::PlaceholderRegion {
+            name: ty::BoundRegionKind::BrNamed(def_id, name),
+            ..
+        }) => (format!("the lifetime `{name}` as defined here"), Some(tcx.def_span(def_id))),
+        ty::RePlaceholder(ty::PlaceholderRegion {
+            name: ty::BoundRegionKind::BrAnon(_, Some(span)),
+            ..
+        }) => (format!("the anonymous lifetime defined here"), Some(span)),
+        ty::RePlaceholder(ty::PlaceholderRegion {
+            name: ty::BoundRegionKind::BrAnon(_, None),
+            ..
+        }) => (format!("an anonymous lifetime"), None),
         _ => bug!("{:?}", region),
     }
 }
@@ -918,7 +925,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) -> Option<()> {
         // FIXME/HACK: Go back to `SubstsRef` to use its inherent methods,
         // ideally that shouldn't be necessary.
-        let sub = self.tcx.intern_substs(sub);
+        let sub = self.tcx.mk_substs(sub);
         for (i, ta) in sub.types().enumerate() {
             if ta == other_ty {
                 self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, other_ty);
@@ -1443,8 +1450,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         impl<'tcx> OpaqueTypesVisitor<'tcx> {
             fn visit_expected_found(
                 tcx: TyCtxt<'tcx>,
-                expected: impl TypeVisitable<'tcx>,
-                found: impl TypeVisitable<'tcx>,
+                expected: impl TypeVisitable<TyCtxt<'tcx>>,
+                found: impl TypeVisitable<TyCtxt<'tcx>>,
                 ignore_span: Span,
             ) -> Self {
                 let mut types_visitor = OpaqueTypesVisitor {
@@ -1494,7 +1501,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::visit::ir::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypesVisitor<'tcx> {
+        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypesVisitor<'tcx> {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 if let Some((kind, def_id)) = TyCategory::from_ty(self.tcx, t) {
                     let span = self.tcx.def_span(def_id);
@@ -2199,7 +2206,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     }
 
     /// Returns a string of the form "expected `{}`, found `{}`".
-    fn expected_found_str<T: fmt::Display + TypeFoldable<'tcx>>(
+    fn expected_found_str<T: fmt::Display + TypeFoldable<TyCtxt<'tcx>>>(
         &self,
         exp_found: ty::error::ExpectedFound<T>,
     ) -> Option<(DiagnosticStyledString, DiagnosticStyledString, Option<PathBuf>, Option<PathBuf>)>

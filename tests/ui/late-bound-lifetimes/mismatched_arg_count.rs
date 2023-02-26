@@ -7,6 +7,6 @@ trait Trait<'a> {
 type Alias<'a, T> = <T as Trait<'a>>::Assoc;
 
 fn bar<'a, T: Trait<'a>>(_: Alias<'a, 'a, T>) {}
-//~^ error: this type alias takes 1 lifetime argument but 2 lifetime arguments were supplied
+//~^ error: type alias takes 1 lifetime argument but 2 lifetime arguments were supplied
 
 fn main() {}

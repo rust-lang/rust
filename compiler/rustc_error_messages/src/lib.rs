@@ -34,47 +34,7 @@ use intl_memoizer::IntlLangMemoizer;
 pub use fluent_bundle::{self, types::FluentType, FluentArgs, FluentError, FluentValue};
 pub use unic_langid::{langid, LanguageIdentifier};
 
-// Generates `DEFAULT_LOCALE_RESOURCES` static and `fluent_generated` module.
-fluent_messages! {
-    // tidy-alphabetical-start
-    ast_lowering => "../locales/en-US/ast_lowering.ftl",
-    ast_passes => "../locales/en-US/ast_passes.ftl",
-    attr => "../locales/en-US/attr.ftl",
-    borrowck => "../locales/en-US/borrowck.ftl",
-    builtin_macros => "../locales/en-US/builtin_macros.ftl",
-    codegen_gcc => "../locales/en-US/codegen_gcc.ftl",
-    codegen_llvm => "../locales/en-US/codegen_llvm.ftl",
-    codegen_ssa => "../locales/en-US/codegen_ssa.ftl",
-    compiletest => "../locales/en-US/compiletest.ftl",
-    const_eval => "../locales/en-US/const_eval.ftl",
-    driver => "../locales/en-US/driver.ftl",
-    errors => "../locales/en-US/errors.ftl",
-    expand => "../locales/en-US/expand.ftl",
-    hir_analysis => "../locales/en-US/hir_analysis.ftl",
-    hir_typeck => "../locales/en-US/hir_typeck.ftl",
-    incremental => "../locales/en-US/incremental.ftl",
-    infer => "../locales/en-US/infer.ftl",
-    interface => "../locales/en-US/interface.ftl",
-    lint => "../locales/en-US/lint.ftl",
-    metadata => "../locales/en-US/metadata.ftl",
-    middle => "../locales/en-US/middle.ftl",
-    mir_build => "../locales/en-US/mir_build.ftl",
-    mir_dataflow => "../locales/en-US/mir_dataflow.ftl",
-    monomorphize => "../locales/en-US/monomorphize.ftl",
-    parse => "../locales/en-US/parse.ftl",
-    passes => "../locales/en-US/passes.ftl",
-    plugin_impl => "../locales/en-US/plugin_impl.ftl",
-    privacy => "../locales/en-US/privacy.ftl",
-    query_system => "../locales/en-US/query_system.ftl",
-    resolve => "../locales/en-US/resolve.ftl",
-    session => "../locales/en-US/session.ftl",
-    symbol_mangling => "../locales/en-US/symbol_mangling.ftl",
-    trait_selection => "../locales/en-US/trait_selection.ftl",
-    ty_utils => "../locales/en-US/ty_utils.ftl",
-    // tidy-alphabetical-end
-}
-
-pub use fluent_generated::{self as fluent, DEFAULT_LOCALE_RESOURCES};
+fluent_messages! { "../locales/en-US.ftl" }
 
 pub type FluentBundle = fluent_bundle::bundle::FluentBundle<FluentResource, IntlLangMemoizer>;
 
@@ -175,7 +135,10 @@ pub fn fluent_bundle(
 
     let fallback_locale = langid!("en-US");
     let requested_fallback_locale = requested_locale.as_ref() == Some(&fallback_locale);
-
+    trace!(?requested_fallback_locale);
+    if requested_fallback_locale && additional_ftl_path.is_none() {
+        return Ok(None);
+    }
     // If there is only `-Z additional-ftl-path`, assume locale is "en-US", otherwise use user
     // provided locale.
     let locale = requested_locale.clone().unwrap_or(fallback_locale);
@@ -193,7 +156,7 @@ pub fn fluent_bundle(
     bundle.set_use_isolating(with_directionality_markers);
 
     // If the user requests the default locale then don't try to load anything.
-    if !requested_fallback_locale && let Some(requested_locale) = requested_locale {
+    if let Some(requested_locale) = requested_locale {
         let mut found_resources = false;
         for sysroot in user_provided_sysroot.iter_mut().chain(sysroot_candidates.iter_mut()) {
             sysroot.push("share");
@@ -263,7 +226,7 @@ pub type LazyFallbackBundle = Lrc<Lazy<FluentBundle, impl FnOnce() -> FluentBund
 /// Return the default `FluentBundle` with standard "en-US" diagnostic messages.
 #[instrument(level = "trace")]
 pub fn fallback_fluent_bundle(
-    resources: &'static [&'static str],
+    resources: Vec<&'static str>,
     with_directionality_markers: bool,
 ) -> LazyFallbackBundle {
     Lrc::new(Lazy::new(move || {

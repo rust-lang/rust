@@ -177,7 +177,7 @@ use std::cell::RefCell;
 use std::iter;
 use std::ops::Not;
 use std::vec;
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
 
 pub mod ty;
@@ -318,7 +318,7 @@ pub fn combine_substructure(
 }
 
 struct TypeParameter {
-    bound_generic_params: Vec<ast::GenericParam>,
+    bound_generic_params: ThinVec<ast::GenericParam>,
     ty: P<ast::Ty>,
 }
 
@@ -328,18 +328,18 @@ struct TypeParameter {
 /// avoiding the insertion of any unnecessary blocks.
 ///
 /// The statements come before the expression.
-pub struct BlockOrExpr(Vec<ast::Stmt>, Option<P<Expr>>);
+pub struct BlockOrExpr(ThinVec<ast::Stmt>, Option<P<Expr>>);
 
 impl BlockOrExpr {
-    pub fn new_stmts(stmts: Vec<ast::Stmt>) -> BlockOrExpr {
+    pub fn new_stmts(stmts: ThinVec<ast::Stmt>) -> BlockOrExpr {
         BlockOrExpr(stmts, None)
     }
 
     pub fn new_expr(expr: P<Expr>) -> BlockOrExpr {
-        BlockOrExpr(vec![], Some(expr))
+        BlockOrExpr(ThinVec::new(), Some(expr))
     }
 
-    pub fn new_mixed(stmts: Vec<ast::Stmt>, expr: Option<P<Expr>>) -> BlockOrExpr {
+    pub fn new_mixed(stmts: ThinVec<ast::Stmt>, expr: Option<P<Expr>>) -> BlockOrExpr {
         BlockOrExpr(stmts, expr)
     }
 
@@ -355,7 +355,7 @@ impl BlockOrExpr {
     fn into_expr(self, cx: &ExtCtxt<'_>, span: Span) -> P<Expr> {
         if self.0.is_empty() {
             match self.1 {
-                None => cx.expr_block(cx.block(span, vec![])),
+                None => cx.expr_block(cx.block(span, ThinVec::new())),
                 Some(expr) => expr,
             }
         } else if self.0.len() == 1
@@ -385,7 +385,7 @@ fn find_type_parameters(
     struct Visitor<'a, 'b> {
         cx: &'a ExtCtxt<'b>,
         ty_param_names: &'a [Symbol],
-        bound_generic_params_stack: Vec<ast::GenericParam>,
+        bound_generic_params_stack: ThinVec<ast::GenericParam>,
         type_params: Vec<TypeParameter>,
     }
 
@@ -422,7 +422,7 @@ fn find_type_parameters(
     let mut visitor = Visitor {
         cx,
         ty_param_names,
-        bound_generic_params_stack: Vec::new(),
+        bound_generic_params_stack: ThinVec::new(),
         type_params: Vec::new(),
     };
     visit::Visitor::visit_ty(&mut visitor, ty);
@@ -594,7 +594,7 @@ impl<'a> TraitDef<'a> {
         let span = generics.span.with_ctxt(ctxt);
 
         // Create the generic parameters
-        let params: Vec<_> = generics
+        let params: ThinVec<_> = generics
             .params
             .iter()
             .map(|param| match &param.kind {
@@ -935,8 +935,8 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'_>,
         type_ident: Ident,
         generics: &Generics,
-    ) -> (Option<ast::ExplicitSelf>, Vec<P<Expr>>, Vec<P<Expr>>, Vec<(Ident, P<ast::Ty>)>) {
-        let mut selflike_args = Vec::new();
+    ) -> (Option<ast::ExplicitSelf>, ThinVec<P<Expr>>, Vec<P<Expr>>, Vec<(Ident, P<ast::Ty>)>) {
+        let mut selflike_args = ThinVec::new();
         let mut nonselflike_args = Vec::new();
         let mut nonself_arg_tys = Vec::new();
         let span = trait_.span;
@@ -1133,7 +1133,7 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'b>,
         enum_def: &'b EnumDef,
         type_ident: Ident,
-        selflike_args: Vec<P<Expr>>,
+        selflike_args: ThinVec<P<Expr>>,
         nonselflike_args: &[P<Expr>],
     ) -> BlockOrExpr {
         let span = trait_.span;
@@ -1146,7 +1146,7 @@ impl<'a> MethodDef<'a> {
         // There is no sensible code to be generated for *any* deriving on a
         // zero-variant enum. So we just generate a failing expression.
         if variants.is_empty() {
-            return BlockOrExpr(vec![], Some(deriving::call_unreachable(cx, span)));
+            return BlockOrExpr(ThinVec::new(), Some(deriving::call_unreachable(cx, span)));
         }
 
         let prefixes = iter::once("__self".to_string())
@@ -1182,13 +1182,13 @@ impl<'a> MethodDef<'a> {
             let other_selflike_exprs = tag_exprs;
             let tag_field = FieldInfo { span, name: None, self_expr, other_selflike_exprs };
 
-            let tag_let_stmts: Vec<_> = iter::zip(&tag_idents, &selflike_args)
+            let tag_let_stmts: ThinVec<_> = iter::zip(&tag_idents, &selflike_args)
                 .map(|(&ident, selflike_arg)| {
                     let variant_value = deriving::call_intrinsic(
                         cx,
                         span,
                         sym::discriminant_value,
-                        vec![selflike_arg.clone()],
+                        thin_vec![selflike_arg.clone()],
                     );
                     cx.stmt_let(span, false, ident, variant_value)
                 })
@@ -1247,7 +1247,7 @@ impl<'a> MethodDef<'a> {
         // (Variant2, Variant2, ...) => Body2
         // ...
         // where each tuple has length = selflike_args.len()
-        let mut match_arms: Vec<ast::Arm> = variants
+        let mut match_arms: ThinVec<ast::Arm> = variants
             .iter()
             .enumerate()
             .filter(|&(_, v)| !(unify_fieldless_variants && v.data.fields().is_empty()))
@@ -1260,7 +1260,7 @@ impl<'a> MethodDef<'a> {
                 let sp = variant.span.with_ctxt(trait_.span.ctxt());
                 let variant_path = cx.path(sp, vec![type_ident, variant.ident]);
                 let by_ref = ByRef::No; // because enums can't be repr(packed)
-                let mut subpats: Vec<_> = trait_.create_struct_patterns(
+                let mut subpats = trait_.create_struct_patterns(
                     cx,
                     variant_path,
                     &variant.data,
@@ -1336,7 +1336,7 @@ impl<'a> MethodDef<'a> {
         //          ...
         //          _ => ::core::intrinsics::unreachable()
         //      }
-        let get_match_expr = |mut selflike_args: Vec<P<Expr>>| {
+        let get_match_expr = |mut selflike_args: ThinVec<P<Expr>>| {
             let match_arg = if selflike_args.len() == 1 {
                 selflike_args.pop().unwrap()
             } else {
@@ -1362,7 +1362,7 @@ impl<'a> MethodDef<'a> {
             tag_let_stmts.append(&mut tag_check_plus_match.0);
             BlockOrExpr(tag_let_stmts, tag_check_plus_match.1)
         } else {
-            BlockOrExpr(vec![], Some(get_match_expr(selflike_args)))
+            BlockOrExpr(ThinVec::new(), Some(get_match_expr(selflike_args)))
         }
     }
 
@@ -1427,7 +1427,7 @@ impl<'a> TraitDef<'a> {
         struct_def: &'a VariantData,
         prefixes: &[String],
         by_ref: ByRef,
-    ) -> Vec<P<ast::Pat>> {
+    ) -> ThinVec<P<ast::Pat>> {
         prefixes
             .iter()
             .map(|prefix| {
@@ -1599,7 +1599,7 @@ impl<'a> TraitDef<'a> {
                         } else {
                             // Wrap the expression in `{...}`, causing a copy.
                             field_expr = cx.expr_block(
-                                cx.block(struct_field.span, vec![cx.stmt_expr(field_expr)]),
+                                cx.block(struct_field.span, thin_vec![cx.stmt_expr(field_expr)]),
                             );
                         }
                     }

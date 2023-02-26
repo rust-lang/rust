@@ -19,7 +19,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         let (val, overflowed, ty) = self.overflowing_binary_op(op, &left, &right)?;
         debug_assert_eq!(
-            self.tcx.intern_tup(&[ty, self.tcx.types.bool]),
+            self.tcx.mk_tup(&[ty, self.tcx.types.bool]),
             dest.layout.ty,
             "type mismatch for result of {:?}",
             op,

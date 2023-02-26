@@ -18,7 +18,7 @@ use rustc_middle::mir::traversal::ReversePostorderIter;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::{self, List, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, List, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -866,7 +866,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
             let mut projection = vec![PlaceElem::Deref];
             projection.extend(place.projection);
-            place.projection = tcx.intern_place_elems(&projection);
+            place.projection = tcx.mk_place_elems(&projection);
 
             // Create a temp to hold the promoted reference.
             // This is because `*r` requires `r` to be a local,

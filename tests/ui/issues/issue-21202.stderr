@@ -1,13 +1,13 @@
-error[E0624]: associated function `foo` is private
+error[E0624]: method `foo` is private
   --> $DIR/issue-21202.rs:10:14
    |
 LL |         Foo::foo(&f);
-   |              ^^^ private associated function
+   |              ^^^ private method
    |
   ::: $DIR/auxiliary/issue-21202.rs:4:9
    |
 LL |         fn foo(&self) { }
-   |         ------------- private associated function defined here
+   |         ------------- private method defined here
 
 error: aborting due to previous error
 

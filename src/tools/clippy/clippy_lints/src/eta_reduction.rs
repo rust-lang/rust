@@ -11,7 +11,7 @@ use rustc_hir::{Closure, Expr, ExprKind, Param, PatKind, Unsafety};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::binding::BindingMode;
-use rustc_middle::ty::{self, EarlyBinder, SubstsRef, Ty, TypeVisitable};
+use rustc_middle::ty::{self, EarlyBinder, SubstsRef, Ty, TypeVisitableExt};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
 

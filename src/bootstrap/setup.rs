@@ -21,6 +21,7 @@ pub enum Profile {
     Library,
     Tools,
     User,
+    None,
 }
 
 /// A list of historical hashes of `src/etc/vscode_settings.json`.
@@ -41,7 +42,7 @@ impl Profile {
     pub fn all() -> impl Iterator<Item = Self> {
         use Profile::*;
         // N.B. these are ordered by how they are displayed, not alphabetically
-        [Library, Compiler, Codegen, Tools, User].iter().copied()
+        [Library, Compiler, Codegen, Tools, User, None].iter().copied()
     }
 
     pub fn purpose(&self) -> String {
@@ -52,6 +53,7 @@ impl Profile {
             Codegen => "Contribute to the compiler, and also modify LLVM or codegen",
             Tools => "Contribute to tools which depend on the compiler, but do not modify it directly (e.g. rustdoc, clippy, miri)",
             User => "Install Rust from source",
+            None => "Do not modify `config.toml`"
         }
         .to_string()
     }
@@ -71,6 +73,7 @@ impl Profile {
             Profile::Library => "library",
             Profile::Tools => "tools",
             Profile::User => "user",
+            Profile::None => "none",
         }
     }
 }
@@ -87,6 +90,7 @@ impl FromStr for Profile {
             "tools" | "tool" | "rustdoc" | "clippy" | "miri" | "rustfmt" | "rls" => {
                 Ok(Profile::Tools)
             }
+            "none" => Ok(Profile::None),
             _ => Err(format!("unknown profile: '{}'", s)),
         }
     }
@@ -144,17 +148,8 @@ impl Step for Profile {
 }
 
 pub fn setup(config: &Config, profile: Profile) {
-    let stage_path =
-        ["build", config.build.rustc_target_arg(), "stage1"].join(&MAIN_SEPARATOR.to_string());
-
-    if !rustup_installed() && profile != Profile::User {
-        eprintln!("`rustup` is not installed; cannot link `stage1` toolchain");
-    } else if stage_dir_exists(&stage_path[..]) && !config.dry_run() {
-        attempt_toolchain_link(&stage_path[..]);
-    }
-
-    let suggestions = match profile {
-        Profile::Codegen | Profile::Compiler => &["check", "build", "test"][..],
+    let suggestions: &[&str] = match profile {
+        Profile::Codegen | Profile::Compiler | Profile::None => &["check", "build", "test"],
         Profile::Tools => &[
             "check",
             "build",
@@ -166,11 +161,6 @@ pub fn setup(config: &Config, profile: Profile) {
         Profile::Library => &["check", "build", "test library/std", "doc"],
         Profile::User => &["dist", "build"],
     };
-
-    if !config.dry_run() {
-        t!(install_git_hook_maybe(&config));
-        t!(create_vscode_settings_maybe(&config));
-    }
 
     println!();
 
@@ -190,6 +180,9 @@ pub fn setup(config: &Config, profile: Profile) {
 }
 
 fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
+    if profile == Profile::None {
+        return;
+    }
     if path.exists() {
         eprintln!();
         eprintln!(
@@ -215,6 +208,41 @@ fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
 
     let include_path = profile.include_path(&config.src);
     println!("`x.py` will now use the configuration at {}", include_path.display());
+}
+
+/// Creates a toolchain link for stage1 using `rustup`
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub struct Link;
+impl Step for Link {
+    type Output = ();
+    const DEFAULT: bool = true;
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("link")
+    }
+    fn make_run(run: RunConfig<'_>) {
+        if run.builder.config.dry_run() {
+            return;
+        }
+        if let [cmd] = &run.paths[..] {
+            if cmd.assert_single_path().path.as_path().as_os_str() == "link" {
+                run.builder.ensure(Link);
+            }
+        }
+    }
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let config = &builder.config;
+        if config.dry_run() {
+            return;
+        }
+        let stage_path =
+            ["build", config.build.rustc_target_arg(), "stage1"].join(&MAIN_SEPARATOR.to_string());
+
+        if !rustup_installed() {
+            eprintln!("`rustup` is not installed; cannot link `stage1` toolchain");
+        } else if stage_dir_exists(&stage_path[..]) && !config.dry_run() {
+            attempt_toolchain_link(&stage_path[..]);
+        }
+    }
 }
 
 fn rustup_installed() -> bool {
@@ -394,6 +422,35 @@ fn prompt_user(prompt: &str) -> io::Result<Option<PromptResult>> {
     }
 }
 
+/// Installs `src/etc/pre-push.sh` as a Git hook
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub struct Hook;
+
+impl Step for Hook {
+    type Output = ();
+    const DEFAULT: bool = true;
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("hook")
+    }
+    fn make_run(run: RunConfig<'_>) {
+        if run.builder.config.dry_run() {
+            return;
+        }
+        if let [cmd] = &run.paths[..] {
+            if cmd.assert_single_path().path.as_path().as_os_str() == "hook" {
+                run.builder.ensure(Hook);
+            }
+        }
+    }
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let config = &builder.config;
+        if config.dry_run() {
+            return;
+        }
+        t!(install_git_hook_maybe(&config));
+    }
+}
+
 // install a git hook to automatically run tidy, if they want
 fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
     let git = t!(config.git().args(&["rev-parse", "--git-common-dir"]).output().map(|output| {
@@ -430,6 +487,35 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
         Ok(_) => println!("Linked `src/etc/pre-push.sh` to `.git/hooks/pre-push`"),
     };
     Ok(())
+}
+
+/// Sets up or displays `src/etc/vscode_settings.json`
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub struct Vscode;
+
+impl Step for Vscode {
+    type Output = ();
+    const DEFAULT: bool = true;
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("vscode")
+    }
+    fn make_run(run: RunConfig<'_>) {
+        if run.builder.config.dry_run() {
+            return;
+        }
+        if let [cmd] = &run.paths[..] {
+            if cmd.assert_single_path().path.as_path().as_os_str() == "vscode" {
+                run.builder.ensure(Vscode);
+            }
+        }
+    }
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let config = &builder.config;
+        if config.dry_run() {
+            return;
+        }
+        t!(create_vscode_settings_maybe(&config));
+    }
 }
 
 /// Create a `.vscode/settings.json` file for rustc development, or just print it

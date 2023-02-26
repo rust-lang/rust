@@ -8,7 +8,7 @@ mod B {
     use crate1::A::Foo;
     fn bar(f: Foo) {
         Foo::foo(&f);
-        //~^ ERROR: associated function `foo` is private
+        //~^ ERROR: method `foo` is private
     }
 }
 

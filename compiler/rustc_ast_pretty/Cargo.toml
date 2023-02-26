@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
+thin-vec = "0.2.12"

@@ -1,41 +1,17 @@
-warning: unnecessary lifetime parameter `'a`
-  --> $DIR/implied_lifetime_wf_check3.rs:6:22
-   |
-LL |     fn assert_static<'a: 'static>() {}
-   |                      ^^
-   |
-   = help: you can use the `'static` lifetime directly, in place of `'a`
-
-warning: unnecessary lifetime parameter `'a`
-  --> $DIR/implied_lifetime_wf_check3.rs:15:22
-   |
-LL |     fn assert_static<'a: 'static>() {}
-   |                      ^^
-   |
-   = help: you can use the `'static` lifetime directly, in place of `'a`
-
-warning: unnecessary lifetime parameter `'a`
-  --> $DIR/implied_lifetime_wf_check3.rs:22:22
-   |
-LL |     fn assert_static<'a: 'static>() {}
-   |                      ^^
-   |
-   = help: you can use the `'static` lifetime directly, in place of `'a`
-
 error: lifetime may not live long enough
-  --> $DIR/implied_lifetime_wf_check3.rs:8:43
+  --> $DIR/implied_lifetime_wf_check3.rs:7:43
    |
 LL |     fn test<'a>() where Ty<'a>: 'static { assert_static::<'a>() }
    |             -- lifetime `'a` defined here ^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/implied_lifetime_wf_check3.rs:17:46
+  --> $DIR/implied_lifetime_wf_check3.rs:15:46
    |
 LL |     fn test<'a>() where for<'b> Ty<'b>: 'a { assert_static::<'a>() }
    |             -- lifetime `'a` defined here    ^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/implied_lifetime_wf_check3.rs:24:21
+  --> $DIR/implied_lifetime_wf_check3.rs:21:21
    |
 LL |     fn test<'a>() { assert_static::<'a>() }
    |             --      ^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
@@ -43,7 +19,7 @@ LL |     fn test<'a>() { assert_static::<'a>() }
    |             lifetime `'a` defined here
 
 error[E0310]: the parameter type `A` may not live long enough
-  --> $DIR/implied_lifetime_wf_check3.rs:32:41
+  --> $DIR/implied_lifetime_wf_check3.rs:29:41
    |
 LL |     fn test<A>() where Ty<A>: 'static { assert_static::<A>() }
    |                                         ^^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
@@ -53,6 +29,6 @@ help: consider adding an explicit lifetime bound...
 LL |     fn test<A: 'static>() where Ty<A>: 'static { assert_static::<A>() }
    |              +++++++++
 
-error: aborting due to 4 previous errors; 3 warnings emitted
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0310`.

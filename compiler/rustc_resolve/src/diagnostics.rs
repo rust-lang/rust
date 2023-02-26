@@ -12,11 +12,10 @@ use rustc_errors::{struct_span_err, SuggestionStyle};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::PrimTy;
-use rustc_index::vec::IndexVec;
 use rustc_middle::bug;
-use rustc_middle::ty::DefIdTree;
+use rustc_middle::ty::{DefIdTree, TyCtxt};
 use rustc_session::lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE;
 use rustc_session::lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS;
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -30,7 +29,7 @@ use rustc_span::{BytePos, Span, SyntaxContext};
 use thin_vec::ThinVec;
 
 use crate::errors as errs;
-use crate::imports::{Import, ImportKind, ImportResolver};
+use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, Finalize};
@@ -154,8 +153,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             if !candidates.is_empty() {
                 show_candidates(
-                    &self.tcx.sess,
-                    &self.tcx.untracked().source_span.read(),
+                    self.tcx,
                     &mut err,
                     span,
                     &candidates,
@@ -191,7 +189,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let container = match parent.kind {
-            ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id()),
+            ModuleKind::Def(kind, _, _) => self.tcx.def_kind_descr(kind, parent.def_id()),
             ModuleKind::Block => "block",
         };
 
@@ -687,8 +685,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         err.span_help(span, &help_msg);
                     }
                     show_candidates(
-                        &self.tcx.sess,
-                        &self.tcx.untracked().source_span.read(),
+                        self.tcx,
                         &mut err,
                         Some(span),
                         &import_suggestions,
@@ -1352,8 +1349,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let import_suggestions =
             self.lookup_import_candidates(ident, Namespace::MacroNS, parent_scope, is_expected);
         show_candidates(
-            &self.tcx.sess,
-            &self.tcx.untracked().source_span.read(),
+            self.tcx,
             err,
             None,
             &import_suggestions,
@@ -1808,7 +1804,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         found("module")
                     } else {
                         match binding.res() {
-                            Res::Def(kind, id) => found(kind.descr(id)),
+                            Res::Def(kind, id) => found(self.tcx.def_kind_descr(kind, id)),
                             _ => found(ns_to_try.descr()),
                         }
                     }
@@ -1892,15 +1888,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             (format!("use of undeclared crate or module `{}`", ident), suggestion)
         }
     }
-}
 
-impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
     /// Adds suggestions for a path that cannot be resolved.
     pub(crate) fn make_path_suggestion(
         &mut self,
         span: Span,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'b>,
+        parent_scope: &ParentScope<'a>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
 
@@ -1935,11 +1929,11 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
     fn make_missing_self_suggestion(
         &mut self,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'b>,
+        parent_scope: &ParentScope<'a>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = kw::SelfLower;
-        let result = self.r.maybe_resolve_path(&path, None, parent_scope);
+        let result = self.maybe_resolve_path(&path, None, parent_scope);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
@@ -1954,11 +1948,11 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
     fn make_missing_crate_suggestion(
         &mut self,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'b>,
+        parent_scope: &ParentScope<'a>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Crate;
-        let result = self.r.maybe_resolve_path(&path, None, parent_scope);
+        let result = self.maybe_resolve_path(&path, None, parent_scope);
         debug!("make_missing_crate_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
             Some((
@@ -1985,11 +1979,11 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
     fn make_missing_super_suggestion(
         &mut self,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'b>,
+        parent_scope: &ParentScope<'a>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Super;
-        let result = self.r.maybe_resolve_path(&path, None, parent_scope);
+        let result = self.maybe_resolve_path(&path, None, parent_scope);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result { Some((path, None)) } else { None }
     }
@@ -2007,7 +2001,7 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
     fn make_external_crate_suggestion(
         &mut self,
         mut path: Vec<Segment>,
-        parent_scope: &ParentScope<'b>,
+        parent_scope: &ParentScope<'a>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
         if path[1].ident.span.is_rust_2015() {
             return None;
@@ -2017,13 +2011,13 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
         // 1) some consistent ordering for emitted diagnostics, and
         // 2) `std` suggestions before `core` suggestions.
         let mut extern_crate_names =
-            self.r.extern_prelude.iter().map(|(ident, _)| ident.name).collect::<Vec<_>>();
+            self.extern_prelude.iter().map(|(ident, _)| ident.name).collect::<Vec<_>>();
         extern_crate_names.sort_by(|a, b| b.as_str().partial_cmp(a.as_str()).unwrap());
 
         for name in extern_crate_names.into_iter() {
             // Replace first ident with a crate name and check if that is valid.
             path[0].ident.name = name;
-            let result = self.r.maybe_resolve_path(&path, None, parent_scope);
+            let result = self.maybe_resolve_path(&path, None, parent_scope);
             debug!(
                 "make_external_crate_suggestion: name={:?} path={:?} result={:?}",
                 name, path, result
@@ -2050,8 +2044,8 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
     /// ```
     pub(crate) fn check_for_module_export_macro(
         &mut self,
-        import: &'b Import<'b>,
-        module: ModuleOrUniformRoot<'b>,
+        import: &'a Import<'a>,
+        module: ModuleOrUniformRoot<'a>,
         ident: Ident,
     ) -> Option<(Option<Suggestion>, Option<String>)> {
         let ModuleOrUniformRoot::Module(mut crate_module) = module else {
@@ -2068,8 +2062,8 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
             return None;
         }
 
-        let resolutions = self.r.resolutions(crate_module).borrow();
-        let resolution = resolutions.get(&self.r.new_key(ident, MacroNS))?;
+        let resolutions = self.resolutions(crate_module).borrow();
+        let resolution = resolutions.get(&self.new_key(ident, MacroNS))?;
         let binding = resolution.borrow().binding()?;
         if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() {
             let module_name = crate_module.kind.name().unwrap();
@@ -2090,7 +2084,7 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
                 //   ie. `use a::b::{c, d, e};`
                 //                      ^^^
                 let (found_closing_brace, binding_span) = find_span_of_binding_until_next_binding(
-                    self.r.tcx.sess,
+                    self.tcx.sess,
                     import.span,
                     import.use_span,
                 );
@@ -2109,7 +2103,7 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
                     //   ie. `use a::b::{c, d};`
                     //                    ^^^
                     if let Some(previous_span) =
-                        extend_span_to_previous_binding(self.r.tcx.sess, binding_span)
+                        extend_span_to_previous_binding(self.tcx.sess, binding_span)
                     {
                         debug!("check_for_module_export_macro: previous_span={:?}", previous_span);
                         removal_span = removal_span.with_lo(previous_span.lo());
@@ -2127,7 +2121,7 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
                 //   or  `use a::{b, c, d}};`
                 //               ^^^^^^^^^^^
                 let (has_nested, after_crate_name) = find_span_immediately_after_crate_name(
-                    self.r.tcx.sess,
+                    self.tcx.sess,
                     module_name,
                     import.use_span,
                 );
@@ -2136,7 +2130,7 @@ impl<'a, 'b, 'tcx> ImportResolver<'a, 'b, 'tcx> {
                     has_nested, after_crate_name
                 );
 
-                let source_map = self.r.tcx.sess.source_map();
+                let source_map = self.tcx.sess.source_map();
 
                 // Make sure this is actually crate-relative.
                 let is_definitely_crate = import
@@ -2358,8 +2352,7 @@ pub(crate) enum DiagnosticMode {
 }
 
 pub(crate) fn import_candidates(
-    session: &Session,
-    source_span: &IndexVec<LocalDefId, Span>,
+    tcx: TyCtxt<'_>,
     err: &mut Diagnostic,
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
@@ -2368,8 +2361,7 @@ pub(crate) fn import_candidates(
     append: &str,
 ) {
     show_candidates(
-        session,
-        source_span,
+        tcx,
         err,
         use_placement_span,
         candidates,
@@ -2385,8 +2377,7 @@ pub(crate) fn import_candidates(
 /// entities with that name in all crates. This method allows outputting the
 /// results of this search in a programmer-friendly way
 fn show_candidates(
-    session: &Session,
-    source_span: &IndexVec<LocalDefId, Span>,
+    tcx: TyCtxt<'_>,
     err: &mut Diagnostic,
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
@@ -2511,8 +2502,8 @@ fn show_candidates(
             );
 
             if let Some(local_def_id) = def_id.and_then(|did| did.as_local()) {
-                let span = source_span[local_def_id];
-                let span = session.source_map().guess_head_span(span);
+                let span = tcx.source_span(local_def_id);
+                let span = tcx.sess.source_map().guess_head_span(span);
                 let mut multi_span = MultiSpan::from_span(span);
                 multi_span.push_span_label(span, "not accessible");
                 err.span_note(multi_span, &msg);
@@ -2542,8 +2533,8 @@ fn show_candidates(
             let mut spans = Vec::new();
             for (name, _, def_id, _) in &inaccessible_path_strings {
                 if let Some(local_def_id) = def_id.and_then(|did| did.as_local()) {
-                    let span = source_span[local_def_id];
-                    let span = session.source_map().guess_head_span(span);
+                    let span = tcx.source_span(local_def_id);
+                    let span = tcx.sess.source_map().guess_head_span(span);
                     spans.push((name, span));
                 } else {
                     if !has_colon {

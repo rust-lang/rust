@@ -1,106 +1,87 @@
 error: could not open Fluent resource
-  --> $DIR/test.rs:25:29
+  --> $DIR/test.rs:24:24
    |
-LL |         missing_absolute => "/definitely_does_not_exist.ftl",
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fluent_messages! { "/definitely_does_not_exist.ftl" }
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: os-specific message
 
 error: could not open Fluent resource
-  --> $DIR/test.rs:34:29
+  --> $DIR/test.rs:31:24
    |
-LL |         missing_relative => "../definitely_does_not_exist.ftl",
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fluent_messages! { "../definitely_does_not_exist.ftl" }
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: os-specific message
 
 error: could not parse Fluent resource
-  --> $DIR/test.rs:43:28
+  --> $DIR/test.rs:38:24
    |
-LL |         missing_message => "./missing-message.ftl",
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fluent_messages! { "./missing-message.ftl" }
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: see additional errors emitted
 
-error: expected a message field for "missing_message"
+error: expected a message field for "no_crate_missing_message"
  --> ./missing-message.ftl:1:1
   |
-1 | missing_message =
-  | ^^^^^^^^^^^^^^^^^
+1 | no_crate_missing_message =
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
 
-error: overrides existing message: `a_b_key`
-  --> $DIR/test.rs:54:16
+error: overrides existing message: `no_crate_a_b_key`
+  --> $DIR/test.rs:45:24
    |
-LL |         a_b => "./duplicate-a-b.ftl",
-   |                ^^^^^^^^^^^^^^^^^^^^^
-   |
-help: previously defined in this resource
-  --> $DIR/test.rs:53:14
-   |
-LL |         a => "./duplicate-a.ftl",
-   |              ^^^^^^^^^^^^^^^^^^^
+LL |     fluent_messages! { "./duplicate.ftl" }
+   |                        ^^^^^^^^^^^^^^^^^
 
-error[E0428]: the name `a_b_key` is defined multiple times
-  --> $DIR/test.rs:51:5
+error: name `no_crate_this-slug-has-hyphens` contains a '-' character
+  --> $DIR/test.rs:52:24
    |
-LL |     fluent_messages! {
-   |     ^^^^^^^^^^^^^^^^
-   |     |
-   |     `a_b_key` redefined here
-   |     previous definition of the value `a_b_key` here
-   |
-   = note: os-specific message
-   = note: os-specific message
-
-error: name `slug_with_hyphens_this-slug-has-hyphens` contains a '-' character
-  --> $DIR/test.rs:63:30
-   |
-LL |         slug_with_hyphens => "./slug-with-hyphens.ftl",
-   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fluent_messages! { "./slug-with-hyphens.ftl" }
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: replace any '-'s with '_'s
 
 error: attribute `label-has-hyphens` contains a '-' character
-  --> $DIR/test.rs:72:31
+  --> $DIR/test.rs:59:24
    |
-LL |         label_with_hyphens => "./label-with-hyphens.ftl",
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fluent_messages! { "./label-with-hyphens.ftl" }
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: replace any '-'s with '_'s
 
 error: name `with-hyphens` contains a '-' character
-  --> $DIR/test.rs:91:23
+  --> $DIR/test.rs:76:24
    |
-LL |         test_crate => "./missing-crate-name.ftl",
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fluent_messages! { "./missing-crate-name.ftl" }
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: replace any '-'s with '_'s
 
 error: name `with-hyphens` does not start with the crate name
-  --> $DIR/test.rs:91:23
+  --> $DIR/test.rs:76:24
    |
-LL |         test_crate => "./missing-crate-name.ftl",
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fluent_messages! { "./missing-crate-name.ftl" }
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: prepend `test_crate_` to the slug name: `test_crate_with_hyphens`
+   = help: prepend `no_crate_` to the slug name: `no_crate_with_hyphens`
 
-error: name `test-crate_foo` contains a '-' character
-  --> $DIR/test.rs:91:23
+error: name `no-crate_foo` contains a '-' character
+  --> $DIR/test.rs:76:24
    |
-LL |         test_crate => "./missing-crate-name.ftl",
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fluent_messages! { "./missing-crate-name.ftl" }
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: replace any '-'s with '_'s
 
-error: referenced message `message` does not exist (in message `missing_message_ref`)
-  --> $DIR/test.rs:104:20
+error: referenced message `message` does not exist (in message `no_crate_missing_message_ref`)
+  --> $DIR/test.rs:92:24
    |
-LL |         missing => "./missing-message-ref.ftl"
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fluent_messages! { "./missing-message-ref.ftl" }
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: you may have meant to use a variable reference (`{$message}`)
 
-error: aborting due to 11 previous errors
+error: aborting due to 10 previous errors
 
-For more information about this error, try `rustc --explain E0428`.

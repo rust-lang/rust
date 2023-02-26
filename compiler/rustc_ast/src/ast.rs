@@ -209,7 +209,7 @@ pub struct AngleBracketedArgs {
     /// The overall span.
     pub span: Span,
     /// The comma separated parts in the `<...>`.
-    pub args: Vec<AngleBracketedArg>,
+    pub args: ThinVec<AngleBracketedArg>,
 }
 
 /// Either an argument for a parameter e.g., `'a`, `Vec<u8>`, `0`,
@@ -253,7 +253,7 @@ pub struct ParenthesizedArgs {
     pub span: Span,
 
     /// `(A, B)`
-    pub inputs: Vec<P<Ty>>,
+    pub inputs: ThinVec<P<Ty>>,
 
     /// ```text
     /// Foo(A, B) -> C
@@ -384,7 +384,7 @@ impl GenericParam {
 /// a function, enum, trait, etc.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Generics {
-    pub params: Vec<GenericParam>,
+    pub params: ThinVec<GenericParam>,
     pub where_clause: WhereClause,
     pub span: Span,
 }
@@ -392,7 +392,7 @@ pub struct Generics {
 impl Default for Generics {
     /// Creates an instance of `Generics`.
     fn default() -> Generics {
-        Generics { params: Vec::new(), where_clause: Default::default(), span: DUMMY_SP }
+        Generics { params: ThinVec::new(), where_clause: Default::default(), span: DUMMY_SP }
     }
 }
 
@@ -403,13 +403,13 @@ pub struct WhereClause {
     /// if we parsed no predicates (e.g. `struct Foo where {}`).
     /// This allows us to pretty-print accurately.
     pub has_where_token: bool,
-    pub predicates: Vec<WherePredicate>,
+    pub predicates: ThinVec<WherePredicate>,
     pub span: Span,
 }
 
 impl Default for WhereClause {
     fn default() -> WhereClause {
-        WhereClause { has_where_token: false, predicates: Vec::new(), span: DUMMY_SP }
+        WhereClause { has_where_token: false, predicates: ThinVec::new(), span: DUMMY_SP }
     }
 }
 
@@ -441,7 +441,7 @@ impl WherePredicate {
 pub struct WhereBoundPredicate {
     pub span: Span,
     /// Any generics from a `for` binding.
-    pub bound_generic_params: Vec<GenericParam>,
+    pub bound_generic_params: ThinVec<GenericParam>,
     /// The type being bounded.
     pub bounded_ty: P<Ty>,
     /// Trait and lifetime bounds (`Clone + Send + 'static`).
@@ -471,7 +471,7 @@ pub struct WhereEqPredicate {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Crate {
     pub attrs: AttrVec,
-    pub items: Vec<P<Item>>,
+    pub items: ThinVec<P<Item>>,
     pub spans: ModSpans,
     /// Must be equal to `CRATE_NODE_ID` after the crate root is expanded, but may hold
     /// expansion placeholders or an unassigned value (`DUMMY_NODE_ID`) before that.
@@ -503,7 +503,7 @@ pub enum MetaItemKind {
     /// List meta item.
     ///
     /// E.g., `#[derive(..)]`, where the field represents the `..`.
-    List(Vec<NestedMetaItem>),
+    List(ThinVec<NestedMetaItem>),
 
     /// Name value meta item.
     ///
@@ -531,7 +531,7 @@ pub enum NestedMetaItem {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Block {
     /// The statements in the block.
-    pub stmts: Vec<Stmt>,
+    pub stmts: ThinVec<Stmt>,
     pub id: NodeId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
@@ -581,7 +581,7 @@ impl Pat {
             // A tuple pattern `(P0, .., Pn)` can be reparsed as `(T0, .., Tn)`
             // assuming `T0` to `Tn` are all syntactically valid as types.
             PatKind::Tuple(pats) => {
-                let mut tys = Vec::with_capacity(pats.len());
+                let mut tys = ThinVec::with_capacity(pats.len());
                 // FIXME(#48994) - could just be collected into an Option<Vec>
                 for pat in pats {
                     tys.push(pat.to_ty()?);
@@ -722,14 +722,14 @@ pub enum PatKind {
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(Option<P<QSelf>>, Path, Vec<PatField>, /* recovered */ bool),
+    Struct(Option<P<QSelf>>, Path, ThinVec<PatField>, /* recovered */ bool),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
-    TupleStruct(Option<P<QSelf>>, Path, Vec<P<Pat>>),
+    TupleStruct(Option<P<QSelf>>, Path, ThinVec<P<Pat>>),
 
     /// An or-pattern `A | B | C`.
     /// Invariant: `pats.len() >= 2`.
-    Or(Vec<P<Pat>>),
+    Or(ThinVec<P<Pat>>),
 
     /// A possibly qualified path pattern.
     /// Unqualified path patterns `A::B::C` can legally refer to variants, structs, constants
@@ -738,7 +738,7 @@ pub enum PatKind {
     Path(Option<P<QSelf>>, Path),
 
     /// A tuple pattern (`(a, b)`).
-    Tuple(Vec<P<Pat>>),
+    Tuple(ThinVec<P<Pat>>),
 
     /// A `box` pattern.
     Box(P<Pat>),
@@ -753,7 +753,7 @@ pub enum PatKind {
     Range(Option<P<Expr>>, Option<P<Expr>>, Spanned<RangeEnd>),
 
     /// A slice pattern `[a, b, c]`.
-    Slice(Vec<P<Pat>>),
+    Slice(ThinVec<P<Pat>>),
 
     /// A rest pattern `..`.
     ///
@@ -1169,7 +1169,7 @@ impl Expr {
     pub fn to_bound(&self) -> Option<GenericBound> {
         match &self.kind {
             ExprKind::Path(None, path) => Some(GenericBound::Trait(
-                PolyTraitRef::new(Vec::new(), path.clone(), self.span),
+                PolyTraitRef::new(ThinVec::new(), path.clone(), self.span),
                 TraitBoundModifier::None,
             )),
             _ => None,
@@ -1204,7 +1204,7 @@ impl Expr {
             ExprKind::Array(exprs) if exprs.len() == 1 => exprs[0].to_ty().map(TyKind::Slice)?,
 
             ExprKind::Tup(exprs) => {
-                let tys = exprs.iter().map(|expr| expr.to_ty()).collect::<Option<Vec<_>>>()?;
+                let tys = exprs.iter().map(|expr| expr.to_ty()).collect::<Option<ThinVec<_>>>()?;
                 TyKind::Tup(tys)
             }
 
@@ -1337,7 +1337,7 @@ pub struct MethodCall {
     /// The receiver, e.g. `x`.
     pub receiver: P<Expr>,
     /// The arguments, e.g. `a, b, c`.
-    pub args: Vec<P<Expr>>,
+    pub args: ThinVec<P<Expr>>,
     /// The span of the function, without the dot and receiver e.g. `foo::<Bar,
     /// Baz>(a, b, c)`.
     pub span: Span,
@@ -1357,7 +1357,7 @@ pub enum StructRest {
 pub struct StructExpr {
     pub qself: Option<P<QSelf>>,
     pub path: Path,
-    pub fields: Vec<ExprField>,
+    pub fields: ThinVec<ExprField>,
     pub rest: StructRest,
 }
 
@@ -1366,7 +1366,7 @@ pub enum ExprKind {
     /// A `box x` expression.
     Box(P<Expr>),
     /// An array (`[a, b, c, d]`)
-    Array(Vec<P<Expr>>),
+    Array(ThinVec<P<Expr>>),
     /// Allow anonymous constants from an inline `const` block
     ConstBlock(AnonConst),
     /// A function call
@@ -1375,11 +1375,11 @@ pub enum ExprKind {
     /// and the second field is the list of arguments.
     /// This also represents calling the constructor of
     /// tuple-like ADTs such as tuple structs and enum variants.
-    Call(P<Expr>, Vec<P<Expr>>),
+    Call(P<Expr>, ThinVec<P<Expr>>),
     /// A method call (e.g. `x.foo::<Bar, Baz>(a, b, c)`).
     MethodCall(Box<MethodCall>),
     /// A tuple (e.g., `(a, b, c, d)`).
-    Tup(Vec<P<Expr>>),
+    Tup(ThinVec<P<Expr>>),
     /// A binary operation (e.g., `a + b`, `a * b`).
     Binary(BinOp, P<Expr>, P<Expr>),
     /// A unary operation (e.g., `!x`, `*x`).
@@ -1414,7 +1414,7 @@ pub enum ExprKind {
     /// `'label: loop { block }`
     Loop(P<Block>, Option<Label>, Span),
     /// A `match` block.
-    Match(P<Expr>, Vec<Arm>),
+    Match(P<Expr>, ThinVec<Arm>),
     /// A closure (e.g., `move |a, b, c| a + b + c`).
     Closure(Box<Closure>),
     /// A block (`'label: { ... }`).
@@ -1574,7 +1574,7 @@ pub enum ClosureBinder {
         /// for<'a, 'b> |_: &'a (), _: &'b ()| { ... }
         ///     ^^^^^^ -- this
         /// ```
-        generic_params: P<[GenericParam]>,
+        generic_params: ThinVec<GenericParam>,
     },
 }
 
@@ -2056,7 +2056,7 @@ impl Ty {
 pub struct BareFnTy {
     pub unsafety: Unsafe,
     pub ext: Extern,
-    pub generic_params: Vec<GenericParam>,
+    pub generic_params: ThinVec<GenericParam>,
     pub decl: P<FnDecl>,
     /// Span of the `fn(...) -> ...` part.
     pub decl_span: Span,
@@ -2078,7 +2078,7 @@ pub enum TyKind {
     /// The never type (`!`).
     Never,
     /// A tuple (`(A, B, C, D,...)`).
-    Tup(Vec<P<Ty>>),
+    Tup(ThinVec<P<Ty>>),
     /// A path (`module::module::...::Type`), optionally
     /// "qualified", e.g., `<Vec<T> as SomeTrait>::SomeType`.
     ///
@@ -2363,7 +2363,7 @@ impl Param {
 /// which contains metadata about function safety, asyncness, constness and ABI.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct FnDecl {
-    pub inputs: Vec<Param>,
+    pub inputs: ThinVec<Param>,
     pub output: FnRetTy,
 }
 
@@ -2475,7 +2475,7 @@ pub enum ModKind {
     /// or with definition outlined to a separate file `mod foo;` and already loaded from it.
     /// The inner span is from the first token past `{` to the last token until `}`,
     /// or from the first to the last token in the loaded file.
-    Loaded(Vec<P<Item>>, Inline, ModSpans),
+    Loaded(ThinVec<P<Item>>, Inline, ModSpans),
     /// Module with definition outlined to a separate file `mod foo;` but not yet loaded from it.
     Unloaded,
 }
@@ -2497,12 +2497,12 @@ pub struct ForeignMod {
     /// semantically by Rust.
     pub unsafety: Unsafe,
     pub abi: Option<StrLit>,
-    pub items: Vec<P<ForeignItem>>,
+    pub items: ThinVec<P<ForeignItem>>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct EnumDef {
-    pub variants: Vec<Variant>,
+    pub variants: ThinVec<Variant>,
 }
 /// Enum variant.
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -2532,7 +2532,7 @@ pub enum UseTreeKind {
     /// `use prefix` or `use prefix as rename`
     Simple(Option<Ident>),
     /// `use prefix::{...}`
-    Nested(Vec<(UseTree, NodeId)>),
+    Nested(ThinVec<(UseTree, NodeId)>),
     /// `use prefix::*`
     Glob,
 }
@@ -2636,7 +2636,7 @@ pub struct TraitRef {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct PolyTraitRef {
     /// The `'a` in `for<'a> Foo<&'a T>`.
-    pub bound_generic_params: Vec<GenericParam>,
+    pub bound_generic_params: ThinVec<GenericParam>,
 
     /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`.
     pub trait_ref: TraitRef,
@@ -2645,7 +2645,7 @@ pub struct PolyTraitRef {
 }
 
 impl PolyTraitRef {
-    pub fn new(generic_params: Vec<GenericParam>, path: Path, span: Span) -> Self {
+    pub fn new(generic_params: ThinVec<GenericParam>, path: Path, span: Span) -> Self {
         PolyTraitRef {
             bound_generic_params: generic_params,
             trait_ref: TraitRef { path, ref_id: DUMMY_NODE_ID },
@@ -2695,11 +2695,11 @@ pub enum VariantData {
     /// Struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
-    Struct(Vec<FieldDef>, bool),
+    Struct(ThinVec<FieldDef>, bool),
     /// Tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(Vec<FieldDef>, NodeId),
+    Tuple(ThinVec<FieldDef>, NodeId),
     /// Unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
@@ -2826,7 +2826,7 @@ pub struct Trait {
     pub is_auto: IsAuto,
     pub generics: Generics,
     pub bounds: GenericBounds,
-    pub items: Vec<P<AssocItem>>,
+    pub items: ThinVec<P<AssocItem>>,
 }
 
 /// The location of a where clause on a `TyAlias` (`Span`) and whether there was
@@ -2874,7 +2874,7 @@ pub struct Impl {
     /// The trait being implemented, if any.
     pub of_trait: Option<TraitRef>,
     pub self_ty: P<Ty>,
-    pub items: Vec<P<AssocItem>>,
+    pub items: ThinVec<P<AssocItem>>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3112,26 +3112,26 @@ mod size_asserts {
     static_assert_size!(AssocItem, 104);
     static_assert_size!(AssocItemKind, 32);
     static_assert_size!(Attribute, 32);
-    static_assert_size!(Block, 48);
+    static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 184);
+    static_assert_size!(Fn, 152);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);
-    static_assert_size!(GenericBound, 72);
-    static_assert_size!(Generics, 72);
-    static_assert_size!(Impl, 184);
-    static_assert_size!(Item, 184);
-    static_assert_size!(ItemKind, 112);
+    static_assert_size!(GenericBound, 56);
+    static_assert_size!(Generics, 40);
+    static_assert_size!(Impl, 136);
+    static_assert_size!(Item, 136);
+    static_assert_size!(ItemKind, 64);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 72);
     static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
-    static_assert_size!(Pat, 88);
+    static_assert_size!(Pat, 72);
     static_assert_size!(Path, 24);
     static_assert_size!(PathSegment, 24);
-    static_assert_size!(PatKind, 64);
+    static_assert_size!(PatKind, 48);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
     static_assert_size!(Ty, 64);

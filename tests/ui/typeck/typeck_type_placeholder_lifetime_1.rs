@@ -7,5 +7,5 @@ struct Foo<'a, T:'a> {
 
 pub fn main() {
     let c: Foo<_, _> = Foo { r: &5 };
-    //~^ ERROR this struct takes 1 generic argument but 2 generic arguments were supplied
+    //~^ ERROR struct takes 1 generic argument but 2 generic arguments were supplied
 }

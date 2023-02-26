@@ -126,7 +126,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor<'tcx> {
                 place,
                 Place {
                     local: SELF_ARG,
-                    projection: self.tcx().intern_place_elems(&[ProjectionElem::Deref]),
+                    projection: self.tcx().mk_place_elems(&[ProjectionElem::Deref]),
                 },
                 self.tcx,
             );
@@ -162,10 +162,9 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                 place,
                 Place {
                     local: SELF_ARG,
-                    projection: self.tcx().intern_place_elems(&[ProjectionElem::Field(
-                        Field::new(0),
-                        self.ref_gen_ty,
-                    )]),
+                    projection: self
+                        .tcx()
+                        .mk_place_elems(&[ProjectionElem::Field(Field::new(0), self.ref_gen_ty)]),
                 },
                 self.tcx,
             );
@@ -187,7 +186,7 @@ fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtx
     let mut new_projection = new_base.projection.to_vec();
     new_projection.append(&mut place.projection.to_vec());
 
-    place.projection = tcx.intern_place_elems(&new_projection);
+    place.projection = tcx.mk_place_elems(&new_projection);
 }
 
 const SELF_ARG: Local = Local::from_u32(1);
@@ -300,7 +299,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         let mut projection = base.projection.to_vec();
         projection.push(ProjectionElem::Field(Field::new(idx), ty));
 
-        Place { local: base.local, projection: self.tcx.intern_place_elems(&projection) }
+        Place { local: base.local, projection: self.tcx.mk_place_elems(&projection) }
     }
 
     // Create a statement which changes the discriminant
@@ -427,7 +426,7 @@ fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
 
     let pin_did = tcx.require_lang_item(LangItem::Pin, Some(body.span));
     let pin_adt_ref = tcx.adt_def(pin_did);
-    let substs = tcx.intern_substs(&[ref_gen_ty.into()]);
+    let substs = tcx.mk_substs(&[ref_gen_ty.into()]);
     let pin_ref_gen_ty = tcx.mk_adt(pin_adt_ref, substs);
 
     // Replace the by ref generator argument
@@ -1450,13 +1449,13 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             // Compute Poll<return_ty>
             let poll_did = tcx.require_lang_item(LangItem::Poll, None);
             let poll_adt_ref = tcx.adt_def(poll_did);
-            let poll_substs = tcx.intern_substs(&[body.return_ty().into()]);
+            let poll_substs = tcx.mk_substs(&[body.return_ty().into()]);
             (poll_adt_ref, poll_substs)
         } else {
             // Compute GeneratorState<yield_ty, return_ty>
             let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
             let state_adt_ref = tcx.adt_def(state_did);
-            let state_substs = tcx.intern_substs(&[yield_ty.into(), body.return_ty().into()]);
+            let state_substs = tcx.mk_substs(&[yield_ty.into(), body.return_ty().into()]);
             (state_adt_ref, state_substs)
         };
         let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);

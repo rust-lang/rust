@@ -21,7 +21,7 @@ note: required by a bound in `is_transmutable`
   --> $DIR/should_reject_if_dst_has_unreachable_ty.rs:15:14
    |
 LL |     pub fn is_transmutable<Src, Dst, Context>()
-   |            --------------- required by a bound in this
+   |            --------------- required by a bound in this function
 LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context> // safety is NOT assumed
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`

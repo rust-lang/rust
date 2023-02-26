@@ -14,11 +14,11 @@ note: candidate #2 is defined in an impl of the trait `B` for the type `u8`
    |
 LL |         fn foo(&self) {}
    |         ^^^^^^^^^^^^^
-help: disambiguate the associated function for candidate #1
+help: disambiguate the method for candidate #1
    |
 LL |     A::foo(&t);
    |     ~~~~~~~~~~
-help: disambiguate the associated function for candidate #2
+help: disambiguate the method for candidate #2
    |
 LL |     B::foo(&t);
    |     ~~~~~~~~~~
