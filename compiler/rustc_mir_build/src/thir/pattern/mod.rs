@@ -31,20 +31,10 @@ use rustc_target::abi::FieldIdx;
 
 use std::cmp::Ordering;
 
-#[derive(Clone, Debug)]
-enum PatternError {
-    AssocConstInPattern(Span),
-    ConstParamInPattern(Span),
-    StaticInPattern(Span),
-    NonConstPath(Span),
-}
-
 struct PatCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
-    errors: Vec<PatternError>,
-    include_lint_checks: bool,
 }
 
 pub(super) fn pat_from_hir<'a, 'tcx>(
@@ -53,47 +43,13 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
     typeck_results: &'a ty::TypeckResults<'tcx>,
     pat: &'tcx hir::Pat<'tcx>,
 ) -> Box<Pat<'tcx>> {
-    let mut pcx = PatCtxt::new(tcx, param_env, typeck_results);
-    pcx.include_lint_checks();
+    let mut pcx = PatCtxt { tcx, param_env, typeck_results };
     let result = pcx.lower_pattern(pat);
-    pcx.report_inlining_errors();
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
     result
 }
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
-    fn new(
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        typeck_results: &'a ty::TypeckResults<'tcx>,
-    ) -> Self {
-        PatCtxt { tcx, param_env, typeck_results, errors: vec![], include_lint_checks: false }
-    }
-
-    fn include_lint_checks(&mut self) -> &mut Self {
-        self.include_lint_checks = true;
-        self
-    }
-
-    fn report_inlining_errors(&self) {
-        for error in &self.errors {
-            match *error {
-                PatternError::StaticInPattern(span) => {
-                    self.tcx.sess.emit_err(StaticInPattern { span });
-                }
-                PatternError::AssocConstInPattern(span) => {
-                    self.tcx.sess.emit_err(AssocConstInPattern { span });
-                }
-                PatternError::ConstParamInPattern(span) => {
-                    self.tcx.sess.emit_err(ConstParamInPattern { span });
-                }
-                PatternError::NonConstPath(span) => {
-                    self.tcx.sess.emit_err(NonConstPath { span });
-                }
-            }
-        }
-    }
-
     fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
         // When implicit dereferences have been inserted in this pattern, the unadjusted lowered
         // pattern has the type that results *after* dereferencing. For example, in this code:
@@ -490,12 +446,15 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             | Res::SelfTyAlias { .. }
             | Res::SelfCtor(..) => PatKind::Leaf { subpatterns },
             _ => {
-                let pattern_error = match res {
-                    Res::Def(DefKind::ConstParam, _) => PatternError::ConstParamInPattern(span),
-                    Res::Def(DefKind::Static(_), _) => PatternError::StaticInPattern(span),
-                    _ => PatternError::NonConstPath(span),
+                match res {
+                    Res::Def(DefKind::ConstParam, _) => {
+                        self.tcx.sess.emit_err(ConstParamInPattern { span })
+                    }
+                    Res::Def(DefKind::Static(_), _) => {
+                        self.tcx.sess.emit_err(StaticInPattern { span })
+                    }
+                    _ => self.tcx.sess.emit_err(NonConstPath { span }),
                 };
-                self.errors.push(pattern_error);
                 PatKind::Wild
             }
         };
@@ -548,7 +507,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 // It should be assoc consts if there's no error but we cannot resolve it.
                 debug_assert!(is_associated_const);
 
-                self.errors.push(PatternError::AssocConstInPattern(span));
+                self.tcx.sess.emit_err(AssocConstInPattern { span });
 
                 return pat_from_kind(PatKind::Wild);
             }
@@ -626,7 +585,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         match value {
             mir::ConstantKind::Ty(c) => match c.kind() {
                 ConstKind::Param(_) => {
-                    self.errors.push(PatternError::ConstParamInPattern(span));
+                    self.tcx.sess.emit_err(ConstParamInPattern { span });
                     return PatKind::Wild;
                 }
                 ConstKind::Error(_) => {
