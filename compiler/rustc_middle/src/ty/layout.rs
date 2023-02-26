@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_session::config::OptLevel;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::*;
@@ -172,16 +173,29 @@ pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
 /// Used in `might_permit_raw_init` to indicate the kind of initialisation
 /// that is checked to be valid
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
-pub enum InitKind {
+pub enum ValidityRequirement {
+    Inhabited,
     Zero,
     UninitMitigated0x01Fill,
 }
 
-impl fmt::Display for InitKind {
+impl ValidityRequirement {
+    pub fn from_intrinsic(intrinsic: Symbol) -> Option<Self> {
+        match intrinsic {
+            sym::assert_inhabited => Some(Self::Inhabited),
+            sym::assert_zero_valid => Some(Self::Zero),
+            sym::assert_mem_uninitialized_valid => Some(Self::UninitMitigated0x01Fill),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for ValidityRequirement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Zero => f.write_str("zeroed"),
-            Self::UninitMitigated0x01Fill => f.write_str("filled with 0x01"),
+            Self::Inhabited => f.write_str("is inhabited"),
+            Self::Zero => f.write_str("allows being left zeroed"),
+            Self::UninitMitigated0x01Fill => f.write_str("allows being filled with 0x01"),
         }
     }
 }

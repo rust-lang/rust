@@ -11,7 +11,7 @@ use rustc_middle::mir::{
     BinOp, NonDivergingIntrinsic,
 };
 use rustc_middle::ty;
-use rustc_middle::ty::layout::{InitKind, LayoutOf as _};
+use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
@@ -418,57 +418,35 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::assert_zero_valid
             | sym::assert_mem_uninitialized_valid => {
                 let ty = instance.substs.type_at(0);
-                let layout = self.layout_of(ty)?;
+                let requirement = ValidityRequirement::from_intrinsic(intrinsic_name).unwrap();
 
-                // For *all* intrinsics we first check `is_uninhabited` to give a more specific
-                // error message.
-                if layout.abi.is_uninhabited() {
-                    // The run-time intrinsic panics just to get a good backtrace; here we abort
-                    // since there is no problem showing a backtrace even for aborts.
-                    M::abort(
-                        self,
-                        format!(
+                let should_panic = !self
+                    .tcx
+                    .check_validity_requirement((requirement, self.param_env.and(ty)))
+                    .map_err(|_| err_inval!(TooGeneric))?;
+
+                if should_panic {
+                    let layout = self.layout_of(ty)?;
+
+                    let msg = match requirement {
+                        // For *all* intrinsics we first check `is_uninhabited` to give a more specific
+                        // error message.
+                        _ if layout.abi.is_uninhabited() => format!(
                             "aborted execution: attempted to instantiate uninhabited type `{}`",
                             ty
                         ),
-                    )?;
-                }
+                        ValidityRequirement::Inhabited => bug!("handled earlier"),
+                        ValidityRequirement::Zero => format!(
+                            "aborted execution: attempted to zero-initialize type `{}`, which is invalid",
+                            ty
+                        ),
+                        ValidityRequirement::UninitMitigated0x01Fill => format!(
+                            "aborted execution: attempted to leave type `{}` uninitialized, which is invalid",
+                            ty
+                        ),
+                    };
 
-                if intrinsic_name == sym::assert_zero_valid {
-                    let should_panic = !self
-                        .tcx
-                        .check_validity_of_init((InitKind::Zero, self.param_env.and(ty)))
-                        .map_err(|_| err_inval!(TooGeneric))?;
-
-                    if should_panic {
-                        M::abort(
-                            self,
-                            format!(
-                                "aborted execution: attempted to zero-initialize type `{}`, which is invalid",
-                                ty
-                            ),
-                        )?;
-                    }
-                }
-
-                if intrinsic_name == sym::assert_mem_uninitialized_valid {
-                    let should_panic = !self
-                        .tcx
-                        .check_validity_of_init((
-                            InitKind::UninitMitigated0x01Fill,
-                            self.param_env.and(ty),
-                        ))
-                        .map_err(|_| err_inval!(TooGeneric))?;
-
-                    if should_panic {
-                        M::abort(
-                            self,
-                            format!(
-                                "aborted execution: attempted to leave type `{}` uninitialized, which is invalid",
-                                ty
-                            ),
-                        )?;
-                    }
+                    M::abort(self, msg)?;
                 }
             }
             sym::simd_insert => {

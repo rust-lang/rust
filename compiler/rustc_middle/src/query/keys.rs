@@ -4,7 +4,7 @@ use crate::infer::canonical::Canonical;
 use crate::mir;
 use crate::traits;
 use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::layout::{InitKind, TyAndLayout};
+use crate::ty::layout::{TyAndLayout, ValidityRequirement};
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
@@ -698,7 +698,7 @@ impl Key for HirId {
     }
 }
 
-impl<'tcx> Key for (InitKind, ty::ParamEnvAnd<'tcx, Ty<'tcx>>) {
+impl<'tcx> Key for (ValidityRequirement, ty::ParamEnvAnd<'tcx, Ty<'tcx>>) {
     type CacheSelector = DefaultCacheSelector<Self>;
 
     // Just forward to `Ty<'tcx>`
