@@ -24,6 +24,10 @@ mod private {
 #[rustc_pass_by_value]
 pub struct Interned<'a, T>(pub &'a T, pub private::PrivateZst);
 
+pub trait Internable<'a, I>: Sized {
+    fn intern(self, interner: I) -> Interned<'a, Self>;
+}
+
 impl<'a, T> Interned<'a, T> {
     /// Create a new `Interned` value. The value referred to *must* be interned
     /// and thus be unique, and it *must* remain unique in the future. This

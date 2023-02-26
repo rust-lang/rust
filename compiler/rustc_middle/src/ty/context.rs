@@ -30,7 +30,7 @@ use crate::ty::{GenericArg, InternalSubsts, SubstsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::intern::Interned;
+use rustc_data_structures::intern::{Internable, Interned};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
@@ -1555,11 +1555,17 @@ macro_rules! direct_interners {
             }
         }
 
+        impl<'tcx> Internable<'tcx, TyCtxt<'tcx>> for $ty {
+            fn intern(self, tcx: TyCtxt<'tcx>) -> Interned<'tcx, Self> {
+                Interned::new_unchecked(tcx.interners.$name.intern(self, |v| {
+                    InternedInSet(tcx.interners.arena.alloc(v))
+                }).0)
+            }
+        }
+
         impl<'tcx> TyCtxt<'tcx> {
             $vis fn $method(self, v: $ty) -> $ret_ty {
-                $ret_ctor(Interned::new_unchecked(self.interners.$name.intern(v, |v| {
-                    InternedInSet(self.interners.arena.alloc(v))
-                }).0))
+                $ret_ctor(v.intern(self))
             }
         })+
     }

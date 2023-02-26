@@ -4,9 +4,7 @@ use rustc_query_system::cache::Cache;
 use crate::infer::canonical::{CanonicalVarValues, QueryRegionConstraints};
 use crate::traits::query::NoSolution;
 use crate::traits::Canonical;
-use crate::ty::{
-    self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitor,
-};
+use crate::ty::{self, ToPredicate, Ty, TyCtxt};
 
 pub type EvaluationCache<'tcx> = Cache<CanonicalGoal<'tcx>, QueryResult<'tcx>>;
 
@@ -96,7 +94,7 @@ pub type CanonicalResponse<'tcx> = Canonical<'tcx, Response<'tcx>>;
 /// solver, merge the two responses again.
 pub type QueryResult<'tcx> = Result<CanonicalResponse<'tcx>, NoSolution>;
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, TypeFoldable, TypeVisitable)]
 pub struct ExternalConstraints<'tcx>(pub(crate) Interned<'tcx, ExternalConstraintsData<'tcx>>);
 
 impl<'tcx> std::ops::Deref for ExternalConstraints<'tcx> {
@@ -113,27 +111,4 @@ pub struct ExternalConstraintsData<'tcx> {
     // FIXME: implement this.
     pub region_constraints: QueryRegionConstraints<'tcx>,
     pub opaque_types: Vec<(Ty<'tcx>, Ty<'tcx>)>,
-}
-
-// FIXME: Having to clone `region_constraints` for folding feels bad and
-// probably isn't great wrt performance.
-//
-// Not sure how to fix this, maybe we should also intern `opaque_types` and
-// `region_constraints` here or something.
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(folder.interner().mk_external_constraints((*self).clone().try_fold_with(folder)?))
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
-        &self,
-        visitor: &mut V,
-    ) -> std::ops::ControlFlow<V::BreakTy> {
-        (**self).visit_with(visitor)
-    }
 }

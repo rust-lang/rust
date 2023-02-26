@@ -5,7 +5,10 @@
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
 use crate::Interner;
-use rustc_data_structures::functor::IdFunctor;
+use rustc_data_structures::{
+    functor::IdFunctor,
+    intern::{Internable, Interned},
+};
 use rustc_index::vec::{Idx, IndexVec};
 
 use std::ops::ControlFlow;
@@ -187,5 +190,17 @@ impl<I: Interner, T: TypeFoldable<I>, Ix: Idx> TypeFoldable<I> for IndexVec<Ix, 
 impl<I: Interner, T: TypeVisitable<I>, Ix: Idx> TypeVisitable<I> for IndexVec<Ix, T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
+    }
+}
+
+impl<'a, I: Interner, T: Internable<'a, I> + TypeFoldable<I>> TypeFoldable<I> for Interned<'a, T> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        (*self).clone().try_fold_with(folder).map(|v| v.intern(folder.interner()))
+    }
+}
+
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Interned<'_, T> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        (**self).visit_with(visitor)
     }
 }
