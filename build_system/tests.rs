@@ -94,13 +94,15 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::build_bin_and_run("aot.issue-72793", "example/issue-72793.rs", &[]),
 ];
 
+// FIXME(rust-random/rand#1293): Newer rand versions fail to test on Windows. Update once this is
+// fixed.
 pub(crate) static RAND_REPO: GitRepo =
-    GitRepo::github("rust-random", "rand", "0f933f9c7176e53b2a3c7952ded484e1783f0bf1", "rand");
+    GitRepo::github("rust-random", "rand", "50b9a447410860af8d6db9a208c3576886955874", "rand");
 
 pub(crate) static RAND: CargoProject = CargoProject::new(&RAND_REPO.source_dir(), "rand");
 
 pub(crate) static REGEX_REPO: GitRepo =
-    GitRepo::github("rust-lang", "regex", "341f207c1071f7290e3f228c710817c280c8dca1", "regex");
+    GitRepo::github("rust-lang", "regex", "a9b2e02352db92ce1f6e5b7ecd41b8bbffbe161a", "regex");
 
 pub(crate) static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir(), "regex");
 
