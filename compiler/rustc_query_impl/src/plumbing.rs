@@ -462,17 +462,9 @@ macro_rules! define_queries {
             use std::marker::PhantomData;
 
             $(
-                #[derive(Copy, Clone)]
+                #[derive(Copy, Clone, Default)]
                 pub struct $name<'tcx> {
                     data: PhantomData<&'tcx ()>
-                }
-
-                impl Default for $name<'_> {
-                    fn default() -> Self {
-                        Self {
-                            data: PhantomData,
-                        }
-                    }
                 }
             )*
         }
