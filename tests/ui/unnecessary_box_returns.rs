@@ -1,6 +1,25 @@
 #![warn(clippy::unnecessary_box_returns)]
 
+trait Bar {
+    // lint
+    fn baz(&self) -> Box<usize>;
+}
+
 struct Foo {}
+
+impl Bar for Foo {
+    // don't lint: this is a problem with the trait, not the implementation
+    fn baz(&self) -> Box<usize> {
+        Box::new(42)
+    }
+}
+
+impl Foo {
+    fn baz(&self) -> Box<usize> {
+        // lint
+        Box::new(13)
+    }
+}
 
 // lint
 fn boxed_usize() -> Box<usize> {
