@@ -761,6 +761,7 @@ pub(crate) unsafe fn codegen(
             EmitObj::None => {}
         }
 
+        record_llvm_cgu_instructions_stats(&cgcx.prof, llmod);
         drop(handlers);
     }
 
@@ -973,4 +974,24 @@ fn record_artifact_size(
         let file_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
         self_profiler_ref.artifact_size(artifact_kind, artifact_name.to_string_lossy(), file_size);
     }
+}
+
+fn record_llvm_cgu_instructions_stats(prof: &SelfProfilerRef, llmod: &llvm::Module) {
+    if !prof.enabled() {
+        return;
+    }
+
+    let raw_stats =
+        llvm::build_string(|s| unsafe { llvm::LLVMRustModuleInstructionStats(&llmod, s) })
+            .expect("cannot get module instruction stats");
+
+    #[derive(serde::Deserialize)]
+    struct InstructionsStats {
+        module: String,
+        total: u64,
+    }
+
+    let InstructionsStats { module, total } =
+        serde_json::from_str(&raw_stats).expect("cannot parse llvm cgu instructions stats");
+    prof.artifact_size("cgu_instructions", module, total);
 }
