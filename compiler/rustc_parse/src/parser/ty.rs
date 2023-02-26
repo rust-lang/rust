@@ -433,7 +433,7 @@ impl<'a> Parser<'a> {
         };
 
         let ty = if self.eat(&token::Semi) {
-            let mut length = self.parse_anon_const_expr()?;
+            let mut length = self.parse_expr_anon_const()?;
             if let Err(e) = self.expect(&token::CloseDelim(Delimiter::Bracket)) {
                 // Try to recover from `X<Y, ...>` when `X::<Y, ...>` works
                 self.check_mistyped_turbofish_with_multiple_type_params(e, &mut length.value)?;
@@ -494,7 +494,7 @@ impl<'a> Parser<'a> {
     // To avoid ambiguity, the type is surrounded by parentheses.
     fn parse_typeof_ty(&mut self) -> PResult<'a, TyKind> {
         self.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
-        let expr = self.parse_anon_const_expr()?;
+        let expr = self.parse_expr_anon_const()?;
         self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
         Ok(TyKind::Typeof(expr))
     }
