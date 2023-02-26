@@ -38,7 +38,6 @@ use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_macros::fluent_messages;
 use rustc_middle::ty;
 use rustc_middle::ty::query::Providers;
-use rustc_target::abi::InitKind;
 
 fluent_messages! { "../locales/en-US.ftl" }
 
@@ -62,9 +61,7 @@ pub fn provide(providers: &mut Providers) {
         let (param_env, value) = param_env_and_value.into_parts();
         const_eval::deref_mir_constant(tcx, param_env, value)
     };
-    providers.permits_uninit_init = |tcx, param_env_and_ty| {
-        util::might_permit_raw_init(tcx, param_env_and_ty, InitKind::UninitMitigated0x01Fill)
+    providers.check_validity_of_init = |tcx, (init_kind, param_env_and_ty)| {
+        util::might_permit_raw_init(tcx, init_kind, param_env_and_ty)
     };
-    providers.permits_zero_init =
-        |tcx, param_env_and_ty| util::might_permit_raw_init(tcx, param_env_and_ty, InitKind::Zero);
 }

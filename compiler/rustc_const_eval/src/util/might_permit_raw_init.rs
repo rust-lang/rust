@@ -1,7 +1,7 @@
-use rustc_middle::ty::layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{InitKind, LayoutCx, LayoutError, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_session::Limit;
-use rustc_target::abi::{Abi, FieldsShape, InitKind, Scalar, Variants};
+use rustc_target::abi::{Abi, FieldsShape, Scalar, Variants};
 
 use crate::const_eval::{CheckAlignment, CompileTimeInterpreter};
 use crate::interpret::{InterpCx, MemoryKind, OpTy};
@@ -20,8 +20,8 @@ use crate::interpret::{InterpCx, MemoryKind, OpTy};
 /// to the full uninit check).
 pub fn might_permit_raw_init<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
     kind: InitKind,
+    param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Result<bool, LayoutError<'tcx>> {
     if tcx.sess.opts.unstable_opts.strict_init_checks {
         might_permit_raw_init_strict(tcx.layout_of(param_env_and_ty)?, tcx, kind)
