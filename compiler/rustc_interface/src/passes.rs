@@ -765,7 +765,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
         parallel!(
             {
                 sess.time("match_checking", || {
-                    tcx.hir().par_body_owners(|def_id| tcx.ensure().check_match(def_id.to_def_id()))
+                    tcx.hir().par_body_owners(|def_id| tcx.ensure().check_match(def_id))
                 });
             },
             {

@@ -1114,9 +1114,9 @@ rustc_queries! {
         desc { "converting literal to mir constant" }
     }
 
-    query check_match(key: DefId) {
-        desc { |tcx| "match-checking `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { key.is_local() }
+    query check_match(key: LocalDefId) {
+        desc { |tcx| "match-checking `{}`", tcx.def_path_str(key.to_def_id()) }
+        cache_on_disk_if { true }
     }
 
     /// Performs part of the privacy check and computes effective visibilities.

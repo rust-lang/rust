@@ -14,7 +14,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def::*;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Pat};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -27,12 +27,8 @@ use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::{BytePos, Span};
 
-pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
-    let body_id = match def_id.as_local() {
-        None => return,
-        Some(def_id) => tcx.hir().body_owned_by(def_id),
-    };
-
+pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    let body_id = tcx.hir().body_owned_by(def_id);
     let pattern_arena = TypedArena::default();
     let mut visitor = MatchVisitor {
         tcx,
