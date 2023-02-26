@@ -549,7 +549,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let mut mask_values = vec![];
         for i in 0..in_len {
             let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
-            mask_types.push(bx.context.new_field(None, bx.i32_type, "m")); // TODO: choose an integer based on the size of the vector element type.
+            mask_types.push(bx.context.new_field(None, bx.i32_type, "m"));
             let mask_value = bx.context.new_vector_access(None, mask, index).to_rvalue();
             let masked = bx.context.new_rvalue_from_int(bx.i32_type, in_len as i32) & mask_value;
             let value = index + masked;
