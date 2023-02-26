@@ -59,7 +59,6 @@ mod remove_place_mention;
 mod add_subtyping_projections;
 pub mod cleanup_post_borrowck;
 mod const_debuginfo;
-mod const_goto;
 mod const_prop;
 mod const_prop_lint;
 mod copy_prop;
@@ -103,7 +102,6 @@ mod remove_unneeded_drops;
 mod remove_zsts;
 mod required_consts;
 mod reveal_all;
-mod separate_const_switch;
 mod shim;
 mod ssa;
 // This pass is public to allow external drivers to perform MIR cleanup
@@ -590,7 +588,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
             // Has to run after `slice::len` lowering
             &normalize_array_len::NormalizeArrayLen,
-            &const_goto::ConstGoto,
             &ref_prop::ReferencePropagation,
             &sroa::ScalarReplacementOfAggregates,
             &match_branches::MatchBranchSimplification,
@@ -601,10 +598,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &dead_store_elimination::DeadStoreElimination::Initial,
             &gvn::GVN,
             &simplify::SimplifyLocals::AfterGVN,
-            // Perform `SeparateConstSwitch` after SSA-based analyses, as cloning blocks may
-            // destroy the SSA property. It should still happen before const-propagation, so the
-            // latter pass will leverage the created opportunities.
-            &separate_const_switch::SeparateConstSwitch,
             &dataflow_const_prop::DataflowConstProp,
             &const_debuginfo::ConstDebugInfo,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
