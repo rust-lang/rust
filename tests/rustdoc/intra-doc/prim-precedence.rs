@@ -12,5 +12,5 @@ pub struct MyString;
 
 /// See also [crate::char] and [mod@char]
 // @has prim_precedence/struct.MyString2.html '//*[@href="char/index.html"]' 'crate::char'
-// @has - '//*[@href="char/index.html"]' 'mod@char'
+// @has - '//*[@href="char/index.html"]' 'char'
 pub struct MyString2;
