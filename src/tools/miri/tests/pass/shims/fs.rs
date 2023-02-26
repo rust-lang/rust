@@ -6,7 +6,7 @@
 #![feature(is_terminal)]
 
 use std::collections::HashMap;
-use std::ffi::OsString;
+use std::ffi::{c_char, OsString};
 use std::fs::{
     canonicalize, create_dir, read_dir, read_link, remove_dir, remove_dir_all, remove_file, rename,
     File, OpenOptions,
@@ -39,7 +39,11 @@ fn host_to_target_path(path: String) -> PathBuf {
 
     unsafe {
         extern "Rust" {
-            fn miri_host_to_target_path(path: *const i8, out: *mut i8, out_size: usize) -> usize;
+            fn miri_host_to_target_path(
+                path: *const c_char,
+                out: *mut c_char,
+                out_size: usize,
+            ) -> usize;
         }
         let ret = miri_host_to_target_path(path.as_ptr(), out.as_mut_ptr(), out.capacity());
         assert_eq!(ret, 0);

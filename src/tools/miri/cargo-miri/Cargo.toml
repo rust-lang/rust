@@ -30,4 +30,4 @@ rustc-workspace-hack = "1.0.0"
 serde = { version = "*", features = ["derive"] }
 
 [build-dependencies]
-rustc_tools_util = "0.2"
+rustc_tools_util = "0.3"
