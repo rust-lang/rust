@@ -125,12 +125,11 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         RAND.clean(&runner.dirs);
 
         if runner.is_native {
-            eprintln!("[TEST] rust-random/rand");
             let mut test_cmd = RAND.test(&runner.target_compiler, &runner.dirs);
             test_cmd.arg("--workspace").arg("--").arg("-q");
             spawn_and_wait(test_cmd);
         } else {
-            eprintln!("[AOT] rust-random/rand");
+            eprintln!("Cross-Compiling: Not running tests");
             let mut build_cmd = RAND.build(&runner.target_compiler, &runner.dirs);
             build_cmd.arg("--workspace").arg("--tests");
             spawn_and_wait(build_cmd);
