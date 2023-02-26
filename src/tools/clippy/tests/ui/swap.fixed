@@ -7,7 +7,8 @@
     clippy::redundant_clone,
     redundant_semicolons,
     dead_code,
-    unused_assignments
+    unused_assignments,
+    unused_variables
 )]
 
 struct Foo(u32);
@@ -121,6 +122,27 @@ fn main() {
     std::mem::swap(&mut c.0, &mut a);
 
     ; std::mem::swap(&mut c.0, &mut a);
+
+    std::mem::swap(&mut a, &mut b);
+
+    let mut c = 1;
+    let mut d = 2;
+    std::mem::swap(&mut d, &mut c);
+
+    let mut b = 1;
+    std::mem::swap(&mut a, &mut b);
+
+    let b = 1;
+    let a = 2;
+
+    let t = b;
+    let b = a;
+    let a = t;
+
+    let mut b = 1;
+    let mut a = 2;
+
+    std::mem::swap(&mut b, &mut a);
 }
 
 fn issue_8154() {

@@ -6,6 +6,11 @@ use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{is_entrypoint_fn, method_chain_args, return_ty};
 use if_chain::if_chain;
 use itertools::Itertools;
+use pulldown_cmark::Event::{
+    Code, End, FootnoteReference, HardBreak, Html, Rule, SoftBreak, Start, TaskListMarker, Text,
+};
+use pulldown_cmark::Tag::{CodeBlock, Heading, Item, Link, Paragraph};
+use pulldown_cmark::{BrokenLink, CodeBlockKind, CowStr, Options};
 use rustc_ast::ast::{Async, AttrKind, Attribute, Fn, FnRetTy, ItemKind};
 use rustc_ast::token::CommentKind;
 use rustc_data_structures::fx::FxHashSet;
@@ -497,7 +502,6 @@ struct DocHeaders {
 }
 
 fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[Attribute]) -> Option<DocHeaders> {
-    use pulldown_cmark::{BrokenLink, CowStr, Options};
     /// We don't want the parser to choke on intra doc links. Since we don't
     /// actually care about rendering them, just pretend that all broken links are
     /// point to a fake address.
@@ -538,8 +542,6 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         pulldown_cmark::Parser::new_with_broken_link_callback(&doc, Options::empty(), Some(&mut cb)).into_offset_iter();
     // Iterate over all `Events` and combine consecutive events into one
     let events = parser.coalesce(|previous, current| {
-        use pulldown_cmark::Event::Text;
-
         let previous_range = previous.1;
         let current_range = current.1;
 
@@ -564,12 +566,6 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     spans: &[(usize, Span)],
 ) -> DocHeaders {
     // true if a safety header was found
-    use pulldown_cmark::Event::{
-        Code, End, FootnoteReference, HardBreak, Html, Rule, SoftBreak, Start, TaskListMarker, Text,
-    };
-    use pulldown_cmark::Tag::{CodeBlock, Heading, Item, Link, Paragraph};
-    use pulldown_cmark::{CodeBlockKind, CowStr};
-
     let mut headers = DocHeaders::default();
     let mut in_code = false;
     let mut in_link = None;
@@ -660,6 +656,12 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                     check_link_quotes(cx, in_link.is_some(), trimmed_text, span, &range, begin, text.len());
                     // Adjust for the beginning of the current `Event`
                     let span = span.with_lo(span.lo() + BytePos::from_usize(range.start - begin));
+                    if let Some(link) = in_link.as_ref()
+                      && let Ok(url) = Url::parse(link)
+                      && (url.scheme() == "https" || url.scheme() == "http") {
+                        // Don't check the text associated with external URLs
+                        continue;
+                    }
                     text_to_check.push((text, span));
                 }
             },
@@ -704,10 +706,8 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                 let filename = FileName::anon_source_code(&code);
 
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-                let fallback_bundle = rustc_errors::fallback_fluent_bundle(
-                    rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
-                    false
-                );
+                let fallback_bundle =
+                    rustc_errors::fallback_fluent_bundle(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
                 let emitter = EmitterWriter::new(
                     Box::new(io::sink()),
                     None,

@@ -19,21 +19,35 @@ You can choose how much Clippy is supposed to ~~annoy~~ help you by changing the
 | `clippy::complexity`  | code that does something simple but in a complex way                                | **warn**      |
 | `clippy::perf`        | code that can be written to run faster                                              | **warn**      |
 | `clippy::pedantic`    | lints which are rather strict or have occasional false positives                    | allow         |
+| `clippy::restriction` | lints which prevent the use of language and library features[^restrict]             | allow         |
 | `clippy::nursery`     | new lints that are still under development                                          | allow         |
 | `clippy::cargo`       | lints for the cargo manifest                                                        | allow         |
 
 More to come, please [file an issue](https://github.com/rust-lang/rust-clippy/issues) if you have ideas!
 
-The [lint list](https://rust-lang.github.io/rust-clippy/master/index.html) also contains "restriction lints", which are
-for things which are usually not considered "bad", but may be useful to turn on in specific cases. These should be used
-very selectively, if at all.
+The `restriction` category should, *emphatically*, not be enabled as a whole. The contained
+lints may lint against perfectly reasonable code, may not have an alternative suggestion,
+and may contradict any other lints (including other categories). Lints should be considered
+on a case-by-case basis before enabling.
+
+[^restrict]: Some use cases for `restriction` lints include:
+    - Strict coding styles (e.g. [`clippy::else_if_without_else`]).
+    - Additional restrictions on CI (e.g. [`clippy::todo`]).
+    - Preventing panicking in certain functions (e.g. [`clippy::unwrap_used`]).
+    - Running a lint only on a subset of code (e.g. `#[forbid(clippy::float_arithmetic)]` on a module).
+
+[`clippy::else_if_without_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#else_if_without_else
+[`clippy::todo`]: https://rust-lang.github.io/rust-clippy/master/index.html#todo
+[`clippy::unwrap_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+---
 
 Table of contents:
 
-*   [Usage instructions](#usage)
-*   [Configuration](#configuration)
-*   [Contributing](#contributing)
-*   [License](#license)
+* [Usage instructions](#usage)
+* [Configuration](#configuration)
+* [Contributing](#contributing)
+* [License](#license)
 
 ## Usage
 
@@ -64,6 +78,7 @@ Once you have rustup and the latest stable release (at least Rust 1.29) installe
 ```terminal
 rustup component add clippy
 ```
+
 If it says that it can't find the `clippy` component, please run `rustup self update`.
 
 #### Step 3: Run Clippy
@@ -143,16 +158,16 @@ line. (You can swap `clippy::all` with the specific lint category you are target
 
 You can add options to your code to `allow`/`warn`/`deny` Clippy lints:
 
-*   the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy::all)]`).
+* the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy::all)]`).
     Note that `rustc` has additional [lint groups](https://doc.rust-lang.org/rustc/lints/groups.html).
 
-*   all lints using both the `clippy` and `clippy::pedantic` lint groups (`#![deny(clippy::all)]`,
+* all lints using both the `clippy` and `clippy::pedantic` lint groups (`#![deny(clippy::all)]`,
     `#![deny(clippy::pedantic)]`). Note that `clippy::pedantic` contains some very aggressive
     lints prone to false positives.
 
-*   only some lints (`#![deny(clippy::single_match, clippy::box_vec)]`, etc.)
+* only some lints (`#![deny(clippy::single_match, clippy::box_vec)]`, etc.)
 
-*   `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc.
+* `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc.
 
 Note: `allow` means to suppress the lint for your code. With `warn` the lint
 will only emit a warning, while with `deny` the lint will emit an error, when
@@ -176,12 +191,14 @@ cargo clippy -- -W clippy::lint_name
 
 This also works with lint groups. For example, you
 can run Clippy with warnings for all lints enabled:
+
 ```terminal
 cargo clippy -- -W clippy::pedantic
 ```
 
 If you care only about a single lint, you can allow all others and then explicitly warn on
 the lint(s) you are interested in:
+
 ```terminal
 cargo clippy -- -A clippy::all -W clippy::useless_format -W clippy::...
 ```

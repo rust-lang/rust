@@ -188,10 +188,16 @@ LL |         let _ = some_vec.get_mut(0..1).unwrap().to_vec();
    = help: if you don't want to handle the `None` case gracefully, consider using `expect()` to provide a better panic message
 
 error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-  --> $DIR/unwrap_used.rs:84:17
+  --> $DIR/unwrap_used.rs:72:13
+   |
+LL |     let _ = boxed_slice.get(1).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&boxed_slice[1]`
+
+error: called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
+  --> $DIR/unwrap_used.rs:90:17
    |
 LL |         let _ = Box::new([0]).get(1).unwrap();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&Box::new([0])[1]`
 
-error: aborting due to 27 previous errors
+error: aborting due to 28 previous errors
 

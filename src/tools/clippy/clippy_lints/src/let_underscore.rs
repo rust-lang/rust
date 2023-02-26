@@ -90,7 +90,45 @@ declare_clippy_lint! {
     "non-binding `let` on a future"
 }
 
-declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_FUTURE]);
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `let _ = <expr>` without a type annotation, and suggests to either provide one,
+    /// or remove the `let` keyword altogether.
+    ///
+    /// ### Why is this bad?
+    /// The `let _ = <expr>` expression ignores the value of `<expr>` but will remain doing so even
+    /// if the type were to change, thus potentially introducing subtle bugs. By supplying a type
+    /// annotation, one will be forced to re-visit the decision to ignore the value in such cases.
+    ///
+    /// ### Known problems
+    /// The `_ = <expr>` is not properly supported by some tools (e.g. IntelliJ) and may seem odd
+    /// to many developers. This lint also partially overlaps with the other `let_underscore_*`
+    /// lints.
+    ///
+    /// ### Example
+    /// ```rust
+    /// fn foo() -> Result<u32, ()> {
+    ///     Ok(123)
+    /// }
+    /// let _ = foo();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// fn foo() -> Result<u32, ()> {
+    ///     Ok(123)
+    /// }
+    /// // Either provide a type annotation:
+    /// let _: Result<u32, ()> = foo();
+    /// // …or drop the let keyword:
+    /// _ = foo();
+    /// ```
+    #[clippy::version = "1.69.0"]
+    pub LET_UNDERSCORE_UNTYPED,
+    pedantic,
+    "non-binding `let` without a type annotation"
+}
+
+declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_FUTURE, LET_UNDERSCORE_UNTYPED]);
 
 const SYNC_GUARD_PATHS: [&[&str]; 3] = [
     &paths::PARKING_LOT_MUTEX_GUARD,
@@ -146,6 +184,18 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     "non-binding `let` on a result of a `#[must_use]` function",
                     None,
                     "consider explicitly using function result",
+                );
+            }
+
+            if local.pat.default_binding_modes && local.ty.is_none() {
+                // When `default_binding_modes` is true, the `let` keyword is present.
+                span_lint_and_help(
+                    cx,
+                    LET_UNDERSCORE_UNTYPED,
+                    local.span,
+                    "non-binding `let` without a type annotation",
+                    None,
+                    "consider adding a type annotation or removing the `let` keyword",
                 );
             }
         }

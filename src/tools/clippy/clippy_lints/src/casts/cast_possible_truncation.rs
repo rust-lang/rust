@@ -168,7 +168,7 @@ pub(super) fn check(
     let suggestion = format!("{cast_to_snip}::try_from({name_of_cast_from})");
 
     span_lint_and_then(cx, CAST_POSSIBLE_TRUNCATION, expr.span, &msg, |diag| {
-        diag.help("if this is intentional allow the lint with `#[allow(clippy::cast_precision_loss)]` ...");
+        diag.help("if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...");
         diag.span_suggestion_with_style(
             expr.span,
             "... or use `try_from` and handle the error accordingly",
