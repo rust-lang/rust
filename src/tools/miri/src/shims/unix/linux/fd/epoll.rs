@@ -32,16 +32,8 @@ impl FileDescriptor for Epoll {
         "epoll"
     }
 
-    fn as_epoll_handle<'tcx>(&mut self) -> InterpResult<'tcx, &mut Epoll> {
-        Ok(self)
-    }
-
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(self.clone()))
-    }
-
-    fn is_tty(&self) -> bool {
-        false
     }
 
     fn close<'tcx>(

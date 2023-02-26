@@ -28,10 +28,6 @@ impl FileDescriptor for Event {
         Ok(Box::new(Event { val: self.val.clone() }))
     }
 
-    fn is_tty(&self) -> bool {
-        false
-    }
-
     fn close<'tcx>(
         self: Box<Self>,
         _communicate_allowed: bool,
