@@ -24,6 +24,13 @@ lint_for_loops_over_fallibles =
     .use_while_let = to check pattern in a loop use `while let`
     .use_question_mark = consider unwrapping the `Result` with `?` to iterate over its contents
 
+lint_map_unit_fn = `Iterator::map` call that discard the iterator's values
+    .note = `Iterator::map`, like many of the methods on `Iterator`, gets executed lazily, meaning that its effects won't be visible until it is iterated
+    .function_label = this function returns `()`, which is likely not what you wanted
+    .argument_label = called `Iterator::map` with callable that returns `()`
+    .map_label = after this call to map, the resulting iterator is `impl Iterator<Item = ()>`, which means the only information carried by the iterator is the number of items
+    .suggestion = you might have meant to use `Iterator::for_each`
+
 lint_non_binding_let_on_sync_lock =
     non-binding let on a synchronization lock
 

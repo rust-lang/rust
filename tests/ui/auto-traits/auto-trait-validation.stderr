@@ -12,7 +12,7 @@ error[E0568]: auto traits cannot have super traits or lifetime bounds
 LL | auto trait Bound : Copy {}
    |            -----^^^^^^^ help: remove the super traits or lifetime bounds
    |            |
-   |            auto trait cannot have super traits or lifetime bounds
+   |            auto traits cannot have super traits or lifetime bounds
 
 error[E0568]: auto traits cannot have super traits or lifetime bounds
   --> $DIR/auto-trait-validation.rs:9:25
@@ -20,7 +20,7 @@ error[E0568]: auto traits cannot have super traits or lifetime bounds
 LL | auto trait LifetimeBound : 'static {}
    |            -------------^^^^^^^^^^ help: remove the super traits or lifetime bounds
    |            |
-   |            auto trait cannot have super traits or lifetime bounds
+   |            auto traits cannot have super traits or lifetime bounds
 
 error[E0380]: auto traits cannot have associated items
   --> $DIR/auto-trait-validation.rs:11:25
@@ -29,7 +29,7 @@ LL | auto trait MyTrait { fn foo() {} }
    |            -------   ---^^^-----
    |            |         |
    |            |         help: remove these associated items
-   |            auto trait cannot have associated items
+   |            auto traits cannot have associated items
 
 error: aborting due to 4 previous errors
 

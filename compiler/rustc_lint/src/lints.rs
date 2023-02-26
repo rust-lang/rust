@@ -748,6 +748,22 @@ impl AddToDiagnostic for HiddenUnicodeCodepointsDiagSub {
     }
 }
 
+// map_unit_fn.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_map_unit_fn)]
+#[note]
+pub struct MappingToUnit {
+    #[label(lint_function_label)]
+    pub function_label: Span,
+    #[label(lint_argument_label)]
+    pub argument_label: Span,
+    #[label(lint_map_label)]
+    pub map_label: Span,
+    #[suggestion(style = "verbose", code = "{replace}", applicability = "maybe-incorrect")]
+    pub suggestion: Span,
+    pub replace: String,
+}
+
 // internal.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_default_hash_types)]
