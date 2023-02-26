@@ -41,7 +41,7 @@
 //! - u.visit_with(visitor)
 //! ```
 
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::{intern::Interned, sync::Lrc};
 use rustc_index::{Idx, IndexVec};
 use std::fmt;
 use std::marker::PhantomData;
@@ -248,5 +248,11 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<[T]> {
 impl<I: Interner, T: TypeVisitable<I>, Ix: Idx> TypeVisitable<I> for IndexVec<Ix, T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
+    }
+}
+
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Interned<'_, T> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        (**self).visit_with(visitor)
     }
 }

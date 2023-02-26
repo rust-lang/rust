@@ -45,7 +45,10 @@
 //! - u.fold_with(folder)
 //! ```
 
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::{
+    intern::{Internable, Interned},
+    sync::Lrc,
+};
 use rustc_index::{Idx, IndexVec};
 use std::marker::PhantomData;
 use std::mem;
@@ -401,5 +404,11 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Vec<T> {
 impl<I: Interner, T: TypeFoldable<I>, Ix: Idx> TypeFoldable<I> for IndexVec<Ix, T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.raw.try_fold_with(folder).map(IndexVec::from_raw)
+    }
+}
+
+impl<'a, I: Interner, T: Internable<'a, I> + TypeFoldable<I>> TypeFoldable<I> for Interned<'a, T> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        (*self).clone().try_fold_with(folder).map(|v| v.intern(folder.interner()))
     }
 }

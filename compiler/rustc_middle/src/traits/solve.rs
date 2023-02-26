@@ -3,9 +3,7 @@ use rustc_data_structures::intern::Interned;
 use crate::infer::canonical::{CanonicalVarValues, QueryRegionConstraints};
 use crate::traits::query::NoSolution;
 use crate::traits::{Canonical, DefiningAnchor};
-use crate::ty::{
-    self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitor,
-};
+use crate::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 
 use super::BuiltinImplSource;
@@ -112,7 +110,7 @@ pub struct PredefinedOpaquesData<'tcx> {
     pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, HashStable)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, HashStable, TypeVisitable, TypeFoldable)]
 pub struct PredefinedOpaques<'tcx>(pub(crate) Interned<'tcx, PredefinedOpaquesData<'tcx>>);
 
 impl<'tcx> std::ops::Deref for PredefinedOpaques<'tcx> {
@@ -135,7 +133,7 @@ pub type CanonicalResponse<'tcx> = Canonical<'tcx, Response<'tcx>>;
 /// solver, merge the two responses again.
 pub type QueryResult<'tcx> = Result<CanonicalResponse<'tcx>, NoSolution>;
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, HashStable)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct ExternalConstraints<'tcx>(pub(crate) Interned<'tcx, ExternalConstraintsData<'tcx>>);
 
 impl<'tcx> std::ops::Deref for ExternalConstraints<'tcx> {
@@ -152,52 +150,6 @@ pub struct ExternalConstraintsData<'tcx> {
     // FIXME: implement this.
     pub region_constraints: QueryRegionConstraints<'tcx>,
     pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
-}
-
-// FIXME: Having to clone `region_constraints` for folding feels bad and
-// probably isn't great wrt performance.
-//
-// Not sure how to fix this, maybe we should also intern `opaque_types` and
-// `region_constraints` here or something.
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(folder.interner().mk_external_constraints((*self).clone().try_fold_with(folder)?))
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
-        &self,
-        visitor: &mut V,
-    ) -> std::ops::ControlFlow<V::BreakTy> {
-        (**self).visit_with(visitor)
-    }
-}
-
-// FIXME: Having to clone `region_constraints` for folding feels bad and
-// probably isn't great wrt performance.
-//
-// Not sure how to fix this, maybe we should also intern `opaque_types` and
-// `region_constraints` here or something.
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(folder.interner().mk_predefined_opaques_in_body((*self).clone().try_fold_with(folder)?))
-    }
-}
-
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
-    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
-        &self,
-        visitor: &mut V,
-    ) -> std::ops::ControlFlow<V::BreakTy> {
-        (**self).visit_with(visitor)
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable)]
