@@ -519,6 +519,50 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         cx.type_vector(elem_ty, vec_len)
     }
 
+    fn gather<'a, 'gcc, 'tcx>(default: RValue<'gcc>, pointers: RValue<'gcc>, mask: RValue<'gcc>, pointer_count: usize, bx: &mut Builder<'a, 'gcc, 'tcx>, in_len: u64, underlying_ty: Ty<'tcx>, invert: bool) -> RValue<'gcc> {
+        let vector_type =
+            if pointer_count > 1 {
+                bx.context.new_vector_type(bx.usize_type, in_len)
+            }
+            else {
+                vector_ty(bx, underlying_ty, in_len)
+            };
+        let elem_type = vector_type.dyncast_vector().expect("vector type").get_element_type();
+
+        let mut values = vec![];
+        for i in 0..in_len {
+            let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
+            let int = bx.context.new_vector_access(None, pointers, index).to_rvalue();
+
+            let ptr_type = elem_type.make_pointer();
+            let ptr = bx.context.new_bitcast(None, int, ptr_type);
+            let value = ptr.dereference(None).to_rvalue();
+            values.push(value);
+        }
+
+        let vector = bx.context.new_rvalue_from_vector(None, vector_type, &values);
+
+        let mut mask_types = vec![];
+        let mut mask_values = vec![];
+        for i in 0..in_len {
+            let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
+            mask_types.push(bx.context.new_field(None, bx.i32_type, "m")); // TODO: choose an integer based on the size of the vector element type.
+            let mask_value = bx.context.new_vector_access(None, mask, index).to_rvalue();
+            let masked = bx.context.new_rvalue_from_int(bx.i32_type, in_len as i32) & mask_value;
+            let value = index + masked;
+            mask_values.push(value);
+        }
+        let mask_type = bx.context.new_struct_type(None, "mask_type", &mask_types);
+        let mask = bx.context.new_struct_constructor(None, mask_type.as_type(), None, &mask_values);
+
+        if invert {
+            bx.shuffle_vector(vector, default, mask)
+        }
+        else {
+            bx.shuffle_vector(default, vector, mask)
+        }
+    }
+
     if name == sym::simd_gather {
         // simd_gather(values: <N x T>, pointers: <N x *_ T>,
         //             mask: <N x i{M}>) -> <N x T>
@@ -616,6 +660,108 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
             }
         }
 
+        return Ok(gather(args[0].immediate(), args[1].immediate(), args[2].immediate(), pointer_count, bx, in_len, underlying_ty, false));
+    }
+
+    if name == sym::simd_scatter {
+        // simd_scatter(values: <N x T>, pointers: <N x *mut T>,
+        //             mask: <N x i{M}>) -> ()
+        // * N: number of elements in the input vectors
+        // * T: type of the element to load
+        // * M: any integer width is supported, will be truncated to i1
+
+        // All types must be simd vector types
+        require_simd!(in_ty, "first");
+        require_simd!(arg_tys[1], "second");
+        require_simd!(arg_tys[2], "third");
+
+        // Of the same length:
+        let (element_len1, _) = arg_tys[1].simd_size_and_type(bx.tcx());
+        let (element_len2, _) = arg_tys[2].simd_size_and_type(bx.tcx());
+        require!(
+            in_len == element_len1,
+            "expected {} argument with length {} (same as input type `{}`), \
+            found `{}` with length {}",
+            "second",
+            in_len,
+            in_ty,
+            arg_tys[1],
+            element_len1
+        );
+        require!(
+            in_len == element_len2,
+            "expected {} argument with length {} (same as input type `{}`), \
+            found `{}` with length {}",
+            "third",
+            in_len,
+            in_ty,
+            arg_tys[2],
+            element_len2
+        );
+
+        // This counts how many pointers
+        fn ptr_count(t: Ty<'_>) -> usize {
+            match t.kind() {
+                ty::RawPtr(p) => 1 + ptr_count(p.ty),
+                _ => 0,
+            }
+        }
+
+        // Non-ptr type
+        fn non_ptr(t: Ty<'_>) -> Ty<'_> {
+            match t.kind() {
+                ty::RawPtr(p) => non_ptr(p.ty),
+                _ => t,
+            }
+        }
+
+        // The second argument must be a simd vector with an element type that's a pointer
+        // to the element type of the first argument
+        let (_, element_ty0) = arg_tys[0].simd_size_and_type(bx.tcx());
+        let (_, element_ty1) = arg_tys[1].simd_size_and_type(bx.tcx());
+        let (_, element_ty2) = arg_tys[2].simd_size_and_type(bx.tcx());
+        let (pointer_count, underlying_ty) = match element_ty1.kind() {
+            ty::RawPtr(p) if p.ty == in_elem && p.mutbl == hir::Mutability::Mut => {
+                (ptr_count(element_ty1), non_ptr(element_ty1))
+            }
+            _ => {
+                require!(
+                    false,
+                    "expected element type `{}` of second argument `{}` \
+                    to be a pointer to the element type `{}` of the first \
+                        argument `{}`, found `{}` != `*mut {}`",
+                        element_ty1,
+                        arg_tys[1],
+                        in_elem,
+                        in_ty,
+                        element_ty1,
+                        in_elem
+                );
+                unreachable!();
+            }
+        };
+        assert!(pointer_count > 0);
+        assert_eq!(pointer_count - 1, ptr_count(element_ty0));
+        assert_eq!(underlying_ty, non_ptr(element_ty0));
+
+        // The element type of the third argument must be a signed integer type of any width:
+        match element_ty2.kind() {
+            ty::Int(_) => (),
+            _ => {
+                require!(
+                    false,
+                    "expected element type `{}` of third argument `{}` \
+                    be a signed integer type",
+                    element_ty2,
+                    arg_tys[2]
+                );
+            }
+        }
+
+        let result = gather(args[0].immediate(), args[1].immediate(), args[2].immediate(), pointer_count, bx, in_len, underlying_ty, true);
+
+        let pointers = args[1].immediate();
+
         let vector_type =
             if pointer_count > 1 {
                 bx.context.new_vector_type(bx.usize_type, in_len)
@@ -625,37 +771,17 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
             };
         let elem_type = vector_type.dyncast_vector().expect("vector type").get_element_type();
 
-        let mut values = vec![];
-        let pointers = args[1].immediate();
         for i in 0..in_len {
-            let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
+            let index = bx.context.new_rvalue_from_int(bx.int_type, i as i32);
+            let value = bx.context.new_vector_access(None, result, index);
+
             let int = bx.context.new_vector_access(None, pointers, index).to_rvalue();
-
             let ptr_type = elem_type.make_pointer();
-
             let ptr = bx.context.new_bitcast(None, int, ptr_type);
-            let value = ptr.dereference(None).to_rvalue();
-            values.push(value);
+            bx.llbb().add_assignment(None, ptr.dereference(None), value);
         }
 
-        let vector = bx.context.new_rvalue_from_vector(None, vector_type, &values);
-        let default = args[0].immediate();
-        let mask = args[2].immediate();
-
-        let mut mask_types = vec![];
-        let mut mask_values = vec![];
-        for i in 0..in_len {
-            let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
-            mask_types.push(bx.context.new_field(None, bx.i32_type, "m")); // TODO: choose an integer based on the size of the vector element type.
-            let mask_value = bx.context.new_vector_access(None, mask, index).to_rvalue();
-            let masked = bx.context.new_rvalue_from_int(bx.i32_type, in_len as i32) & mask_value;
-            let value = index + masked;
-            mask_values.push(value);
-        }
-        let mask_type = bx.context.new_struct_type(None, "mask_type", &mask_types);
-        let mask = bx.context.new_struct_constructor(None, mask_type.as_type(), None, &mask_values);
-
-        return Ok(bx.shuffle_vector(default, vector, mask));
+        return Ok(bx.context.new_rvalue_zero(bx.i32_type));
     }
 
     arith_binary! {
