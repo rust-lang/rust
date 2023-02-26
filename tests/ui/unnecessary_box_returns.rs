@@ -5,7 +5,7 @@ trait Bar {
     fn baz(&self) -> Box<usize>;
 }
 
-struct Foo {}
+pub struct Foo {}
 
 impl Bar for Foo {
     // don't lint: this is a problem with the trait, not the implementation
@@ -27,7 +27,12 @@ fn boxed_usize() -> Box<usize> {
 }
 
 // lint
-fn boxed_foo() -> Box<Foo> {
+fn _boxed_foo() -> Box<Foo> {
+    Box::new(Foo {})
+}
+
+// don't lint: this is exported
+pub fn boxed_foo() -> Box<Foo> {
     Box::new(Foo {})
 }
 

@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::LocalDefId, FnDecl, FnRetTy, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -32,48 +32,66 @@ declare_clippy_lint! {
     pedantic,
     "Needlessly returning a Box"
 }
-declare_lint_pass!(UnnecessaryBoxReturns => [UNNECESSARY_BOX_RETURNS]);
 
-fn check_fn_decl(cx: &LateContext<'_>, decl: &FnDecl<'_>, def_id: LocalDefId) {
-    let FnRetTy::Return(return_ty_hir) = &decl.output else { return };
+pub struct UnnecessaryBoxReturns {
+    avoid_breaking_exported_api: bool,
+}
 
-    let return_ty = cx
-        .tcx
-        .erase_late_bound_regions(cx.tcx.fn_sig(def_id).skip_binder())
-        .output();
+impl_lint_pass!(UnnecessaryBoxReturns => [UNNECESSARY_BOX_RETURNS]);
 
-    if !return_ty.is_box() {
-        return;
+impl UnnecessaryBoxReturns {
+    pub fn new(avoid_breaking_exported_api: bool) -> Self {
+        Self {
+            avoid_breaking_exported_api,
+        }
     }
 
-    let boxed_ty = return_ty.boxed_ty();
+    fn check_fn_decl(&mut self, cx: &LateContext<'_>, decl: &FnDecl<'_>, def_id: LocalDefId) {
+        // we don't want to tell someone to break an exported function if they ask us not to
+        if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id) {
+            return;
+        }
 
-    // it's sometimes useful to return Box<T> if T is unsized, so don't lint those
-    if boxed_ty.is_sized(cx.tcx, cx.param_env) {
-        span_lint_and_then(
-            cx,
-            UNNECESSARY_BOX_RETURNS,
-            return_ty_hir.span,
-            format!("boxed return of the sized type `{boxed_ty}`").as_str(),
-            |diagnostic| {
-                diagnostic.span_suggestion(
-                    return_ty_hir.span,
-                    "try",
-                    boxed_ty.to_string(),
-                    // the return value and function callers also needs to
-                    // be changed, so this can't be MachineApplicable
-                    Applicability::Unspecified,
-                );
-                diagnostic.help("changing this also requires a change to the return expressions in this function");
-            },
-        );
+        let FnRetTy::Return(return_ty_hir) = &decl.output else { return };
+
+        let return_ty = cx
+            .tcx
+            .erase_late_bound_regions(cx.tcx.fn_sig(def_id).skip_binder())
+            .output();
+
+        if !return_ty.is_box() {
+            return;
+        }
+
+        let boxed_ty = return_ty.boxed_ty();
+
+        // it's sometimes useful to return Box<T> if T is unsized, so don't lint those
+        if boxed_ty.is_sized(cx.tcx, cx.param_env) {
+            span_lint_and_then(
+                cx,
+                UNNECESSARY_BOX_RETURNS,
+                return_ty_hir.span,
+                format!("boxed return of the sized type `{boxed_ty}`").as_str(),
+                |diagnostic| {
+                    diagnostic.span_suggestion(
+                        return_ty_hir.span,
+                        "try",
+                        boxed_ty.to_string(),
+                        // the return value and function callers also needs to
+                        // be changed, so this can't be MachineApplicable
+                        Applicability::Unspecified,
+                    );
+                    diagnostic.help("changing this also requires a change to the return expressions in this function");
+                },
+            );
+        }
     }
 }
 
 impl LateLintPass<'_> for UnnecessaryBoxReturns {
     fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &TraitItem<'_>) {
         let TraitItemKind::Fn(signature, _) = &item.kind else { return };
-        check_fn_decl(cx, signature.decl, item.owner_id.def_id);
+        self.check_fn_decl(cx, signature.decl, item.owner_id.def_id);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::ImplItem<'_>) {
@@ -86,11 +104,11 @@ impl LateLintPass<'_> for UnnecessaryBoxReturns {
         }
 
         let ImplItemKind::Fn(signature, ..) = &item.kind else { return };
-        check_fn_decl(cx, signature.decl, item.owner_id.def_id);
+        self.check_fn_decl(cx, signature.decl, item.owner_id.def_id);
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         let ItemKind::Fn(signature, ..) = &item.kind else { return };
-        check_fn_decl(cx, signature.decl, item.owner_id.def_id);
+        self.check_fn_decl(cx, signature.decl, item.owner_id.def_id);
     }
 }
