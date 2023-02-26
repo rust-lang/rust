@@ -202,6 +202,12 @@ flag](codegen-options/index.md#extra-filename). The files are written to the
 current directory unless the [`--out-dir` flag](#option-out-dir) is used. Each
 emission type may also specify the output filename with the form `KIND=PATH`,
 which takes precedence over the `-o` flag.
+Specifying `-o -` or `--emit KIND=-` asks rustc to emit to stdout.
+Text output types (`asm`, `dep-info`, `llvm-ir` and `mir`) can be written to
+stdout despite it being a tty or not. This will result in an error if any
+binary output type is written to stdout that is a tty.
+This will also result in an error if multiple output types
+would be written to stdout, because they would be all mixed together.
 
 [LLVM bitcode]: https://llvm.org/docs/BitCodeFormat.html
 [LLVM IR]: https://llvm.org/docs/LangRef.html
