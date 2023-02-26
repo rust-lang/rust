@@ -171,13 +171,6 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             .unwrap();
 
             let output = spawn_and_wait_with_input(run_cmd, input);
-            // Make sure `[codegen mono items] start` doesn't poison the diff
-            let output = output
-                .lines()
-                .filter(|line| !line.contains("codegen mono items"))
-                .chain(Some("")) // This just adds the trailing newline
-                .collect::<Vec<&str>>()
-                .join("\r\n");
 
             let output_matches = expected.lines().eq(output.lines());
             if !output_matches {
