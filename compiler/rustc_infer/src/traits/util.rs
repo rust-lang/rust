@@ -116,11 +116,11 @@ pub fn elaborate_predicates_with_span<'tcx>(
 
 pub fn elaborate_obligations<'tcx>(
     tcx: TyCtxt<'tcx>,
-    mut obligations: Vec<PredicateObligation<'tcx>>,
+    obligations: Vec<PredicateObligation<'tcx>>,
 ) -> Elaborator<'tcx> {
-    let mut visited = PredicateSet::new(tcx);
-    obligations.retain(|obligation| visited.insert(obligation.predicate));
-    Elaborator { stack: obligations, visited }
+    let mut elaborator = Elaborator { stack: Vec::new(), visited: PredicateSet::new(tcx) };
+    elaborator.extend_deduped(obligations);
+    elaborator
 }
 
 fn predicate_obligation<'tcx>(
@@ -132,6 +132,15 @@ fn predicate_obligation<'tcx>(
 }
 
 impl<'tcx> Elaborator<'tcx> {
+    fn extend_deduped(&mut self, obligations: impl IntoIterator<Item = PredicateObligation<'tcx>>) {
+        // Only keep those bounds that we haven't already seen.
+        // This is necessary to prevent infinite recursion in some
+        // cases. One common case is when people define
+        // `trait Sized: Sized { }` rather than `trait Sized { }`.
+        // let visited = &mut self.visited;
+        self.stack.extend(obligations.into_iter().filter(|o| self.visited.insert(o.predicate)));
+    }
+
     pub fn filter_to_traits(self) -> FilterToTraits<Self> {
         FilterToTraits::new(self)
     }
@@ -172,15 +181,7 @@ impl<'tcx> Elaborator<'tcx> {
                         )
                     });
                 debug!(?data, ?obligations, "super_predicates");
-
-                // Only keep those bounds that we haven't already seen.
-                // This is necessary to prevent infinite recursion in some
-                // cases. One common case is when people define
-                // `trait Sized: Sized { }` rather than `trait Sized { }`.
-                let visited = &mut self.visited;
-                let obligations = obligations.filter(|o| visited.insert(o.predicate));
-
-                self.stack.extend(obligations);
+                self.extend_deduped(obligations);
             }
             ty::PredicateKind::WellFormed(..) => {
                 // Currently, we do not elaborate WF predicates,
@@ -237,10 +238,9 @@ impl<'tcx> Elaborator<'tcx> {
                     return;
                 }
 
-                let visited = &mut self.visited;
                 let mut components = smallvec![];
                 push_outlives_components(tcx, ty_max, &mut components);
-                self.stack.extend(
+                self.extend_deduped(
                     components
                         .into_iter()
                         .filter_map(|component| match component {
@@ -280,7 +280,6 @@ impl<'tcx> Elaborator<'tcx> {
                         .map(|predicate_kind| {
                             bound_predicate.rebind(predicate_kind).to_predicate(tcx)
                         })
-                        .filter(|&predicate| visited.insert(predicate))
                         .map(|predicate| {
                             predicate_obligation(
                                 predicate,

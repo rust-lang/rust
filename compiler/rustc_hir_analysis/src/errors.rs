@@ -329,8 +329,9 @@ pub(crate) struct WhereClauseOnMain {
 #[diag(hir_analysis_track_caller_on_main)]
 pub(crate) struct TrackCallerOnMain {
     #[primary_span]
+    #[suggestion(applicability = "maybe-incorrect", code = "")]
     pub span: Span,
-    #[label]
+    #[label(hir_analysis_track_caller_on_main)]
     pub annotated: Span,
 }
 
