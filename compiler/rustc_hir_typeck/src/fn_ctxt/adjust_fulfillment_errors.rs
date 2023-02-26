@@ -4,7 +4,7 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::{
-    self, ir::TypeVisitor, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    self, DefIdTree, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 use rustc_span::{self, Span};
 use rustc_trait_selection::traits;
@@ -243,7 +243,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         true
     }
 
-    fn find_ambiguous_parameter_in<T: TypeVisitable<'tcx>>(
+    fn find_ambiguous_parameter_in<T: TypeVisitable<TyCtxt<'tcx>>>(
         &self,
         item_def_id: DefId,
         t: T,
@@ -312,7 +312,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // same rules that check_expr_struct uses for macro hygiene.
                 if self.tcx.adjust_ident(expr_field.ident, variant_def_id) == field.ident(self.tcx)
                 {
-                    return Some((expr_field.expr, self.tcx.type_of(field.did)));
+                    return Some((expr_field.expr, self.tcx.type_of(field.did).subst_identity()));
                 }
             }
         }
@@ -339,7 +339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         receiver: Option<&'tcx hir::Expr<'tcx>>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> bool {
-        let ty = self.tcx.type_of(def_id);
+        let ty = self.tcx.type_of(def_id).subst_identity();
         if !ty.is_fn() {
             return false;
         }
@@ -477,14 +477,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // This is the "trait" (meaning, the predicate "proved" by this `impl`) which provides the `Self` type we care about.
         // For the purposes of this function, we hope that it is a `struct` type, and that our current `expr` is a literal of
         // that struct type.
-        let impl_trait_self_ref = if self.tcx.is_trait_alias(obligation.impl_def_id) {
+        let impl_trait_self_ref = if self.tcx.is_trait_alias(obligation.impl_or_alias_def_id) {
             self.tcx.mk_trait_ref(
-                obligation.impl_def_id,
-                ty::InternalSubsts::identity_for_item(self.tcx, obligation.impl_def_id),
+                obligation.impl_or_alias_def_id,
+                ty::InternalSubsts::identity_for_item(self.tcx, obligation.impl_or_alias_def_id),
             )
         } else {
             self.tcx
-                .impl_trait_ref(obligation.impl_def_id)
+                .impl_trait_ref(obligation.impl_or_alias_def_id)
                 .map(|impl_def| impl_def.skip_binder())
                 // It is possible that this is absent. In this case, we make no progress.
                 .ok_or(expr)?
@@ -494,7 +494,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let impl_self_ty: Ty<'tcx> = impl_trait_self_ref.self_ty();
 
         let impl_predicates: ty::GenericPredicates<'tcx> =
-            self.tcx.predicates_of(obligation.impl_def_id);
+            self.tcx.predicates_of(obligation.impl_or_alias_def_id);
         let Some(impl_predicate_index) = obligation.impl_def_predicate_index else {
             // We don't have the index, so we can only guess.
             return Err(expr);
@@ -548,6 +548,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty::GenericArgKind::Type(in_ty) = in_ty.unpack() else {
             return Err(expr);
         };
+
+        if let (
+            hir::ExprKind::AddrOf(_borrow_kind, _borrow_mutability, borrowed_expr),
+            ty::Ref(_ty_region, ty_ref_type, _ty_mutability),
+        ) = (&expr.kind, in_ty.kind())
+        {
+            // We can "drill into" the borrowed expression.
+            return self.blame_specific_part_of_expr_corresponding_to_generic_param(
+                param,
+                borrowed_expr,
+                (*ty_ref_type).into(),
+            );
+        }
 
         if let (hir::ExprKind::Tup(expr_elements), ty::Tuple(in_ty_elements)) =
             (&expr.kind, in_ty.kind())

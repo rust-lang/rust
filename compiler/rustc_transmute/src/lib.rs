@@ -117,7 +117,7 @@ mod rustc {
             c: Const<'tcx>,
         ) -> Option<Self> {
             use rustc_middle::ty::ScalarInt;
-            use rustc_middle::ty::TypeVisitable;
+            use rustc_middle::ty::TypeVisitableExt;
             use rustc_span::symbol::sym;
 
             let c = c.eval(tcx, param_env);

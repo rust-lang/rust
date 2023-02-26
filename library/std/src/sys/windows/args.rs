@@ -270,7 +270,7 @@ pub(crate) fn make_bat_command_line(
     // It is necessary to surround the command in an extra pair of quotes,
     // hence the trailing quote here. It will be closed after all arguments
     // have been added.
-    let mut cmd: Vec<u16> = "cmd.exe /c \"".encode_utf16().collect();
+    let mut cmd: Vec<u16> = "cmd.exe /d /c \"".encode_utf16().collect();
 
     // Push the script name surrounded by its quote pair.
     cmd.push(b'"' as u16);
@@ -290,6 +290,15 @@ pub(crate) fn make_bat_command_line(
     // reconstructed by the batch script by default.
     for arg in args {
         cmd.push(' ' as u16);
+        // Make sure to always quote special command prompt characters, including:
+        // * Characters `cmd /?` says require quotes.
+        // * `%` for environment variables, as in `%TMP%`.
+        // * `|<>` pipe/redirect characters.
+        const SPECIAL: &[u8] = b"\t &()[]{}^=;!'+,`~%|<>";
+        let force_quotes = match arg {
+            Arg::Regular(arg) if !force_quotes => arg.bytes().iter().any(|c| SPECIAL.contains(c)),
+            _ => force_quotes,
+        };
         append_arg(&mut cmd, arg, force_quotes)?;
     }
 

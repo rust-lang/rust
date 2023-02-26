@@ -1024,7 +1024,7 @@ impl<'tcx> fmt::Debug for RegionAndOrigin<'tcx> {
 impl<'tcx> LexicalRegionResolutions<'tcx> {
     fn normalize<T>(&self, tcx: TyCtxt<'tcx>, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         tcx.fold_regions(value, |r, _db| self.resolve_region(tcx, r))
     }
@@ -1046,7 +1046,7 @@ impl<'tcx> LexicalRegionResolutions<'tcx> {
             ty::ReVar(rid) => match self.values[rid] {
                 VarValue::Empty(_) => r,
                 VarValue::Value(r) => r,
-                VarValue::ErrorValue => tcx.mk_re_error_misc(),
+                VarValue::ErrorValue => tcx.lifetimes.re_static,
             },
             _ => r,
         };

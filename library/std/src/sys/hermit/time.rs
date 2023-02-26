@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use crate::cmp::Ordering;
+use crate::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::sys::hermit::abi;
 use crate::sys::hermit::abi::timespec;
 use crate::sys::hermit::abi::{CLOCK_MONOTONIC, CLOCK_REALTIME, NSEC_PER_SEC};
@@ -102,55 +103,122 @@ impl Hash for Timespec {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct Instant {
-    t: Timespec,
-}
+pub struct Instant(Timespec);
 
 impl Instant {
     pub fn now() -> Instant {
         let mut time: Timespec = Timespec::zero();
         let _ = unsafe { abi::clock_gettime(CLOCK_MONOTONIC, &mut time.t as *mut timespec) };
 
-        Instant { t: time }
+        Instant(time)
+    }
+
+    #[stable(feature = "time2", since = "1.8.0")]
+    pub fn elapsed(&self) -> Duration {
+        Instant::now() - *self
+    }
+
+    pub fn duration_since(&self, earlier: Instant) -> Duration {
+        self.checked_duration_since(earlier).unwrap_or_default()
+    }
+
+    pub fn checked_duration_since(&self, earlier: Instant) -> Option<Duration> {
+        self.checked_sub_instant(&earlier)
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        self.t.sub_timespec(&other.t).ok()
+        self.0.sub_timespec(&other.0).ok()
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant { t: self.t.checked_add_duration(other)? })
+        Some(Instant(self.0.checked_add_duration(other)?))
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant { t: self.t.checked_sub_duration(other)? })
+        Some(Instant(self.0.checked_sub_duration(other)?))
+    }
+
+    pub fn checked_add(&self, duration: Duration) -> Option<Instant> {
+        self.0.checked_add_duration(&duration).map(Instant)
+    }
+
+    pub fn checked_sub(&self, duration: Duration) -> Option<Instant> {
+        self.0.checked_sub_duration(&duration).map(Instant)
+    }
+}
+
+impl Add<Duration> for Instant {
+    type Output = Instant;
+
+    /// # Panics
+    ///
+    /// This function may panic if the resulting point in time cannot be represented by the
+    /// underlying data structure. See [`Instant::checked_add`] for a version without panic.
+    fn add(self, other: Duration) -> Instant {
+        self.checked_add(other).expect("overflow when adding duration to instant")
+    }
+}
+
+impl AddAssign<Duration> for Instant {
+    fn add_assign(&mut self, other: Duration) {
+        *self = *self + other;
+    }
+}
+
+impl Sub<Duration> for Instant {
+    type Output = Instant;
+
+    fn sub(self, other: Duration) -> Instant {
+        self.checked_sub(other).expect("overflow when subtracting duration from instant")
+    }
+}
+
+impl SubAssign<Duration> for Instant {
+    fn sub_assign(&mut self, other: Duration) {
+        *self = *self - other;
+    }
+}
+
+impl Sub<Instant> for Instant {
+    type Output = Duration;
+
+    /// Returns the amount of time elapsed from another instant to this one,
+    /// or zero duration if that instant is later than this one.
+    ///
+    /// # Panics
+    ///
+    /// Previous rust versions panicked when `other` was later than `self`. Currently this
+    /// method saturates. Future versions may reintroduce the panic in some circumstances.
+    /// See [Monotonicity].
+    ///
+    /// [Monotonicity]: Instant#monotonicity
+    fn sub(self, other: Instant) -> Duration {
+        self.duration_since(other)
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct SystemTime {
-    t: Timespec,
-}
+pub struct SystemTime(Timespec);
 
-pub const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
+pub const UNIX_EPOCH: SystemTime = SystemTime(Timespec::zero());
 
 impl SystemTime {
     pub fn now() -> SystemTime {
         let mut time: Timespec = Timespec::zero();
         let _ = unsafe { abi::clock_gettime(CLOCK_REALTIME, &mut time.t as *mut timespec) };
 
-        SystemTime { t: time }
+        SystemTime(time)
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
-        self.t.sub_timespec(&other.t)
+        self.0.sub_timespec(&other.0)
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
-        Some(SystemTime { t: self.t.checked_add_duration(other)? })
+        Some(SystemTime(self.0.checked_add_duration(other)?))
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
-        Some(SystemTime { t: self.t.checked_sub_duration(other)? })
+        Some(SystemTime(self.0.checked_sub_duration(other)?))
     }
 }

@@ -3,7 +3,7 @@ use rustc_index::bit_set::HybridBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
-use rustc_middle::ty::{Ty, TypeVisitable};
+use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
 use rustc_trait_selection::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -477,7 +477,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     /// points `live_at`.
     fn add_use_live_facts_for(
         &mut self,
-        value: impl TypeVisitable<'tcx>,
+        value: impl TypeVisitable<TyCtxt<'tcx>>,
         live_at: &IntervalSet<PointIndex>,
     ) {
         debug!("add_use_live_facts_for(value={:?})", value);
@@ -542,7 +542,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     fn make_all_regions_live(
         elements: &RegionValueElements,
         typeck: &mut TypeChecker<'_, 'tcx>,
-        value: impl TypeVisitable<'tcx>,
+        value: impl TypeVisitable<TyCtxt<'tcx>>,
         live_at: &IntervalSet<PointIndex>,
     ) {
         debug!("make_all_regions_live(value={:?})", value);

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Q: T3` is not satisfied
-  --> $DIR/blame-trait-error-spans-on-exprs.rs:79:60
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:81:60
    |
 LL |     want(Wrapper { value: Burrito { spicy: false, filling: q } });
    |     ---- required by a bound introduced by this call       ^ the trait `T3` is not implemented for `Q`
@@ -29,7 +29,7 @@ LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
 error[E0277]: the trait bound `Q: T3` is not satisfied
-  --> $DIR/blame-trait-error-spans-on-exprs.rs:83:84
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:85:84
    |
 LL |     want(Wrapper { value: BurritoKinds::SmallBurrito { spicy: true, small_filling: q } });
    |     ---- required by a bound introduced by this call                               ^ the trait `T3` is not implemented for `Q`
@@ -59,7 +59,7 @@ LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
 error[E0277]: the trait bound `Q: T3` is not satisfied
-  --> $DIR/blame-trait-error-spans-on-exprs.rs:87:39
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:89:39
    |
 LL |     want(Wrapper { value: Taco(false, q) });
    |     ----                              ^ the trait `T3` is not implemented for `Q`
@@ -91,7 +91,7 @@ LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
 error[E0277]: the trait bound `Q: T3` is not satisfied
-  --> $DIR/blame-trait-error-spans-on-exprs.rs:91:27
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:93:27
    |
 LL |     want(Wrapper { value: TacoKinds::OneTaco(false, q) });
    |     ----                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `T3` is not implemented for `Q`
@@ -123,7 +123,7 @@ LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
 error[E0277]: the trait bound `Q: T3` is not satisfied
-  --> $DIR/blame-trait-error-spans-on-exprs.rs:95:74
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:97:74
    |
 LL |     want(Wrapper { value: GenericBurrito { spiciness: NotSpicy, filling: q } });
    |     ---- required by a bound introduced by this call                     ^ the trait `T3` is not implemented for `Q`
@@ -153,7 +153,7 @@ LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
 error[E0277]: the trait bound `Q: T2` is not satisfied
-  --> $DIR/blame-trait-error-spans-on-exprs.rs:99:14
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:101:14
    |
 LL |     want((3, q));
    |     ----     ^ the trait `T2` is not implemented for `Q`
@@ -178,7 +178,7 @@ LL | fn example<Q: T2>(q: Q) {
    |             ++++
 
 error[E0277]: the trait bound `Q: T3` is not satisfied
-  --> $DIR/blame-trait-error-spans-on-exprs.rs:103:31
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:105:31
    |
 LL |     want(Wrapper { value: (3, q) });
    |     ----                      ^ the trait `T3` is not implemented for `Q`
@@ -210,7 +210,7 @@ LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
 error[E0277]: the trait bound `Q: T3` is not satisfied
-  --> $DIR/blame-trait-error-spans-on-exprs.rs:107:15
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:109:15
    |
 LL |     want(((3, q), 5));
    |     ----      ^ the trait `T3` is not implemented for `Q`
@@ -242,7 +242,7 @@ LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
 error[E0277]: the trait bound `Q: T1` is not satisfied
-  --> $DIR/blame-trait-error-spans-on-exprs.rs:110:49
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:112:49
    |
 LL |     want(DoubleWrapper { item: Wrapper { value: q } });
    |     ----                                        ^ the trait `T1` is not implemented for `Q`
@@ -267,7 +267,7 @@ LL | fn example<Q: T1>(q: Q) {
    |             ++++
 
 error[E0277]: the trait bound `Q: T1` is not satisfied
-  --> $DIR/blame-trait-error-spans-on-exprs.rs:113:88
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:115:88
    |
 LL |     want(DoubleWrapper { item: Wrapper { value: DoubleWrapper { item: Wrapper { value: q } } } });
    |     ---- required by a bound introduced by this call                                   ^ the trait `T1` is not implemented for `Q`
@@ -292,7 +292,7 @@ LL | fn example<Q: T1>(q: Q) {
    |             ++++
 
 error[E0277]: the trait bound `Q: T3` is not satisfied
-  --> $DIR/blame-trait-error-spans-on-exprs.rs:117:27
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:119:27
    |
 LL |     want(Wrapper { value: AliasBurrito { spiciness: q, filling: q } });
    |     ----                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `T3` is not implemented for `Q`
@@ -324,7 +324,7 @@ LL | fn example<Q: T3>(q: Q) {
    |             ++++
 
 error[E0277]: the trait bound `Q: T1` is not satisfied
-  --> $DIR/blame-trait-error-spans-on-exprs.rs:120:35
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:122:35
    |
 LL |     want(Two { a: Two { a: (), b: q }, b: () });
    |     ----                          ^ the trait `T1` is not implemented for `Q`
@@ -349,7 +349,7 @@ LL | fn example<Q: T1>(q: Q) {
    |             ++++
 
 error[E0277]: the trait bound `Q: T1` is not satisfied
-  --> $DIR/blame-trait-error-spans-on-exprs.rs:126:59
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:128:59
    |
 LL |     want(
    |     ---- required by a bound introduced by this call
@@ -375,6 +375,38 @@ help: consider restricting type parameter `Q`
 LL | fn example<Q: T1>(q: Q) {
    |             ++++
 
-error: aborting due to 13 previous errors
+error[E0277]: the trait bound `Q: T3` is not satisfied
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:133:44
+   |
+LL |     want(&Burrito { spicy: false, filling: q });
+   |     ----                                   ^ the trait `T3` is not implemented for `Q`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `Burrito<Q>` to implement `T2`
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:22:13
+   |
+LL | impl<A: T3> T2 for Burrito<A> {}
+   |         --  ^^     ^^^^^^^^^^
+   |         |
+   |         unsatisfied trait bound introduced here
+note: required for `&Burrito<Q>` to implement `T1`
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:74:17
+   |
+LL | impl<'a, T: T2> T1 for &'a T {}
+   |             --  ^^     ^^^^^
+   |             |
+   |             unsatisfied trait bound introduced here
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error-spans-on-exprs.rs:53:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q`
+   |
+LL | fn example<Q: T3>(q: Q) {
+   |             ++++
+
+error: aborting due to 14 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

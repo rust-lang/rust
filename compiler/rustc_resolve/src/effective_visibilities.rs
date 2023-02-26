@@ -1,4 +1,4 @@
-use crate::{NameBinding, NameBindingKind, Resolver, ResolverTree};
+use crate::{NameBinding, NameBindingKind, Resolver};
 use rustc_ast::ast;
 use rustc_ast::visit;
 use rustc_ast::visit::Visitor;
@@ -7,8 +7,8 @@ use rustc_ast::EnumDef;
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_ID;
+use rustc_middle::middle::privacy::Level;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility};
-use rustc_middle::middle::privacy::{IntoDefIdTree, Level};
 use rustc_middle::ty::{DefIdTree, Visibility};
 use std::mem;
 
@@ -67,13 +67,6 @@ impl Resolver<'_, '_> {
     }
 }
 
-impl<'a, 'b, 'tcx> IntoDefIdTree for &'b mut Resolver<'a, 'tcx> {
-    type Tree = &'b Resolver<'a, 'tcx>;
-    fn tree(self) -> Self::Tree {
-        self
-    }
-}
-
 impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
     /// Fills the `Resolver::effective_visibilities` table with public & exported items
     /// For now, this doesn't resolve macros (FIXME) and cannot resolve Impl, as we
@@ -107,11 +100,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
         for (binding, eff_vis) in visitor.import_effective_visibilities.iter() {
             let NameBindingKind::Import { import, .. } = binding.kind else { unreachable!() };
             if let Some(node_id) = import.id() {
-                r.effective_visibilities.update_eff_vis(
-                    r.local_def_id(node_id),
-                    eff_vis,
-                    ResolverTree(&r.untracked),
-                )
+                r.effective_visibilities.update_eff_vis(r.local_def_id(node_id), eff_vis, r.tcx)
             }
         }
 
@@ -167,26 +156,28 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
         let nominal_vis = binding.vis.expect_local();
         let private_vis = self.cheap_private_vis(parent_id);
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);
+        let tcx = self.r.tcx;
         self.changed |= self.import_effective_visibilities.update(
             binding,
             nominal_vis,
-            |r| (private_vis.unwrap_or_else(|| r.private_vis_import(binding)), r),
+            || private_vis.unwrap_or_else(|| self.r.private_vis_import(binding)),
             inherited_eff_vis,
             parent_id.level(),
-            &mut *self.r,
+            tcx,
         );
     }
 
     fn update_def(&mut self, def_id: LocalDefId, nominal_vis: Visibility, parent_id: ParentId<'a>) {
         let private_vis = self.cheap_private_vis(parent_id);
         let inherited_eff_vis = self.effective_vis_or_private(parent_id);
+        let tcx = self.r.tcx;
         self.changed |= self.def_effective_visibilities.update(
             def_id,
             nominal_vis,
-            |r| (private_vis.unwrap_or_else(|| r.private_vis_def(def_id)), r),
+            || private_vis.unwrap_or_else(|| self.r.private_vis_def(def_id)),
             inherited_eff_vis,
             parent_id.level(),
-            &mut *self.r,
+            tcx,
         );
     }
 

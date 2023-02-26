@@ -12,7 +12,7 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
 pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
-pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
+pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
@@ -35,6 +35,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
@@ -43,10 +44,9 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
-use rustc_session::cstore::Untracked;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{ExpnId, Span};
+use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
 use rustc_type_ir::WithCachedTypeInfo;
@@ -146,10 +146,6 @@ mod structural_impls;
 mod sty;
 mod typeck_results;
 
-pub mod ir {
-    pub use super::{fold::ir::*, visit::ir::*};
-}
-
 // Data types
 
 pub type RegisteredTools = FxHashSet<Ident>;
@@ -157,7 +153,6 @@ pub type RegisteredTools = FxHashSet<Ident>;
 pub struct ResolverOutputs {
     pub global_ctxt: ResolverGlobalCtxt,
     pub ast_lowering: ResolverAstLowering,
-    pub untracked: Untracked,
 }
 
 #[derive(Debug)]
@@ -552,6 +547,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(Clause::RegionOutlives(_))
             | PredicateKind::Clause(Clause::TypeOutlives(_))
             | PredicateKind::Clause(Clause::Projection(_))
+            | PredicateKind::Clause(Clause::ConstArgHasType(..))
             | PredicateKind::AliasEq(..)
             | PredicateKind::ObjectSafe(_)
             | PredicateKind::ClosureKind(_, _, _)
@@ -590,6 +586,10 @@ pub enum Clause<'tcx> {
     /// `where <T as TraitRef>::Name == X`, approximately.
     /// See the `ProjectionPredicate` struct for details.
     Projection(ProjectionPredicate<'tcx>),
+
+    /// Ensures that a const generic argument to a parameter `const N: u8`
+    /// is of type `u8`.
+    ConstArgHasType(Const<'tcx>, Ty<'tcx>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
@@ -757,7 +757,7 @@ impl<'tcx> Predicate<'tcx> {
         let new = EarlyBinder(shifted_pred).subst(tcx, trait_ref.skip_binder().substs);
         // 3) ['x] + ['b] -> ['x, 'b]
         let bound_vars =
-            tcx.mk_bound_variable_kinds(trait_bound_vars.iter().chain(pred_bound_vars));
+            tcx.mk_bound_variable_kinds_from_iter(trait_bound_vars.iter().chain(pred_bound_vars));
         tcx.reuse_or_mk_predicate(self, ty::Binder::bind_with_vars(new, bound_vars))
     }
 }
@@ -918,14 +918,17 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Term<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         Ok(self.unpack().try_fold_with(folder)?.pack())
     }
 }
 
-impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.unpack().visit_with(visitor)
     }
 }
@@ -1193,6 +1196,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(Clause::Trait(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Projection(..))
+            | PredicateKind::Clause(Clause::ConstArgHasType(..))
             | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
@@ -1213,6 +1217,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(Clause::Projection(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(Clause::Trait(..))
+            | PredicateKind::Clause(Clause::ConstArgHasType(..))
             | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
@@ -1233,6 +1238,7 @@ impl<'tcx> Predicate<'tcx> {
         match predicate.skip_binder() {
             PredicateKind::Clause(Clause::TypeOutlives(data)) => Some(predicate.rebind(data)),
             PredicateKind::Clause(Clause::Trait(..))
+            | PredicateKind::Clause(Clause::ConstArgHasType(..))
             | PredicateKind::Clause(Clause::Projection(..))
             | PredicateKind::AliasEq(..)
             | PredicateKind::Subtype(..)
@@ -1353,7 +1359,7 @@ pub struct OpaqueHiddenType<'tcx> {
 }
 
 impl<'tcx> OpaqueHiddenType<'tcx> {
-    pub fn report_mismatch(&self, other: &Self, tcx: TyCtxt<'tcx>) {
+    pub fn report_mismatch(&self, other: &Self, tcx: TyCtxt<'tcx>) -> ErrorGuaranteed {
         // Found different concrete types for the opaque type.
         let sub_diag = if self.span == other.span {
             TypeMismatchReason::ConflictType { span: self.span }
@@ -1365,7 +1371,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
             other_ty: other.ty,
             other_span: other.span,
             sub: sub_diag,
-        });
+        })
     }
 
     #[instrument(level = "debug", skip(tcx), ret)]
@@ -1620,8 +1626,8 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn try_fold_with<F: ty::fold::FallibleTypeFolder<'tcx>>(
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
+    fn try_fold_with<F: ty::fold::FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
@@ -1633,8 +1639,8 @@ impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ParamEnv<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.caller_bounds().visit_with(visitor)?;
         self.reveal().visit_with(visitor)
     }
@@ -1759,7 +1765,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// `where Box<u32>: Copy`, which are clearly never
     /// satisfiable. We generally want to behave as if they were true,
     /// although the surrounding function is never reachable.
-    pub fn and<T: TypeVisitable<'tcx>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
+    pub fn and<T: TypeVisitable<TyCtxt<'tcx>>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
         match self.reveal() {
             Reveal::UserFacing => ParamEnvAnd { param_env: self, value },
 
@@ -2017,7 +2023,7 @@ impl<'tcx> FieldDef {
     /// Returns the type of this field. The resulting type is not normalized. The `subst` is
     /// typically obtained via the second field of [`TyKind::Adt`].
     pub fn ty(&self, tcx: TyCtxt<'tcx>, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
-        tcx.bound_type_of(self.did).subst(tcx, subst)
+        tcx.type_of(self.did).subst(tcx, subst)
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
@@ -2198,7 +2204,7 @@ impl<'tcx> TyCtxt<'tcx> {
         Some(Ident::new(def, span))
     }
 
-    pub fn opt_associated_item(self, def_id: DefId) -> Option<&'tcx AssocItem> {
+    pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
         if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
             Some(self.associated_item(def_id))
         } else {
@@ -2436,8 +2442,23 @@ impl<'tcx> TyCtxt<'tcx> {
         None
     }
 
-    /// If the given `DefId` belongs to a trait that was automatically derived, returns `true`.
-    pub fn is_builtin_derive(self, def_id: DefId) -> bool {
+    /// Check if the given `DefId` is `#\[automatically_derived\], *and*
+    /// whether it was produced by expanding a builtin derive macro.
+    pub fn is_builtin_derived(self, def_id: DefId) -> bool {
+        if self.is_automatically_derived(def_id)
+            && let Some(def_id) = def_id.as_local()
+            && let outer = self.def_span(def_id).ctxt().outer_expn_data()
+            && matches!(outer.kind, ExpnKind::Macro(MacroKind::Derive, _))
+            && self.has_attr(outer.macro_def_id.unwrap(), sym::rustc_builtin_macro)
+        {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Check if the given `DefId` is `#\[automatically_derived\]`.
+    pub fn is_automatically_derived(self, def_id: DefId) -> bool {
         self.has_attr(def_id, sym::automatically_derived)
     }
 

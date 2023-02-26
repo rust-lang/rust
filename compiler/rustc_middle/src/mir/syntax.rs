@@ -671,6 +671,12 @@ pub enum TerminatorKind<'tcx> {
     /// as parameters, and `None` for the destination. Keep in mind that the `cleanup` path is not
     /// necessarily executed even in the case of a panic, for example in `-C panic=abort`. If the
     /// assertion does not fail, execution continues at the specified basic block.
+    ///
+    /// When overflow checking is disabled and this is run-time MIR (as opposed to compile-time MIR
+    /// that is used for CTFE), the following variants of this terminator behave as `goto target`:
+    /// - `OverflowNeg(..)`,
+    /// - `Overflow(op, ..)` if op is a "checkable" operation (add, sub, mul, shl, shr, but NOT
+    /// div or rem).
     Assert {
         cond: Operand<'tcx>,
         expected: bool,
@@ -1102,10 +1108,6 @@ pub enum Rvalue<'tcx> {
     BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
     /// Same as `BinaryOp`, but yields `(T, bool)` with a `bool` indicating an error condition.
-    ///
-    /// When overflow checking is disabled and we are generating run-time code, the error condition
-    /// is false. Otherwise, and always during CTFE, the error condition is determined as described
-    /// below.
     ///
     /// For addition, subtraction, and multiplication on integers the error condition is set when
     /// the infinite precision result would be unequal to the actual result.

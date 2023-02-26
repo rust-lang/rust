@@ -15,7 +15,7 @@ error[E0282]: type annotations needed
   --> $DIR/issue-42234-unknown-receiver-type.rs:15:10
    |
 LL |         .sum::<_>()
-   |          ^^^ cannot infer type of the type parameter `S` declared on the associated function `sum`
+   |          ^^^ cannot infer type of the type parameter `S` declared on the method `sum`
    |
 help: consider specifying the generic argument
    |

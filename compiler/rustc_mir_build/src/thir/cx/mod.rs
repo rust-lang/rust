@@ -133,9 +133,8 @@ impl<'tcx> Cx<'tcx> {
                     bug!("closure expr does not have closure type: {:?}", closure_ty);
                 };
 
-                let bound_vars = self.tcx.mk_bound_variable_kinds(std::iter::once(
-                    ty::BoundVariableKind::Region(ty::BrEnv),
-                ));
+                let bound_vars =
+                    self.tcx.mk_bound_variable_kinds(&[ty::BoundVariableKind::Region(ty::BrEnv)]);
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                     kind: ty::BrEnv,
@@ -193,7 +192,7 @@ impl<'tcx> Cx<'tcx> {
                 let va_list_did = self.tcx.require_lang_item(LangItem::VaList, Some(param.span));
 
                 self.tcx
-                    .bound_type_of(va_list_did)
+                    .type_of(va_list_did)
                     .subst(self.tcx, &[self.tcx.lifetimes.re_erased.into()])
             } else {
                 fn_sig.inputs()[index]

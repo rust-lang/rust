@@ -74,3 +74,5 @@ toolchain = { path = "./crates/toolchain", version = "0.0.0" }
 tt = { path = "./crates/tt", version = "0.0.0" }
 vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
+# non-local crates
+smallvec = { version = "1.10.0", features = ["const_new", "union", "const_generics"] }

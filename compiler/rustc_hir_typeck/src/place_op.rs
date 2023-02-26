@@ -91,10 +91,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
         let reported = err.emit();
-        Some((
-            self.tcx.ty_error_with_guaranteed(reported),
-            self.tcx.ty_error_with_guaranteed(reported),
-        ))
+        Some((self.tcx.ty_error(reported), self.tcx.ty_error(reported)))
     }
 
     /// To type-check `base_expr[index_expr]`, we progressively autoderef

@@ -23,6 +23,6 @@ SOURCE_FILE
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
-error 22: expected a loop
+error 22: expected a loop or block
 error 27: expected type
 error 27: expected `{`

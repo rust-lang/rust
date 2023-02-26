@@ -17,8 +17,8 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, DefIdTree, FnSig, IntTy, List, ParamEnv, Predicate,
-    PredicateKind, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, ir::TypeVisitor, UintTy,
-    VariantDef, VariantDiscr,
+    PredicateKind, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
+    VariantDef, VariantDiscr, TypeVisitableExt,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::Ident;
@@ -237,7 +237,7 @@ pub fn implements_trait_with_env<'tcx>(
         kind: TypeVariableOriginKind::MiscVariable,
         span: DUMMY_SP,
     };
-    let ty_params = tcx.mk_substs(
+    let ty_params = tcx.mk_substs_from_iter(
         ty_params
             .into_iter()
             .map(|arg| arg.unwrap_or_else(|| infcx.next_ty_var(orig).into())),
@@ -780,7 +780,7 @@ impl core::ops::Add<u32> for EnumValue {
 #[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
 pub fn read_explicit_enum_value(tcx: TyCtxt<'_>, id: DefId) -> Option<EnumValue> {
     if let Ok(ConstValue::Scalar(Scalar::Int(value))) = tcx.const_eval_poly(id) {
-        match tcx.type_of(id).kind() {
+        match tcx.type_of(id).subst_identity().kind() {
             ty::Int(_) => Some(EnumValue::Signed(match value.size().bytes() {
                 1 => i128::from(value.assert_bits(Size::from_bytes(1)) as u8 as i8),
                 2 => i128::from(value.assert_bits(Size::from_bytes(2)) as u16 as i16),
@@ -847,7 +847,7 @@ pub fn for_each_top_level_late_bound_region<B>(
                 ControlFlow::Continue(())
             }
         }
-        fn visit_binder<T: TypeVisitable<'tcx>>(&mut self, t: &Binder<'tcx, T>) -> ControlFlow<Self::BreakTy> {
+        fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &Binder<'tcx, T>) -> ControlFlow<Self::BreakTy> {
             self.index += 1;
             let res = t.super_visit_with(self);
             self.index -= 1;
@@ -903,7 +903,7 @@ pub fn variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<&'tcx Va
             let var_id = cx.tcx.parent(id);
             Some(cx.tcx.adt_def(cx.tcx.parent(var_id)).variant_with_id(var_id))
         },
-        Res::SelfCtor(id) => Some(cx.tcx.type_of(id).ty_adt_def().unwrap().non_enum_variant()),
+        Res::SelfCtor(id) => Some(cx.tcx.type_of(id).subst_identity().ty_adt_def().unwrap().non_enum_variant()),
         _ => None,
     }
 }
@@ -1065,7 +1065,7 @@ pub fn make_projection<'tcx>(
         tcx,
         container_id,
         assoc_ty,
-        tcx.mk_substs(substs.into_iter().map(Into::into)),
+        tcx.mk_substs_from_iter(substs.into_iter().map(Into::into)),
     )
 }
 

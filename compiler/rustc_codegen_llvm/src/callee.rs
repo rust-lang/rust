@@ -13,7 +13,7 @@ use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
 
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
-use rustc_middle::ty::{self, Instance, TypeVisitable};
+use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.

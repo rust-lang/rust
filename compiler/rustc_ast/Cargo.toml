@@ -15,5 +15,5 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-thin-vec = "0.2.9"
+thin-vec = "0.2.12"
 tracing = "0.1"

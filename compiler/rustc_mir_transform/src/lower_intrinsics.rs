@@ -107,9 +107,29 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         }
                     }
                     sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
-                        // The checked binary operations are not suitable target for lowering here,
-                        // since their semantics depend on the value of overflow-checks flag used
-                        // during codegen. Issue #35310.
+                        if let Some(target) = *target {
+                            let lhs;
+                            let rhs;
+                            {
+                                let mut args = args.drain(..);
+                                lhs = args.next().unwrap();
+                                rhs = args.next().unwrap();
+                            }
+                            let bin_op = match intrinsic_name {
+                                sym::add_with_overflow => BinOp::Add,
+                                sym::sub_with_overflow => BinOp::Sub,
+                                sym::mul_with_overflow => BinOp::Mul,
+                                _ => bug!("unexpected intrinsic"),
+                            };
+                            block.statements.push(Statement {
+                                source_info: terminator.source_info,
+                                kind: StatementKind::Assign(Box::new((
+                                    *destination,
+                                    Rvalue::CheckedBinaryOp(bin_op, Box::new((lhs, rhs))),
+                                ))),
+                            });
+                            terminator.kind = TerminatorKind::Goto { target };
+                        }
                     }
                     sym::size_of | sym::min_align_of => {
                         if let Some(target) = *target {

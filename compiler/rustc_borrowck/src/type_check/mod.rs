@@ -30,7 +30,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::{SubstsRef, UserSubsts};
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, Dynamic,
     OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
@@ -64,7 +64,7 @@ use crate::{
     region_infer::TypeTest,
     type_check::free_region_relations::{CreateResult, UniversalRegionRelations},
     universal_regions::{DefiningTy, UniversalRegions},
-    Upvar,
+    BorrowckInferCtxt, Upvar,
 };
 
 macro_rules! span_mirbug {
@@ -123,7 +123,7 @@ mod relate_tys;
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `elements` -- MIR region map
 pub(crate) fn type_check<'mir, 'tcx>(
-    infcx: &InferCtxt<'tcx>,
+    infcx: &BorrowckInferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexVec<Promoted, Body<'tcx>>,
@@ -239,7 +239,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
                     decl.hidden_type.span,
                     &format!("could not resolve {:#?}", hidden_type.ty.kind()),
                 );
-                hidden_type.ty = infcx.tcx.ty_error_with_guaranteed(reported);
+                hidden_type.ty = infcx.tcx.ty_error(reported);
             }
 
             (opaque_type_key, (hidden_type, decl.origin))
@@ -402,7 +402,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     );
                 }
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
-                let unnormalized_ty = tcx.type_of(static_def_id);
+                let unnormalized_ty = tcx.type_of(static_def_id).subst_identity();
                 let normalized_ty = self.cx.normalize(unnormalized_ty, locations);
                 let literal_ty = constant.literal.ty().builtin_deref(true).unwrap().ty;
 
@@ -529,12 +529,12 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         for elem in place.projection.iter() {
             if place_ty.variant_index.is_none() {
-                if place_ty.ty.references_error() {
+                if let Err(guar) = place_ty.ty.error_reported() {
                     assert!(self.errors_reported);
-                    return PlaceTy::from_ty(self.tcx().ty_error());
+                    return PlaceTy::from_ty(self.tcx().ty_error(guar));
                 }
             }
-            place_ty = self.sanitize_projection(place_ty, elem, place, location);
+            place_ty = self.sanitize_projection(place_ty, elem, place, location, context);
         }
 
         if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
@@ -630,12 +630,14 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn sanitize_projection(
         &mut self,
         base: PlaceTy<'tcx>,
         pi: PlaceElem<'tcx>,
         place: &Place<'tcx>,
         location: Location,
+        context: PlaceContext,
     ) -> PlaceTy<'tcx> {
         debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, place);
         let tcx = self.tcx();
@@ -713,8 +715,11 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 match self.field_ty(place, base, field, location) {
                     Ok(ty) => {
                         let ty = self.cx.normalize(ty, location);
-                        if let Err(terr) = self.cx.eq_types(
+                        debug!(?fty, ?ty);
+
+                        if let Err(terr) = self.cx.relate_types(
                             ty,
+                            self.get_ambient_variance(context),
                             fty,
                             location.to_locations(),
                             ConstraintCategory::Boring,
@@ -743,9 +748,10 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 let ty = self.sanitize_type(place, ty);
                 let ty = self.cx.normalize(ty, location);
                 self.cx
-                    .eq_types(
-                        base.ty,
+                    .relate_types(
                         ty,
+                        self.get_ambient_variance(context),
+                        base.ty,
                         location.to_locations(),
                         ConstraintCategory::TypeAnnotation,
                     )
@@ -757,7 +763,22 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
     fn error(&mut self) -> Ty<'tcx> {
         self.errors_reported = true;
-        self.tcx().ty_error()
+        self.tcx().ty_error_misc()
+    }
+
+    fn get_ambient_variance(&self, context: PlaceContext) -> ty::Variance {
+        use rustc_middle::mir::visit::NonMutatingUseContext::*;
+        use rustc_middle::mir::visit::NonUseContext::*;
+
+        match context {
+            PlaceContext::MutatingUse(_) => ty::Invariant,
+            PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
+            PlaceContext::NonMutatingUse(
+                Inspect | Copy | Move | SharedBorrow | ShallowBorrow | UniqueBorrow | AddressOf
+                | Projection,
+            ) => ty::Covariant,
+            PlaceContext::NonUse(AscribeUserTy) => ty::Covariant,
+        }
     }
 
     fn field_ty(
@@ -845,7 +866,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 /// way, it accrues region constraints -- these can later be used by
 /// NLL region checking.
 struct TypeChecker<'a, 'tcx> {
-    infcx: &'a InferCtxt<'tcx>,
+    infcx: &'a BorrowckInferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     last_span: Span,
     body: &'a Body<'tcx>,
@@ -998,7 +1019,7 @@ impl Locations {
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn new(
-        infcx: &'a InferCtxt<'tcx>,
+        infcx: &'a BorrowckInferCtxt<'a, 'tcx>,
         body: &'a Body<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
@@ -1335,11 +1356,34 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 };
                 let (sig, map) = tcx.replace_late_bound_regions(sig, |br| {
-                    self.infcx.next_region_var(LateBoundRegion(
-                        term.source_info.span,
-                        br.kind,
-                        LateBoundRegionConversionTime::FnCall,
-                    ))
+                    use crate::renumber::{BoundRegionInfo, RegionCtxt};
+                    use rustc_span::Symbol;
+
+                    let region_ctxt_fn = || {
+                        let reg_info = match br.kind {
+                            ty::BoundRegionKind::BrAnon(_, Some(span)) => {
+                                BoundRegionInfo::Span(span)
+                            }
+                            ty::BoundRegionKind::BrAnon(..) => {
+                                BoundRegionInfo::Name(Symbol::intern("anon"))
+                            }
+                            ty::BoundRegionKind::BrNamed(_, name) => BoundRegionInfo::Name(name),
+                            ty::BoundRegionKind::BrEnv => {
+                                BoundRegionInfo::Name(Symbol::intern("env"))
+                            }
+                        };
+
+                        RegionCtxt::LateBound(reg_info)
+                    };
+
+                    self.infcx.next_region_var(
+                        LateBoundRegion(
+                            term.source_info.span,
+                            br.kind,
+                            LateBoundRegionConversionTime::FnCall,
+                        ),
+                        region_ctxt_fn,
+                    )
                 });
                 debug!(?sig);
                 // IMPORTANT: We have to prove well formed for the function signature before
@@ -2589,7 +2633,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             DefKind::InlineConst => substs.as_inline_const().parent_substs(),
             other => bug!("unexpected item {:?}", other),
         };
-        let parent_substs = tcx.mk_substs(parent_substs.iter());
+        let parent_substs = tcx.mk_substs(parent_substs);
 
         assert_eq!(typeck_root_substs.len(), parent_substs.len());
         if let Err(_) = self.eq_substs(

@@ -9,7 +9,7 @@ use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, Linkage, Visibility};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::print::characteristic_def_id_of_type;
-use rustc_middle::ty::{self, visit::TypeVisitable, DefIdTree, InstanceDef, TyCtxt};
+use rustc_middle::ty::{self, visit::TypeVisitableExt, DefIdTree, InstanceDef, TyCtxt};
 use rustc_span::symbol::Symbol;
 
 use super::PartitioningCx;
@@ -308,7 +308,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                     let impl_self_ty = tcx.subst_and_normalize_erasing_regions(
                         instance.substs,
                         ty::ParamEnv::reveal_all(),
-                        tcx.type_of(impl_def_id),
+                        tcx.type_of(impl_def_id).skip_binder(),
                     );
                     if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
                         return Some(def_id);

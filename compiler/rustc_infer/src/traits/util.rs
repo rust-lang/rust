@@ -158,7 +158,7 @@ impl<'tcx> Elaborator<'tcx> {
                                 traits::ImplDerivedObligation(Box::new(
                                     traits::ImplDerivedObligationCause {
                                         derived,
-                                        impl_def_id: data.def_id(),
+                                        impl_or_alias_def_id: data.def_id(),
                                         impl_def_predicate_index: Some(index),
                                         span,
                                     },
@@ -296,6 +296,9 @@ impl<'tcx> Elaborator<'tcx> {
             ty::PredicateKind::Ambiguous => {}
             ty::PredicateKind::AliasEq(..) => {
                 // No
+            }
+            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(..)) => {
+                // Nothing to elaborate
             }
         }
     }

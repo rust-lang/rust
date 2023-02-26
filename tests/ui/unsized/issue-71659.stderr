@@ -8,7 +8,7 @@ note: required by a bound in `Cast::cast`
   --> $DIR/issue-71659.rs:19:15
    |
 LL |     fn cast<T: ?Sized>(&self) -> &T
-   |        ---- required by a bound in this
+   |        ---- required by a bound in this associated function
 LL |     where
 LL |         Self: CastTo<T>,
    |               ^^^^^^^^^ required by this bound in `Cast::cast`

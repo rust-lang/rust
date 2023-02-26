@@ -41,8 +41,8 @@ use std::iter;
 
 mod generics_of;
 mod item_bounds;
-mod lifetimes;
 mod predicates_of;
+mod resolve_bound_vars;
 mod type_of;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -53,7 +53,7 @@ fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
 }
 
 pub fn provide(providers: &mut Providers) {
-    lifetimes::provide(providers);
+    resolve_bound_vars::provide(providers);
     *providers = Providers {
         opt_const_param_of: type_of::opt_const_param_of,
         type_of: type_of::type_of,
@@ -499,7 +499,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                 }
                 _ => {}
             }
-            self.tcx().ty_error_with_guaranteed(err.emit())
+            self.tcx().ty_error(err.emit())
         }
     }
 
@@ -905,7 +905,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtDef<'_> {
         }
         _ => bug!(),
     };
-    tcx.alloc_adt_def(def_id.to_def_id(), kind, variants, repr)
+    tcx.mk_adt_def(def_id.to_def_id(), kind, variants, repr)
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
@@ -1143,8 +1143,8 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<ty::PolyFnSig<'_>> 
         }
 
         Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor().is_some() => {
-            let ty = tcx.type_of(tcx.hir().get_parent_item(hir_id));
-            let inputs = data.fields().iter().map(|f| tcx.type_of(f.def_id));
+            let ty = tcx.type_of(tcx.hir().get_parent_item(hir_id)).subst_identity();
+            let inputs = data.fields().iter().map(|f| tcx.type_of(f.def_id).subst_identity());
             ty::Binder::dummy(tcx.mk_fn_sig(
                 inputs,
                 ty,
@@ -1345,7 +1345,7 @@ fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::EarlyBinder<ty::
         .of_trait
         .as_ref()
         .map(|ast_trait_ref| {
-            let selfty = tcx.type_of(def_id);
+            let selfty = tcx.type_of(def_id).subst_identity();
             icx.astconv().instantiate_mono_trait_ref(
                 ast_trait_ref,
                 selfty,

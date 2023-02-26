@@ -79,7 +79,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(span));
         let region = fcx.next_region_var(RegionVariableOrigin::MiscVariable(span));
 
-        tcx.bound_type_of(va_list_did).subst(tcx, &[region.into()])
+        tcx.type_of(va_list_did).subst(tcx, &[region.into()])
     });
 
     // Add formal parameters.
@@ -264,7 +264,7 @@ fn check_lang_start_fn<'tcx>(
         let fn_generic = generics.param_at(0, tcx);
         let generic_ty = tcx.mk_ty_param(fn_generic.index, fn_generic.name);
         let expected_fn_sig =
-            tcx.mk_fn_sig([].iter(), &generic_ty, false, hir::Unsafety::Normal, Abi::Rust);
+            tcx.mk_fn_sig([], generic_ty, false, hir::Unsafety::Normal, Abi::Rust);
         let expected_ty = tcx.mk_fn_ptr(Binder::dummy(expected_fn_sig));
 
         // we emit the same error to suggest changing the arg no matter what's wrong with the arg

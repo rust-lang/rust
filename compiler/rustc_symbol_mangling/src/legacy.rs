@@ -3,7 +3,7 @@ use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::ty::print::{PrettyPrinter, Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::common::record_time;
 
 use std::fmt::{self, Write};
@@ -26,7 +26,7 @@ pub(super) fn mangle<'tcx>(
         let key = tcx.def_key(ty_def_id);
         match key.disambiguated_data.data {
             DefPathData::TypeNs(_) | DefPathData::ValueNs(_) => {
-                instance_ty = tcx.type_of(ty_def_id);
+                instance_ty = tcx.type_of(ty_def_id).subst_identity();
                 debug!(?instance_ty);
                 break;
             }

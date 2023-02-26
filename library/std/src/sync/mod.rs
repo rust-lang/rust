@@ -186,7 +186,7 @@ mod condvar;
 mod lazy_lock;
 mod mpmc;
 mod mutex;
-mod once;
+pub(crate) mod once;
 mod once_lock;
 mod poison;
 mod remutex;

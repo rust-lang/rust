@@ -12,7 +12,7 @@ note: required by a bound in `with_closure`
   --> $DIR/expect-infer-var-appearing-twice.rs:2:14
    |
 LL | fn with_closure<F, A>(_: F)
-   |    ------------ required by a bound in this
+   |    ------------ required by a bound in this function
 LL |     where F: FnOnce(A, A)
    |              ^^^^^^^^^^^^ required by this bound in `with_closure`
 

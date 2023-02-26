@@ -263,7 +263,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
         let resolved = self.resolve_upvar(cx);
         let builder = resolved.as_ref().unwrap_or(self);
         let PlaceBase::Local(local) = builder.base else { return None };
-        let projection = cx.tcx.intern_place_elems(&builder.projection);
+        let projection = cx.tcx.mk_place_elems(&builder.projection);
         Some(Place { local, projection })
     }
 
@@ -692,7 +692,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
                         let fake_borrow_temp =
                             self.local_decls.push(LocalDecl::new(fake_borrow_ty, expr_span));
-                        let projection = tcx.intern_place_elems(&base_place.projection[..idx]);
+                        let projection = tcx.mk_place_elems(&base_place.projection[..idx]);
                         self.cfg.push_assign(
                             block,
                             source_info,

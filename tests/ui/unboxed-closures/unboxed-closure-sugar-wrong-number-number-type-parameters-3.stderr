@@ -1,4 +1,4 @@
-error[E0107]: this trait takes 3 generic arguments but 1 generic argument was supplied
+error[E0107]: trait takes 3 generic arguments but 1 generic argument was supplied
   --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters-3.rs:5:16
    |
 LL | fn foo(_: &dyn Three())

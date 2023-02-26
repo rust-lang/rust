@@ -9,7 +9,6 @@ doctest = false
 
 [dependencies]
 rustc_arena = { path = "../rustc_arena" }
-tracing = "0.1"
 rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_attr = { path = "../rustc_attr" }
@@ -27,3 +26,5 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_lint = { path = "../rustc_lint" }
 rustc_type_ir = { path = "../rustc_type_ir" }
 rustc_feature = { path = "../rustc_feature" }
+thin-vec = "0.2.12"
+tracing = "0.1"

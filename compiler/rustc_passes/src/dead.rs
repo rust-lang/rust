@@ -259,7 +259,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// for discussion).
     fn should_ignore_item(&mut self, def_id: DefId) -> bool {
         if let Some(impl_of) = self.tcx.impl_of_method(def_id) {
-            if !self.tcx.has_attr(impl_of, sym::automatically_derived) {
+            if !self.tcx.is_automatically_derived(impl_of) {
                 return false;
             }
 
@@ -315,7 +315,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     //// This is done to handle the case where, for example, the static
                     //// method of a private type is used, but the type itself is never
                     //// called directly.
-                    let self_ty = self.tcx.type_of(item);
+                    let self_ty = self.tcx.type_of(item).subst_identity();
                     match *self_ty.kind() {
                         ty::Adt(def, _) => self.check_def_id(def.did()),
                         ty::Foreign(did) => self.check_def_id(did),
@@ -394,6 +394,9 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                 if let ty::Adt(adt, _) = self.typeck_results().expr_ty(expr).kind() {
                     self.mark_as_used_if_union(*adt, fields);
                 }
+            }
+            hir::ExprKind::Closure(cls) => {
+                self.insert_def_id(cls.def_id.to_def_id());
             }
             _ => (),
         }
@@ -654,7 +657,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         if self.live_symbols.contains(&field.did.expect_local()) {
             return ShouldWarnAboutField::No;
         }
-        let field_type = self.tcx.type_of(field.did);
+        let field_type = self.tcx.type_of(field.did).subst_identity();
         if field_type.is_phantom_data() {
             return ShouldWarnAboutField::No;
         }
@@ -691,7 +694,7 @@ impl<'tcx> DeadVisitor<'tcx> {
             })
             .collect();
 
-        let descr = tcx.def_kind(first_id).descr(first_id.to_def_id());
+        let descr = tcx.def_descr(first_id.to_def_id());
         let num = dead_codes.len();
         let multiple = num > 6;
         let name_list = names.into();
@@ -703,7 +706,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         };
 
         let parent_info = if let Some(parent_item) = parent_item {
-            let parent_descr = tcx.def_kind(parent_item).descr(parent_item.to_def_id());
+            let parent_descr = tcx.def_descr(parent_item.to_def_id());
             Some(ParentInfo {
                 num,
                 descr,

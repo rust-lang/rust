@@ -295,7 +295,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
             if let Some(list) = attr.meta_item_list() {
                 for item in list.iter() {
                     if item.has_name(sym::address) {
-                        codegen_fn_attrs.no_sanitize |= SanitizerSet::ADDRESS;
+                        codegen_fn_attrs.no_sanitize |=
+                            SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS;
                     } else if item.has_name(sym::cfi) {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI;
                     } else if item.has_name(sym::kcfi) {

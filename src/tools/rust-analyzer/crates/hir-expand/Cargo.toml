@@ -21,7 +21,7 @@ itertools = "0.10.5"
 hashbrown = { version = "0.12.1", features = [
     "inline-more",
 ], default-features = false }
-smallvec = { version = "1.10.0", features = ["const_new"] }
+smallvec.workspace = true
 
 # local deps
 stdx.workspace = true

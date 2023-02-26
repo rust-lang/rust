@@ -2,7 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/question-mark-type-infer.rs:10:21
    |
 LL |     l.iter().map(f).collect()?
-   |                     ^^^^^^^ cannot infer type of the type parameter `B` declared on the associated function `collect`
+   |                     ^^^^^^^ cannot infer type of the type parameter `B` declared on the method `collect`
    |
 help: consider specifying the generic argument
    |

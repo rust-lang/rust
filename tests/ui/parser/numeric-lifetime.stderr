@@ -6,13 +6,13 @@ LL |     let x: usize = "";
    |            |
    |            expected due to this
 
-error: lifetimes cannot start with a number
+error: lifetimes or labels cannot start with a number
   --> $DIR/numeric-lifetime.rs:1:10
    |
 LL | struct S<'1> { s: &'1 usize }
    |          ^^
 
-error: lifetimes cannot start with a number
+error: lifetimes or labels cannot start with a number
   --> $DIR/numeric-lifetime.rs:1:20
    |
 LL | struct S<'1> { s: &'1 usize }

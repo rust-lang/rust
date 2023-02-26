@@ -26,7 +26,7 @@ use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVari
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArg;
-use rustc_middle::ty::{self, List};
+use rustc_middle::ty::{self, List, TyCtxt};
 use rustc_span::source_map::Span;
 
 pub use rustc_middle::infer::canonical::*;
@@ -55,7 +55,7 @@ impl<'tcx> InferCtxt<'tcx> {
         canonical: &Canonical<'tcx, T>,
     ) -> (T, CanonicalVarValues<'tcx>)
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         // For each universe that is referred to in the incoming
         // query, create a universe in our local inference context. In
@@ -88,7 +88,7 @@ impl<'tcx> InferCtxt<'tcx> {
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> CanonicalVarValues<'tcx> {
         CanonicalVarValues {
-            var_values: self.tcx.mk_substs(
+            var_values: self.tcx.mk_substs_from_iter(
                 variables
                     .iter()
                     .map(|info| self.instantiate_canonical_var(span, info, &universe_map)),

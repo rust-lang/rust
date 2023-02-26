@@ -2,7 +2,9 @@
 // @has - '//a/@href' 'struct.ThisType.html'
 // @has - '//a/@title' 'struct basic::ThisType'
 // @has - '//a/@href' 'struct.ThisType.html#method.this_method'
-// @has - '//a/@title' 'associated function basic::ThisType::this_method'
+// @has - '//a/@title' 'method basic::ThisType::this_method'
+// @has - '//a/@href' 'struct.ThisType.html#method.this_assoc_fn'
+// @has - '//a/@title' 'associated function basic::ThisType::this_assoc_fn'
 // @has - '//a/@href' 'enum.ThisEnum.html'
 // @has - '//a/@title' 'enum basic::ThisEnum'
 // @has - '//a/@href' 'enum.ThisEnum.html#variant.ThisVariant'
@@ -10,7 +12,9 @@
 // @has - '//a/@href' 'trait.ThisTrait.html'
 // @has - '//a/@title' 'trait basic::ThisTrait'
 // @has - '//a/@href' 'trait.ThisTrait.html#tymethod.this_associated_method'
-// @has - '//a/@title' 'associated function basic::ThisTrait::this_associated_method'
+// @has - '//a/@title' 'method basic::ThisTrait::this_associated_method'
+// @has - '//a/@href' 'trait.ThisTrait.html#tymethod.this_associated_fn'
+// @has - '//a/@title' 'associated function basic::ThisTrait::this_associated_fn'
 // @has - '//a/@href' 'trait.ThisTrait.html#associatedtype.ThisAssociatedType'
 // @has - '//a/@title' 'associated type basic::ThisTrait::ThisAssociatedType'
 // @has - '//a/@href' 'trait.ThisTrait.html#associatedconstant.THIS_ASSOCIATED_CONST'
@@ -37,11 +41,13 @@
 //!
 //! * [`ThisType`](ThisType)
 //! * [`ThisType::this_method`](ThisType::this_method)
+//! * [`ThisType::this_assoc_fn`](ThisType::this_assoc_fn)
 //! * [`ThisEnum`](ThisEnum)
 //! * [`ThisEnum::ThisVariant`](ThisEnum::ThisVariant)
 //! * [`ThisEnum::ThisVariantCtor`](ThisEnum::ThisVariantCtor)
 //! * [`ThisTrait`](ThisTrait)
 //! * [`ThisTrait::this_associated_method`](ThisTrait::this_associated_method)
+//! * [`ThisTrait::this_associated_fn`](ThisTrait::this_associated_fn)
 //! * [`ThisTrait::ThisAssociatedType`](ThisTrait::ThisAssociatedType)
 //! * [`ThisTrait::THIS_ASSOCIATED_CONST`](ThisTrait::THIS_ASSOCIATED_CONST)
 //! * [`ThisAlias`](ThisAlias)
@@ -68,13 +74,15 @@ macro_rules! this_macro {
 pub struct ThisType;
 
 impl ThisType {
-    pub fn this_method() {}
+    pub fn this_assoc_fn() {}
+    pub fn this_method(self) {}
 }
 pub enum ThisEnum { ThisVariant, ThisVariantCtor(u32), }
 pub trait ThisTrait {
     type ThisAssociatedType;
     const THIS_ASSOCIATED_CONST: u8;
-    fn this_associated_method();
+    fn this_associated_fn();
+    fn this_associated_method(&self);
 }
 pub type ThisAlias = Result<(), ()>;
 pub union ThisUnion { this_field: usize, }

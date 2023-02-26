@@ -287,6 +287,16 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     } else {
                         let last = self.cache.parent_stack.last().expect("parent_stack is empty 2");
                         let did = match &*last {
+                            ParentStackItem::Impl {
+                                // impl Trait for &T { fn method(self); }
+                                //
+                                // When generating a function index with the above shape, we want it
+                                // associated with `T`, not with the primitive reference type. It should
+                                // show up as `T::method`, rather than `reference::method`, in the search
+                                // results page.
+                                for_: clean::Type::BorrowedRef { type_, .. },
+                                ..
+                            } => type_.def_id(&self.cache),
                             ParentStackItem::Impl { for_, .. } => for_.def_id(&self.cache),
                             ParentStackItem::Type(item_id) => item_id.as_def_id(),
                         };
@@ -453,7 +463,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 | clean::BorrowedRef { type_: box clean::Type::Path { ref path }, .. } => {
                     dids.insert(path.def_id());
                     if let Some(generics) = path.generics() &&
-                        let ty::Adt(adt, _) = self.tcx.type_of(path.def_id()).kind() &&
+                        let ty::Adt(adt, _) = self.tcx.type_of(path.def_id()).subst_identity().kind() &&
                         adt.is_fundamental() {
                         for ty in generics {
                             if let Some(did) = ty.def_id(self.cache) {

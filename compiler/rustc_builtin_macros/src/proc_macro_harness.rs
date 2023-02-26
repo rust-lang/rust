@@ -11,6 +11,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::smallvec;
 use std::mem;
+use thin_vec::{thin_vec, ThinVec};
 
 struct ProcMacroDerive {
     id: NodeId,
@@ -314,11 +315,14 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                     cx.expr_call(
                         span,
                         proc_macro_ty_method_path(cx, custom_derive),
-                        vec![
+                        thin_vec![
                             cx.expr_str(span, cd.trait_name),
                             cx.expr_array_ref(
                                 span,
-                                cd.attrs.iter().map(|&s| cx.expr_str(span, s)).collect::<Vec<_>>(),
+                                cd.attrs
+                                    .iter()
+                                    .map(|&s| cx.expr_str(span, s))
+                                    .collect::<ThinVec<_>>(),
                             ),
                             local_path(cx, cd.function_name),
                         ],
@@ -335,7 +339,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                     cx.expr_call(
                         span,
                         proc_macro_ty_method_path(cx, ident),
-                        vec![
+                        thin_vec![
                             cx.expr_str(span, ca.function_name.name),
                             local_path(cx, ca.function_name),
                         ],
@@ -371,13 +375,13 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
         });
 
     let block = cx.expr_block(
-        cx.block(span, vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)]),
+        cx.block(span, thin_vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)]),
     );
 
     let anon_constant = cx.item_const(
         span,
         Ident::new(kw::Underscore, span),
-        cx.ty(span, ast::TyKind::Tup(Vec::new())),
+        cx.ty(span, ast::TyKind::Tup(ThinVec::new())),
         block,
     );
 

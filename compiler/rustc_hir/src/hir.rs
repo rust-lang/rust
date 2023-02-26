@@ -987,7 +987,6 @@ pub struct Pat<'hir> {
 }
 
 impl<'hir> Pat<'hir> {
-    // FIXME(#19596) this is a workaround, but there should be a better way
     fn walk_short_(&self, it: &mut impl FnMut(&Pat<'hir>) -> bool) -> bool {
         if !it(self) {
             return false;
@@ -1015,7 +1014,6 @@ impl<'hir> Pat<'hir> {
         self.walk_short_(&mut it)
     }
 
-    // FIXME(#19596) this is a workaround, but there should be a better way
     fn walk_(&self, it: &mut impl FnMut(&Pat<'hir>) -> bool) {
         if !it(self) {
             return;

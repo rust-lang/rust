@@ -41,7 +41,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
         //
         // Here we test for this function itself whether its ABI allows
         // unwinding or not.
-        let body_ty = tcx.type_of(def_id);
+        let body_ty = tcx.type_of(def_id).skip_binder();
         let body_abi = match body_ty.kind() {
             ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
             ty::Closure(..) => Abi::RustCall,

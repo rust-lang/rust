@@ -1,8 +1,11 @@
 use super::apple_base::{ios_llvm_target, opts, Arch};
-use crate::spec::{FramePointer, Target, TargetOptions};
+use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     let arch = Arch::Arm64;
+    let mut base = opts("ios", arch);
+    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::THREAD;
+
     Target {
         // Clang automatically chooses a more specific target based on
         // IPHONEOS_DEPLOYMENT_TARGET.
@@ -28,7 +31,7 @@ pub fn target() -> Target {
                 darwinpcs\0\
                 -Os\0"
                 .into(),
-            ..opts("ios", arch)
+            ..base
         },
     }
 }

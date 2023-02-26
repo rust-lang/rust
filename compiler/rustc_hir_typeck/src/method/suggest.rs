@@ -27,11 +27,11 @@ use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::{with_crate_prefix, with_forced_trimmed_paths};
-use rustc_middle::ty::{self, DefIdTree, GenericArgKind, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, DefIdTree, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
-use rustc_span::{lev_distance, source_map, ExpnKind, FileName, MacroKind, Span};
+use rustc_span::{edit_distance, source_map, ExpnKind, FileName, MacroKind, Span};
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedNote;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -160,7 +160,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             MethodError::PrivateMatch(kind, def_id, out_of_scope_traits) => {
-                let kind = kind.descr(def_id);
+                let kind = self.tcx.def_kind_descr(kind, def_id);
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     item_name.span,
@@ -574,7 +574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // `<Foo as Iterator>::Item = String`.
                         let projection_ty = pred.skip_binder().projection_ty;
 
-                        let substs_with_infer_self = tcx.mk_substs(
+                        let substs_with_infer_self = tcx.mk_substs_from_iter(
                             iter::once(tcx.mk_ty_var(ty::TyVid::from_u32(0)).into())
                                 .chain(projection_ty.substs.iter().skip(1)),
                         );
@@ -616,7 +616,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ObligationCauseCode::ImplDerivedObligation(data)
                         if matches!(p.kind().skip_binder(), ty::PredicateKind::Clause(_)) =>
                     {
-                        Some((p, parent, data.impl_def_id, data))
+                        Some((p, parent, data.impl_or_alias_def_id, data))
                     }
                     _ => None,
                 })
@@ -714,7 +714,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                     }
                     Some(Node::Item(hir::Item {
-                        ident, kind: hir::ItemKind::Trait(..), ..
+                        ident,
+                        kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
+                        ..
                     })) => {
                         skip_list.insert(p);
                         let entry = spanned_predicates.entry(ident.span);
@@ -906,8 +908,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         // different from the received one
                                         // So we avoid suggestion method with Box<Self>
                                         // for instance
-                                        self.tcx.at(span).type_of(*def_id) != rcvr_ty
-                                            && self.tcx.at(span).type_of(*def_id) != rcvr_ty
+                                        self.tcx.at(span).type_of(*def_id).subst_identity()
+                                            != rcvr_ty
+                                            && self.tcx.at(span).type_of(*def_id).subst_identity()
+                                                != rcvr_ty
                                     }
                                     (Mode::Path, false, _) => true,
                                     _ => false,
@@ -927,7 +931,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .iter()
                             .take(limit)
                             .map(|impl_item| {
-                                format!("- `{}`", self.tcx.at(span).type_of(*impl_item))
+                                format!(
+                                    "- `{}`",
+                                    self.tcx.at(span).type_of(*impl_item).subst_identity()
+                                )
                             })
                             .collect::<Vec<_>>()
                             .join("\n");
@@ -1007,7 +1014,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // that had unsatisfied trait bounds
         if unsatisfied_predicates.is_empty() && rcvr_ty.is_enum() {
             let adt_def = rcvr_ty.ty_adt_def().expect("enum is not an ADT");
-            if let Some(suggestion) = lev_distance::find_best_match_for_name(
+            if let Some(suggestion) = edit_distance::find_best_match_for_name(
                 &adt_def.variants().iter().map(|s| s.name).collect::<Vec<_>>(),
                 item_name.name,
                 None,
@@ -1055,8 +1062,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         &format!(
                             "there is {} {} with a similar name",
-                            def_kind.article(),
-                            def_kind.descr(similar_candidate.def_id),
+                            self.tcx.def_kind_descr_article(def_kind, similar_candidate.def_id),
+                            self.tcx.def_kind_descr(def_kind, similar_candidate.def_id)
                         ),
                         similar_candidate.name,
                         Applicability::MaybeIncorrect,
@@ -1104,7 +1111,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None
                     };
 
-                    let impl_ty = self.tcx.at(span).type_of(impl_did);
+                    let impl_ty = self.tcx.at(span).type_of(impl_did).subst_identity();
 
                     let insertion = match self.tcx.impl_trait_ref(impl_did) {
                         None => String::new(),
@@ -1165,7 +1172,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             path,
                             ty,
                             item.kind,
-                            item.def_id,
+                            self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
                             sugg_span,
                             idx,
                             self.tcx.sess.source_map(),
@@ -1201,7 +1208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             path,
                             rcvr_ty,
                             item.kind,
-                            item.def_id,
+                            self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
                             sugg_span,
                             idx,
                             self.tcx.sess.source_map(),
@@ -1233,7 +1240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // When the "method" is resolved through dereferencing, we really want the
             // original type that has the associated function for accurate suggestions.
             // (#61411)
-            let impl_ty = self.tcx.type_of(*impl_did);
+            let impl_ty = self.tcx.type_of(*impl_did).subst_identity();
             let target_ty = self
                 .autoderef(sugg_span, rcvr_ty)
                 .find(|(rcvr_ty, _)| {
@@ -1245,7 +1252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Adt(def, substs) = target_ty.kind() {
                 // If there are any inferred arguments, (`{integer}`), we should replace
                 // them with underscores to allow the compiler to infer them
-                let infer_substs = self.tcx.mk_substs(substs.into_iter().map(|arg| {
+                let infer_substs = self.tcx.mk_substs_from_iter(substs.into_iter().map(|arg| {
                     if !arg.is_suggestable(self.tcx, true) {
                         has_unsuggestable_args = true;
                         match arg.unpack() {
@@ -1453,8 +1460,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let range_def_id = self.tcx.require_lang_item(lang_item.unwrap(), None);
-                    let range_ty =
-                        self.tcx.bound_type_of(range_def_id).subst(self.tcx, &[actual.into()]);
+                    let range_ty = self.tcx.type_of(range_def_id).subst(self.tcx, &[actual.into()]);
 
                     let pick = self.lookup_probe_for_diagnostic(
                         item_name,
@@ -2847,7 +2853,7 @@ fn print_disambiguation_help<'tcx>(
     trait_name: String,
     rcvr_ty: Ty<'_>,
     kind: ty::AssocKind,
-    def_id: DefId,
+    def_kind_descr: &'static str,
     span: Span,
     candidate: Option<usize>,
     source_map: &source_map::SourceMap,
@@ -2880,7 +2886,7 @@ fn print_disambiguation_help<'tcx>(
         span,
         &format!(
             "disambiguate the {} for {}",
-            kind.as_def_kind().descr(def_id),
+            def_kind_descr,
             if let Some(candidate) = candidate {
                 format!("candidate #{}", candidate)
             } else {

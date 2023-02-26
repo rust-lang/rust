@@ -1,10 +1,10 @@
 // Type substitutions.
 
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{ir::TypeFolder, FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
-use crate::ty::visit::{TypeVisitable, TypeVisitor};
-use crate::ty::{self, ir, Lift, List, ParamConst, Ty, TyCtxt};
+use crate::ty::visit::{TypeVisitable, TypeVisitableExt, TypeVisitor};
+use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
@@ -71,7 +71,7 @@ impl<'tcx> List<Ty<'tcx>> {
     /// Allows to freely switch between `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>`.
     ///
     /// As lists are interned, `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>` have
-    /// be interned together, see `intern_type_list` for more details.
+    /// be interned together, see `mk_type_list` for more details.
     #[inline]
     pub fn as_substs(&'tcx self) -> SubstsRef<'tcx> {
         assert_eq!(TYPE_TAG, 0);
@@ -227,8 +227,11 @@ impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {
     }
 }
 
-impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.try_fold_with(folder).map(Into::into),
             GenericArgKind::Type(ty) => ty.try_fold_with(folder).map(Into::into),
@@ -237,8 +240,8 @@ impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
             GenericArgKind::Type(ty) => ty.visit_with(visitor),
@@ -316,7 +319,7 @@ impl<'tcx> InternalSubsts<'tcx> {
         let count = defs.count();
         let mut substs = SmallVec::with_capacity(count);
         Self::fill_item(&mut substs, tcx, defs, &mut mk_kind);
-        tcx.intern_substs(&substs)
+        tcx.mk_substs(&substs)
     }
 
     pub fn extend_to<F>(&self, tcx: TyCtxt<'tcx>, def_id: DefId, mut mk_kind: F) -> SubstsRef<'tcx>
@@ -465,29 +468,32 @@ impl<'tcx> InternalSubsts<'tcx> {
         target_substs: SubstsRef<'tcx>,
     ) -> SubstsRef<'tcx> {
         let defs = tcx.generics_of(source_ancestor);
-        tcx.mk_substs(target_substs.iter().chain(self.iter().skip(defs.params.len())))
+        tcx.mk_substs_from_iter(target_substs.iter().chain(self.iter().skip(defs.params.len())))
     }
 
     pub fn truncate_to(&self, tcx: TyCtxt<'tcx>, generics: &ty::Generics) -> SubstsRef<'tcx> {
-        tcx.mk_substs(self.iter().take(generics.count()))
+        tcx.mk_substs_from_iter(self.iter().take(generics.count()))
     }
 }
 
-impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for SubstsRef<'tcx> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for SubstsRef<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         // This code is hot enough that it's worth specializing for the most
         // common length lists, to avoid the overhead of `SmallVec` creation.
         // The match arms are in order of frequency. The 1, 2, and 0 cases are
         // typically hit in 90--99.99% of cases. When folding doesn't change
         // the substs, it's faster to reuse the existing substs rather than
-        // calling `intern_substs`.
+        // calling `mk_substs`.
         match self.len() {
             1 => {
                 let param0 = self[0].try_fold_with(folder)?;
                 if param0 == self[0] {
                     Ok(self)
                 } else {
-                    Ok(folder.interner().intern_substs(&[param0]))
+                    Ok(folder.interner().mk_substs(&[param0]))
                 }
             }
             2 => {
@@ -496,17 +502,20 @@ impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for SubstsRef<'tcx> {
                 if param0 == self[0] && param1 == self[1] {
                     Ok(self)
                 } else {
-                    Ok(folder.interner().intern_substs(&[param0, param1]))
+                    Ok(folder.interner().mk_substs(&[param0, param1]))
                 }
             }
             0 => Ok(self),
-            _ => ty::util::fold_list(self, folder, |tcx, v| tcx.intern_substs(v)),
+            _ => ty::util::fold_list(self, folder, |tcx, v| tcx.mk_substs(v)),
         }
     }
 }
 
-impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
-    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         // This code is fairly hot, though not as hot as `SubstsRef`.
         //
         // When compiling stage 2, I get the following results:
@@ -529,17 +538,17 @@ impl<'tcx> ir::TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
                 if param0 == self[0] && param1 == self[1] {
                     Ok(self)
                 } else {
-                    Ok(folder.interner().intern_type_list(&[param0, param1]))
+                    Ok(folder.interner().mk_type_list(&[param0, param1]))
                 }
             }
-            _ => ty::util::fold_list(self, folder, |tcx, v| tcx.intern_type_list(v)),
+            _ => ty::util::fold_list(self, folder, |tcx, v| tcx.mk_type_list(v)),
         }
     }
 }
 
-impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for &'tcx ty::List<T> {
+impl<'tcx, T: TypeVisitable<TyCtxt<'tcx>>> TypeVisitable<TyCtxt<'tcx>> for &'tcx ty::List<T> {
     #[inline]
-    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
     }
 }
@@ -555,8 +564,8 @@ impl<'tcx, T: TypeVisitable<'tcx>> ir::TypeVisitable<TyCtxt<'tcx>> for &'tcx ty:
 pub struct EarlyBinder<T>(pub T);
 
 /// For early binders, you should first call `subst` before using any visitors.
-impl<'tcx, T> !ir::TypeFoldable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
-impl<'tcx, T> !ir::TypeVisitable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
+impl<'tcx, T> !TypeFoldable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
+impl<'tcx, T> !TypeVisitable<TyCtxt<'tcx>> for ty::EarlyBinder<T> {}
 
 impl<T> EarlyBinder<T> {
     pub fn as_ref(&self) -> EarlyBinder<&T> {
@@ -617,7 +626,7 @@ impl<T, U> EarlyBinder<(T, U)> {
 
 impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
 where
-    I::Item: TypeFoldable<'tcx>,
+    I::Item: TypeFoldable<TyCtxt<'tcx>>,
 {
     pub fn subst_iter(
         self,
@@ -636,7 +645,7 @@ pub struct SubstIter<'s, 'tcx, I: IntoIterator> {
 
 impl<'tcx, I: IntoIterator> Iterator for SubstIter<'_, 'tcx, I>
 where
-    I::Item: TypeFoldable<'tcx>,
+    I::Item: TypeFoldable<TyCtxt<'tcx>>,
 {
     type Item = I::Item;
 
@@ -652,7 +661,7 @@ where
 impl<'tcx, I: IntoIterator> DoubleEndedIterator for SubstIter<'_, 'tcx, I>
 where
     I::IntoIter: DoubleEndedIterator,
-    I::Item: TypeFoldable<'tcx>,
+    I::Item: TypeFoldable<TyCtxt<'tcx>>,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         Some(EarlyBinder(self.it.next_back()?).subst(self.tcx, self.substs))
@@ -662,14 +671,14 @@ where
 impl<'tcx, I: IntoIterator> ExactSizeIterator for SubstIter<'_, 'tcx, I>
 where
     I::IntoIter: ExactSizeIterator,
-    I::Item: TypeFoldable<'tcx>,
+    I::Item: TypeFoldable<TyCtxt<'tcx>>,
 {
 }
 
 impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
 where
     I::Item: Deref,
-    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<TyCtxt<'tcx>>,
 {
     pub fn subst_iter_copied(
         self,
@@ -689,7 +698,7 @@ pub struct SubstIterCopied<'a, 'tcx, I: IntoIterator> {
 impl<'tcx, I: IntoIterator> Iterator for SubstIterCopied<'_, 'tcx, I>
 where
     I::Item: Deref,
-    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<TyCtxt<'tcx>>,
 {
     type Item = <I::Item as Deref>::Target;
 
@@ -706,7 +715,7 @@ impl<'tcx, I: IntoIterator> DoubleEndedIterator for SubstIterCopied<'_, 'tcx, I>
 where
     I::IntoIter: DoubleEndedIterator,
     I::Item: Deref,
-    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<TyCtxt<'tcx>>,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         Some(EarlyBinder(*self.it.next_back()?).subst(self.tcx, self.substs))
@@ -717,7 +726,7 @@ impl<'tcx, I: IntoIterator> ExactSizeIterator for SubstIterCopied<'_, 'tcx, I>
 where
     I::IntoIter: ExactSizeIterator,
     I::Item: Deref,
-    <I::Item as Deref>::Target: Copy + TypeFoldable<'tcx>,
+    <I::Item as Deref>::Target: Copy + TypeFoldable<TyCtxt<'tcx>>,
 {
 }
 
@@ -743,7 +752,7 @@ impl<T: Iterator> Iterator for EarlyBinderIter<T> {
     }
 }
 
-impl<'tcx, T: TypeFoldable<'tcx>> ty::EarlyBinder<T> {
+impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> ty::EarlyBinder<T> {
     pub fn subst(self, tcx: TyCtxt<'tcx>, substs: &[GenericArg<'tcx>]) -> T {
         let mut folder = SubstFolder { tcx, substs, binders_passed: 0 };
         self.0.fold_with(&mut folder)
@@ -784,7 +793,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for SubstFolder<'a, 'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(
+    fn fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
     ) -> ty::Binder<'tcx, T> {
@@ -977,7 +986,7 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
     /// As indicated in the diagram, here the same type `&'a i32` is substituted once, but in the
     /// first case we do not increase the De Bruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
-    fn shift_vars_through_binders<T: TypeFoldable<'tcx>>(&self, val: T) -> T {
+    fn shift_vars_through_binders<T: TypeFoldable<TyCtxt<'tcx>>>(&self, val: T) -> T {
         debug!(
             "shift_vars(val={:?}, binders_passed={:?}, has_escaping_bound_vars={:?})",
             val,

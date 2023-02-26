@@ -62,10 +62,10 @@ fn main() {
     AliasFixed::TSVariant::<()>(());
     //~^ ERROR type arguments are not allowed on this type [E0109]
     AliasFixed::<()>::TSVariant(());
-    //~^ ERROR this type alias takes 0 generic arguments but 1 generic argument was supplied [E0107]
+    //~^ ERROR type alias takes 0 generic arguments but 1 generic argument was supplied [E0107]
     AliasFixed::<()>::TSVariant::<()>(());
     //~^ ERROR type arguments are not allowed on this type [E0109]
-    //~| ERROR this type alias takes 0 generic arguments but 1 generic argument was supplied [E0107]
+    //~| ERROR type alias takes 0 generic arguments but 1 generic argument was supplied [E0107]
 
     // Struct variant
 
@@ -80,10 +80,10 @@ fn main() {
     AliasFixed::SVariant::<()> { v: () };
     //~^ ERROR type arguments are not allowed on this type [E0109]
     AliasFixed::<()>::SVariant { v: () };
-    //~^ ERROR this type alias takes 0 generic arguments but 1 generic argument was supplied [E0107]
+    //~^ ERROR type alias takes 0 generic arguments but 1 generic argument was supplied [E0107]
     AliasFixed::<()>::SVariant::<()> { v: () };
     //~^ ERROR type arguments are not allowed on this type [E0109]
-    //~| ERROR this type alias takes 0 generic arguments but 1 generic argument was supplied [E0107]
+    //~| ERROR type alias takes 0 generic arguments but 1 generic argument was supplied [E0107]
 
     // Unit variant
 
@@ -98,8 +98,8 @@ fn main() {
     AliasFixed::UVariant::<()>;
     //~^ ERROR type arguments are not allowed on this type [E0109]
     AliasFixed::<()>::UVariant;
-    //~^ ERROR this type alias takes 0 generic arguments but 1 generic argument was supplied [E0107]
+    //~^ ERROR type alias takes 0 generic arguments but 1 generic argument was supplied [E0107]
     AliasFixed::<()>::UVariant::<()>;
     //~^ ERROR type arguments are not allowed on this type [E0109]
-    //~| ERROR this type alias takes 0 generic arguments but 1 generic argument was supplied [E0107]
+    //~| ERROR type alias takes 0 generic arguments but 1 generic argument was supplied [E0107]
 }

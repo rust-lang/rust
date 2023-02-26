@@ -1,3 +1,5 @@
+use crate::grammar::attributes::ATTRIBUTE_FIRST;
+
 use super::*;
 
 pub(super) fn opt_generic_param_list(p: &mut Parser<'_>) {
@@ -11,32 +13,31 @@ pub(super) fn opt_generic_param_list(p: &mut Parser<'_>) {
 fn generic_param_list(p: &mut Parser<'_>) {
     assert!(p.at(T![<]));
     let m = p.start();
-    p.bump(T![<]);
+    delimited(p, T![<], T![>], T![,], GENERIC_PARAM_FIRST.union(ATTRIBUTE_FIRST), |p| {
+        // test generic_param_attribute
+        // fn foo<#[lt_attr] 'a, #[t_attr] T>() {}
+        let m = p.start();
+        attributes::outer_attrs(p);
+        generic_param(p, m)
+    });
 
-    while !p.at(EOF) && !p.at(T![>]) {
-        generic_param(p);
-        if !p.at(T![>]) && !p.expect(T![,]) {
-            break;
-        }
-    }
-    p.expect(T![>]);
     m.complete(p, GENERIC_PARAM_LIST);
 }
 
-fn generic_param(p: &mut Parser<'_>) {
-    let m = p.start();
-    // test generic_param_attribute
-    // fn foo<#[lt_attr] 'a, #[t_attr] T>() {}
-    attributes::outer_attrs(p);
+const GENERIC_PARAM_FIRST: TokenSet = TokenSet::new(&[IDENT, LIFETIME_IDENT, T![const]]);
+
+fn generic_param(p: &mut Parser<'_>, m: Marker) -> bool {
     match p.current() {
         LIFETIME_IDENT => lifetime_param(p, m),
         IDENT => type_param(p, m),
         T![const] => const_param(p, m),
         _ => {
             m.abandon(p);
-            p.err_and_bump("expected type parameter");
+            p.err_and_bump("expected generic parameter");
+            return false;
         }
     }
+    true
 }
 
 // test lifetime_param

@@ -3,10 +3,9 @@
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    ir::{FallibleTypeFolder, TypeVisitor},
-    visit::TypeVisitable,
-    AliasTy, Const, ConstKind, DefIdTree, InferConst, InferTy, Opaque, PolyTraitPredicate,
-    Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
+    AliasTy, Const, ConstKind, DefIdTree, FallibleTypeFolder, InferConst, InferTy, Opaque,
+    PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -95,7 +94,7 @@ pub trait IsSuggestable<'tcx>: Sized {
 
 impl<'tcx, T> IsSuggestable<'tcx> for T
 where
-    T: TypeVisitable<'tcx> + TypeFoldable<'tcx>,
+    T: TypeVisitable<TyCtxt<'tcx>> + TypeFoldable<TyCtxt<'tcx>>,
 {
     fn is_suggestable(self, tcx: TyCtxt<'tcx>, infer_suggestable: bool) -> bool {
         self.visit_with(&mut IsSuggestableVisitor { tcx, infer_suggestable }).is_continue()
@@ -481,8 +480,9 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
 
             Alias(Opaque, AliasTy { def_id, .. }) => {
                 let parent = self.tcx.parent(def_id);
+                let parent_ty = self.tcx.type_of(parent).subst_identity();
                 if let DefKind::TyAlias | DefKind::AssocTy = self.tcx.def_kind(parent)
-                    && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *self.tcx.type_of(parent).kind()
+                    && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {
                     // Okay
@@ -564,8 +564,9 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
 
             Alias(Opaque, AliasTy { def_id, .. }) => {
                 let parent = self.tcx.parent(def_id);
+                let parent_ty = self.tcx.type_of(parent).subst_identity();
                 if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy = self.tcx.def_kind(parent)
-                    && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *self.tcx.type_of(parent).kind()
+                    && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = *parent_ty.kind()
                     && parent_opaque_def_id == def_id
                 {
                     t
@@ -609,4 +610,12 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
 
         c.try_super_fold_with(self)
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_const_not_used_in_type_alias)]
+pub(super) struct ConstNotUsedTraitAlias {
+    pub ct: String,
+    #[primary_span]
+    pub span: Span,
 }

@@ -3,7 +3,7 @@
 #![deny(deprecated)]
 
 fn main() {
-    let _foo = str::trim_start("   aoeu"); //~ ERROR use of deprecated associated function `core::str::<impl str>::trim_left`: superseded by `trim_start` [deprecated]
+    let _foo = str::trim_start("   aoeu"); //~ ERROR use of deprecated method `core::str::<impl str>::trim_left`: superseded by `trim_start` [deprecated]
 
-    let _bar = "   aoeu".trim_start(); //~ ERROR use of deprecated associated function `core::str::<impl str>::trim_left`: superseded by `trim_start` [deprecated]
+    let _bar = "   aoeu".trim_start(); //~ ERROR use of deprecated method `core::str::<impl str>::trim_left`: superseded by `trim_start` [deprecated]
 }

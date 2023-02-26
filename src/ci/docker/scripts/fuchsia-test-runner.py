@@ -507,9 +507,8 @@ class TestEnvironment:
     bin/{exe_name}={bin_path}
     lib/{libstd_name}={rust_dir}/lib/rustlib/{rustlib_dir}/lib/{libstd_name}
     lib/{libtest_name}={rust_dir}/lib/rustlib/{rustlib_dir}/lib/{libtest_name}
-    lib/ld.so.1={sdk_dir}/arch/{target_arch}/sysroot/lib/libc.so
-    lib/libzircon.so={sdk_dir}/arch/{target_arch}/sysroot/lib/libzircon.so
-    lib/libfdio.so={sdk_dir}/arch/{target_arch}/lib/libfdio.so
+    lib/ld.so.1={sdk_dir}/arch/{target_arch}/sysroot/dist/lib/ld.so.1
+    lib/libfdio.so={sdk_dir}/arch/{target_arch}/dist/libfdio.so
     """
 
     TEST_ENV_VARS: ClassVar[List[str]] = [
@@ -844,23 +843,34 @@ class TestEnvironment:
             "--",
             "--build-id-dir",
             os.path.join(self.sdk_dir, ".build-id"),
-            "--build-id-dir",
-            os.path.join(self.libs_dir(), ".build-id"),
         ]
 
-        # Add rust source if it's available
-        if args.rust_src is not None:
+        libs_build_id_path = os.path.join(self.libs_dir(), ".build-id")
+        if os.path.exists(libs_build_id_path):
+            # Add .build-id symbols if installed libs have been stripped into a
+            # .build-id directory
             command += [
-                "--build-dir",
-                args.rust_src,
+                "--build-id-dir",
+                libs_build_id_path,
+            ]
+        else:
+            # If no .build-id directory is detected, then assume that the shared
+            # libs contain their debug symbols
+            command += [
+                f"--symbol-path={self.rust_dir}/lib/rustlib/{self.target}/lib",
             ]
 
+        # Add rust source if it's available
+        rust_src_map = None
+        if args.rust_src is not None:
+            # This matches the remapped prefix used by compiletest. There's no
+            # clear way that we can determine this, so it's hard coded.
+            rust_src_map = f"/rustc/FAKE_PREFIX={args.rust_src}"
+
         # Add fuchsia source if it's available
+        fuchsia_src_map = None
         if args.fuchsia_src is not None:
-            command += [
-                "--build-dir",
-                os.path.join(args.fuchsia_src, "out", "default"),
-            ]
+            fuchsia_src_map = f"./../..={args.fuchsia_src}"
 
         # Load debug symbols for the test binary and automatically attach
         if args.test is not None:
@@ -883,7 +893,28 @@ class TestEnvironment:
                 test_name,
             )
 
+            # The fake-test-src-base directory maps to the suite directory
+            # e.g. tests/ui/foo.rs has a path of rust/fake-test-src-base/foo.rs
+            fake_test_src_base = os.path.join(
+                args.rust_src,
+                "fake-test-src-base",
+            )
+            real_test_src_base = os.path.join(
+                args.rust_src,
+                "tests",
+                args.test.split(os.path.sep)[0],
+            )
+            test_src_map = f"{fake_test_src_base}={real_test_src_base}"
+
             with open(self.zxdb_script_path(), mode="w", encoding="utf-8") as f:
+                print(f"set source-map += {test_src_map}", file=f)
+
+                if rust_src_map is not None:
+                    print(f"set source-map += {rust_src_map}", file=f)
+
+                if fuchsia_src_map is not None:
+                    print(f"set source-map += {fuchsia_src_map}", file=f)
+
                 print(f"attach {test_name[:31]}", file=f)
 
             command += [
@@ -899,6 +930,20 @@ class TestEnvironment:
 
         # Connect to the running emulator with zxdb
         subprocess.run(command, env=self.ffx_cmd_env(), check=False)
+
+    def syslog(self, args):
+        subprocess.run(
+            [
+                self.tool_path("ffx"),
+                "--config",
+                self.ffx_user_config_path(),
+                "log",
+                "--since",
+                "now",
+            ],
+            env=self.ffx_cmd_env(),
+            check=False,
+        )
 
 
 def start(args):
@@ -930,6 +975,12 @@ def delete_tmp(args):
 def debug(args):
     test_env = TestEnvironment.read_from_file()
     test_env.debug(args)
+    return 0
+
+
+def syslog(args):
+    test_env = TestEnvironment.read_from_file()
+    test_env.syslog(args)
     return 0
 
 
@@ -1027,6 +1078,11 @@ def main():
         help="any additional arguments to pass to zxdb",
     )
     debug_parser.set_defaults(func=debug)
+
+    syslog_parser = subparsers.add_parser(
+        "syslog", help="prints the device syslog"
+    )
+    syslog_parser.set_defaults(func=syslog)
 
     args = parser.parse_args()
     return args.func(args)

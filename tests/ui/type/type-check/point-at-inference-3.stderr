@@ -9,7 +9,7 @@ LL |     v.push(1u32);
    |       |
    |       arguments to this method are incorrect
    |
-note: associated function defined here
+note: method defined here
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 help: change the type of the numeric literal from `u32` to `i32`
    |

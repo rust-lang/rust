@@ -8,7 +8,7 @@ use crate::traits::{
     SelectionError, TraitEngine,
 };
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_middle::ty::TypeVisitable;
+use rustc_middle::ty::TypeVisitableExt;
 
 pub struct FulfillmentContext<'tcx> {
     obligations: FxIndexSet<PredicateObligation<'tcx>>,

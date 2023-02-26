@@ -28,7 +28,7 @@ fn test<'a,'b>() {
 }
 
 fn test2(x: &dyn Foo<(isize,),Output=()>, y: &dyn Foo(isize)) {
-    //~^ ERROR this trait takes 1 lifetime argument but 0 lifetime arguments were supplied
+    //~^ ERROR trait takes 1 lifetime argument but 0 lifetime arguments were supplied
     // Here, the omitted lifetimes are expanded to distinct things.
     same_type(x, y)
 }

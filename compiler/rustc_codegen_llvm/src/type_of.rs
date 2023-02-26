@@ -5,7 +5,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_target::abi::{Abi, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F32, F64};
 use rustc_target::abi::{PointeeInfo, Scalar, Size, TyAbiInterface, Variants};
@@ -329,7 +329,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     ) -> &'a Type {
         // HACK(eddyb) special-case fat pointers until LLVM removes
         // pointee types, to avoid bitcasting every `OperandRef::deref`.
-        match self.ty.kind() {
+        match *self.ty.kind() {
             ty::Ref(..) | ty::RawPtr(_) => {
                 return self.field(cx, index).llvm_type(cx);
             }
@@ -337,6 +337,11 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             // thin pointer boxes with scalar allocators are handled by the general logic below
             ty::Adt(def, substs) if def.is_box() && cx.layout_of(substs.type_at(1)).is_zst() => {
                 let ptr_ty = cx.tcx.mk_mut_ptr(self.ty.boxed_ty());
+                return cx.layout_of(ptr_ty).scalar_pair_element_llvm_type(cx, index, immediate);
+            }
+            // `dyn* Trait` has the same ABI as `*mut dyn Trait`
+            ty::Dynamic(bounds, region, ty::DynStar) => {
+                let ptr_ty = cx.tcx.mk_mut_ptr(cx.tcx.mk_dynamic(bounds, region, ty::Dyn));
                 return cx.layout_of(ptr_ty).scalar_pair_element_llvm_type(cx, index, immediate);
             }
             _ => {}

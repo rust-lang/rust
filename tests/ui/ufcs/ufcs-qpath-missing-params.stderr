@@ -30,7 +30,7 @@ help: add missing generic argument
 LL |     <String as IntoCow<B>>::into_cow::<str>("foo".to_string());
    |                       +++
 
-error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/ufcs-qpath-missing-params.rs:17:26
    |
 LL |     <String as IntoCow>::into_cow::<str>("foo".to_string());
@@ -38,7 +38,7 @@ LL |     <String as IntoCow>::into_cow::<str>("foo".to_string());
    |                          |
    |                          expected 0 generic arguments
    |
-note: associated function defined here, with 0 generic parameters
+note: method defined here, with 0 generic parameters
   --> $DIR/ufcs-qpath-missing-params.rs:4:8
    |
 LL |     fn into_cow(self) -> Cow<'a, B>;

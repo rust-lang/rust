@@ -24,6 +24,7 @@ rustc_middle = { path = "../rustc_middle" }
 rustc_ast_lowering = { path = "../rustc_ast_lowering" }
 rustc_ast_passes = { path = "../rustc_ast_passes" }
 rustc_incremental = { path = "../rustc_incremental" }
+rustc_index = { path = "../rustc_index" }
 rustc_traits = { path = "../rustc_traits" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }

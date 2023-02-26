@@ -57,7 +57,7 @@ impl<'a> DiagnosticDerive<'a> {
                 }
                 Some(slug) => {
                     quote! {
-                        let mut #diag = #handler.struct_diagnostic(rustc_errors::fluent::#slug);
+                        let mut #diag = #handler.struct_diagnostic(crate::fluent_generated::#slug);
                     }
                 }
             };
@@ -149,7 +149,7 @@ impl<'a> LintDiagnosticDerive<'a> {
                 }
                 Some(slug) => {
                     quote! {
-                        rustc_errors::fluent::#slug.into()
+                        crate::fluent_generated::#slug.into()
                     }
                 }
             }

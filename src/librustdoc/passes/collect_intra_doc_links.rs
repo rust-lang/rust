@@ -293,7 +293,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         let ty_res = self.resolve_path(&path, TypeNS, item_id, module_id).ok_or_else(no_res)?;
 
         match ty_res {
-            Res::Def(DefKind::Enum, did) => match tcx.type_of(did).kind() {
+            Res::Def(DefKind::Enum, did) => match tcx.type_of(did).subst_identity().kind() {
                 ty::Adt(def, _) if def.is_enum() => {
                     if let Some(variant) = def.variants().iter().find(|v| v.name == variant_name)
                         && let Some(field) = variant.fields.iter().find(|f| f.name == variant_field_name) {
@@ -471,7 +471,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// This is used for resolving type aliases.
     fn def_id_to_res(&self, ty_id: DefId) -> Option<Res> {
         use PrimitiveType::*;
-        Some(match *self.cx.tcx.type_of(ty_id).kind() {
+        Some(match *self.cx.tcx.type_of(ty_id).subst_identity().kind() {
             ty::Bool => Res::Primitive(Bool),
             ty::Char => Res::Primitive(Char),
             ty::Int(ity) => Res::Primitive(ity.into()),
@@ -572,7 +572,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 debug!("looking for associated item named {} for item {:?}", item_name, did);
                 // Checks if item_name is a variant of the `SomeItem` enum
                 if ns == TypeNS && def_kind == DefKind::Enum {
-                    match tcx.type_of(did).kind() {
+                    match tcx.type_of(did).subst_identity().kind() {
                         ty::Adt(adt_def, _) => {
                             for variant in adt_def.variants() {
                                 if variant.name == item_name {
@@ -606,7 +606,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
                     .or_else(|| {
                         resolve_associated_trait_item(
-                            tcx.type_of(did),
+                            tcx.type_of(did).subst_identity(),
                             module_id,
                             item_name,
                             ns,
@@ -639,7 +639,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 // they also look like associated items (`module::Type::Variant`),
                 // because they are real Rust syntax (unlike the intra-doc links
                 // field syntax) and are handled by the compiler's resolver.
-                let def = match tcx.type_of(did).kind() {
+                let def = match tcx.type_of(did).subst_identity().kind() {
                     ty::Adt(def, _) if !def.is_enum() => def,
                     _ => return None,
                 };
@@ -689,12 +689,12 @@ fn resolve_associated_trait_item<'a>(
             .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, trait_)
             .map(|trait_assoc| {
                 trait_assoc_to_impl_assoc_item(cx.tcx, impl_, trait_assoc.def_id)
-                    .unwrap_or(trait_assoc)
+                    .unwrap_or(*trait_assoc)
             })
     });
     // FIXME(#74563): warn about ambiguity
     debug!("the candidates were {:?}", candidates.clone().collect::<Vec<_>>());
-    candidates.next().copied()
+    candidates.next()
 }
 
 /// Find the associated item in the impl `impl_id` that corresponds to the
@@ -711,7 +711,7 @@ fn trait_assoc_to_impl_assoc_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_id: DefId,
     trait_assoc_id: DefId,
-) -> Option<&'tcx ty::AssocItem> {
+) -> Option<ty::AssocItem> {
     let trait_to_impl_assoc_map = tcx.impl_item_implementor_ids(impl_id);
     debug!(?trait_to_impl_assoc_map);
     let impl_assoc_id = *trait_to_impl_assoc_map.get(&trait_assoc_id)?;
@@ -884,7 +884,8 @@ fn preprocess_link(
     let mut parts = stripped.split('#');
 
     let link = parts.next().unwrap();
-    if link.trim().is_empty() {
+    let link = link.trim();
+    if link.is_empty() {
         // This is an anchor to an element of the current page, nothing to do in here!
         return None;
     }
@@ -897,7 +898,7 @@ fn preprocess_link(
     // Parse and strip the disambiguator from the link, if present.
     let (disambiguator, path_str, link_text) = match Disambiguator::from_str(link) {
         Ok(Some((d, path, link_text))) => (Some(d), path.trim(), link_text.trim()),
-        Ok(None) => (None, link.trim(), link.trim()),
+        Ok(None) => (None, link, link),
         Err((err_msg, relative_range)) => {
             // Only report error if we would not have ignored this link. See issue #83859.
             if !should_ignore_link_with_disambiguators(link) {
@@ -1710,7 +1711,7 @@ fn resolution_failure(
                         Res::Primitive(_) => None,
                     };
                     let is_struct_variant = |did| {
-                        if let ty::Adt(def, _) = tcx.type_of(did).kind()
+                        if let ty::Adt(def, _) = tcx.type_of(did).subst_identity().kind()
                         && def.is_enum()
                         && let Some(variant) = def.variants().iter().find(|v| v.name == res.name(tcx)) {
                             // ctor is `None` if variant is a struct

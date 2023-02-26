@@ -673,19 +673,23 @@ where
 fn break_patterns<T>(v: &mut [T]) {
     let len = v.len();
     if len >= 8 {
-        // Pseudorandom number generator from the "Xorshift RNGs" paper by George Marsaglia.
-        let mut random = len as u32;
-        let mut gen_u32 = || {
-            random ^= random << 13;
-            random ^= random >> 17;
-            random ^= random << 5;
-            random
-        };
+        let mut seed = len;
         let mut gen_usize = || {
+            // Pseudorandom number generator from the "Xorshift RNGs" paper by George Marsaglia.
             if usize::BITS <= 32 {
-                gen_u32() as usize
+                let mut r = seed as u32;
+                r ^= r << 13;
+                r ^= r >> 17;
+                r ^= r << 5;
+                seed = r as usize;
+                seed
             } else {
-                (((gen_u32() as u64) << 32) | (gen_u32() as u64)) as usize
+                let mut r = seed as u64;
+                r ^= r << 13;
+                r ^= r >> 7;
+                r ^= r << 17;
+                seed = r as usize;
+                seed
             }
         };
 

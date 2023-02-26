@@ -2,10 +2,11 @@ use crate::errors::{
     note_and_explain, FullfillReqLifetime, LfBoundNotSatisfied, OutlivesBound, OutlivesContent,
     RefLongerThanData, RegionOriginNote, WhereClauseSuggestions,
 };
+use crate::fluent_generated as fluent;
 use crate::infer::error_reporting::{note_and_explain_region, TypeErrCtxt};
 use crate::infer::{self, SubregionOrigin};
 use rustc_errors::{
-    fluent, AddToDiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
+    AddToDiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
 };
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::traits::ObligationCauseCode;

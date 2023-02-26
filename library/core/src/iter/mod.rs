@@ -278,6 +278,7 @@
 //!
 //! ```
 //! # #![allow(unused_must_use)]
+//! # #![cfg_attr(not(bootstrap), allow(map_unit_fn))]
 //! let v = vec![1, 2, 3, 4, 5];
 //! v.iter().map(|x| println!("{x}"));
 //! ```

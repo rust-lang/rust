@@ -4,7 +4,7 @@ mod item;
 
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
-
+use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, CommentKind, Delimiter, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
@@ -20,9 +20,8 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
 use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
-
-use rustc_ast::attr::AttrIdGenerator;
 use std::borrow::Cow;
+use thin_vec::ThinVec;
 
 pub use self::delimited::IterDelimited;
 
@@ -1722,10 +1721,10 @@ impl<'a> State<'a> {
         self.ibox(INDENT_UNIT);
         self.print_formal_generic_params(generic_params);
         let generics = ast::Generics {
-            params: Vec::new(),
+            params: ThinVec::new(),
             where_clause: ast::WhereClause {
                 has_where_token: false,
-                predicates: Vec::new(),
+                predicates: ThinVec::new(),
                 span: DUMMY_SP,
             },
             span: DUMMY_SP,

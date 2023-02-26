@@ -512,7 +512,9 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let mut calls = TokenStream::new();
         for (kind, slug) in kind_slugs {
             let message = format_ident!("__message");
-            calls.extend(quote! { let #message = #f(#diag, rustc_errors::fluent::#slug.into()); });
+            calls.extend(
+                quote! { let #message = #f(#diag, crate::fluent_generated::#slug.into()); },
+            );
 
             let name = format_ident!("{}{}", if span_field.is_some() { "span_" } else { "" }, kind);
             let call = match kind {

@@ -57,7 +57,7 @@ trivially_parameterized_over_tcx! {
     crate::metadata::ModChild,
     crate::middle::codegen_fn_attrs::CodegenFnAttrs,
     crate::middle::exported_symbols::SymbolExportInfo,
-    crate::middle::resolve_lifetime::ObjectLifetimeDefault,
+    crate::middle::resolve_bound_vars::ObjectLifetimeDefault,
     crate::mir::ConstQualifs,
     ty::AssocItemContainer,
     ty::DeducedParamAttrs,

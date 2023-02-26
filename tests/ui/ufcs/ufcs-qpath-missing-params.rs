@@ -15,6 +15,6 @@ fn main() {
       //~^ ERROR missing generics for
 
     <String as IntoCow>::into_cow::<str>("foo".to_string());
-    //~^ ERROR this associated function takes 0 generic arguments but 1
+    //~^ ERROR method takes 0 generic arguments but 1
     //~| ERROR missing generics for
 }

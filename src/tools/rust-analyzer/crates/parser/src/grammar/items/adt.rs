@@ -1,3 +1,5 @@
+use crate::grammar::attributes::ATTRIBUTE_FIRST;
+
 use super::*;
 
 // test struct_item
@@ -141,28 +143,31 @@ pub(crate) fn record_field_list(p: &mut Parser<'_>) {
     }
 }
 
+const TUPLE_FIELD_FIRST: TokenSet =
+    types::TYPE_FIRST.union(ATTRIBUTE_FIRST).union(VISIBILITY_FIRST);
+
 fn tuple_field_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['(']));
     let m = p.start();
-    p.bump(T!['(']);
-    while !p.at(T![')']) && !p.at(EOF) {
+    delimited(p, T!['('], T![')'], T![,], TUPLE_FIELD_FIRST, |p| {
         let m = p.start();
         // test tuple_field_attrs
         // struct S (#[attr] f32);
         attributes::outer_attrs(p);
-        opt_visibility(p, true);
+        let has_vis = opt_visibility(p, true);
         if !p.at_ts(types::TYPE_FIRST) {
             p.error("expected a type");
-            m.complete(p, ERROR);
-            break;
+            if has_vis {
+                m.complete(p, ERROR);
+            } else {
+                m.abandon(p);
+            }
+            return false;
         }
         types::type_(p);
         m.complete(p, TUPLE_FIELD);
+        true
+    });
 
-        if !p.at(T![')']) {
-            p.expect(T![,]);
-        }
-    }
-    p.expect(T![')']);
     m.complete(p, TUPLE_FIELD_LIST);
 }

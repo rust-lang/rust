@@ -1,12 +1,13 @@
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::vec_map::VecMap;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::infer::{DefiningAnchor, InferCtxt};
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
@@ -149,13 +150,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // once we convert the generic parameters to those of the opaque type.
             if let Some(prev) = result.get_mut(&opaque_type_key.def_id) {
                 if prev.ty != ty {
-                    if !ty.references_error() {
+                    let guar = ty.error_reported().err().unwrap_or_else(|| {
                         prev.report_mismatch(
                             &OpaqueHiddenType { ty, span: concrete_type.span },
                             infcx.tcx,
-                        );
-                    }
-                    prev.ty = infcx.tcx.ty_error();
+                        )
+                    });
+                    prev.ty = infcx.tcx.ty_error(guar);
                 }
                 // Pick a better span if there is one.
                 // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
@@ -178,7 +179,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// region names in error messages.
     pub(crate) fn name_regions<T>(&self, tcx: TyCtxt<'tcx>, ty: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         tcx.fold_regions(ty, |region, _| match *region {
             ty::ReVar(vid) => {
@@ -247,20 +248,20 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         origin: OpaqueTyOrigin,
     ) -> Ty<'tcx> {
         if let Some(e) = self.tainted_by_errors() {
-            return self.tcx.ty_error_with_guaranteed(e);
+            return self.tcx.ty_error(e);
         }
 
         let definition_ty = instantiated_ty
             .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx, false)
             .ty;
 
-        if !check_opaque_type_parameter_valid(
+        if let Err(guar) = check_opaque_type_parameter_valid(
             self.tcx,
             opaque_type_key,
             origin,
             instantiated_ty.span,
         ) {
-            return self.tcx.ty_error();
+            return self.tcx.ty_error(guar);
         }
 
         // Only check this for TAIT. RPIT already supports `tests/ui/impl-trait/nested-return-type2.rs`
@@ -273,7 +274,8 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // FIXME(oli-obk): Also do region checks here and then consider removing `check_opaque_meets_bounds` entirely.
         let param_env = self.tcx.param_env(def_id);
         // HACK This bubble is required for this tests to pass:
-        // type-alias-impl-trait/issue-67844-nested-opaque.rs
+        // nested-return-type2-tait2.rs
+        // nested-return-type2-tait3.rs
         let infcx =
             self.tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).build();
         let ocx = ObligationCtxt::new(&infcx);
@@ -324,7 +326,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             definition_ty
         } else {
             let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
-            self.tcx.ty_error_with_guaranteed(reported)
+            self.tcx.ty_error(reported)
         }
     }
 }
@@ -334,7 +336,7 @@ fn check_opaque_type_parameter_valid(
     opaque_type_key: OpaqueTypeKey<'_>,
     origin: OpaqueTyOrigin,
     span: Span,
-) -> bool {
+) -> Result<(), ErrorGuaranteed> {
     match origin {
         // No need to check return position impl trait (RPIT)
         // because for type and const parameters they are correct
@@ -357,7 +359,7 @@ fn check_opaque_type_parameter_valid(
         // fn foo<l0..'ln>() -> foo::<'static..'static>::Foo<'l0..'lm>.
         //
         // which would error here on all of the `'static` args.
-        OpaqueTyOrigin::FnReturn(..) | OpaqueTyOrigin::AsyncFn(..) => return true,
+        OpaqueTyOrigin::FnReturn(..) | OpaqueTyOrigin::AsyncFn(..) => return Ok(()),
         // Check these
         OpaqueTyOrigin::TyAlias => {}
     }
@@ -378,13 +380,13 @@ fn check_opaque_type_parameter_valid(
             // Prevent `fn foo() -> Foo<u32>` from being defining.
             let opaque_param = opaque_generics.param_at(i, tcx);
             let kind = opaque_param.kind.descr();
-            tcx.sess.emit_err(NonGenericOpaqueTypeParam {
+
+            return Err(tcx.sess.emit_err(NonGenericOpaqueTypeParam {
                 ty: arg,
                 kind,
                 span,
                 param_span: tcx.def_span(opaque_param.def_id),
-            });
-            return false;
+            }));
         }
     }
 
@@ -395,12 +397,13 @@ fn check_opaque_type_parameter_valid(
                 .into_iter()
                 .map(|i| tcx.def_span(opaque_generics.param_at(i, tcx).def_id))
                 .collect();
-            tcx.sess
+            return Err(tcx
+                .sess
                 .struct_span_err(span, "non-defining opaque type use in defining scope")
                 .span_note(spans, &format!("{} used multiple times", descr))
-                .emit();
-            return false;
+                .emit());
         }
     }
-    true
+
+    Ok(())
 }

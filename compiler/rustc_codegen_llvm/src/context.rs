@@ -145,8 +145,13 @@ pub unsafe fn create_module<'ll>(
     let llvm_version = llvm_util::get_version();
     if llvm_version < (16, 0, 0) {
         if sess.target.arch == "s390x" {
+            // LLVM 16 data layout changed to always set 64-bit vector alignment,
+            // which is conditional in earlier LLVM versions.
+            // https://reviews.llvm.org/D131158 for the discussion.
             target_data_layout = target_data_layout.replace("-v128:64", "");
         } else if sess.target.arch == "riscv64" {
+            // LLVM 16 introduced this change so as to produce more efficient code.
+            // See https://reviews.llvm.org/D116735 for the discussion.
             target_data_layout = target_data_layout.replace("-n32:64-", "-n64-");
         }
     }
@@ -515,14 +520,9 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let tcx = self.tcx;
         let llfn = match tcx.lang_items().eh_personality() {
             Some(def_id) if !wants_msvc_seh(self.sess()) => self.get_fn_addr(
-                ty::Instance::resolve(
-                    tcx,
-                    ty::ParamEnv::reveal_all(),
-                    def_id,
-                    tcx.intern_substs(&[]),
-                )
-                .unwrap()
-                .unwrap(),
+                ty::Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, ty::List::empty())
+                    .unwrap()
+                    .unwrap(),
             ),
             _ => {
                 let name = if wants_msvc_seh(self.sess()) {

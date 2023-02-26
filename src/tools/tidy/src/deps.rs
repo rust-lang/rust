@@ -120,6 +120,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "dissimilar",
     "dlmalloc",
     "either",
+    "elsa",
     "ena",
     "expect-test",
     "fallible-iterator", // dependency of `thorin`

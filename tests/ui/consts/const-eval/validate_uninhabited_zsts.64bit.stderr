@@ -2,10 +2,7 @@ warning: the type `!` does not permit zero-initialization
   --> $DIR/validate_uninhabited_zsts.rs:4:14
    |
 LL |     unsafe { std::mem::transmute(()) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^
-   |              |
-   |              this code causes undefined behavior when executed
-   |              help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |              ^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
    |
    = note: the `!` type has no valid value
    = note: `#[warn(invalid_value)]` on by default
@@ -40,10 +37,7 @@ warning: the type `empty::Empty` does not permit zero-initialization
   --> $DIR/validate_uninhabited_zsts.rs:21:42
    |
 LL | const BAR: [empty::Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^
-   |                                          |
-   |                                          this code causes undefined behavior when executed
-   |                                          help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
    |
 note: in this struct field
   --> $DIR/validate_uninhabited_zsts.rs:16:22

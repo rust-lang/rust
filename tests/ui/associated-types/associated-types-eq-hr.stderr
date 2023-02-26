@@ -15,7 +15,7 @@ note: required by a bound in `foo`
   --> $DIR/associated-types-eq-hr.rs:45:36
    |
 LL | fn foo<T>()
-   |    --- required by a bound in this
+   |    --- required by a bound in this function
 LL | where
 LL |     T: for<'x> TheTrait<&'x isize, A = &'x isize>,
    |                                    ^^^^^^^^^^^^^ required by this bound in `foo`
@@ -37,7 +37,7 @@ note: required by a bound in `bar`
   --> $DIR/associated-types-eq-hr.rs:52:36
    |
 LL | fn bar<T>()
-   |    --- required by a bound in this
+   |    --- required by a bound in this function
 LL | where
 LL |     T: for<'x> TheTrait<&'x isize, A = &'x usize>,
    |                                    ^^^^^^^^^^^^^ required by this bound in `bar`

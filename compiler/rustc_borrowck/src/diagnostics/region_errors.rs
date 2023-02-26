@@ -575,7 +575,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
         if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *output_ty.kind() {
-            output_ty = self.infcx.tcx.type_of(def_id)
+            output_ty = self.infcx.tcx.type_of(def_id).subst_identity()
         };
 
         debug!("report_fnmut_error: output_ty={:?}", output_ty);
@@ -660,10 +660,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             errci.outlived_fr,
         );
 
-        let (_, escapes_from) = self
-            .infcx
-            .tcx
-            .article_and_description(self.regioncx.universal_regions().defining_ty.def_id());
+        let escapes_from =
+            self.infcx.tcx.def_descr(self.regioncx.universal_regions().defining_ty.def_id());
 
         // Revert to the normal error in these cases.
         // Assignments aren't "escapes" in function items.
@@ -757,8 +755,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             ..
         } = errci;
 
-        let (_, mir_def_name) =
-            self.infcx.tcx.article_and_description(self.mir_def_id().to_def_id());
+        let mir_def_name = self.infcx.tcx.def_descr(self.mir_def_id().to_def_id());
 
         let err = LifetimeOutliveErr { span: *span };
         let mut diag = self.infcx.tcx.sess.create_err(err);
@@ -896,7 +893,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             debug!(?fn_did, ?substs);
 
             // Only suggest this on function calls, not closures
-            let ty = tcx.type_of(fn_did);
+            let ty = tcx.type_of(fn_did).subst_identity();
             debug!("ty: {:?}, ty.kind: {:?}", ty, ty.kind());
             if let ty::Closure(_, _) = ty.kind() {
                 return;

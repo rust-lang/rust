@@ -251,6 +251,10 @@ impl FlagComputation {
                 self.add_ty(ty);
                 self.add_region(region);
             }
+            ty::PredicateKind::Clause(ty::Clause::ConstArgHasType(ct, ty)) => {
+                self.add_const(ct);
+                self.add_ty(ty);
+            }
             ty::PredicateKind::Subtype(ty::SubtypePredicate { a_is_expected: _, a, b }) => {
                 self.add_ty(a);
                 self.add_ty(b);

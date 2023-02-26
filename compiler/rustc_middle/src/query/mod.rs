@@ -33,7 +33,7 @@ rustc_queries! {
     }
 
     query resolver_for_lowering(_: ()) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
-        feedable
+        eval_always
         no_hash
         desc { "getting the resolver for lowering" }
     }
@@ -85,11 +85,10 @@ rustc_queries! {
         desc { |tcx| "getting HIR owner of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
-    /// Gives access to the HIR ID for the given `LocalDefId` owner `key`.
+    /// Gives access to the HIR ID for the given `LocalDefId` owner `key` if any.
     ///
-    /// This can be conveniently accessed by methods on `tcx.hir()`.
-    /// Avoid calling this query directly.
-    query local_def_id_to_hir_id(key: LocalDefId) -> hir::HirId {
+    /// Definitions that were generated with no HIR, would be feeded to return `None`.
+    query opt_local_def_id_to_hir_id(key: LocalDefId) -> Option<hir::HirId>{
         desc { |tcx| "getting HIR ID of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
@@ -152,7 +151,7 @@ rustc_queries! {
     /// to an alias, it will "skip" this alias to return the aliased type.
     ///
     /// [`DefId`]: rustc_hir::def_id::DefId
-    query type_of(key: DefId) -> Ty<'tcx> {
+    query type_of(key: DefId) -> ty::EarlyBinder<Ty<'tcx>> {
         desc { |tcx|
             "{action} `{path}`",
             action = {
@@ -729,15 +728,14 @@ rustc_queries! {
     }
 
     /// Maps from a trait item to the trait item "descriptor".
-    query associated_item(key: DefId) -> &'tcx ty::AssocItem {
+    query associated_item(key: DefId) -> ty::AssocItem {
         desc { |tcx| "computing associated item data for `{}`", tcx.def_path_str(key) }
-        arena_cache
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
 
     /// Collects the associated items defined on a trait or impl.
-    query associated_items(key: DefId) -> &'tcx ty::AssocItems<'tcx> {
+    query associated_items(key: DefId) -> &'tcx ty::AssocItems {
         arena_cache
         desc { |tcx| "collecting associated items of `{}`", tcx.def_path_str(key) }
     }
@@ -768,6 +766,26 @@ rustc_queries! {
         desc { |tcx| "comparing impl items against trait for `{}`", tcx.def_path_str(impl_id) }
     }
 
+    /// Given `fn_def_id` of a trait or of an impl that implements a given trait:
+    /// if `fn_def_id` is the def id of a function defined inside a trait, then it creates and returns
+    /// the associated items that correspond to each impl trait in return position for that trait.
+    /// if `fn_def_id` is the def id of a function defined inside an impl that implements a trait, then it
+    /// creates and returns the associated items that correspond to each impl trait in return position
+    /// of the implemented trait.
+    query associated_items_for_impl_trait_in_trait(fn_def_id: DefId) -> &'tcx [DefId] {
+        desc { |tcx| "creating associated items for impl trait in trait returned by `{}`", tcx.def_path_str(fn_def_id) }
+        cache_on_disk_if { fn_def_id.is_local() }
+        separate_provide_extern
+    }
+
+    /// Given an impl trait in trait `opaque_ty_def_id`, create and return the corresponding
+    /// associated item.
+    query associated_item_for_impl_trait_in_trait(opaque_ty_def_id: LocalDefId) -> LocalDefId {
+        desc { |tcx| "creates the associated item corresponding to the opaque type `{}`", tcx.def_path_str(opaque_ty_def_id.to_def_id()) }
+        cache_on_disk_if { true }
+        separate_provide_extern
+    }
+
     /// Given an `impl_id`, return the trait it implements.
     /// Return `None` if this is an inherent impl.
     query impl_trait_ref(impl_id: DefId) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
@@ -781,7 +799,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query issue33140_self_ty(key: DefId) -> Option<ty::Ty<'tcx>> {
+    query issue33140_self_ty(key: DefId) -> Option<ty::EarlyBinder<ty::Ty<'tcx>>> {
         desc { |tcx| "computing Self type wrt issue #33140 `{}`", tcx.def_path_str(key) }
     }
 
@@ -1641,12 +1659,12 @@ rustc_queries! {
     /// Does lifetime resolution on items. Importantly, we can't resolve
     /// lifetimes directly on things like trait methods, because of trait params.
     /// See `rustc_resolve::late::lifetimes for details.
-    query resolve_lifetimes(_: hir::OwnerId) -> &'tcx ResolveLifetimes {
+    query resolve_bound_vars(_: hir::OwnerId) -> &'tcx ResolveBoundVars {
         arena_cache
         desc { "resolving lifetimes" }
     }
-    query named_region_map(_: hir::OwnerId) ->
-        Option<&'tcx FxHashMap<ItemLocalId, Region>> {
+    query named_variable_map(_: hir::OwnerId) ->
+        Option<&'tcx FxHashMap<ItemLocalId, ResolvedArg>> {
         desc { "looking up a named region" }
     }
     query is_late_bound_map(_: hir::OwnerId) -> Option<&'tcx FxIndexSet<ItemLocalId>> {
@@ -2076,6 +2094,18 @@ rustc_queries! {
     query features_query(_: ()) -> &'tcx rustc_feature::Features {
         feedable
         desc { "looking up enabled feature gates" }
+    }
+
+    query metadata_loader((): ()) -> &'tcx Steal<Box<rustc_session::cstore::MetadataLoaderDyn>> {
+        feedable
+        no_hash
+        desc { "raw operations for metadata file access" }
+    }
+
+    query crate_for_resolver((): ()) -> &'tcx Steal<rustc_ast::ast::Crate> {
+        feedable
+        no_hash
+        desc { "the ast before macro expansion and name resolution" }
     }
 
     /// Attempt to resolve the given `DefId` to an `Instance`, for the

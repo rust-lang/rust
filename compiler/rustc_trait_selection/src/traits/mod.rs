@@ -27,7 +27,7 @@ use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorGuaranteed;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::visit::TypeVisitable;
+use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeSuperVisitable};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_span::def_id::{DefId, CRATE_DEF_ID};
@@ -141,7 +141,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'tcx>(
 fn pred_known_to_hold_modulo_regions<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    pred: impl ToPredicate<'tcx> + TypeVisitable<'tcx>,
+    pred: impl ToPredicate<'tcx> + TypeVisitable<TyCtxt<'tcx>>,
     span: Span,
 ) -> bool {
     let has_non_region_infer = pred.has_non_region_infer();
@@ -281,7 +281,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
     let elaborated_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&predicates),
+        tcx.mk_predicates(&predicates),
         unnormalized_env.reveal(),
         unnormalized_env.constness(),
     );
@@ -333,10 +333,9 @@ pub fn normalize_param_env_or_error<'tcx>(
     // Not sure whether it is better to include the unnormalized TypeOutlives predicates
     // here. I believe they should not matter, because we are ignoring TypeOutlives param-env
     // predicates here anyway. Keeping them here anyway because it seems safer.
-    let outlives_env: Vec<_> =
-        non_outlives_predicates.iter().chain(&outlives_predicates).cloned().collect();
+    let outlives_env = non_outlives_predicates.iter().chain(&outlives_predicates).cloned();
     let outlives_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&outlives_env),
+        tcx.mk_predicates_from_iter(outlives_env),
         unnormalized_env.reveal(),
         unnormalized_env.constness(),
     );
@@ -356,7 +355,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
     ty::ParamEnv::new(
-        tcx.intern_predicates(&predicates),
+        tcx.mk_predicates(&predicates),
         unnormalized_env.reveal(),
         unnormalized_env.constness(),
     )
@@ -371,7 +370,7 @@ pub fn fully_normalize<'tcx, T>(
     value: T,
 ) -> Result<T, Vec<FulfillmentError<'tcx>>>
 where
-    T: TypeFoldable<'tcx>,
+    T: TypeFoldable<TyCtxt<'tcx>>,
 {
     let ocx = ObligationCtxt::new(infcx);
     debug!(?value);
@@ -481,7 +480,7 @@ fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefI
         generics: &'tcx ty::Generics,
         trait_item_def_id: DefId,
     }
-    impl<'tcx> ty::ir::TypeVisitor<TyCtxt<'tcx>> for ReferencesOnlyParentGenerics<'tcx> {
+    impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for ReferencesOnlyParentGenerics<'tcx> {
         type BreakTy = ();
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             // If this is a parameter from the trait item's own generics, then bail

@@ -792,7 +792,7 @@ impl<'a> Builder<'a> {
                 run::CollectLicenseMetadata,
                 run::GenerateCopyright,
             ),
-            Kind::Setup => describe!(setup::Profile),
+            Kind::Setup => describe!(setup::Profile, setup::Hook, setup::Link, setup::Vscode),
             Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
             // special-cased in Build::build()
             Kind::Format => vec![],
@@ -1912,6 +1912,13 @@ impl<'a> Builder<'a> {
                 {
                     rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={}", limit));
                 }
+            }
+        }
+
+        if matches!(mode, Mode::Std) {
+            if let Some(mir_opt_level) = self.config.rust_validate_mir_opts {
+                rustflags.arg("-Zvalidate-mir");
+                rustflags.arg(&format!("-Zmir-opt-level={}", mir_opt_level));
             }
         }
 

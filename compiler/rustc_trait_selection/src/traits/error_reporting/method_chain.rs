@@ -98,7 +98,7 @@ impl<'tcx> ObligationEmittingRelation<'tcx> for CollectAllMismatches<'_, 'tcx> {
 
     fn register_predicates(
         &mut self,
-        _obligations: impl IntoIterator<Item = impl ty::ToPredicate<'tcx>>,
+        _obligations: impl IntoIterator<Item: ty::ToPredicate<'tcx>>,
     ) {
         // FIXME(deferred_projection_equality)
     }

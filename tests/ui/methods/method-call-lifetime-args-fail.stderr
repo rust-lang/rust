@@ -1,4 +1,4 @@
-error[E0107]: this associated function takes 2 lifetime arguments but 1 lifetime argument was supplied
+error[E0107]: method takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/method-call-lifetime-args-fail.rs:16:7
    |
 LL |     S.early::<'static>();
@@ -6,7 +6,7 @@ LL |     S.early::<'static>();
    |       |
    |       expected 2 lifetime arguments
    |
-note: associated function defined here, with 2 lifetime parameters: `'a`, `'b`
+note: method defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/method-call-lifetime-args-fail.rs:6:8
    |
 LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
@@ -16,7 +16,7 @@ help: add missing lifetime argument
 LL |     S.early::<'static, 'static>();
    |                      +++++++++
 
-error[E0107]: this associated function takes 2 lifetime arguments but 3 lifetime arguments were supplied
+error[E0107]: method takes 2 lifetime arguments but 3 lifetime arguments were supplied
   --> $DIR/method-call-lifetime-args-fail.rs:18:7
    |
 LL |     S.early::<'static, 'static, 'static>();
@@ -24,7 +24,7 @@ LL |     S.early::<'static, 'static, 'static>();
    |       |
    |       expected 2 lifetime arguments
    |
-note: associated function defined here, with 2 lifetime parameters: `'a`, `'b`
+note: method defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/method-call-lifetime-args-fail.rs:6:8
    |
 LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
@@ -198,7 +198,7 @@ note: the late bound lifetime parameter is introduced here
 LL |     fn late_unused_early<'a, 'b>(self) -> &'b u8 { loop {} }
    |                          ^^
 
-error[E0107]: this associated function takes 2 lifetime arguments but 1 lifetime argument was supplied
+error[E0107]: method takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/method-call-lifetime-args-fail.rs:63:8
    |
 LL |     S::early::<'static>(S);
@@ -206,7 +206,7 @@ LL |     S::early::<'static>(S);
    |        |
    |        expected 2 lifetime arguments
    |
-note: associated function defined here, with 2 lifetime parameters: `'a`, `'b`
+note: method defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/method-call-lifetime-args-fail.rs:6:8
    |
 LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }
@@ -216,7 +216,7 @@ help: add missing lifetime argument
 LL |     S::early::<'static, 'static>(S);
    |                       +++++++++
 
-error[E0107]: this associated function takes 2 lifetime arguments but 3 lifetime arguments were supplied
+error[E0107]: method takes 2 lifetime arguments but 3 lifetime arguments were supplied
   --> $DIR/method-call-lifetime-args-fail.rs:65:8
    |
 LL |     S::early::<'static, 'static, 'static>(S);
@@ -224,7 +224,7 @@ LL |     S::early::<'static, 'static, 'static>(S);
    |        |
    |        expected 2 lifetime arguments
    |
-note: associated function defined here, with 2 lifetime parameters: `'a`, `'b`
+note: method defined here, with 2 lifetime parameters: `'a`, `'b`
   --> $DIR/method-call-lifetime-args-fail.rs:6:8
    |
 LL |     fn early<'a, 'b>(self) -> (&'a u8, &'b u8) { loop {} }

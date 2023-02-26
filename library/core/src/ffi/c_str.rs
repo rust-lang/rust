@@ -457,6 +457,10 @@ impl CStr {
     /// to a contiguous region of memory terminated with a 0 byte to represent
     /// the end of the string.
     ///
+    /// The type of the returned pointer is
+    /// [`*const c_char`][crate::ffi::c_char], and whether it's
+    /// an alias for `*const i8` or `*const u8` is platform-specific.
+    ///
     /// **WARNING**
     ///
     /// The returned pointer is read-only; writing to it (including passing it
@@ -470,6 +474,7 @@ impl CStr {
     /// # #![allow(unused_must_use)] #![allow(temporary_cstring_as_ptr)]
     /// use std::ffi::CString;
     ///
+    /// // Do not do this:
     /// let ptr = CString::new("Hello").expect("CString::new failed").as_ptr();
     /// unsafe {
     ///     // `ptr` is dangling

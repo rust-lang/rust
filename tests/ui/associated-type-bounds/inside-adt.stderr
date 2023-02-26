@@ -1,131 +1,56 @@
-error: associated type bounds are not allowed within structs, enums, or unions
+error: associated type bounds are only allowed in where clauses and function signatures, not in field types
   --> $DIR/inside-adt.rs:5:29
    |
 LL | struct S1 { f: dyn Iterator<Item: Copy> }
    |                             ^^^^^^^^^^
 
-error: associated type bounds are not allowed within structs, enums, or unions
+error: associated type bounds are only allowed in where clauses and function signatures, not in field types
   --> $DIR/inside-adt.rs:7:33
    |
 LL | struct S2 { f: Box<dyn Iterator<Item: Copy>> }
    |                                 ^^^^^^^^^^
 
-error: associated type bounds are not allowed within structs, enums, or unions
+error: associated type bounds are only allowed in where clauses and function signatures, not in field types
   --> $DIR/inside-adt.rs:9:29
    |
 LL | struct S3 { f: dyn Iterator<Item: 'static> }
    |                             ^^^^^^^^^^^^^
 
-error: associated type bounds are not allowed within structs, enums, or unions
+error: associated type bounds are only allowed in where clauses and function signatures, not in field types
   --> $DIR/inside-adt.rs:12:26
    |
 LL | enum E1 { V(dyn Iterator<Item: Copy>) }
    |                          ^^^^^^^^^^
 
-error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:15:30
+error: associated type bounds are only allowed in where clauses and function signatures, not in field types
+  --> $DIR/inside-adt.rs:14:30
    |
 LL | enum E2 { V(Box<dyn Iterator<Item: Copy>>) }
    |                              ^^^^^^^^^^
 
-error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:17:26
+error: associated type bounds are only allowed in where clauses and function signatures, not in field types
+  --> $DIR/inside-adt.rs:16:26
    |
 LL | enum E3 { V(dyn Iterator<Item: 'static>) }
    |                          ^^^^^^^^^^^^^
 
-error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:21:41
+error: associated type bounds are only allowed in where clauses and function signatures, not in field types
+  --> $DIR/inside-adt.rs:19:41
    |
 LL | union U1 { f: ManuallyDrop<dyn Iterator<Item: Copy>> }
    |                                         ^^^^^^^^^^
 
-error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:24:45
+error: associated type bounds are only allowed in where clauses and function signatures, not in field types
+  --> $DIR/inside-adt.rs:21:45
    |
 LL | union U2 { f: ManuallyDrop<Box<dyn Iterator<Item: Copy>>> }
    |                                             ^^^^^^^^^^
 
-error: associated type bounds are not allowed within structs, enums, or unions
-  --> $DIR/inside-adt.rs:26:41
+error: associated type bounds are only allowed in where clauses and function signatures, not in field types
+  --> $DIR/inside-adt.rs:23:41
    |
 LL | union U3 { f: ManuallyDrop<dyn Iterator<Item: 'static>> }
    |                                         ^^^^^^^^^^^^^
 
-error[E0277]: the size for values of type `(dyn Iterator<Item = impl Copy> + 'static)` cannot be known at compilation time
-  --> $DIR/inside-adt.rs:12:13
-   |
-LL | enum E1 { V(dyn Iterator<Item: Copy>) }
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `(dyn Iterator<Item = impl Copy> + 'static)`
-   = note: no field of an enum variant may have a dynamically sized type
-   = help: change the field's type to have a statically known size
-help: borrowed types always have a statically known size
-   |
-LL | enum E1 { V(&dyn Iterator<Item: Copy>) }
-   |             +
-help: the `Box` type always has a statically known size and allocates its contents in the heap
-   |
-LL | enum E1 { V(Box<dyn Iterator<Item: Copy>>) }
-   |             ++++                        +
+error: aborting due to 9 previous errors
 
-error[E0277]: the size for values of type `(dyn Iterator<Item = impl Sized + 'static> + 'static)` cannot be known at compilation time
-  --> $DIR/inside-adt.rs:17:13
-   |
-LL | enum E3 { V(dyn Iterator<Item: 'static>) }
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `(dyn Iterator<Item = impl Sized + 'static> + 'static)`
-   = note: no field of an enum variant may have a dynamically sized type
-   = help: change the field's type to have a statically known size
-help: borrowed types always have a statically known size
-   |
-LL | enum E3 { V(&dyn Iterator<Item: 'static>) }
-   |             +
-help: the `Box` type always has a statically known size and allocates its contents in the heap
-   |
-LL | enum E3 { V(Box<dyn Iterator<Item: 'static>>) }
-   |             ++++                           +
-
-error[E0277]: the size for values of type `(dyn Iterator<Item = impl Copy> + 'static)` cannot be known at compilation time
-  --> $DIR/inside-adt.rs:21:15
-   |
-LL | union U1 { f: ManuallyDrop<dyn Iterator<Item: Copy>> }
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: within `ManuallyDrop<(dyn Iterator<Item = impl Copy> + 'static)>`, the trait `Sized` is not implemented for `(dyn Iterator<Item = impl Copy> + 'static)`
-   = note: required because it appears within the type `ManuallyDrop<dyn Iterator<Item = impl Copy>>`
-   = note: no field of a union may have a dynamically sized type
-   = help: change the field's type to have a statically known size
-help: borrowed types always have a statically known size
-   |
-LL | union U1 { f: &ManuallyDrop<dyn Iterator<Item: Copy>> }
-   |               +
-help: the `Box` type always has a statically known size and allocates its contents in the heap
-   |
-LL | union U1 { f: Box<ManuallyDrop<dyn Iterator<Item: Copy>>> }
-   |               ++++                                      +
-
-error[E0277]: the size for values of type `(dyn Iterator<Item = impl Sized + 'static> + 'static)` cannot be known at compilation time
-  --> $DIR/inside-adt.rs:26:15
-   |
-LL | union U3 { f: ManuallyDrop<dyn Iterator<Item: 'static>> }
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: within `ManuallyDrop<(dyn Iterator<Item = impl Sized + 'static> + 'static)>`, the trait `Sized` is not implemented for `(dyn Iterator<Item = impl Sized + 'static> + 'static)`
-   = note: required because it appears within the type `ManuallyDrop<dyn Iterator<Item = impl Sized>>`
-   = note: no field of a union may have a dynamically sized type
-   = help: change the field's type to have a statically known size
-help: borrowed types always have a statically known size
-   |
-LL | union U3 { f: &ManuallyDrop<dyn Iterator<Item: 'static>> }
-   |               +
-help: the `Box` type always has a statically known size and allocates its contents in the heap
-   |
-LL | union U3 { f: Box<ManuallyDrop<dyn Iterator<Item: 'static>>> }
-   |               ++++                                         +
-
-error: aborting due to 13 previous errors
-
-For more information about this error, try `rustc --explain E0277`.

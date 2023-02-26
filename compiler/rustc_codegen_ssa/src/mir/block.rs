@@ -16,7 +16,7 @@ use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, AssertKind, SwitchTargets};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Instance, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
@@ -452,86 +452,84 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             args1 = [place.llval];
             &args1[..]
         };
-        let (drop_fn, fn_abi) = match ty.kind() {
-            // FIXME(eddyb) perhaps move some of this logic into
-            // `Instance::resolve_drop_in_place`?
-            ty::Dynamic(_, _, ty::Dyn) => {
-                // IN THIS ARM, WE HAVE:
-                // ty = *mut (dyn Trait)
-                // which is: exists<T> ( *mut T,    Vtable<T: Trait> )
-                //                       args[0]    args[1]
-                //
-                // args = ( Data, Vtable )
-                //                  |
-                //                  v
-                //                /-------\
-                //                | ...   |
-                //                \-------/
-                //
-                let virtual_drop = Instance {
-                    def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
-                    substs: drop_fn.substs,
-                };
-                debug!("ty = {:?}", ty);
-                debug!("drop_fn = {:?}", drop_fn);
-                debug!("args = {:?}", args);
-                let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
-                let vtable = args[1];
-                // Truncate vtable off of args list
-                args = &args[..1];
-                (
-                    meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                        .get_fn(bx, vtable, ty, &fn_abi),
-                    fn_abi,
-                )
-            }
-            ty::Dynamic(_, _, ty::DynStar) => {
-                // IN THIS ARM, WE HAVE:
-                // ty = *mut (dyn* Trait)
-                // which is: *mut exists<T: sizeof(T) == sizeof(usize)> (T, Vtable<T: Trait>)
-                //
-                // args = [ * ]
-                //          |
-                //          v
-                //      ( Data, Vtable )
-                //                |
-                //                v
-                //              /-------\
-                //              | ...   |
-                //              \-------/
-                //
-                //
-                // WE CAN CONVERT THIS INTO THE ABOVE LOGIC BY DOING
-                //
-                // data = &(*args[0]).0    // gives a pointer to Data above (really the same pointer)
-                // vtable = (*args[0]).1   // loads the vtable out
-                // (data, vtable)          // an equivalent Rust `*mut dyn Trait`
-                //
-                // SO THEN WE CAN USE THE ABOVE CODE.
-                let virtual_drop = Instance {
-                    def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
-                    substs: drop_fn.substs,
-                };
-                debug!("ty = {:?}", ty);
-                debug!("drop_fn = {:?}", drop_fn);
-                debug!("args = {:?}", args);
-                let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
-                let data = args[0];
-                let data_ty = bx.cx().backend_type(place.layout);
-                let vtable_ptr =
-                    bx.gep(data_ty, data, &[bx.cx().const_i32(0), bx.cx().const_i32(1)]);
-                let vtable = bx.load(bx.type_i8p(), vtable_ptr, abi::Align::ONE);
-                // Truncate vtable off of args list
-                args = &args[..1];
-                debug!("args' = {:?}", args);
-                (
-                    meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                        .get_fn(bx, vtable, ty, &fn_abi),
-                    fn_abi,
-                )
-            }
-            _ => (bx.get_fn_addr(drop_fn), bx.fn_abi_of_instance(drop_fn, ty::List::empty())),
-        };
+        let (drop_fn, fn_abi) =
+            match ty.kind() {
+                // FIXME(eddyb) perhaps move some of this logic into
+                // `Instance::resolve_drop_in_place`?
+                ty::Dynamic(_, _, ty::Dyn) => {
+                    // IN THIS ARM, WE HAVE:
+                    // ty = *mut (dyn Trait)
+                    // which is: exists<T> ( *mut T,    Vtable<T: Trait> )
+                    //                       args[0]    args[1]
+                    //
+                    // args = ( Data, Vtable )
+                    //                  |
+                    //                  v
+                    //                /-------\
+                    //                | ...   |
+                    //                \-------/
+                    //
+                    let virtual_drop = Instance {
+                        def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
+                        substs: drop_fn.substs,
+                    };
+                    debug!("ty = {:?}", ty);
+                    debug!("drop_fn = {:?}", drop_fn);
+                    debug!("args = {:?}", args);
+                    let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
+                    let vtable = args[1];
+                    // Truncate vtable off of args list
+                    args = &args[..1];
+                    (
+                        meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
+                            .get_fn(bx, vtable, ty, &fn_abi),
+                        fn_abi,
+                    )
+                }
+                ty::Dynamic(_, _, ty::DynStar) => {
+                    // IN THIS ARM, WE HAVE:
+                    // ty = *mut (dyn* Trait)
+                    // which is: *mut exists<T: sizeof(T) == sizeof(usize)> (T, Vtable<T: Trait>)
+                    //
+                    // args = [ * ]
+                    //          |
+                    //          v
+                    //      ( Data, Vtable )
+                    //                |
+                    //                v
+                    //              /-------\
+                    //              | ...   |
+                    //              \-------/
+                    //
+                    //
+                    // WE CAN CONVERT THIS INTO THE ABOVE LOGIC BY DOING
+                    //
+                    // data = &(*args[0]).0    // gives a pointer to Data above (really the same pointer)
+                    // vtable = (*args[0]).1   // loads the vtable out
+                    // (data, vtable)          // an equivalent Rust `*mut dyn Trait`
+                    //
+                    // SO THEN WE CAN USE THE ABOVE CODE.
+                    let virtual_drop = Instance {
+                        def: ty::InstanceDef::Virtual(drop_fn.def_id(), 0),
+                        substs: drop_fn.substs,
+                    };
+                    debug!("ty = {:?}", ty);
+                    debug!("drop_fn = {:?}", drop_fn);
+                    debug!("args = {:?}", args);
+                    let fn_abi = bx.fn_abi_of_instance(virtual_drop, ty::List::empty());
+                    let meta_ptr = place.project_field(bx, 1);
+                    let meta = bx.load_operand(meta_ptr);
+                    // Truncate vtable off of args list
+                    args = &args[..1];
+                    debug!("args' = {:?}", args);
+                    (
+                        meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
+                            .get_fn(bx, meta.immediate(), ty, &fn_abi),
+                        fn_abi,
+                    )
+                }
+                _ => (bx.get_fn_addr(drop_fn), bx.fn_abi_of_instance(drop_fn, ty::List::empty())),
+            };
         helper.do_call(
             self,
             bx,
@@ -565,11 +563,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // with #[rustc_inherit_overflow_checks] and inlined from
         // another crate (mostly core::num generic/#[inline] fns),
         // while the current crate doesn't use overflow checks.
-        // NOTE: Unlike binops, negation doesn't have its own
-        // checked operation, just a comparison with the minimum
-        // value, so we have to check for the assert message.
-        if !bx.check_overflow() {
-            if let AssertKind::OverflowNeg(_) = *msg {
+        if !bx.cx().check_overflow() {
+            let overflow_not_to_check = match msg {
+                AssertKind::OverflowNeg(..) => true,
+                AssertKind::Overflow(op, ..) => op.is_checkable(),
+                _ => false,
+            };
+            if overflow_not_to_check {
                 const_cond = Some(expected);
             }
         }
@@ -783,7 +783,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         let extra_args = &args[sig.inputs().skip_binder().len()..];
-        let extra_args = bx.tcx().mk_type_list(extra_args.iter().map(|op_arg| {
+        let extra_args = bx.tcx().mk_type_list_from_iter(extra_args.iter().map(|op_arg| {
             let op_ty = op_arg.ty(self.mir, bx.tcx());
             self.monomorphize(op_ty)
         }));
@@ -1547,7 +1547,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             slot
         } else {
             let layout = cx.layout_of(
-                cx.tcx().intern_tup(&[cx.tcx().mk_mut_ptr(cx.tcx().types.u8), cx.tcx().types.i32]),
+                cx.tcx().mk_tup(&[cx.tcx().mk_mut_ptr(cx.tcx().types.u8), cx.tcx().types.i32]),
             );
             let slot = PlaceRef::alloca(bx, layout);
             self.personality_slot = Some(slot);

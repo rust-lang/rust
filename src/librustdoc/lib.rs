@@ -20,6 +20,7 @@
 #![allow(clippy::collapsible_if, clippy::collapsible_else_if)]
 #![allow(rustc::potential_query_instability)]
 
+extern crate thin_vec;
 #[macro_use]
 extern crate tracing;
 

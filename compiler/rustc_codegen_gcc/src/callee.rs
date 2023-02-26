@@ -1,6 +1,6 @@
 use gccjit::{FunctionType, RValue};
 use rustc_codegen_ssa::traits::BaseTypeMethods;
-use rustc_middle::ty::{self, Instance, TypeVisitable};
+use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 
 use crate::abi::FnAbiGccExt;

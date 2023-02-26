@@ -200,16 +200,21 @@ impl<'a> StringReader<'a> {
                     };
                     token::Literal(token::Lit { kind, symbol, suffix })
                 }
-                rustc_lexer::TokenKind::Lifetime { starts_with_number } => {
+                rustc_lexer::TokenKind::Lifetime { starts_with_number, contains_emoji } => {
                     // Include the leading `'` in the real identifier, for macro
                     // expansion purposes. See #12512 for the gory details of why
                     // this is necessary.
                     let lifetime_name = self.str_from(start);
                     if starts_with_number {
                         let span = self.mk_sp(start, self.pos);
-                        let mut diag = self.sess.struct_err("lifetimes cannot start with a number");
+                        let mut diag = self.sess.struct_err("lifetimes or labels cannot start with a number");
                         diag.set_span(span);
                         diag.stash(span, StashKey::LifetimeIsChar);
+                    } else if contains_emoji {
+                        let span = self.mk_sp(start, self.pos);
+                        let mut diag = self.sess.struct_err("lifetimes or labels cannot contain emojis");
+                        diag.set_span(span);
+                        diag.stash(span, StashKey::LifetimeContainsEmoji);
                     }
                     let ident = Symbol::intern(lifetime_name);
                     token::Lifetime(ident)

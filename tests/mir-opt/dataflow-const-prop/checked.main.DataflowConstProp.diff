@@ -61,7 +61,7 @@
 -         assert(!move (_10.1: bool), "attempt to compute `{} + {}`, which would overflow", move _9, const 1_i32) -> bb2; // scope 4 at $DIR/checked.rs:+6:13: +6:18
 +         _9 = const i32::MAX;             // scope 4 at $DIR/checked.rs:+6:13: +6:14
 +         _10 = CheckedAdd(const i32::MAX, const 1_i32); // scope 4 at $DIR/checked.rs:+6:13: +6:18
-+         assert(!move (_10.1: bool), "attempt to compute `{} + {}`, which would overflow", const i32::MAX, const 1_i32) -> bb2; // scope 4 at $DIR/checked.rs:+6:13: +6:18
++         assert(!const true, "attempt to compute `{} + {}`, which would overflow", const i32::MAX, const 1_i32) -> bb2; // scope 4 at $DIR/checked.rs:+6:13: +6:18
       }
   
       bb2: {

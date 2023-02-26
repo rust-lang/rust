@@ -1,5 +1,7 @@
 use super::*;
 
+pub(super) const ATTRIBUTE_FIRST: TokenSet = TokenSet::new(&[T![#]]);
+
 pub(super) fn inner_attrs(p: &mut Parser<'_>) {
     while p.at(T![#]) && p.nth(1) == T![!] {
         attr(p, true);

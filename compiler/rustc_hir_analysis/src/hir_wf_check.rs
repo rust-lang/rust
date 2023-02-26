@@ -5,7 +5,7 @@ use rustc_hir::{ForeignItem, ForeignItemKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCause, WellFormedLoc};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, ir::TypeFolder, Region, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Region, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_span::def_id::LocalDefId;
 use rustc_trait_selection::traits;
 

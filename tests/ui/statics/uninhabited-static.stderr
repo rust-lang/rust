@@ -53,10 +53,7 @@ warning: the type `Void` does not permit zero-initialization
   --> $DIR/uninhabited-static.rs:12:31
    |
 LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^
-   |                               |
-   |                               this code causes undefined behavior when executed
-   |                               help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
    |
 note: enums with no inhabited variants have no valid value
   --> $DIR/uninhabited-static.rs:4:1
@@ -75,10 +72,7 @@ warning: the type `Void` does not permit zero-initialization
   --> $DIR/uninhabited-static.rs:16:32
    |
 LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^
-   |                                |
-   |                                this code causes undefined behavior when executed
-   |                                help: use `MaybeUninit<T>` instead, and only call `assume_init` after initialization is done
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
    |
 note: enums with no inhabited variants have no valid value
   --> $DIR/uninhabited-static.rs:4:1

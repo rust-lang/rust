@@ -7,7 +7,7 @@ LL |     x.zero(0)
    |            unexpected argument of type `{integer}`
    |            help: remove the extra argument
    |
-note: associated function defined here
+note: method defined here
   --> $DIR/method-call-err-msg.rs:5:8
    |
 LL |     fn zero(self) -> Foo { self }
@@ -19,7 +19,7 @@ error[E0061]: this method takes 1 argument but 0 arguments were supplied
 LL |      .one()
    |       ^^^-- an argument of type `isize` is missing
    |
-note: associated function defined here
+note: method defined here
   --> $DIR/method-call-err-msg.rs:6:8
    |
 LL |     fn one(self, _: isize) -> Foo { self }
@@ -35,7 +35,7 @@ error[E0061]: this method takes 2 arguments but 1 argument was supplied
 LL |      .two(0);
    |       ^^^--- an argument of type `isize` is missing
    |
-note: associated function defined here
+note: method defined here
   --> $DIR/method-call-err-msg.rs:7:8
    |
 LL |     fn two(self, _: isize, _: isize) -> Foo { self }
@@ -72,7 +72,7 @@ error[E0061]: this method takes 3 arguments but 0 arguments were supplied
 LL |     y.three::<usize>();
    |       ^^^^^^^^^^^^^^-- three arguments of type `usize`, `usize`, and `usize` are missing
    |
-note: associated function defined here
+note: method defined here
   --> $DIR/method-call-err-msg.rs:8:8
    |
 LL |     fn three<T>(self, _: T, _: T, _: T) -> Foo { self }

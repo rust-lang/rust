@@ -114,7 +114,7 @@ macro_rules! provide_one {
         fn $name<'tcx>(
             $tcx: TyCtxt<'tcx>,
             def_id_arg: ty::query::query_keys::$name<'tcx>,
-        ) -> ty::query::query_values::$name<'tcx> {
+        ) -> ty::query::query_provided::$name<'tcx> {
             let _prof_timer =
                 $tcx.prof.generic_activity(concat!("metadata_decode_entry_", stringify!($name)));
 
@@ -130,7 +130,13 @@ macro_rules! provide_one {
                 $tcx.ensure().crate_hash($def_id.krate);
             }
 
-            let $cdata = CStore::from_tcx($tcx).get_crate_data($def_id.krate);
+            let cdata = rustc_data_structures::sync::MappedReadGuard::map(CStore::from_tcx($tcx), |c| {
+                c.get_crate_data($def_id.krate).cdata
+            });
+            let $cdata = crate::creader::CrateMetadataRef {
+                cdata: &cdata,
+                cstore: &CStore::from_tcx($tcx),
+            };
 
             $compute
         }
@@ -247,6 +253,8 @@ provide! { tcx, def_id, other, cdata,
             .map(|lazy| lazy.decode((cdata, tcx)))
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
      }
+
+    associated_items_for_impl_trait_in_trait => { table_defaulted_array }
 
     visibility => { cdata.get_visibility(def_id.index) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }

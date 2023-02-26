@@ -7,20 +7,13 @@ use syntax::{TextRange, TextSize};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineIndex {
-    /// Offset the the beginning of each line, zero-based
+    /// Offset the beginning of each line, zero-based.
     pub(crate) newlines: Vec<TextSize>,
-    /// List of non-ASCII characters on each line
-    pub(crate) utf16_lines: NoHashHashMap<u32, Vec<Utf16Char>>,
+    /// List of non-ASCII characters on each line.
+    pub(crate) line_wide_chars: NoHashHashMap<u32, Vec<WideChar>>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct LineColUtf16 {
-    /// Zero-based
-    pub line: u32,
-    /// Zero-based
-    pub col: u32,
-}
-
+/// Line/Column information in native, utf8 format.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct LineCol {
     /// Zero-based
@@ -29,34 +22,57 @@ pub struct LineCol {
     pub col: u32,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum WideEncoding {
+    Utf16,
+    Utf32,
+}
+
+/// Line/Column information in legacy encodings.
+///
+/// Deliberately not a generic type and different from `LineCol`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct WideLineCol {
+    /// Zero-based
+    pub line: u32,
+    /// Zero-based
+    pub col: u32,
+}
+
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub(crate) struct Utf16Char {
+pub(crate) struct WideChar {
     /// Start offset of a character inside a line, zero-based
     pub(crate) start: TextSize,
     /// End offset of a character inside a line, zero-based
     pub(crate) end: TextSize,
 }
 
-impl Utf16Char {
+impl WideChar {
     /// Returns the length in 8-bit UTF-8 code units.
     fn len(&self) -> TextSize {
         self.end - self.start
     }
 
-    /// Returns the length in 16-bit UTF-16 code units.
-    fn len_utf16(&self) -> usize {
-        if self.len() == TextSize::from(4) {
-            2
-        } else {
-            1
+    /// Returns the length in UTF-16 or UTF-32 code units.
+    fn wide_len(&self, enc: WideEncoding) -> usize {
+        match enc {
+            WideEncoding::Utf16 => {
+                if self.len() == TextSize::from(4) {
+                    2
+                } else {
+                    1
+                }
+            }
+
+            WideEncoding::Utf32 => 1,
         }
     }
 }
 
 impl LineIndex {
     pub fn new(text: &str) -> LineIndex {
-        let mut utf16_lines = NoHashHashMap::default();
-        let mut utf16_chars = Vec::new();
+        let mut line_wide_chars = NoHashHashMap::default();
+        let mut wide_chars = Vec::new();
 
         let mut newlines = Vec::with_capacity(16);
         newlines.push(TextSize::from(0));
@@ -71,8 +87,8 @@ impl LineIndex {
                 newlines.push(curr_row);
 
                 // Save any utf-16 characters seen in the previous line
-                if !utf16_chars.is_empty() {
-                    utf16_lines.insert(line, mem::take(&mut utf16_chars));
+                if !wide_chars.is_empty() {
+                    line_wide_chars.insert(line, mem::take(&mut wide_chars));
                 }
 
                 // Prepare for processing the next line
@@ -82,18 +98,18 @@ impl LineIndex {
             }
 
             if !c.is_ascii() {
-                utf16_chars.push(Utf16Char { start: curr_col, end: curr_col + c_len });
+                wide_chars.push(WideChar { start: curr_col, end: curr_col + c_len });
             }
 
             curr_col += c_len;
         }
 
         // Save any utf-16 characters seen in the last line
-        if !utf16_chars.is_empty() {
-            utf16_lines.insert(line, utf16_chars);
+        if !wide_chars.is_empty() {
+            line_wide_chars.insert(line, wide_chars);
         }
 
-        LineIndex { newlines, utf16_lines }
+        LineIndex { newlines, line_wide_chars }
     }
 
     pub fn line_col(&self, offset: TextSize) -> LineCol {
@@ -109,13 +125,13 @@ impl LineIndex {
             .map(|offset| offset + TextSize::from(line_col.col))
     }
 
-    pub fn to_utf16(&self, line_col: LineCol) -> LineColUtf16 {
-        let col = self.utf8_to_utf16_col(line_col.line, line_col.col.into());
-        LineColUtf16 { line: line_col.line, col: col as u32 }
+    pub fn to_wide(&self, enc: WideEncoding, line_col: LineCol) -> WideLineCol {
+        let col = self.utf8_to_wide_col(enc, line_col.line, line_col.col.into());
+        WideLineCol { line: line_col.line, col: col as u32 }
     }
 
-    pub fn to_utf8(&self, line_col: LineColUtf16) -> LineCol {
-        let col = self.utf16_to_utf8_col(line_col.line, line_col.col);
+    pub fn to_utf8(&self, enc: WideEncoding, line_col: WideLineCol) -> LineCol {
+        let col = self.wide_to_utf8_col(enc, line_col.line, line_col.col);
         LineCol { line: line_col.line, col: col.into() }
     }
 
@@ -132,12 +148,12 @@ impl LineIndex {
             .filter(|it| !it.is_empty())
     }
 
-    fn utf8_to_utf16_col(&self, line: u32, col: TextSize) -> usize {
+    fn utf8_to_wide_col(&self, enc: WideEncoding, line: u32, col: TextSize) -> usize {
         let mut res: usize = col.into();
-        if let Some(utf16_chars) = self.utf16_lines.get(&line) {
-            for c in utf16_chars {
+        if let Some(wide_chars) = self.line_wide_chars.get(&line) {
+            for c in wide_chars {
                 if c.end <= col {
-                    res -= usize::from(c.len()) - c.len_utf16();
+                    res -= usize::from(c.len()) - c.wide_len(enc);
                 } else {
                     // From here on, all utf16 characters come *after* the character we are mapping,
                     // so we don't need to take them into account
@@ -148,11 +164,11 @@ impl LineIndex {
         res
     }
 
-    fn utf16_to_utf8_col(&self, line: u32, mut col: u32) -> TextSize {
-        if let Some(utf16_chars) = self.utf16_lines.get(&line) {
-            for c in utf16_chars {
+    fn wide_to_utf8_col(&self, enc: WideEncoding, line: u32, mut col: u32) -> TextSize {
+        if let Some(wide_chars) = self.line_wide_chars.get(&line) {
+            for c in wide_chars {
                 if col > u32::from(c.start) {
-                    col += u32::from(c.len()) - c.len_utf16() as u32;
+                    col += u32::from(c.len()) - c.wide_len(enc) as u32;
                 } else {
                     // From here on, all utf16 characters come *after* the character we are mapping,
                     // so we don't need to take them into account
@@ -167,6 +183,9 @@ impl LineIndex {
 
 #[cfg(test)]
 mod tests {
+    use test_utils::skip_slow_tests;
+
+    use super::WideEncoding::{Utf16, Utf32};
     use super::*;
 
     #[test]
@@ -210,67 +229,59 @@ mod tests {
 const C: char = 'x';
 ",
         );
-        assert_eq!(col_index.utf16_lines.len(), 0);
+        assert_eq!(col_index.line_wide_chars.len(), 0);
     }
 
     #[test]
-    fn test_single_char() {
-        let col_index = LineIndex::new(
-            "
-const C: char = 'メ';
-",
-        );
+    fn test_every_chars() {
+        if skip_slow_tests() {
+            return;
+        }
 
-        assert_eq!(col_index.utf16_lines.len(), 1);
-        assert_eq!(col_index.utf16_lines[&1].len(), 1);
-        assert_eq!(col_index.utf16_lines[&1][0], Utf16Char { start: 17.into(), end: 20.into() });
+        let text: String = {
+            let mut chars: Vec<char> = ((0 as char)..char::MAX).collect(); // Neat!
+            chars.extend("\n".repeat(chars.len() / 16).chars());
+            let mut rng = oorandom::Rand32::new(stdx::rand::seed());
+            stdx::rand::shuffle(&mut chars, |i| rng.rand_range(0..i as u32) as usize);
+            chars.into_iter().collect()
+        };
+        assert!(text.contains('💩')); // Sanity check.
 
-        // UTF-8 to UTF-16, no changes
-        assert_eq!(col_index.utf8_to_utf16_col(1, 15.into()), 15);
+        let line_index = LineIndex::new(&text);
 
-        // UTF-8 to UTF-16
-        assert_eq!(col_index.utf8_to_utf16_col(1, 22.into()), 20);
+        let mut lin_col = LineCol { line: 0, col: 0 };
+        let mut col_utf16 = 0;
+        let mut col_utf32 = 0;
+        for (offset, c) in text.char_indices() {
+            let got_offset = line_index.offset(lin_col).unwrap();
+            assert_eq!(usize::from(got_offset), offset);
 
-        // UTF-16 to UTF-8, no changes
-        assert_eq!(col_index.utf16_to_utf8_col(1, 15), TextSize::from(15));
+            let got_lin_col = line_index.line_col(got_offset);
+            assert_eq!(got_lin_col, lin_col);
 
-        // UTF-16 to UTF-8
-        assert_eq!(col_index.utf16_to_utf8_col(1, 19), TextSize::from(21));
+            for enc in [Utf16, Utf32] {
+                let wide_lin_col = line_index.to_wide(enc, lin_col);
+                let got_lin_col = line_index.to_utf8(enc, wide_lin_col);
+                assert_eq!(got_lin_col, lin_col);
 
-        let col_index = LineIndex::new("a𐐏b");
-        assert_eq!(col_index.utf16_to_utf8_col(0, 3), TextSize::from(5));
-    }
+                let want_col = match enc {
+                    Utf16 => col_utf16,
+                    Utf32 => col_utf32,
+                };
+                assert_eq!(wide_lin_col.col, want_col)
+            }
 
-    #[test]
-    fn test_string() {
-        let col_index = LineIndex::new(
-            "
-const C: char = \"メ メ\";
-",
-        );
-
-        assert_eq!(col_index.utf16_lines.len(), 1);
-        assert_eq!(col_index.utf16_lines[&1].len(), 2);
-        assert_eq!(col_index.utf16_lines[&1][0], Utf16Char { start: 17.into(), end: 20.into() });
-        assert_eq!(col_index.utf16_lines[&1][1], Utf16Char { start: 21.into(), end: 24.into() });
-
-        // UTF-8 to UTF-16
-        assert_eq!(col_index.utf8_to_utf16_col(1, 15.into()), 15);
-
-        assert_eq!(col_index.utf8_to_utf16_col(1, 21.into()), 19);
-        assert_eq!(col_index.utf8_to_utf16_col(1, 25.into()), 21);
-
-        assert!(col_index.utf8_to_utf16_col(2, 15.into()) == 15);
-
-        // UTF-16 to UTF-8
-        assert_eq!(col_index.utf16_to_utf8_col(1, 15), TextSize::from(15));
-
-        // メ UTF-8: 0xE3 0x83 0xA1, UTF-16: 0x30E1
-        assert_eq!(col_index.utf16_to_utf8_col(1, 17), TextSize::from(17)); // first メ at 17..20
-        assert_eq!(col_index.utf16_to_utf8_col(1, 18), TextSize::from(20)); // space
-        assert_eq!(col_index.utf16_to_utf8_col(1, 19), TextSize::from(21)); // second メ at 21..24
-
-        assert_eq!(col_index.utf16_to_utf8_col(2, 15), TextSize::from(15));
+            if c == '\n' {
+                lin_col.line += 1;
+                lin_col.col = 0;
+                col_utf16 = 0;
+                col_utf32 = 0;
+            } else {
+                lin_col.col += c.len_utf8() as u32;
+                col_utf16 += c.len_utf16() as u32;
+                col_utf32 += 1;
+            }
+        }
     }
 
     #[test]

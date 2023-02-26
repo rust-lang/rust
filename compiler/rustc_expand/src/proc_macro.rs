@@ -1,4 +1,5 @@
 use crate::base::{self, *};
+use crate::errors;
 use crate::proc_macro_server;
 
 use rustc_ast as ast;
@@ -60,11 +61,12 @@ impl base::BangProcMacro for BangProcMacro {
         let strategy = exec_strategy(ecx);
         let server = proc_macro_server::Rustc::new(ecx);
         self.client.run(&strategy, server, input, proc_macro_backtrace).map_err(|e| {
-            let mut err = ecx.struct_span_err(span, "proc macro panicked");
-            if let Some(s) = e.as_str() {
-                err.help(&format!("message: {}", s));
-            }
-            err.emit()
+            ecx.sess.emit_err(errors::ProcMacroPanicked {
+                span,
+                message: e
+                    .as_str()
+                    .map(|message| errors::ProcMacroPanickedHelp { message: message.into() }),
+            })
         })
     }
 }

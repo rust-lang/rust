@@ -1,0 +1,16 @@
+error[E0220]: associated type `Proj` not found for `Family<Option<()>>` in the current scope
+  --> $DIR/not-found-self-type-differs.rs:17:34
+   |
+LL | struct Family<T>(T);
+   | ---------------- associated item `Proj` not found for this struct
+...
+LL | type Alias = Family<Option<()>>::Proj;
+   |                                  ^^^^ associated item not found in `Family<Option<()>>`
+   |
+   = note: the associated type was found for
+           - `Family<()>`
+           - `Family<Result<T, ()>>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0220`.

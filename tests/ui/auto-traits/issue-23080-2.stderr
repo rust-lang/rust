@@ -2,7 +2,7 @@ error[E0380]: auto traits cannot have associated items
   --> $DIR/issue-23080-2.rs:5:10
    |
 LL | unsafe auto trait Trait {
-   |                   ----- auto trait cannot have associated items
+   |                   ----- auto traits cannot have associated items
 LL |     type Output;
    |     -----^^^^^^- help: remove these associated items
 

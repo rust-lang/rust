@@ -38,7 +38,7 @@ pub(crate) struct NameAlreadyUsedInParameterList {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
-    #[label(first_use_of_name)]
+    #[label(resolve_first_use_of_name)]
     pub(crate) first_use_span: Span,
     pub(crate) name: Symbol,
 }
@@ -121,7 +121,7 @@ pub(crate) struct VariableBoundWithDifferentMode {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
-    #[label(first_binding_span)]
+    #[label(resolve_first_binding_span)]
     pub(crate) first_binding_span: Span,
     pub(crate) variable_name: Symbol,
 }
@@ -293,7 +293,7 @@ pub(crate) struct BindingShadowsSomethingUnacceptable<'a> {
     pub(crate) article: &'a str,
     #[subdiagnostic]
     pub(crate) sub_suggestion: Option<BindingShadowsSomethingUnacceptableSuggestion>,
-    #[label(label_shadowed_binding)]
+    #[label(resolve_label_shadowed_binding)]
     pub(crate) shadowed_binding_span: Span,
     pub(crate) participle: &'a str,
     pub(crate) name: Symbol,
@@ -369,7 +369,7 @@ pub(crate) struct UnreachableLabel {
     #[label]
     pub(crate) span: Span,
     pub(crate) name: Symbol,
-    #[label(label_definition_span)]
+    #[label(resolve_label_definition_span)]
     pub(crate) definition_span: Span,
     #[subdiagnostic]
     pub(crate) sub_suggestion: Option<UnreachableLabelSubSuggestion>,
@@ -413,7 +413,7 @@ pub(crate) struct TraitImplMismatch {
     pub(crate) span: Span,
     pub(crate) name: Symbol,
     pub(crate) kind: String,
-    #[label(label_trait_item)]
+    #[label(resolve_label_trait_item)]
     pub(crate) trait_item_span: Span,
     pub(crate) trait_path: String,
     pub(crate) code: String,
@@ -434,9 +434,9 @@ pub(crate) struct TraitImplDuplicate {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
-    #[label(old_span_label)]
+    #[label(resolve_old_span_label)]
     pub(crate) old_span: Span,
-    #[label(trait_item_span)]
+    #[label(resolve_trait_item_span)]
     pub(crate) trait_item_span: Span,
     pub(crate) name: Symbol,
 }

@@ -183,6 +183,7 @@ impl Step for Miri {
         // Forward arguments.
         miri.arg("--").arg("--target").arg(target.rustc_target_arg());
         miri.args(builder.config.cmd.args());
+        miri.args(&builder.config.free_args);
 
         // miri tests need to know about the stage sysroot
         miri.env("MIRI_SYSROOT", &miri_sysroot);

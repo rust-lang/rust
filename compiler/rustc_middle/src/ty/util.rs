@@ -4,8 +4,8 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
-    self, ir::TypeFolder, DefIdTree, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable,
-    TypeSuperFoldable,
+    self, DefIdTree, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt,
 };
 use crate::ty::{GenericArgKind, SubstsRef};
 use rustc_apfloat::Float as _;
@@ -362,7 +362,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let drop_trait = self.lang_items().drop_trait()?;
         self.ensure().coherent_trait(drop_trait);
 
-        let ty = self.type_of(adt_did);
+        let ty = self.type_of(adt_did).subst_identity();
         let (did, constness) = self.find_map_relevant_impl(drop_trait, ty, |impl_did| {
             if let Some(item_id) = self.associated_item_def_ids(impl_did).first() {
                 if validate(self, impl_did).is_ok() {
@@ -415,12 +415,12 @@ impl<'tcx> TyCtxt<'tcx> {
         // <P1, P2, P0>, and then look up which of the impl substs refer to
         // parameters marked as pure.
 
-        let impl_substs = match *self.type_of(impl_def_id).kind() {
+        let impl_substs = match *self.type_of(impl_def_id).subst_identity().kind() {
             ty::Adt(def_, substs) if def_ == def => substs,
             _ => bug!(),
         };
 
-        let item_substs = match *self.type_of(def.did()).kind() {
+        let item_substs = match *self.type_of(def.did()).subst_identity().kind() {
             ty::Adt(def_, substs) if def_ == def => substs,
             _ => bug!(),
         };
@@ -602,7 +602,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Get the type of the pointer to the static that we use in MIR.
     pub fn static_ptr_ty(self, def_id: DefId) -> Ty<'tcx> {
         // Make sure that any constants in the static's type are evaluated.
-        let static_ty = self.normalize_erasing_regions(ty::ParamEnv::empty(), self.type_of(def_id));
+        let static_ty = self.normalize_erasing_regions(
+            ty::ParamEnv::empty(),
+            self.type_of(def_id).subst_identity(),
+        );
 
         // Make sure that accesses to unsafe statics end up using raw pointers.
         // For thread-locals, this needs to be kept in sync with `Rvalue::ty`.
@@ -758,6 +761,40 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         (generator_layout, generator_saved_local_names)
     }
+
+    /// Query and get an English description for the item's kind.
+    pub fn def_descr(self, def_id: DefId) -> &'static str {
+        self.def_kind_descr(self.def_kind(def_id), def_id)
+    }
+
+    /// Get an English description for the item's kind.
+    pub fn def_kind_descr(self, def_kind: DefKind, def_id: DefId) -> &'static str {
+        match def_kind {
+            DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "method",
+            DefKind::Generator => match self.generator_kind(def_id).unwrap() {
+                rustc_hir::GeneratorKind::Async(..) => "async closure",
+                rustc_hir::GeneratorKind::Gen => "generator",
+            },
+            _ => def_kind.descr(def_id),
+        }
+    }
+
+    /// Gets an English article for the [`TyCtxt::def_descr`].
+    pub fn def_descr_article(self, def_id: DefId) -> &'static str {
+        self.def_kind_descr_article(self.def_kind(def_id), def_id)
+    }
+
+    /// Gets an English article for the [`TyCtxt::def_kind_descr`].
+    pub fn def_kind_descr_article(self, def_kind: DefKind, def_id: DefId) -> &'static str {
+        match def_kind {
+            DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "a",
+            DefKind::Generator => match self.generator_kind(def_id).unwrap() {
+                rustc_hir::GeneratorKind::Async(..) => "an",
+                rustc_hir::GeneratorKind::Gen => "a",
+            },
+            _ => def_kind.article(),
+        }
+    }
 }
 
 struct OpaqueTypeExpander<'tcx> {
@@ -790,7 +827,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
             let expanded_ty = match self.expanded_cache.get(&(def_id, substs)) {
                 Some(expanded_ty) => *expanded_ty,
                 None => {
-                    let generic_ty = self.tcx.bound_type_of(def_id);
+                    let generic_ty = self.tcx.type_of(def_id);
                     let concrete_ty = generic_ty.subst(self.tcx, substs);
                     let expanded_ty = self.fold_ty(concrete_ty);
                     self.expanded_cache.insert((def_id, substs), expanded_ty);
@@ -861,6 +898,26 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
             }
         }
         t
+    }
+
+    fn fold_predicate(&mut self, p: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+        if let ty::PredicateKind::Clause(clause) = p.kind().skip_binder()
+            && let ty::Clause::Projection(projection_pred) = clause
+        {
+            p.kind()
+                .rebind(ty::ProjectionPredicate {
+                    projection_ty: projection_pred.projection_ty.fold_with(self),
+                    // Don't fold the term on the RHS of the projection predicate.
+                    // This is because for default trait methods with RPITITs, we
+                    // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
+                    // predicate, which would trivially cause a cycle when we do
+                    // anything that requires `ParamEnv::with_reveal_all_normalized`.
+                    term: projection_pred.term,
+                })
+                .to_predicate(self.tcx)
+        } else {
+            p.super_fold_with(self)
+        }
     }
 }
 
@@ -1326,8 +1383,8 @@ pub fn fold_list<'tcx, F, T>(
     intern: impl FnOnce(TyCtxt<'tcx>, &[T]) -> &'tcx ty::List<T>,
 ) -> Result<&'tcx ty::List<T>, F::Error>
 where
-    F: FallibleTypeFolder<'tcx>,
-    T: TypeFoldable<'tcx> + PartialEq + Copy,
+    F: FallibleTypeFolder<TyCtxt<'tcx>>,
+    T: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy,
 {
     let mut iter = list.iter();
     // Look for the first element that changed

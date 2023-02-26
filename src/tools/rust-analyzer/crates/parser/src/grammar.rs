@@ -200,6 +200,8 @@ impl BlockLike {
     }
 }
 
+const VISIBILITY_FIRST: TokenSet = TokenSet::new(&[T![pub], T![crate]]);
+
 fn opt_visibility(p: &mut Parser<'_>, in_tuple_field: bool) -> bool {
     match p.current() {
         T![pub] => {
@@ -339,4 +341,32 @@ fn error_block(p: &mut Parser<'_>, message: &str) {
     expressions::expr_block_contents(p);
     p.eat(T!['}']);
     m.complete(p, ERROR);
+}
+
+/// The `parser` passed this is required to at least consume one token if it returns `true`.
+/// If the `parser` returns false, parsing will stop.
+fn delimited(
+    p: &mut Parser<'_>,
+    bra: SyntaxKind,
+    ket: SyntaxKind,
+    delim: SyntaxKind,
+    first_set: TokenSet,
+    mut parser: impl FnMut(&mut Parser<'_>) -> bool,
+) {
+    p.bump(bra);
+    while !p.at(ket) && !p.at(EOF) {
+        if !parser(p) {
+            break;
+        }
+        if !p.at(delim) {
+            if p.at_ts(first_set) {
+                p.error(format!("expected {:?}", delim));
+            } else {
+                break;
+            }
+        } else {
+            p.bump(delim);
+        }
+    }
+    p.expect(ket);
 }
