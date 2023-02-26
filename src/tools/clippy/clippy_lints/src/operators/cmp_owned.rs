@@ -49,10 +49,10 @@ fn check_op(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool)
             (arg, arg.span)
         },
         ExprKind::Call(path, [arg])
-            if path_def_id(cx, path).map_or(false, |id| {
-                if match_def_path(cx, id, &paths::FROM_STR_METHOD) {
+            if path_def_id(cx, path).map_or(false, |did| {
+                if match_def_path(cx, did, &paths::FROM_STR_METHOD) {
                     true
-                } else if cx.tcx.lang_items().from_fn() == Some(id) {
+                } else if cx.tcx.is_diagnostic_item(sym::from_fn, did) {
                     !is_copy(cx, typeck.expr_ty(expr))
                 } else {
                     false
