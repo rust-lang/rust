@@ -36,9 +36,12 @@ pub use rustc_middle::traits::*;
 /// either identifying an `impl` (e.g., `impl Eq for i32`) that
 /// satisfies the obligation, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
-#[derive(Clone)]
+#[derive(Clone, TypeFoldable, TypeVisitable)]
 pub struct Obligation<'tcx, T> {
     /// The reason we have to prove this thing.
+    // FIXME: provide more detailed justification for `#[skip_traversal]`, or else remove
+    // see https://github.com/rust-lang/rust/pull/108214#issuecomment-1479424793
+    #[skip_traversal(despite_potential_miscompilation_because = "perf")]
     pub cause: ObligationCause<'tcx>,
 
     /// The environment in which we should prove this thing.
