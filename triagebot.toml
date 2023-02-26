@@ -482,7 +482,6 @@ compiler-team = [
     "@davidtwco",
     "@oli-obk",
     "@lcnr",
-    "@nagisa",
     "@wesleywiser",
     "@michaelwoerister",
 ]
@@ -552,7 +551,6 @@ mir = [
     "@oli-obk",
 ]
 mir-opt = [
-    "@nagisa",
     "@oli-obk",
     "@wesleywiser",
 ]
