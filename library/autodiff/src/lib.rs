@@ -9,6 +9,7 @@ mod parser;
 #[proc_macro_error]
 pub fn autodiff(args: TokenStream, input: TokenStream) -> TokenStream {
     let mut params = parser::parse(args.into(), input.clone().into());
+    dbg!(&params);
     //let (body, fnc_source) = gen::generate_body(input.into(), &params);
     //let header = gen::generate_header(&params);
 

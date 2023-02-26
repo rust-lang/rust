@@ -1,0 +1,23 @@
+error: output tangent not a floating point
+ --> tests/ui/reverse_tangent.rs:4:58
+  |
+4 | fn invalid_output_tangent_type(#[active] x: f32, y_tang: i32) -> f32;
+  |                                                          ^^^
+  |
+  = help: `#[autodiff]` the output tangent should be a floating point
+
+error: output tangent not const
+ --> tests/ui/reverse_tangent.rs:7:62
+  |
+7 | fn active_output_tangent(#[active] x: f32, #[active] y_tang: f32) -> f32;
+  |                                                              ^^^
+  |
+  = help: `#[autodiff]` the last parameter of an adjoint with active return should be a constant tangent
+
+error: missing output tangent parameter
+  --> tests/ui/reverse_tangent.rs:10:1
+   |
+10 | fn tangent_missing() -> f32;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[autodiff]` the last parameter of an adjoint with active return should exist

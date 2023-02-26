@@ -1,12 +1,11 @@
 use syn::{Item, ForeignItemFn, Block, parse::Parser, punctuated::Punctuated, Path, Token, Signature, Ident, FnArg, Attribute, Type, ReturnType, parse_quote, Generics};
 use proc_macro2::TokenStream;
 use proc_macro_error::abort;
-use quote::format_ident;
+use quote::{format_ident, quote};
 
 #[derive(Debug)]
 pub struct PrimalSig {
     ident: Ident,
-    generics: Generics,
     inputs: Vec<FnArg>,
     output: ReturnType,
 }
@@ -14,21 +13,9 @@ pub struct PrimalSig {
 #[derive(Debug)]
 pub struct DiffItem {
     pub(crate) header: Header,
-    //pub(crate) params: Vec<Activity>,
-    //pub(crate) primal: PrimalSig,
-    //pub(crate) block: Option<Box<Block>>,
-}
-
-impl Default for DiffItem {
-    fn default() -> Self {
-        DiffItem {
-            header: Header {
-                name: parse_quote!(""),
-                mode: Mode::Forward,
-                ret_act: Activity::Const,
-            }
-        }
-    }
+    pub(crate) params: Vec<Activity>,
+    pub(crate) primal: PrimalSig,
+    pub(crate) block: Option<Box<Block>>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -186,38 +173,287 @@ impl Header {
     }
 }
 
-pub(crate) fn strip_sig_attributes(args: Vec<&FnArg>, do_skip: bool, _header: &Header) -> (Vec<FnArg>, Vec<Activity>) {
-    let mut args = args.into_iter().cloned().collect::<Vec<_>>();
-    let mut arg_it = args.iter_mut();
+fn is_ref_mut(t: &FnArg) -> Option<bool> {
+    match t {
+        FnArg::Receiver(pat) => Some(pat.mutability.is_some()),
+        FnArg::Typed(pat) => match &*pat.ty {
+            Type::Reference(t) => Some(t.mutability.is_some()),
+            _ => None,
+        },
+    }
+}
+
+fn is_scalar(t: &Type) -> bool {
+    let t_f32: Type = parse_quote!(f32);
+    let t_f64: Type = parse_quote!(f64);
+    t == &t_f32 || t == &t_f64
+}
+
+fn ret_arg(arg: &FnArg) -> Type {
+    match arg {
+        FnArg::Receiver(_) => parse_quote!(Self),
+        FnArg::Typed(t) => {
+            match &*t.ty {
+                Type::Reference(t) => *t.elem.clone(),
+                x => x.clone(),
+            }
+        }
+    }
+}
+
+pub(crate) fn reduce_params(sig: Signature, header_acts: Vec<Activity>, is_adjoint: bool, header: &Header) -> (PrimalSig, Vec<Activity>) {
+    let mut args = Vec::new();
+    let mut ret = Vec::new();
     let mut acts = Vec::new();
-    let mut skip = false;
+    let mut last_arg: Option<FnArg> = None;
+
+    let mut arg_it = sig.inputs.iter();
+    let mut header_acts_it = header_acts.iter();
 
     while let Some(arg) = arg_it.next() {
-        if skip && do_skip {
-            skip = false;
-            continue;
+        // Compare current with last argument when parsing duplicated rules. This only
+        // happens when we parse the signature of adjoint function
+        if let Some(prev_arg) = last_arg.take() {
+            dbg!(&is_ref_mut(&prev_arg), is_ref_mut(&arg));
+            match (header.mode, is_ref_mut(&prev_arg), is_ref_mut(&arg)) {
+                (Mode::Forward, Some(false), Some(true) | None) => 
+                    abort!(
+                        arg,
+                        "should be an immutable reference";
+                        help = "`#[autodiff]` input parameter should duplicate tangent into second parameter for forward mode"
+                    ),
+                (Mode::Forward, Some(true), Some(false) | None) => 
+                    abort!(
+                        arg,
+                        "should be a mutable reference";
+                        help = "`#[autodiff]` output parameter should duplicate derivative into second parameter for forward mode"
+                    ),
+                (Mode::Reverse, Some(false), Some(false) | None) => 
+                    abort!(
+                        arg,
+                        "should be a mutable reference";
+                        help = "`#[autodiff]` input parameter should duplicate derivative into second parameter for reverse mode"
+                    ),
+                (Mode::Reverse, Some(true), Some(true) | None) => 
+                    abort!(
+                        arg,
+                        "should be an immutable reference";
+                        help = "`#[autodiff]` input parameter should duplicate derivative into second parameter for reverse mode"
+                    ),
+                _ => {}
+            }
         }
 
-        let mut attrs = match arg {
-            FnArg::Typed(pat) => pat.attrs.drain(..),
-            FnArg::Receiver(pat) => pat.attrs.drain(..),
+        // parse current attribute macro
+        let mut attrs: Vec<_> = match arg {
+            FnArg::Typed(pat) => pat.attrs.iter().cloned().collect(),
+            FnArg::Receiver(pat) => pat.attrs.iter().cloned().collect(),
         };
-        let act = attrs.next().map(Activity::from_inline).unwrap_or(Activity::Const);
-        match act {
-            Activity::Duplicated | Activity::DuplicatedNoNeed => { skip = true; }
+        let attr = attrs.first();
+        let act: Activity = match (header_acts.is_empty(), attr) {
+            (false, None) => header_acts_it.next().map(|x| *x).unwrap_or(Activity::Const),
+            (true, Some(x)) => Activity::from_inline(x.clone()),
+            (true, None) => Activity::Const,
+            _ => {
+                abort!(
+                    arg,
+                    "inline activity";
+                    help = "`#[autodiff]` should have activities either specified in header or as inline attributes"
+                );
+            }
+        };
+
+        // compare indirection with activity
+        match (header.mode, is_ref_mut(&arg), act) {
+            (Mode::Forward, None, Activity::Duplicated) => 
+                abort!(
+                    arg,
+                    "type not behind reference";
+                    help = "`#[autodiff]` duplicated types should be behind a reference"
+                ),
+            (Mode::Forward, Some(false), Activity::DuplicatedNoNeed) =>
+                abort!(
+                    arg,
+                    "should be mutable reference";
+                    help = "`#[autodiff]` parameter should be output for DuplicatedNoNeed activity"
+                ),
+            (Mode::Reverse, Some(_), Activity::Active) => 
+                abort!(
+                    arg,
+                    "type behind reference";
+                    help = "`#[autodiff]` active parameter should be concrete in reverse mode"
+                ),
+            (Mode::Reverse, None, Activity::Duplicated | Activity::DuplicatedNoNeed) => 
+                abort!(
+                    arg,
+                    "type not behind reference";
+                    help = "`#[autodiff]` duplicated parameters should be behind reference in reverse mode"
+                ),
+            (Mode::Forward, Some(false), Activity::Duplicated) |
+                (Mode::Reverse, None, Activity::Active) => ret.push(ret_arg(&arg)),
+            (Mode::Forward, Some(true), Activity::Duplicated | Activity::DuplicatedNoNeed) |
+                (Mode::Reverse, _, Activity::Duplicated | Activity::DuplicatedNoNeed) if is_adjoint =>
+                    last_arg = Some(arg.clone()),
             _ => {}
         }
+
+        args.push(arg.clone());
         acts.push(act);
     }
 
-    // remove last activity because it belongs to return type
-    //if header.mode == Mode::Reverse && header.ret_act == Activity::Active {
-    //    dbg!(&acts);
-    //    acts.pop();
-    //}
+    // if we have adjoint signature and are in forward mode
+    // if duplicated -> return type * (n + 1) times
+    // if duplicated_no_need -> return type * n times
+    // if const -> no return
 
-    (args, acts)
+    // if we have adjoint signature and are in reverse mode
+    // if active -> input type * n times 
+    // construct return type based on mode
+    let ret = if is_adjoint {
+        let ret_typs = match &sig.output {
+            ReturnType::Type(_, ref x) => match &**x {
+                Type::Tuple(x) => x.elems.iter().cloned().collect(),
+                x => vec![x.clone()],
+            },
+            ReturnType::Default => vec![],
+        };
+
+        match (header.mode, header.ret_act) {
+            (Mode::Forward, Activity::Duplicated) => {
+                let expected = ret_typs[0].clone();
+                let list = vec![expected.clone(); ret.len() + 1];
+
+                if list != ret_typs {
+                    let ret = quote!((#(#list,)*));
+                    abort!(
+                        sig.output,
+                        "invalid output";
+                        help = format!("`#[autodiff]` expected {}", ret)
+                    );
+                }
+
+                parse_quote!(-> #expected)
+            },
+            (Mode::Forward, Activity::DuplicatedNoNeed) => {
+                let expected = ret_typs[0].clone();
+                let list = vec![expected.clone(); ret.len()];
+
+                if list != ret_typs {
+                    let ret = quote!((#(#list,)*));
+                    abort!(
+                        sig.output,
+                        "invalid output";
+                        help = format!("`#[autodiff]` expected {}", ret)
+                    );
+                }
+
+                parse_quote!(-> #expected)
+            },
+            (Mode::Reverse, Activity::Active) => {
+                // tangent of output is latest in parameter list
+                let ret_typ = match (args.pop(), acts.pop()) {
+                    (Some(x), Some(y)) => {
+                        let x = ret_arg(&x);
+                        if !is_scalar(&x) {
+                            abort!(
+                                x,
+                                "output tangent not a floating point";
+                                help = "`#[autodiff]` the output tangent should be a floating point"
+                            );
+                        } else if y != Activity::Const {
+                            abort!(
+                                x,
+                                "output tangent not const";
+                                help = "`#[autodiff]` the last parameter of an adjoint with active return should be a constant tangent"
+                            );
+                        } else {
+                            parse_quote!(-> #x)
+                        }
+                    },
+                    (None, None) => 
+                        abort!(
+                            sig,
+                            "missing output tangent parameter";
+                            help = "`#[autodiff]` the last parameter of an adjoint with active return should exist"
+                        ),
+                    _ => unreachable!(),
+                };
+
+                // check that the return tuple confirms with return types
+                if ret_typs != ret {
+                    let ret = quote!((#(#ret,)*));
+                    abort!(
+                        sig.output,
+                        "invalid output";
+                        help = format!("`#[autodiff]` expected {}", ret)
+                    )
+                }
+
+                ret_typ
+            },
+            (_, Activity::Const) if ret.len() > 0 => {
+                abort!(
+                    ret[0],
+                    "active argument but no return value";
+                    help = "`#[autodiff]` adjoint should have a return type when active"
+                )
+            },
+            _ => ReturnType::Default,
+        }
+    } else {
+        if header.ret_act != Activity::Const && sig.output == ReturnType::Default {
+            abort!(
+                sig,
+                "no return type";
+                help = "`#[autodiff]` non-const return activity but no return type"
+            )
+        }
+
+        sig.output.clone()
+    };
+
+    (
+        PrimalSig {
+            ident: sig.ident.clone(),
+            inputs: args,
+            output: ret,
+        },
+        acts
+    )
 }
+
+//pub(crate) fn strip_sig_attributes(args: Vec<&FnArg>, do_skip: bool, _header: &Header) -> (Vec<FnArg>, Vec<Activity>) {
+//    let mut args = args.into_iter().cloned().collect::<Vec<_>>();
+//    let mut arg_it = args.iter_mut();
+//    let mut acts = Vec::new();
+//    let mut last_arg = false;
+//
+//    while let Some(arg) = arg_it.next() {
+//        if skip && do_skip {
+//            skip = false;
+//            continue;
+//        }
+//
+//        let mut attrs = match arg {
+//            FnArg::Typed(pat) => pat.attrs.drain(..),
+//            FnArg::Receiver(pat) => pat.attrs.drain(..),
+//        };
+//        let act = attrs.next().map(Activity::from_inline).unwrap_or(Activity::Const);
+//        match act {
+//            Activity::Duplicated | Activity::DuplicatedNoNeed => { skip = true; }
+//            _ => {}
+//        }
+//        acts.push(act);
+//    }
+//
+//    // remove last activity because it belongs to return type
+//    //if header.mode == Mode::Reverse && header.ret_act == Activity::Active {
+//    //    dbg!(&acts);
+//    //    acts.pop();
+//    //}
+//
+//    (args, acts)
+//}
 
 //
 //fn is_ref_mut(t: &Type) -> bool {
@@ -410,43 +646,13 @@ pub(crate) fn parse(args: TokenStream, input: TokenStream) -> DiffItem {
     // then parse attributes
     let (header, param_attrs) = Header::parse(args);
 
-    //// strip the function parameters from attribute macros
-    let (params, param_attrs2) = strip_sig_attributes(sig.inputs.iter().collect(), !block.is_some(), &header);
+    // reduce parameters to primal parameter set
+    let (primal, params) = reduce_params(sig, param_attrs, !block.is_some(), &header);
 
-    DiffItem::default()
-
-    //sig.inputs = params.into_iter().collect();
-
-    //let mut params = match (param_attrs, param_attrs2) {
-    //    (a, _) if !a.is_empty() => a,
-    //    (_, b) if !b.is_empty() => b,
-    //    _ => Vec::new(),
-    //};
-
-    //let sig = match block.is_some() {
-    //    true => match header.mode {
-    //        Mode::Forward => create_target_signature_forward(sig, &params, &header.ret_act),
-    //        Mode::Reverse => create_target_signature_reverse(sig, &params, &header.ret_act)
-    //    },
-    //    false => sig,
-    //};
-
-    //let mut rem_params = sig.inputs.len() - params.iter().map(|x| match x {
-    //    Activity::Const | Activity::Active => 1,
-    //    Activity::Duplicated | Activity::DuplicatedNoNeed => 2,
-    //}).sum::<usize>();
-
-    //// don't add const for return adjoint variable
-    //if header.ret_act == Activity::Active && header.mode == Mode::Reverse && rem_params > 0 {
-    //    rem_params -= 1;
-    //}
-
-    //params.extend((0..rem_params).map(|_| Activity::Const));
-
-    //Item {
-    //    header,
-    //    params,
-    //    sig,
-    //    block
-    //}
+    DiffItem {
+        header,
+        primal,
+        params,
+        block,
+    }
 }

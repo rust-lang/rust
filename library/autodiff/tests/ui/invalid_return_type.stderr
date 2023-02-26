@@ -1,0 +1,31 @@
+error: no return type
+ --> tests/ui/invalid_return_type.rs:4:1
+  |
+4 | fn active_but_no_return(#[active] x: f32) {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: `#[autodiff]` non-const return activity but no return type
+
+error: invalid output
+ --> tests/ui/invalid_return_type.rs:8:100
+  |
+8 | fn invalid_primal_value(#[active] x: f32, #[active] y: Vec<f32>, #[active] z: Tensor, y_tang: f32) -> (i32, f32);
+  |                                                                                                    ^^^^^^^^^^^^^
+  |
+  = help: `#[autodiff]` expected (f32, Vec < f32 >, Tensor,)
+
+error: invalid output
+  --> tests/ui/invalid_return_type.rs:11:121
+   |
+11 | fn invalid_forward_return(#[dup] x: &f32, tx: &f32, #[dup] y: &Vec<f32>, ty: &Vec<f32>, #[dup] z: &Tensor, tz: &Tensor) -> (f32, f32, f32);
+   |                                                                                                                         ^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[autodiff]` expected (f32, f32, f32, f32,)
+
+error: invalid output
+  --> tests/ui/invalid_return_type.rs:14:121
+   |
+14 | fn invalid_forward_return(#[dup] x: &f32, tx: &f32, #[dup] y: &Vec<f32>, ty: &Vec<f32>, #[dup] z: &Tensor, tz: &Tensor) -> (f32, f32);
+   |                                                                                                                         ^^^^^^^^^^^^^
+   |
+   = help: `#[autodiff]` expected (f32, f32, f32,)
