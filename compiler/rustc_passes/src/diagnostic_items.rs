@@ -15,9 +15,9 @@ use rustc_hir::OwnerId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc_span::symbol::{kw::Empty, sym, Symbol};
+use rustc_span::symbol::{sym, Symbol};
 
-use crate::errors::{DuplicateDiagnosticItem, DuplicateDiagnosticItemInCrate};
+use crate::errors::DuplicateDiagnosticItemInCrate;
 
 fn observe_item<'tcx>(tcx: TyCtxt<'tcx>, diagnostic_items: &mut DiagnosticItems, owner: OwnerId) {
     let attrs = tcx.hir().attrs(owner.into());
@@ -42,20 +42,16 @@ fn report_duplicate_item(
     original_def_id: DefId,
     item_def_id: DefId,
 ) {
-    let (orig_span, orig_crate_name, have_orig_crate_name) = match original_def_id.as_local() {
-        Some(local_original) => (Some(tcx.def_span(local_original)), Empty, None),
-        None => (None, tcx.crate_name(original_def_id.krate), Some(())),
-    };
-    match tcx.hir().span_if_local(item_def_id) {
-        Some(span) => tcx.sess.emit_err(DuplicateDiagnosticItem { span, name }),
-        None => tcx.sess.emit_err(DuplicateDiagnosticItemInCrate {
-            span: orig_span,
-            orig_crate_name,
-            have_orig_crate_name,
-            crate_name: tcx.crate_name(item_def_id.krate),
-            name,
-        }),
-    };
+    let orig_span = tcx.hir().span_if_local(original_def_id);
+    let duplicate_span = tcx.hir().span_if_local(item_def_id);
+    tcx.sess.emit_err(DuplicateDiagnosticItemInCrate {
+        duplicate_span,
+        orig_span,
+        crate_name: tcx.crate_name(item_def_id.krate),
+        orig_crate_name: tcx.crate_name(original_def_id.krate),
+        different_crates: (item_def_id.krate != original_def_id.krate).then_some(()),
+        name,
+    });
 }
 
 /// Extract the first `rustc_diagnostic_item = "$name"` out of a list of attributes.
