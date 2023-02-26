@@ -1,31 +1,85 @@
-use crate::{Diagnostic, DiagnosticsContext, Severity};
+use ide_db::source_change::SourceChange;
+use syntax::{AstNode, SyntaxKind, SyntaxNode, SyntaxToken, T};
+use text_edit::TextEdit;
+
+use crate::{fix, Diagnostic, DiagnosticsContext, Severity};
 
 // Diagnostic: need-mut
 //
 // This diagnostic is triggered on mutating an immutable variable.
 pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Diagnostic {
+    let fixes = (|| {
+        if d.local.is_ref(ctx.sema.db) {
+            // There is no simple way to add `mut` to `ref x` and `ref mut x`
+            return None;
+        }
+        let file_id = d.span.file_id.file_id()?;
+        let mut edit_builder = TextEdit::builder();
+        let use_range = d.span.value.text_range();
+        for source in d.local.sources(ctx.sema.db) {
+            let Some(ast) = source.name() else { continue };
+            edit_builder.insert(ast.syntax().text_range().start(), "mut ".to_string());
+        }
+        let edit = edit_builder.finish();
+        Some(vec![fix(
+            "remove_mut",
+            "Remove unnecessary `mut`",
+            SourceChange::from_text_edit(file_id, edit),
+            use_range,
+        )])
+    })();
     Diagnostic::new(
         "need-mut",
         format!("cannot mutate immutable variable `{}`", d.local.name(ctx.sema.db)),
         ctx.sema.diagnostics_display_range(d.span.clone()).range,
     )
+    .with_fixes(fixes)
 }
 
 // Diagnostic: unused-mut
 //
 // This diagnostic is triggered when a mutable variable isn't actually mutated.
 pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Diagnostic {
+    let ast = d.local.primary_source(ctx.sema.db).syntax_ptr();
+    let fixes = (|| {
+        let file_id = ast.file_id.file_id()?;
+        let mut edit_builder = TextEdit::builder();
+        let use_range = ast.value.text_range();
+        for source in d.local.sources(ctx.sema.db) {
+            let ast = source.syntax();
+            let Some(mut_token) = token(ast, T![mut]) else { continue };
+            edit_builder.delete(mut_token.text_range());
+            if let Some(token) = mut_token.next_token() {
+                if token.kind() == SyntaxKind::WHITESPACE {
+                    edit_builder.delete(token.text_range());
+                }
+            }
+        }
+        let edit = edit_builder.finish();
+        Some(vec![fix(
+            "remove_mut",
+            "Remove unnecessary `mut`",
+            SourceChange::from_text_edit(file_id, edit),
+            use_range,
+        )])
+    })();
+    let ast = d.local.primary_source(ctx.sema.db).syntax_ptr();
     Diagnostic::new(
         "unused-mut",
         "remove this `mut`",
-        ctx.sema.diagnostics_display_range(d.local.primary_source(ctx.sema.db).syntax_ptr()).range,
+        ctx.sema.diagnostics_display_range(ast).range,
     )
     .severity(Severity::WeakWarning)
+    .with_fixes(fixes)
+}
+
+pub(super) fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
+    parent.children_with_tokens().filter_map(|it| it.into_token()).find(|it| it.kind() == kind)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_diagnostics;
+    use crate::tests::{check_diagnostics, check_fix};
 
     #[test]
     fn unused_mut_simple() {
@@ -34,7 +88,7 @@ mod tests {
 fn f(_: i32) {}
 fn main() {
     let mut x = 2;
-      //^^^^^ weak: remove this `mut`
+      //^^^^^ 💡 weak: remove this `mut`
     f(x);
 }
 "#,
@@ -65,13 +119,151 @@ fn main() {
     }
 
     #[test]
+    fn multiple_errors_for_single_variable() {
+        check_diagnostics(
+            r#"
+fn f(_: i32) {}
+fn main() {
+    let x = 2;
+    x = 10;
+  //^^^^^^ 💡 error: cannot mutate immutable variable `x`
+    x = 5;
+  //^^^^^ 💡 error: cannot mutate immutable variable `x`
+    &mut x;
+  //^^^^^^ 💡 error: cannot mutate immutable variable `x`
+    f(x);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unused_mut_fix() {
+        check_fix(
+            r#"
+fn f(_: i32) {}
+fn main() {
+    let mu$0t x = 2;
+    f(x);
+}
+"#,
+            r#"
+fn f(_: i32) {}
+fn main() {
+    let x = 2;
+    f(x);
+}
+"#,
+        );
+        check_fix(
+            r#"
+fn f(_: i32) {}
+fn main() {
+    let ((mu$0t x, _) | (_, mut x)) = (2, 3);
+    f(x);
+}
+"#,
+            r#"
+fn f(_: i32) {}
+fn main() {
+    let ((x, _) | (_, x)) = (2, 3);
+    f(x);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn need_mut_fix() {
+        check_fix(
+            r#"
+fn f(_: i32) {}
+fn main() {
+    let x = 2;
+    x$0 = 5;
+    f(x);
+}
+"#,
+            r#"
+fn f(_: i32) {}
+fn main() {
+    let mut x = 2;
+    x = 5;
+    f(x);
+}
+"#,
+        );
+        check_fix(
+            r#"
+fn f(_: i32) {}
+fn main() {
+    let ((x, _) | (_, x)) = (2, 3);
+    x =$0 4;
+    f(x);
+}
+"#,
+            r#"
+fn f(_: i32) {}
+fn main() {
+    let ((mut x, _) | (_, mut x)) = (2, 3);
+    x = 4;
+    f(x);
+}
+"#,
+        );
+
+        check_fix(
+            r#"
+struct Foo(i32);
+
+impl Foo {
+    fn foo(self) {
+        self = Fo$0o(5);
+    }
+}
+"#,
+            r#"
+struct Foo(i32);
+
+impl Foo {
+    fn foo(mut self) {
+        self = Foo(5);
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn need_mut_fix_not_applicable_on_ref() {
+        check_diagnostics(
+            r#"
+fn main() {
+    let ref x = 2;
+    x = &5;
+  //^^^^^^ error: cannot mutate immutable variable `x`
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
+fn main() {
+    let ref mut x = 2;
+    x = &mut 5;
+  //^^^^^^^^^^ error: cannot mutate immutable variable `x`
+}
+"#,
+        );
+    }
+
+    #[test]
     fn field_mutate() {
         check_diagnostics(
             r#"
 fn f(_: i32) {}
 fn main() {
     let mut x = (2, 7);
-      //^^^^^ weak: remove this `mut`
+      //^^^^^ 💡 weak: remove this `mut`
     f(x.1);
 }
 "#,
@@ -92,7 +284,7 @@ fn f(_: i32) {}
 fn main() {
     let x = (2, 7);
     x.0 = 5;
-  //^^^^^^^ error: cannot mutate immutable variable `x`
+  //^^^^^^^ 💡 error: cannot mutate immutable variable `x`
     f(x.1);
 }
 "#,
@@ -105,7 +297,7 @@ fn main() {
             r#"
 fn main() {
     let mut x = &mut 2;
-      //^^^^^ weak: remove this `mut`
+      //^^^^^ 💡 weak: remove this `mut`
     *x = 5;
 }
 "#,
@@ -115,7 +307,7 @@ fn main() {
 fn main() {
     let x = 2;
     &mut x;
-  //^^^^^^ error: cannot mutate immutable variable `x`
+  //^^^^^^ 💡 error: cannot mutate immutable variable `x`
 }
 "#,
         );
@@ -124,7 +316,7 @@ fn main() {
 fn main() {
     let x_own = 2;
     let ref mut x_ref = x_own;
-      //^^^^^^^^^^^^^ error: cannot mutate immutable variable `x_own`
+      //^^^^^^^^^^^^^ 💡 error: cannot mutate immutable variable `x_own`
 }
 "#,
         );
@@ -137,7 +329,7 @@ impl Foo {
 fn main() {
     let x = Foo;
     x.method(2);
-  //^ error: cannot mutate immutable variable `x`
+  //^ 💡 error: cannot mutate immutable variable `x`
 }
 "#,
         );
@@ -150,9 +342,9 @@ fn main() {
 fn main() {
     match (2, 3) {
         (x, mut y) => {
-          //^^^^^ weak: remove this `mut`
+          //^^^^^ 💡 weak: remove this `mut`
             x = 7;
-          //^^^^^ error: cannot mutate immutable variable `x`
+          //^^^^^ 💡 error: cannot mutate immutable variable `x`
         }
     }
 }
@@ -171,7 +363,7 @@ fn main() {
 fn main() {
     return;
     let mut x = 2;
-      //^^^^^ weak: remove this `mut`
+      //^^^^^ 💡 weak: remove this `mut`
     &mut x;
 }
 "#,
@@ -181,7 +373,7 @@ fn main() {
 fn main() {
     loop {}
     let mut x = 2;
-      //^^^^^ weak: remove this `mut`
+      //^^^^^ 💡 weak: remove this `mut`
     &mut x;
 }
 "#,
@@ -202,7 +394,7 @@ fn main(b: bool) {
         g();
     }
     let mut x = 2;
-      //^^^^^ weak: remove this `mut`
+      //^^^^^ 💡 weak: remove this `mut`
     &mut x;
 }
 "#,
@@ -216,7 +408,7 @@ fn main(b: bool) {
         return;
     }
     let mut x = 2;
-      //^^^^^ weak: remove this `mut`
+      //^^^^^ 💡 weak: remove this `mut`
     &mut x;
 }
 "#,
@@ -230,7 +422,7 @@ fn main(b: bool) {
 fn f(_: i32) {}
 fn main() {
     let mut x;
-      //^^^^^ weak: remove this `mut`
+      //^^^^^ 💡 weak: remove this `mut`
     x = 5;
     f(x);
 }
@@ -241,7 +433,7 @@ fn main() {
 fn f(_: i32) {}
 fn main(b: bool) {
     let mut x;
-      //^^^^^ weak: remove this `mut`
+      //^^^^^ 💡 weak: remove this `mut`
     if b {
         x = 1;
     } else {
@@ -260,7 +452,7 @@ fn main(b: bool) {
         x = 1;
     }
     x = 3;
-  //^^^^^ error: cannot mutate immutable variable `x`
+  //^^^^^ 💡 error: cannot mutate immutable variable `x`
     f(x);
 }
 "#,
@@ -272,7 +464,7 @@ fn main() {
     let x;
     loop {
         x = 1;
-      //^^^^^ error: cannot mutate immutable variable `x`
+      //^^^^^ 💡 error: cannot mutate immutable variable `x`
         f(x);
     }
 }
@@ -284,17 +476,36 @@ fn f(_: i32) {}
 fn main() {
     loop {
         let mut x = 1;
-          //^^^^^ weak: remove this `mut`
+          //^^^^^ 💡 weak: remove this `mut`
         f(x);
         if let mut y = 2 {
-             //^^^^^ weak: remove this `mut`
+             //^^^^^ 💡 weak: remove this `mut`
             f(y);
         }
         match 3 {
             mut z => f(z),
-          //^^^^^ weak: remove this `mut`
+          //^^^^^ 💡 weak: remove this `mut`
         }
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn function_arguments_are_initialized() {
+        check_diagnostics(
+            r#"
+fn f(mut x: i32) {
+   //^^^^^ 💡 weak: remove this `mut`
+}
+"#,
+        );
+        check_diagnostics(
+            r#"
+fn f(x: i32) {
+   x = 5;
+ //^^^^^ 💡 error: cannot mutate immutable variable `x`
 }
 "#,
         );

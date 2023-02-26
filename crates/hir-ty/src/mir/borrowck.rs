@@ -1,20 +1,41 @@
 //! MIR borrow checker, which is used in diagnostics like `unused_mut`
 
 // Currently it is an ad-hoc implementation, only useful for mutability analysis. Feel free to remove all of these
-// and implement a proper borrow checker.
+// if needed for implementing a proper borrow checker.
 
+use std::sync::Arc;
+
+use hir_def::DefWithBodyId;
 use la_arena::ArenaMap;
 use stdx::never;
 
+use crate::db::HirDatabase;
+
 use super::{
-    BasicBlockId, BorrowKind, LocalId, MirBody, MirSpan, Place, ProjectionElem, Rvalue,
-    StatementKind, Terminator,
+    BasicBlockId, BorrowKind, LocalId, MirBody, MirLowerError, MirSpan, Place, ProjectionElem,
+    Rvalue, StatementKind, Terminator,
 };
 
-#[derive(Debug)]
-pub enum Mutability {
-    Mut { span: MirSpan },
+#[derive(Debug, Clone, PartialEq, Eq)]
+/// Stores spans which implies that the local should be mutable.
+pub enum MutabilityReason {
+    Mut { spans: Vec<MirSpan> },
     Not,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BorrowckResult {
+    pub mir_body: Arc<MirBody>,
+    pub mutability_of_locals: ArenaMap<LocalId, MutabilityReason>,
+}
+
+pub fn borrowck_query(
+    db: &dyn HirDatabase,
+    def: DefWithBodyId,
+) -> Result<Arc<BorrowckResult>, MirLowerError> {
+    let body = db.mir_body(def)?;
+    let r = BorrowckResult { mutability_of_locals: mutability_of_locals(&body), mir_body: body };
+    Ok(Arc::new(r))
 }
 
 fn is_place_direct(lvalue: &Place) -> bool {
@@ -116,28 +137,28 @@ fn ever_initialized_map(body: &MirBody) -> ArenaMap<BasicBlockId, ArenaMap<Local
             }
         }
     }
-    for (b, block) in body.basic_blocks.iter() {
-        for statement in &block.statements {
-            if let StatementKind::Assign(p, _) = &statement.kind {
-                if p.projection.len() == 0 {
-                    let l = p.local;
-                    if !result[b].contains_idx(l) {
-                        result[b].insert(l, false);
-                        dfs(body, b, l, &mut result);
-                    }
-                }
-            }
+    for &l in &body.param_locals {
+        result[body.start_block].insert(l, true);
+        dfs(body, body.start_block, l, &mut result);
+    }
+    for l in body.locals.iter().map(|x| x.0) {
+        if !result[body.start_block].contains_idx(l) {
+            result[body.start_block].insert(l, false);
+            dfs(body, body.start_block, l, &mut result);
         }
     }
     result
 }
 
-pub fn mutability_of_locals(body: &MirBody) -> ArenaMap<LocalId, Mutability> {
-    let mut result: ArenaMap<LocalId, Mutability> =
-        body.locals.iter().map(|x| (x.0, Mutability::Not)).collect();
+fn mutability_of_locals(body: &MirBody) -> ArenaMap<LocalId, MutabilityReason> {
+    let mut result: ArenaMap<LocalId, MutabilityReason> =
+        body.locals.iter().map(|x| (x.0, MutabilityReason::Not)).collect();
+    let mut push_mut_span = |local, span| match &mut result[local] {
+        MutabilityReason::Mut { spans } => spans.push(span),
+        x @ MutabilityReason::Not => *x = MutabilityReason::Mut { spans: vec![span] },
+    };
     let ever_init_maps = ever_initialized_map(body);
-    for (block_id, ever_init_map) in ever_init_maps.iter() {
-        let mut ever_init_map = ever_init_map.clone();
+    for (block_id, mut ever_init_map) in ever_init_maps.into_iter() {
         let block = &body.basic_blocks[block_id];
         for statement in &block.statements {
             match &statement.kind {
@@ -145,20 +166,20 @@ pub fn mutability_of_locals(body: &MirBody) -> ArenaMap<LocalId, Mutability> {
                     match place_case(place) {
                         ProjectionCase::Direct => {
                             if ever_init_map.get(place.local).copied().unwrap_or_default() {
-                                result[place.local] = Mutability::Mut { span: statement.span };
+                                push_mut_span(place.local, statement.span);
                             } else {
                                 ever_init_map.insert(place.local, true);
                             }
                         }
                         ProjectionCase::DirectPart => {
                             // Partial initialization is not supported, so it is definitely `mut`
-                            result[place.local] = Mutability::Mut { span: statement.span };
+                            push_mut_span(place.local, statement.span);
                         }
                         ProjectionCase::Indirect => (),
                     }
                     if let Rvalue::Ref(BorrowKind::Mut { .. }, p) = value {
                         if is_place_direct(p) {
-                            result[p.local] = Mutability::Mut { span: statement.span };
+                            push_mut_span(p.local, statement.span);
                         }
                     }
                 }
@@ -189,7 +210,7 @@ pub fn mutability_of_locals(body: &MirBody) -> ArenaMap<LocalId, Mutability> {
             Terminator::Call { destination, .. } => {
                 if destination.projection.len() == 0 {
                     if ever_init_map.get(destination.local).copied().unwrap_or_default() {
-                        result[destination.local] = Mutability::Mut { span: MirSpan::Unknown };
+                        push_mut_span(destination.local, MirSpan::Unknown);
                     } else {
                         ever_init_map.insert(destination.local, true);
                     }

@@ -134,3 +134,5 @@ impl Iterator for AttrDocCommentIter {
         })
     }
 }
+
+impl<A: HasName, B: HasName> HasName for Either<A, B> {}

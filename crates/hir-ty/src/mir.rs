@@ -1,6 +1,6 @@
 //! MIR definitions and implementation
 
-use std::iter;
+use std::{fmt::Display, iter};
 
 use crate::{
     infer::PointerCast, Const, ConstScalar, InferenceResult, Interner, MemoryMap, Substitution, Ty,
@@ -14,8 +14,10 @@ use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 
 mod eval;
 mod lower;
-pub mod borrowck;
+mod borrowck;
+mod pretty;
 
+pub use borrowck::{borrowck_query, BorrowckResult, MutabilityReason};
 pub use eval::{interpret_mir, pad16, Evaluator, MirEvalError};
 pub use lower::{lower_to_mir, mir_body_query, mir_body_recover, MirLowerError};
 use smallvec::{smallvec, SmallVec};
@@ -32,13 +34,7 @@ fn return_slot() -> LocalId {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Local {
-    pub mutability: Mutability,
-    //pub local_info: Option<Box<LocalInfo>>,
-    //pub internal: bool,
-    //pub is_block_tail: Option<BlockTailInfo>,
     pub ty: Ty,
-    //pub user_ty: Option<Box<UserTypeProjections>>,
-    //pub source_info: SourceInfo,
 }
 
 /// An operand in MIR represents a "value" in Rust, the definition of which is undecided and part of
@@ -564,6 +560,30 @@ pub enum BinOp {
     Offset,
 }
 
+impl Display for BinOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            BinOp::Add => "+",
+            BinOp::Sub => "-",
+            BinOp::Mul => "*",
+            BinOp::Div => "/",
+            BinOp::Rem => "%",
+            BinOp::BitXor => "^",
+            BinOp::BitAnd => "&",
+            BinOp::BitOr => "|",
+            BinOp::Shl => "<<",
+            BinOp::Shr => ">>",
+            BinOp::Eq => "==",
+            BinOp::Lt => "<",
+            BinOp::Le => "<=",
+            BinOp::Ne => "!=",
+            BinOp::Ge => ">=",
+            BinOp::Gt => ">",
+            BinOp::Offset => "`offset`",
+        })
+    }
+}
+
 impl From<hir_def::expr::ArithOp> for BinOp {
     fn from(value: hir_def::expr::ArithOp) -> Self {
         match value {
@@ -822,9 +842,8 @@ pub struct MirBody {
     pub owner: DefWithBodyId,
     pub arg_count: usize,
     pub binding_locals: ArenaMap<BindingId, LocalId>,
+    pub param_locals: Vec<LocalId>,
 }
-
-impl MirBody {}
 
 fn const_as_usize(c: &Const) -> usize {
     try_const_usize(c).unwrap() as usize

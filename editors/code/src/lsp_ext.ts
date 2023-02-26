@@ -59,6 +59,9 @@ export const viewFileText = new lc.RequestType<lc.TextDocumentIdentifier, string
 export const viewHir = new lc.RequestType<lc.TextDocumentPositionParams, string, void>(
     "rust-analyzer/viewHir"
 );
+export const viewMir = new lc.RequestType<lc.TextDocumentPositionParams, string, void>(
+    "rust-analyzer/viewMir"
+);
 export const viewItemTree = new lc.RequestType<ViewItemTreeParams, string, void>(
     "rust-analyzer/viewItemTree"
 );

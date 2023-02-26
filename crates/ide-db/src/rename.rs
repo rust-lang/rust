@@ -121,8 +121,7 @@ impl Definition {
             Definition::Trait(it) => name_range(it, sema),
             Definition::TraitAlias(it) => name_range(it, sema),
             Definition::TypeAlias(it) => name_range(it, sema),
-            // A local might be `self` or have multiple definitons like `let (a | a) = 2`, so it should be handled as a special case
-            Definition::Local(_) => return None,
+            Definition::Local(it) => name_range(it.primary_source(sema.db), sema),
             Definition::GenericParam(generic_param) => match generic_param {
                 hir::GenericParam::LifetimeParam(lifetime_param) => {
                     let src = lifetime_param.source(sema.db)?;

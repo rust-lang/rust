@@ -531,6 +531,7 @@ fn render_const_scalar(
             hir_def::AdtId::UnionId(u) => write!(f, "{}", f.db.union_data(u).name),
             hir_def::AdtId::EnumId(_) => f.write_str("<enum-not-supported>"),
         },
+        chalk_ir::TyKind::FnDef(..) => ty.hir_fmt(f),
         _ => f.write_str("<not-supported>"),
     }
 }

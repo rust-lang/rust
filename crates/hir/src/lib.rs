@@ -1327,6 +1327,15 @@ impl DefWithBody {
         body.pretty_print(db.upcast(), self.id())
     }
 
+    /// A textual representation of the MIR of this def's body for debugging purposes.
+    pub fn debug_mir(self, db: &dyn HirDatabase) -> String {
+        let body = db.mir_body(self.id());
+        match body {
+            Ok(body) => body.pretty_print(db),
+            Err(e) => format!("error:\n{e:?}"),
+        }
+    }
+
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let krate = self.module(db).id.krate();
 
@@ -1502,32 +1511,35 @@ impl DefWithBody {
 
         let hir_body = db.body(self.into());
 
-        if let Ok(mir_body) = db.mir_body(self.into()) {
-            let mol = mir::borrowck::mutability_of_locals(&mir_body);
+        if let Ok(borrowck_result) = db.borrowck(self.into()) {
+            let mir_body = &borrowck_result.mir_body;
+            let mol = &borrowck_result.mutability_of_locals;
             for (binding_id, _) in hir_body.bindings.iter() {
                 let need_mut = &mol[mir_body.binding_locals[binding_id]];
                 let local = Local { parent: self.into(), binding_id };
                 match (need_mut, local.is_mut(db)) {
-                    (mir::borrowck::Mutability::Mut { .. }, true)
-                    | (mir::borrowck::Mutability::Not, false) => (),
-                    (mir::borrowck::Mutability::Mut { span }, false) => {
-                        let span: InFile<SyntaxNodePtr> = match span {
-                            mir::MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
-                                Ok(s) => s.map(|x| x.into()),
-                                Err(_) => continue,
-                            },
-                            mir::MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
-                                Ok(s) => s.map(|x| match x {
-                                    Either::Left(e) => e.into(),
-                                    Either::Right(e) => e.into(),
-                                }),
-                                Err(_) => continue,
-                            },
-                            mir::MirSpan::Unknown => continue,
-                        };
-                        acc.push(NeedMut { local, span }.into());
+                    (mir::MutabilityReason::Mut { .. }, true)
+                    | (mir::MutabilityReason::Not, false) => (),
+                    (mir::MutabilityReason::Mut { spans }, false) => {
+                        for span in spans {
+                            let span: InFile<SyntaxNodePtr> = match span {
+                                mir::MirSpan::ExprId(e) => match source_map.expr_syntax(*e) {
+                                    Ok(s) => s.map(|x| x.into()),
+                                    Err(_) => continue,
+                                },
+                                mir::MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
+                                    Ok(s) => s.map(|x| match x {
+                                        Either::Left(e) => e.into(),
+                                        Either::Right(e) => e.into(),
+                                    }),
+                                    Err(_) => continue,
+                                },
+                                mir::MirSpan::Unknown => continue,
+                            };
+                            acc.push(NeedMut { local, span }.into());
+                        }
                     }
-                    (mir::borrowck::Mutability::Not, true) => acc.push(UnusedMut { local }.into()),
+                    (mir::MutabilityReason::Not, true) => acc.push(UnusedMut { local }.into()),
                 }
             }
         }
@@ -2517,6 +2529,10 @@ impl LocalSource {
 
     pub fn original_file(&self, db: &dyn HirDatabase) -> FileId {
         self.source.file_id.original_file(db.upcast())
+    }
+
+    pub fn name(&self) -> Option<ast::Name> {
+        self.source.value.name()
     }
 
     pub fn syntax(&self) -> &SyntaxNode {

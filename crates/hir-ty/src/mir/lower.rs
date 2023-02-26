@@ -16,7 +16,7 @@ use hir_def::{
 use la_arena::ArenaMap;
 
 use crate::{
-    consteval::ConstEvalError, db::HirDatabase, infer::TypeMismatch,
+    consteval::ConstEvalError, db::HirDatabase, display::HirDisplay, infer::TypeMismatch,
     inhabitedness::is_ty_uninhabited_from, layout::layout_of_ty, mapping::ToChalk, utils::generics,
     Adjust, AutoBorrow, CallableDefId, TyBuilder, TyExt,
 };
@@ -46,6 +46,7 @@ pub enum MirLowerError {
     LayoutError(LayoutError),
     IncompleteExpr,
     UnresolvedName(String),
+    RecordLiteralWithoutPath,
     UnresolvedMethod,
     UnresolvedField,
     MissingFunctionDefinition,
@@ -88,7 +89,7 @@ impl MirLowerCtx<'_> {
         if matches!(ty.kind(Interner), TyKind::Slice(_) | TyKind::Dyn(_)) {
             not_supported!("unsized temporaries");
         }
-        Ok(self.result.locals.alloc(Local { mutability: Mutability::Not, ty }))
+        Ok(self.result.locals.alloc(Local { ty }))
     }
 
     fn lower_expr_as_place(&self, expr_id: ExprId) -> Option<Place> {
@@ -251,7 +252,7 @@ impl MirLowerCtx<'_> {
         match &self.body.exprs[expr_id] {
             Expr::Missing => Err(MirLowerError::IncompleteExpr),
             Expr::Path(p) => {
-                let unresolved_name = || MirLowerError::UnresolvedName("".to_string());
+                let unresolved_name = || MirLowerError::UnresolvedName(p.display(self.db).to_string());
                 let resolver = resolver_for_expr(self.db.upcast(), self.owner, expr_id);
                 let pr = resolver
                     .resolve_path_in_value_ns(self.db.upcast(), p.mod_path())
@@ -259,19 +260,29 @@ impl MirLowerCtx<'_> {
                 let pr = match pr {
                     ResolveValueResult::ValueNs(v) => v,
                     ResolveValueResult::Partial(..) => {
-                        return match self
+                        if let Some(assoc) = self
                             .infer
                             .assoc_resolutions_for_expr(expr_id)
-                            .ok_or_else(unresolved_name)?
-                            .0
-                            //.ok_or(ConstEvalError::SemanticError("unresolved assoc item"))?
                         {
-                            hir_def::AssocItemId::ConstId(c) => {
-                                self.lower_const(c, current, place, expr_id.into())?;
-                                Ok(Some(current))
-                            },
-                            _ => return Err(unresolved_name()),
-                        };
+                            match assoc.0 {
+                                hir_def::AssocItemId::ConstId(c) => {
+                                    self.lower_const(c, current, place, expr_id.into())?;
+                                    return Ok(Some(current))
+                                },
+                                _ => not_supported!("associated functions and types"),
+                            }
+                        } else if let Some(variant) = self
+                            .infer
+                            .variant_resolution_for_expr(expr_id)
+                        {
+                            match variant {
+                                VariantId::EnumVariantId(e) => ValueNs::EnumVariantId(e),
+                                VariantId::StructId(s) => ValueNs::StructId(s),
+                                VariantId::UnionId(_) => return Err(MirLowerError::ImplementationError("Union variant as path")),
+                            }
+                        } else {
+                            return Err(unresolved_name());
+                        }
                     }
                 };
                 match pr {
@@ -597,11 +608,14 @@ impl MirLowerCtx<'_> {
                 Ok(None)
             }
             Expr::Yield { .. } => not_supported!("yield"),
-            Expr::RecordLit { fields, .. } => {
+            Expr::RecordLit { fields, path, .. } => {
                 let variant_id = self
                     .infer
                     .variant_resolution_for_expr(expr_id)
-                    .ok_or_else(|| MirLowerError::UnresolvedName("".to_string()))?;
+                    .ok_or_else(|| match path {
+                        Some(p) => MirLowerError::UnresolvedName(p.display(self.db).to_string()),
+                        None => MirLowerError::RecordLiteralWithoutPath,
+                    })?;
                 let subst = match self.expr_ty(expr_id).kind(Interner) {
                     TyKind::Adt(_, s) => s.clone(),
                     _ => not_supported!("Non ADT record literal"),
@@ -1437,17 +1451,17 @@ pub fn lower_to_mir(
         basic_blocks.alloc(BasicBlock { statements: vec![], terminator: None, is_cleanup: false });
     let mut locals = Arena::new();
     // 0 is return local
-    locals.alloc(Local { mutability: Mutability::Mut, ty: infer[root_expr].clone() });
+    locals.alloc(Local { ty: infer[root_expr].clone() });
     let mut binding_locals: ArenaMap<BindingId, LocalId> = ArenaMap::new();
-    let param_locals: ArenaMap<PatId, LocalId> = if let DefWithBodyId::FunctionId(fid) = owner {
+    // 1 to param_len is for params
+    let param_locals: Vec<LocalId> = if let DefWithBodyId::FunctionId(fid) = owner {
         let substs = TyBuilder::placeholder_subst(db, fid);
         let callable_sig = db.callable_item_signature(fid.into()).substitute(Interner, &substs);
-        // 1 to param_len is for params
         body.params
             .iter()
             .zip(callable_sig.params().iter())
             .map(|(&x, ty)| {
-                let local_id = locals.alloc(Local { mutability: Mutability::Not, ty: ty.clone() });
+                let local_id = locals.alloc(Local { ty: ty.clone() });
                 if let Pat::Bind { id, subpat: None } = body[x] {
                     if matches!(
                         body.bindings[id].mode,
@@ -1456,22 +1470,19 @@ pub fn lower_to_mir(
                         binding_locals.insert(id, local_id);
                     }
                 }
-                (x, local_id)
+                local_id
             })
             .collect()
     } else {
         if !body.params.is_empty() {
             return Err(MirLowerError::TypeError("Unexpected parameter for non function body"));
         }
-        ArenaMap::new()
+        vec![]
     };
     // and then rest of bindings
     for (id, _) in body.bindings.iter() {
         if !binding_locals.contains_idx(id) {
-            binding_locals.insert(
-                id,
-                locals.alloc(Local { mutability: Mutability::Not, ty: infer[id].clone() }),
-            );
+            binding_locals.insert(id, locals.alloc(Local { ty: infer[id].clone() }));
         }
     }
     let mir = MirBody {
@@ -1479,6 +1490,7 @@ pub fn lower_to_mir(
         locals,
         start_block,
         binding_locals,
+        param_locals,
         owner,
         arg_count: body.params.len(),
     };
@@ -1492,17 +1504,17 @@ pub fn lower_to_mir(
         discr_temp: None,
     };
     let mut current = start_block;
-    for &param in &body.params {
+    for (&param, local) in body.params.iter().zip(ctx.result.param_locals.clone().into_iter()) {
         if let Pat::Bind { id, .. } = body[param] {
-            if param_locals[param] == ctx.result.binding_locals[id] {
+            if local == ctx.result.binding_locals[id] {
                 continue;
             }
         }
         let r = ctx.pattern_match(
             current,
             None,
-            param_locals[param].into(),
-            ctx.result.locals[param_locals[param]].ty.clone(),
+            local.into(),
+            ctx.result.locals[local].ty.clone(),
             param,
             BindingAnnotation::Unannotated,
         )?;
