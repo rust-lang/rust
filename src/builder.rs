@@ -1419,7 +1419,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     #[cfg(feature="master")]
     pub fn shuffle_vector(&mut self, v1: RValue<'gcc>, v2: RValue<'gcc>, mask: RValue<'gcc>) -> RValue<'gcc> {
-        let struct_type = mask.get_type().is_struct().expect("mask of struct type");
+        let struct_type = mask.get_type().is_struct().expect("mask should be of struct type");
 
         // TODO(antoyo): use a recursive unqualified() here.
         let vector_type = v1.get_type().unqualified().dyncast_vector().expect("vector type");

@@ -37,3 +37,5 @@ src/test/ui/cfg/cfg-panic.rs
 src/test/ui/generator/size-moved-locals.rs
 src/test/ui/macros/rfc-2011-nicer-assert-messages/all-not-available-cases.rs
 src/test/ui/runtime/rt-explody-panic-payloads.rs
+src/test/ui/simd/intrinsic/generic-gather-pass.rs
+src/test/ui/simd/issue-85915-simd-ptrs.rs

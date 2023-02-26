@@ -55,6 +55,14 @@ fn uncached_gcc_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
         Abi::Scalar(_) => bug!("handled elsewhere"),
         Abi::Vector { ref element, count } => {
             let element = layout.scalar_gcc_type_at(cx, element, Size::ZERO);
+            let element =
+                // NOTE: gcc doesn't allow pointer types in vectors.
+                if element.get_pointee().is_some() {
+                    cx.usize_type
+                }
+                else {
+                    element
+                };
             return cx.context.new_vector_type(element, count);
         },
         Abi::ScalarPair(..) => {
