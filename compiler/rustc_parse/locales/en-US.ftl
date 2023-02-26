@@ -220,7 +220,7 @@ parse_match_arm_body_without_braces = `match` arm body without braces
             [one] statement
            *[other] statements
         } with a body
-    .suggestion_use_comma_not_semicolon = use a comma to end a `match` arm expression
+    .suggestion_use_comma_not_semicolon = replace `;` with `,` to end a `match` arm expression
 
 parse_inclusive_range_extra_equals = unexpected `=` after inclusive range
     .suggestion_remove_eq = use `..=` instead

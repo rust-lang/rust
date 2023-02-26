@@ -2,10 +2,14 @@ error: `match` arm body without braces
   --> $DIR/match-arm-without-braces.rs:26:27
    |
 LL |         Some(Val::Foo) => 3;
-   |                        -- ^- help: use a comma to end a `match` arm expression: `,`
-   |                        |  |
-   |                        |  this statement is not surrounded by a body
+   |                        -- ^ this statement is not surrounded by a body
+   |                        |
    |                        while parsing the `match` arm starting here
+   |
+help: replace `;` with `,` to end a `match` arm expression
+   |
+LL |         Some(Val::Foo) => 3,
+   |                            ~
 
 error: `match` arm body without braces
   --> $DIR/match-arm-without-braces.rs:31:11
