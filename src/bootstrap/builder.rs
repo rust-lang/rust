@@ -1922,6 +1922,8 @@ impl<'a> Builder<'a> {
             }
         }
 
+        rustflags.arg("-Cforce-frame-pointers=yes");
+
         Cargo { command: cargo, rustflags, rustdocflags, allow_features }
     }
 
