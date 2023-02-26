@@ -12,7 +12,7 @@ use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_middle::ty::{
     self, Binder, GenericParamDefKind, InternalSubsts, SubstsRef, ToPolyTraitRef, ToPredicate,
-    TraitRef, Ty, TyCtxt, TypeVisitable,
+    TraitRef, Ty, TyCtxt, TypeVisitableExt,
 };
 use rustc_session::config::TraitSolver;
 use rustc_span::def_id::DefId;
@@ -564,8 +564,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 .into()
                             }
                         });
-                        let bound_vars = tcx.intern_bound_variable_kinds(&bound_vars);
-                        let assoc_ty_substs = tcx.intern_substs(&substs);
+                        let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
+                        let assoc_ty_substs = tcx.mk_substs(&substs);
                         let bound =
                             bound.map_bound(|b| b.kind().skip_binder()).subst(tcx, assoc_ty_substs);
                         tcx.mk_predicate(ty::Binder::bind_with_vars(bound, bound_vars))
@@ -821,6 +821,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         self.infcx
             .at(&obligation.cause, obligation.param_env)
+            // needed for tests/ui/type-alias-impl-trait/assoc-projection-ice.rs
+            .define_opaque_types(true)
             .sup(obligation_trait_ref, expected_trait_ref)
             .map(|InferOk { mut obligations, .. }| {
                 obligations.extend(nested);
@@ -878,7 +880,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(ty::ExistentialPredicate::AutoTrait)
                             .map(ty::Binder::dummy),
                     );
-                let existential_predicates = tcx.mk_poly_existential_predicates(iter);
+                let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(iter);
                 let source_trait = tcx.mk_dynamic(existential_predicates, r_b, repr_a);
 
                 // Require that the traits involved in this upcast are **equal**;
@@ -977,7 +979,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(ty::ExistentialPredicate::AutoTrait)
                             .map(ty::Binder::dummy),
                     );
-                let existential_predicates = tcx.mk_poly_existential_predicates(iter);
+                let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(iter);
                 let source_trait = tcx.mk_dynamic(existential_predicates, r_b, dyn_a);
 
                 // Require that the traits involved in this upcast are **equal**;
@@ -1097,7 +1099,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Check that the source struct with the target's
                 // unsizing parameters is equal to the target.
-                let substs = tcx.mk_substs(substs_a.iter().enumerate().map(|(i, k)| {
+                let substs = tcx.mk_substs_from_iter(substs_a.iter().enumerate().map(|(i, k)| {
                     if unsizing_params.contains(i as u32) { substs_b[i] } else { k }
                 }));
                 let new_struct = tcx.mk_adt(def, substs);
@@ -1129,7 +1131,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Check that the source tuple with the target's
                 // last element is equal to the target.
-                let new_tuple = tcx.mk_tup(a_mid.iter().copied().chain(iter::once(b_last)));
+                let new_tuple =
+                    tcx.mk_tup_from_iter(a_mid.iter().copied().chain(iter::once(b_last)));
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)

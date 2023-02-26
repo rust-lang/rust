@@ -1,4 +1,4 @@
-error[E0107]: this enum takes 2 generic arguments but 1 generic argument was supplied
+error[E0107]: enum takes 2 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-75883.rs:6:21
    |
 LL |     pub fn run() -> Result<_> {
@@ -11,7 +11,7 @@ help: add missing generic argument
 LL |     pub fn run() -> Result<_, E> {
    |                             +++
 
-error[E0107]: this enum takes 2 generic arguments but 1 generic argument was supplied
+error[E0107]: enum takes 2 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-75883.rs:15:35
    |
 LL |     pub fn interact(&mut self) -> Result<_> {

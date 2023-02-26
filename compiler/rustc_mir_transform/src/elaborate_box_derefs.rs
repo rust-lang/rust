@@ -17,7 +17,7 @@ pub fn build_ptr_tys<'tcx>(
     unique_did: DefId,
     nonnull_did: DefId,
 ) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
-    let substs = tcx.intern_substs(&[pointee.into()]);
+    let substs = tcx.mk_substs(&[pointee.into()]);
     let unique_ty = tcx.type_of(unique_did).subst(tcx, substs);
     let nonnull_ty = tcx.type_of(nonnull_did).subst(tcx, substs);
     let ptr_ty = tcx.mk_imm_ptr(pointee);
@@ -138,7 +138,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateBoxDerefs {
 
                     if let Some(mut new_projections) = new_projections {
                         new_projections.extend_from_slice(&place.projection[last_deref..]);
-                        place.projection = tcx.intern_place_elems(&new_projections);
+                        place.projection = tcx.mk_place_elems(&new_projections);
                     }
                 }
             }

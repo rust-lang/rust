@@ -59,6 +59,7 @@ pub fn create_session(
     sopts: config::Options,
     cfg: FxHashSet<(String, Option<String>)>,
     check_cfg: CheckCfg,
+    locale_resources: &'static [&'static str],
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     io: CompilerIO,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -89,11 +90,15 @@ pub fn create_session(
         }
     };
 
+    let mut locale_resources = Vec::from(locale_resources);
+    locale_resources.push(codegen_backend.locale_resource());
+
     let mut sess = session::build_session(
         sopts,
         io,
         bundle,
         descriptions,
+        locale_resources,
         lint_caps,
         file_loader,
         target_override,

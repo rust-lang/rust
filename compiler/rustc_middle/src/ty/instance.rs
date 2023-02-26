@@ -1,7 +1,7 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
-use crate::ty::{EarlyBinder, InternalSubsts, SubstsRef};
+use crate::ty::{EarlyBinder, InternalSubsts, SubstsRef, TypeVisitableExt};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -540,7 +540,7 @@ impl<'tcx> Instance<'tcx> {
 
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
-        let substs = tcx.intern_substs(&[ty.into()]);
+        let substs = tcx.mk_substs(&[ty.into()]);
         Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs)
     }
 
@@ -589,7 +589,7 @@ impl<'tcx> Instance<'tcx> {
 
     pub fn subst_mir<T>(&self, tcx: TyCtxt<'tcx>, v: &T) -> T
     where
-        T: TypeFoldable<'tcx> + Copy,
+        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
         if let Some(substs) = self.substs_for_mir_body() {
             EarlyBinder(*v).subst(tcx, substs)
@@ -606,7 +606,7 @@ impl<'tcx> Instance<'tcx> {
         v: T,
     ) -> T
     where
-        T: TypeFoldable<'tcx> + Clone,
+        T: TypeFoldable<TyCtxt<'tcx>> + Clone,
     {
         if let Some(substs) = self.substs_for_mir_body() {
             tcx.subst_and_normalize_erasing_regions(substs, param_env, v)
@@ -623,7 +623,7 @@ impl<'tcx> Instance<'tcx> {
         v: T,
     ) -> Result<T, NormalizationError<'tcx>>
     where
-        T: TypeFoldable<'tcx> + Clone,
+        T: TypeFoldable<TyCtxt<'tcx>> + Clone,
     {
         if let Some(substs) = self.substs_for_mir_body() {
             tcx.try_subst_and_normalize_erasing_regions(substs, param_env, v)
@@ -674,7 +674,7 @@ fn polymorphize<'tcx>(
         tcx: TyCtxt<'tcx>,
     }
 
-    impl<'tcx> ty::ir::TypeFolder<TyCtxt<'tcx>> for PolymorphizationFolder<'tcx> {
+    impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for PolymorphizationFolder<'tcx> {
         fn interner(&self) -> TyCtxt<'tcx> {
             self.tcx
         }

@@ -11,6 +11,9 @@
 #[macro_use]
 extern crate rustc_macros;
 
+use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_macros::fluent_messages;
+
 mod builtin;
 mod session_diagnostics;
 
@@ -22,3 +25,5 @@ pub use StabilityLevel::*;
 pub use rustc_ast::attr::*;
 
 pub(crate) use rustc_ast::HashStableContext;
+
+fluent_messages! { "../locales/en-US.ftl" }

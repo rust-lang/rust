@@ -35,7 +35,7 @@ use rustc_middle::mir::{
     TerminatorKind,
 };
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 
 #[macro_use]
@@ -192,7 +192,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 let arguments = (0..num_args).map(|x| {
                     let mut place_elems = place_elems.to_vec();
                     place_elems.push(ProjectionElem::Field(x.into(), fields[x]));
-                    let projection = tcx.intern_place_elems(&place_elems);
+                    let projection = tcx.mk_place_elems(&place_elems);
                     let place = Place {
                         local: place.local,
                         projection,

@@ -8,7 +8,7 @@ use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::{infer::outlives::env::OutlivesEnvironment, traits::FulfillmentError};
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::DUMMY_SP;
 
 use super::outlives_bounds::InferCtxtExt;

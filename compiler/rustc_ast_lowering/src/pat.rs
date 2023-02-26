@@ -330,8 +330,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
             _ => {
-                self.tcx.sess.emit_err(ArbitraryExpressionInPattern { span: expr.span });
-                return self.arena.alloc(self.expr_err(expr.span));
+                let guar = self.tcx.sess.emit_err(ArbitraryExpressionInPattern { span: expr.span });
+                return self.arena.alloc(self.expr_err(expr.span, guar));
             }
         }
         self.lower_expr(expr)

@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{GenericArg, SubstsRef};
 
 use super::NormalizeExt;
@@ -239,7 +239,7 @@ pub fn predicate_for_trait_def<'tcx>(
     cause: ObligationCause<'tcx>,
     trait_def_id: DefId,
     recursion_depth: usize,
-    params: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+    params: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
 ) -> PredicateObligation<'tcx> {
     let trait_ref = tcx.mk_trait_ref(trait_def_id, params);
     predicate_for_trait_ref(tcx, cause, param_env, trait_ref, recursion_depth)
@@ -292,7 +292,7 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
     assert!(!self_ty.has_escaping_bound_vars());
     let arguments_tuple = match tuple_arguments {
         TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
-        TupleArgumentsFlag::Yes => tcx.intern_tup(sig.skip_binder().inputs()),
+        TupleArgumentsFlag::Yes => tcx.mk_tup(sig.skip_binder().inputs()),
     };
     let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, [self_ty, arguments_tuple]);
     sig.map_bound(|sig| (trait_ref, sig.output()))

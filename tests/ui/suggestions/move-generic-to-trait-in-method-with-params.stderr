@@ -1,10 +1,10 @@
-error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/move-generic-to-trait-in-method-with-params.rs:14:7
    |
 LL |     1.bar::<i32>(0);
    |       ^^^ expected 0 generic arguments
    |
-note: associated function defined here, with 0 generic parameters
+note: method defined here, with 0 generic parameters
   --> $DIR/move-generic-to-trait-in-method-with-params.rs:4:8
    |
 LL |     fn bar(&self, _: T);

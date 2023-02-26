@@ -1,19 +1,10 @@
-use crate::ty::{self, Binder, BoundTy, Ty, TyCtxt, TypeVisitable};
+use crate::ty::{self, Binder, BoundTy, Ty, TyCtxt, TypeVisitableExt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
 
 use std::collections::BTreeMap;
 
-pub trait TypeFoldable<'tcx> = ir::TypeFoldable<TyCtxt<'tcx>> + TypeVisitable<'tcx>;
-pub trait TypeSuperFoldable<'tcx> = ir::TypeSuperFoldable<TyCtxt<'tcx>>;
-pub trait TypeFolder<'tcx> = ir::TypeFolder<TyCtxt<'tcx>>;
-pub trait FallibleTypeFolder<'tcx> = ir::FallibleTypeFolder<TyCtxt<'tcx>>;
-
-pub mod ir {
-    pub use rustc_type_ir::fold::{
-        FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    };
-}
+pub use rustc_type_ir::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 
 ///////////////////////////////////////////////////////////////////////////
 // Some sample folders
@@ -30,7 +21,7 @@ where
     pub ct_op: H,
 }
 
-impl<'tcx, F, G, H> ir::TypeFolder<TyCtxt<'tcx>> for BottomUpFolder<'tcx, F, G, H>
+impl<'tcx, F, G, H> TypeFolder<TyCtxt<'tcx>> for BottomUpFolder<'tcx, F, G, H>
 where
     F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
     G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
@@ -69,7 +60,7 @@ impl<'tcx> TyCtxt<'tcx> {
         mut f: impl FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx>,
     ) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         value.fold_with(&mut RegionFolder::new(self, &mut f))
     }
@@ -80,7 +71,7 @@ impl<'tcx> TyCtxt<'tcx> {
         mut f: impl FnMut(ty::Region<'tcx>, ty::DebruijnIndex) -> ty::Region<'tcx>,
     ) -> T
     where
-        T: TypeSuperFoldable<'tcx>,
+        T: TypeSuperFoldable<TyCtxt<'tcx>>,
     {
         value.super_fold_with(&mut RegionFolder::new(self, &mut f))
     }
@@ -120,12 +111,12 @@ impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ir::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
     fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(
+    fn fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
     ) -> ty::Binder<'tcx, T> {
@@ -194,7 +185,7 @@ impl<'tcx, D: BoundVarReplacerDelegate<'tcx>> BoundVarReplacer<'tcx, D> {
     }
 }
 
-impl<'tcx, D> ir::TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'tcx, D>
+impl<'tcx, D> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'tcx, D>
 where
     D: BoundVarReplacerDelegate<'tcx>,
 {
@@ -202,7 +193,7 @@ where
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(
+    fn fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
     ) -> ty::Binder<'tcx, T> {
@@ -280,7 +271,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let mut region_map = BTreeMap::new();
         let real_fld_r = |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
@@ -295,7 +286,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> T
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let value = value.skip_binder();
         if !value.has_escaping_bound_vars() {
@@ -314,7 +305,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Replaces all escaping bound vars. The `fld_r` closure replaces escaping
     /// bound regions; the `fld_t` closure replaces escaping bound types and the `fld_c`
     /// closure replaces escaping bound consts.
-    pub fn replace_escaping_bound_vars_uncached<T: TypeFoldable<'tcx>>(
+    pub fn replace_escaping_bound_vars_uncached<T: TypeFoldable<TyCtxt<'tcx>>>(
         self,
         value: T,
         delegate: impl BoundVarReplacerDelegate<'tcx>,
@@ -330,7 +321,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Replaces all types or regions bound by the given `Binder`. The `fld_r`
     /// closure replaces bound regions, the `fld_t` closure replaces bound
     /// types, and `fld_c` replaces bound constants.
-    pub fn replace_bound_vars_uncached<T: TypeFoldable<'tcx>>(
+    pub fn replace_bound_vars_uncached<T: TypeFoldable<TyCtxt<'tcx>>>(
         self,
         value: Binder<'tcx, T>,
         delegate: impl BoundVarReplacerDelegate<'tcx>,
@@ -346,7 +337,7 @@ impl<'tcx> TyCtxt<'tcx> {
         value: ty::Binder<'tcx, T>,
     ) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.replace_late_bound_regions_uncached(value, |br| {
             self.mk_re_free(all_outlive_scope, br.kind)
@@ -355,7 +346,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn shift_bound_var_indices<T>(self, bound_vars: usize, value: T) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let shift_bv = |bv: ty::BoundVar| ty::BoundVar::from_usize(bv.as_usize() + bound_vars);
         self.replace_escaping_bound_vars_uncached(
@@ -381,7 +372,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// method lookup and a few other places where precise region relationships are not required.
     pub fn erase_late_bound_regions<T>(self, value: Binder<'tcx, T>) -> T
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.replace_late_bound_regions(value, |_| self.lifetimes.re_erased).0
     }
@@ -389,7 +380,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Anonymize all bound variables in `value`, this is mostly used to improve caching.
     pub fn anonymize_bound_vars<T>(self, value: Binder<'tcx, T>) -> Binder<'tcx, T>
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         struct Anonymize<'a, 'tcx> {
             tcx: TyCtxt<'tcx>,
@@ -431,7 +422,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut map = Default::default();
         let delegate = Anonymize { tcx: self, map: &mut map };
         let inner = self.replace_escaping_bound_vars_uncached(value.skip_binder(), delegate);
-        let bound_vars = self.mk_bound_variable_kinds(map.into_values());
+        let bound_vars = self.mk_bound_variable_kinds_from_iter(map.into_values());
         Binder::bind_with_vars(inner, bound_vars)
     }
 }
@@ -457,12 +448,12 @@ impl<'tcx> Shifter<'tcx> {
     }
 }
 
-impl<'tcx> ir::TypeFolder<TyCtxt<'tcx>> for Shifter<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Shifter<'tcx> {
     fn interner(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(
+    fn fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
     ) -> ty::Binder<'tcx, T> {
@@ -525,7 +516,7 @@ pub fn shift_region<'tcx>(
 
 pub fn shift_vars<'tcx, T>(tcx: TyCtxt<'tcx>, value: T, amount: u32) -> T
 where
-    T: TypeFoldable<'tcx>,
+    T: TypeFoldable<TyCtxt<'tcx>>,
 {
     debug!("shift_vars(value={:?}, amount={})", value, amount);
 

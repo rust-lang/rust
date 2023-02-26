@@ -1,7 +1,7 @@
 //! The Rust AST Visitor. Extracts useful information and massages it into a form
 //! usable for `clean`.
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
@@ -26,8 +26,12 @@ pub(crate) struct Module<'hir> {
     pub(crate) where_inner: Span,
     pub(crate) mods: Vec<Module<'hir>>,
     pub(crate) def_id: LocalDefId,
-    // (item, renamed, import_id)
-    pub(crate) items: Vec<(&'hir hir::Item<'hir>, Option<Symbol>, Option<LocalDefId>)>,
+    /// The key is the item `ItemId` and the value is: (item, renamed, import_id).
+    /// We use `FxIndexMap` to keep the insert order.
+    pub(crate) items: FxIndexMap<
+        (LocalDefId, Option<Symbol>),
+        (&'hir hir::Item<'hir>, Option<Symbol>, Option<LocalDefId>),
+    >,
     pub(crate) foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>)>,
 }
 
@@ -38,7 +42,7 @@ impl Module<'_> {
             def_id,
             where_inner,
             mods: Vec::new(),
-            items: Vec::new(),
+            items: FxIndexMap::default(),
             foreigns: Vec::new(),
         }
     }
@@ -136,7 +140,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 inserted.insert(def_id)
             {
                     let item = self.cx.tcx.hir().expect_item(local_def_id);
-                    top_level_module.items.push((item, None, None));
+                    top_level_module.items.insert((local_def_id, Some(item.ident.name)), (item, None, None));
             }
         }
 
@@ -294,7 +298,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         renamed: Option<Symbol>,
         parent_id: Option<LocalDefId>,
     ) {
-        self.modules.last_mut().unwrap().items.push((item, renamed, parent_id))
+        self.modules
+            .last_mut()
+            .unwrap()
+            .items
+            .insert((item.owner_id.def_id, renamed), (item, renamed, parent_id));
     }
 
     fn visit_item_inner(

@@ -31,7 +31,7 @@ const IGNORE_DOCTEST_CHECK: &[&str] = &["E0464", "E0570", "E0601", "E0602", "E06
 
 // Error codes that don't yet have a UI test. This list will eventually be removed.
 const IGNORE_UI_TEST_CHECK: &[&str] =
-    &["E0461", "E0465", "E0476", "E0514", "E0554", "E0640", "E0717", "E0729"];
+    &["E0461", "E0465", "E0514", "E0554", "E0640", "E0717", "E0729"];
 
 macro_rules! verbose_print {
     ($verbose:expr, $($fmt:tt)*) => {
@@ -45,7 +45,7 @@ pub fn check(root_path: &Path, search_paths: &[&Path], verbose: bool, bad: &mut 
     let mut errors = Vec::new();
 
     // Stage 1: create list
-    let error_codes = extract_error_codes(root_path, &mut errors, verbose);
+    let error_codes = extract_error_codes(root_path, &mut errors);
     println!("Found {} error codes", error_codes.len());
     println!("Highest error code: `{}`", error_codes.iter().max().unwrap());
 
@@ -65,18 +65,17 @@ pub fn check(root_path: &Path, search_paths: &[&Path], verbose: bool, bad: &mut 
 }
 
 /// Stage 1: Parses a list of error codes from `error_codes.rs`.
-fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>, verbose: bool) -> Vec<String> {
+fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>) -> Vec<String> {
     let path = root_path.join(Path::new(ERROR_CODES_PATH));
     let file =
         fs::read_to_string(&path).unwrap_or_else(|e| panic!("failed to read `{path:?}`: {e}"));
 
     let mut error_codes = Vec::new();
-    let mut reached_undocumented_codes = false;
 
     for line in file.lines() {
         let line = line.trim();
 
-        if !reached_undocumented_codes && line.starts_with('E') {
+        if line.starts_with('E') {
             let split_line = line.split_once(':');
 
             // Extract the error code from the line, emitting a fatal error if it is not in a correct format.
@@ -111,23 +110,6 @@ fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>, verbose: bool
             }
 
             error_codes.push(err_code);
-        } else if reached_undocumented_codes && line.starts_with('E') {
-            let err_code = match line.split_once(',') {
-                None => line,
-                Some((err_code, _)) => err_code,
-            }
-            .to_string();
-
-            verbose_print!(verbose, "warning: Error code `{}` is undocumented.", err_code);
-
-            if error_codes.contains(&err_code) {
-                errors.push(format!("Found duplicate error code: `{}`", err_code));
-            }
-
-            error_codes.push(err_code);
-        } else if line == ";" {
-            // Once we reach the undocumented error codes, adapt to different syntax.
-            reached_undocumented_codes = true;
         }
     }
 

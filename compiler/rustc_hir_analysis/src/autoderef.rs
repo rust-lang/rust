@@ -3,7 +3,7 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::NormalizeExt;
 use crate::traits::{self, TraitEngine, TraitEngineExt};
 use rustc_infer::infer::InferCtxt;
-use rustc_middle::ty::TypeVisitable;
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_span::def_id::LocalDefId;

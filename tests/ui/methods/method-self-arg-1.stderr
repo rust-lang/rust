@@ -8,7 +8,7 @@ LL |     Foo::bar(x);
    |     |        help: consider borrowing here: `&x`
    |     arguments to this function are incorrect
    |
-note: associated function defined here
+note: method defined here
   --> $DIR/method-self-arg-1.rs:6:8
    |
 LL |     fn bar(&self) {}
@@ -24,7 +24,7 @@ LL |     Foo::bar(&42);
    |
    = note: expected reference `&Foo`
               found reference `&{integer}`
-note: associated function defined here
+note: method defined here
   --> $DIR/method-self-arg-1.rs:6:8
    |
 LL |     fn bar(&self) {}

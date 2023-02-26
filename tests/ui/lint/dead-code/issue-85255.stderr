@@ -34,37 +34,37 @@ LL |     a: i32,
 LL |     pub b: i32,
    |         ^
 
-warning: associated function `a` is never used
+warning: method `a` is never used
   --> $DIR/issue-85255.rs:14:8
    |
 LL |     fn a(&self) -> i32 { 5 }
    |        ^
 
-warning: associated function `b` is never used
+warning: method `b` is never used
   --> $DIR/issue-85255.rs:15:12
    |
 LL |     pub fn b(&self) -> i32 { 6 }
    |            ^
 
-warning: associated function `a` is never used
+warning: method `a` is never used
   --> $DIR/issue-85255.rs:26:8
    |
 LL |     fn a(&self) -> i32 { 5 }
    |        ^
 
-warning: associated function `b` is never used
+warning: method `b` is never used
   --> $DIR/issue-85255.rs:27:12
    |
 LL |     pub fn b(&self) -> i32 { 6 }
    |            ^
 
-warning: associated function `a` is never used
+warning: method `a` is never used
   --> $DIR/issue-85255.rs:38:8
    |
 LL |     fn a(&self) -> i32 { 5 }
    |        ^
 
-warning: associated function `b` is never used
+warning: method `b` is never used
   --> $DIR/issue-85255.rs:39:12
    |
 LL |     pub fn b(&self) -> i32 { 6 }

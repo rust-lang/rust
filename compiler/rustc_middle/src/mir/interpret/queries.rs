@@ -2,7 +2,7 @@ use super::{ErrorHandled, EvalToConstValueResult, EvalToValTreeResult, GlobalId}
 
 use crate::mir;
 use crate::ty::subst::InternalSubsts;
-use crate::ty::visit::TypeVisitable;
+use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{self, query::TyCtxtAt, query::TyCtxtEnsure, TyCtxt};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;

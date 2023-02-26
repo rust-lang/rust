@@ -749,6 +749,48 @@ fn test_drain() {
 }
 
 #[test]
+fn issue_108453() {
+    let mut deque = VecDeque::with_capacity(10);
+
+    deque.push_back(1u8);
+    deque.push_back(2);
+    deque.push_back(3);
+
+    deque.push_front(10);
+    deque.push_front(9);
+
+    deque.shrink_to(9);
+
+    assert_eq!(deque.into_iter().collect::<Vec<_>>(), vec![9, 10, 1, 2, 3]);
+}
+
+#[test]
+fn test_shrink_to() {
+    // test deques with capacity 16 with all possible head positions, lengths and target capacities.
+    let cap = 16;
+
+    for len in 0..cap {
+        for head in 0..cap {
+            let expected = (1..=len).collect::<VecDeque<_>>();
+
+            for target_cap in len..cap {
+                let mut deque = VecDeque::with_capacity(cap);
+                // currently, `with_capacity` always allocates the exact capacity if it's greater than 8.
+                assert_eq!(deque.capacity(), cap);
+
+                // we can let the head point anywhere in the buffer since the deque is empty.
+                deque.head = head;
+                deque.extend(1..=len);
+
+                deque.shrink_to(target_cap);
+
+                assert_eq!(deque, expected);
+            }
+        }
+    }
+}
+
+#[test]
 fn test_shrink_to_fit() {
     // This test checks that every single combination of head and tail position,
     // is tested. Capacity 15 should be large enough to cover every case.

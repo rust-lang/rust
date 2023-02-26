@@ -4,18 +4,18 @@ mod no_generics {
     type A = Ty;
 
     type B = Ty<'static>;
-    //~^ ERROR this struct takes 0 lifetime arguments but 1 lifetime argument
+    //~^ ERROR struct takes 0 lifetime arguments but 1 lifetime argument
     //~| HELP remove these generics
 
     type C = Ty<'static, usize>;
-    //~^ ERROR this struct takes 0 lifetime arguments but 1 lifetime argument
-    //~| ERROR this struct takes 0 generic arguments but 1 generic argument
+    //~^ ERROR struct takes 0 lifetime arguments but 1 lifetime argument
+    //~| ERROR struct takes 0 generic arguments but 1 generic argument
     //~| HELP remove this lifetime argument
     //~| HELP remove this generic argument
 
     type D = Ty<'static, usize, { 0 }>;
-    //~^ ERROR this struct takes 0 lifetime arguments but 1 lifetime argument
-    //~| ERROR this struct takes 0 generic arguments but 2 generic arguments
+    //~^ ERROR struct takes 0 lifetime arguments but 1 lifetime argument
+    //~| ERROR struct takes 0 generic arguments but 2 generic arguments
     //~| HELP remove this lifetime argument
     //~| HELP remove these generic arguments
 }
@@ -28,17 +28,17 @@ mod type_and_type {
     //~| HELP add missing
 
     type B = Ty<usize>;
-    //~^ ERROR this struct takes 2 generic arguments but 1 generic argument
+    //~^ ERROR struct takes 2 generic arguments but 1 generic argument
     //~| HELP add missing
 
     type C = Ty<usize, String>;
 
     type D = Ty<usize, String, char>;
-    //~^ ERROR this struct takes 2 generic arguments but 3 generic arguments
+    //~^ ERROR struct takes 2 generic arguments but 3 generic arguments
     //~| HELP remove this
 
     type E = Ty<>;
-    //~^ ERROR this struct takes 2 generic arguments but 0 generic arguments were supplied
+    //~^ ERROR struct takes 2 generic arguments but 0 generic arguments were supplied
     //~| HELP add missing
 }
 
@@ -52,7 +52,7 @@ mod lifetime_and_type {
     //~| HELP consider introducing
 
     type B = Ty<'static>;
-    //~^ ERROR this struct takes 1 generic argument but 0 generic arguments
+    //~^ ERROR struct takes 1 generic argument but 0 generic arguments
     //~| HELP add missing
 
     type C = Ty<usize>;
@@ -62,14 +62,14 @@ mod lifetime_and_type {
     type D = Ty<'static, usize>;
 
     type E = Ty<>;
-    //~^ ERROR this struct takes 1 generic argument but 0 generic arguments
+    //~^ ERROR struct takes 1 generic argument but 0 generic arguments
     //~| ERROR missing lifetime specifier
     //~| HELP consider introducing
     //~| HELP add missing
 
     type F = Ty<'static, usize, 'static, usize>;
-    //~^ ERROR this struct takes 1 lifetime argument but 2 lifetime arguments
-    //~| ERROR this struct takes 1 generic argument but 2 generic arguments
+    //~^ ERROR struct takes 1 lifetime argument but 2 lifetime arguments
+    //~| ERROR struct takes 1 generic argument but 2 generic arguments
     //~| HELP remove this lifetime argument
     //~| HELP remove this generic argument
 }
@@ -82,7 +82,7 @@ mod type_and_type_and_type {
     //~| HELP add missing
 
     type B = Ty<usize>;
-    //~^ ERROR this struct takes at least 2
+    //~^ ERROR struct takes at least 2
     //~| HELP add missing
 
     type C = Ty<usize, String>;
@@ -90,11 +90,11 @@ mod type_and_type_and_type {
     type D = Ty<usize, String, char>;
 
     type E = Ty<usize, String, char, f64>;
-    //~^ ERROR this struct takes at most 3
+    //~^ ERROR struct takes at most 3
     //~| HELP remove
 
     type F = Ty<>;
-    //~^ ERROR this struct takes at least 2 generic arguments but 0 generic arguments
+    //~^ ERROR struct takes at least 2 generic arguments but 0 generic arguments
     //~| HELP add missing
 }
 
@@ -114,7 +114,7 @@ mod r#trait {
     }
 
     type A = Box<dyn NonGeneric<usize>>;
-    //~^ ERROR this trait takes 0 generic arguments but 1 generic argument
+    //~^ ERROR trait takes 0 generic arguments but 1 generic argument
     //~| HELP remove
 
     type B = Box<dyn GenericLifetime>;
@@ -123,7 +123,7 @@ mod r#trait {
     //~| HELP consider making the bound lifetime-generic
 
     type C = Box<dyn GenericLifetime<'static, 'static>>;
-    //~^ ERROR this trait takes 1 lifetime argument but 2 lifetime arguments were supplied
+    //~^ ERROR trait takes 1 lifetime argument but 2 lifetime arguments were supplied
     //~| HELP remove
 
     type D = Box<dyn GenericType>;
@@ -131,7 +131,7 @@ mod r#trait {
     //~| HELP add missing
 
     type E = Box<dyn GenericType<String, usize>>;
-    //~^ ERROR this trait takes 1 generic argument but 2 generic arguments
+    //~^ ERROR trait takes 1 generic argument but 2 generic arguments
     //~| HELP remove
 
     type F = Box<dyn GenericLifetime<>>;
@@ -140,7 +140,7 @@ mod r#trait {
     //~| HELP consider making the bound lifetime-generic
 
     type G = Box<dyn GenericType<>>;
-    //~^ ERROR this trait takes 1 generic argument but 0 generic arguments
+    //~^ ERROR trait takes 1 generic argument but 0 generic arguments
     //~| HELP add missing
 }
 
@@ -151,7 +151,7 @@ mod associated_item {
         }
 
         type A = Box<dyn NonGenericAT<usize, AssocTy=()>>;
-        //~^ ERROR this trait takes 0 generic arguments but 1 generic argument
+        //~^ ERROR trait takes 0 generic arguments but 1 generic argument
         //~| HELP remove
     }
 
@@ -166,14 +166,14 @@ mod associated_item {
         //~| HELP consider making the bound lifetime-generic
 
         type B = Box<dyn GenericLifetimeAT<'static, 'static, AssocTy=()>>;
-        //~^ ERROR this trait takes 1 lifetime argument but 2 lifetime arguments were supplied
+        //~^ ERROR trait takes 1 lifetime argument but 2 lifetime arguments were supplied
         //~| HELP remove
 
         type C = Box<dyn GenericLifetimeAT<(), AssocTy=()>>;
         //~^ ERROR missing lifetime specifier
         //~| HELP consider introducing
         //~| HELP consider making the bound lifetime-generic
-        //~| ERROR this trait takes 0 generic arguments but 1 generic argument
+        //~| ERROR trait takes 0 generic arguments but 1 generic argument
         //~| HELP remove
     }
 
@@ -183,17 +183,17 @@ mod associated_item {
         }
 
         type A = Box<dyn GenericTypeAT<AssocTy=()>>;
-        //~^ ERROR this trait takes 1 generic argument but 0 generic arguments
+        //~^ ERROR trait takes 1 generic argument but 0 generic arguments
         //~| HELP add missing
 
         type B = Box<dyn GenericTypeAT<(), (), AssocTy=()>>;
-        //~^ ERROR this trait takes 1 generic argument but 2 generic arguments
+        //~^ ERROR trait takes 1 generic argument but 2 generic arguments
         //~| HELP remove
 
         type C = Box<dyn GenericTypeAT<'static, AssocTy=()>>;
-        //~^ ERROR this trait takes 1 generic argument but 0 generic arguments
+        //~^ ERROR trait takes 1 generic argument but 0 generic arguments
         //~| HELP add missing
-        //~| ERROR this trait takes 0 lifetime arguments but 1 lifetime argument was supplied
+        //~| ERROR trait takes 0 lifetime arguments but 1 lifetime argument was supplied
         //~| HELP remove
     }
 
@@ -203,20 +203,20 @@ mod associated_item {
         }
 
         type A = Box<dyn GenericLifetimeTypeAT<AssocTy=()>>;
-        //~^ ERROR this trait takes 1 generic argument but 0 generic arguments
+        //~^ ERROR trait takes 1 generic argument but 0 generic arguments
         //~| HELP add missing
         //~| ERROR missing lifetime specifier
         //~| HELP consider introducing
         //~| HELP consider making the bound lifetime-generic
 
         type B = Box<dyn GenericLifetimeTypeAT<'static, AssocTy=()>>;
-        //~^ ERROR this trait takes 1 generic argument but 0 generic arguments were supplied
+        //~^ ERROR trait takes 1 generic argument but 0 generic arguments were supplied
         //~| HELP add missing
 
         type C = Box<dyn GenericLifetimeTypeAT<'static, 'static, AssocTy=()>>;
-        //~^ ERROR this trait takes 1 lifetime argument but 2 lifetime arguments were supplied
+        //~^ ERROR trait takes 1 lifetime argument but 2 lifetime arguments were supplied
         //~| HELP remove
-        //~| ERROR this trait takes 1 generic argument but 0 generic arguments
+        //~| ERROR trait takes 1 generic argument but 0 generic arguments
         //~| HELP add missing
 
         type D = Box<dyn GenericLifetimeTypeAT<(), AssocTy=()>>;
@@ -228,21 +228,21 @@ mod associated_item {
         //~^ ERROR missing lifetime specifier
         //~| HELP consider introducing
         //~| HELP consider making the bound lifetime-generic
-        //~| ERROR this trait takes 1 generic argument but 2 generic arguments
+        //~| ERROR trait takes 1 generic argument but 2 generic arguments
         //~| HELP remove
 
         type F = Box<dyn GenericLifetimeTypeAT<'static, 'static, (), AssocTy=()>>;
-        //~^ ERROR this trait takes 1 lifetime argument but 2 lifetime arguments were supplied
+        //~^ ERROR trait takes 1 lifetime argument but 2 lifetime arguments were supplied
         //~| HELP remove
 
         type G = Box<dyn GenericLifetimeTypeAT<'static, (), (), AssocTy=()>>;
-        //~^ ERROR this trait takes 1 generic argument but 2 generic arguments
+        //~^ ERROR trait takes 1 generic argument but 2 generic arguments
         //~| HELP remove
 
         type H = Box<dyn GenericLifetimeTypeAT<'static, 'static, (), (), AssocTy=()>>;
-        //~^ ERROR this trait takes 1 lifetime argument but 2 lifetime arguments were supplied
+        //~^ ERROR trait takes 1 lifetime argument but 2 lifetime arguments were supplied
         //~| HELP remove
-        //~| ERROR this trait takes 1 generic argument but 2 generic arguments
+        //~| ERROR trait takes 1 generic argument but 2 generic arguments
         //~| HELP remove
     }
 
@@ -252,15 +252,15 @@ mod associated_item {
         }
 
         type A = Box<dyn GenericTypeTypeAT<AssocTy=()>>;
-        //~^ ERROR this trait takes 2 generic arguments but 0 generic arguments
+        //~^ ERROR trait takes 2 generic arguments but 0 generic arguments
         //~| HELP add missing
 
         type B = Box<dyn GenericTypeTypeAT<(), AssocTy=()>>;
-        //~^ ERROR this trait takes 2 generic arguments but 1 generic argument
+        //~^ ERROR trait takes 2 generic arguments but 1 generic argument
         //~| HELP add missing
 
         type C = Box<dyn GenericTypeTypeAT<(), (), (), AssocTy=()>>;
-        //~^ ERROR this trait takes 2 generic arguments but 3 generic arguments
+        //~^ ERROR trait takes 2 generic arguments but 3 generic arguments
         //~| HELP remove
     }
 
@@ -275,7 +275,7 @@ mod associated_item {
         //~| HELP consider making the bound lifetime-generic
 
         type B = Box<dyn GenericLifetimeLifetimeAT<'static, AssocTy=()>>;
-        //~^ ERROR this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
+        //~^ ERROR trait takes 2 lifetime arguments but 1 lifetime argument was supplied
         //~| HELP add missing lifetime argument
     }
 
@@ -288,17 +288,17 @@ mod associated_item {
         //~^ ERROR missing lifetime specifier
         //~| HELP consider introducing
         //~| HELP consider making the bound lifetime-generic
-        //~| ERROR this trait takes 1 generic argument but 0 generic arguments
+        //~| ERROR trait takes 1 generic argument but 0 generic arguments
         //~| HELP add missing
 
         type B = Box<dyn GenericLifetimeLifetimeTypeAT<'static, AssocTy=()>>;
-        //~^ ERROR this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
+        //~^ ERROR trait takes 2 lifetime arguments but 1 lifetime argument was supplied
         //~| HELP add missing lifetime argument
-        //~| ERROR this trait takes 1 generic argument but 0 generic arguments
+        //~| ERROR trait takes 1 generic argument but 0 generic arguments
         //~| HELP add missing
 
         type C = Box<dyn GenericLifetimeLifetimeTypeAT<'static, (), AssocTy=()>>;
-        //~^ ERROR this trait takes 2 lifetime arguments but 1 lifetime argument was supplied
+        //~^ ERROR trait takes 2 lifetime arguments but 1 lifetime argument was supplied
         //~| HELP add missing lifetime argument
     }
 }
@@ -312,21 +312,21 @@ mod stdlib {
         //~| HELP add missing
 
         type B = HashMap<String>;
-        //~^ ERROR this struct takes at least
+        //~^ ERROR struct takes at least
         //~| HELP add missing
 
         type C = HashMap<'static>;
-        //~^ ERROR this struct takes 0 lifetime arguments but 1 lifetime argument
+        //~^ ERROR struct takes 0 lifetime arguments but 1 lifetime argument
         //~| HELP remove these generics
-        //~| ERROR this struct takes at least 2
+        //~| ERROR struct takes at least 2
         //~| HELP add missing
 
         type D = HashMap<usize, String, char, f64>;
-        //~^ ERROR this struct takes at most 3
+        //~^ ERROR struct takes at most 3
         //~| HELP remove this
 
         type E = HashMap<>;
-        //~^ ERROR this struct takes at least 2 generic arguments but 0 generic arguments
+        //~^ ERROR struct takes at least 2 generic arguments but 0 generic arguments
         //~| HELP add missing
     }
 
@@ -336,21 +336,21 @@ mod stdlib {
         //~| HELP add missing
 
         type B = Result<String>;
-        //~^ ERROR this enum takes 2 generic arguments but 1 generic argument
+        //~^ ERROR enum takes 2 generic arguments but 1 generic argument
         //~| HELP add missing
 
         type C = Result<'static>;
-        //~^ ERROR this enum takes 0 lifetime arguments but 1 lifetime argument
+        //~^ ERROR enum takes 0 lifetime arguments but 1 lifetime argument
         //~| HELP remove these generics
-        //~| ERROR this enum takes 2 generic arguments but 0 generic arguments
+        //~| ERROR enum takes 2 generic arguments but 0 generic arguments
         //~| HELP add missing
 
         type D = Result<usize, String, char>;
-        //~^ ERROR this enum takes 2 generic arguments but 3 generic arguments
+        //~^ ERROR enum takes 2 generic arguments but 3 generic arguments
         //~| HELP remove
 
         type E = Result<>;
-        //~^ ERROR this enum takes 2 generic arguments but 0 generic arguments
+        //~^ ERROR enum takes 2 generic arguments but 0 generic arguments
         //~| HELP add missing
     }
 }

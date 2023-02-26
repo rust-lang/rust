@@ -1,13 +1,16 @@
-use crate::context::{CheckLintNameResult, LintStore};
-use crate::late::unerased_lint_store;
-use crate::lints::{
-    DeprecatedLintName, IgnoredUnlessCrateSpecified, OverruledAtributeLint, RenamedOrRemovedLint,
-    RenamedOrRemovedLintSuggestion, UnknownLint, UnknownLintSuggestion,
+use crate::{
+    context::{CheckLintNameResult, LintStore},
+    fluent_generated as fluent,
+    late::unerased_lint_store,
+    lints::{
+        DeprecatedLintName, IgnoredUnlessCrateSpecified, OverruledAtributeLint,
+        RenamedOrRemovedLint, RenamedOrRemovedLintSuggestion, UnknownLint, UnknownLintSuggestion,
+    },
 };
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{fluent, DecorateLint, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
+use rustc_errors::{DecorateLint, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirId;
@@ -983,7 +986,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     fluent::lint_unknown_gated_lint,
                     |lint| {
                         lint.set_arg("name", lint_id.lint.name_lower());
-                        lint.note(fluent::note);
+                        lint.note(fluent::lint_note);
                         add_feature_diagnostics(lint, &self.sess.parse_sess, feature);
                         lint
                     },

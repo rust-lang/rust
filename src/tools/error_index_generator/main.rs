@@ -2,9 +2,6 @@
 
 extern crate rustc_driver;
 
-// We use the function we generate from `register_diagnostics!`.
-use crate::error_codes::error_codes;
-
 use std::env;
 use std::error::Error;
 use std::fs::{self, File};
@@ -16,22 +13,6 @@ use std::str::FromStr;
 
 use mdbook::book::{parse_summary, BookItem, Chapter};
 use mdbook::{Config, MDBook};
-
-macro_rules! register_diagnostics {
-    ($($error_code:ident: $message:expr,)+ ; $($undocumented:ident,)* ) => {
-        pub fn error_codes() -> Vec<(&'static str, Option<&'static str>)> {
-            let mut errors: Vec<(&str, Option<&str>)> = vec![
-                $((stringify!($error_code), Some($message)),)+
-                $((stringify!($undocumented), None),)+
-            ];
-            errors.sort();
-            errors
-        }
-    }
-}
-
-#[path = "../../../compiler/rustc_error_codes/src/error_codes.rs"]
-mod error_codes;
 
 enum OutputFormat {
     HTML,
@@ -55,11 +36,8 @@ fn render_markdown(output_path: &Path) -> Result<(), Box<dyn Error>> {
 
     write!(output_file, "# Rust Compiler Error Index\n")?;
 
-    for (err_code, description) in error_codes().iter() {
-        match description {
-            Some(ref desc) => write!(output_file, "## {}\n{}\n", err_code, desc)?,
-            None => {}
-        }
+    for (err_code, description) in rustc_error_codes::DIAGNOSTICS.iter() {
+        write!(output_file, "## {}\n{}\n", err_code, description)?
     }
 
     Ok(())
@@ -105,27 +83,23 @@ This page lists all the error codes emitted by the Rust compiler.
 "
     );
 
-    let err_codes = error_codes();
+    let err_codes = rustc_error_codes::DIAGNOSTICS;
     let mut chapters = Vec::with_capacity(err_codes.len());
 
     for (err_code, explanation) in err_codes.iter() {
-        if let Some(explanation) = explanation {
-            introduction.push_str(&format!(" * [{0}](./{0}.html)\n", err_code));
+        introduction.push_str(&format!(" * [{0}](./{0}.html)\n", err_code));
 
-            let content = add_rust_attribute_on_codeblock(explanation);
-            chapters.push(BookItem::Chapter(Chapter {
-                name: err_code.to_string(),
-                content: format!("# Error code {}\n\n{}\n", err_code, content),
-                number: None,
-                sub_items: Vec::new(),
-                // We generate it into the `error_codes` folder.
-                path: Some(PathBuf::from(&format!("{}.html", err_code))),
-                source_path: None,
-                parent_names: Vec::new(),
-            }));
-        } else {
-            introduction.push_str(&format!(" * {}\n", err_code));
-        }
+        let content = add_rust_attribute_on_codeblock(explanation);
+        chapters.push(BookItem::Chapter(Chapter {
+            name: err_code.to_string(),
+            content: format!("# Error code {}\n\n{}\n", err_code, content),
+            number: None,
+            sub_items: Vec::new(),
+            // We generate it into the `error_codes` folder.
+            path: Some(PathBuf::from(&format!("{}.html", err_code))),
+            source_path: None,
+            parent_names: Vec::new(),
+        }));
     }
 
     let mut config = Config::from_str(include_str!("book_config.toml"))?;

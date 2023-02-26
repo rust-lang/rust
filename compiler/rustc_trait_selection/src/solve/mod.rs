@@ -35,15 +35,14 @@ use crate::solve::search_graph::OverflowHandler;
 use crate::traits::ObligationCause;
 
 mod assembly;
+mod eval_ctxt;
 mod fulfill;
-mod infcx_ext;
 mod project_goals;
 mod search_graph;
 mod trait_goals;
 
+pub use eval_ctxt::EvalCtxt;
 pub use fulfill::FulfillmentCtxt;
-
-use self::infcx_ext::InferCtxtExt;
 
 /// A goal is a statement, i.e. `predicate`, we want to prove
 /// given some assumptions, i.e. `param_env`.
@@ -180,22 +179,7 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
     }
 }
 
-struct EvalCtxt<'a, 'tcx> {
-    infcx: &'a InferCtxt<'tcx>,
-    var_values: CanonicalVarValues<'tcx>,
-
-    search_graph: &'a mut search_graph::SearchGraph<'tcx>,
-
-    /// This field is used by a debug assertion in [`EvalCtxt::evaluate_goal`],
-    /// see the comment in that method for more details.
-    in_projection_eq_hack: bool,
-}
-
 impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
-    }
-
     /// The entry point of the solver.
     ///
     /// This function deals with (coinductive) cycles, overflow, and caching
@@ -427,7 +411,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
         let evaluate_normalizes_to = |ecx: &mut EvalCtxt<'_, 'tcx>, alias, other| {
             debug!("evaluate_normalizes_to(alias={:?}, other={:?})", alias, other);
-            let r = ecx.infcx.probe(|_| {
+            let r = ecx.probe(|ecx| {
                 let (_, certainty) = ecx.evaluate_goal(goal.with(
                     tcx,
                     ty::Binder::dummy(ty::ProjectionPredicate {
@@ -462,10 +446,10 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 // Evaluate all 3 potential candidates for the alias' being equal
                 candidates.push(evaluate_normalizes_to(self, alias_lhs, goal.predicate.1));
                 candidates.push(evaluate_normalizes_to(self, alias_rhs, goal.predicate.0));
-                candidates.push(self.infcx.probe(|_| {
+                candidates.push(self.probe(|this| {
                     debug!("compute_alias_eq_goal: alias defids are equal, equating substs");
-                    let nested_goals = self.infcx.eq(goal.param_env, alias_lhs, alias_rhs)?;
-                    self.evaluate_all_and_make_canonical_response(nested_goals)
+                    let nested_goals = this.eq(goal.param_env, alias_lhs, alias_rhs)?;
+                    this.evaluate_all_and_make_canonical_response(nested_goals)
                 }));
 
                 debug!(?candidates);
@@ -481,7 +465,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         goal: Goal<'tcx, (ty::Const<'tcx>, Ty<'tcx>)>,
     ) -> QueryResult<'tcx> {
         let (ct, ty) = goal.predicate;
-        let nested_goals = self.infcx.eq(goal.param_env, ct.ty(), ty)?;
+        let nested_goals = self.eq(goal.param_env, ct.ty(), ty)?;
         self.evaluate_all_and_make_canonical_response(nested_goals)
     }
 }
@@ -583,7 +567,7 @@ fn compute_external_query_constraints<'tcx>(
 ) -> Result<ExternalConstraints<'tcx>, NoSolution> {
     let region_obligations = infcx.take_registered_region_obligations();
     let opaque_types = infcx.take_opaque_types_for_query_response();
-    Ok(infcx.tcx.intern_external_constraints(ExternalConstraintsData {
+    Ok(infcx.tcx.mk_external_constraints(ExternalConstraintsData {
         // FIXME: Now that's definitely wrong :)
         //
         // Should also do the leak check here I think
@@ -632,8 +616,7 @@ pub(super) fn response_no_constraints<'tcx>(
             var_values: CanonicalVarValues::make_identity(tcx, goal.variables),
             // FIXME: maybe we should store the "no response" version in tcx, like
             // we do for tcx.types and stuff.
-            external_constraints: tcx
-                .intern_external_constraints(ExternalConstraintsData::default()),
+            external_constraints: tcx.mk_external_constraints(ExternalConstraintsData::default()),
             certainty,
         },
     })

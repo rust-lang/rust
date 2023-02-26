@@ -580,7 +580,7 @@ impl DiagnosticCode {
             let je_result =
                 je.registry.as_ref().map(|registry| registry.try_find_description(&s)).unwrap();
 
-            DiagnosticCode { code: s, explanation: je_result.unwrap_or(None) }
+            DiagnosticCode { code: s, explanation: je_result.ok() }
         })
     }
 }

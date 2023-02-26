@@ -473,13 +473,13 @@ impl<'a> Linker for GccLinker<'a> {
         self.cmd.arg(path);
     }
     fn full_relro(&mut self) {
-        self.linker_args(&["-zrelro", "-znow"]);
+        self.linker_args(&["-z", "relro", "-z", "now"]);
     }
     fn partial_relro(&mut self) {
-        self.linker_arg("-zrelro");
+        self.linker_args(&["-z", "relro"]);
     }
     fn no_relro(&mut self) {
-        self.linker_arg("-znorelro");
+        self.linker_args(&["-z", "norelro"]);
     }
 
     fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
@@ -758,7 +758,7 @@ impl<'a> Linker for GccLinker<'a> {
         if self.sess.target.is_like_windows {
             self.linker_arg("--nxcompat");
         } else if self.is_gnu {
-            self.linker_arg("-znoexecstack");
+            self.linker_args(&["-z", "noexecstack"]);
         }
     }
 
@@ -1364,16 +1364,16 @@ impl<'a> Linker for L4Bender<'a> {
     }
 
     fn full_relro(&mut self) {
-        self.cmd.arg("-zrelro");
-        self.cmd.arg("-znow");
+        self.cmd.arg("-z").arg("relro");
+        self.cmd.arg("-z").arg("now");
     }
 
     fn partial_relro(&mut self) {
-        self.cmd.arg("-zrelro");
+        self.cmd.arg("-z").arg("relro");
     }
 
     fn no_relro(&mut self) {
-        self.cmd.arg("-znorelro");
+        self.cmd.arg("-z").arg("norelro");
     }
 
     fn cmd(&mut self) -> &mut Command {

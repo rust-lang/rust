@@ -45,8 +45,10 @@
   
       bb3: {
           StorageLive(_4);                 // scope 1 at $DIR/enum.rs:+2:29: +2:30
-          _4 = ((_1 as V1).0: i32);        // scope 1 at $DIR/enum.rs:+2:29: +2:30
-          _2 = _4;                         // scope 3 at $DIR/enum.rs:+2:35: +2:36
+-         _4 = ((_1 as V1).0: i32);        // scope 1 at $DIR/enum.rs:+2:29: +2:30
+-         _2 = _4;                         // scope 3 at $DIR/enum.rs:+2:35: +2:36
++         _4 = const 0_i32;                // scope 1 at $DIR/enum.rs:+2:29: +2:30
++         _2 = const 0_i32;                // scope 3 at $DIR/enum.rs:+2:35: +2:36
           StorageDead(_4);                 // scope 1 at $DIR/enum.rs:+2:35: +2:36
           goto -> bb4;                     // scope 1 at $DIR/enum.rs:+2:35: +2:36
       }

@@ -1,6 +1,7 @@
+use crate::fluent_generated as fluent;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitable};
+use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -182,16 +183,16 @@ impl IntoDiagnostic<'_, !> for LayoutError<'_> {
         match self {
             LayoutError::Unknown(ty) => {
                 diag.set_arg("ty", ty);
-                diag.set_primary_message(rustc_errors::fluent::middle_unknown_layout);
+                diag.set_primary_message(fluent::middle_unknown_layout);
             }
             LayoutError::SizeOverflow(ty) => {
                 diag.set_arg("ty", ty);
-                diag.set_primary_message(rustc_errors::fluent::middle_values_too_big);
+                diag.set_primary_message(fluent::middle_values_too_big);
             }
             LayoutError::NormalizationFailure(ty, e) => {
                 diag.set_arg("ty", ty);
                 diag.set_arg("failure_ty", e.get_type_for_failure());
-                diag.set_primary_message(rustc_errors::fluent::middle_cannot_be_normalized);
+                diag.set_primary_message(fluent::middle_cannot_be_normalized);
             }
         }
         diag
@@ -595,7 +596,7 @@ where
                     ty::Adt(def, _) => def.variant(variant_index).fields.len(),
                     _ => bug!(),
                 };
-                tcx.intern_layout(LayoutS {
+                tcx.mk_layout(LayoutS {
                     variants: Variants::Single { index: variant_index },
                     fields: match NonZeroUsize::new(fields) {
                         Some(fields) => FieldsShape::Union(fields),
@@ -608,7 +609,7 @@ where
                 })
             }
 
-            Variants::Multiple { ref variants, .. } => cx.tcx().intern_layout(variants[variant_index].clone()),
+            Variants::Multiple { ref variants, .. } => cx.tcx().mk_layout(variants[variant_index].clone()),
         };
 
         assert_eq!(*layout.variants(), Variants::Single { index: variant_index });
@@ -630,7 +631,7 @@ where
             let tcx = cx.tcx();
             let tag_layout = |tag: Scalar| -> TyAndLayout<'tcx> {
                 TyAndLayout {
-                    layout: tcx.intern_layout(LayoutS::scalar(cx, tag)),
+                    layout: tcx.mk_layout(LayoutS::scalar(cx, tag)),
                     ty: tag.primitive().to_ty(tcx),
                 }
             };
@@ -686,7 +687,7 @@ where
                         Increase this counter if you tried to implement this but
                         failed to do it without duplicating a lot of code from
                         other places in the compiler: 2
-                        tcx.intern_tup(&[
+                        tcx.mk_tup(&[
                             tcx.mk_array(tcx.types.usize, 3),
                             tcx.mk_array(Option<fn()>),
                         ])
@@ -1120,13 +1121,6 @@ impl From<call::AdjustForForeignAbiError> for FnAbiError<'_> {
 
 impl<'tcx> fmt::Display for FnAbiError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[cfg(bootstrap)]
-        match self {
-            Self::Layout(err) => fmt::Display::fmt(err, f),
-            Self::AdjustForForeignAbi(err) => fmt::Display::fmt(err, f),
-        }
-
-        #[cfg(not(bootstrap))]
         match self {
             Self::Layout(err) => err.fmt(f),
             Self::AdjustForForeignAbi(err) => err.fmt(f),

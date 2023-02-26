@@ -8,6 +8,8 @@
 //
 //     'a : 'b
 
+#![warn(unused_lifetimes)]
+
 fn test<'a,'b>(x: &'a i32) -> &'b i32
     where 'a: 'static //~ WARN unnecessary lifetime parameter `'a`
 {

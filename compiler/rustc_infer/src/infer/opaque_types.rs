@@ -12,8 +12,8 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
-    self, ir::TypeVisitor, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable,
+    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::Span;
 
@@ -45,7 +45,7 @@ pub struct OpaqueTypeDecl<'tcx> {
 impl<'tcx> InferCtxt<'tcx> {
     /// This is a backwards compatibility hack to prevent breaking changes from
     /// lazy TAIT around RPIT handling.
-    pub fn replace_opaque_types_with_inference_vars<T: TypeFoldable<'tcx>>(
+    pub fn replace_opaque_types_with_inference_vars<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
         value: T,
         body_id: LocalDefId,
@@ -427,7 +427,7 @@ impl<'tcx, OP> TypeVisitor<TyCtxt<'tcx>> for ConstrainOpaqueTypeRegionVisitor<'t
 where
     OP: FnMut(ty::Region<'tcx>),
 {
-    fn visit_binder<T: TypeVisitable<'tcx>>(
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
         &mut self,
         t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
@@ -545,8 +545,11 @@ impl<'tcx> InferCtxt<'tcx> {
             origin,
         );
         if let Some(prev) = prev {
-            obligations =
-                self.at(&cause, param_env).eq_exp(a_is_expected, prev, hidden_ty)?.obligations;
+            obligations = self
+                .at(&cause, param_env)
+                .define_opaque_types(true)
+                .eq_exp(a_is_expected, prev, hidden_ty)?
+                .obligations;
         }
 
         let item_bounds = tcx.bound_explicit_item_bounds(def_id.to_def_id());

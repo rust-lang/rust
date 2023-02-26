@@ -523,7 +523,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             && stab.is_none()
             && self.effective_visibilities.is_reachable(def_id)
         {
-            let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
+            let descr = self.tcx.def_descr(def_id.to_def_id());
             self.tcx.sess.emit_err(errors::MissingStabilityAttr { span, descr });
         }
     }
@@ -551,7 +551,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
         let is_reachable = self.effective_visibilities.is_reachable(def_id);
 
         if is_const && is_stable && missing_const_stability_attribute && is_reachable {
-            let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
+            let descr = self.tcx.def_descr(def_id.to_def_id());
             self.tcx.sess.emit_err(errors::MissingConstStabAttr { span, descr });
         }
     }
@@ -748,7 +748,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                         let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
                         c.visit_ty(self_ty);
                         c.visit_trait_ref(t);
-                        if c.fully_stable {
+
+                        // do not lint when the trait isn't resolved, since resolution error should
+                        // be fixed first
+                        if t.path.res != Res::Err && c.fully_stable {
                             self.tcx.struct_span_lint_hir(
                                 INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
                                 item.hir_id(),

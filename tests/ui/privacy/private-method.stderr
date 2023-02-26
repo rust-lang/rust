@@ -1,11 +1,11 @@
-error[E0624]: associated function `nap` is private
+error[E0624]: method `nap` is private
   --> $DIR/private-method.rs:22:8
    |
 LL |         fn nap(&self) {}
-   |         ------------- private associated function defined here
+   |         ------------- private method defined here
 ...
 LL |   nyan.nap();
-   |        ^^^ private associated function
+   |        ^^^ private method
 
 error: aborting due to previous error
 

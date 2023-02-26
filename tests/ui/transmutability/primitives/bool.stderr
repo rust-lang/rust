@@ -9,7 +9,7 @@ note: required by a bound in `is_transmutable`
   --> $DIR/bool.rs:12:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
-   |            --------------- required by a bound in this
+   |            --------------- required by a bound in this function
 LL |     where
 LL |         Dst: BikeshedIntrinsicFrom<Src, Context, { Assume::SAFETY }>
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`

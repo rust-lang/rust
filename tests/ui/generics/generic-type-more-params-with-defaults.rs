@@ -7,5 +7,5 @@ struct Vec<T, A = Heap>(
 
 fn main() {
     let _: Vec<isize, Heap, bool>;
-    //~^ ERROR this struct takes at most 2 generic arguments but 3 generic arguments
+    //~^ ERROR struct takes at most 2 generic arguments but 3 generic arguments
 }

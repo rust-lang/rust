@@ -79,6 +79,14 @@ pub struct MisplacedImplTrait<'a> {
     pub position: DiagnosticArgFromDisplay<'a>,
 }
 
+#[derive(Diagnostic)]
+#[diag(ast_lowering_misplaced_assoc_ty_binding)]
+pub struct MisplacedAssocTyBinding<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub position: DiagnosticArgFromDisplay<'a>,
+}
+
 #[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering_rustc_box_attribute_error)]
 pub struct RustcBoxAttributeError {
@@ -339,7 +347,7 @@ pub struct InclusiveRangeWithNoEnd {
 #[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering_trait_fn_async, code = "E0706")]
 #[note]
-#[note(note2)]
+#[note(ast_lowering_note2)]
 pub struct TraitFnAsync {
     #[primary_span]
     pub fn_span: Span,

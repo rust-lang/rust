@@ -173,7 +173,7 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
 
             // let pointee = tcx.normalize_erasing_regions(param_env, pointee);
             // if pointee.is_sized(tcx.at(DUMMY_SP), param_env) {
-            //     return Ok(tcx.intern_layout(LayoutS::scalar(cx, data_ptr)));
+            //     return Ok(tcx.mk_layout(LayoutS::scalar(cx, data_ptr)));
             // }
 
             let unsized_part = struct_tail_erasing_lifetimes(db, pointee.clone());

@@ -67,13 +67,11 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
         };
         let un_derefer = UnDerefer { tcx: tcx, derefer_sidetable: side_table };
         let elaborate_patch = {
-            let body = &*body;
             let env = MoveDataParamEnv { move_data, param_env };
-            let dead_unwinds = find_dead_unwinds(tcx, body, &env, &un_derefer);
+            remove_dead_unwinds(tcx, body, &env, &un_derefer);
 
             let inits = MaybeInitializedPlaces::new(tcx, body, &env)
                 .into_engine(tcx, body)
-                .dead_unwinds(&dead_unwinds)
                 .pass_name("elaborate_drops")
                 .iterate_to_fixpoint()
                 .into_results_cursor(body);
@@ -81,10 +79,11 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
             let uninits = MaybeUninitializedPlaces::new(tcx, body, &env)
                 .mark_inactive_variants_as_uninit()
                 .into_engine(tcx, body)
-                .dead_unwinds(&dead_unwinds)
                 .pass_name("elaborate_drops")
                 .iterate_to_fixpoint()
                 .into_results_cursor(body);
+
+            let reachable = traversal::reachable_as_bitset(body);
 
             ElaborateDropsCtxt {
                 tcx,
@@ -94,6 +93,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
                 drop_flags: Default::default(),
                 patch: MirPatch::new(body),
                 un_derefer: un_derefer,
+                reachable,
             }
             .elaborate()
         };
@@ -102,22 +102,21 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
     }
 }
 
-/// Returns the set of basic blocks whose unwind edges are known
-/// to not be reachable, because they are `drop` terminators
+/// Removes unwind edges which are known to be unreachable, because they are in `drop` terminators
 /// that can't drop anything.
-fn find_dead_unwinds<'tcx>(
+fn remove_dead_unwinds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
+    body: &mut Body<'tcx>,
     env: &MoveDataParamEnv<'tcx>,
     und: &UnDerefer<'tcx>,
-) -> BitSet<BasicBlock> {
-    debug!("find_dead_unwinds({:?})", body.span);
+) {
+    debug!("remove_dead_unwinds({:?})", body.span);
     // We only need to do this pass once, because unwind edges can only
     // reach cleanup blocks, which can't have unwind edges themselves.
-    let mut dead_unwinds = BitSet::new_empty(body.basic_blocks.len());
+    let mut dead_unwinds = Vec::new();
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &env)
         .into_engine(tcx, body)
-        .pass_name("find_dead_unwinds")
+        .pass_name("remove_dead_unwinds")
         .iterate_to_fixpoint()
         .into_results_cursor(body);
     for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
@@ -129,16 +128,16 @@ fn find_dead_unwinds<'tcx>(
             _ => continue,
         };
 
-        debug!("find_dead_unwinds @ {:?}: {:?}", bb, bb_data);
+        debug!("remove_dead_unwinds @ {:?}: {:?}", bb, bb_data);
 
         let LookupResult::Exact(path) = env.move_data.rev_lookup.find(place.as_ref()) else {
-            debug!("find_dead_unwinds: has parent; skipping");
+            debug!("remove_dead_unwinds: has parent; skipping");
             continue;
         };
 
         flow_inits.seek_before_primary_effect(body.terminator_loc(bb));
         debug!(
-            "find_dead_unwinds @ {:?}: path({:?})={:?}; init_data={:?}",
+            "remove_dead_unwinds @ {:?}: path({:?})={:?}; init_data={:?}",
             bb,
             place,
             path,
@@ -150,13 +149,22 @@ fn find_dead_unwinds<'tcx>(
             maybe_live |= flow_inits.contains(child);
         });
 
-        debug!("find_dead_unwinds @ {:?}: maybe_live={}", bb, maybe_live);
+        debug!("remove_dead_unwinds @ {:?}: maybe_live={}", bb, maybe_live);
         if !maybe_live {
-            dead_unwinds.insert(bb);
+            dead_unwinds.push(bb);
         }
     }
 
-    dead_unwinds
+    if dead_unwinds.is_empty() {
+        return;
+    }
+
+    let basic_blocks = body.basic_blocks.as_mut();
+    for &bb in dead_unwinds.iter() {
+        if let Some(unwind) = basic_blocks[bb].terminator_mut().unwind_mut() {
+            *unwind = None;
+        }
+    }
 }
 
 struct InitializationData<'mir, 'tcx> {
@@ -290,6 +298,7 @@ struct ElaborateDropsCtxt<'a, 'tcx> {
     drop_flags: FxHashMap<MovePathIndex, Local>,
     patch: MirPatch<'tcx>,
     un_derefer: UnDerefer<'tcx>,
+    reachable: BitSet<BasicBlock>,
 }
 
 impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
@@ -329,6 +338,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn collect_drop_flags(&mut self) {
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
+            if !self.reachable.contains(bb) {
+                continue;
+            }
             let terminator = data.terminator();
             let place = match terminator.kind {
                 TerminatorKind::Drop { ref place, .. }
@@ -384,6 +396,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn elaborate_drops(&mut self) {
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
+            if !self.reachable.contains(bb) {
+                continue;
+            }
             let loc = Location { block: bb, statement_index: data.statements.len() };
             let terminator = data.terminator();
 
@@ -541,6 +556,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn drop_flags_for_fn_rets(&mut self) {
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
+            if !self.reachable.contains(bb) {
+                continue;
+            }
             if let TerminatorKind::Call {
                 destination, target: Some(tgt), cleanup: Some(_), ..
             } = data.terminator().kind
@@ -576,6 +594,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         // clobbered before they are read.
 
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
+            if !self.reachable.contains(bb) {
+                continue;
+            }
             debug!("drop_flags_for_locs({:?})", data);
             for i in 0..(data.statements.len() + 1) {
                 debug!("drop_flag_for_locs: stmt {}", i);

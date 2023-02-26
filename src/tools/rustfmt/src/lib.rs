@@ -23,6 +23,7 @@ extern crate rustc_expand;
 extern crate rustc_parse;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate thin_vec;
 
 // Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
 // files.

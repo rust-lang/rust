@@ -4,7 +4,7 @@ error[E0061]: this method takes 2 arguments but 1 argument was supplied
 LL |     s.infer(0i32);
    |       ^^^^^------ an argument is missing
    |
-note: associated function defined here
+note: method defined here
   --> $DIR/point-at-inference-4.rs:4:8
    |
 LL |     fn infer(&self, a: A, b: B) {}

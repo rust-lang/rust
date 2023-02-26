@@ -1,9 +1,10 @@
 use super::FnCtxt;
 
 use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
+use crate::fluent_generated as fluent;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
-use rustc_errors::{fluent, Applicability, Diagnostic, MultiSpan};
+use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
@@ -16,7 +17,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, suggest_constraining_type_params, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty,
-    TypeVisitable,
+    TypeVisitableExt,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -120,7 +121,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 DefIdOrName::DefId(def_id) => match self.tcx.def_kind(def_id) {
                     DefKind::Ctor(CtorOf::Struct, _) => "construct this tuple struct".to_string(),
                     DefKind::Ctor(CtorOf::Variant, _) => "construct this tuple variant".to_string(),
-                    kind => format!("call this {}", kind.descr(def_id)),
+                    kind => format!("call this {}", self.tcx.def_kind_descr(kind, def_id)),
                 },
                 DefIdOrName::Name(name) => format!("call this {name}"),
             };
@@ -339,7 +340,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     CtorOf::Variant => "an enum variant",
                 }));
             } else {
-                let descr = kind.descr(def_id);
+                let descr = self.tcx.def_kind_descr(kind, def_id);
                 err.span_label(sp, format!("{descr} `{name}` defined here"));
             }
             return true;

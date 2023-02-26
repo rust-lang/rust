@@ -14,7 +14,7 @@ use rustc_middle::mir::interpret::ErrorHandled;
 
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
-use rustc_middle::ty::{self, ir::TypeVisitor, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitable, TypeVisitableExt, TypeVisitor};
 
 use rustc_span::Span;
 use std::ops::ControlFlow;

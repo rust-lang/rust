@@ -2,8 +2,7 @@ use crate::marker::PhantomData;
 use crate::mem::size_of;
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
 use crate::slice;
-use crate::sys::{c, Align8};
-use core;
+use crate::sys::c;
 use libc;
 
 #[derive(Copy, Clone)]
@@ -125,22 +124,33 @@ unsafe fn msys_tty_on(handle: c::HANDLE) -> bool {
         return false;
     }
 
-    const SIZE: usize = size_of::<c::FILE_NAME_INFO>() + c::MAX_PATH * size_of::<c::WCHAR>();
-    let mut name_info_bytes = Align8([0u8; SIZE]);
+    /// Mirrors [`FILE_NAME_INFO`], giving it a fixed length that we can stack
+    /// allocate
+    ///
+    /// [`FILE_NAME_INFO`]: https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_name_info
+    #[repr(C)]
+    #[allow(non_snake_case)]
+    struct FILE_NAME_INFO {
+        FileNameLength: u32,
+        FileName: [u16; c::MAX_PATH as usize],
+    }
+    let mut name_info = FILE_NAME_INFO { FileNameLength: 0, FileName: [0; c::MAX_PATH as usize] };
+    // Safety: buffer length is fixed.
     let res = c::GetFileInformationByHandleEx(
         handle,
         c::FileNameInfo,
-        name_info_bytes.0.as_mut_ptr() as *mut libc::c_void,
-        SIZE as u32,
+        &mut name_info as *mut _ as *mut libc::c_void,
+        size_of::<FILE_NAME_INFO>() as u32,
     );
     if res == 0 {
         return false;
     }
-    let name_info: &c::FILE_NAME_INFO = &*(name_info_bytes.0.as_ptr() as *const c::FILE_NAME_INFO);
-    let name_len = name_info.FileNameLength as usize / 2;
-    // Offset to get the `FileName` field.
-    let name_ptr = name_info_bytes.0.as_ptr().offset(size_of::<c::DWORD>() as isize).cast::<u16>();
-    let s = core::slice::from_raw_parts(name_ptr, name_len);
+
+    // Use `get` because `FileNameLength` can be out of range.
+    let s = match name_info.FileName.get(..name_info.FileNameLength as usize / 2) {
+        None => return false,
+        Some(s) => s,
+    };
     let name = String::from_utf16_lossy(s);
     // Get the file name only.
     let name = name.rsplit('\\').next().unwrap_or(&name);

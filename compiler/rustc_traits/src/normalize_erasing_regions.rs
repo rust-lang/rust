@@ -1,7 +1,7 @@
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
 use std::sync::atomic::Ordering;
@@ -22,7 +22,7 @@ pub(crate) fn provide(p: &mut Providers) {
     };
 }
 
-fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq + Copy>(
+fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy>(
     tcx: TyCtxt<'tcx>,
     goal: ParamEnvAnd<'tcx, T>,
 ) -> Result<T, NoSolution> {

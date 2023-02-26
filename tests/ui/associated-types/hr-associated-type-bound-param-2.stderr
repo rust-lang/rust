@@ -9,7 +9,7 @@ note: required by a bound in `Z`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
    |
 LL | trait Z<'a, T: ?Sized>
-   |       - required by a bound in this
+   |       - required by a bound in this trait
 ...
 LL |     for<'b> <T as Z<'b, u16>>::W: Clone,
    |                                   ^^^^^ required by this bound in `Z`
@@ -25,7 +25,7 @@ note: required by a bound in `Z`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
    |
 LL | trait Z<'a, T: ?Sized>
-   |       - required by a bound in this
+   |       - required by a bound in this trait
 ...
 LL |     for<'b> <T as Z<'b, u16>>::W: Clone,
    |                                   ^^^^^ required by this bound in `Z`
@@ -41,7 +41,7 @@ note: required by a bound in `Z`
   --> $DIR/hr-associated-type-bound-param-2.rs:6:35
    |
 LL | trait Z<'a, T: ?Sized>
-   |       - required by a bound in this
+   |       - required by a bound in this trait
 ...
 LL |     for<'b> <T as Z<'b, u16>>::W: Clone,
    |                                   ^^^^^ required by this bound in `Z`

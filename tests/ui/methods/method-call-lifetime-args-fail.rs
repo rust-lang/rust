@@ -14,9 +14,9 @@ impl S {
 fn method_call() {
     S.early(); // OK
     S.early::<'static>();
-    //~^ ERROR this associated function takes 2 lifetime arguments but 1 lifetime argument
+    //~^ ERROR method takes 2 lifetime arguments but 1 lifetime argument
     S.early::<'static, 'static, 'static>();
-    //~^ ERROR this associated function takes 2 lifetime arguments but 3 lifetime arguments were supplied
+    //~^ ERROR method takes 2 lifetime arguments but 3 lifetime arguments were supplied
     let _: &u8 = S.life_and_type::<'static>();
     S.life_and_type::<u8>();
     S.life_and_type::<'static, u8>();
@@ -61,9 +61,9 @@ fn ufcs() {
 
     S::early(S); // OK
     S::early::<'static>(S);
-    //~^ ERROR this associated function takes 2 lifetime arguments but 1 lifetime argument
+    //~^ ERROR method takes 2 lifetime arguments but 1 lifetime argument
     S::early::<'static, 'static, 'static>(S);
-    //~^ ERROR this associated function takes 2 lifetime arguments but 3 lifetime arguments were supplied
+    //~^ ERROR method takes 2 lifetime arguments but 3 lifetime arguments were supplied
     let _: &u8 = S::life_and_type::<'static>(S);
     S::life_and_type::<u8>(S);
     S::life_and_type::<'static, u8>(S);

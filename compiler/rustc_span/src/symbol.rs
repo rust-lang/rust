@@ -740,6 +740,7 @@ symbols! {
         frem_fast,
         from,
         from_desugaring,
+        from_fn,
         from_iter,
         from_method,
         from_output,

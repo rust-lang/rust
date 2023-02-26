@@ -173,6 +173,7 @@ pub struct Config {
     pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
     pub rust_lto: RustcLto,
+    pub rust_validate_mir_opts: Option<u32>,
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
@@ -770,6 +771,7 @@ define_config! {
         // ignored; this is set from an env var set by bootstrap.py
         download_rustc: Option<StringOrBool> = "download-rustc",
         lto: Option<String> = "lto",
+        validate_mir_opts: Option<u32> = "validate-mir-opts",
     }
 }
 
@@ -1149,6 +1151,7 @@ impl Config {
                 .as_deref()
                 .map(|value| RustcLto::from_str(value).unwrap())
                 .unwrap_or_default();
+            config.rust_validate_mir_opts = rust.validate_mir_opts;
         } else {
             config.rust_profile_use = flags.rust_profile_use;
             config.rust_profile_generate = flags.rust_profile_generate;

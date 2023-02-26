@@ -1,8 +1,9 @@
 //! Errors emitted by codegen_ssa
 
 use crate::back::command::Command;
+use crate::fluent_generated as fluent;
 use rustc_errors::{
-    fluent, DiagnosticArgValue, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
+    DiagnosticArgValue, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
     IntoDiagnosticArg,
 };
 use rustc_macros::Diagnostic;
@@ -388,7 +389,7 @@ pub struct LinkerNotFound {
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unable_to_exe_linker)]
 #[note]
-#[note(command_note)]
+#[note(codegen_ssa_command_note)]
 pub struct UnableToExeLinker {
     pub linker_path: PathBuf,
     pub error: Error,

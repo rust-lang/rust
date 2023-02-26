@@ -1,5 +1,7 @@
 use rustc_middle::mir::interpret::InterpResult;
-use rustc_middle::ty::{self, ir::TypeVisitor, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 use std::ops::ControlFlow;
 
 /// Checks whether a type contains generic parameters which require substitution.
@@ -9,7 +11,7 @@ use std::ops::ControlFlow;
 /// case these parameters are unused.
 pub(crate) fn ensure_monomorphic_enough<'tcx, T>(tcx: TyCtxt<'tcx>, ty: T) -> InterpResult<'tcx>
 where
-    T: TypeVisitable<'tcx>,
+    T: TypeVisitable<TyCtxt<'tcx>>,
 {
     debug!("ensure_monomorphic_enough: ty={:?}", ty);
     if !ty.needs_subst() {

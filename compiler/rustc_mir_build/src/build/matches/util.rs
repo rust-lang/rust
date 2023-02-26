@@ -5,7 +5,7 @@ use crate::build::Builder;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
-use rustc_middle::ty::TypeVisitable;
+use rustc_middle::ty::TypeVisitableExt;
 use smallvec::SmallVec;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

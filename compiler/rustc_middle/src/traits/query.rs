@@ -14,7 +14,7 @@ use rustc_span::source_map::Span;
 
 pub mod type_op {
     use crate::ty::fold::TypeFoldable;
-    use crate::ty::{Predicate, Ty, UserType};
+    use crate::ty::{Predicate, Ty, TyCtxt, UserType};
     use std::fmt;
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, Lift)]
@@ -64,7 +64,7 @@ pub mod type_op {
 
     impl<'tcx, T> Normalize<T>
     where
-        T: fmt::Debug + TypeFoldable<'tcx>,
+        T: fmt::Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
         pub fn new(value: T) -> Self {
             Self { value }

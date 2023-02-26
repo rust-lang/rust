@@ -15,7 +15,7 @@ LL |     let _s = y.unwrap_or(|| x.split('.').nth(1).unwrap());
    |              ^^^^^^^^^^^^-------------------------------^
    |                          |
    |                          this argument influences the return type of `unwrap_or`
-note: associated function defined here
+note: method defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
 help: try calling `unwrap_or_else` instead
    |

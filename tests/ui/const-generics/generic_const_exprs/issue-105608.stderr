@@ -2,7 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/issue-105608.rs:13:22
    |
 LL |     Combination::<0>.and::<_>().and::<_>();
-   |                      ^^^ cannot infer type of the type parameter `M` declared on the associated function `and`
+   |                      ^^^ cannot infer type of the type parameter `M` declared on the method `and`
    |
 help: consider specifying the generic argument
    |

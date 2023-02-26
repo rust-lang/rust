@@ -307,7 +307,7 @@ impl<'tcx> Cx<'tcx> {
 
                     let arg_tys = args.iter().map(|e| self.typeck_results().expr_ty_adjusted(e));
                     let tupled_args = Expr {
-                        ty: tcx.mk_tup(arg_tys),
+                        ty: tcx.mk_tup_from_iter(arg_tys),
                         temp_lifetime,
                         span: expr.span,
                         kind: ExprKind::Tuple { fields: self.mirror_exprs(args) },
@@ -758,7 +758,7 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::Tup(ref fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },
 
             hir::ExprKind::Yield(ref v, _) => ExprKind::Yield { value: self.mirror_expr(v) },
-            hir::ExprKind::Err => unreachable!(),
+            hir::ExprKind::Err(_) => unreachable!(),
         };
 
         Expr { temp_lifetime, ty: expr_ty, span: expr.span, kind }

@@ -18,7 +18,7 @@ use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
-use thin_vec::thin_vec;
+use thin_vec::{thin_vec, ThinVec};
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -88,8 +88,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             let kind = hir::ExprKind::Box(self.lower_expr(&inner));
                             return hir::Expr { hir_id, kind, span: self.lower_span(e.span) };
                         } else {
-                            self.tcx.sess.emit_err(RustcBoxAttributeError { span: e.span });
-                            hir::ExprKind::Err
+                            let guar = self.tcx.sess.emit_err(RustcBoxAttributeError { span: e.span });
+                            hir::ExprKind::Err(guar)
                         }
                     } else if let Some(legacy_args) = self.resolver.legacy_const_generic_args(f) {
                         self.lower_legacy_const_generics((**f).clone(), args.clone(), &legacy_args)
@@ -266,8 +266,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_expr_range(e.span, e1.as_deref(), e2.as_deref(), *lims)
                 }
                 ExprKind::Underscore => {
-                    self.tcx.sess.emit_err(UnderscoreExprLhsAssign { span: e.span });
-                    hir::ExprKind::Err
+                    let guar = self.tcx.sess.emit_err(UnderscoreExprLhsAssign { span: e.span });
+                    hir::ExprKind::Err(guar)
                 }
                 ExprKind::Path(qself, path) => {
                     let qpath = self.lower_qpath(
@@ -299,8 +299,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let rest = match &se.rest {
                         StructRest::Base(e) => Some(self.lower_expr(e)),
                         StructRest::Rest(sp) => {
-                            self.tcx.sess.emit_err(BaseExpressionDoubleDot { span: *sp });
-                            Some(&*self.arena.alloc(self.expr_err(*sp)))
+                            let guar =
+                                self.tcx.sess.emit_err(BaseExpressionDoubleDot { span: *sp });
+                            Some(&*self.arena.alloc(self.expr_err(*sp, guar)))
                         }
                         StructRest::None => None,
                     };
@@ -318,7 +319,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     )
                 }
                 ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
-                ExprKind::Err => hir::ExprKind::Err,
+                ExprKind::Err => hir::ExprKind::Err(
+                    self.tcx.sess.delay_span_bug(e.span, "lowered ExprKind::Err"),
+                ),
                 ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
 
                 ExprKind::Paren(_) | ExprKind::ForLoop(..) => unreachable!("already handled"),
@@ -367,7 +370,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_legacy_const_generics(
         &mut self,
         mut f: Expr,
-        args: Vec<AstP<Expr>>,
+        args: ThinVec<AstP<Expr>>,
         legacy_args_idx: &[usize],
     ) -> hir::ExprKind<'hir> {
         let ExprKind::Path(None, path) = &mut f.kind else {
@@ -376,7 +379,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Split the arguments into const generics and normal arguments
         let mut real_args = vec![];
-        let mut generic_args = vec![];
+        let mut generic_args = ThinVec::new();
         for (idx, arg) in args.into_iter().enumerate() {
             if legacy_args_idx.contains(&idx) {
                 let parent_def_id = self.current_hir_id_owner;
@@ -761,7 +764,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.expr_ident_mut(span, task_context_ident, task_context_hid)
             } else {
                 // Use of `await` outside of an async context, we cannot use `task_context` here.
-                self.expr_err(span)
+                self.expr_err(span, self.tcx.sess.delay_span_bug(span, "no task_context hir id"))
             };
             let new_unchecked = self.expr_call_lang_item_fn_mut(
                 span,

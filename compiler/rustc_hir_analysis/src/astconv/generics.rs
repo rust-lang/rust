@@ -370,7 +370,7 @@ pub fn create_substs_for_generic_args<'tcx, 'a>(
         }
     }
 
-    tcx.intern_substs(&substs)
+    tcx.mk_substs(&substs)
 }
 
 /// Checks that the correct number of generic arguments have been provided.

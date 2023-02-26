@@ -36,7 +36,7 @@ LL |     let y: i32 = i32::max - 42;
    |                  |
    |                  fn(i32, i32) -> i32 {<i32 as Ord>::max}
    |
-help: use parentheses to call this associated function
+help: use parentheses to call this method
    |
 LL |     let y: i32 = i32::max(/* i32 */, /* i32 */) - 42;
    |                          ++++++++++++++++++++++

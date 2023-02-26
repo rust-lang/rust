@@ -1206,7 +1206,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     fake_borrows.insert(Place {
                         local: source.local,
-                        projection: self.tcx.intern_place_elems(proj_base),
+                        projection: self.tcx.mk_place_elems(proj_base),
                     });
                 }
             }
@@ -1743,7 +1743,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .map(|matched_place_ref| {
                 let matched_place = Place {
                     local: matched_place_ref.local,
-                    projection: tcx.intern_place_elems(matched_place_ref.projection),
+                    projection: tcx.mk_place_elems(matched_place_ref.projection),
                 };
                 let fake_borrow_deref_ty = matched_place.ty(&self.local_decls, tcx).ty;
                 let fake_borrow_ty = tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);

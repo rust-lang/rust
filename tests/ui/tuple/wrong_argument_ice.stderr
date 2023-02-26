@@ -4,7 +4,7 @@ error[E0061]: method takes 1 argument but 2 arguments were supplied
 LL |         self.acc.push_back(self.current_provides, self.current_requires);
    |                  ^^^^^^^^^
    |
-note: associated function defined here
+note: method defined here
   --> $SRC_DIR/alloc/src/collections/vec_deque/mod.rs:LL:COL
 help: wrap these arguments in parentheses to construct a tuple
    |

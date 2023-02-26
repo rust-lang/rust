@@ -7,11 +7,10 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{Lrc, OnceCell, RwLock, WorkerLocal};
+use rustc_data_structures::sync::{AppendOnlyVec, Lrc, OnceCell, RwLock, WorkerLocal};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::DepGraphFuture;
-use rustc_index::vec::IndexVec;
 use rustc_lint::LintStore;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
@@ -195,10 +194,9 @@ impl<'tcx> Queries<'tcx> {
 
             let cstore = RwLock::new(Box::new(CStore::new(sess)) as _);
             let definitions = RwLock::new(Definitions::new(sess.local_stable_crate_id()));
-            let mut source_span = IndexVec::default();
+            let source_span = AppendOnlyVec::new();
             let _id = source_span.push(krate.spans.inner_span);
             debug_assert_eq!(_id, CRATE_DEF_ID);
-            let source_span = RwLock::new(source_span);
             let untracked = Untracked { cstore, source_span, definitions };
 
             let qcx = passes::create_global_ctxt(

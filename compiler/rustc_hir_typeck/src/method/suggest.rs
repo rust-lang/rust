@@ -27,7 +27,7 @@ use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::{with_crate_prefix, with_forced_trimmed_paths};
-use rustc_middle::ty::{self, DefIdTree, GenericArgKind, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, DefIdTree, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
@@ -160,7 +160,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             MethodError::PrivateMatch(kind, def_id, out_of_scope_traits) => {
-                let kind = kind.descr(def_id);
+                let kind = self.tcx.def_kind_descr(kind, def_id);
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     item_name.span,
@@ -574,7 +574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // `<Foo as Iterator>::Item = String`.
                         let projection_ty = pred.skip_binder().projection_ty;
 
-                        let substs_with_infer_self = tcx.mk_substs(
+                        let substs_with_infer_self = tcx.mk_substs_from_iter(
                             iter::once(tcx.mk_ty_var(ty::TyVid::from_u32(0)).into())
                                 .chain(projection_ty.substs.iter().skip(1)),
                         );
@@ -1062,8 +1062,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                         &format!(
                             "there is {} {} with a similar name",
-                            def_kind.article(),
-                            def_kind.descr(similar_candidate.def_id),
+                            self.tcx.def_kind_descr_article(def_kind, similar_candidate.def_id),
+                            self.tcx.def_kind_descr(def_kind, similar_candidate.def_id)
                         ),
                         similar_candidate.name,
                         Applicability::MaybeIncorrect,
@@ -1172,7 +1172,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             path,
                             ty,
                             item.kind,
-                            item.def_id,
+                            self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
                             sugg_span,
                             idx,
                             self.tcx.sess.source_map(),
@@ -1208,7 +1208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             path,
                             rcvr_ty,
                             item.kind,
-                            item.def_id,
+                            self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
                             sugg_span,
                             idx,
                             self.tcx.sess.source_map(),
@@ -1252,7 +1252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Adt(def, substs) = target_ty.kind() {
                 // If there are any inferred arguments, (`{integer}`), we should replace
                 // them with underscores to allow the compiler to infer them
-                let infer_substs = self.tcx.mk_substs(substs.into_iter().map(|arg| {
+                let infer_substs = self.tcx.mk_substs_from_iter(substs.into_iter().map(|arg| {
                     if !arg.is_suggestable(self.tcx, true) {
                         has_unsuggestable_args = true;
                         match arg.unpack() {
@@ -2853,7 +2853,7 @@ fn print_disambiguation_help<'tcx>(
     trait_name: String,
     rcvr_ty: Ty<'_>,
     kind: ty::AssocKind,
-    def_id: DefId,
+    def_kind_descr: &'static str,
     span: Span,
     candidate: Option<usize>,
     source_map: &source_map::SourceMap,
@@ -2886,7 +2886,7 @@ fn print_disambiguation_help<'tcx>(
         span,
         &format!(
             "disambiguate the {} for {}",
-            kind.as_def_kind().descr(def_id),
+            def_kind_descr,
             if let Some(candidate) = candidate {
                 format!("candidate #{}", candidate)
             } else {

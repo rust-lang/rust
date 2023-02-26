@@ -1,4 +1,4 @@
-error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-104287.rs:10:5
    |
 LL |     foo::<()>(x);
@@ -6,7 +6,7 @@ LL |     foo::<()>(x);
    |     |
    |     expected 0 generic arguments
    |
-note: associated function defined here, with 0 generic parameters
+note: method defined here, with 0 generic parameters
   --> $DIR/issue-104287.rs:6:8
    |
 LL |     fn foo(&self) {}

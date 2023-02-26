@@ -9,6 +9,7 @@ use rustc_expand::base::ExtCtxt;
 use rustc_span::source_map::{respan, DUMMY_SP};
 use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
+use thin_vec::ThinVec;
 
 /// A path, e.g., `::std::option::Option::<i32>` (global). Has support
 /// for type parameters.
@@ -102,7 +103,7 @@ impl Ty {
             Path(p) => p.to_ty(cx, span, self_ty, self_generics),
             Self_ => cx.ty_path(self.to_path(cx, span, self_ty, self_generics)),
             Unit => {
-                let ty = ast::TyKind::Tup(vec![]);
+                let ty = ast::TyKind::Tup(ThinVec::new());
                 cx.ty(span, ty)
             }
         }
@@ -185,7 +186,11 @@ impl Bounds {
 
         Generics {
             params,
-            where_clause: ast::WhereClause { has_where_token: false, predicates: Vec::new(), span },
+            where_clause: ast::WhereClause {
+                has_where_token: false,
+                predicates: ThinVec::new(),
+                span,
+            },
             span,
         }
     }

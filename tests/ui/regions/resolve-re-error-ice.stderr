@@ -1,0 +1,15 @@
+Future incompatibility report: Future breakage diagnostic:
+warning: impl method assumes more implied bounds than the corresponding trait method
+  --> $DIR/resolve-re-error-ice.rs:17:16
+   |
+LL |     fn key_set(&self) -> Subject<'a, Keys<K, V>, (), R> {
+   |                ^^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace this type to make the impl signature compatible: `Subject<'_, std::collections::hash_map::Keys<'_, K, V>, (), R>`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #105572 <https://github.com/rust-lang/rust/issues/105572>
+note: the lint level is defined here
+  --> $DIR/resolve-re-error-ice.rs:4:10
+   |
+LL | #![allow(implied_bounds_entailment)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+

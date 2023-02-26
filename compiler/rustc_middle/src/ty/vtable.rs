@@ -112,5 +112,5 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     }
 
     vtable.mutability = Mutability::Not;
-    tcx.create_memory_alloc(tcx.intern_const_alloc(vtable))
+    tcx.create_memory_alloc(tcx.mk_const_alloc(vtable))
 }

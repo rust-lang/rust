@@ -103,8 +103,13 @@ impl<'tcx> Collector<'tcx> {
         }
 
         // Process all of the #[link(..)]-style arguments
-        let sess = &self.tcx.sess;
+        let sess = self.tcx.sess;
         let features = self.tcx.features();
+
+        if !sess.opts.unstable_opts.link_directives {
+            return;
+        }
+
         for m in self.tcx.hir().attrs(it.hir_id()).iter().filter(|a| a.has_name(sym::link)) {
             let Some(items) = m.meta_item_list() else {
                 continue;
@@ -502,7 +507,7 @@ impl<'tcx> Collector<'tcx> {
                 .subst_identity()
                 .fn_sig(self.tcx)
                 .inputs()
-                .map_bound(|slice| self.tcx.intern_type_list(slice)),
+                .map_bound(|slice| self.tcx.mk_type_list(slice)),
         );
 
         argument_types

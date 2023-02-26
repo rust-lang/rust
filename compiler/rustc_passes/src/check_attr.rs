@@ -4,10 +4,10 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::errors;
+use crate::{errors, fluent_generated as fluent};
 use rustc_ast::{ast, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{fluent, Applicability, IntoDiagnosticArg, MultiSpan};
+use rustc_errors::{Applicability, IntoDiagnosticArg, MultiSpan};
 use rustc_expand::base::resolve_path;
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
@@ -23,7 +23,8 @@ use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
 use rustc_session::lint::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, INVALID_MACRO_EXPORT_ARGUMENTS,
+    UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -935,15 +936,15 @@ impl CheckAttrVisitor<'_> {
                             src.insert(1, '!');
                             err.span_suggestion_verbose(
                                 attr.span,
-                                fluent::suggestion,
+                                fluent::passes_suggestion,
                                 src,
                                 Applicability::MaybeIncorrect,
                             );
                         } else {
-                            err.span_help(attr.span, fluent::help);
+                            err.span_help(attr.span, fluent::passes_help);
                         }
                     }
-                    err.note(fluent::note);
+                    err.note(fluent::passes_note);
                     err
                 },
             );
@@ -2102,7 +2103,33 @@ impl CheckAttrVisitor<'_> {
 
     fn check_macro_export(&self, hir_id: HirId, attr: &Attribute, target: Target) {
         if target != Target::MacroDef {
-            self.tcx.emit_spanned_lint(UNUSED_ATTRIBUTES, hir_id, attr.span, errors::MacroExport);
+            self.tcx.emit_spanned_lint(
+                UNUSED_ATTRIBUTES,
+                hir_id,
+                attr.span,
+                errors::MacroExport::Normal,
+            );
+        } else if let Some(meta_item_list) = attr.meta_item_list() &&
+        !meta_item_list.is_empty() {
+            if meta_item_list.len() > 1 {
+                self.tcx.emit_spanned_lint(
+                    INVALID_MACRO_EXPORT_ARGUMENTS,
+                    hir_id,
+                    attr.span,
+                    errors::MacroExport::TooManyItems,
+                );
+            } else {
+                if meta_item_list[0].name_or_empty() != sym::local_inner_macros {
+                    self.tcx.emit_spanned_lint(
+                        INVALID_MACRO_EXPORT_ARGUMENTS,
+                        hir_id,
+                        meta_item_list[0].span(),
+                        errors::MacroExport::UnknownItem {
+                            name: meta_item_list[0].name_or_empty(),
+                        },
+                    );
+                }
+            }
         }
     }
 

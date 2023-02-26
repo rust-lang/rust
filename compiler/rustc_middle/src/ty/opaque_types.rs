@@ -1,9 +1,7 @@
 use crate::error::ConstNotUsedTraitAlias;
-use crate::ty::fold::{ir::TypeFolder, TypeSuperFoldable};
+use crate::ty::fold::{TypeFolder, TypeSuperFoldable};
 use crate::ty::subst::{GenericArg, GenericArgKind};
-#[cfg(not(bootstrap))]
-use crate::ty::TypeFoldable;
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
@@ -81,7 +79,7 @@ impl<'tcx> ReverseMapper<'tcx> {
         // during codegen.
 
         let generics = self.tcx.generics_of(def_id);
-        self.tcx.mk_substs(substs.iter().enumerate().map(|(index, kind)| {
+        self.tcx.mk_substs_from_iter(substs.iter().enumerate().map(|(index, kind)| {
             if index < generics.parent_count {
                 // Accommodate missing regions in the parent kinds...
                 self.fold_kind_no_missing_regions_error(kind)
@@ -188,7 +186,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                                 .emit();
                         }
 
-                        self.interner().ty_error()
+                        self.interner().ty_error_misc()
                     }
                 }
             }

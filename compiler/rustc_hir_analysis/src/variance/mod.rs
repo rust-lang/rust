@@ -7,10 +7,8 @@ use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
-#[cfg(not(bootstrap))]
-use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, CrateVariancesMap, SubstsRef, Ty, TyCtxt};
-use rustc_middle::ty::{DefIdTree, TypeSuperVisitable};
+use rustc_middle::ty::{DefIdTree, TypeSuperVisitable, TypeVisitable};
 use std::ops::ControlFlow;
 
 /// Defines the `TermsContext` basically houses an arena where we can
@@ -101,7 +99,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
         }
     }
 
-    impl<'tcx> ty::ir::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeLifetimeCollector<'tcx> {
+    impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeLifetimeCollector<'tcx> {
         #[instrument(level = "trace", skip(self), ret)]
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
             if let ty::RegionKind::ReEarlyBound(ebr) = r.kind() {

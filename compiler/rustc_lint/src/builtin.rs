@@ -20,6 +20,7 @@
 //! If you define a new `LateLintPass`, you will also need to add it to the
 //! `late_lint_methods!` invocation in `lib.rs`.
 
+use crate::fluent_generated as fluent;
 use crate::{
     errors::BuiltinEllpisisInclusiveRangePatterns,
     lints::{
@@ -50,7 +51,7 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{fluent, Applicability, DecorateLint, MultiSpan};
+use rustc_errors::{Applicability, DecorateLint, MultiSpan};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -676,21 +677,21 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
+                (def, cx.tcx.mk_adt(def, ty::List::empty()))
             }
             hir::ItemKind::Union(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
+                (def, cx.tcx.mk_adt(def, ty::List::empty()))
             }
             hir::ItemKind::Enum(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
+                (def, cx.tcx.mk_adt(def, ty::List::empty()))
             }
             _ => return,
         };
@@ -1583,7 +1584,7 @@ declare_lint_pass!(
 
 impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
-        use rustc_middle::ty::visit::TypeVisitable;
+        use rustc_middle::ty::visit::TypeVisitableExt;
         use rustc_middle::ty::Clause;
         use rustc_middle::ty::PredicateKind::*;
 
@@ -2635,7 +2636,13 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 cx.emit_spanned_lint(
                     INVALID_VALUE,
                     expr.span,
-                    BuiltinUnpermittedTypeInit { msg, ty: conjured_ty, label: expr.span, sub },
+                    BuiltinUnpermittedTypeInit {
+                        msg,
+                        ty: conjured_ty,
+                        label: expr.span,
+                        sub,
+                        tcx: cx.tcx,
+                    },
                 );
             }
         }

@@ -9,7 +9,7 @@ use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{
-    self, ir::TypeFolder, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeSuperFoldable, TypeVisitable,
+    self, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
@@ -319,8 +319,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::EarlyBinder<Ty<'_>>
                 ItemKind::Impl(hir::Impl { self_ty, .. }) => {
                     match self_ty.find_self_aliases() {
                         spans if spans.len() > 0 => {
-                            tcx.sess.emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: (), });
-                            tcx.ty_error()
+                            let guar = tcx.sess.emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: () });
+                            tcx.ty_error(guar)
                         },
                         _ => icx.to_ty(*self_ty),
                     }
@@ -599,8 +599,9 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
             // // constant does not contain interior mutability.
             // ```
             let tables = self.tcx.typeck(item_def_id);
-            if let Some(_) = tables.tainted_by_errors {
-                self.found = Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: self.tcx.ty_error() });
+            if let Some(guar) = tables.tainted_by_errors {
+                self.found =
+                    Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: self.tcx.ty_error(guar) });
                 return;
             }
             let Some(&typeck_hidden_ty) = tables.concrete_opaque_types.get(&self.def_id) else {
@@ -618,8 +619,8 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
                 debug!(?concrete_type, "found constraint");
                 if let Some(prev) = &mut self.found {
                     if concrete_type.ty != prev.ty && !(concrete_type, prev.ty).references_error() {
-                        prev.report_mismatch(&concrete_type, self.tcx);
-                        prev.ty = self.tcx.ty_error();
+                        let guar = prev.report_mismatch(&concrete_type, self.tcx);
+                        prev.ty = self.tcx.ty_error(guar);
                     }
                 } else {
                     self.found = Some(concrete_type);
@@ -706,7 +707,7 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
                 _ => "item",
             },
         });
-        return tcx.ty_error_with_guaranteed(reported);
+        return tcx.ty_error(reported);
     };
 
     // Only check against typeck if we didn't already error
@@ -814,11 +815,11 @@ fn find_opaque_ty_constraints_for_rpit(
 
     concrete.map(|concrete| concrete.ty).unwrap_or_else(|| {
         let table = tcx.typeck(owner_def_id);
-        if let Some(_) = table.tainted_by_errors {
+        if let Some(guar) = table.tainted_by_errors {
             // Some error in the
             // owner fn prevented us from populating
             // the `concrete_opaque_types` table.
-            tcx.ty_error()
+            tcx.ty_error(guar)
         } else {
             table.concrete_opaque_types.get(&def_id).map(|ty| ty.ty).unwrap_or_else(|| {
                 // We failed to resolve the opaque type or it

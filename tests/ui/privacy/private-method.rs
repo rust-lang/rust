@@ -19,5 +19,5 @@ mod kitties {
 
 fn main() {
   let nyan : kitties::Cat = kitties::cat(52, 99);
-  nyan.nap(); //~ ERROR associated function `nap` is private
+  nyan.nap(); //~ ERROR method `nap` is private
 }

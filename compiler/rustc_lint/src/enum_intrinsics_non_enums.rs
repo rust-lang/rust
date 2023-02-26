@@ -4,7 +4,7 @@ use crate::{
     LateContext, LateLintPass,
 };
 use rustc_hir as hir;
-use rustc_middle::ty::{visit::TypeVisitable, Ty};
+use rustc_middle::ty::{visit::TypeVisitableExt, Ty};
 use rustc_span::{symbol::sym, Span};
 
 declare_lint! {

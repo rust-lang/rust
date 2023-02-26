@@ -9,7 +9,7 @@ LL | /         match self.next {
 LL | |             Some(ref next) => next.get(),
 LL | |             None => &self.val
 LL | |         }
-   | |_________^ associated function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   | |_________^ method was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
 

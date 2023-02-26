@@ -57,7 +57,7 @@ pub struct InPublicInterfaceTraits<'a> {
     pub vis_descr: &'static str,
     pub kind: &'a str,
     pub descr: DiagnosticArgFromDisplay<'a>,
-    #[label(visibility_label)]
+    #[label(privacy_visibility_label)]
     pub vis_span: Span,
 }
 
@@ -71,7 +71,7 @@ pub struct InPublicInterface<'a> {
     pub vis_descr: &'static str,
     pub kind: &'a str,
     pub descr: DiagnosticArgFromDisplay<'a>,
-    #[label(visibility_label)]
+    #[label(privacy_visibility_label)]
     pub vis_span: Span,
 }
 

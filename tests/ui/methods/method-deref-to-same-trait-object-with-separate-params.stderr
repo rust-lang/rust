@@ -44,15 +44,15 @@ note: candidate #3 is defined in the trait `FinalFoo`
    |
 LL |     fn foo(&self) -> u8;
    |     ^^^^^^^^^^^^^^^^^^^^
-help: disambiguate the associated function for candidate #1
+help: disambiguate the method for candidate #1
    |
 LL |     let z = X::foo(x);
    |             ~~~~~~~~~
-help: disambiguate the associated function for candidate #2
+help: disambiguate the method for candidate #2
    |
 LL |     let z = NuisanceFoo::foo(x);
    |             ~~~~~~~~~~~~~~~~~~~
-help: disambiguate the associated function for candidate #3
+help: disambiguate the method for candidate #3
    |
 LL |     let z = FinalFoo::foo(x);
    |             ~~~~~~~~~~~~~~~~

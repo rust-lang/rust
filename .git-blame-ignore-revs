@@ -1,3 +1,5 @@
+# Use `git config blame.ignorerevsfile .git-blame-ignore-revs` to make `git blame` ignore the following commits.
+
 # format the world
 a06baa56b95674fc626b3c3fd680d6a65357fe60
 # format libcore
