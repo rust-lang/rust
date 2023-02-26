@@ -516,6 +516,16 @@ mod in_macro {
 
     // no lint on external macro
     macro_rules::needless_lifetime!();
+
+    macro_rules! expanded_lifetime {
+        ($l:lifetime) => {
+            fn f<$l>(arg: &$l str) -> &$l str {
+                arg
+            }
+        }
+    }
+
+    expanded_lifetime!('a);
 }
 
 mod issue5787 {

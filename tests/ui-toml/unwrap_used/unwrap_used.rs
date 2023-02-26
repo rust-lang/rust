@@ -66,6 +66,12 @@ fn main() {
     }
 }
 
+#[test]
+fn test() {
+    let boxed_slice: Box<[u8]> = Box::new([0, 1, 2, 3]);
+    let _ = boxed_slice.get(1).unwrap();
+}
+
 #[cfg(test)]
 mod issue9612 {
     // should not lint in `#[cfg(test)]` modules

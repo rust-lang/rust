@@ -3,7 +3,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{def_path_def_ids, is_lint_allowed, match_any_def_paths, peel_hir_expr_refs};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -44,7 +44,7 @@ impl_lint_pass!(UnnecessaryDefPath => [UNNECESSARY_DEF_PATH]);
 
 #[derive(Default)]
 pub struct UnnecessaryDefPath {
-    array_def_ids: FxHashSet<(DefId, Span)>,
+    array_def_ids: FxIndexSet<(DefId, Span)>,
     linted_def_ids: FxHashSet<DefId>,
 }
 

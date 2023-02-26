@@ -400,7 +400,7 @@ fn drain_matching(
 
     // If `ThinVec` had the `drain_filter` method, this loop could be rewritten
     // like so:
-    // 
+    //
     //   for pat in alternatives.drain_filter(|p| {
     //       // Check if we should extract, but only if `idx >= start`.
     //       idx += 1;
@@ -412,12 +412,12 @@ fn drain_matching(
     while i < alternatives.len() {
         idx += 1;
         // Check if we should extract, but only if `idx >= start`.
-	if idx > start && predicate(&alternatives[i].kind) {
-	    let pat = alternatives.remove(i);
+        if idx > start && predicate(&alternatives[i].kind) {
+            let pat = alternatives.remove(i);
             tail_or.push(extract(pat.into_inner().kind));
-	} else {
-	    i += 1;
-	}
+        } else {
+            i += 1;
+        }
     }
 
     tail_or

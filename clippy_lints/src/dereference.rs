@@ -3,7 +3,7 @@ use clippy_utils::mir::{enclosing_mir, expr_local, local_assignments, used_exact
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::ty::{expr_sig, is_copy, peel_mid_ty_refs, ty_sig, variant_of_res};
+use clippy_utils::ty::{adt_and_variant_of_res, expr_sig, is_copy, peel_mid_ty_refs, ty_sig};
 use clippy_utils::{
     fn_def_id, get_parent_expr, get_parent_expr_for_hir, is_lint_allowed, path_to_local, walk_to_expr_usage,
 };
@@ -26,8 +26,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::{Rvalue, StatementKind};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{
-    self, Binder, BoundVariableKind, Clause, EarlyBinder, FnSig, GenericArgKind, List, ParamTy, PredicateKind,
-    ProjectionPredicate, Ty, TyCtxt, TypeVisitableExt, TypeckResults,
+    self, Binder, BoundVariableKind, Clause, EarlyBinder, FnSig, GenericArgKind, List, ParamEnv, ParamTy,
+    PredicateKind, ProjectionPredicate, Ty, TyCtxt, TypeVisitableExt, TypeckResults,
 };
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span, Symbol};
@@ -736,7 +736,7 @@ fn walk_parents<'tcx>(
                 ..
             }) if span.ctxt() == ctxt => {
                 let ty = cx.tcx.type_of(owner_id.def_id).subst_identity();
-                Some(ty_auto_deref_stability(cx, ty, precedence).position_for_result(cx))
+                Some(ty_auto_deref_stability(cx.tcx, cx.param_env, ty, precedence).position_for_result(cx))
             },
 
             Node::Item(&Item {
@@ -760,7 +760,7 @@ fn walk_parents<'tcx>(
                 let output = cx
                     .tcx
                     .erase_late_bound_regions(cx.tcx.fn_sig(owner_id).subst_identity().output());
-                Some(ty_auto_deref_stability(cx, output, precedence).position_for_result(cx))
+                Some(ty_auto_deref_stability(cx.tcx, cx.param_env, output, precedence).position_for_result(cx))
             },
 
             Node::ExprField(field) if field.span.ctxt() == ctxt => match get_parent_expr_for_hir(cx, field.hir_id) {
@@ -768,10 +768,23 @@ fn walk_parents<'tcx>(
                     hir_id,
                     kind: ExprKind::Struct(path, ..),
                     ..
-                }) => variant_of_res(cx, cx.qpath_res(path, *hir_id))
-                    .and_then(|variant| variant.fields.iter().find(|f| f.name == field.ident.name))
-                    .map(|field_def| {
-                        ty_auto_deref_stability(cx, cx.tcx.type_of(field_def.did).subst_identity(), precedence).position_for_arg()
+                }) => adt_and_variant_of_res(cx, cx.qpath_res(path, *hir_id))
+                    .and_then(|(adt, variant)| {
+                        variant
+                            .fields
+                            .iter()
+                            .find(|f| f.name == field.ident.name)
+                            .map(|f| (adt, f))
+                    })
+                    .map(|(adt, field_def)| {
+                        ty_auto_deref_stability(
+                            cx.tcx,
+                            // Use the param_env of the target type.
+                            cx.tcx.param_env(adt.did()),
+                            cx.tcx.type_of(field_def.did).subst_identity(),
+                            precedence,
+                        )
+                        .position_for_arg()
                     }),
                 _ => None,
             },
@@ -792,7 +805,7 @@ fn walk_parents<'tcx>(
                             let output = cx
                                 .tcx
                                 .erase_late_bound_regions(cx.tcx.fn_sig(owner_id).subst_identity().output());
-                            ty_auto_deref_stability(cx, output, precedence).position_for_result(cx)
+                            ty_auto_deref_stability(cx.tcx, cx.param_env, output, precedence).position_for_result(cx)
                         },
                     )
                 },
@@ -835,15 +848,20 @@ fn walk_parents<'tcx>(
                                             msrv,
                                         )
                                     } else {
-                                        ty_auto_deref_stability(cx, cx.tcx.erase_late_bound_regions(ty), precedence)
-                                            .position_for_arg()
+                                        ty_auto_deref_stability(
+                                            cx.tcx,
+                                            // Use the param_env of the target function.
+                                            sig.predicates_id().map_or(ParamEnv::empty(), |id| cx.tcx.param_env(id)),
+                                            cx.tcx.erase_late_bound_regions(ty),
+                                            precedence
+                                        ).position_for_arg()
                                     }
                                 },
                             }
                         })
                     }),
                 ExprKind::MethodCall(method, receiver, args, _) => {
-                    let id = cx.typeck_results().type_dependent_def_id(parent.hir_id).unwrap();
+                    let fn_id = cx.typeck_results().type_dependent_def_id(parent.hir_id).unwrap();
                     if receiver.hir_id == child_id {
                         // Check for calls to trait methods where the trait is implemented on a reference.
                         // Two cases need to be handled:
@@ -852,13 +870,17 @@ fn walk_parents<'tcx>(
                         //   priority.
                         if e.hir_id != child_id {
                             return Some(Position::ReborrowStable(precedence))
-                        } else if let Some(trait_id) = cx.tcx.trait_of_item(id)
+                        } else if let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
                             && let arg_ty = cx.tcx.erase_regions(cx.typeck_results().expr_ty_adjusted(e))
                             && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
                             && let subs = cx
                                 .typeck_results()
                                 .node_substs_opt(parent.hir_id).map(|subs| &subs[1..]).unwrap_or_default()
-                            && let impl_ty = if cx.tcx.fn_sig(id).subst_identity().skip_binder().inputs()[0].is_ref() {
+                            && let impl_ty = if cx.tcx.fn_sig(fn_id)
+                                .subst_identity()
+                                .skip_binder()
+                                .inputs()[0].is_ref()
+                            {
                                 // Trait methods taking `&self`
                                 sub_ty
                             } else {
@@ -879,10 +901,13 @@ fn walk_parents<'tcx>(
                         return Some(Position::MethodReceiver);
                     }
                     args.iter().position(|arg| arg.hir_id == child_id).map(|i| {
-                        let ty = cx.tcx.fn_sig(id).subst_identity().skip_binder().inputs()[i + 1];
+                        let ty = cx.tcx.fn_sig(fn_id).subst_identity().input(i + 1);
                         // `e.hir_id == child_id` for https://github.com/rust-lang/rust-clippy/issues/9739
                         // `method.args.is_none()` for https://github.com/rust-lang/rust-clippy/issues/9782
-                        if e.hir_id == child_id && method.args.is_none() && let ty::Param(param_ty) = ty.kind() {
+                        if e.hir_id == child_id
+                            && method.args.is_none()
+                            && let ty::Param(param_ty) = ty.skip_binder().kind()
+                        {
                             needless_borrow_impl_arg_position(
                                 cx,
                                 possible_borrowers,
@@ -895,8 +920,10 @@ fn walk_parents<'tcx>(
                             )
                         } else {
                             ty_auto_deref_stability(
-                                cx,
-                                cx.tcx.erase_late_bound_regions(cx.tcx.fn_sig(id).subst_identity().input(i + 1)),
+                                cx.tcx,
+                                // Use the param_env of the target function.
+                                cx.tcx.param_env(fn_id),
+                                cx.tcx.erase_late_bound_regions(ty),
                                 precedence,
                             )
                             .position_for_arg()
@@ -1378,10 +1405,17 @@ impl<'tcx> TyPosition<'tcx> {
 }
 
 // Checks whether a type is stable when switching to auto dereferencing,
-fn ty_auto_deref_stability<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, precedence: i8) -> TyPosition<'tcx> {
+fn ty_auto_deref_stability<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    precedence: i8,
+) -> TyPosition<'tcx> {
     let ty::Ref(_, mut ty, _) = *ty.kind() else {
         return Position::Other(precedence).into();
     };
+
+    ty = tcx.try_normalize_erasing_regions(param_env, ty).unwrap_or(ty);
 
     loop {
         break match *ty.kind() {
@@ -1423,9 +1457,7 @@ fn ty_auto_deref_stability<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, precedenc
             | ty::Closure(..)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Alias(ty::Projection, _) => {
-                Position::DerefStable(precedence, ty.is_sized(cx.tcx, cx.param_env.without_caller_bounds())).into()
-            },
+            | ty::Alias(ty::Projection, _) => Position::DerefStable(precedence, ty.is_sized(tcx, param_env)).into(),
         };
     }
 }
