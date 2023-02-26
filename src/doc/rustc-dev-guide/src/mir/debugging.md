@@ -14,10 +14,10 @@ elements obscured by overlaps, and tooltips to view the MIR statements).
 This flag takes an optional value: `statement` (the default), `terminator`, or
 `block`, to generate span highlights with different levels of granularity.
 
-`-Z dump-mir=F` is a handy compiler options that will let you view the MIR for
+`-Z dump-mir=F` is a handy compiler option that will let you view the MIR for
 each function at each stage of compilation. `-Z dump-mir` takes a **filter** `F`
 which allows you to control which functions and which passes you are
-interesting in. For example:
+interested in. For example:
 
 ```bash
 > rustc -Z dump-mir=foo ...
