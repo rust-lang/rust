@@ -206,7 +206,7 @@ pub(crate) fn compile_fn(
             &clif_comments,
         );
 
-        if let Some(disasm) = &context.compiled_code().unwrap().disasm {
+        if let Some(disasm) = &context.compiled_code().unwrap().vcode {
             crate::pretty_clif::write_ir_file(
                 &cx.output_filenames,
                 &format!("{}.vcode", codegened_func.symbol_name),
