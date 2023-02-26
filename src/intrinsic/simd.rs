@@ -14,6 +14,7 @@ use rustc_span::{Span, Symbol, sym};
 use rustc_target::abi::Align;
 
 use crate::builder::Builder;
+#[cfg(feature="master")]
 use crate::context::CodegenCx;
 
 pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, name: Symbol, callee_ty: Ty<'tcx>, args: &[OperandRef<'tcx, RValue<'gcc>>], ret_ty: Ty<'tcx>, llret_ty: Type<'gcc>, span: Span) -> Result<RValue<'gcc>, ()> {
@@ -508,6 +509,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         return simd_simple_float_intrinsic(name, in_elem, in_ty, in_len, bx, span, args);
     }
 
+    #[cfg(feature="master")]
     fn vector_ty<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, elem_ty: Ty<'tcx>, vec_len: u64) -> Type<'gcc> {
         // FIXME: use cx.layout_of(ty).llvm_type() ?
         let elem_ty = match *elem_ty.kind() {
@@ -519,6 +521,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         cx.type_vector(elem_ty, vec_len)
     }
 
+    #[cfg(feature="master")]
     fn gather<'a, 'gcc, 'tcx>(default: RValue<'gcc>, pointers: RValue<'gcc>, mask: RValue<'gcc>, pointer_count: usize, bx: &mut Builder<'a, 'gcc, 'tcx>, in_len: u64, underlying_ty: Ty<'tcx>, invert: bool) -> RValue<'gcc> {
         let vector_type =
             if pointer_count > 1 {
@@ -563,6 +566,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         }
     }
 
+    #[cfg(feature="master")]
     if name == sym::simd_gather {
         // simd_gather(values: <N x T>, pointers: <N x *_ T>,
         //             mask: <N x i{M}>) -> <N x T>
@@ -663,6 +667,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         return Ok(gather(args[0].immediate(), args[1].immediate(), args[2].immediate(), pointer_count, bx, in_len, underlying_ty, false));
     }
 
+    #[cfg(feature="master")]
     if name == sym::simd_scatter {
         // simd_scatter(values: <N x T>, pointers: <N x *mut T>,
         //             mask: <N x i{M}>) -> ()
