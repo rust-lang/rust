@@ -175,6 +175,7 @@ pub fn walk_stmt<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, stmt: &Stm
             ref pattern,
             lint_level: _,
             else_block,
+            span: _,
         } => {
             if let Some(init) = initializer {
                 visitor.visit_expr(&visitor.thir()[*init]);

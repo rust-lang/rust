@@ -115,6 +115,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     initializer: Some(initializer),
                     lint_level,
                     else_block: Some(else_block),
+                    span: _,
                 } => {
                     // When lowering the statement `let <pat> = <expr> else { <else> };`,
                     // the `<else>` block is nested in the parent scope enclosing this statement.
@@ -278,6 +279,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     initializer,
                     lint_level,
                     else_block: None,
+                    span: _,
                 } => {
                     let ignores_expr_result = matches!(pattern.kind, PatKind::Wild);
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
