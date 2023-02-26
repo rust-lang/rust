@@ -470,12 +470,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f64 {
-        self.log_wrapper(|n| {
-            #[cfg(target_os = "android")]
-            return crate::sys::android::log2f64(n);
-            #[cfg(not(target_os = "android"))]
-            return unsafe { intrinsics::log2f64(n) };
-        })
+        self.log_wrapper(crate::sys::log2f64)
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -936,8 +931,8 @@ impl f64 {
     // of expected NaN).
     #[rustc_allow_incoherent_impl]
     fn log_wrapper<F: Fn(f64) -> f64>(self, log_fn: F) -> f64 {
-        if !cfg!(any(target_os = "solaris", target_os = "illumos")) {
-            log_fn(self)
+        if let Some(result) = crate::sys::log_wrapper(self) {
+            log_fn(result)
         } else if self.is_finite() {
             if self > 0.0 {
                 log_fn(self)

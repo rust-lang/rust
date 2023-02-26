@@ -76,3 +76,32 @@ cfg_if::cfg_if! {
         pub mod c;
     }
 }
+
+#[cfg(not(test))]
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "android")] {
+        pub use crate::android::log2f32;
+        pub use crate::android::log2f64;
+    } else {
+        pub fn log2f32(n: f32) -> f32 {
+            unsafe { crate::intrinsics::log2f32(n) }
+        }
+
+        pub fn log2f64(n: f64) -> f64 {
+            unsafe { crate::intrinsics::log2f64(n) }
+        }
+    }
+}
+
+#[cfg(not(test))]
+cfg_if::cfg_if! {
+    if #[cfg(any(target_os = "solaris", target_os = "illumos"))] {
+        pub fn log_wrapper(n: f64) -> Option<f64> {
+            Some(n)
+        }
+    } else {
+        pub fn log_wrapper(_n: f64) -> Option<f64> {
+            None
+        }
+    }
+}
