@@ -7,6 +7,7 @@ use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -54,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryOwnedEmptyStrings {
                         );
                 } else {
                     if_chain! {
-                        if Some(fun_def_id) == cx.tcx.lang_items().from_fn();
+                        if cx.tcx.is_diagnostic_item(sym::from_fn, fun_def_id);
                         if let [.., last_arg] = args;
                         if let ExprKind::Lit(spanned) = &last_arg.kind;
                         if let LitKind::Str(symbol, _) = spanned.node;
