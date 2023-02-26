@@ -1477,9 +1477,7 @@ impl HandlerInner {
                 .emitted_diagnostic_codes
                 .iter()
                 .filter_map(|x| match &x {
-                    DiagnosticId::Error(s)
-                        if registry.try_find_description(s).map_or(false, |o| o.is_some()) =>
-                    {
+                    DiagnosticId::Error(s) if registry.try_find_description(s).is_ok() => {
                         Some(s.clone())
                     }
                     _ => None,
