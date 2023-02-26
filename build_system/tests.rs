@@ -153,18 +153,13 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::custom("test.regex-shootout-regex-dna", &|runner| {
         REGEX.clean(&runner.dirs);
 
-        // newer aho_corasick versions throw a deprecation warning
-        let lint_rust_flags = format!("{} --cap-lints warn", runner.target_compiler.rustflags);
-
         let mut build_cmd = REGEX.build(&runner.target_compiler, &runner.dirs);
         build_cmd.arg("--example").arg("shootout-regex-dna");
-        build_cmd.env("RUSTFLAGS", lint_rust_flags.clone());
         spawn_and_wait(build_cmd);
 
         if runner.is_native {
             let mut run_cmd = REGEX.run(&runner.target_compiler, &runner.dirs);
             run_cmd.arg("--example").arg("shootout-regex-dna");
-            run_cmd.env("RUSTFLAGS", lint_rust_flags);
 
             let input = fs::read_to_string(
                 REGEX.source_dir(&runner.dirs).join("examples").join("regexdna-input.txt"),
@@ -197,9 +192,6 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::custom("test.regex", &|runner| {
         REGEX.clean(&runner.dirs);
 
-        // newer aho_corasick versions throw a deprecation warning
-        let lint_rust_flags = format!("{} --cap-lints warn", runner.target_compiler.rustflags);
-
         if runner.is_native {
             let mut run_cmd = REGEX.test(&runner.target_compiler, &runner.dirs);
             run_cmd.args([
@@ -211,13 +203,11 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
                 "-Zunstable-options",
                 "-q",
             ]);
-            run_cmd.env("RUSTFLAGS", lint_rust_flags);
             spawn_and_wait(run_cmd);
         } else {
             eprintln!("Cross-Compiling: Not running tests");
             let mut build_cmd = REGEX.build(&runner.target_compiler, &runner.dirs);
             build_cmd.arg("--tests");
-            build_cmd.env("RUSTFLAGS", lint_rust_flags.clone());
             spawn_and_wait(build_cmd);
         }
     }),
