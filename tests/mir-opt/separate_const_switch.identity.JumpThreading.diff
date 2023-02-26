@@ -1,5 +1,5 @@
-- // MIR for `identity` before SeparateConstSwitch
-+ // MIR for `identity` after SeparateConstSwitch
+- // MIR for `identity` before JumpThreading
++ // MIR for `identity` after JumpThreading
   
   fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
       debug x => _1;
@@ -79,7 +79,8 @@
           StorageDead(_8);
           StorageDead(_3);
           _4 = discriminant(_2);
-          switchInt(move _4) -> [0: bb1, 1: bb2, otherwise: bb6];
+-         switchInt(move _4) -> [0: bb1, 1: bb2, otherwise: bb6];
++         goto -> bb1;
       }
   
       bb4: {
@@ -88,7 +89,8 @@
           _11 = Result::<Infallible, i32>::Err(_10);
           _2 = ControlFlow::<Result<Infallible, i32>, i32>::Break(move _11);
           StorageDead(_11);
-          goto -> bb3;
+-         goto -> bb3;
++         goto -> bb7;
       }
   
       bb5: {
@@ -99,6 +101,15 @@
   
       bb6: {
           unreachable;
++     }
++ 
++     bb7: {
++         StorageDead(_10);
++         StorageDead(_9);
++         StorageDead(_8);
++         StorageDead(_3);
++         _4 = discriminant(_2);
++         goto -> bb2;
       }
   }
   
