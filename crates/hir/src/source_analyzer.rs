@@ -943,17 +943,17 @@ fn resolve_hir_path_(
                 res.map(|ty_ns| (ty_ns, path.segments().first()))
             }
             None => {
-                let (ty, remaining) =
+                let (ty, remaining_idx) =
                     resolver.resolve_path_in_type_ns(db.upcast(), path.mod_path())?;
-                match remaining {
-                    Some(remaining) if remaining > 1 => {
-                        if remaining + 1 == path.segments().len() {
+                match remaining_idx {
+                    Some(remaining_idx) => {
+                        if remaining_idx + 1 == path.segments().len() {
                             Some((ty, path.segments().last()))
                         } else {
                             None
                         }
                     }
-                    _ => Some((ty, path.segments().get(1))),
+                    None => Some((ty, None)),
                 }
             }
         }?;
