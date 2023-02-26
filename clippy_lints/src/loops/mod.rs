@@ -14,6 +14,7 @@ mod needless_range_loop;
 mod never_loop;
 mod same_item_push;
 mod single_element_loop;
+mod unused_enumerate_index;
 mod utils;
 mod while_immutable_condition;
 mod while_let_loop;
@@ -579,6 +580,33 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for `for (_, v) in a.iter().enumerate()`
+    ///
+    /// ### Why is this bad?
+    /// The index from `.enumerate()` is immediately dropped.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let v = vec![1, 2, 3, 4];
+    /// for (_, x) in v.iter().enumerate() {
+    ///     print!("{x}")
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let v = vec![1, 2, 3, 4];
+    /// for x in v.iter() {
+    ///     print!("{x}")
+    /// }
+    /// ```
+    #[clippy::version = "1.69.0"]
+    pub UNUSED_ENUMERATE_INDEX,
+    style,
+    "using .enumerate() and immediately dropping the index"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Looks for loops that check for emptiness of a `Vec` in the condition and pop an element
     /// in the body as a separate operation.
     ///
@@ -619,6 +647,7 @@ impl Loops {
         }
     }
 }
+
 impl_lint_pass!(Loops => [
     MANUAL_MEMCPY,
     MANUAL_FLATTEN,
@@ -638,7 +667,8 @@ impl_lint_pass!(Loops => [
     SINGLE_ELEMENT_LOOP,
     MISSING_SPIN_LOOP,
     MANUAL_FIND,
-    MANUAL_WHILE_LET_SOME
+    MANUAL_WHILE_LET_SOME,
+    UNUSED_ENUMERATE_INDEX,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -717,6 +747,7 @@ impl Loops {
         same_item_push::check(cx, pat, arg, body, expr);
         manual_flatten::check(cx, pat, arg, body, span);
         manual_find::check(cx, pat, arg, body, span, expr);
+        unused_enumerate_index::check(cx, pat, arg, body);
     }
 
     fn check_for_loop_arg(&self, cx: &LateContext<'_>, _: &Pat<'_>, arg: &Expr<'_>) {
