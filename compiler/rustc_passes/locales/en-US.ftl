@@ -402,9 +402,6 @@ passes_invalid_attr_at_crate_level =
     `{$name}` attribute cannot be used at crate level
     .suggestion = perhaps you meant to use an outer attribute
 
-passes_duplicate_diagnostic_item =
-    duplicate diagnostic item found: `{$name}`.
-
 passes_duplicate_diagnostic_item_in_crate =
     duplicate diagnostic item in crate `{$crate_name}`: `{$name}`.
     .note = the diagnostic item is first defined in crate `{$orig_crate_name}`.
