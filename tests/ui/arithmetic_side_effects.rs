@@ -13,6 +13,9 @@
 
 use core::num::{Saturating, Wrapping};
 
+const ONE: i32 = 1;
+const ZERO: i32 = 0;
+
 #[derive(Clone, Copy)]
 pub struct Custom;
 
@@ -182,6 +185,10 @@ pub fn non_overflowing_ops_or_ops_already_handled_by_the_compiler_should_not_tri
     _n += &0;
     _n -= 0;
     _n -= &0;
+    _n += ZERO;
+    _n += &ZERO;
+    _n -= ZERO;
+    _n -= &ZERO;
     _n /= 99;
     _n /= &99;
     _n %= 99;
@@ -190,10 +197,18 @@ pub fn non_overflowing_ops_or_ops_already_handled_by_the_compiler_should_not_tri
     _n *= &0;
     _n *= 1;
     _n *= &1;
+    _n *= ZERO;
+    _n *= &ZERO;
+    _n *= ONE;
+    _n *= &ONE;
     _n += -0;
     _n += &-0;
     _n -= -0;
     _n -= &-0;
+    _n += -ZERO;
+    _n += &-ZERO;
+    _n -= -ZERO;
+    _n -= &-ZERO;
     _n /= -99;
     _n /= &-99;
     _n %= -99;
@@ -208,10 +223,18 @@ pub fn non_overflowing_ops_or_ops_already_handled_by_the_compiler_should_not_tri
     _n = _n + &0;
     _n = 0 + _n;
     _n = &0 + _n;
+    _n = _n + ZERO;
+    _n = _n + &ZERO;
+    _n = ZERO + _n;
+    _n = &ZERO + _n;
     _n = _n - 0;
     _n = _n - &0;
     _n = 0 - _n;
     _n = &0 - _n;
+    _n = _n - ZERO;
+    _n = _n - &ZERO;
+    _n = ZERO - _n;
+    _n = &ZERO - _n;
     _n = _n / 99;
     _n = _n / &99;
     _n = _n % 99;
@@ -222,6 +245,10 @@ pub fn non_overflowing_ops_or_ops_already_handled_by_the_compiler_should_not_tri
     _n = &0 * _n;
     _n = _n * 1;
     _n = _n * &1;
+    _n = ZERO * _n;
+    _n = &ZERO * _n;
+    _n = _n * ONE;
+    _n = _n * &ONE;
     _n = 1 * _n;
     _n = &1 * _n;
     _n = 23 + 85;

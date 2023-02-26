@@ -1,11 +1,17 @@
 #![allow(unused, clippy::needless_lifetimes)]
 #![warn(clippy::extra_unused_type_parameters)]
 
-fn unused_ty<T>(x: u8) {}
+fn unused_ty<T>(x: u8) {
+    unimplemented!()
+}
 
-fn unused_multi<T, U>(x: u8) {}
+fn unused_multi<T, U>(x: u8) {
+    unimplemented!()
+}
 
-fn unused_with_lt<'a, T>(x: &'a u8) {}
+fn unused_with_lt<'a, T>(x: &'a u8) {
+    unimplemented!()
+}
 
 fn used_ty<T>(x: T, y: u8) {}
 
@@ -15,15 +21,20 @@ fn used_ret<T: Default>(x: u8) -> T {
     T::default()
 }
 
-fn unused_bounded<T: Default, U>(x: U) {}
+fn unused_bounded<T: Default, U>(x: U) {
+    unimplemented!();
+}
 
 fn unused_where_clause<T, U>(x: U)
 where
     T: Default,
 {
+    unimplemented!();
 }
 
-fn some_unused<A, B, C, D: Iterator<Item = (B, C)>, E>(b: B, c: C) {}
+fn some_unused<A, B, C, D: Iterator<Item = (B, C)>, E>(b: B, c: C) {
+    unimplemented!();
+}
 
 fn used_opaque<A>(iter: impl Iterator<Item = A>) -> usize {
     iter.count()
@@ -46,7 +57,9 @@ fn used_closure<T: Default + ToString>() -> impl Fn() {
 struct S;
 
 impl S {
-    fn unused_ty_impl<T>(&self) {}
+    fn unused_ty_impl<T>(&self) {
+        unimplemented!()
+    }
 }
 
 // Don't lint on trait methods
@@ -64,6 +77,34 @@ where
 {
     iter.enumerate()
         .filter_map(move |(i, a)| if i == index { None } else { Some(a) })
+}
+
+fn unused_opaque<A, B>(dummy: impl Default) {
+    unimplemented!()
+}
+
+mod unexported_trait_bounds {
+    mod private {
+        pub trait Private {}
+    }
+
+    fn priv_trait_bound<T: private::Private>() {
+        unimplemented!();
+    }
+
+    fn unused_with_priv_trait_bound<T: private::Private, U>() {
+        unimplemented!();
+    }
+}
+
+mod issue10319 {
+    fn assert_send<T: Send>() {}
+
+    fn assert_send_where<T>()
+    where
+        T: Send,
+    {
+    }
 }
 
 fn main() {}

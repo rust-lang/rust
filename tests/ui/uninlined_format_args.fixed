@@ -174,3 +174,7 @@ fn _meets_msrv() {
     let local_i32 = 1;
     println!("expand='{local_i32}'");
 }
+
+fn _do_not_fire() {
+    println!("{:?}", None::<()>);
+}

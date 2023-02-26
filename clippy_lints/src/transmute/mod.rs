@@ -3,6 +3,7 @@ mod transmute_float_to_int;
 mod transmute_int_to_bool;
 mod transmute_int_to_char;
 mod transmute_int_to_float;
+mod transmute_int_to_non_zero;
 mod transmute_null_to_fn;
 mod transmute_num_to_bytes;
 mod transmute_ptr_to_ptr;
@@ -255,6 +256,31 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for transmutes from integers to `NonZero*` types, and suggests their `new_unchecked`
+    /// method instead.
+    ///
+    /// ### Why is this bad?
+    /// Transmutes work on any types and thus might cause unsoundness when those types change
+    /// elsewhere. `new_unchecked` only works for the appropriate types instead.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use core::num::NonZeroU32;
+    /// let _non_zero: NonZeroU32 = unsafe { std::mem::transmute(123) };
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # use core::num::NonZeroU32;
+    /// let _non_zero = unsafe { NonZeroU32::new_unchecked(123) };
+    /// ```
+    #[clippy::version = "1.69.0"]
+    pub TRANSMUTE_INT_TO_NON_ZERO,
+    complexity,
+    "transmutes from an integer to a non-zero wrapper"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for transmutes from a float to an integer.
     ///
     /// ### Why is this bad?
@@ -451,6 +477,7 @@ impl_lint_pass!(Transmute => [
     TRANSMUTE_BYTES_TO_STR,
     TRANSMUTE_INT_TO_BOOL,
     TRANSMUTE_INT_TO_FLOAT,
+    TRANSMUTE_INT_TO_NON_ZERO,
     TRANSMUTE_FLOAT_TO_INT,
     TRANSMUTE_NUM_TO_BYTES,
     UNSOUND_COLLECTION_TRANSMUTE,
@@ -501,6 +528,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                     | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg)
                     | transmute_int_to_bool::check(cx, e, from_ty, to_ty, arg)
                     | transmute_int_to_float::check(cx, e, from_ty, to_ty, arg, const_context)
+                    | transmute_int_to_non_zero::check(cx, e, from_ty, to_ty, arg)
                     | transmute_float_to_int::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_num_to_bytes::check(cx, e, from_ty, to_ty, arg, const_context)
                     | (

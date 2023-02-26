@@ -39,6 +39,7 @@ pub(super) fn check(
             });
         },
         NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Otherwise => (),
+        NeverLoopResult::IgnoreUntilEnd(_) => unreachable!(),
     }
 }
 
@@ -48,6 +49,8 @@ enum NeverLoopResult {
     AlwaysBreak,
     // A continue may occur for the main loop.
     MayContinueMainLoop,
+    // Ignore everything until the end of the block with this id
+    IgnoreUntilEnd(HirId),
     Otherwise,
 }
 
@@ -56,6 +59,7 @@ fn absorb_break(arg: NeverLoopResult) -> NeverLoopResult {
     match arg {
         NeverLoopResult::AlwaysBreak | NeverLoopResult::Otherwise => NeverLoopResult::Otherwise,
         NeverLoopResult::MayContinueMainLoop => NeverLoopResult::MayContinueMainLoop,
+        NeverLoopResult::IgnoreUntilEnd(id) => NeverLoopResult::IgnoreUntilEnd(id),
     }
 }
 
@@ -63,27 +67,26 @@ fn absorb_break(arg: NeverLoopResult) -> NeverLoopResult {
 #[must_use]
 fn combine_seq(first: NeverLoopResult, second: NeverLoopResult) -> NeverLoopResult {
     match first {
-        NeverLoopResult::AlwaysBreak | NeverLoopResult::MayContinueMainLoop => first,
-        NeverLoopResult::Otherwise => second,
-    }
-}
-
-// Combine two results where both parts are called but not necessarily in order.
-#[must_use]
-fn combine_both(left: NeverLoopResult, right: NeverLoopResult) -> NeverLoopResult {
-    match (left, right) {
-        (NeverLoopResult::MayContinueMainLoop, _) | (_, NeverLoopResult::MayContinueMainLoop) => {
-            NeverLoopResult::MayContinueMainLoop
+        NeverLoopResult::AlwaysBreak | NeverLoopResult::MayContinueMainLoop | NeverLoopResult::IgnoreUntilEnd(_) => {
+            first
         },
-        (NeverLoopResult::AlwaysBreak, _) | (_, NeverLoopResult::AlwaysBreak) => NeverLoopResult::AlwaysBreak,
-        (NeverLoopResult::Otherwise, NeverLoopResult::Otherwise) => NeverLoopResult::Otherwise,
+        NeverLoopResult::Otherwise => second,
     }
 }
 
 // Combine two results where only one of the part may have been executed.
 #[must_use]
-fn combine_branches(b1: NeverLoopResult, b2: NeverLoopResult) -> NeverLoopResult {
+fn combine_branches(b1: NeverLoopResult, b2: NeverLoopResult, ignore_ids: &[HirId]) -> NeverLoopResult {
     match (b1, b2) {
+        (NeverLoopResult::IgnoreUntilEnd(a), NeverLoopResult::IgnoreUntilEnd(b)) => {
+            if ignore_ids.iter().find(|&e| e == &a || e == &b).unwrap() == &a {
+                NeverLoopResult::IgnoreUntilEnd(b)
+            } else {
+                NeverLoopResult::IgnoreUntilEnd(a)
+            }
+        },
+        (i @ NeverLoopResult::IgnoreUntilEnd(_), NeverLoopResult::AlwaysBreak)
+        | (NeverLoopResult::AlwaysBreak, i @ NeverLoopResult::IgnoreUntilEnd(_)) => i,
         (NeverLoopResult::AlwaysBreak, NeverLoopResult::AlwaysBreak) => NeverLoopResult::AlwaysBreak,
         (NeverLoopResult::MayContinueMainLoop, _) | (_, NeverLoopResult::MayContinueMainLoop) => {
             NeverLoopResult::MayContinueMainLoop
@@ -103,7 +106,7 @@ fn never_loop_block(block: &Block<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id
         let e = never_loop_expr(e, ignore_ids, main_loop_id);
         // els is an else block in a let...else binding
         els.map_or(e, |els| {
-            combine_branches(e, never_loop_block(els, ignore_ids, main_loop_id))
+            combine_branches(e, never_loop_block(els, ignore_ids, main_loop_id), ignore_ids)
         })
     })
     .fold(NeverLoopResult::Otherwise, combine_seq)
@@ -139,7 +142,7 @@ fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: H
         ExprKind::Struct(_, fields, base) => {
             let fields = never_loop_expr_all(&mut fields.iter().map(|f| f.expr), ignore_ids, main_loop_id);
             if let Some(base) = base {
-                combine_both(fields, never_loop_expr(base, ignore_ids, main_loop_id))
+                combine_seq(fields, never_loop_expr(base, ignore_ids, main_loop_id))
             } else {
                 fields
             }
@@ -159,7 +162,7 @@ fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: H
             let e3 = e3.as_ref().map_or(NeverLoopResult::Otherwise, |e| {
                 never_loop_expr(e, ignore_ids, main_loop_id)
             });
-            combine_seq(e1, combine_branches(e2, e3))
+            combine_seq(e1, combine_branches(e2, e3, ignore_ids))
         },
         ExprKind::Match(e, arms, _) => {
             let e = never_loop_expr(e, ignore_ids, main_loop_id);
@@ -175,8 +178,13 @@ fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: H
                 ignore_ids.push(b.hir_id);
             }
             let ret = never_loop_block(b, ignore_ids, main_loop_id);
-            ignore_ids.pop();
-            ret
+            if l.is_some() {
+                ignore_ids.pop();
+            }
+            match ret {
+                NeverLoopResult::IgnoreUntilEnd(a) if a == b.hir_id => NeverLoopResult::Otherwise,
+                _ => ret,
+            }
         },
         ExprKind::Continue(d) => {
             let id = d
@@ -190,8 +198,8 @@ fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: H
         },
         // checks if break targets a block instead of a loop
         ExprKind::Break(Destination { target_id: Ok(t), .. }, e) if ignore_ids.contains(&t) => e
-            .map_or(NeverLoopResult::Otherwise, |e| {
-                combine_seq(never_loop_expr(e, ignore_ids, main_loop_id), NeverLoopResult::Otherwise)
+            .map_or(NeverLoopResult::IgnoreUntilEnd(t), |e| {
+                never_loop_expr(e, ignore_ids, main_loop_id)
             }),
         ExprKind::Break(_, e) | ExprKind::Ret(e) => e.as_ref().map_or(NeverLoopResult::AlwaysBreak, |e| {
             combine_seq(
@@ -218,7 +226,7 @@ fn never_loop_expr(expr: &Expr<'_>, ignore_ids: &mut Vec<HirId>, main_loop_id: H
                 | InlineAsmOperand::SymFn { .. }
                 | InlineAsmOperand::SymStatic { .. } => NeverLoopResult::Otherwise,
             })
-            .fold(NeverLoopResult::Otherwise, combine_both),
+            .fold(NeverLoopResult::Otherwise, combine_seq),
         ExprKind::Yield(_, _)
         | ExprKind::Closure { .. }
         | ExprKind::Path(_)
@@ -234,7 +242,7 @@ fn never_loop_expr_all<'a, T: Iterator<Item = &'a Expr<'a>>>(
     main_loop_id: HirId,
 ) -> NeverLoopResult {
     es.map(|e| never_loop_expr(e, ignore_ids, main_loop_id))
-        .fold(NeverLoopResult::Otherwise, combine_both)
+        .fold(NeverLoopResult::Otherwise, combine_seq)
 }
 
 fn never_loop_expr_branch<'a, T: Iterator<Item = &'a Expr<'a>>>(
@@ -242,8 +250,9 @@ fn never_loop_expr_branch<'a, T: Iterator<Item = &'a Expr<'a>>>(
     ignore_ids: &mut Vec<HirId>,
     main_loop_id: HirId,
 ) -> NeverLoopResult {
-    e.map(|e| never_loop_expr(e, ignore_ids, main_loop_id))
-        .fold(NeverLoopResult::AlwaysBreak, combine_branches)
+    e.fold(NeverLoopResult::AlwaysBreak, |a, b| {
+        combine_branches(a, never_loop_expr(b, ignore_ids, main_loop_id), ignore_ids)
+    })
 }
 
 fn for_to_if_let_sugg(cx: &LateContext<'_>, iterator: &Expr<'_>, pat: &Pat<'_>) -> String {
