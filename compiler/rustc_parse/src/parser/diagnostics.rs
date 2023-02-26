@@ -166,7 +166,7 @@ enum IsStandalone {
 enum IncOrDec {
     Inc,
     // FIXME: `i--` recovery isn't implemented yet
-    #[allow(dead_code)]
+    // #[allow(dead_code)]
     Dec,
 }
 
@@ -1331,7 +1331,7 @@ impl<'a> Parser<'a> {
 
         Ok(())
     }
-
+    #[allow(dead_code)]
     pub(super) fn recover_from_prefix_increment(
         &mut self,
         operand_expr: P<Expr>,
@@ -1342,7 +1342,7 @@ impl<'a> Parser<'a> {
         let kind = IncDecRecovery { standalone, op: IncOrDec::Inc, fixity: UnaryFixity::Pre };
         self.recover_from_inc_dec(operand_expr, kind, op_span)
     }
-
+    #[allow(dead_code)]
     pub(super) fn recover_from_postfix_increment(
         &mut self,
         operand_expr: P<Expr>,
@@ -1356,7 +1356,30 @@ impl<'a> Parser<'a> {
         };
         self.recover_from_inc_dec(operand_expr, kind, op_span)
     }
+    pub(super) fn recover_from_prefix_decrement(
+        &mut self,
+        operand_expr: P<Expr>,
+        op_span: Span,
+        start_stmt: bool,
+    ) -> PResult<'a, P<Expr>> {
+        let standalone = if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr };
+        let kind = IncDecRecovery { standalone, op: IncOrDec::Dec, fixity: UnaryFixity::Pre };
+        self.recover_from_inc_dec(operand_expr, kind, op_span)
+    }
 
+    pub(super) fn recover_from_postfix_decrement(
+        &mut self,
+        operand_expr: P<Expr>,
+        op_span: Span,
+        start_stmt: bool,
+    ) -> PResult<'a, P<Expr>> {
+        let kind = IncDecRecovery {
+            standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
+            op: IncOrDec::Dec,
+            fixity: UnaryFixity::Post,
+        };
+        self.recover_from_inc_dec(operand_expr, kind, op_span)
+    }
     fn recover_from_inc_dec(
         &mut self,
         base: P<Expr>,

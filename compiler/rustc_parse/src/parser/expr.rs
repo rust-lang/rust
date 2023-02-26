@@ -281,6 +281,16 @@ impl<'a> Parser<'a> {
                 lhs = self.recover_from_postfix_increment(lhs, op_span, starts_stmt)?;
                 continue;
             }
+            if self.prev_token == token::BinOp(token::Minus)
+                && self.token == token::BinOp(token::Minus)
+                && self.prev_token.span.between(self.token.span).is_empty()
+            {
+                let op_span = self.prev_token.span.to(self.token.span);
+                // Eat the second `+`
+                self.bump();
+                lhs = self.recover_from_postfix_decrement(lhs, op_span, starts_stmt)?;
+                continue;
+            }
 
             let op = op.node;
             // Special cases:
@@ -550,10 +560,7 @@ impl<'a> Parser<'a> {
             token::Not => make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Not)),
             // `~expr`
             token::Tilde => make_it!(this, attrs, |this, _| this.recover_tilde_expr(lo)),
-            // `-expr`
-            token::BinOp(token::Minus) => {
-                make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Neg))
-            }
+
             // `*expr`
             token::BinOp(token::Star) => {
                 make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Deref))
@@ -594,6 +601,24 @@ impl<'a> Parser<'a> {
 
                 let operand_expr = this.parse_dot_or_call_expr(Default::default())?;
                 this.recover_from_prefix_increment(operand_expr, pre_span, starts_stmt)
+            }
+            // Recover from `++x`:
+            token::BinOp(token::Minus)
+                if this.look_ahead(1, |t| *t == token::BinOp(token::Minus)) =>
+            {
+                let starts_stmt = this.prev_token == token::Semi
+                    || this.prev_token == token::CloseDelim(Delimiter::Brace);
+                let pre_span = this.token.span.to(this.look_ahead(1, |t| t.span));
+                // Eat both `+`s.
+                this.bump();
+                this.bump();
+
+                let operand_expr = this.parse_dot_or_call_expr(Default::default())?;
+                this.recover_from_prefix_decrement(operand_expr, pre_span, starts_stmt)
+            }
+            // `-expr`
+            token::BinOp(token::Minus) => {
+                make_it!(this, attrs, |this, _| this.parse_unary_expr(lo, UnOp::Neg))
             }
             token::Ident(..) if this.token.is_keyword(kw::Box) => {
                 make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
