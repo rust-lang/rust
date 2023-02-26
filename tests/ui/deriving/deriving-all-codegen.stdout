@@ -1444,3 +1444,185 @@ impl ::core::clone::Clone for Union {
 }
 #[automatically_derived]
 impl ::core::marker::Copy for Union { }
+
+pub struct TooLongForTuple(u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8,
+    u8, u8);
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for TooLongForTuple { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for TooLongForTuple {
+    #[inline]
+    fn eq(&self, other: &TooLongForTuple) -> bool {
+        self.0 == other.0 && self.1 == other.1 && self.2 == other.2 &&
+                                                        self.3 == other.3 && self.4 == other.4 && self.5 == other.5
+                                            && self.6 == other.6 && self.7 == other.7 &&
+                                    self.8 == other.8 && self.9 == other.9 &&
+                            self.10 == other.10 && self.11 == other.11 &&
+                    self.12 == other.12 && self.13 == other.13 &&
+            self.14 == other.14
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralEq for TooLongForTuple { }
+#[automatically_derived]
+impl ::core::cmp::Eq for TooLongForTuple {
+    #[inline]
+    #[doc(hidden)]
+    #[no_coverage]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<u8>;
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for TooLongForTuple {
+    #[inline]
+    fn partial_cmp(&self, other: &TooLongForTuple)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        match ::core::cmp::PartialOrd::partial_cmp(&self.0, &other.0) {
+            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
+                match ::core::cmp::PartialOrd::partial_cmp(&self.1, &other.1)
+                    {
+                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                        =>
+                        match ::core::cmp::PartialOrd::partial_cmp(&self.2,
+                                &other.2) {
+                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                =>
+                                match ::core::cmp::PartialOrd::partial_cmp(&self.3,
+                                        &other.3) {
+                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                        =>
+                                        match ::core::cmp::PartialOrd::partial_cmp(&self.4,
+                                                &other.4) {
+                                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                =>
+                                                match ::core::cmp::PartialOrd::partial_cmp(&self.5,
+                                                        &other.5) {
+                                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                        =>
+                                                        match ::core::cmp::PartialOrd::partial_cmp(&self.6,
+                                                                &other.6) {
+                                                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                                =>
+                                                                match ::core::cmp::PartialOrd::partial_cmp(&self.7,
+                                                                        &other.7) {
+                                                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                                        =>
+                                                                        match ::core::cmp::PartialOrd::partial_cmp(&self.8,
+                                                                                &other.8) {
+                                                                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                                                =>
+                                                                                match ::core::cmp::PartialOrd::partial_cmp(&self.9,
+                                                                                        &other.9) {
+                                                                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                                                        =>
+                                                                                        match ::core::cmp::PartialOrd::partial_cmp(&self.10,
+                                                                                                &other.10) {
+                                                                                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                                                                =>
+                                                                                                match ::core::cmp::PartialOrd::partial_cmp(&self.11,
+                                                                                                        &other.11) {
+                                                                                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                                                                        =>
+                                                                                                        match ::core::cmp::PartialOrd::partial_cmp(&self.12,
+                                                                                                                &other.12) {
+                                                                                                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                                                                                =>
+                                                                                                                match ::core::cmp::PartialOrd::partial_cmp(&self.13,
+                                                                                                                        &other.13) {
+                                                                                                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                                                                                        =>
+                                                                                                                        ::core::cmp::PartialOrd::partial_cmp(&self.14, &other.14),
+                                                                                                                    cmp => cmp,
+                                                                                                                },
+                                                                                                            cmp => cmp,
+                                                                                                        },
+                                                                                                    cmp => cmp,
+                                                                                                },
+                                                                                            cmp => cmp,
+                                                                                        },
+                                                                                    cmp => cmp,
+                                                                                },
+                                                                            cmp => cmp,
+                                                                        },
+                                                                    cmp => cmp,
+                                                                },
+                                                            cmp => cmp,
+                                                        },
+                                                    cmp => cmp,
+                                                },
+                                            cmp => cmp,
+                                        },
+                                    cmp => cmp,
+                                },
+                            cmp => cmp,
+                        },
+                    cmp => cmp,
+                },
+            cmp => cmp,
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for TooLongForTuple {
+    #[inline]
+    fn cmp(&self, other: &TooLongForTuple) -> ::core::cmp::Ordering {
+        match ::core::cmp::Ord::cmp(&self.0, &other.0) {
+            ::core::cmp::Ordering::Equal =>
+                match ::core::cmp::Ord::cmp(&self.1, &other.1) {
+                    ::core::cmp::Ordering::Equal =>
+                        match ::core::cmp::Ord::cmp(&self.2, &other.2) {
+                            ::core::cmp::Ordering::Equal =>
+                                match ::core::cmp::Ord::cmp(&self.3, &other.3) {
+                                    ::core::cmp::Ordering::Equal =>
+                                        match ::core::cmp::Ord::cmp(&self.4, &other.4) {
+                                            ::core::cmp::Ordering::Equal =>
+                                                match ::core::cmp::Ord::cmp(&self.5, &other.5) {
+                                                    ::core::cmp::Ordering::Equal =>
+                                                        match ::core::cmp::Ord::cmp(&self.6, &other.6) {
+                                                            ::core::cmp::Ordering::Equal =>
+                                                                match ::core::cmp::Ord::cmp(&self.7, &other.7) {
+                                                                    ::core::cmp::Ordering::Equal =>
+                                                                        match ::core::cmp::Ord::cmp(&self.8, &other.8) {
+                                                                            ::core::cmp::Ordering::Equal =>
+                                                                                match ::core::cmp::Ord::cmp(&self.9, &other.9) {
+                                                                                    ::core::cmp::Ordering::Equal =>
+                                                                                        match ::core::cmp::Ord::cmp(&self.10, &other.10) {
+                                                                                            ::core::cmp::Ordering::Equal =>
+                                                                                                match ::core::cmp::Ord::cmp(&self.11, &other.11) {
+                                                                                                    ::core::cmp::Ordering::Equal =>
+                                                                                                        match ::core::cmp::Ord::cmp(&self.12, &other.12) {
+                                                                                                            ::core::cmp::Ordering::Equal =>
+                                                                                                                match ::core::cmp::Ord::cmp(&self.13, &other.13) {
+                                                                                                                    ::core::cmp::Ordering::Equal =>
+                                                                                                                        ::core::cmp::Ord::cmp(&self.14, &other.14),
+                                                                                                                    cmp => cmp,
+                                                                                                                },
+                                                                                                            cmp => cmp,
+                                                                                                        },
+                                                                                                    cmp => cmp,
+                                                                                                },
+                                                                                            cmp => cmp,
+                                                                                        },
+                                                                                    cmp => cmp,
+                                                                                },
+                                                                            cmp => cmp,
+                                                                        },
+                                                                    cmp => cmp,
+                                                                },
+                                                            cmp => cmp,
+                                                        },
+                                                    cmp => cmp,
+                                                },
+                                            cmp => cmp,
+                                        },
+                                    cmp => cmp,
+                                },
+                            cmp => cmp,
+                        },
+                    cmp => cmp,
+                },
+            cmp => cmp,
+        }
+    }
+}

@@ -163,3 +163,6 @@ pub union Union {
     pub u: u32,
     pub i: i32,
 }
+
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub struct TooLongForTuple(u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8);
