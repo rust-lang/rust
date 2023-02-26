@@ -169,6 +169,23 @@ pub const FAT_PTR_EXTRA: usize = 1;
 /// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
 pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
 
+/// Used in `might_permit_raw_init` to indicate the kind of initialisation
+/// that is checked to be valid
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+pub enum InitKind {
+    Zero,
+    UninitMitigated0x01Fill,
+}
+
+impl fmt::Display for InitKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Zero => f.write_str("zeroed"),
+            Self::UninitMitigated0x01Fill => f.write_str("filled with 0x01"),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
 pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
