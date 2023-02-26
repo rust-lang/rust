@@ -187,7 +187,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
 
         if runner.is_native {
             let mut run_cmd = REGEX.test(&runner.target_compiler, &runner.dirs);
-            run_cmd.args(["--tests", "--", "-q"]);
+            run_cmd.args(["--workspace", "--", "-q"]);
             spawn_and_wait(run_cmd);
         } else {
             eprintln!("Cross-Compiling: Not running tests");
