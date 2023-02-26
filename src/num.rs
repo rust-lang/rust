@@ -289,7 +289,7 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
         _ => bug!("binop {:?} on checked int/uint lhs: {:?} rhs: {:?}", bin_op, in_lhs, in_rhs),
     };
 
-    let out_layout = fx.layout_of(fx.tcx.intern_tup(&[in_lhs.layout().ty, fx.tcx.types.bool]));
+    let out_layout = fx.layout_of(fx.tcx.mk_tup(&[in_lhs.layout().ty, fx.tcx.types.bool]));
     CValue::by_val_pair(res, has_overflow, out_layout)
 }
 
