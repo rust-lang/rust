@@ -3339,12 +3339,10 @@ impl Type {
             .map(move |ty| self.derived(ty))
     }
 
-    pub fn iterate_method_candidates<T>(
+    pub fn iterate_method_candidates_with_traits<T>(
         &self,
         db: &dyn HirDatabase,
         scope: &SemanticsScope<'_>,
-        // FIXME this can be retrieved from `scope`, except autoimport uses this
-        // to specify a different set, so the method needs to be split
         traits_in_scope: &FxHashSet<TraitId>,
         with_local_impls: Option<Module>,
         name: Option<&Name>,
@@ -3370,6 +3368,24 @@ impl Type {
             },
         );
         slot
+    }
+
+    pub fn iterate_method_candidates<T>(
+        &self,
+        db: &dyn HirDatabase,
+        scope: &SemanticsScope<'_>,
+        with_local_impls: Option<Module>,
+        name: Option<&Name>,
+        callback: impl FnMut(Function) -> Option<T>,
+    ) -> Option<T> {
+        self.iterate_method_candidates_with_traits(
+            db,
+            scope,
+            &scope.visible_traits().0,
+            with_local_impls,
+            name,
+            callback,
+        )
     }
 
     fn iterate_method_candidates_dyn(

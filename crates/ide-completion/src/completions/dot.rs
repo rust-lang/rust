@@ -122,7 +122,7 @@ fn complete_methods(
     mut f: impl FnMut(hir::Function),
 ) {
     let mut seen_methods = FxHashSet::default();
-    receiver.iterate_method_candidates(
+    receiver.iterate_method_candidates_with_traits(
         ctx.db,
         &ctx.scope,
         &ctx.traits_in_scope(),
