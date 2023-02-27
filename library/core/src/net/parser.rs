@@ -3,9 +3,7 @@
 //! This module is "publicly exported" through the `FromStr` implementations
 //! below.
 
-#[cfg(test)]
-mod tests;
-
+use crate::convert::TryInto;
 use crate::error::Error;
 use crate::fmt;
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
