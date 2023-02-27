@@ -385,7 +385,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         local_decl.source_info.span.shrink_to_lo(),
                         "consider changing this to be mutable",
-                        "mut ".to_string(),
+                        "mut ",
                         Applicability::MachineApplicable,
                     );
                     let tcx = self.infcx.tcx;
