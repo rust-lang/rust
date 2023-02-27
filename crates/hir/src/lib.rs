@@ -3190,7 +3190,7 @@ impl Type {
         matches!(self.ty.kind(Interner), TyKind::Raw(..))
     }
 
-    pub fn as_raw_ptr_ty(&self) -> Option<Type> {
+    pub fn remove_raw_ptr(&self) -> Option<Type> {
         if let TyKind::Raw(_, ty) = self.ty.kind(Interner) {
             Some(self.derived(ty.clone()))
         } else {
