@@ -7,6 +7,7 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
+use itertools::Itertools;
 use std::path::PathBuf;
 use std::process::Command;
 use test_utils::IS_RUSTC_TEST_SUITE;
@@ -19,8 +20,10 @@ fn dogfood_clippy() {
         return;
     }
 
+    let mut failed_packages = Vec::new();
+
     // "" is the root package
-    for package in &[
+    for package in [
         "",
         "clippy_dev",
         "clippy_lints",
@@ -28,8 +31,16 @@ fn dogfood_clippy() {
         "lintcheck",
         "rustc_tools_util",
     ] {
-        run_clippy_for_package(package, &["-D", "clippy::all", "-D", "clippy::pedantic"]);
+        if !run_clippy_for_package(package, &["-D", "clippy::all", "-D", "clippy::pedantic"]) {
+            failed_packages.push(if package.is_empty() { "root" } else { package });
+        }
     }
+
+    assert!(
+        !failed_packages.is_empty(),
+        "Dogfood failed for packages `{}`",
+        failed_packages.iter().format(", "),
+    )
 }
 
 #[test]
@@ -71,7 +82,7 @@ fn run_metadata_collection_lint() {
     run_clippy_for_package("clippy_lints", &["-A", "unfulfilled_lint_expectations"]);
 }
 
-fn run_clippy_for_package(project: &str, args: &[&str]) {
+fn run_clippy_for_package(project: &str, args: &[&str]) -> bool {
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
     let mut command = Command::new(&*test_utils::CARGO_CLIPPY_PATH);
@@ -107,5 +118,5 @@ fn run_clippy_for_package(project: &str, args: &[&str]) {
     println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
     println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
 
-    assert!(output.status.success());
+    output.status.success()
 }
