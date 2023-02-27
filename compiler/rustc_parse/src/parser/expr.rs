@@ -607,9 +607,6 @@ impl<'a> Parser<'a> {
                 let operand_expr = this.parse_expr_dot_or_call(Default::default())?;
                 this.recover_from_prefix_increment(operand_expr, pre_span, starts_stmt)
             }
-            token::Ident(..) if this.token.is_keyword(kw::Box) => {
-                make_it!(this, attrs, |this, _| this.parse_expr_box(lo))
-            }
             token::Ident(..) if this.may_recover() && this.is_mistaken_not_ident_negation() => {
                 make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
             }
@@ -634,13 +631,6 @@ impl<'a> Parser<'a> {
         self.sess.emit_err(errors::TildeAsUnaryOperator(lo));
 
         self.parse_expr_unary(lo, UnOp::Not)
-    }
-
-    /// Parse `box expr`.
-    fn parse_expr_box(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
-        let (span, expr) = self.parse_expr_prefix_common(lo)?;
-        self.sess.gated_spans.gate(sym::box_syntax, span);
-        Ok((span, ExprKind::Box(expr)))
     }
 
     fn is_mistaken_not_ident_negation(&self) -> bool {

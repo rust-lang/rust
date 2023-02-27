@@ -35,7 +35,6 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<&ast::Expr> {
             | Assign(_, e, _)
             | AssignOp(_, _, e)
             | Binary(_, _, e)
-            | Box(e)
             | Break(_, Some(e))
             | Let(_, e, _)
             | Range(_, Some(e), _)

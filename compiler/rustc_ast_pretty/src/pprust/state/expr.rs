@@ -296,10 +296,6 @@ impl<'a> State<'a> {
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
         match &expr.kind {
-            ast::ExprKind::Box(expr) => {
-                self.word_space("box");
-                self.print_expr_maybe_paren(expr, parser::PREC_PREFIX);
-            }
             ast::ExprKind::Array(exprs) => {
                 self.print_expr_vec(exprs);
             }

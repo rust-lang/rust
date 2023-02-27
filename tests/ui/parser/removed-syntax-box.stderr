@@ -1,0 +1,8 @@
+error: expected expression, found reserved keyword `box`
+  --> $DIR/removed-syntax-box.rs:6:13
+   |
+LL |     let _ = box ()
+   |             ^^^ expected expression
+
+error: aborting due to previous error
+

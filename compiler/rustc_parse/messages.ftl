@@ -731,3 +731,6 @@ parse_unknown_start_of_token = unknown start of token: {$escaped}
         [one] once more
         *[other] {$repeats} more times
     }
+
+parse_box_syntax_removed = `box_syntax` has been removed
+    .suggestion = use `Box::new()` instead

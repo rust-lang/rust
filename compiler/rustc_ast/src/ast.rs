@@ -1230,7 +1230,6 @@ impl Expr {
 
     pub fn precedence(&self) -> ExprPrecedence {
         match self.kind {
-            ExprKind::Box(_) => ExprPrecedence::Box,
             ExprKind::Array(_) => ExprPrecedence::Array,
             ExprKind::ConstBlock(_) => ExprPrecedence::ConstBlock,
             ExprKind::Call(..) => ExprPrecedence::Call,
@@ -1291,8 +1290,7 @@ impl Expr {
     /// To a first-order approximation, is this a pattern?
     pub fn is_approximately_pattern(&self) -> bool {
         match &self.peel_parens().kind {
-            ExprKind::Box(_)
-            | ExprKind::Array(_)
+            ExprKind::Array(_)
             | ExprKind::Call(_, _)
             | ExprKind::Tup(_)
             | ExprKind::Lit(_)
@@ -1363,8 +1361,6 @@ pub struct StructExpr {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ExprKind {
-    /// A `box x` expression.
-    Box(P<Expr>),
     /// An array (`[a, b, c, d]`)
     Array(ThinVec<P<Expr>>),
     /// Allow anonymous constants from an inline `const` block

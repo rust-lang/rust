@@ -70,7 +70,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_attrs(hir_id, &e.attrs);
 
             let kind = match &e.kind {
-                ExprKind::Box(inner) => hir::ExprKind::Box(self.lower_expr(inner)),
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
                 ExprKind::ConstBlock(anon_const) => {
                     let anon_const = self.lower_anon_const(anon_const);
