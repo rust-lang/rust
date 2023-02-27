@@ -129,7 +129,7 @@ impl<'tcx> Article for TyKind<'tcx> {
 
 // `TyKind` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(TyKind<'_>, 32);
+static_assert_size!(TyKind<'_>, 40);
 
 /// A closure can be modeled as a struct that looks like:
 /// ```ignore (illustrative)
@@ -979,7 +979,7 @@ impl BoundVariableKind {
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(HashStable, Lift)]
-pub struct Binder<'tcx, T>(T, &'tcx List<BoundVariableKind>);
+pub struct Binder<'tcx, T>(T, &'tcx List<BoundVariableKind>, &'tcx List<ty::Predicate<'tcx>>);
 
 impl<'tcx, T> Binder<'tcx, T>
 where
@@ -995,7 +995,7 @@ where
             !value.has_escaping_bound_vars(),
             "`{value:?}` has escaping bound vars, so it cannot be wrapped in a dummy binder."
         );
-        Binder(value, ty::List::empty())
+        Binder(value, ty::List::empty(), ty::List::empty())
     }
 
     pub fn bind_with_vars(value: T, vars: &'tcx List<BoundVariableKind>) -> Binder<'tcx, T> {
@@ -1003,7 +1003,7 @@ where
             let mut validator = ValidateBoundVars::new(vars);
             value.visit_with(&mut validator);
         }
-        Binder(value, vars)
+        Binder(value, vars, List::empty())
     }
 }
 
@@ -1033,14 +1033,14 @@ impl<'tcx, T> Binder<'tcx, T> {
     }
 
     pub fn as_ref(&self) -> Binder<'tcx, &T> {
-        Binder(&self.0, self.1)
+        Binder(&self.0, self.1, self.2)
     }
 
     pub fn as_deref(&self) -> Binder<'tcx, &T::Target>
     where
         T: Deref,
     {
-        Binder(&self.0, self.1)
+        Binder(&self.0, self.1, self.2)
     }
 
     pub fn map_bound_ref_unchecked<F, U>(&self, f: F) -> Binder<'tcx, U>
@@ -1048,7 +1048,7 @@ impl<'tcx, T> Binder<'tcx, T> {
         F: FnOnce(&T) -> U,
     {
         let value = f(&self.0);
-        Binder(value, self.1)
+        Binder(value, self.1, self.2)
     }
 
     pub fn map_bound_ref<F, U: TypeVisitable<TyCtxt<'tcx>>>(&self, f: F) -> Binder<'tcx, U>
@@ -1067,7 +1067,7 @@ impl<'tcx, T> Binder<'tcx, T> {
             let mut validator = ValidateBoundVars::new(self.1);
             value.visit_with(&mut validator);
         }
-        Binder(value, self.1)
+        Binder(value, self.1, self.2)
     }
 
     pub fn try_map_bound<F, U: TypeVisitable<TyCtxt<'tcx>>, E>(
@@ -1082,7 +1082,7 @@ impl<'tcx, T> Binder<'tcx, T> {
             let mut validator = ValidateBoundVars::new(self.1);
             value.visit_with(&mut validator);
         }
-        Ok(Binder(value, self.1))
+        Ok(Binder(value, self.1, self.2))
     }
 
     /// Wraps a `value` in a binder, using the same bound variables as the
@@ -1102,7 +1102,7 @@ impl<'tcx, T> Binder<'tcx, T> {
             let mut validator = ValidateBoundVars::new(self.bound_vars());
             value.visit_with(&mut validator);
         }
-        Binder(value, self.1)
+        Binder(value, self.1, self.2)
     }
 
     /// Unwraps and returns the value within, but only if it contains
@@ -1133,21 +1133,23 @@ impl<'tcx, T> Binder<'tcx, T> {
         F: FnOnce(T) -> (U, V),
     {
         let (u, v) = f(self.0);
-        (Binder(u, self.1), Binder(v, self.1))
+        (Binder(u, self.1, self.2), Binder(v, self.1, self.2))
     }
 }
 
 impl<'tcx, T> Binder<'tcx, Option<T>> {
     pub fn transpose(self) -> Option<Binder<'tcx, T>> {
         let bound_vars = self.1;
-        self.0.map(|v| Binder(v, bound_vars))
+        let assumptions = self.2;
+        self.0.map(|v| Binder(v, bound_vars, assumptions))
     }
 }
 
 impl<'tcx, T: IntoIterator> Binder<'tcx, T> {
     pub fn iter(self) -> impl Iterator<Item = ty::Binder<'tcx, T::Item>> {
         let bound_vars = self.1;
-        self.0.into_iter().map(|v| Binder(v, bound_vars))
+        let assumptions = self.2;
+        self.0.into_iter().map(|v| Binder(v, bound_vars, assumptions))
     }
 }
 

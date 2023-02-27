@@ -246,7 +246,7 @@ pub enum ImplSubject<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(TypeFoldable, TypeVisitable, PartialOrd, Ord)]
 pub enum ImplPolarity {
     /// `impl Trait for Type`
     Positive,
@@ -288,7 +288,8 @@ pub enum Visibility<Id = LocalDefId> {
     Restricted(Id),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(HashStable, TyEncodable, TyDecodable)]
 pub enum BoundConstness {
     /// `T: Trait`
     NotConst,
@@ -463,7 +464,7 @@ impl ty::EarlyBoundRegion {
 }
 
 /// Use this rather than `PredicateKind`, whenever possible.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Predicate<'tcx>(
     Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
@@ -567,7 +568,7 @@ impl rustc_errors::IntoDiagnosticArg for Predicate<'_> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
@@ -592,7 +593,7 @@ pub enum Clause<'tcx> {
     ConstArgHasType(Const<'tcx>, Ty<'tcx>),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub enum PredicateKind<'tcx> {
     /// Prove a clause
@@ -762,7 +763,7 @@ impl<'tcx> Predicate<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct TraitPredicate<'tcx> {
     pub trait_ref: TraitRef<'tcx>,
@@ -863,7 +864,7 @@ pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<'tcx, TypeOutlivesPredicat
 /// Encodes that `a` must be a subtype of `b`. The `a_is_expected` flag indicates
 /// whether the `a` type is the type that we should label as "expected" when
 /// presenting user diagnostics.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct SubtypePredicate<'tcx> {
     pub a_is_expected: bool,
@@ -873,7 +874,7 @@ pub struct SubtypePredicate<'tcx> {
 pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
 
 /// Encodes that we have to coerce *from* the `a` type to the `b` type.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct CoercePredicate<'tcx> {
     pub a: Ty<'tcx>,
@@ -1052,7 +1053,7 @@ impl<'tcx> TermKind<'tcx> {
 /// equality between arbitrary types. Processing an instance of
 /// Form #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct ProjectionPredicate<'tcx> {
     pub projection_ty: AliasTy<'tcx>,
@@ -2696,6 +2697,6 @@ mod size_asserts {
     use rustc_data_structures::static_assert_size;
     // tidy-alphabetical-start
     static_assert_size!(PredicateKind<'_>, 32);
-    static_assert_size!(WithCachedTypeInfo<TyKind<'_>>, 56);
+    static_assert_size!(WithCachedTypeInfo<TyKind<'_>>, 64);
     // tidy-alphabetical-end
 }
