@@ -438,7 +438,11 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
             (VarValue::Value(a), VarValue::Empty(_)) => {
                 match *a {
-                    ReLateBound(..) | ReErased | ReError(_) => {
+                    // this is always on an error path,
+                    // so it doesn't really matter if it's shorter or longer than an empty region
+                    ReError(_) => false,
+
+                    ReLateBound(..) | ReErased => {
                         bug!("cannot relate region: {:?}", a);
                     }
 
@@ -467,7 +471,11 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
             (VarValue::Empty(a_ui), VarValue::Value(b)) => {
                 match *b {
-                    ReLateBound(..) | ReErased | ReError(_) => {
+                    // this is always on an error path,
+                    // so it doesn't really matter if it's shorter or longer than an empty region
+                    ReError(_) => false,
+
+                    ReLateBound(..) | ReErased => {
                         bug!("cannot relate region: {:?}", b);
                     }
 
