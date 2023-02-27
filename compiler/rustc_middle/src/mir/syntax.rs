@@ -84,7 +84,7 @@ pub enum MirPhase {
     ///    because they eg may be aliased in surprising ways. Runtime MIR has no such special locals -
     ///    all generator bodies are lowered and so all places that look like locals really are locals.
     ///  - Intrinsics: In analysis MIR, intrinsics are typically represented as [`TerminatorKind::Call`]s
-    ///    to their `extern "rust-intrinsic"` declarations.  In runtime MIR, some intrinsics are lowered
+    ///    to their `extern "rust-intrinsic"` declarations. In runtime MIR, some intrinsics are lowered
     ///    to MIR constructs not used earlier, such as `mem::transmute` → [`CastKind::Transmute`].
     ///
     /// Also note that the lint pass which reports eg `200_u8 + 200_u8` as an error is run as a part

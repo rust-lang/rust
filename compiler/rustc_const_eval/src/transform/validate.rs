@@ -623,7 +623,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         if let MirPhase::Runtime(..) = self.mir_phase {
                             // `mem::transmute` currently requires types concrete enough
                             // to *know* that their sizes are the same, and we repeat
-                            // that check here.  This restriction may be lifted in future,
+                            // that check here. This restriction may be lifted in future,
                             // should some optimizations need to it be more general.
                             // (It might just end up being UB if they don't match, say.)
 
