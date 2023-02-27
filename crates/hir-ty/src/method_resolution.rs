@@ -821,9 +821,9 @@ pub fn iterate_method_candidates_dyn(
 
             let mut table = InferenceTable::new(db, env.clone());
             let ty = table.instantiate_canonical(ty.clone());
-            let (deref_chain, adj) = autoderef_method_receiver(&mut table, ty);
+            let deref_chain = autoderef_method_receiver(&mut table, ty);
 
-            let result = deref_chain.into_iter().zip(adj).try_for_each(|(receiver_ty, adj)| {
+            let result = deref_chain.into_iter().try_for_each(|(receiver_ty, adj)| {
                 iterate_method_candidates_with_autoref(
                     &receiver_ty,
                     adj,
@@ -867,7 +867,7 @@ fn iterate_method_candidates_with_autoref(
         return ControlFlow::Continue(());
     }
 
-    let iterate_method_candidates_by_receiver = |receiver_ty, first_adjustment| {
+    let mut iterate_method_candidates_by_receiver = move |receiver_ty, first_adjustment| {
         iterate_method_candidates_by_receiver(
             receiver_ty,
             first_adjustment,
@@ -1199,8 +1199,8 @@ pub fn resolve_indexing_op(
 ) -> Option<ReceiverAdjustments> {
     let mut table = InferenceTable::new(db, env.clone());
     let ty = table.instantiate_canonical(ty);
-    let (deref_chain, adj) = autoderef_method_receiver(&mut table, ty);
-    for (ty, adj) in deref_chain.into_iter().zip(adj) {
+    let deref_chain = autoderef_method_receiver(&mut table, ty);
+    for (ty, adj) in deref_chain {
         let goal = generic_implements_goal(db, env.clone(), index_trait, &ty);
         if db.trait_solve(env.krate, goal.cast(Interner)).is_some() {
             return Some(adj);
@@ -1410,25 +1410,24 @@ fn generic_implements_goal(
 fn autoderef_method_receiver(
     table: &mut InferenceTable<'_>,
     ty: Ty,
-) -> (Vec<Canonical<Ty>>, Vec<ReceiverAdjustments>) {
-    let (mut deref_chain, mut adjustments): (Vec<_>, Vec<_>) = (Vec::new(), Vec::new());
+) -> Vec<(Canonical<Ty>, ReceiverAdjustments)> {
+    let mut deref_chain: Vec<_> = Vec::new();
     let mut autoderef = autoderef::Autoderef::new(table, ty);
     while let Some((ty, derefs)) = autoderef.next() {
-        deref_chain.push(autoderef.table.canonicalize(ty).value);
-        adjustments.push(ReceiverAdjustments {
-            autoref: None,
-            autoderefs: derefs,
-            unsize_array: false,
-        });
+        deref_chain.push((
+            autoderef.table.canonicalize(ty).value,
+            ReceiverAdjustments { autoref: None, autoderefs: derefs, unsize_array: false },
+        ));
     }
     // As a last step, we can do array unsizing (that's the only unsizing that rustc does for method receivers!)
-    if let (Some((TyKind::Array(parameters, _), binders)), Some(adj)) = (
-        deref_chain.last().map(|ty| (ty.value.kind(Interner), ty.binders.clone())),
-        adjustments.last().cloned(),
-    ) {
+    if let Some((TyKind::Array(parameters, _), binders, adj)) =
+        deref_chain.last().map(|(ty, adj)| (ty.value.kind(Interner), ty.binders.clone(), adj))
+    {
         let unsized_ty = TyKind::Slice(parameters.clone()).intern(Interner);
-        deref_chain.push(Canonical { value: unsized_ty, binders });
-        adjustments.push(ReceiverAdjustments { unsize_array: true, ..adj });
+        deref_chain.push((
+            Canonical { value: unsized_ty, binders },
+            ReceiverAdjustments { unsize_array: true, ..adj.clone() },
+        ));
     }
-    (deref_chain, adjustments)
+    deref_chain
 }

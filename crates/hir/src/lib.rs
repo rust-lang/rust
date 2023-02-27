@@ -3376,7 +3376,7 @@ impl Type {
         scope: &SemanticsScope<'_>,
         with_local_impls: Option<Module>,
         name: Option<&Name>,
-        mut callback: impl FnMut(Function) -> Option<T>,
+        callback: impl FnMut(Function) -> Option<T>,
     ) -> Option<T> {
         self.iterate_method_candidates_with_traits(
             db,
