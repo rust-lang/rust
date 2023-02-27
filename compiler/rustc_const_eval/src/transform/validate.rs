@@ -755,8 +755,26 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(location, format!("explicit `{:?}` is forbidden", kind));
                 }
             }
-            StatementKind::StorageLive(..)
-            | StatementKind::StorageDead(..)
+            StatementKind::StorageLive(local) => {
+                // We check that the local is not live when entering a `StorageLive` for it.
+                // Technically, violating this restriction is only UB and not actually indicative
+                // of not well-formed MIR. This means that an optimization which turns MIR that
+                // already has UB into MIR that fails this check is not necessarily wrong. However,
+                // we have no such optimizations at the moment, and so we include this check anyway
+                // to help us catch bugs. If you happen to write an optimization that might cause
+                // this to incorrectly fire, feel free to remove this check.
+                if self.reachable_blocks.contains(location.block) {
+                    self.storage_liveness.seek_before_primary_effect(location);
+                    let locals_with_storage = self.storage_liveness.get();
+                    if locals_with_storage.contains(*local) {
+                        self.fail(
+                            location,
+                            format!("StorageLive({local:?}) which already has storage here"),
+                        );
+                    }
+                }
+            }
+            StatementKind::StorageDead(_)
             | StatementKind::Coverage(_)
             | StatementKind::ConstEvalCounter
             | StatementKind::Nop => {}
