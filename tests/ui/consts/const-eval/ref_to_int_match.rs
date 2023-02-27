@@ -5,7 +5,6 @@ fn main() {
     match n {
         0..=10 => {},
         10..=BAR => {}, //~ ERROR could not evaluate constant pattern
-                        //~| ERROR could not evaluate constant pattern
         _ => {},
     }
 }

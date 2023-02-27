@@ -29,6 +29,11 @@ note: ...which requires building MIR for `cycle1`...
    |
 LL | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires match-checking `cycle1`...
+  --> $DIR/auto-trait-leak.rs:12:1
+   |
+LL | fn cycle1() -> impl Clone {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires building THIR for `cycle1`...
   --> $DIR/auto-trait-leak.rs:12:1
    |
@@ -66,6 +71,11 @@ note: ...which requires unsafety-checking `cycle2`...
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires building MIR for `cycle2`...
+  --> $DIR/auto-trait-leak.rs:19:1
+   |
+LL | fn cycle2() -> impl Clone {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires match-checking `cycle2`...
   --> $DIR/auto-trait-leak.rs:19:1
    |
 LL | fn cycle2() -> impl Clone {

@@ -2,7 +2,6 @@ use crate::def::{CtorOf, DefKind, Res};
 use crate::def_id::DefId;
 use crate::hir::{self, BindingAnnotation, ByRef, HirId, PatKind};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -135,15 +134,5 @@ impl hir::Pat<'_> {
             _ => {}
         });
         result
-    }
-
-    /// If the pattern is `Some(<pat>)` from a desugared for loop, returns the inner pattern
-    pub fn for_loop_some(&self) -> Option<&Self> {
-        if self.span.desugaring_kind() == Some(DesugaringKind::ForLoop) {
-            if let hir::PatKind::Struct(_, [pat_field], _) = self.kind {
-                return Some(pat_field.pat);
-            }
-        }
-        None
     }
 }

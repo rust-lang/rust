@@ -10,7 +10,8 @@ use rustc_hir::def::Res;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::thir::Pat;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{symbol::Ident, Span};
+use rustc_span::symbol::Symbol;
+use rustc_span::Span;
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_unconditional_recursion)]
@@ -534,18 +535,10 @@ pub struct TrailingIrrefutableLetPatterns {
 #[derive(LintDiagnostic)]
 #[diag(mir_build_bindings_with_variant_name, code = "E0170")]
 pub struct BindingsWithVariantName {
-    #[suggestion(code = "{ty_path}::{ident}", applicability = "machine-applicable")]
+    #[suggestion(code = "{ty_path}::{name}", applicability = "machine-applicable")]
     pub suggestion: Option<Span>,
     pub ty_path: String,
-    pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(mir_build_irrefutable_let_patterns_generic_let)]
-#[note]
-#[help]
-pub struct IrrefutableLetPatternsGenericLet {
-    pub count: usize,
+    pub name: Symbol,
 }
 
 #[derive(LintDiagnostic)]
@@ -590,7 +583,7 @@ pub struct BorrowOfMovedValue<'tcx> {
     pub binding_span: Span,
     #[label(mir_build_value_borrowed_label)]
     pub conflicts_ref: Vec<Span>,
-    pub name: Ident,
+    pub name: Symbol,
     pub ty: Ty<'tcx>,
     #[suggestion(code = "ref ", applicability = "machine-applicable")]
     pub suggest_borrowing: Option<Span>,
@@ -638,19 +631,19 @@ pub enum Conflict {
     Mut {
         #[primary_span]
         span: Span,
-        name: Ident,
+        name: Symbol,
     },
     #[label(mir_build_borrow)]
     Ref {
         #[primary_span]
         span: Span,
-        name: Ident,
+        name: Symbol,
     },
     #[label(mir_build_moved)]
     Moved {
         #[primary_span]
         span: Span,
-        name: Ident,
+        name: Symbol,
     },
 }
 

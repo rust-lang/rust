@@ -54,11 +54,9 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
     pat: &'tcx hir::Pat<'tcx>,
 ) -> Box<Pat<'tcx>> {
     let mut pcx = PatCtxt::new(tcx, param_env, typeck_results);
+    pcx.include_lint_checks();
     let result = pcx.lower_pattern(pat);
-    if !pcx.errors.is_empty() {
-        let msg = format!("encountered errors lowering pattern: {:?}", pcx.errors);
-        tcx.sess.delay_span_bug(pat.span, &msg);
-    }
+    pcx.report_inlining_errors();
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
     result
 }
@@ -75,6 +73,25 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn include_lint_checks(&mut self) -> &mut Self {
         self.include_lint_checks = true;
         self
+    }
+
+    fn report_inlining_errors(&self) {
+        for error in &self.errors {
+            match *error {
+                PatternError::StaticInPattern(span) => {
+                    self.tcx.sess.emit_err(StaticInPattern { span });
+                }
+                PatternError::AssocConstInPattern(span) => {
+                    self.tcx.sess.emit_err(AssocConstInPattern { span });
+                }
+                PatternError::ConstParamInPattern(span) => {
+                    self.tcx.sess.emit_err(ConstParamInPattern { span });
+                }
+                PatternError::NonConstPath(span) => {
+                    self.tcx.sess.emit_err(NonConstPath { span });
+                }
+            }
+        }
     }
 
     fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
