@@ -444,7 +444,7 @@ dependencies = [
  "directories",
  "rustc-build-sysroot",
  "rustc-workspace-hack",
- "rustc_tools_util 0.2.1",
+ "rustc_tools_util",
  "rustc_version",
  "serde",
  "serde_json",
@@ -738,7 +738,7 @@ dependencies = [
  "regex",
  "rustc-semver",
  "rustc-workspace-hack",
- "rustc_tools_util 0.3.0",
+ "rustc_tools_util",
  "semver",
  "serde",
  "syn",
@@ -4724,12 +4724,6 @@ dependencies = [
  "serde_json",
  "tracing",
 ]
-
-[[package]]
-name = "rustc_tools_util"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "598f48ce2a421542b3e64828aa742b687cc1b91d2f96591cfdb7ac5988cd6366"
 
 [[package]]
 name = "rustc_tools_util"

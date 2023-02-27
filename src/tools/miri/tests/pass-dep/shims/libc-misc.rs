@@ -7,7 +7,7 @@ use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 
 fn tmp() -> PathBuf {
-    use std::ffi::{CStr, CString};
+    use std::ffi::{c_char, CStr, CString};
 
     let path = std::env::var("MIRI_TEMP")
         .unwrap_or_else(|_| std::env::temp_dir().into_os_string().into_string().unwrap());
@@ -17,7 +17,11 @@ fn tmp() -> PathBuf {
 
     unsafe {
         extern "Rust" {
-            fn miri_host_to_target_path(path: *const i8, out: *mut i8, out_size: usize) -> usize;
+            fn miri_host_to_target_path(
+                path: *const c_char,
+                out: *mut c_char,
+                out_size: usize,
+            ) -> usize;
         }
         let ret = miri_host_to_target_path(path.as_ptr(), out.as_mut_ptr(), out.capacity());
         assert_eq!(ret, 0);

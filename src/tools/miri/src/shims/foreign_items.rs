@@ -885,6 +885,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     }
                 }
             }
+            "llvm.arm.hint" if this.tcx.sess.target.arch == "arm" => {
+                let [arg] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
+                let arg = this.read_scalar(arg)?.to_i32()?;
+                match arg {
+                    // YIELD
+                    1 => {
+                        this.yield_active_thread();
+                    }
+                    _ => {
+                        throw_unsup_format!("unsupported llvm.arm.hint argument {}", arg);
+                    }
+                }
+            }
 
             // Platform-specific shims
             _ =>
