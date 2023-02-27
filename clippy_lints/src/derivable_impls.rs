@@ -8,7 +8,7 @@ use rustc_hir::{
     Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{AdtDef, DefIdTree};
+use rustc_middle::ty::{Adt, AdtDef, DefIdTree, SubstsRef};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 
@@ -81,13 +81,18 @@ fn check_struct<'tcx>(
     self_ty: &Ty<'_>,
     func_expr: &Expr<'_>,
     adt_def: AdtDef<'_>,
+    substs: SubstsRef<'_>,
 ) {
     if let TyKind::Path(QPath::Resolved(_, p)) = self_ty.kind {
-        if let Some(PathSegment { args: Some(a), .. }) = p.segments.last() {
-            for arg in a.args {
-                if !matches!(arg, GenericArg::Lifetime(_)) {
-                    return;
-                }
+        if let Some(PathSegment { args, .. }) = p.segments.last() {
+            let args = args.map(|a| a.args).unwrap_or(&[]);
+
+            // substs contains the generic parameters of the type declaration, while args contains the arguments
+            // used at instantiation time. If both len are not equal, it means that some parameters were not
+            // provided (which means that the default values were used); in this case we will not risk
+            // suggesting too broad a rewrite. We won't either if any argument is a type or a const.
+            if substs.len() != args.len() || args.iter().any(|arg| !matches!(arg, GenericArg::Lifetime(_))) {
+                return;
             }
         }
     }
@@ -184,7 +189,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             if let Some(Node::ImplItem(impl_item)) = cx.tcx.hir().find(impl_item_hir);
             if let ImplItemKind::Fn(_, b) = &impl_item.kind;
             if let Body { value: func_expr, .. } = cx.tcx.hir().body(*b);
-            if let Some(adt_def) = cx.tcx.type_of(item.owner_id).subst_identity().ty_adt_def();
+            if let &Adt(adt_def, substs) = cx.tcx.type_of(item.owner_id).subst_identity().kind();
             if let attrs = cx.tcx.hir().attrs(item.hir_id());
             if !attrs.iter().any(|attr| attr.doc_str().is_some());
             if let child_attrs = cx.tcx.hir().attrs(impl_item_hir);
@@ -192,7 +197,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
 
             then {
                 if adt_def.is_struct() {
-                    check_struct(cx, item, self_ty, func_expr, adt_def);
+                    check_struct(cx, item, self_ty, func_expr, adt_def, substs);
                 } else if adt_def.is_enum() && self.msrv.meets(msrvs::DEFAULT_ENUM_ATTRIBUTE) {
                     check_enum(cx, item, func_expr, adt_def);
                 }
