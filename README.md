@@ -1,5 +1,7 @@
 # The Rust Programming Language
 
+[![Rust Community](https://img.shields.io/badge/Rust_Community%20-Join_us-brightgreen?style=plastic&logo=rust)](https://www.rust-lang.org/community)
+
 This is the main source code repository for [Rust]. It contains the compiler,
 standard library, and documentation.
 
