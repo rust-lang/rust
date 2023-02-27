@@ -340,47 +340,10 @@ impl ::core::cmp::PartialOrd for Big {
     #[inline]
     fn partial_cmp(&self, other: &Big)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        match ::core::cmp::PartialOrd::partial_cmp(&self.b1, &other.b1) {
-            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
-                match ::core::cmp::PartialOrd::partial_cmp(&self.b2,
-                        &other.b2) {
-                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                        =>
-                        match ::core::cmp::PartialOrd::partial_cmp(&self.b3,
-                                &other.b3) {
-                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                =>
-                                match ::core::cmp::PartialOrd::partial_cmp(&self.b4,
-                                        &other.b4) {
-                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                        =>
-                                        match ::core::cmp::PartialOrd::partial_cmp(&self.b5,
-                                                &other.b5) {
-                                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                                =>
-                                                match ::core::cmp::PartialOrd::partial_cmp(&self.b6,
-                                                        &other.b6) {
-                                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                                        =>
-                                                        match ::core::cmp::PartialOrd::partial_cmp(&self.b7,
-                                                                &other.b7) {
-                                                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                                                                =>
-                                                                ::core::cmp::PartialOrd::partial_cmp(&self.b8, &other.b8),
-                                                            cmp => cmp,
-                                                        },
-                                                    cmp => cmp,
-                                                },
-                                            cmp => cmp,
-                                        },
-                                    cmp => cmp,
-                                },
-                            cmp => cmp,
-                        },
-                    cmp => cmp,
-                },
-            cmp => cmp,
-        }
+        ::core::cmp::PartialOrd::partial_cmp(&(&self.b1, &self.b2, &self.b3,
+                    &self.b4, &self.b5, &self.b6, &self.b7, &self.b8),
+            &(&other.b1, &other.b2, &other.b3, &other.b4, &other.b5,
+                    &other.b6, &other.b7, &other.b8))
     }
 }
 #[automatically_derived]
@@ -622,16 +585,8 @@ impl<T: ::core::cmp::PartialOrd + Trait, U: ::core::cmp::PartialOrd>
     #[inline]
     fn partial_cmp(&self, other: &Generic<T, U>)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        match ::core::cmp::PartialOrd::partial_cmp(&self.t, &other.t) {
-            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
-                match ::core::cmp::PartialOrd::partial_cmp(&self.ta,
-                        &other.ta) {
-                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                        => ::core::cmp::PartialOrd::partial_cmp(&self.u, &other.u),
-                    cmp => cmp,
-                },
-            cmp => cmp,
-        }
+        ::core::cmp::PartialOrd::partial_cmp(&(&self.t, &self.ta, &self.u),
+            &(&other.t, &other.ta, &other.u))
     }
 }
 #[automatically_derived]
@@ -745,19 +700,8 @@ impl<T: ::core::cmp::PartialOrd + ::core::marker::Copy + Trait,
     #[inline]
     fn partial_cmp(&self, other: &PackedGeneric<T, U>)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        match ::core::cmp::PartialOrd::partial_cmp(&{ self.0 }, &{ other.0 })
-            {
-            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
-                match ::core::cmp::PartialOrd::partial_cmp(&{ self.1 },
-                        &{ other.1 }) {
-                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
-                        =>
-                        ::core::cmp::PartialOrd::partial_cmp(&{ self.2 },
-                            &{ other.2 }),
-                    cmp => cmp,
-                },
-            cmp => cmp,
-        }
+        ::core::cmp::PartialOrd::partial_cmp(&(&{ self.0 }, &{ self.1 },
+                    &{ self.2 }), &(&{ other.0 }, &{ other.1 }, &{ other.2 }))
     }
 }
 #[automatically_derived]

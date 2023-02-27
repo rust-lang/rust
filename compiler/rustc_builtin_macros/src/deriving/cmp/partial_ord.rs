@@ -5,7 +5,8 @@ use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
-use thin_vec::thin_vec;
+use std::ops::Range;
+use thin_vec::{thin_vec, ThinVec};
 
 pub fn expand_deriving_partial_ord(
     cx: &mut ExtCtxt<'_>,
@@ -79,6 +80,13 @@ fn cs_partial_cmp(
     let equal_path = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
     let partial_cmp_path = cx.std_path(&[sym::cmp, sym::PartialOrd, sym::partial_cmp]);
 
+    if let SubstructureFields::Struct(_vdata, field_info) = substr.fields {
+        const FIELD_COUNTS_TO_USE_TUPLES: Range<usize> = 3..13;
+        if FIELD_COUNTS_TO_USE_TUPLES.contains(&field_info.len()) {
+            return cs_partial_cmp_via_tuple(cx, span, field_info);
+        }
+    }
+
     // Builds:
     //
     // match ::core::cmp::PartialOrd::partial_cmp(&self.x, &other.x) {
@@ -150,4 +158,30 @@ fn cs_partial_cmp(
         },
     );
     BlockOrExpr::new_expr(expr)
+}
+
+fn cs_partial_cmp_via_tuple(cx: &mut ExtCtxt<'_>, span: Span, fields: &[FieldInfo]) -> BlockOrExpr {
+    debug_assert!(fields.len() <= 12, "This won't work for more fields than tuples support");
+
+    let mut lhs_exprs = ThinVec::with_capacity(fields.len());
+    let mut rhs_exprs = ThinVec::with_capacity(fields.len());
+
+    for field in fields {
+        lhs_exprs.push(field.self_expr.clone());
+        // if i + 1 == fields.len() {
+        //     // The last field might need an extra indirection because unsized
+        //     expr = cx.expr_addr_of(field.span, expr);
+        // };
+        let [other_expr] = field.other_selflike_exprs.as_slice() else {
+            cx.span_bug(field.span, "not exactly 2 arguments in `derive(PartialOrd)`");
+        };
+        rhs_exprs.push(other_expr.clone());
+    }
+
+    let lhs = cx.expr_addr_of(span, cx.expr_tuple(span, lhs_exprs));
+    let rhs = cx.expr_addr_of(span, cx.expr_tuple(span, rhs_exprs));
+
+    let partial_cmp_path = cx.std_path(&[sym::cmp, sym::PartialOrd, sym::partial_cmp]);
+    let call = cx.expr_call_global(span, partial_cmp_path, thin_vec![lhs, rhs]);
+    BlockOrExpr::new_expr(call)
 }

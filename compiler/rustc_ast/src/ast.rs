@@ -2695,6 +2695,8 @@ pub enum VariantData {
     /// Struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
+    ///
+    /// The `bool` is `true` if recovery was used while parsing it.
     Struct(ThinVec<FieldDef>, bool),
     /// Tuple variant.
     ///
