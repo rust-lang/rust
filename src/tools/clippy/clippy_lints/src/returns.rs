@@ -14,6 +14,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::Span;
 use rustc_span::{BytePos, Pos};
+use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -69,31 +70,41 @@ declare_clippy_lint! {
     "using a return statement like `return expr;` where an expression would suffice"
 }
 
-#[derive(PartialEq, Eq, Copy, Clone)]
-enum RetReplacement {
+#[derive(PartialEq, Eq, Clone)]
+enum RetReplacement<'tcx> {
     Empty,
     Block,
     Unit,
+    IfSequence(Cow<'tcx, str>, Applicability),
+    Expr(Cow<'tcx, str>, Applicability),
 }
 
-impl RetReplacement {
+impl<'tcx> RetReplacement<'tcx> {
     fn sugg_help(self) -> &'static str {
         match self {
-            Self::Empty => "remove `return`",
+            Self::Empty | Self::Expr(..) => "remove `return`",
             Self::Block => "replace `return` with an empty block",
             Self::Unit => "replace `return` with a unit value",
+            Self::IfSequence(..) => "remove `return` and wrap the sequence with parentheses",
+        }
+    }
+    fn applicability(&self) -> Option<Applicability> {
+        match self {
+            Self::Expr(_, ap) | Self::IfSequence(_, ap) => Some(*ap),
+            _ => None,
         }
     }
 }
 
-impl ToString for RetReplacement {
+impl<'tcx> ToString for RetReplacement<'tcx> {
     fn to_string(&self) -> String {
-        match *self {
-            Self::Empty => "",
-            Self::Block => "{}",
-            Self::Unit => "()",
+        match self {
+            Self::Empty => String::new(),
+            Self::Block => "{}".to_string(),
+            Self::Unit => "()".to_string(),
+            Self::IfSequence(inner, _) => format!("({inner})"),
+            Self::Expr(inner, _) => inner.to_string(),
         }
-        .to_string()
     }
 }
 
@@ -204,26 +215,12 @@ fn check_final_expr<'tcx>(
     expr: &'tcx Expr<'tcx>,
     semi_spans: Vec<Span>, /* containing all the places where we would need to remove semicolons if finding an
                             * needless return */
-    replacement: RetReplacement,
+    replacement: RetReplacement<'tcx>,
 ) {
     let peeled_drop_expr = expr.peel_drop_temps();
     match &peeled_drop_expr.kind {
         // simple return is always "bad"
         ExprKind::Ret(ref inner) => {
-            // if desugar of `do yeet`, don't lint
-            if let Some(inner_expr) = inner
-                && let ExprKind::Call(path_expr, _) = inner_expr.kind
-                && let ExprKind::Path(QPath::LangItem(LangItem::TryTraitFromYeet, _, _)) = path_expr.kind
-            {
-                return;
-            }
-            if !cx.tcx.hir().attrs(expr.hir_id).is_empty() {
-                return;
-            }
-            let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
-            if borrows {
-                return;
-            }
             // check if expr return nothing
             let ret_span = if inner.is_none() && replacement == RetReplacement::Empty {
                 extend_span_to_previous_non_ws(cx, peeled_drop_expr.span)
@@ -231,7 +228,34 @@ fn check_final_expr<'tcx>(
                 peeled_drop_expr.span
             };
 
-            emit_return_lint(cx, ret_span, semi_spans, inner.as_ref().map(|i| i.span), replacement);
+            let replacement = if let Some(inner_expr) = inner {
+                // if desugar of `do yeet`, don't lint
+                if let ExprKind::Call(path_expr, _) = inner_expr.kind
+                    && let ExprKind::Path(QPath::LangItem(LangItem::TryTraitFromYeet, _, _)) = path_expr.kind
+                {
+                    return;
+                }
+
+                let mut applicability = Applicability::MachineApplicable;
+                let (snippet, _) = snippet_with_context(cx, inner_expr.span, ret_span.ctxt(), "..", &mut applicability);
+                if expr_contains_conjunctive_ifs(inner_expr) {
+                    RetReplacement::IfSequence(snippet, applicability)
+                } else {
+                    RetReplacement::Expr(snippet, applicability)
+                }
+            } else {
+                replacement
+            };
+
+            if !cx.tcx.hir().attrs(expr.hir_id).is_empty() {
+                return;
+            }
+            let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
+            if borrows {
+                return;
+            }
+
+            emit_return_lint(cx, ret_span, semi_spans, replacement);
         },
         ExprKind::If(_, then, else_clause_opt) => {
             check_block_return(cx, &then.kind, peeled_drop_expr.span, semi_spans.clone());
@@ -253,29 +277,25 @@ fn check_final_expr<'tcx>(
     }
 }
 
-fn emit_return_lint(
-    cx: &LateContext<'_>,
-    ret_span: Span,
-    semi_spans: Vec<Span>,
-    inner_span: Option<Span>,
-    replacement: RetReplacement,
-) {
+fn expr_contains_conjunctive_ifs<'tcx>(expr: &'tcx Expr<'tcx>) -> bool {
+    fn contains_if(expr: &Expr<'_>, on_if: bool) -> bool {
+        match expr.kind {
+            ExprKind::If(..) => on_if,
+            ExprKind::Binary(_, left, right) => contains_if(left, true) || contains_if(right, true),
+            _ => false,
+        }
+    }
+
+    contains_if(expr, false)
+}
+
+fn emit_return_lint(cx: &LateContext<'_>, ret_span: Span, semi_spans: Vec<Span>, replacement: RetReplacement<'_>) {
     if ret_span.from_expansion() {
         return;
     }
-    let mut applicability = Applicability::MachineApplicable;
-    let return_replacement = inner_span.map_or_else(
-        || replacement.to_string(),
-        |inner_span| {
-            let (snippet, _) = snippet_with_context(cx, inner_span, ret_span.ctxt(), "..", &mut applicability);
-            snippet.to_string()
-        },
-    );
-    let sugg_help = if inner_span.is_some() {
-        "remove `return`"
-    } else {
-        replacement.sugg_help()
-    };
+    let applicability = replacement.applicability().unwrap_or(Applicability::MachineApplicable);
+    let return_replacement = replacement.to_string();
+    let sugg_help = replacement.sugg_help();
     span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded `return` statement", |diag| {
         diag.span_suggestion_hidden(ret_span, sugg_help, return_replacement, applicability);
         // for each parent statement, we need to remove the semicolon

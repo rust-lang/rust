@@ -102,7 +102,12 @@ fn make_count<'hir>(
                 let value = ctx.arena.alloc_from_iter([ctx.expr_usize(sp, i)]);
                 ctx.expr_call_mut(sp, count_param, value)
             } else {
-                ctx.expr(sp, hir::ExprKind::Err)
+                ctx.expr(
+                    sp,
+                    hir::ExprKind::Err(
+                        ctx.tcx.sess.delay_span_bug(sp, "lowered bad format_args count"),
+                    ),
+                )
             }
         }
         None => ctx.expr_lang_item_type_relative(sp, hir::LangItem::FormatCount, sym::Implied),
@@ -135,7 +140,10 @@ fn make_format_spec<'hir>(
                 argmap.insert_full((arg_index, ArgumentType::Format(placeholder.format_trait)));
             ctx.expr_usize(sp, i)
         }
-        Err(_) => ctx.expr(sp, hir::ExprKind::Err),
+        Err(_) => ctx.expr(
+            sp,
+            hir::ExprKind::Err(ctx.tcx.sess.delay_span_bug(sp, "lowered bad format_args count")),
+        ),
     };
     let &FormatOptions {
         ref width,
@@ -294,7 +302,12 @@ fn expand_format_args<'hir>(
                 ));
                 make_argument(ctx, sp, arg, ty)
             } else {
-                ctx.expr(macsp, hir::ExprKind::Err)
+                ctx.expr(
+                    macsp,
+                    hir::ExprKind::Err(
+                        ctx.tcx.sess.delay_span_bug(macsp, format!("no arg at {arg_index}")),
+                    ),
+                )
             }
         }));
         let elements: Vec<_> = arguments

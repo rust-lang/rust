@@ -279,6 +279,7 @@ impl<K: DepKind> DepGraph<K> {
     ///   `arg` parameter.
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/incremental-compilation.html
+    #[inline(always)]
     pub fn with_task<Ctxt: HasDepContext<DepKind = K>, A: Debug, R>(
         &self,
         key: DepNode<K>,
@@ -298,6 +299,7 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
+    #[inline(always)]
     fn with_task_impl<Ctxt: HasDepContext<DepKind = K>, A: Debug, R>(
         &self,
         key: DepNode<K>,
@@ -598,6 +600,7 @@ impl<K: DepKind> DepGraph<K> {
         self.data.is_some() && self.dep_node_index_of_opt(dep_node).is_some()
     }
 
+    #[inline]
     pub fn prev_fingerprint_of(&self, dep_node: &DepNode<K>) -> Option<Fingerprint> {
         self.data.as_ref().unwrap().previous.fingerprint_of(dep_node)
     }
@@ -1127,6 +1130,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
 
     /// Writes the node to the current dep-graph and allocates a `DepNodeIndex` for it.
     /// Assumes that this is a node that has no equivalent in the previous dep-graph.
+    #[inline(always)]
     fn intern_new_node(
         &self,
         profiler: &SelfProfilerRef,
@@ -1365,6 +1369,7 @@ impl DepNodeColorMap {
         }
     }
 
+    #[inline]
     fn insert(&self, index: SerializedDepNodeIndex, color: DepNodeColor) {
         self.values[index].store(
             match color {

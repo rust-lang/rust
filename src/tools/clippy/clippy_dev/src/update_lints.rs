@@ -5,7 +5,7 @@ use itertools::Itertools;
 use rustc_lexer::{tokenize, unescape, LiteralKind, TokenKind};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
-use std::fmt::Write;
+use std::fmt::{self, Write};
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write as _};
 use std::ops::Range;
@@ -691,7 +691,7 @@ fn gen_deprecated(lints: &[DeprecatedLint]) -> String {
     let mut output = GENERATED_FILE_COMMENT.to_string();
     output.push_str("{\n");
     for lint in lints {
-        let _ = write!(
+        let _: fmt::Result = write!(
             output,
             concat!(
                 "    store.register_removed(\n",
@@ -726,7 +726,7 @@ fn gen_declared_lints<'a>(
         if !is_public {
             output.push_str("    #[cfg(feature = \"internal\")]\n");
         }
-        let _ = writeln!(output, "    crate::{module_name}::{lint_name}_INFO,");
+        let _: fmt::Result = writeln!(output, "    crate::{module_name}::{lint_name}_INFO,");
     }
     output.push_str("];\n");
 

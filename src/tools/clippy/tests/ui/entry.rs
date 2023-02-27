@@ -156,4 +156,18 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, m2: &mut HashMa
     }
 }
 
+// Issue 10331
+// do not suggest a bad expansion because the compiler unrolls the first
+// occurrence of the loop
+pub fn issue_10331() {
+    let mut m = HashMap::new();
+    let mut i = 0;
+    let mut x = 0;
+    while !m.contains_key(&x) {
+        m.insert(x, i);
+        i += 1;
+        x += 1;
+    }
+}
+
 fn main() {}

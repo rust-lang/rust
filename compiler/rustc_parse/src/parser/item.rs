@@ -1331,7 +1331,7 @@ impl<'a> Parser<'a> {
                 };
 
                 let disr_expr =
-                    if this.eat(&token::Eq) { Some(this.parse_anon_const_expr()?) } else { None };
+                    if this.eat(&token::Eq) { Some(this.parse_expr_anon_const()?) } else { None };
 
                 let vr = ast::Variant {
                     ident,
@@ -1722,7 +1722,7 @@ impl<'a> Parser<'a> {
         }
         if self.token.kind == token::Eq {
             self.bump();
-            let const_expr = self.parse_anon_const_expr()?;
+            let const_expr = self.parse_expr_anon_const()?;
             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
             self.struct_span_err(sp, "default values on `struct` fields aren't supported")
                 .span_suggestion(

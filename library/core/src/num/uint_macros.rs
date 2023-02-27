@@ -4,19 +4,24 @@ macro_rules! uint_impl {
         ActualT = $ActualT:ident,
         SignedT = $SignedT:ident,
         NonZeroT = $NonZeroT:ident,
-        BITS = $BITS:expr,
-        MAX = $MaxV:expr,
-        rot = $rot:expr,
-        rot_op = $rot_op:expr,
-        rot_result = $rot_result:expr,
-        swap_op = $swap_op:expr,
-        swapped = $swapped:expr,
-        reversed = $reversed:expr,
-        le_bytes = $le_bytes:expr,
-        be_bytes = $be_bytes:expr,
+
+        // There are all for use *only* in doc comments.
+        // As such, they're all passed as literals -- passing them as a string
+        // literal is fine if they need to be multiple code tokens.
+        // In non-comments, use the associated constants rather than these.
+        BITS = $BITS:literal,
+        MAX = $MaxV:literal,
+        rot = $rot:literal,
+        rot_op = $rot_op:literal,
+        rot_result = $rot_result:literal,
+        swap_op = $swap_op:literal,
+        swapped = $swapped:literal,
+        reversed = $reversed:literal,
+        le_bytes = $le_bytes:literal,
+        be_bytes = $be_bytes:literal,
         to_xe_bytes_doc = $to_xe_bytes_doc:expr,
         from_xe_bytes_doc = $from_xe_bytes_doc:expr,
-        bound_condition = $bound_condition:expr,
+        bound_condition = $bound_condition:literal,
     ) => {
         /// The smallest value that can be represented by this integer type.
         ///
@@ -51,7 +56,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::BITS, ", stringify!($BITS), ");")]
         /// ```
         #[stable(feature = "int_bits_const", since = "1.53.0")]
-        pub const BITS: u32 = $BITS;
+        pub const BITS: u32 = Self::MAX.count_ones();
 
         /// Converts a string slice in a given base to an integer.
         ///
@@ -1403,7 +1408,7 @@ macro_rules! uint_impl {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
             unsafe {
-                self.unchecked_shl(rhs & ($BITS - 1))
+                self.unchecked_shl(rhs & (Self::BITS - 1))
             }
         }
 
@@ -1436,7 +1441,7 @@ macro_rules! uint_impl {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
             unsafe {
-                self.unchecked_shr(rhs & ($BITS - 1))
+                self.unchecked_shr(rhs & (Self::BITS - 1))
             }
         }
 
@@ -1860,7 +1865,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
-            (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
+            (self.wrapping_shl(rhs), rhs >= Self::BITS)
         }
 
         /// Shifts self right by `rhs` bits.
@@ -1885,7 +1890,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
-            (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
+            (self.wrapping_shr(rhs), rhs >= Self::BITS)
         }
 
         /// Raises self to the power of `exp`, using exponentiation by squaring.

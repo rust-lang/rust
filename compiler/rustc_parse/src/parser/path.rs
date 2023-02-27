@@ -653,7 +653,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_const_arg(&mut self) -> PResult<'a, AnonConst> {
         // Parse const argument.
         let value = if let token::OpenDelim(Delimiter::Brace) = self.token.kind {
-            self.parse_block_expr(None, self.token.span, BlockCheckMode::Default)?
+            self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)?
         } else {
             self.handle_unambiguous_unbraced_const_arg()?
         };

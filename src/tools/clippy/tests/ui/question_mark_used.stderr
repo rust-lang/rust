@@ -1,0 +1,11 @@
+error: question mark operator was used
+  --> $DIR/question_mark_used.rs:11:5
+   |
+LL |     other_function()?;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a custom macro or match expression
+   = note: `-D clippy::question-mark-used` implied by `-D warnings`
+
+error: aborting due to previous error
+

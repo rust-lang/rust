@@ -21,11 +21,13 @@ pub(super) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::Float(_)
         | ty::FnDef(..)
         | ty::FnPtr(_)
-        | ty::Str
         | ty::Error(_)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Never
         | ty::Char => Ok(vec![]),
+
+        // Treat this like `struct str([u8]);`
+        ty::Str => Ok(vec![tcx.mk_slice(tcx.types.u8)]),
 
         ty::Dynamic(..)
         | ty::Param(..)

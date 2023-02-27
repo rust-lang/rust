@@ -693,7 +693,7 @@ impl<'a> Parser<'a> {
                 span: self.prev_token.span.shrink_to_lo(),
                 tokens: None,
             };
-            let struct_expr = snapshot.parse_struct_expr(None, path, false);
+            let struct_expr = snapshot.parse_expr_struct(None, path, false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
                 (Ok(expr), Err(mut err)) => {
@@ -1624,7 +1624,7 @@ impl<'a> Parser<'a> {
             // Handle `await { <expr> }`.
             // This needs to be handled separately from the next arm to avoid
             // interpreting `await { <expr> }?` as `<expr>?.await`.
-            self.parse_block_expr(None, self.token.span, BlockCheckMode::Default)
+            self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)
         } else {
             self.parse_expr()
         }

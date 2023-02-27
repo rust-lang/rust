@@ -17,9 +17,9 @@ use crate::recursive::LintcheckServer;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::env::consts::EXE_SUFFIX;
-use std::fmt::Write as _;
+use std::fmt::{self, Write as _};
 use std::fs;
-use std::io::ErrorKind;
+use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -145,8 +145,8 @@ impl ClippyWarning {
             }
 
             let mut output = String::from("| ");
-            let _ = write!(output, "[`{file_with_pos}`]({file}#L{})", self.line);
-            let _ = write!(output, r#" | `{:<50}` | "{}" |"#, self.lint_type, self.message);
+            let _: fmt::Result = write!(output, "[`{file_with_pos}`]({file}#L{})", self.line);
+            let _: fmt::Result = write!(output, r#" | `{:<50}` | "{}" |"#, self.lint_type, self.message);
             output.push('\n');
             output
         } else {
@@ -632,7 +632,7 @@ fn main() {
         .unwrap();
 
     let server = config.recursive.then(|| {
-        let _ = fs::remove_dir_all("target/lintcheck/shared_target_dir/recursive");
+        let _: io::Result<()> = fs::remove_dir_all("target/lintcheck/shared_target_dir/recursive");
 
         LintcheckServer::spawn(recursive_options)
     });
@@ -689,7 +689,7 @@ fn main() {
     write!(text, "{}", all_msgs.join("")).unwrap();
     text.push_str("\n\n### ICEs:\n");
     for (cratename, msg) in &ices {
-        let _ = write!(text, "{cratename}: '{msg}'");
+        let _: fmt::Result = write!(text, "{cratename}: '{msg}'");
     }
 
     println!("Writing logs to {}", config.lintcheck_results_path.display());

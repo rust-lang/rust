@@ -485,7 +485,7 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
     let normalised =
         if upper_cased_code.starts_with('E') { upper_cased_code } else { format!("E{code:0>4}") };
     match registry.try_find_description(&normalised) {
-        Ok(Some(description)) => {
+        Ok(description) => {
             let mut is_in_code_block = false;
             let mut text = String::new();
             // Slice off the leading newline and print.
@@ -508,9 +508,6 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
             } else {
                 print!("{text}");
             }
-        }
-        Ok(None) => {
-            early_error(output, &format!("no extended information for {code}"));
         }
         Err(InvalidErrorCode) => {
             early_error(output, &format!("{code} is not a valid error code"));

@@ -1012,6 +1012,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Note that this is *untracked* and should only be used within the query
     /// system if the result is otherwise tracked through queries
+    #[inline]
     pub fn cstore_untracked(self) -> MappedReadGuard<'tcx, CrateStoreDyn> {
         ReadGuard::map(self.untracked.cstore.read(), |c| &**c)
     }
