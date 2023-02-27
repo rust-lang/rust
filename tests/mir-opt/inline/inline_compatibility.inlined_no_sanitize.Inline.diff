@@ -4,14 +4,14 @@
   fn inlined_no_sanitize() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/inline_compatibility.rs:+0:37: +0:37
       let _1: ();                          // in scope 0 at $DIR/inline_compatibility.rs:+1:5: +1:18
-+     scope 1 (inlined no_sanitize) {      // at $DIR/inline_compatibility.rs:24:5: 24:18
++     scope 1 (inlined no_sanitize) {      // at $DIR/inline_compatibility.rs:23:5: 23:18
 +     }
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/inline_compatibility.rs:+1:5: +1:18
 -         _1 = no_sanitize() -> bb1;       // scope 0 at $DIR/inline_compatibility.rs:+1:5: +1:18
 -                                          // mir::Constant
--                                          // + span: $DIR/inline_compatibility.rs:24:5: 24:16
+-                                          // + span: $DIR/inline_compatibility.rs:23:5: 23:16
 -                                          // + literal: Const { ty: unsafe fn() {no_sanitize}, val: Value(<ZST>) }
 -     }
 - 
