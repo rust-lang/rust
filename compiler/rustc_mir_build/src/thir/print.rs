@@ -1,13 +1,24 @@
-use crate::thir::*;
-use crate::ty::{self, TyCtxt};
-
+use rustc_middle::thir::*;
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::def_id::LocalDefId;
 use std::fmt::{self, Write};
 
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn thir_tree_representation<'a>(self, thir: &'a Thir<'tcx>) -> String {
-        let mut printer = ThirPrinter::new(thir);
-        printer.print();
-        printer.into_buffer()
+pub(crate) fn thir_tree(tcx: TyCtxt<'_>, owner_def: ty::WithOptConstParam<LocalDefId>) -> String {
+    match super::cx::thir_body(tcx, owner_def) {
+        Ok((thir, _)) => {
+            let thir = thir.steal();
+            let mut printer = ThirPrinter::new(&thir);
+            printer.print();
+            printer.into_buffer()
+        }
+        Err(_) => "error".into(),
+    }
+}
+
+pub(crate) fn thir_flat(tcx: TyCtxt<'_>, owner_def: ty::WithOptConstParam<LocalDefId>) -> String {
+    match super::cx::thir_body(tcx, owner_def) {
+        Ok((thir, _)) => format!("{:#?}", thir.steal()),
+        Err(_) => "error".into(),
     }
 }
 
