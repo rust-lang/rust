@@ -497,7 +497,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         attrs.pointee_size = layout.size;
         // FIXME(eddyb) We should be doing this, but at least on
         // i686-pc-windows-msvc, it results in wrong stack offsets.
-        // attrs.pointee_align = Some(layout.align.abi);
+        attrs.pointee_align = Some(layout.align.abi);
 
         let extra_attrs = layout.is_unsized().then_some(ArgAttributes::new());
 
