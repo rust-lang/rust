@@ -1354,16 +1354,6 @@ impl<'a> Parser<'a> {
         };
         self.recover_from_inc_dec(operand_expr, kind, op_span)
     }
-    pub(super) fn recover_from_prefix_decrement(
-        &mut self,
-        operand_expr: P<Expr>,
-        op_span: Span,
-        start_stmt: bool,
-    ) -> PResult<'a, P<Expr>> {
-        let standalone = if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr };
-        let kind = IncDecRecovery { standalone, op: IncOrDec::Dec, fixity: UnaryFixity::Pre };
-        self.recover_from_inc_dec(operand_expr, kind, op_span)
-    }
 
     pub(super) fn recover_from_postfix_decrement(
         &mut self,
