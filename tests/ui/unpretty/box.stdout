@@ -10,5 +10,5 @@ extern crate std;
 fn main() {
         let _ =
             #[rustc_box]
-            Box::new (1);
+            Box::new(1);
     }
