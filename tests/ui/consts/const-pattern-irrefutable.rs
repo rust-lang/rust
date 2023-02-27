@@ -12,14 +12,17 @@ fn main() {
     let a = 4;
     //~^ ERROR refutable pattern in local binding
     //~| patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
-    //~| HELP you might want to use `if let` to ignore the variants that aren't matched
+    //~| missing patterns are not covered because `a` is interpreted as a constant pattern, not a new variable
+    //~| HELP introduce a variable instead
     let c = 4;
     //~^ ERROR refutable pattern in local binding
     //~| patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
-    //~| HELP you might want to use `if let` to ignore the variants that aren't matched
+    //~| missing patterns are not covered because `c` is interpreted as a constant pattern, not a new variable
+    //~| HELP introduce a variable instead
     let d = 4;
     //~^ ERROR refutable pattern in local binding
     //~| patterns `0_u8..=1_u8` and `3_u8..=u8::MAX` not covered
-    //~| HELP you might want to use `if let` to ignore the variants that aren't matched
+    //~| missing patterns are not covered because `d` is interpreted as a constant pattern, not a new variable
+    //~| HELP introduce a variable instead
     fn f() {} // Check that the `NOTE`s still work with an item here (cf. issue #35115).
 }

@@ -6,7 +6,6 @@ use rustc_errors::{
     error_code, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     Handler, IntoDiagnostic, MultiSpan, SubdiagnosticMessage,
 };
-use rustc_hir::def::Res;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::thir::Pat;
 use rustc_middle::ty::{self, Ty};
@@ -795,8 +794,6 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     pub let_suggestion: Option<SuggestLet>,
     #[subdiagnostic]
     pub misc_suggestion: Option<MiscPatternSuggestion>,
-    #[subdiagnostic]
-    pub res_defined_here: Option<ResDefinedHere>,
 }
 
 #[derive(Subdiagnostic)]
@@ -831,14 +828,6 @@ impl<'tcx> AddToDiagnostic for AdtDefinedHere<'tcx> {
 }
 
 #[derive(Subdiagnostic)]
-#[label(mir_build_res_defined_here)]
-pub struct ResDefinedHere {
-    #[primary_span]
-    pub def_span: Span,
-    pub res: Res,
-}
-
-#[derive(Subdiagnostic)]
 #[suggestion(
     mir_build_interpreted_as_const,
     code = "{variable}_var",
@@ -848,9 +837,7 @@ pub struct ResDefinedHere {
 pub struct InterpretedAsConst {
     #[primary_span]
     pub span: Span,
-    pub article: &'static str,
     pub variable: String,
-    pub res: Res,
 }
 
 #[derive(Subdiagnostic)]

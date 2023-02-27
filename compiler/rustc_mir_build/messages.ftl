@@ -347,15 +347,13 @@ mir_build_inform_irrefutable = `let` bindings require an "irrefutable pattern", 
 
 mir_build_more_information = for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
 
-mir_build_res_defined_here = {$res} defined here
-
 mir_build_adt_defined_here = `{$ty}` defined here
 
 mir_build_variant_defined_here = not covered
 
 mir_build_interpreted_as_const = introduce a variable instead
 
-mir_build_confused = missing patterns are not covered because `{$variable}` is interpreted as {$article} {$res} pattern, not a new variable
+mir_build_confused = missing patterns are not covered because `{$variable}` is interpreted as a constant pattern, not a new variable
 
 mir_build_suggest_if_let = you might want to use `if let` to ignore the {$count ->
         [one] variant that isn't

@@ -424,29 +424,38 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         let inform = sp.is_some().then_some(Inform);
         let mut let_suggestion = None;
         let mut misc_suggestion = None;
-        if let Some(span) = sp && self.tcx.sess.source_map().is_span_accessible(span) {
-            let mut bindings= vec![];
-            pat.each_binding(|name, _, _, _| {
-                bindings.push(name);
-            });
+        let mut interpreted_as_const = None;
+        if let PatKind::Constant { .. } = pat.kind
+            && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
+        {
+            // If the pattern to match is an integer literal:
+            if snippet.chars().all(|c| c.is_digit(10)) {
+                // Then give a suggestion, the user might've meant to create a binding instead.
+                misc_suggestion = Some(MiscPatternSuggestion::AttemptedIntegerLiteral {
+                    start_span: pat.span.shrink_to_lo()
+                });
+            } else if snippet.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                interpreted_as_const = Some(InterpretedAsConst {
+                    span: pat.span,
+                    variable: snippet,
+                });
+            }
+        }
+
+        if let Some(span) = sp
+            && self.tcx.sess.source_map().is_span_accessible(span)
+            && interpreted_as_const.is_none()
+        {
+            let mut bindings = vec![];
+            pat.each_binding(|name, _, _, _| bindings.push(name));
+
             let semi_span = span.shrink_to_hi();
             let start_span = span.shrink_to_lo();
             let end_span = semi_span.shrink_to_lo();
             let count = witnesses.len();
 
-            // If the pattern to match is an integer literal:
-            if bindings.is_empty()
-                && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
-                && snippet.chars().all(|c| c.is_digit(10))
-            {
-                // Then give a suggestion, the user might've meant to create a binding instead.
-                misc_suggestion = Some(MiscPatternSuggestion::AttemptedIntegerLiteral {
-                    start_span: pat.span.shrink_to_lo()
-                });
-            }
-
             let_suggestion = Some(if bindings.is_empty() {
-                SuggestLet::If {start_span, semi_span, count }
+                SuggestLet::If { start_span, semi_span, count }
             } else {
                 SuggestLet::Else { end_span, count }
             });
@@ -469,12 +478,11 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             origin,
             uncovered: Uncovered::new(pat.span, &cx, witnesses),
             inform,
-            interpreted_as_const: None,
+            interpreted_as_const,
             _p: (),
             pattern_ty,
             let_suggestion,
             misc_suggestion,
-            res_defined_here: None,
             adt_defined_here,
         });
     }
