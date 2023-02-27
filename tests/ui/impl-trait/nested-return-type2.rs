@@ -26,7 +26,6 @@ impl<R: Duh, F: FnMut() -> R> Trait for F {
 // Lazy TAIT would error out, but we inserted a hack to make it work again,
 // keeping backwards compatibility.
 fn foo() -> impl Trait<Assoc = impl Send> {
-    //~^ WARN opaque type `impl Trait<Assoc = impl Send>` does not satisfy its associated type bounds
     || 42
 }
 
