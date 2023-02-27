@@ -2246,7 +2246,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         span_mirbug!(
                             self,
                             rvalue,
-                            "Unexpected CastKind::Transmute, should only appear after lowering_intrinsics",
+                            "Unexpected CastKind::Transmute, which is not permitted in Analysis MIR",
                         );
                     }
                 }
