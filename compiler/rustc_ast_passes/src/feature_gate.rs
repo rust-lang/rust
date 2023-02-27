@@ -386,7 +386,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ).span_suggestion_verbose(
                 lhs.span.shrink_to_lo(),
                 "you might have meant to introduce a new binding",
-                "let ".to_string(),
+                "let ",
                 Applicability::MachineApplicable,
             ).emit();
         }
