@@ -3190,6 +3190,14 @@ impl Type {
         matches!(self.ty.kind(Interner), TyKind::Raw(..))
     }
 
+    pub fn as_raw_ptr_ty(&self) -> Option<Type> {
+        if let TyKind::Raw(_, ty) = self.ty.kind(Interner) {
+            Some(self.derived(ty.clone()))
+        } else {
+            None
+        }
+    }
+
     pub fn contains_unknown(&self) -> bool {
         // FIXME: When we get rid of `ConstScalar::Unknown`, we can just look at precomputed
         // `TypeFlags` in `TyData`.
