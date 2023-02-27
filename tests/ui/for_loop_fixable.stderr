@@ -27,10 +27,22 @@ LL |     for _v in [1, 2, 3].iter() {}
    |               ^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[1, 2, 3]`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:55:15
+   |
+LL |     for _v in (&mut [1, 2, 3]).iter() {} // no error
+   |               ^^^^^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&*(&mut [1, 2, 3])`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
   --> $DIR/for_loop_fixable.rs:57:15
    |
 LL |     for _v in [0; 32].iter() {}
    |               ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[0; 32]`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:59:15
+   |
+LL |     for _v in [0; 33].iter() {} // no error
+   |               ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[0; 33]`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
   --> $DIR/for_loop_fixable.rs:62:15
@@ -84,7 +96,7 @@ error: it is more concise to loop over references to containers instead of using
   --> $DIR/for_loop_fixable.rs:275:18
    |
 LL |         for _ in t.into_iter() {}
-   |                  ^^^^^^^^^^^^^ help: to write this more concisely, try: `&t`
+   |                  ^^^^^^^^^^^^^ help: to write this more concisely, try: `t`
 
 error: it is more concise to loop over containers instead of using explicit iteration methods
   --> $DIR/for_loop_fixable.rs:277:18
@@ -92,5 +104,17 @@ error: it is more concise to loop over containers instead of using explicit iter
 LL |         for _ in r.into_iter() {}
    |                  ^^^^^^^^^^^^^ help: to write this more concisely, try: `r`
 
-error: aborting due to 15 previous errors
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:390:14
+   |
+LL |     for _ in x.iter() {}
+   |              ^^^^^^^^ help: to write this more concisely, try: `&x`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/for_loop_fixable.rs:391:14
+   |
+LL |     for _ in x.iter_mut() {}
+   |              ^^^^^^^^^^^^ help: to write this more concisely, try: `&mut x`
+
+error: aborting due to 19 previous errors
 

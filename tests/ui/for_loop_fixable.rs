@@ -1,6 +1,6 @@
 //@run-rustfix
 #![allow(dead_code, unused)]
-#![allow(clippy::uninlined_format_args, clippy::useless_vec)]
+#![allow(clippy::uninlined_format_args, clippy::useless_vec, clippy::deref_addrof)]
 
 use std::collections::*;
 
@@ -306,4 +306,87 @@ mod issue_6900 {
             unimplemented!()
         }
     }
+}
+
+struct IntoIterDiffTy;
+impl IntoIterator for &'_ IntoIterDiffTy {
+    type Item = &'static ();
+    type IntoIter = core::slice::Iter<'static, ()>;
+    fn into_iter(self) -> Self::IntoIter {
+        unimplemented!()
+    }
+}
+impl IntoIterDiffTy {
+    fn iter(&self) -> core::slice::Iter<'static, i32> {
+        unimplemented!()
+    }
+}
+
+struct IntoIterDiffSig;
+impl IntoIterator for &'_ IntoIterDiffSig {
+    type Item = &'static ();
+    type IntoIter = core::slice::Iter<'static, ()>;
+    fn into_iter(self) -> Self::IntoIter {
+        unimplemented!()
+    }
+}
+impl IntoIterDiffSig {
+    fn iter(&self, _: u32) -> core::slice::Iter<'static, ()> {
+        unimplemented!()
+    }
+}
+
+struct IntoIterDiffLt<'a>(&'a ());
+impl<'a> IntoIterator for &'a IntoIterDiffLt<'_> {
+    type Item = &'a ();
+    type IntoIter = core::slice::Iter<'a, ()>;
+    fn into_iter(self) -> Self::IntoIter {
+        unimplemented!()
+    }
+}
+impl<'a> IntoIterDiffLt<'a> {
+    fn iter(&self) -> core::slice::Iter<'a, ()> {
+        unimplemented!()
+    }
+}
+
+struct CustomType;
+impl<'a> IntoIterator for &'a CustomType {
+    type Item = &'a u32;
+    type IntoIter = core::slice::Iter<'a, u32>;
+    fn into_iter(self) -> Self::IntoIter {
+        unimplemented!()
+    }
+}
+impl<'a> IntoIterator for &'a mut CustomType {
+    type Item = &'a mut u32;
+    type IntoIter = core::slice::IterMut<'a, u32>;
+    fn into_iter(self) -> Self::IntoIter {
+        unimplemented!()
+    }
+}
+impl CustomType {
+    fn iter(&self) -> <&'_ Self as IntoIterator>::IntoIter {
+        panic!()
+    }
+
+    fn iter_mut(&mut self) -> core::slice::IterMut<'_, u32> {
+        panic!()
+    }
+}
+
+#[warn(clippy::explicit_iter_loop)]
+fn _f() {
+    let x = IntoIterDiffTy;
+    for _ in x.iter() {}
+
+    let x = IntoIterDiffSig;
+    for _ in x.iter(0) {}
+
+    let x = IntoIterDiffLt(&());
+    for _ in x.iter() {}
+
+    let mut x = CustomType;
+    for _ in x.iter() {}
+    for _ in x.iter_mut() {}
 }
