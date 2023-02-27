@@ -893,6 +893,23 @@ pub trait LintContext: Sized {
                 BuiltinLintDiagnostics::ByteSliceInPackedStructWithDerive => {
                     db.help("consider implementing the trait by hand, or remove the `packed` attribute");
                 }
+                BuiltinLintDiagnostics::UnusedExternCrate { removal_span }=> {
+                    db.span_suggestion(
+                        removal_span,
+                        "remove it",
+                        "",
+                        Applicability::MachineApplicable,
+                    );
+                }
+                BuiltinLintDiagnostics::ExternCrateNotIdiomatic { vis_span, ident_span }=> {
+                    let suggestion_span = vis_span.between(ident_span);
+                    db.span_suggestion_verbose(
+                        suggestion_span,
+                        "convert it to a `use`",
+                        if vis_span.is_empty() { "use " } else { " use " },
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(db)

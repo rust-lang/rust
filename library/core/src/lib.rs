@@ -124,6 +124,8 @@
 #![feature(const_inherent_unchecked_arith)]
 #![feature(const_int_unchecked_arith)]
 #![feature(const_intrinsic_forget)]
+#![feature(const_ipv4)]
+#![feature(const_ipv6)]
 #![feature(const_likely)]
 #![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
@@ -179,6 +181,7 @@
 #![feature(const_slice_index)]
 #![feature(const_is_char_boundary)]
 #![feature(const_cstr_methods)]
+#![feature(ip)]
 #![feature(is_ascii_octdigit)]
 //
 // Language features:
@@ -349,6 +352,7 @@ pub mod cell;
 pub mod char;
 pub mod ffi;
 pub mod iter;
+pub mod net;
 pub mod option;
 pub mod panic;
 pub mod panicking;

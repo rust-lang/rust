@@ -87,7 +87,7 @@ fn get_modified_rs_files(build: &Builder<'_>) -> Result<Option<Vec<String>>, Str
     get_git_modified_files(Some(&build.config.src), &vec!["rs"])
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde_derive::Deserialize)]
 struct RustfmtConfig {
     ignore: Vec<String>,
 }

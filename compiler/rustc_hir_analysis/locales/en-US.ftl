@@ -62,14 +62,6 @@ hir_analysis_manual_implementation =
 
 hir_analysis_substs_on_overridden_impl = could not resolve substs on overridden impl
 
-hir_analysis_unused_extern_crate =
-    unused extern crate
-    .suggestion = remove it
-
-hir_analysis_extern_crate_not_idiomatic =
-    `extern crate` is not idiomatic in the new edition
-    .suggestion = convert it to a `{$msg_code}`
-
 hir_analysis_trait_object_declared_with_no_traits =
     at least one trait is required for an object type
     .alias_span = this alias does not contain a trait

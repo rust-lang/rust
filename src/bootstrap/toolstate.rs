@@ -1,6 +1,6 @@
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::util::t;
-use serde::{Deserialize, Serialize};
+use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 use std::fmt;

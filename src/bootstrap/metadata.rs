@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use serde::Deserialize;
+use serde_derive::Deserialize;
 
 use crate::cache::INTERNER;
 use crate::util::output;

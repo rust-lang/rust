@@ -1,6 +1,6 @@
 // FIXME: These tests are all excellent candidates for AFL fuzz testing
-use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
-use crate::str::FromStr;
+use core::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use core::str::FromStr;
 
 const PORT: u16 = 8080;
 const SCOPE_ID: u32 = 1337;
