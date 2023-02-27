@@ -1,58 +1,39 @@
 use super::EXPLICIT_ITER_LOOP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_trait_method;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{implements_trait_with_env, make_normalized_projection_with_regions, normalize_with_regions,
-    make_normalized_projection, implements_trait, is_copy};
+use clippy_utils::ty::{
+    implements_trait, implements_trait_with_env, is_copy, make_normalized_projection,
+    make_normalized_projection_with_regions, normalize_with_regions,
+};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, EarlyBinder, TypeAndMut, Ty};
+use rustc_middle::ty::{self, EarlyBinder, Ty, TypeAndMut};
 use rustc_span::sym;
 
-pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, call_expr: &Expr<'_>, method_name: &str, msrv: &Msrv) {
-    let borrow_kind = match method_name {
-        "iter" | "iter_mut" => match is_ref_iterable(cx, self_arg, call_expr) {
-            Some((kind, ty)) => {
-                if let ty::Array(_, count) = *ty.peel_refs().kind() {
-                    if !ty.is_ref() {
-                        if !msrv.meets(msrvs::ARRAY_INTO_ITERATOR) {
-                            return;
-                        }
-                    } else if count.try_eval_target_usize(cx.tcx, cx.param_env).map_or(true, |x| x > 32)
-                        && !msrv.meets(msrvs::ARRAY_IMPL_ANY_LEN)
-                    {
-                        return
-                    }
-                }
-                kind
-            },
-            None => return,
-        },
-        "into_iter" if is_trait_method(cx, call_expr, sym::IntoIterator) => {
-            let receiver_ty = cx.typeck_results().expr_ty(self_arg);
-            let receiver_ty_adjusted = cx.typeck_results().expr_ty_adjusted(self_arg);
-            let ref_receiver_ty = cx.tcx.mk_ref(
-                cx.tcx.lifetimes.re_erased,
-                ty::TypeAndMut {
-                    ty: receiver_ty,
-                    mutbl: Mutability::Not,
-                },
-            );
-            if receiver_ty_adjusted == ref_receiver_ty {
-                AdjustKind::None
-            } else {
+pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, call_expr: &Expr<'_>, msrv: &Msrv) {
+    let Some((adjust, ty)) = is_ref_iterable(cx, self_arg, call_expr) else {
+        return;
+    };
+    if let ty::Array(_, count) = *ty.peel_refs().kind() {
+        if !ty.is_ref() {
+            if !msrv.meets(msrvs::ARRAY_INTO_ITERATOR) {
                 return;
             }
-        },
-        _ => return,
-    };
+        } else if count
+            .try_eval_target_usize(cx.tcx, cx.param_env)
+            .map_or(true, |x| x > 32)
+            && !msrv.meets(msrvs::ARRAY_IMPL_ANY_LEN)
+        {
+            return;
+        }
+    }
 
     let mut applicability = Applicability::MachineApplicable;
     let object = snippet_with_applicability(cx, self_arg.span, "_", &mut applicability);
-    let prefix = match borrow_kind {
+    let prefix = match adjust {
         AdjustKind::None => "",
         AdjustKind::Borrow => "&",
         AdjustKind::BorrowMut => "&mut ",
@@ -105,7 +86,11 @@ impl AdjustKind {
 
 /// Checks if an `iter` or `iter_mut` call returns `IntoIterator::IntoIter`. Returns how the
 /// argument needs to be adjusted.
-fn is_ref_iterable<'tcx>(cx: &LateContext<'tcx>, self_arg: &Expr<'_>, call_expr: &Expr<'_>) -> Option<(AdjustKind, Ty<'tcx>)> {
+fn is_ref_iterable<'tcx>(
+    cx: &LateContext<'tcx>,
+    self_arg: &Expr<'_>,
+    call_expr: &Expr<'_>,
+) -> Option<(AdjustKind, Ty<'tcx>)> {
     let typeck = cx.typeck_results();
     if let Some(trait_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
         && let Some(fn_id) = typeck.type_dependent_def_id(call_expr.hir_id)
@@ -158,10 +143,18 @@ fn is_ref_iterable<'tcx>(cx: &LateContext<'tcx>, self_arg: &Expr<'_>, call_expr:
 
         match adjustments {
             [] => Some((AdjustKind::None, self_ty)),
-            &[Adjustment { kind: Adjust::Deref(_), ..}, Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl)), target }, ..] => {
+            &[
+                Adjustment { kind: Adjust::Deref(_), ..},
+                Adjustment {
+                    kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl)),
+                    target,
+                },
+                ..
+            ] => {
                 if target != self_ty
                     && implements_trait(cx, target, trait_id, &[])
-                    && let Some(ty) = make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [target])
+                    && let Some(ty) =
+                        make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [target])
                     && ty == res_ty
                 {
                     Some((AdjustKind::reborrow(mutbl), target))
@@ -172,7 +165,8 @@ fn is_ref_iterable<'tcx>(cx: &LateContext<'tcx>, self_arg: &Expr<'_>, call_expr:
             &[Adjustment { kind: Adjust::Deref(_), target }, ..] => {
                 if is_copy(cx, target)
                     && implements_trait(cx, target, trait_id, &[])
-                    && let Some(ty) = make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [target])
+                    && let Some(ty) =
+                        make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [target])
                     && ty == res_ty
                 {
                     Some((AdjustKind::Deref, target))
@@ -180,10 +174,17 @@ fn is_ref_iterable<'tcx>(cx: &LateContext<'tcx>, self_arg: &Expr<'_>, call_expr:
                     None
                 }
             }
-            &[Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl)), target }, ..] => {
+            &[
+                Adjustment {
+                    kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl)),
+                    target,
+                },
+                ..
+            ] => {
                 if self_ty.is_ref()
                     && implements_trait(cx, target, trait_id, &[])
-                    && let Some(ty) = make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [target])
+                    && let Some(ty) =
+                        make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [target])
                     && ty == res_ty
                 {
                     Some((AdjustKind::auto_borrow(mutbl), target))

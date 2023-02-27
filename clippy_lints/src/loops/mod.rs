@@ -715,14 +715,11 @@ impl Loops {
 
     fn check_for_loop_arg(&self, cx: &LateContext<'_>, _: &Pat<'_>, arg: &Expr<'_>) {
         if let ExprKind::MethodCall(method, self_arg, [], _) = arg.kind {
-            let method_name = method.ident.as_str();
-            // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
-            match method_name {
+            match method.ident.as_str() {
                 "iter" | "iter_mut" => {
-                    explicit_iter_loop::check(cx, self_arg, arg, method_name, &self.msrv);
+                    explicit_iter_loop::check(cx, self_arg, arg, &self.msrv);
                 },
                 "into_iter" => {
-                    explicit_iter_loop::check(cx, self_arg, arg, method_name, &self.msrv);
                     explicit_into_iter_loop::check(cx, self_arg, arg);
                 },
                 "next" => {

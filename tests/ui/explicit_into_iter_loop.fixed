@@ -7,9 +7,7 @@ fn main() {
     where
         for<'a> &'a T: IntoIterator<Item = &'a String>,
     {
-        for i in iterator {
-            println!("{}", i);
-        }
+        for _ in iterator {}
     }
 
     struct T;
@@ -17,22 +15,38 @@ fn main() {
         type Item = ();
         type IntoIter = std::vec::IntoIter<Self::Item>;
         fn into_iter(self) -> Self::IntoIter {
-            vec![].into_iter()
+            unimplemented!()
         }
     }
 
-    let t = T;
+    let mut t = T;
+    for _ in &t {}
+
     let r = &t;
-    let rr = &&t;
-
-    // This case is handled by `explicit_iter_loop`. No idea why.
-    for _ in t.into_iter() {}
-
     for _ in r {}
 
     // No suggestion for this.
     // We'd have to suggest `for _ in *rr {}` which is less clear.
+    let rr = &&t;
     for _ in rr.into_iter() {}
+
+    let mr = &mut t;
+    for _ in &*mr {}
+
+    struct U;
+    impl IntoIterator for &mut U {
+        type Item = ();
+        type IntoIter = std::vec::IntoIter<Self::Item>;
+        fn into_iter(self) -> Self::IntoIter {
+            unimplemented!()
+        }
+    }
+
+    let mut u = U;
+    for _ in &mut u {}
+
+    let mr = &mut u;
+    for _ in &mut *mr {}
 
     // Issue #6900
     struct S;
