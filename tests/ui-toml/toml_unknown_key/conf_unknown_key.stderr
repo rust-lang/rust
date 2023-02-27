@@ -24,6 +24,7 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            enforced-import-renames
            enum-variant-name-threshold
            enum-variant-size-threshold
+           future-size-threshold
            ignore-interior-mutability
            large-error-threshold
            literal-representation-threshold

@@ -216,6 +216,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::iter_not_returning_iterator::ITER_NOT_RETURNING_ITERATOR_INFO,
     crate::large_const_arrays::LARGE_CONST_ARRAYS_INFO,
     crate::large_enum_variant::LARGE_ENUM_VARIANT_INFO,
+    crate::large_futures::LARGE_FUTURES_INFO,
     crate::large_include_file::LARGE_INCLUDE_FILE_INFO,
     crate::large_stack_arrays::LARGE_STACK_ARRAYS_INFO,
     crate::len_zero::COMPARISON_TO_EMPTY_INFO,

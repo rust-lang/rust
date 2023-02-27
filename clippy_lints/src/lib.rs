@@ -161,6 +161,7 @@ mod items_after_statements;
 mod iter_not_returning_iterator;
 mod large_const_arrays;
 mod large_enum_variant;
+mod large_futures;
 mod large_include_file;
 mod large_stack_arrays;
 mod len_zero;
@@ -800,6 +801,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move |_| Box::new(dereference::Dereferencing::new(msrv())));
     store.register_late_pass(|_| Box::new(option_if_let_else::OptionIfLetElse));
     store.register_late_pass(|_| Box::new(future_not_send::FutureNotSend));
+    let future_size_threshold = conf.future_size_threshold;
+    store.register_late_pass(move |_| Box::new(large_futures::LargeFuture::new(future_size_threshold)));
     store.register_late_pass(|_| Box::new(if_let_mutex::IfLetMutex));
     store.register_late_pass(|_| Box::new(if_not_else::IfNotElse));
     store.register_late_pass(|_| Box::new(equatable_if_let::PatternEquality));

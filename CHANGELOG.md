@@ -278,7 +278,7 @@ Released 2022-12-15
   [#9490](https://github.com/rust-lang/rust-clippy/pull/9490)
 * [`almost_complete_letter_range`]: No longer lints in external macros
   [#9467](https://github.com/rust-lang/rust-clippy/pull/9467)
-* [`drop_copy`]: No longer lints on idiomatic cases in match arms 
+* [`drop_copy`]: No longer lints on idiomatic cases in match arms
   [#9491](https://github.com/rust-lang/rust-clippy/pull/9491)
 * [`question_mark`]: No longer lints in const context
   [#9487](https://github.com/rust-lang/rust-clippy/pull/9487)
@@ -4485,6 +4485,7 @@ Released 2018-09-13
 [`large_const_arrays`]: https://rust-lang.github.io/rust-clippy/master/index.html#large_const_arrays
 [`large_digit_groups`]: https://rust-lang.github.io/rust-clippy/master/index.html#large_digit_groups
 [`large_enum_variant`]: https://rust-lang.github.io/rust-clippy/master/index.html#large_enum_variant
+[`large_futures`]: https://rust-lang.github.io/rust-clippy/master/index.html#large_futures
 [`large_include_file`]: https://rust-lang.github.io/rust-clippy/master/index.html#large_include_file
 [`large_stack_arrays`]: https://rust-lang.github.io/rust-clippy/master/index.html#large_stack_arrays
 [`large_types_passed_by_value`]: https://rust-lang.github.io/rust-clippy/master/index.html#large_types_passed_by_value

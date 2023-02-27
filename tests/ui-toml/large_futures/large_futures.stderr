@@ -1,0 +1,10 @@
+error: large future with a size of 1026 bytes
+  --> $DIR/large_futures.rs:20:5
+   |
+LL |     should_warn().await;
+   |     ^^^^^^^^^^^^^ help: consider `Box::pin` on it: `Box::pin(should_warn())`
+   |
+   = note: `-D clippy::large-futures` implied by `-D warnings`
+
+error: aborting due to previous error
+
