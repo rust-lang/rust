@@ -808,7 +808,7 @@ fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &Msr
 }
 
 fn check_nested_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
-    for item in items.iter() {
+    for item in items {
         if let NestedMetaItem::MetaItem(meta) = item {
             if !meta.has_name(sym::any) && !meta.has_name(sym::all) {
                 continue;
@@ -842,7 +842,7 @@ fn check_nested_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
 }
 
 fn check_nested_misused_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
-    for item in items.iter() {
+    for item in items {
         if let NestedMetaItem::MetaItem(meta) = item {
             if meta.has_name(sym!(features)) && let Some(val) = meta.value_str() {
                 span_lint_and_sugg(

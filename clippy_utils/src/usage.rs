@@ -82,7 +82,7 @@ pub struct ParamBindingIdCollector {
 impl<'tcx> ParamBindingIdCollector {
     fn collect_binding_hir_ids(body: &'tcx hir::Body<'tcx>) -> Vec<hir::HirId> {
         let mut hir_ids: Vec<hir::HirId> = Vec::new();
-        for param in body.params.iter() {
+        for param in body.params {
             let mut finder = ParamBindingIdCollector {
                 binding_hir_ids: Vec::new(),
             };

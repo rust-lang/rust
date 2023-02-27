@@ -17,6 +17,13 @@ fn main() {
     for _ in &vec {}
     for _ in &mut vec {}
 
+    let rvec = &vec;
+    for _ in rvec {}
+
+    let rmvec = &mut vec;
+    for _ in &*rmvec {}
+    for _ in &mut *rmvec {}
+
     for _ in &vec {} // these are fine
     for _ in &mut vec {} // these are fine
 
@@ -29,9 +36,13 @@ fn main() {
 
     let ll: LinkedList<()> = LinkedList::new();
     for _ in &ll {}
+    let rll = &ll;
+    for _ in rll {}
 
     let vd: VecDeque<()> = VecDeque::new();
     for _ in &vd {}
+    let rvd = &vd;
+    for _ in rvd {}
 
     let bh: BinaryHeap<()> = BinaryHeap::new();
     for _ in &bh {}
@@ -137,4 +148,7 @@ fn main() {
     let mut x = CustomType;
     for _ in &x {}
     for _ in &mut x {}
+
+    let r = &x;
+    for _ in r {}
 }

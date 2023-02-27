@@ -84,7 +84,7 @@ pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, call_expr: &Expr<
         "it is more concise to loop over containers instead of using explicit \
             iteration methods",
         "to write this more concisely, try",
-        format!("{}{}", adjust.display(), object.to_string()),
+        format!("{}{object}", adjust.display()),
         applicability,
     );
 }

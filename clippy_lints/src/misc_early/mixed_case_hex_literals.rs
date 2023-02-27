@@ -13,7 +13,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, lit_span: Span, suffix: &str, lit_sni
         return;
     }
     let mut seen = (false, false);
-    for ch in lit_snip.as_bytes()[2..=maybe_last_sep_idx].iter() {
+    for ch in &lit_snip.as_bytes()[2..=maybe_last_sep_idx] {
         match ch {
             b'a'..=b'f' => seen.0 = true,
             b'A'..=b'F' => seen.1 = true,

@@ -687,6 +687,8 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
             manual_while_let_some::check(cx, condition, body, span);
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 impl Loops {
