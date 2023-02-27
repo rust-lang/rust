@@ -406,7 +406,7 @@ mod issue10041 {
     struct Bomb;
 
     impl Bomb {
-        // Hidden <Rhs = Self> default generic paramter.
+        // Hidden <Rhs = Self> default generic parameter.
         pub fn new() -> impl PartialOrd {
             0i32
         }

@@ -617,7 +617,7 @@ fn item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Vec<Re
 /// Can return multiple resolutions when there are multiple versions of the same crate, e.g.
 /// `memchr::memchr` could return the functions from both memchr 1.0 and memchr 2.0.
 ///
-/// Also returns multiple results when there are mulitple paths under the same name e.g. `std::vec`
+/// Also returns multiple results when there are multiple paths under the same name e.g. `std::vec`
 /// would have both a [`DefKind::Mod`] and [`DefKind::Macro`].
 ///
 /// This function is expensive and should be used sparingly.
