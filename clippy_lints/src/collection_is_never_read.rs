@@ -30,6 +30,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
+    /// # let samples = vec![3, 1, 2];
     /// let mut sorted_samples = samples.clone();
     /// sorted_samples.sort();
     /// for sample in &samples { // Oops, meant to use `sorted_samples`.
@@ -38,6 +39,7 @@ declare_clippy_lint! {
     /// ```
     /// Use instead:
     /// ```rust
+    /// # let samples = vec![3, 1, 2];
     /// let mut sorted_samples = samples.clone();
     /// sorted_samples.sort();
     /// for sample in &sorted_samples {
