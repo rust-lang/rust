@@ -1,5 +1,5 @@
 error[E0382]: borrow of moved value: `g`
-  --> $DIR/issue-105084.rs:44:14
+  --> $DIR/issue-105084.rs:45:14
    |
 LL |     let mut g = || {
    |         ----- move occurs because `g` has type `[generator@$DIR/issue-105084.rs:22:17: 22:19]`, which does not implement the `Copy` trait
@@ -23,7 +23,7 @@ LL |     let mut h = copy(g.clone());
    |                       ++++++++
 
 error[E0277]: the trait bound `Box<(i32, ())>: Copy` is not satisfied in `[generator@$DIR/issue-105084.rs:22:17: 22:19]`
-  --> $DIR/issue-105084.rs:38:17
+  --> $DIR/issue-105084.rs:39:17
    |
 LL |     let mut g = || {
    |                 -- within this `[generator@$DIR/issue-105084.rs:22:17: 22:19]`
@@ -32,13 +32,13 @@ LL |     let mut h = copy(g);
    |                 ^^^^ within `[generator@$DIR/issue-105084.rs:22:17: 22:19]`, the trait `Copy` is not implemented for `Box<(i32, ())>`
    |
 note: generator does not implement `Copy` as this value is used across a yield
-  --> $DIR/issue-105084.rs:28:25
+  --> $DIR/issue-105084.rs:29:22
    |
-LL |         let t = box (5, yield);
-   |                 --------^^^^^-
-   |                 |       |
-   |                 |       yield occurs here, with `box (5, yield)` maybe used later
-   |                 has type `Box<(i32, ())>` which does not implement `Copy`
+LL |         Box::new((5, yield));
+   |         -------------^^^^^--
+   |         |            |
+   |         |            yield occurs here, with `Box::new((5, yield))` maybe used later
+   |         has type `Box<(i32, ())>` which does not implement `Copy`
 note: required by a bound in `copy`
   --> $DIR/issue-105084.rs:17:12
    |

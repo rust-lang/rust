@@ -1,7 +1,5 @@
 fn main() {}
 
-#[cfg(FALSE)] fn e() { let _ = box #![attr] 0; }
-//~^ ERROR an inner attribute is not permitted in this context
 #[cfg(FALSE)] fn e() { let _ = [#[attr]]; }
 //~^ ERROR expected expression, found `]`
 #[cfg(FALSE)] fn e() { let _ = foo#[attr](); }

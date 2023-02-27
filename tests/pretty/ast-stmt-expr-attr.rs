@@ -4,7 +4,6 @@ fn main() {}
 
 #[cfg(FALSE)]
 fn syntax() {
-    let _ = #[attr] box 0;
     let _ = #[attr] [];
     let _ = #[attr] [0];
     let _ = #[attr] [0; 0];

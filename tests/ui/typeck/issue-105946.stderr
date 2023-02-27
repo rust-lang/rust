@@ -1,49 +1,31 @@
 error[E0425]: cannot find value `_y` in this scope
   --> $DIR/issue-105946.rs:6:10
    |
-LL |     let [_y..] = [box 1, box 2];
+LL |     let [_y..] = [Box::new(1), Box::new(2)];
    |          ^^ not found in this scope
 
 error[E0658]: `X..` patterns in slices are experimental
   --> $DIR/issue-105946.rs:6:10
    |
-LL |     let [_y..] = [box 1, box 2];
+LL |     let [_y..] = [Box::new(1), Box::new(2)];
    |          ^^^^
    |
    = note: see issue #67264 <https://github.com/rust-lang/rust/issues/67264> for more information
    = help: add `#![feature(half_open_range_patterns_in_slices)]` to the crate attributes to enable
 
-error[E0658]: box expression syntax is experimental; you can call `Box::new` instead
-  --> $DIR/issue-105946.rs:6:19
-   |
-LL |     let [_y..] = [box 1, box 2];
-   |                   ^^^^^
-   |
-   = note: see issue #49733 <https://github.com/rust-lang/rust/issues/49733> for more information
-   = help: add `#![feature(box_syntax)]` to the crate attributes to enable
-
-error[E0658]: box expression syntax is experimental; you can call `Box::new` instead
-  --> $DIR/issue-105946.rs:6:26
-   |
-LL |     let [_y..] = [box 1, box 2];
-   |                          ^^^^^
-   |
-   = note: see issue #49733 <https://github.com/rust-lang/rust/issues/49733> for more information
-   = help: add `#![feature(box_syntax)]` to the crate attributes to enable
-
 error[E0308]: mismatched types
-  --> $DIR/issue-105946.rs:2:10
+  --> $DIR/issue-105946.rs:2:12
    |
-LL |   return {};
-   |          ^^ expected `str`, found `()`
+LL |     return {};
+   |            ^^ expected `str`, found `()`
 
 error[E0527]: pattern requires 1 element but array has 2
   --> $DIR/issue-105946.rs:6:9
    |
-LL |     let [_y..] = [box 1, box 2];
+LL |     let [_y..] = [Box::new(1), Box::new(2)];
    |         ^^^^^^ expected 2 elements
 
-error: aborting due to 6 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0308, E0425, E0527, E0658.
 For more information about an error, try `rustc --explain E0308`.
