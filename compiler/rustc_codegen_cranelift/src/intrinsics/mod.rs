@@ -21,7 +21,8 @@ mod simd;
 pub(crate) use cpuid::codegen_cpuid_call;
 pub(crate) use llvm::codegen_llvm_intrinsic_call;
 
-use rustc_middle::ty::layout::HasParamEnv;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::{HasParamEnv, InitKind};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -642,7 +643,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             if intrinsic == sym::assert_zero_valid
                 && !fx
                     .tcx
-                    .permits_zero_init(fx.param_env().and(ty))
+                    .check_validity_of_init((InitKind::Zero, fx.param_env().and(ty)))
                     .expect("expected to have layout during codegen")
             {
                 with_no_trimmed_paths!({
@@ -661,7 +662,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
             if intrinsic == sym::assert_mem_uninitialized_valid
                 && !fx
                     .tcx
-                    .permits_uninit_init(fx.param_env().and(ty))
+                    .check_validity_of_init((
+                        InitKind::UninitMitigated0x01Fill,
+                        fx.param_env().and(ty),
+                    ))
                     .expect("expected to have layout during codegen")
             {
                 with_no_trimmed_paths!({

@@ -213,7 +213,9 @@ degree documented below):
 - The best-supported target is `x86_64-unknown-linux-gnu`. Miri releases are
   blocked on things working with this target. Most other Linux targets should
   also work well; we do run the test suite on `i686-unknown-linux-gnu` as a
-  32bit target and `mips64-unknown-linux-gnuabi64` as a big-endian target.
+  32bit target and `mips64-unknown-linux-gnuabi64` as a big-endian target, as
+  well as the ARM targets `aarch64-unknown-linux-gnu` and
+  `arm-unknown-linux-gnueabi`.
 - `x86_64-apple-darwin` should work basically as well as Linux. We also test
   `aarch64-apple-darwin`. However, we might ship Miri with a nightly even when
   some features on these targets regress.
@@ -590,7 +592,7 @@ extern "Rust" {
     /// `out` must point to at least `out_size` many bytes, and the result will be stored there
     /// with a null terminator.
     /// Returns 0 if the `out` buffer was large enough, and the required size otherwise.
-    fn miri_host_to_target_path(path: *const i8, out: *mut i8, out_size: usize) -> usize;
+    fn miri_host_to_target_path(path: *const std::ffi::c_char, out: *mut std::ffi::c_char, out_size: usize) -> usize;
 }
 ```
 

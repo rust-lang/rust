@@ -463,11 +463,10 @@ function initSearch(rawSearchIndex) {
      * @param {ParserState} parserState
      */
     function parseInput(query, parserState) {
-        let c, before;
         let foundStopChar = true;
 
         while (parserState.pos < parserState.length) {
-            c = parserState.userQuery[parserState.pos];
+            const c = parserState.userQuery[parserState.pos];
             if (isStopCharacter(c)) {
                 foundStopChar = true;
                 if (isSeparatorCharacter(c)) {
@@ -506,7 +505,7 @@ function initSearch(rawSearchIndex) {
                 }
                 throw new Error(`Expected \`,\`, \` \`, \`:\` or \`->\`, found \`${c}\``);
             }
-            before = query.elems.length;
+            const before = query.elems.length;
             getNextElem(query, parserState, query.elems, false);
             if (query.elems.length === before) {
                 // Nothing was added, weird... Let's increase the position to not remain stuck.
@@ -515,7 +514,6 @@ function initSearch(rawSearchIndex) {
             foundStopChar = false;
         }
         while (parserState.pos < parserState.length) {
-            c = parserState.userQuery[parserState.pos];
             if (isReturnArrow(parserState)) {
                 parserState.pos += 2;
                 // Get returned elements.
@@ -1940,7 +1938,6 @@ function initSearch(rawSearchIndex) {
          */
         const searchWords = [];
         const charA = "A".charCodeAt(0);
-        let i, word;
         let currentIndex = 0;
         let id = 0;
 
@@ -2035,7 +2032,7 @@ function initSearch(rawSearchIndex) {
             // convert `rawPaths` entries into object form
             // generate normalizedPaths for function search mode
             let len = paths.length;
-            for (i = 0; i < len; ++i) {
+            for (let i = 0; i < len; ++i) {
                 lowercasePaths.push({ty: paths[i][0], name: paths[i][1].toLowerCase()});
                 paths[i] = {ty: paths[i][0], name: paths[i][1]};
             }
@@ -2049,16 +2046,14 @@ function initSearch(rawSearchIndex) {
             // faster analysis operations
             len = itemTypes.length;
             let lastPath = "";
-            for (i = 0; i < len; ++i) {
+            for (let i = 0; i < len; ++i) {
+                let word = "";
                 // This object should have exactly the same set of fields as the "crateRow"
                 // object defined above.
                 if (typeof itemNames[i] === "string") {
                     word = itemNames[i].toLowerCase();
-                    searchWords.push(word);
-                } else {
-                    word = "";
-                    searchWords.push("");
                 }
+                searchWords.push(word);
                 const row = {
                     crate: crate,
                     ty: itemTypes.charCodeAt(i) - charA,

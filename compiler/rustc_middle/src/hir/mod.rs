@@ -64,13 +64,17 @@ impl ModuleItems {
         self.foreign_items.iter().copied()
     }
 
-    pub fn definitions(&self) -> impl Iterator<Item = LocalDefId> + '_ {
+    pub fn owners(&self) -> impl Iterator<Item = OwnerId> + '_ {
         self.items
             .iter()
-            .map(|id| id.owner_id.def_id)
-            .chain(self.trait_items.iter().map(|id| id.owner_id.def_id))
-            .chain(self.impl_items.iter().map(|id| id.owner_id.def_id))
-            .chain(self.foreign_items.iter().map(|id| id.owner_id.def_id))
+            .map(|id| id.owner_id)
+            .chain(self.trait_items.iter().map(|id| id.owner_id))
+            .chain(self.impl_items.iter().map(|id| id.owner_id))
+            .chain(self.foreign_items.iter().map(|id| id.owner_id))
+    }
+
+    pub fn definitions(&self) -> impl Iterator<Item = LocalDefId> + '_ {
+        self.owners().map(|id| id.def_id)
     }
 
     pub fn par_items(&self, f: impl Fn(ItemId) + Send + Sync) {
