@@ -2273,6 +2273,60 @@ mod tests {
     }
 
     #[test]
+    fn test_runnables_doc_test_in_impl_with_lifetime_type_const_value() {
+        check(
+            r#"
+//- /lib.rs
+$0
+fn main() {}
+
+struct Data<'a, A, const B: usize, C, const D: u32>;
+impl<A, C, const D: u32> Data<'a, A, 12, C, D> {
+    /// ```
+    /// ```
+    fn foo() {}
+}
+"#,
+            &[Bin, DocTest],
+            expect![[r#"
+                [
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 1..13,
+                            focus_range: 4..8,
+                            name: "main",
+                            kind: Function,
+                        },
+                        kind: Bin,
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 121..156,
+                            name: "foo",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "Data<'a,A,12,C,D>::foo",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                ]
+            "#]],
+        );
+    }
+
+
+    #[test]
     fn doc_test_type_params() {
         check(
             r#"
