@@ -1673,6 +1673,7 @@ impl<'a> SemanticsScope<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct VisibleTraits(pub FxHashSet<TraitId>);
 
 impl ops::Deref for VisibleTraits {

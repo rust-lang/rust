@@ -867,16 +867,20 @@ fn iterate_method_candidates_with_autoref(
         return ControlFlow::Continue(());
     }
 
-    iterate_method_candidates_by_receiver(
-        receiver_ty,
-        first_adjustment.clone(),
-        db,
-        env.clone(),
-        traits_in_scope,
-        visible_from_module,
-        name,
-        &mut callback,
-    )?;
+    let iterate_method_candidates_by_receiver = |receiver_ty, first_adjustment| {
+        iterate_method_candidates_by_receiver(
+            receiver_ty,
+            first_adjustment,
+            db,
+            env.clone(),
+            traits_in_scope,
+            visible_from_module,
+            name,
+            &mut callback,
+        )
+    };
+
+    iterate_method_candidates_by_receiver(receiver_ty, first_adjustment.clone())?;
 
     let refed = Canonical {
         value: TyKind::Ref(Mutability::Not, static_lifetime(), receiver_ty.value.clone())
@@ -884,16 +888,7 @@ fn iterate_method_candidates_with_autoref(
         binders: receiver_ty.binders.clone(),
     };
 
-    iterate_method_candidates_by_receiver(
-        &refed,
-        first_adjustment.with_autoref(Mutability::Not),
-        db,
-        env.clone(),
-        traits_in_scope,
-        visible_from_module,
-        name,
-        &mut callback,
-    )?;
+    iterate_method_candidates_by_receiver(&refed, first_adjustment.with_autoref(Mutability::Not))?;
 
     let ref_muted = Canonical {
         value: TyKind::Ref(Mutability::Mut, static_lifetime(), receiver_ty.value.clone())
@@ -904,12 +899,6 @@ fn iterate_method_candidates_with_autoref(
     iterate_method_candidates_by_receiver(
         &ref_muted,
         first_adjustment.with_autoref(Mutability::Mut),
-        db,
-        env,
-        traits_in_scope,
-        visible_from_module,
-        name,
-        &mut callback,
     )
 }
 
