@@ -1505,14 +1505,6 @@ pub struct PointeeInfo {
     pub safe: Option<PointerKind>,
 }
 
-/// Used in `might_permit_raw_init` to indicate the kind of initialisation
-/// that is checked to be valid
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum InitKind {
-    Zero,
-    UninitMitigated0x01Fill,
-}
-
 impl LayoutS {
     /// Returns `true` if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {

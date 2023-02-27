@@ -14,7 +14,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, AssertKind, SwitchTargets};
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::{HasTyCtxt, InitKind, LayoutOf};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
 use rustc_session::config::OptLevel;
@@ -676,11 +676,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 Inhabited => layout.abi.is_uninhabited(),
                 ZeroValid => !bx
                     .tcx()
-                    .permits_zero_init(bx.param_env().and(ty))
+                    .check_validity_of_init((InitKind::Zero, bx.param_env().and(ty)))
                     .expect("expected to have layout during codegen"),
                 MemUninitializedValid => !bx
                     .tcx()
-                    .permits_uninit_init(bx.param_env().and(ty))
+                    .check_validity_of_init((
+                        InitKind::UninitMitigated0x01Fill,
+                        bx.param_env().and(ty),
+                    ))
                     .expect("expected to have layout during codegen"),
             };
             Some(if do_panic {
