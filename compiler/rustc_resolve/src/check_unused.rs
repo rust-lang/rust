@@ -29,11 +29,12 @@ use crate::Resolver;
 
 use rustc_ast as ast;
 use rustc_ast::visit::{self, Visitor};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{pluralize, MultiSpan};
-use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_IMPORTS};
+use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
 struct UnusedImport<'a> {
@@ -53,9 +54,26 @@ struct UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     r: &'a mut Resolver<'b, 'tcx>,
     /// All the (so far) unused imports, grouped path list
     unused_imports: FxIndexMap<ast::NodeId, UnusedImport<'a>>,
+    extern_crate_items: Vec<ExternCrateToLint>,
     base_use_tree: Option<&'a ast::UseTree>,
     base_id: ast::NodeId,
     item_span: Span,
+}
+
+struct ExternCrateToLint {
+    id: ast::NodeId,
+    /// Span from the item
+    span: Span,
+    /// Span to use to suggest complete removal.
+    span_with_attributes: Span,
+    /// Span of the visibility, if any.
+    vis_span: Span,
+    /// Whether the item has attrs.
+    has_attrs: bool,
+    /// Name used to refer to the crate.
+    ident: Ident,
+    /// Whether the statement renames the crate `extern crate orig_name as new_name;`.
+    renames: bool,
 }
 
 impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
@@ -96,18 +114,27 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
 
 impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     fn visit_item(&mut self, item: &'a ast::Item) {
-        self.item_span = item.span_with_attributes();
-
-        // Ignore is_public import statements because there's no way to be sure
-        // whether they're used or not. Also ignore imports with a dummy span
-        // because this means that they were generated in some fashion by the
-        // compiler and we don't need to consider them.
-        if let ast::ItemKind::Use(..) = item.kind {
-            if item.vis.kind.is_pub() || item.span.is_dummy() {
-                return;
+        match item.kind {
+            // Ignore is_public import statements because there's no way to be sure
+            // whether they're used or not. Also ignore imports with a dummy span
+            // because this means that they were generated in some fashion by the
+            // compiler and we don't need to consider them.
+            ast::ItemKind::Use(..) if item.vis.kind.is_pub() || item.span.is_dummy() => return,
+            ast::ItemKind::ExternCrate(orig_name) => {
+                self.extern_crate_items.push(ExternCrateToLint {
+                    id: item.id,
+                    span: item.span,
+                    vis_span: item.vis.span,
+                    span_with_attributes: item.span_with_attributes(),
+                    has_attrs: !item.attrs.is_empty(),
+                    ident: item.ident,
+                    renames: orig_name.is_some(),
+                });
             }
+            _ => {}
         }
 
+        self.item_span = item.span_with_attributes();
         visit::walk_item(self, item);
     }
 
@@ -224,6 +251,9 @@ fn calc_unused_spans(
 
 impl Resolver<'_, '_> {
     pub(crate) fn check_unused(&mut self, krate: &ast::Crate) {
+        let tcx = self.tcx;
+        let mut maybe_unused_extern_crates = FxHashMap::default();
+
         for import in self.potentially_unused_imports.iter() {
             match import.kind {
                 _ if import.used.get()
@@ -246,7 +276,14 @@ impl Resolver<'_, '_> {
                 }
                 ImportKind::ExternCrate { id, .. } => {
                     let def_id = self.local_def_id(id);
-                    self.maybe_unused_extern_crates.push((def_id, import.span));
+                    if self.extern_crate_map.get(&def_id).map_or(true, |&cnum| {
+                        !tcx.is_compiler_builtins(cnum)
+                            && !tcx.is_panic_runtime(cnum)
+                            && !tcx.has_global_allocator(cnum)
+                            && !tcx.has_panic_handler(cnum)
+                    }) {
+                        maybe_unused_extern_crates.insert(id, import.span);
+                    }
                 }
                 ImportKind::MacroUse => {
                     let msg = "unused `#[macro_use]` import";
@@ -259,6 +296,7 @@ impl Resolver<'_, '_> {
         let mut visitor = UnusedImportCheckVisitor {
             r: self,
             unused_imports: Default::default(),
+            extern_crate_items: Default::default(),
             base_use_tree: None,
             base_id: ast::DUMMY_NODE_ID,
             item_span: DUMMY_SP,
@@ -290,7 +328,7 @@ impl Resolver<'_, '_> {
             let ms = MultiSpan::from_spans(spans.clone());
             let mut span_snippets = spans
                 .iter()
-                .filter_map(|s| match visitor.r.tcx.sess.source_map().span_to_snippet(*s) {
+                .filter_map(|s| match tcx.sess.source_map().span_to_snippet(*s) {
                     Ok(s) => Some(format!("`{}`", s)),
                     _ => None,
                 })
@@ -317,7 +355,7 @@ impl Resolver<'_, '_> {
             // If we are in the `--test` mode, suppress a help that adds the `#[cfg(test)]`
             // attribute; however, if not, suggest adding the attribute. There is no way to
             // retrieve attributes here because we do not have a `TyCtxt` yet.
-            let test_module_span = if visitor.r.tcx.sess.opts.test {
+            let test_module_span = if tcx.sess.opts.test {
                 None
             } else {
                 let parent_module = visitor.r.get_nearest_non_block_module(
@@ -344,6 +382,75 @@ impl Resolver<'_, '_> {
                 ms,
                 &msg,
                 BuiltinLintDiagnostics::UnusedImports(fix_msg.into(), fixes, test_module_span),
+            );
+        }
+
+        for extern_crate in visitor.extern_crate_items {
+            let warn_if_unused = !extern_crate.ident.name.as_str().starts_with('_');
+
+            // If the crate is fully unused, we suggest removing it altogether.
+            // We do this in any edition.
+            if warn_if_unused {
+                if let Some(&span) = maybe_unused_extern_crates.get(&extern_crate.id) {
+                    visitor.r.lint_buffer.buffer_lint_with_diagnostic(
+                        UNUSED_EXTERN_CRATES,
+                        extern_crate.id,
+                        span,
+                        "unused extern crate",
+                        BuiltinLintDiagnostics::UnusedExternCrate {
+                            removal_span: extern_crate.span_with_attributes,
+                        },
+                    );
+                    continue;
+                }
+            }
+
+            // If we are not in Rust 2018 edition, then we don't make any further
+            // suggestions.
+            if !tcx.sess.rust_2018() {
+                continue;
+            }
+
+            // If the extern crate has any attributes, they may have funky
+            // semantics we can't faithfully represent using `use` (most
+            // notably `#[macro_use]`). Ignore it.
+            if extern_crate.has_attrs {
+                continue;
+            }
+
+            // If the extern crate is renamed, then we cannot suggest replacing it with a use as this
+            // would not insert the new name into the prelude, where other imports in the crate may be
+            // expecting it.
+            if extern_crate.renames {
+                continue;
+            }
+
+            // If the extern crate isn't in the extern prelude,
+            // there is no way it can be written as a `use`.
+            if !visitor
+                .r
+                .extern_prelude
+                .get(&extern_crate.ident)
+                .map_or(false, |entry| !entry.introduced_by_item)
+            {
+                continue;
+            }
+
+            let vis_span = extern_crate
+                .vis_span
+                .find_ancestor_inside(extern_crate.span)
+                .unwrap_or(extern_crate.vis_span);
+            let ident_span = extern_crate
+                .ident
+                .span
+                .find_ancestor_inside(extern_crate.span)
+                .unwrap_or(extern_crate.ident.span);
+            visitor.r.lint_buffer.buffer_lint_with_diagnostic(
+                UNUSED_EXTERN_CRATES,
+                extern_crate.id,
+                extern_crate.span,
+                "`extern crate` is not idiomatic in the new edition",
+                BuiltinLintDiagnostics::ExternCrateNotIdiomatic { vis_span, ident_span },
             );
         }
     }

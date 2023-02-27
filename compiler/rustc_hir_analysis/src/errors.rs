@@ -5,7 +5,7 @@ use rustc_errors::{
     error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
     MultiSpan,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic};
+use rustc_macros::Diagnostic;
 use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
 
@@ -245,26 +245,6 @@ pub struct ManualImplementation {
 pub struct SubstsOnOverriddenImpl {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(hir_analysis_unused_extern_crate)]
-pub struct UnusedExternCrate {
-    #[suggestion(applicability = "machine-applicable", code = "")]
-    pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(hir_analysis_extern_crate_not_idiomatic)]
-pub struct ExternCrateNotIdiomatic {
-    #[suggestion(
-        style = "short",
-        applicability = "machine-applicable",
-        code = "{suggestion_code}"
-    )]
-    pub span: Span,
-    pub msg_code: String,
-    pub suggestion_code: String,
 }
 
 #[derive(Diagnostic)]
