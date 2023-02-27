@@ -2,18 +2,16 @@ error: cannot borrow value as mutable because it is also borrowed as immutable
   --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:36:9
    |
 LL |         ref foo @ [.., ref mut bar] => (),
-   |         -------^^^^^^^^-----------^
-   |         |              |
-   |         |              value is mutably borrowed by `bar` here
+   |         ^^^^^^^        ----------- value is mutably borrowed by `bar` here
+   |         |
    |         value is borrowed by `foo` here
 
 error: cannot borrow value as mutable because it is also borrowed as immutable
   --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:120:9
    |
 LL |         ref foo @ Some(box ref mut s) => (),
-   |         -------^^^^^^^^^^^^---------^
-   |         |                  |
-   |         |                  value is mutably borrowed by `s` here
+   |         ^^^^^^^            --------- value is mutably borrowed by `s` here
+   |         |
    |         value is borrowed by `foo` here
 
 error[E0382]: borrow of moved value: `x`

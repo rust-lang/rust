@@ -879,17 +879,25 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
         hir::PatKind::Binding(.., name, Some(sub)) => (*name, sub),
         _ => return,
     };
-    let binding_span = pat.span.with_hi(name.span.hi());
+    let mk_span = |pat_span, ident_span: Span| {
+        if let Some(ident_span) = ident_span.find_ancestor_inside(pat_span) {
+            pat_span.with_hi(ident_span.hi())
+        } else {
+            pat_span
+        }
+    };
+    let binding_span = mk_span(pat.span, name.span);
 
     let typeck_results = cx.typeck_results;
     let sess = cx.tcx.sess;
 
     // Get the binding move, extract the mutability if by-ref.
-    let mut_outer = match typeck_results.extract_binding_mode(sess, pat.hir_id, pat.span) {
+    let mut_outer = match typeck_results.extract_binding_mode(sess, pat.hir_id, binding_span) {
         Some(ty::BindByValue(_)) if is_binding_by_move(cx, pat.hir_id) => {
             // We have `x @ pat` where `x` is by-move. Reject all borrows in `pat`.
             let mut conflicts_ref = Vec::new();
-            sub.each_binding(|_, hir_id, span, _| {
+            sub.each_binding(|_, hir_id, span, ident| {
+                let span = mk_span(span, ident.span);
                 match typeck_results.extract_binding_mode(sess, hir_id, span) {
                     Some(ty::BindByValue(_)) | None => {}
                     Some(ty::BindByReference(_)) => conflicts_ref.push(span),
@@ -897,7 +905,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
             });
             if !conflicts_ref.is_empty() {
                 sess.emit_err(BorrowOfMovedValue {
-                    span: pat.span,
+                    span: binding_span,
                     binding_span,
                     conflicts_ref,
                     name,
@@ -920,6 +928,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
     let mut conflicts_mut_mut = Vec::new();
     let mut conflicts_mut_ref = Vec::new();
     sub.each_binding(|_, hir_id, span, name| {
+        let span = mk_span(span, name.span);
         match typeck_results.extract_binding_mode(sess, hir_id, span) {
             Some(ty::BindByReference(mut_inner)) => match (mut_outer, mut_inner) {
                 // Both sides are `ref`.
@@ -957,20 +966,20 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
     // Report errors if any.
     if report_mut_mut {
         // Report mutability conflicts for e.g. `ref mut x @ Some(ref mut y)`.
-        sess.emit_err(MultipleMutBorrows { span: pat.span, occurences });
+        sess.emit_err(MultipleMutBorrows { span: binding_span, occurences });
     } else if report_mut_ref {
         // Report mutability conflicts for e.g. `ref x @ Some(ref mut y)` or the converse.
         match mut_outer {
             Mutability::Mut => {
-                sess.emit_err(AlreadyMutBorrowed { span: pat.span, occurences });
+                sess.emit_err(AlreadyMutBorrowed { span: binding_span, occurences });
             }
             Mutability::Not => {
-                sess.emit_err(AlreadyBorrowed { span: pat.span, occurences });
+                sess.emit_err(AlreadyBorrowed { span: binding_span, occurences });
             }
         };
     } else if report_move_conflict {
         // Report by-ref and by-move conflicts, e.g. `ref x @ y`.
-        sess.emit_err(MovedWhileBorrowed { span: pat.span, occurences });
+        sess.emit_err(MovedWhileBorrowed { span: binding_span, occurences });
     }
 }
 
