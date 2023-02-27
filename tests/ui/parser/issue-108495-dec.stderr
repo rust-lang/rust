@@ -1,55 +1,11 @@
-error: Rust has no prefix decrement operator
-  --> $DIR/issue-dec.rs:3:17
-   |
-LL |     let _ = i + --i;
-   |                 ^^ not a valid prefix operator
-   |
-help: use `-= 1` instead
-   |
-LL |     let _ = i + { i -= 1; i };
-   |                 ~   +++++++++
-
-error: Rust has no prefix decrement operator
-  --> $DIR/issue-dec.rs:8:13
-   |
-LL |     let _ = --i + i;
-   |             ^^ not a valid prefix operator
-   |
-help: use `-= 1` instead
-   |
-LL |     let _ = { i -= 1; i } + i;
-   |             ~   +++++++++
-
-error: Rust has no prefix decrement operator
-  --> $DIR/issue-dec.rs:13:13
-   |
-LL |     let _ = --i + --i;
-   |             ^^ not a valid prefix operator
-   |
-help: use `-= 1` instead
-   |
-LL |     let _ = { i -= 1; i } + --i;
-   |             ~   +++++++++
-
 error: Rust has no postfix decrement operator
-  --> $DIR/issue-dec.rs:18:18
+  --> $DIR/issue-108495-dec.rs:3:18
    |
 LL |     let _ = i + i--;
    |                  ^^ not a valid postfix operator
 
 error: Rust has no postfix decrement operator
-  --> $DIR/issue-dec.rs:24:14
-   |
-LL |     let _ = i-- + i;
-   |              ^^ not a valid postfix operator
-   |
-help: use `-= 1` instead
-   |
-LL |     let _ = { let tmp = i; i -= 1; tmp } + i;
-   |             +++++++++++  ~~~~~~~~~~~~~~~
-
-error: Rust has no postfix decrement operator
-  --> $DIR/issue-dec.rs:29:14
+  --> $DIR/issue-108495-dec.rs:9:14
    |
 LL |     let _ = i-- + i--;
    |              ^^ not a valid postfix operator
@@ -59,19 +15,14 @@ help: use `-= 1` instead
 LL |     let _ = { let tmp = i; i -= 1; tmp } + i--;
    |             +++++++++++  ~~~~~~~~~~~~~~~
 
-error: Rust has no prefix decrement operator
-  --> $DIR/issue-dec.rs:34:13
+error: Rust has no postfix decrement operator
+  --> $DIR/issue-108495-dec.rs:14:20
    |
 LL |     let _ = --i + i--;
-   |             ^^ not a valid prefix operator
-   |
-help: use `-= 1` instead
-   |
-LL |     let _ = { i -= 1; i } + i--;
-   |             ~   +++++++++
+   |                    ^^ not a valid postfix operator
 
 error: Rust has no postfix decrement operator
-  --> $DIR/issue-dec.rs:39:14
+  --> $DIR/issue-108495-dec.rs:19:14
    |
 LL |     let _ = i-- + --i;
    |              ^^ not a valid postfix operator
@@ -82,7 +33,7 @@ LL |     let _ = { let tmp = i; i -= 1; tmp } + --i;
    |             +++++++++++  ~~~~~~~~~~~~~~~
 
 error: Rust has no postfix decrement operator
-  --> $DIR/issue-dec.rs:44:24
+  --> $DIR/issue-108495-dec.rs:24:24
    |
 LL |     let _ = (1 + 2 + i)--;
    |                        ^^ not a valid postfix operator
@@ -93,7 +44,7 @@ LL |     let _ = { let tmp = (1 + 2 + i); (1 + 2 + i) -= 1; tmp };
    |             +++++++++++            ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: Rust has no postfix decrement operator
-  --> $DIR/issue-dec.rs:49:15
+  --> $DIR/issue-108495-dec.rs:29:15
    |
 LL |     let _ = (i-- + 1) + 2;
    |               ^^ not a valid postfix operator
@@ -103,5 +54,16 @@ help: use `-= 1` instead
 LL |     let _ = ({ let tmp = i; i -= 1; tmp } + 1) + 2;
    |              +++++++++++  ~~~~~~~~~~~~~~~
 
-error: aborting due to 10 previous errors
+error: Rust has no postfix decrement operator
+  --> $DIR/issue-108495-dec.rs:37:10
+   |
+LL |         i--;
+   |          ^^ not a valid postfix operator
+   |
+help: use `-= 1` instead
+   |
+LL |         i -= 1;
+   |           ~~~~
+
+error: aborting due to 7 previous errors
 
