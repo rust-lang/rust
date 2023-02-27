@@ -2325,7 +2325,6 @@ impl<A, C, const D: u32> Data<'a, A, 12, C, D> {
         );
     }
 
-
     #[test]
     fn doc_test_type_params() {
         check(

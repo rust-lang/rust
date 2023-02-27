@@ -3407,7 +3407,6 @@ impl Type {
                 // arg can be either a `Ty` or `constant`
                 if let Some(ty) = arg.ty(Interner) {
                     Some(SmolStr::new(ty.display(db).to_string()))
-                    // Some(ty)
                 } else if let Some(const_) = arg.constant(Interner) {
                     Some(SmolStr::new_inline(&const_.display(db).to_string()))
                 } else {
