@@ -115,11 +115,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     debug!("add_moved_or_invoked_closure_note: closure={:?}", closure);
                     if let ty::Closure(did, _) = self.body.local_decls[closure].ty.kind() {
                         let did = did.expect_local();
-                        let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
-
-                        if let Some((span, hir_place)) =
-                            self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
-                        {
+                        if let Some((span, hir_place)) = self.infcx.tcx.closure_kind_origin(did) {
                             diag.span_note(
                                 *span,
                                 &format!(
@@ -139,11 +135,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if let Some(target) = target {
             if let ty::Closure(did, _) = self.body.local_decls[target].ty.kind() {
                 let did = did.expect_local();
-                let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
-
-                if let Some((span, hir_place)) =
-                    self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
-                {
+                if let Some((span, hir_place)) = self.infcx.tcx.closure_kind_origin(did) {
                     diag.span_note(
                         *span,
                         &format!(
@@ -373,14 +365,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     //
                     // We know the field exists so it's safe to call operator[] and `unwrap` here.
                     let def_id = def_id.expect_local();
-                    let var_id = self
-                        .infcx
-                        .tcx
-                        .typeck(def_id)
-                        .closure_min_captures_flattened(def_id)
-                        .nth(field.index())
-                        .unwrap()
-                        .get_root_variable();
+                    let var_id =
+                        self.infcx.tcx.closure_captures(def_id)[field.index()].get_root_variable();
 
                     Some(self.infcx.tcx.hir().name(var_id).to_string())
                 }
@@ -987,7 +973,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) = expr {
             for (captured_place, place) in
-                self.infcx.tcx.typeck(def_id).closure_min_captures_flattened(def_id).zip(places)
+                self.infcx.tcx.closure_captures(def_id).iter().zip(places)
             {
                 match place {
                     Operand::Copy(place) | Operand::Move(place)

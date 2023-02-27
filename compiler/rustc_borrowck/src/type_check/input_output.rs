@@ -26,11 +26,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if !self.tcx().is_closure(mir_def_id.to_def_id()) {
             return;
         }
-        let Some(user_provided_poly_sig) =
-            self.tcx().typeck(mir_def_id).user_provided_sigs.get(&mir_def_id)
-        else {
-            return;
-        };
+        let user_provided_poly_sig = self.tcx().closure_user_provided_sig(mir_def_id);
 
         // Instantiate the canonicalized variables from user-provided signature
         // (e.g., the `_` in the code above) with fresh variables.

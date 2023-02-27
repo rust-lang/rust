@@ -901,10 +901,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
     ) {
         let tables = tcx.typeck(closure_local_def_id);
-        let closure_hir_id = tcx.hir().local_def_id_to_hir_id(closure_local_def_id);
-        if let Some((span, closure_kind_origin)) =
-            &tables.closure_kind_origins().get(closure_hir_id)
-        {
+        if let Some((span, closure_kind_origin)) = tcx.closure_kind_origin(closure_local_def_id) {
             let reason = if let PlaceBase::Upvar(upvar_id) = closure_kind_origin.base {
                 let upvar = ty::place_to_string_for_capture(tcx, closure_kind_origin);
                 let root_hir_id = upvar_id.var_path.hir_id;

@@ -541,8 +541,9 @@ impl<'tcx> Cx<'tcx> {
                 let def_id = def_id.expect_local();
 
                 let upvars = self
-                    .typeck_results
-                    .closure_min_captures_flattened(def_id)
+                    .tcx
+                    .closure_captures(def_id)
+                    .iter()
                     .zip(substs.upvar_tys())
                     .map(|(captured_place, ty)| {
                         let upvars = self.capture_upvar(expr, captured_place, ty);

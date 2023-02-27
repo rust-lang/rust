@@ -263,6 +263,7 @@ TrivialTypeTraversalAndLiftImpls! {
     crate::ty::UniverseIndex,
     crate::ty::Variance,
     ::rustc_span::Span,
+    ::rustc_span::symbol::Ident,
     ::rustc_errors::ErrorGuaranteed,
     Field,
     interpret::Scalar,

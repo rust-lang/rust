@@ -1,5 +1,8 @@
 DefId(0:3 ~ thir_flat[45a6]::main):
 Thir {
+    body_type: Fn(
+        ([]; c_variadic: false)->(),
+    ),
     arms: [],
     blocks: [
         Block {

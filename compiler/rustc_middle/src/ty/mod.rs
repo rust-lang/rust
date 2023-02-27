@@ -73,7 +73,7 @@ pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
 pub use self::closure::{
     is_ancestor_or_same_capture, place_to_string_for_capture, BorrowKind, CaptureInfo,
-    CapturedPlace, ClosureKind, MinCaptureInformationMap, MinCaptureList,
+    CapturedPlace, ClosureKind, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
     RootVariableMinCaptureList, UpvarCapture, UpvarCaptureMap, UpvarId, UpvarListMap, UpvarPath,
     CAPTURE_STRUCT_LOCAL,
 };

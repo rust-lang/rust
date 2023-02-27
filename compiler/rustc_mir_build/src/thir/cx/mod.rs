@@ -82,9 +82,30 @@ impl<'tcx> Cx<'tcx> {
         let typeck_results = tcx.typeck_opt_const_arg(def);
         let did = def.did;
         let hir = tcx.hir();
+        let hir_id = hir.local_def_id_to_hir_id(did);
+
+        let body_type = if hir.body_owner_kind(did).is_fn_or_closure() {
+            // fetch the fully liberated fn signature (that is, all bound
+            // types/lifetimes replaced)
+            BodyTy::Fn(typeck_results.liberated_fn_sigs()[hir_id])
+        } else {
+            // Get the revealed type of this const. This is *not* the adjusted
+            // type of its body, which may be a subtype of this type. For
+            // example:
+            //
+            // fn foo(_: &()) {}
+            // static X: fn(&'static ()) = foo;
+            //
+            // The adjusted type of the body of X is `for<'a> fn(&'a ())` which
+            // is not the same as the type of X. We need the type of the return
+            // place to be the type of the constant because NLL typeck will
+            // equate them.
+            BodyTy::Const(typeck_results.node_type(hir_id))
+        };
+
         Cx {
             tcx,
-            thir: Thir::new(),
+            thir: Thir::new(body_type),
             param_env: tcx.param_env(def.did),
             region_scope_tree: tcx.region_scope_tree(def.did),
             typeck_results,
@@ -92,7 +113,7 @@ impl<'tcx> Cx<'tcx> {
             body_owner: did.to_def_id(),
             adjustment_span: None,
             apply_adjustments: hir
-                .attrs(hir.local_def_id_to_hir_id(did))
+                .attrs(hir_id)
                 .iter()
                 .all(|attr| attr.name_or_empty() != rustc_span::sym::custom_mir),
         }

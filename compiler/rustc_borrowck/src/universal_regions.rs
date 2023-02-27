@@ -18,7 +18,7 @@ use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{BodyOwnerKind, HirId};
+use rustc_hir::BodyOwnerKind;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::fold::TypeFoldable;
@@ -231,9 +231,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         mir_def: ty::WithOptConstParam<LocalDefId>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
-        let tcx = infcx.tcx;
-        let mir_hir_id = tcx.hir().local_def_id_to_hir_id(mir_def.did);
-        UniversalRegionsBuilder { infcx, mir_def, mir_hir_id, param_env }.build()
+        UniversalRegionsBuilder { infcx, mir_def, param_env }.build()
     }
 
     /// Given a reference to a closure type, extracts all the values
@@ -390,7 +388,6 @@ impl<'tcx> UniversalRegions<'tcx> {
 struct UniversalRegionsBuilder<'cx, 'tcx> {
     infcx: &'cx BorrowckInferCtxt<'cx, 'tcx>,
     mir_def: ty::WithOptConstParam<LocalDefId>,
-    mir_hir_id: HirId,
     param_env: ty::ParamEnv<'tcx>,
 }
 
@@ -560,12 +557,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         match tcx.hir().body_owner_kind(self.mir_def.did) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
-                let defining_ty = if self.mir_def.did.to_def_id() == typeck_root_def_id {
-                    tcx.type_of(typeck_root_def_id).subst_identity()
-                } else {
-                    let tables = tcx.typeck(self.mir_def.did);
-                    tables.node_type(self.mir_hir_id)
-                };
+                let defining_ty = tcx.type_of(self.mir_def.def_id_for_type_of()).subst_identity();
 
                 debug!("defining_ty (pre-replacement): {:?}", defining_ty);
 
@@ -594,7 +586,18 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                         self.infcx.replace_free_regions_with_nll_infer_vars(FR, identity_substs);
                     DefiningTy::Const(self.mir_def.did.to_def_id(), substs)
                 } else {
-                    let ty = tcx.typeck(self.mir_def.did).node_type(self.mir_hir_id);
+                    // FIXME this line creates a dependency between borrowck and typeck.
+                    //
+                    // This is required for `AscribeUserType` canonical query, which will call
+                    // `type_of(inline_const_def_id)`. That `type_of` would inject erased lifetimes
+                    // into borrowck, which is ICE #78174.
+                    //
+                    // As a workaround, inline consts have an additional generic param (`ty`
+                    // below), so that `type_of(inline_const_def_id).substs(substs)` uses the
+                    // proper type with NLL infer vars.
+                    let ty = tcx
+                        .typeck(self.mir_def.did)
+                        .node_type(tcx.local_def_id_to_hir_id(self.mir_def.did));
                     let substs = InlineConstSubsts::new(
                         tcx,
                         InlineConstSubstsParts { parent_substs: identity_substs, ty },

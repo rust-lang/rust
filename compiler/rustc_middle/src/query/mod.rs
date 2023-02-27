@@ -475,14 +475,10 @@ rustc_queries! {
         }
     }
 
-    query symbols_for_closure_captures(
-        key: (LocalDefId, LocalDefId)
-    ) -> &'tcx Vec<rustc_span::Symbol> {
-        arena_cache
+    query closure_typeinfo(key: LocalDefId) -> ty::ClosureTypeInfo<'tcx> {
         desc {
-            |tcx| "finding symbols for captures of closure `{}` in `{}`",
-            tcx.def_path_str(key.1.to_def_id()),
-            tcx.def_path_str(key.0.to_def_id())
+            |tcx| "finding symbols for captures of closure `{}`",
+            tcx.def_path_str(key.to_def_id())
         }
     }
 
