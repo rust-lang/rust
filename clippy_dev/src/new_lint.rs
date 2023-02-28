@@ -96,7 +96,7 @@ fn create_test(lint: &LintData<'_>) -> io::Result<()> {
 
         path.push("src");
         fs::create_dir(&path)?;
-        let header = format!("// compile-flags: --crate-name={lint_name}");
+        let header = format!("//@compile-flags: --crate-name={lint_name}");
         write_file(path.join("main.rs"), get_test_file_contents(lint_name, Some(&header)))?;
 
         Ok(())
