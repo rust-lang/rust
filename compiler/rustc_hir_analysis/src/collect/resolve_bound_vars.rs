@@ -24,6 +24,8 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use std::fmt;
 
+use crate::errors;
+
 trait RegionExt {
     fn early(param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg);
 
@@ -161,6 +163,15 @@ enum Scope<'a> {
         s: ScopeRef<'a>,
     },
 
+    /// Disallows capturing non-lifetime binders from parent scopes.
+    ///
+    /// This is necessary for something like `for<T> [(); { /* references T */ }]:`,
+    /// since we don't do something more correct like replacing any captured
+    /// late-bound vars with early-bound params in the const's own generics.
+    AnonConstBoundary {
+        s: ScopeRef<'a>,
+    },
+
     Root {
         opt_parent_item: Option<LocalDefId>,
     },
@@ -211,6 +222,7 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
                 .field("s", &"..")
                 .finish(),
             Scope::TraitRefBoundary { s: _ } => f.debug_struct("TraitRefBoundary").finish(),
+            Scope::AnonConstBoundary { s: _ } => f.debug_struct("AnonConstBoundary").finish(),
             Scope::Root { opt_parent_item } => {
                 f.debug_struct("Root").field("opt_parent_item", &opt_parent_item).finish()
             }
@@ -312,7 +324,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     break (vec![], BinderScopeType::Normal);
                 }
 
-                Scope::Elision { s, .. } | Scope::ObjectLifetimeDefault { s, .. } => {
+                Scope::Elision { s, .. }
+                | Scope::ObjectLifetimeDefault { s, .. }
+                | Scope::AnonConstBoundary { s } => {
                     scope = s;
                 }
 
@@ -1029,6 +1043,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     fn visit_poly_trait_ref(&mut self, trait_ref: &'tcx hir::PolyTraitRef<'tcx>) {
         self.visit_poly_trait_ref_inner(trait_ref, NonLifetimeBinderAllowed::Allow);
     }
+
+    fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
+        self.with(Scope::AnonConstBoundary { s: self.scope }, |this| {
+            intravisit::walk_anon_const(this, c);
+        });
+    }
 }
 
 fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: DefId) -> ObjectLifetimeDefault {
@@ -1267,7 +1287,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Elision { s, .. }
                 | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
-                | Scope::TraitRefBoundary { s, .. } => {
+                | Scope::TraitRefBoundary { s, .. }
+                | Scope::AnonConstBoundary { s } => {
                     scope = s;
                 }
             }
@@ -1332,7 +1353,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 | Scope::Elision { s, .. }
                 | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
-                | Scope::TraitRefBoundary { s, .. } => {
+                | Scope::TraitRefBoundary { s, .. }
+                | Scope::AnonConstBoundary { s } => {
                     scope = s;
                 }
             }
@@ -1351,6 +1373,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         // search.
         let mut late_depth = 0;
         let mut scope = self.scope;
+        let mut crossed_anon_const = false;
         let result = loop {
             match *scope {
                 Scope::Body { s, .. } => {
@@ -1384,10 +1407,36 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 | Scope::TraitRefBoundary { s, .. } => {
                     scope = s;
                 }
+
+                Scope::AnonConstBoundary { s } => {
+                    crossed_anon_const = true;
+                    scope = s;
+                }
             }
         };
 
         if let Some(def) = result {
+            if let ResolvedArg::LateBound(..) = def && crossed_anon_const {
+                let use_span = self.tcx.hir().span(hir_id);
+                let def_span = self.tcx.def_span(param_def_id);
+                match self.tcx.def_kind(param_def_id) {
+                    DefKind::ConstParam => {
+                        self.tcx.sess.emit_err(errors::CannotCaptureLateBoundInAnonConst::Const {
+                            use_span,
+                            def_span,
+                        });
+                    }
+                    DefKind::TyParam => {
+                        self.tcx.sess.emit_err(errors::CannotCaptureLateBoundInAnonConst::Type {
+                            use_span,
+                            def_span,
+                        });
+                    }
+                    _ => unreachable!(),
+                }
+                return;
+            }
+
             self.map.defs.insert(hir_id, def);
             return;
         }
@@ -1465,7 +1514,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         | Scope::Elision { s, .. }
                         | Scope::ObjectLifetimeDefault { s, .. }
                         | Scope::Supertrait { s, .. }
-                        | Scope::TraitRefBoundary { s, .. } => {
+                        | Scope::TraitRefBoundary { s, .. }
+                        | Scope::AnonConstBoundary { s } => {
                             scope = s;
                         }
                     }
@@ -1701,7 +1751,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
                 Scope::ObjectLifetimeDefault { lifetime: Some(l), .. } => break l,
 
-                Scope::Supertrait { s, .. } | Scope::TraitRefBoundary { s, .. } => {
+                Scope::Supertrait { s, .. }
+                | Scope::TraitRefBoundary { s, .. }
+                | Scope::AnonConstBoundary { s } => {
                     scope = s;
                 }
             }

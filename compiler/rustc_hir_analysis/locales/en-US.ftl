@@ -147,3 +147,11 @@ hir_analysis_main_function_generic_parameters = `main` function is not allowed t
 
 hir_analysis_variadic_function_compatible_convention = C-variadic function must have a compatible calling convention, like {$conventions}
     .label = C-variadic function must have a compatible calling convention
+
+hir_analysis_cannot_capture_late_bound_ty_in_anon_const =
+    cannot capture late-bound type parameter in a constant
+    .label = parameter defined here
+
+hir_analysis_cannot_capture_late_bound_const_in_anon_const =
+    cannot capture late-bound const parameter in a constant
+    .label = parameter defined here
