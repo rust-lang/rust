@@ -305,8 +305,7 @@ where
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
 impl<I> Default for Flatten<I>
 where
-    I: Iterator + Default,
-    <I as Iterator>::Item: IntoIterator,
+    I: Default + Iterator<Item: IntoIterator>,
 {
     /// Creates a `Flatten` iterator from the default value of `I`.
     ///

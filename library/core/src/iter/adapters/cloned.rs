@@ -155,11 +155,7 @@ where
 }
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
-impl<'a, I, T: 'a> Default for Cloned<I>
-where
-    I: Default + Iterator<Item = &'a T>,
-    T: Clone,
-{
+impl<I: Default> Default for Cloned<I> {
     /// Creates a `Cloned` iterator from the default value of `I`
     /// ```
     /// # use core::slice;

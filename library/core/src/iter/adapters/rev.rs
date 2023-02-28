@@ -137,10 +137,7 @@ impl<I> FusedIterator for Rev<I> where I: FusedIterator + DoubleEndedIterator {}
 unsafe impl<I> TrustedLen for Rev<I> where I: TrustedLen + DoubleEndedIterator {}
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
-impl<I> Default for Rev<I>
-where
-    I: Default + Iterator,
-{
+impl<I: Default> Default for Rev<I> {
     /// Creates a `Rev` iterator from the default value of `I`
     /// ```
     /// # use core::slice;

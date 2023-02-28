@@ -266,10 +266,7 @@ where
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Enumerate<I> {}
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
-impl<I> Default for Enumerate<I>
-where
-    I: Iterator + Default,
-{
+impl<I: Default> Default for Enumerate<I> {
     /// Creates an `Enumerate` iterator from the default value of `I`
     /// ```
     /// # use core::slice;

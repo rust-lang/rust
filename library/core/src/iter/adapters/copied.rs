@@ -242,11 +242,7 @@ where
 }
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
-impl<'a, I, T: 'a> Default for Copied<I>
-where
-    I: Default + Iterator<Item = &'a T>,
-    T: Copy,
-{
+impl<I: Default> Default for Copied<I> {
     /// Creates a `Copied` iterator from the default value of `I`
     /// ```
     /// # use core::slice;

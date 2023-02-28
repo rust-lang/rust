@@ -283,11 +283,7 @@ where
 }
 
 #[stable(feature = "default_iters", since = "CURRENT_RUSTC_VERSION")]
-impl<A, B> Default for Chain<A, B>
-where
-    A: Iterator + Default,
-    B: Iterator + Default,
-{
+impl<A: Default, B: Default> Default for Chain<A, B> {
     /// Creates a `Chain` from the default values for `A` and `B`.
     ///
     /// ```
