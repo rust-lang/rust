@@ -389,15 +389,12 @@ impl InferenceResult {
     pub fn type_mismatch_for_pat(&self, pat: PatId) -> Option<&TypeMismatch> {
         self.type_mismatches.get(&pat.into())
     }
+    pub fn type_mismatches(&self) -> impl Iterator<Item = (ExprOrPatId, &TypeMismatch)> {
+        self.type_mismatches.iter().map(|(expr_or_pat, mismatch)| (*expr_or_pat, mismatch))
+    }
     pub fn expr_type_mismatches(&self) -> impl Iterator<Item = (ExprId, &TypeMismatch)> {
         self.type_mismatches.iter().filter_map(|(expr_or_pat, mismatch)| match *expr_or_pat {
             ExprOrPatId::ExprId(expr) => Some((expr, mismatch)),
-            _ => None,
-        })
-    }
-    pub fn pat_type_mismatches(&self) -> impl Iterator<Item = (PatId, &TypeMismatch)> {
-        self.type_mismatches.iter().filter_map(|(expr_or_pat, mismatch)| match *expr_or_pat {
-            ExprOrPatId::PatId(pat) => Some((pat, mismatch)),
             _ => None,
         })
     }

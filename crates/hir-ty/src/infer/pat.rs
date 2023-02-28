@@ -196,12 +196,7 @@ impl<'a> InferenceContext<'a> {
             Pat::Ref { pat, mutability } => {
                 let mutability = lower_to_chalk_mutability(*mutability);
                 let expectation = match expected.as_reference() {
-                    Some((inner_ty, _lifetime, exp_mut)) => {
-                        if mutability != exp_mut {
-                            // FIXME: emit type error?
-                        }
-                        inner_ty.clone()
-                    }
+                    Some((inner_ty, _lifetime, exp_mut)) => inner_ty.clone(),
                     _ => self.result.standard_types.unknown.clone(),
                 };
                 let subty = self.infer_pat(*pat, &expectation, default_bm);

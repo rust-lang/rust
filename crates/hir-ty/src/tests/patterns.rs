@@ -1092,3 +1092,19 @@ fn my_fn(foo: ...) {}
 "#,
     );
 }
+
+#[test]
+fn ref_pat_mutability() {
+    check(
+        r#"
+fn foo() {
+    let &() = &();
+    let &mut () = &mut ();
+    let &mut () = &();
+      //^^^^^^^ expected &(), got &mut ()
+    let &() = &mut ();
+      //^^^ expected &mut (), got &()
+}
+"#,
+    );
+}
