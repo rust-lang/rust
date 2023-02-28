@@ -187,6 +187,17 @@ TODO(antoyo): but that's not what I remember I was doing.
  * Build the stage2 compiler (`rustup toolchain link debug-current build/x86_64-unknown-linux-gnu/stage2`).
  * Clean and rebuild the codegen with `debug-current` in the file `rust-toolchain`.
 
+### How to install a forked git-subtree
+
+Using git-subtree with `rustc` requires a patched git to make it work.
+The PR that is needed is [here](https://github.com/gitgitgadget/git/pull/493).
+Compile it and copy those files to `/usr/local/bin`:
+
+```
+git-commit-tree  git-ls-tree        git-merge-tree  git-read-tree  git-write-tree
+git-diff-tree    git-merge-subtree  git-mktree      git-worktree
+```
+
 ### How to use [mem-trace](https://github.com/antoyo/mem-trace)
 
 `rustc` needs to be built without `jemalloc` so that `mem-trace` can overload `malloc` since `jemalloc` is linked statically, so a `LD_PRELOAD`-ed library won't a chance to intercept the calls to `malloc`.
