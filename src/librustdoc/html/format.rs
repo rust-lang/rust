@@ -772,14 +772,21 @@ pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Cont
     let Some((fqp, shortty)) = cache.paths.get(&did)
         .or_else(|| cache.external_paths.get(&did))
         else { return String::new() };
-    let fqp = fqp.iter().map(|sym| sym.as_str()).join("::");
+    let mut buf = Buffer::new();
     if let &Some(UrlFragment::Item(id)) = fragment {
-        let name = cx.tcx().item_name(id);
-        let descr = cx.tcx().def_descr(id);
-        format!("{descr} {fqp}::{name}")
-    } else {
-        format!("{shortty} {fqp}")
+        write!(buf, "{} ", cx.tcx().def_descr(id));
+        for component in fqp {
+            write!(buf, "{component}::");
+        }
+        write!(buf, "{}", cx.tcx().item_name(id));
+    } else if !fqp.is_empty() {
+        let mut fqp_it = fqp.into_iter();
+        write!(buf, "{shortty} {}", fqp_it.next().unwrap());
+        for component in fqp_it {
+            write!(buf, "::{component}");
+        }
     }
+    buf.into_inner()
 }
 
 /// Used to render a [`clean::Path`].
