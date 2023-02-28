@@ -714,12 +714,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.parent(expr_ctor_def_id)
                 }
                 hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, hir::def::CtorKind::Fn) => {
-                    // If this is a variant, its parent is the type definition.
-                    if in_ty_adt.did() != self.tcx.parent(expr_ctor_def_id) {
-                        // FIXME: Deal with type aliases?
+                    if in_ty_adt.did() == self.tcx.parent(expr_ctor_def_id) {
+                        // The constructor definition refers to the variant:
+                        // For example, for a local type `MyEnum::MyVariant` triggers this case.
+                        expr_ctor_def_id
+                    } else if in_ty_adt.did() == self.tcx.parent(self.tcx.parent(expr_ctor_def_id))
+                    {
+                        // The constructor definition refers to the "constructor" of the variant:
+                        // For example, `Some(5)` triggers this case.
+                        self.tcx.parent(expr_ctor_def_id)
+                    } else {
                         return Err(expr);
                     }
-                    expr_ctor_def_id
                 }
                 _ => {
                     return Err(expr);

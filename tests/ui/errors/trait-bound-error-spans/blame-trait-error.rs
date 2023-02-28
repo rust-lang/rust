@@ -18,11 +18,24 @@ struct Burrito<F> {
     filling: F,
 }
 
+impl<It: Iterator> T1 for Option<It> {}
+
+impl<'a, A: T1> T1 for &'a A {}
+
 fn want<V: T1>(_x: V) {}
 
 fn example<Q>(q: Q) {
     want(Wrapper { value: Burrito { filling: q } });
     //~^ ERROR the trait bound `Q: T3` is not satisfied [E0277]
+
+    want(Some(()));
+    //~^ ERROR `()` is not an iterator [E0277]
+
+    want(Some(q));
+    //~^ ERROR `Q` is not an iterator [E0277]
+
+    want(&Some(q));
+    //~^ ERROR `Q` is not an iterator [E0277]
 }
 
 fn main() {}
