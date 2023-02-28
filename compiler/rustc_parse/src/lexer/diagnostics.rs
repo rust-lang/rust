@@ -1,4 +1,4 @@
-use super::UnmatchedBrace;
+use super::UnmatchedDelim;
 use rustc_ast::token::Delimiter;
 use rustc_errors::Diagnostic;
 use rustc_span::source_map::SourceMap;
@@ -8,7 +8,7 @@ use rustc_span::Span;
 pub struct TokenTreeDiagInfo {
     /// Stack of open delimiters and their spans. Used for error message.
     pub open_braces: Vec<(Delimiter, Span)>,
-    pub unmatched_braces: Vec<UnmatchedBrace>,
+    pub unmatched_delims: Vec<UnmatchedDelim>,
 
     /// Used only for error recovery when arriving to EOF with mismatched braces.
     pub last_unclosed_found_span: Option<Span>,
@@ -32,10 +32,10 @@ pub fn same_identation_level(sm: &SourceMap, open_sp: Span, close_sp: Span) -> b
 // it's more friendly compared to report `unmatched error` in later phase
 pub fn report_missing_open_delim(
     err: &mut Diagnostic,
-    unmatched_braces: &[UnmatchedBrace],
+    unmatched_delims: &[UnmatchedDelim],
 ) -> bool {
     let mut reported_missing_open = false;
-    for unmatch_brace in unmatched_braces.iter() {
+    for unmatch_brace in unmatched_delims.iter() {
         if let Some(delim) = unmatch_brace.found_delim
             && matches!(delim, Delimiter::Parenthesis | Delimiter::Bracket)
         {
@@ -60,7 +60,7 @@ pub fn report_suspicious_mismatch_block(
     sm: &SourceMap,
     delim: Delimiter,
 ) {
-    if report_missing_open_delim(err, &diag_info.unmatched_braces) {
+    if report_missing_open_delim(err, &diag_info.unmatched_delims) {
         return;
     }
 

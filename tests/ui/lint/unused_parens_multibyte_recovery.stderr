@@ -1,5 +1,5 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/unused_parens_multibyte_recovery.rs:11:17
+  --> $DIR/unused_parens_multibyte_recovery.rs:10:17
    |
 LL | fn f(){(print!(á
    |       --      - ^
@@ -8,36 +8,5 @@ LL | fn f(){(print!(á
    |       |unclosed delimiter
    |       unclosed delimiter
 
-error: this file contains an unclosed delimiter
-  --> $DIR/unused_parens_multibyte_recovery.rs:11:17
-   |
-LL | fn f(){(print!(á
-   |       --      - ^
-   |       ||      |
-   |       ||      unclosed delimiter
-   |       |unclosed delimiter
-   |       unclosed delimiter
-
-error: this file contains an unclosed delimiter
-  --> $DIR/unused_parens_multibyte_recovery.rs:11:17
-   |
-LL | fn f(){(print!(á
-   |       --      - ^
-   |       ||      |
-   |       ||      unclosed delimiter
-   |       |unclosed delimiter
-   |       unclosed delimiter
-
-error: format argument must be a string literal
-  --> $DIR/unused_parens_multibyte_recovery.rs:11:16
-   |
-LL | fn f(){(print!(á
-   |                ^
-   |
-help: you might be missing a string literal to format with
-   |
-LL | fn f(){(print!("{}", á
-   |                +++++
-
-error: aborting due to 4 previous errors
+error: aborting due to previous error
 

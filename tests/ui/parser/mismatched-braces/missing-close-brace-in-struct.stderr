@@ -7,14 +7,5 @@ LL | pub(crate) struct Bar<T> {
 LL | fn main() {}
    |                                                                 ^
 
-error: expected identifier, found keyword `trait`
-  --> $DIR/missing-close-brace-in-struct.rs:4:1
-   |
-LL | pub(crate) struct Bar<T> {
-   |                   --- while parsing this struct
-...
-LL | trait T {
-   | ^^^^^ expected identifier, found keyword
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
