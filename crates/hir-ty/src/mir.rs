@@ -676,7 +676,8 @@ pub enum Rvalue {
     /// `ArrayToPointer` and `MutToConstPointer` are special.
     Cast(CastKind, Operand, Ty),
 
-    /// * `Offset` has the same semantics as [`offset`](pointer::offset), except that the second
+    // FIXME link to `pointer::offset` when it hits stable.
+    /// * `Offset` has the same semantics as `pointer::offset`, except that the second
     ///   parameter may be a `usize` as well.
     /// * The comparison operations accept `bool`s, `char`s, signed or unsigned integers, floats,
     ///   raw pointers, or function pointers and return a `bool`. The types of the operands must be
