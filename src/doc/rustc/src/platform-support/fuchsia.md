@@ -717,7 +717,7 @@ run the full `tests/ui` test suite:
     --stage=2                                                                 \
     test tests/ui                                                             \
     --target x86_64-unknown-fuchsia                                           \
-    --run=always --jobs 1                                                     \
+    --run=always                                                              \
     --test-args --target-rustcflags                                           \
     --test-args -Lnative=${SDK_PATH}/arch/{x64|arm64}/sysroot/lib             \
     --test-args --target-rustcflags                                           \
@@ -728,9 +728,6 @@ run the full `tests/ui` test suite:
     --test-args src/ci/docker/scripts/fuchsia-test-runner.py                  \
 )
 ```
-
-*Note: The test suite cannot be run in parallel at the moment, so `x.py`
-must be run with `--jobs 1` to ensure only one test runs at a time.*
 
 By default, `x.py` compiles test binaries with `panic=unwind`. If you built your
 Rust toolchain with `-Cpanic=abort`, you need to tell `x.py` to compile test
@@ -908,7 +905,7 @@ through our `x.py` invocation. The full invocation is:
     --stage=2                                                                 \
     test tests/${TEST}                                                        \
     --target x86_64-unknown-fuchsia                                           \
-    --run=always --jobs 1                                                     \
+    --run=always                                                              \
     --test-args --target-rustcflags                                           \
     --test-args -Lnative=${SDK_PATH}/arch/{x64|arm64}/sysroot/lib             \
     --test-args --target-rustcflags                                           \
