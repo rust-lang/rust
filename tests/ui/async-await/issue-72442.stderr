@@ -6,6 +6,8 @@ LL |             let mut f = File::open(path.to_str())?;
    |                         |
    |                         required by a bound introduced by this call
    |
+   = help: the trait `PathLike` is implemented for `&NativePath`
+   = note: required for `Option<&str>` to implement `PathLike`
 note: required by a bound in `File::open`
   --> $SRC_DIR/std/src/fs.rs:LL:COL
 
