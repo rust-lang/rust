@@ -8,25 +8,5 @@ LL | fn f(){(print!(á
    |       |unclosed delimiter
    |       unclosed delimiter
 
-error: this file contains an unclosed delimiter
-  --> $DIR/issue-104897.rs:5:18
-   |
-LL | fn f(){(print!(á
-   |       --      -  ^
-   |       ||      |
-   |       ||      unclosed delimiter
-   |       |unclosed delimiter
-   |       unclosed delimiter
-
-error: this file contains an unclosed delimiter
-  --> $DIR/issue-104897.rs:5:18
-   |
-LL | fn f(){(print!(á
-   |       --      -  ^
-   |       ||      |
-   |       ||      unclosed delimiter
-   |       |unclosed delimiter
-   |       unclosed delimiter
-
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 
