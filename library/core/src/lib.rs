@@ -244,7 +244,6 @@
 // Target features:
 #![feature(arm_target_feature)]
 #![feature(avx512_target_feature)]
-#![feature(cmpxchg16b_target_feature)]
 #![feature(hexagon_target_feature)]
 #![feature(mips_target_feature)]
 #![feature(powerpc_target_feature)]
@@ -253,6 +252,7 @@
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(wasm_target_feature)]
+#![cfg_attr(bootstrap, feature(cmpxchg16b_target_feature))]
 
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]
