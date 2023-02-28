@@ -11,6 +11,11 @@ fn parse(config: &str) -> Config {
 
 #[test]
 fn download_ci_llvm() {
+    if crate::native::is_ci_llvm_modified(&parse("")) {
+        eprintln!("Detected LLVM as non-available: running in CI and modified LLVM in this change");
+        return;
+    }
+
     let parse_llvm = |s| parse(s).llvm_from_ci;
     let if_available = parse_llvm("llvm.download-ci-llvm = \"if-available\"");
 
