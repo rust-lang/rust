@@ -198,3 +198,15 @@ fn x86_all() {
     println!("xsaves: {:?}", is_x86_feature_detected!("xsaves"));
     println!("xsavec: {:?}", is_x86_feature_detected!("xsavec"));
 }
+
+#[test]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(deprecated)]
+fn x86_deprecated() {
+    println!("avx512gfni {:?}", is_x86_feature_detected!("avx512gfni"));
+    println!("avx512vaes {:?}", is_x86_feature_detected!("avx512vaes"));
+    println!(
+        "avx512vpclmulqdq {:?}",
+        is_x86_feature_detected!("avx512vpclmulqdq")
+    );
+}
