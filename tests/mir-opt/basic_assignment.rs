@@ -1,3 +1,4 @@
+// needs-unwind
 // this tests move up progration, which is not yet implemented
 
 // EMIT_MIR basic_assignment.main.ElaborateDrops.diff
