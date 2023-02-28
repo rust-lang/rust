@@ -92,7 +92,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::readv(
                 self.as_raw_fd(),
-                bufs.as_ptr() as *const libc::iovec,
+                bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
                 cmp::min(bufs.len(), max_iov()) as libc::c_int,
             )
         })?;
@@ -101,7 +101,7 @@ impl FileDesc {
 
     #[cfg(any(target_os = "espidf", target_os = "horizon"))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        return crate::io::default_read_vectored(|b| self.read(b), bufs);
+        io::default_read_vectored(|b| self.read(b), bufs)
     }
 
     #[inline]
@@ -147,6 +147,44 @@ impl FileDesc {
         Ok(())
     }
 
+    #[cfg(any(
+        target_os = "android",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "illumos",
+        target_os = "ios",
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "netbsd",
+    ))]
+    pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        let ret = cvt(unsafe {
+            libc::preadv(
+                self.as_raw_fd(),
+                bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
+                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                offset as _,
+            )
+        })?;
+        Ok(ret as usize)
+    }
+
+    #[cfg(not(any(
+        target_os = "android",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "illumos",
+        target_os = "ios",
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "netbsd",
+    )))]
+    pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
+        io::default_read_vectored(|b| self.read_at(b, offset), bufs)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::write(
@@ -172,7 +210,7 @@ impl FileDesc {
 
     #[cfg(any(target_os = "espidf", target_os = "horizon"))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        return crate::io::default_write_vectored(|b| self.write(b), bufs);
+        io::default_write_vectored(|b| self.write(b), bufs)
     }
 
     #[inline]
@@ -195,6 +233,44 @@ impl FileDesc {
             ))
             .map(|n| n as usize)
         }
+    }
+
+    #[cfg(any(
+        target_os = "android",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "illumos",
+        target_os = "ios",
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "netbsd",
+    ))]
+    pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        let ret = cvt(unsafe {
+            libc::pwritev(
+                self.as_raw_fd(),
+                bufs.as_ptr() as *const libc::iovec,
+                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                offset as _,
+            )
+        })?;
+        Ok(ret as usize)
+    }
+
+    #[cfg(not(any(
+        target_os = "android",
+        target_os = "emscripten",
+        target_os = "freebsd",
+        target_os = "fuchsia",
+        target_os = "illumos",
+        target_os = "ios",
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "netbsd",
+    )))]
+    pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
+        io::default_write_vectored(|b| self.write_at(b, offset), bufs)
     }
 
     #[cfg(not(any(
