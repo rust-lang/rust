@@ -12,17 +12,21 @@
 //! correct. Instead, we try to provide a best-effort service. Even if the
 //! project is currently loading and we don't have a full project model, we
 //! still want to respond to various  requests.
-use std::{mem, sync::Arc};
+use std::{collections::hash_map::Entry, mem, sync::Arc};
 
 use flycheck::{FlycheckConfig, FlycheckHandle};
 use hir::db::DefDatabase;
 use ide::Change;
-use ide_db::base_db::{
-    CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind,
-    ProcMacroLoadResult, SourceRoot, VfsPath,
+use ide_db::{
+    base_db::{
+        CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind,
+        ProcMacroLoadResult, SourceRoot, VfsPath,
+    },
+    FxHashMap,
 };
+use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
-use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
+use project_model::{PackageRoot, ProjectWorkspace, WorkspaceBuildScripts};
 use syntax::SmolStr;
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
 
@@ -494,7 +498,69 @@ impl ProjectFolders {
         let mut fsc = FileSetConfig::builder();
         let mut local_filesets = vec![];
 
-        for root in workspaces.iter().flat_map(|ws| ws.to_roots()) {
+        // Dedup source roots
+        // Depending on the project setup, we can have duplicated source roots, or for example in
+        // the case of the rustc workspace, we can end up with two source roots that are almost the
+        // same but not quite, like:
+        // PackageRoot { is_local: false, include: [AbsPathBuf(".../rust/src/tools/miri/cargo-miri")], exclude: [] }
+        // PackageRoot {
+        //     is_local: true,
+        //     include: [AbsPathBuf(".../rust/src/tools/miri/cargo-miri"), AbsPathBuf(".../rust/build/x86_64-pc-windows-msvc/stage0-tools/x86_64-pc-windows-msvc/release/build/cargo-miri-85801cd3d2d1dae4/out")],
+        //     exclude: [AbsPathBuf(".../rust/src/tools/miri/cargo-miri/.git"), AbsPathBuf(".../rust/src/tools/miri/cargo-miri/target")]
+        // }
+        //
+        // The first one comes from the explicit rustc workspace which points to the rustc workspace itself
+        // The second comes from the rustc workspace that we load as the actual project workspace
+        // These `is_local` differing in this kind of way gives us problems, especially when trying to filter diagnostics as we don't report diagnostics for external libraries.
+        // So we need to deduplicate these, usually it would be enough to deduplicate by `include`, but as the rustc example shows here that doesn't work,
+        // so we need to also coalesce the includes if they overlap.
+
+        let mut roots: Vec<_> = workspaces
+            .iter()
+            .flat_map(|ws| ws.to_roots())
+            .update(|root| root.include.sort())
+            .sorted_by(|a, b| a.include.cmp(&b.include))
+            .collect();
+
+        // map that tracks indices of overlapping roots
+        let mut overlap_map = FxHashMap::<_, Vec<_>>::default();
+        let mut done = false;
+
+        while !mem::replace(&mut done, true) {
+            // maps include paths to indices of the corresponding root
+            let mut include_to_idx = FxHashMap::default();
+            // Find and note down the indices of overlapping roots
+            for (idx, root) in roots.iter().filter(|it| !it.include.is_empty()).enumerate() {
+                for include in &root.include {
+                    match include_to_idx.entry(include) {
+                        Entry::Occupied(e) => {
+                            overlap_map.entry(*e.get()).or_default().push(idx);
+                        }
+                        Entry::Vacant(e) => {
+                            e.insert(idx);
+                        }
+                    }
+                }
+            }
+            for (k, v) in overlap_map.drain() {
+                done = false;
+                for v in v {
+                    let r = mem::replace(
+                        &mut roots[v],
+                        PackageRoot { is_local: false, include: vec![], exclude: vec![] },
+                    );
+                    roots[k].is_local |= r.is_local;
+                    roots[k].include.extend(r.include);
+                    roots[k].exclude.extend(r.exclude);
+                }
+                roots[k].include.sort();
+                roots[k].exclude.sort();
+                roots[k].include.dedup();
+                roots[k].exclude.dedup();
+            }
+        }
+
+        for root in roots.into_iter().filter(|it| !it.include.is_empty()) {
             let file_set_roots: Vec<VfsPath> =
                 root.include.iter().cloned().map(VfsPath::from).collect();
 

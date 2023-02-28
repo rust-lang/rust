@@ -852,27 +852,27 @@ impl Config {
     }
     pub fn linked_projects(&self) -> Vec<LinkedProject> {
         match self.data.linkedProjects.as_slice() {
-            [] => match self.discovered_projects.as_ref() {
-                Some(discovered_projects) => {
-                    let exclude_dirs: Vec<_> = self
-                        .data
-                        .files_excludeDirs
+            [] => {
+                match self.discovered_projects.as_ref() {
+                    Some(discovered_projects) => {
+                        let exclude_dirs: Vec<_> = self
+                            .data
+                            .files_excludeDirs
+                            .iter()
+                            .map(|p| self.root_path.join(p))
+                            .collect();
+                        discovered_projects
                         .iter()
-                        .map(|p| self.root_path.join(p))
-                        .collect();
-                    discovered_projects
-                        .iter()
-                        .filter(|p| {
-                            let (ProjectManifest::ProjectJson(path)
-                            | ProjectManifest::CargoToml(path)) = p;
+                        .filter(|(ProjectManifest::ProjectJson(path) | ProjectManifest::CargoToml(path))| {
                             !exclude_dirs.iter().any(|p| path.starts_with(p))
                         })
                         .cloned()
                         .map(LinkedProject::from)
                         .collect()
+                    }
+                    None => Vec::new(),
                 }
-                None => Vec::new(),
-            },
+            }
             linked_projects => linked_projects
                 .iter()
                 .filter_map(|linked_project| match linked_project {
