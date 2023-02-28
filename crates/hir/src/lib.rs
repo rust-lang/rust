@@ -42,7 +42,7 @@ use hir_def::{
     adt::VariantData,
     body::{BodyDiagnostic, SyntheticSyntax},
     expr::{BindingAnnotation, ExprOrPatId, LabelId, Pat, PatId},
-    generics::{TypeOrConstParamData, TypeParamProvenance},
+    generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     item_tree::ItemTreeNode,
     lang_item::{LangItem, LangItemTarget},
     layout::{Layout, LayoutError, ReprOptions},
@@ -1168,6 +1168,25 @@ impl Adt {
             Adt::Union(u) => u.name(db),
             Adt::Enum(e) => e.name(db),
         }
+    }
+
+    /// Returns the lifetime of the DataType
+    pub fn lifetime(&self, db: &dyn HirDatabase) -> Option<LifetimeParamData> {
+        let resolver = match self {
+            Adt::Struct(s) => s.id.resolver(db.upcast()),
+            Adt::Union(u) => u.id.resolver(db.upcast()),
+            Adt::Enum(e) => e.id.resolver(db.upcast()),
+        };
+        resolver
+            .generic_params()
+            .and_then(|gp| {
+                (&gp.lifetimes)
+                    .iter()
+                    // there should only be a single lifetime
+                    // but `Arena` requires to use an iterator
+                    .nth(0)
+            })
+            .map(|arena| arena.1.clone())
     }
 
     pub fn as_enum(&self) -> Option<Enum> {
@@ -3332,6 +3351,24 @@ impl Type {
         }
     }
 
+    /// Iterates its type arguments
+    ///
+    /// It iterates the actual type arguments when concrete types are used
+    /// and otherwise the generic names.
+    /// It does not include `const` arguments.
+    ///
+    /// For code, such as:
+    /// ```text
+    /// struct Foo<T, U>
+    ///
+    /// impl<U> Foo<String, U>
+    /// ```
+    ///
+    /// It iterates:
+    /// ```text
+    /// - "String"
+    /// - "U"
+    /// ```
     pub fn type_arguments(&self) -> impl Iterator<Item = Type> + '_ {
         self.ty
             .strip_references()
@@ -3340,6 +3377,58 @@ impl Type {
             .flat_map(|(_, substs)| substs.iter(Interner))
             .filter_map(|arg| arg.ty(Interner).cloned())
             .map(move |ty| self.derived(ty))
+    }
+
+    /// Iterates its type and const arguments
+    ///
+    /// It iterates the actual type and const arguments when concrete types
+    /// are used and otherwise the generic names.
+    ///
+    /// For code, such as:
+    /// ```text
+    /// struct Foo<T, const U: usize, const X: usize>
+    ///
+    /// impl<U> Foo<String, U, 12>
+    /// ```
+    ///
+    /// It iterates:
+    /// ```text
+    /// - "String"
+    /// - "U"
+    /// - "12"
+    /// ```
+    pub fn type_and_const_arguments<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+    ) -> impl Iterator<Item = SmolStr> + 'a {
+        self.ty
+            .strip_references()
+            .as_adt()
+            .into_iter()
+            .flat_map(|(_, substs)| substs.iter(Interner))
+            .filter_map(|arg| {
+                // arg can be either a `Ty` or `constant`
+                if let Some(ty) = arg.ty(Interner) {
+                    Some(SmolStr::new(ty.display(db).to_string()))
+                } else if let Some(const_) = arg.constant(Interner) {
+                    Some(SmolStr::new_inline(&const_.display(db).to_string()))
+                } else {
+                    None
+                }
+            })
+    }
+
+    /// Combines lifetime indicators, type and constant parameters into a single `Iterator`
+    pub fn generic_parameters<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+    ) -> impl Iterator<Item = SmolStr> + 'a {
+        // iterate the lifetime
+        self.as_adt()
+            .and_then(|a| a.lifetime(db).and_then(|lt| Some((&lt.name).to_smol_str())))
+            .into_iter()
+            // add the type and const paramaters
+            .chain(self.type_and_const_arguments(db))
     }
 
     pub fn iterate_method_candidates_with_traits<T>(
