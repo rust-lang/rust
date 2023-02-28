@@ -804,6 +804,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ident: Ident,
         node_id: NodeId,
         res: LifetimeRes,
+        source: hir::GenericParamSource,
     ) -> Option<hir::GenericParam<'hir>> {
         let (name, kind) = match res {
             LifetimeRes::Param { .. } => {
@@ -837,6 +838,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             pure_wrt_drop: false,
             kind: hir::GenericParamKind::Lifetime { kind },
             colon_span: None,
+            source,
         })
     }
 
@@ -852,11 +854,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         binder: NodeId,
         generic_params: &[GenericParam],
     ) -> &'hir [hir::GenericParam<'hir>] {
-        let mut generic_params: Vec<_> = self.lower_generic_params_mut(generic_params).collect();
+        let mut generic_params: Vec<_> = self
+            .lower_generic_params_mut(generic_params, hir::GenericParamSource::Binder)
+            .collect();
         let extra_lifetimes = self.resolver.take_extra_lifetime_params(binder);
         debug!(?extra_lifetimes);
         generic_params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
-            self.lifetime_res_to_generic_param(ident, node_id, res)
+            self.lifetime_res_to_generic_param(ident, node_id, res, hir::GenericParamSource::Binder)
         }));
         let generic_params = self.arena.alloc_from_iter(generic_params);
         debug!(?generic_params);
@@ -1375,8 +1379,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             span,
                         );
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
-                        let (param, bounds, path) =
-                            self.lower_generic_and_bounds(*def_node_id, span, ident, bounds);
+                        let (param, bounds, path) = self.lower_universal_param_and_bounds(
+                            *def_node_id,
+                            span,
+                            ident,
+                            bounds,
+                        );
                         self.impl_trait_defs.push(param);
                         if let Some(bounds) = bounds {
                             self.impl_trait_bounds.push(bounds);
@@ -1530,6 +1538,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             pure_wrt_drop: false,
                             kind: hir::GenericParamKind::Lifetime { kind },
                             colon_span: None,
+                            source: hir::GenericParamSource::Generics,
                         }
                     },
                 ));
@@ -1987,6 +1996,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             pure_wrt_drop: false,
                             kind: hir::GenericParamKind::Lifetime { kind },
                             colon_span: None,
+                            source: hir::GenericParamSource::Generics,
                         }
                     },
                 ));
@@ -2152,16 +2162,25 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_generic_params_mut<'s>(
         &'s mut self,
         params: &'s [GenericParam],
+        source: hir::GenericParamSource,
     ) -> impl Iterator<Item = hir::GenericParam<'hir>> + Captures<'a> + Captures<'s> {
-        params.iter().map(move |param| self.lower_generic_param(param))
+        params.iter().map(move |param| self.lower_generic_param(param, source))
     }
 
-    fn lower_generic_params(&mut self, params: &[GenericParam]) -> &'hir [hir::GenericParam<'hir>] {
-        self.arena.alloc_from_iter(self.lower_generic_params_mut(params))
+    fn lower_generic_params(
+        &mut self,
+        params: &[GenericParam],
+        source: hir::GenericParamSource,
+    ) -> &'hir [hir::GenericParam<'hir>] {
+        self.arena.alloc_from_iter(self.lower_generic_params_mut(params, source))
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn lower_generic_param(&mut self, param: &GenericParam) -> hir::GenericParam<'hir> {
+    fn lower_generic_param(
+        &mut self,
+        param: &GenericParam,
+        source: hir::GenericParamSource,
+    ) -> hir::GenericParam<'hir> {
         let (name, kind) = self.lower_generic_param_kind(param);
 
         let hir_id = self.lower_node_id(param.id);
@@ -2174,6 +2193,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             pure_wrt_drop: self.tcx.sess.contains_name(&param.attrs, sym::may_dangle),
             kind,
             colon_span: param.colon_span.map(|s| self.lower_span(s)),
+            source,
         }
     }
 
@@ -2266,7 +2286,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    fn lower_generic_and_bounds(
+    fn lower_universal_param_and_bounds(
         &mut self,
         node_id: NodeId,
         span: Span,
@@ -2286,6 +2306,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             span,
             kind: hir::GenericParamKind::Type { default: None, synthetic: true },
             colon_span: None,
+            source: hir::GenericParamSource::Generics,
         };
 
         let preds = self.lower_generic_bound_predicate(

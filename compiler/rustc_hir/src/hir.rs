@@ -498,6 +498,7 @@ pub struct GenericParam<'hir> {
     pub pure_wrt_drop: bool,
     pub kind: GenericParamKind<'hir>,
     pub colon_span: Option<Span>,
+    pub source: GenericParamSource,
 }
 
 impl<'hir> GenericParam<'hir> {
@@ -514,6 +515,20 @@ impl<'hir> GenericParam<'hir> {
     pub fn is_elided_lifetime(&self) -> bool {
         matches!(self.kind, GenericParamKind::Lifetime { kind: LifetimeParamKind::Elided })
     }
+}
+
+/// Records where the generic parameter originated from.
+///
+/// This can either be from an item's generics, in which case it's typically
+/// early-bound (but can be a late-bound lifetime in functions, for example),
+/// or from a `for<...>` binder, in which case it's late-bound (and notably,
+/// does not show up in the parent item's generics).
+#[derive(Debug, HashStable_Generic, PartialEq, Eq, Copy, Clone)]
+pub enum GenericParamSource {
+    // Early or late-bound parameters defined on an item
+    Generics,
+    // Late-bound parameters defined via a `for<...>`
+    Binder,
 }
 
 #[derive(Default)]
