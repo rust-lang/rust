@@ -731,6 +731,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // For example, `Some(5)` triggers this case.
                         self.tcx.parent(expr_ctor_def_id)
                     } else {
+                        // FIXME: Deal with type aliases?
                         return Err(expr);
                     }
                 }
