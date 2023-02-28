@@ -3,46 +3,22 @@ use proc_macro_error::proc_macro_error;
 use quote::quote;
 
 mod parser;
-//mod gen;
+mod gen;
 
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn autodiff(args: TokenStream, input: TokenStream) -> TokenStream {
     let mut params = parser::parse(args.into(), input.clone().into());
-    dbg!(&params);
-    //let (body, fnc_source) = gen::generate_body(input.into(), &params);
-    //let header = gen::generate_header(&params);
+    let (primal, adjoint) = (gen::primal_fnc(&params), gen::adjoint_fnc(&params));
 
-    //// generate function
+    let res = quote!(
+        #primal
+        #adjoint
+    );
 
-    //let out = if params.block.is_none() {
-    //    let sig = &params.sig;
-    //    quote!(
-    //        #[autodiff_into]
-    //        #fnc_source
+    println!("{}", res);
 
-    //        #header
-    //        #sig {
-    //            #body
-    //        }
-    //    )
-    //} else {
-    //    params.sig.ident = params.header.name.get_ident().unwrap().clone();
-    //    let sig = &params.sig;
-
-    //    quote!(
-    //        #[autodiff_into]
-    //        #fnc_source
-
-    //        #header
-    //        #sig {
-    //            #body
-    //        }
-    //    )
-    //};
-
-    //out.into()
-    quote!().into()
+    res.into()
 }
 
 #[test]

@@ -5,9 +5,9 @@ use quote::{format_ident, quote};
 
 #[derive(Debug)]
 pub struct PrimalSig {
-    ident: Ident,
-    inputs: Vec<FnArg>,
-    output: ReturnType,
+    pub(crate) ident: Ident,
+    pub(crate) inputs: Vec<FnArg>,
+    pub(crate) output: ReturnType,
 }
 
 #[derive(Debug)]
@@ -173,7 +173,7 @@ impl Header {
     }
 }
 
-fn is_ref_mut(t: &FnArg) -> Option<bool> {
+pub(crate) fn is_ref_mut(t: &FnArg) -> Option<bool> {
     match t {
         FnArg::Receiver(pat) => Some(pat.mutability.is_some()),
         FnArg::Typed(pat) => match &*pat.ty {
@@ -201,13 +201,13 @@ fn ret_arg(arg: &FnArg) -> Type {
     }
 }
 
-pub(crate) fn reduce_params(sig: Signature, header_acts: Vec<Activity>, is_adjoint: bool, header: &Header) -> (PrimalSig, Vec<Activity>) {
+pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_adjoint: bool, header: &Header) -> (PrimalSig, Vec<Activity>) {
     let mut args = Vec::new();
     let mut ret = Vec::new();
     let mut acts = Vec::new();
     let mut last_arg: Option<FnArg> = None;
 
-    let mut arg_it = sig.inputs.iter();
+    let mut arg_it = sig.inputs.iter_mut();
     let mut header_acts_it = header_acts.iter();
 
     while let Some(arg) = arg_it.next() {
@@ -246,8 +246,8 @@ pub(crate) fn reduce_params(sig: Signature, header_acts: Vec<Activity>, is_adjoi
 
         // parse current attribute macro
         let mut attrs: Vec<_> = match arg {
-            FnArg::Typed(pat) => pat.attrs.iter().cloned().collect(),
-            FnArg::Receiver(pat) => pat.attrs.iter().cloned().collect(),
+            FnArg::Typed(pat) => pat.attrs.drain(..).collect(),
+            FnArg::Receiver(pat) => pat.attrs.drain(..).collect(),
         };
         let attr = attrs.first();
         let act: Activity = match (header_acts.is_empty(), attr) {
@@ -422,53 +422,6 @@ pub(crate) fn reduce_params(sig: Signature, header_acts: Vec<Activity>, is_adjoi
     )
 }
 
-//pub(crate) fn strip_sig_attributes(args: Vec<&FnArg>, do_skip: bool, _header: &Header) -> (Vec<FnArg>, Vec<Activity>) {
-//    let mut args = args.into_iter().cloned().collect::<Vec<_>>();
-//    let mut arg_it = args.iter_mut();
-//    let mut acts = Vec::new();
-//    let mut last_arg = false;
-//
-//    while let Some(arg) = arg_it.next() {
-//        if skip && do_skip {
-//            skip = false;
-//            continue;
-//        }
-//
-//        let mut attrs = match arg {
-//            FnArg::Typed(pat) => pat.attrs.drain(..),
-//            FnArg::Receiver(pat) => pat.attrs.drain(..),
-//        };
-//        let act = attrs.next().map(Activity::from_inline).unwrap_or(Activity::Const);
-//        match act {
-//            Activity::Duplicated | Activity::DuplicatedNoNeed => { skip = true; }
-//            _ => {}
-//        }
-//        acts.push(act);
-//    }
-//
-//    // remove last activity because it belongs to return type
-//    //if header.mode == Mode::Reverse && header.ret_act == Activity::Active {
-//    //    dbg!(&acts);
-//    //    acts.pop();
-//    //}
-//
-//    (args, acts)
-//}
-
-//
-//fn is_ref_mut(t: &Type) -> bool {
-//    match t {
-//        Type::Reference(t) => t.mutability.is_some(),
-//        _ => {
-//            abort!(
-//                t,
-//                "not a reference";
-//                help = "`#[autodiff]` arguments should be references"
-//            );
-//        }
-//    }
-//}
-//
 //fn check_output(arg: &FnArg) -> bool {
 //    match arg {
 //        FnArg::Receiver(x) => x.mutability.is_some(),
