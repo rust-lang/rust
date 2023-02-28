@@ -1,7 +1,7 @@
 #![allow(unused)]
 #![warn(clippy::collection_is_never_read)]
 
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 
 fn main() {}
 
@@ -125,4 +125,11 @@ fn insert_is_a_read() {
     if x.insert(5) {
         println!("5 was inserted");
     }
+}
+
+fn not_read_if_return_value_not_used() {
+    // `is_empty` does not modify the set, so it's a query. But since the return value is not used, the
+    // lint does not consider it a read here.
+    let x = vec![1, 2, 3]; // WARNING
+    x.is_empty();
 }
