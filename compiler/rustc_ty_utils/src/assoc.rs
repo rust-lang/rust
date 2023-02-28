@@ -196,7 +196,7 @@ fn associated_item_for_impl_trait_in_trait(
     trait_assoc_ty.def_id()
 }
 
-/// Given an `trait_assoc_def_id` that corresponds to a previously synthethized impl trait in trait
+/// Given an `trait_assoc_def_id` that corresponds to a previously synthesized impl trait in trait
 /// into an associated type and an `impl_def_id` corresponding to an impl block, create and return
 /// the corresponding associated item inside the impl block.
 fn impl_associated_item_for_impl_trait_in_trait(
