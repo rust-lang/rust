@@ -237,7 +237,7 @@ impl ProjectWorkspace {
                 };
 
                 if let Some(sysroot) = &sysroot {
-                    tracing::info!(src_root = %sysroot.src_root().display(), root = %sysroot.root().display(), "Using sysroot");
+                    tracing::info!(workspace = %cargo_toml.display(), src_root = %sysroot.src_root().display(), root = %sysroot.root().display(), "Using sysroot");
                 }
 
                 let rustc_dir = match &config.rustc_source {
@@ -247,27 +247,31 @@ impl ProjectWorkspace {
                     }
                     None => None,
                 };
-                if let Some(rustc_dir) = &rustc_dir {
-                    tracing::info!(rustc_dir = %rustc_dir.display(), "Using rustc source");
-                }
 
                 let rustc = match rustc_dir {
-                    Some(rustc_dir) => match CargoWorkspace::fetch_metadata(
-                        &rustc_dir,
-                        cargo_toml.parent(),
-                        config,
-                        progress,
-                    ) {
-                        Ok(meta) => Some(CargoWorkspace::new(meta)),
-                        Err(e) => {
-                            tracing::error!(
-                                %e,
-                                "Failed to read Cargo metadata from rustc source at {}",
-                                rustc_dir.display()
-                            );
-                            None
+                    Some(rustc_dir) if rustc_dir == cargo_toml => {
+                        tracing::info!(rustc_dir = %rustc_dir.display(), "Workspace is the rustc workspace itself, not adding the rustc workspace separately");
+                        None
+                    }
+                    Some(rustc_dir) => {
+                        tracing::info!(workspace = %cargo_toml.display(), rustc_dir = %rustc_dir.display(), "Using rustc source");
+                        match CargoWorkspace::fetch_metadata(
+                            &rustc_dir,
+                            cargo_toml.parent(),
+                            config,
+                            progress,
+                        ) {
+                            Ok(meta) => Some(CargoWorkspace::new(meta)),
+                            Err(e) => {
+                                tracing::error!(
+                                    %e,
+                                    "Failed to read Cargo metadata from rustc source at {}",
+                                    rustc_dir.display()
+                                );
+                                None
+                            }
                         }
-                    },
+                    }
                     None => None,
                 };
 
