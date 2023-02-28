@@ -306,7 +306,7 @@ The maximum number of lines a function or method can have
 ### array-size-threshold
 The maximum allowed size for arrays on the stack
 
-**Default Value:** `512000` (`u128`)
+**Default Value:** `512000` (`u64`)
 
 * [large_stack_arrays](https://rust-lang.github.io/rust-clippy/master/index.html#large_stack_arrays)
 * [large_const_arrays](https://rust-lang.github.io/rust-clippy/master/index.html#large_const_arrays)
