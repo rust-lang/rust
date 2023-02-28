@@ -1,20 +1,11 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::get_enclosing_block;
-use clippy_utils::get_parent_node;
-use clippy_utils::path_to_local_id;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_expr_with_closures;
+use clippy_utils::{get_enclosing_block, get_parent_node, path_to_local_id};
 use core::ops::ControlFlow;
-use rustc_hir::Block;
-use rustc_hir::ExprKind;
-use rustc_hir::HirId;
-use rustc_hir::Local;
-use rustc_hir::Node;
-use rustc_hir::PatKind;
-use rustc_lint::LateContext;
-use rustc_lint::LateLintPass;
-use rustc_session::declare_lint_pass;
-use rustc_session::declare_tool_lint;
+use rustc_hir::{Block, ExprKind, HirId, Local, Node, PatKind};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 
