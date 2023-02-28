@@ -1,29 +1,24 @@
 //! Constant evaluation details
 
-use std::{
-    collections::HashMap,
-    fmt::{Display, Write},
-};
-
-use chalk_ir::{BoundVar, DebruijnIndex, GenericArgData, IntTy, Scalar};
+use base_db::CrateId;
+use chalk_ir::{BoundVar, DebruijnIndex, GenericArgData};
 use hir_def::{
-    builtin_type::BuiltinInt,
-    expr::{ArithOp, BinaryOp, Expr, ExprId, Literal, Pat, PatId},
+    expr::Expr,
     path::ModPath,
-    resolver::{resolver_for_expr, ResolveValueResult, Resolver, ValueNs},
-    src::HasChildSource,
-    type_ref::ConstScalar,
-    ConstId, DefWithBodyId, EnumVariantId, Lookup,
+    resolver::{Resolver, ValueNs},
+    type_ref::ConstRef,
+    ConstId, EnumVariantId,
 };
-use la_arena::{Arena, Idx, RawIdx};
+use la_arena::{Idx, RawIdx};
 use stdx::never;
-use syntax::ast::HasName;
 
 use crate::{
-    db::HirDatabase, infer::InferenceContext, lower::ParamLoweringMode, to_placeholder_idx,
-    utils::Generics, Const, ConstData, ConstValue, GenericArg, InferenceResult, Interner, Ty,
-    TyBuilder, TyKind,
+    db::HirDatabase, infer::InferenceContext, layout::layout_of_ty, lower::ParamLoweringMode,
+    to_placeholder_idx, utils::Generics, Const, ConstData, ConstScalar, ConstValue, GenericArg,
+    Interner, MemoryMap, Ty, TyBuilder,
 };
+
+use super::mir::{interpret_mir, lower_to_mir, pad16, MirEvalError, MirLowerError};
 
 /// Extension trait for [`Const`]
 pub trait ConstExt {
@@ -53,346 +48,24 @@ impl ConstExt for Const {
     }
 }
 
-pub struct ConstEvalCtx<'a> {
-    pub db: &'a dyn HirDatabase,
-    pub owner: DefWithBodyId,
-    pub exprs: &'a Arena<Expr>,
-    pub pats: &'a Arena<Pat>,
-    pub local_data: HashMap<PatId, ComputedExpr>,
-    infer: &'a InferenceResult,
-}
-
-impl ConstEvalCtx<'_> {
-    fn expr_ty(&mut self, expr: ExprId) -> Ty {
-        self.infer[expr].clone()
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstEvalError {
-    NotSupported(&'static str),
-    SemanticError(&'static str),
-    Loop,
-    IncompleteExpr,
-    Panic(String),
+    MirLowerError(MirLowerError),
+    MirEvalError(MirEvalError),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ComputedExpr {
-    Literal(Literal),
-    Enum(String, EnumVariantId, Literal),
-    Tuple(Box<[ComputedExpr]>),
-}
-
-impl Display for ComputedExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ComputedExpr::Literal(l) => match l {
-                Literal::Int(x, _) => {
-                    if *x >= 10 {
-                        write!(f, "{x} ({x:#X})")
-                    } else {
-                        x.fmt(f)
-                    }
-                }
-                Literal::Uint(x, _) => {
-                    if *x >= 10 {
-                        write!(f, "{x} ({x:#X})")
-                    } else {
-                        x.fmt(f)
-                    }
-                }
-                Literal::Float(x, _) => x.fmt(f),
-                Literal::Bool(x) => x.fmt(f),
-                Literal::Char(x) => std::fmt::Debug::fmt(x, f),
-                Literal::String(x) => std::fmt::Debug::fmt(x, f),
-                Literal::ByteString(x) => std::fmt::Debug::fmt(x, f),
-            },
-            ComputedExpr::Enum(name, _, _) => name.fmt(f),
-            ComputedExpr::Tuple(t) => {
-                f.write_char('(')?;
-                for x in &**t {
-                    x.fmt(f)?;
-                    f.write_str(", ")?;
-                }
-                f.write_char(')')
-            }
+impl From<MirLowerError> for ConstEvalError {
+    fn from(value: MirLowerError) -> Self {
+        match value {
+            MirLowerError::ConstEvalError(e) => *e,
+            _ => ConstEvalError::MirLowerError(value),
         }
     }
 }
 
-fn scalar_max(scalar: &Scalar) -> i128 {
-    match scalar {
-        Scalar::Bool => 1,
-        Scalar::Char => u32::MAX as i128,
-        Scalar::Int(x) => match x {
-            IntTy::Isize => isize::MAX as i128,
-            IntTy::I8 => i8::MAX as i128,
-            IntTy::I16 => i16::MAX as i128,
-            IntTy::I32 => i32::MAX as i128,
-            IntTy::I64 => i64::MAX as i128,
-            IntTy::I128 => i128::MAX,
-        },
-        Scalar::Uint(x) => match x {
-            chalk_ir::UintTy::Usize => usize::MAX as i128,
-            chalk_ir::UintTy::U8 => u8::MAX as i128,
-            chalk_ir::UintTy::U16 => u16::MAX as i128,
-            chalk_ir::UintTy::U32 => u32::MAX as i128,
-            chalk_ir::UintTy::U64 => u64::MAX as i128,
-            chalk_ir::UintTy::U128 => i128::MAX, // ignore too big u128 for now
-        },
-        Scalar::Float(_) => 0,
-    }
-}
-
-fn is_valid(scalar: &Scalar, value: i128) -> bool {
-    if value < 0 {
-        !matches!(scalar, Scalar::Uint(_)) && -scalar_max(scalar) - 1 <= value
-    } else {
-        value <= scalar_max(scalar)
-    }
-}
-
-fn get_name(ctx: &mut ConstEvalCtx<'_>, variant: EnumVariantId) -> String {
-    let loc = variant.parent.lookup(ctx.db.upcast());
-    let children = variant.parent.child_source(ctx.db.upcast());
-    let item_tree = loc.id.item_tree(ctx.db.upcast());
-
-    let variant_name = children.value[variant.local_id].name();
-    let enum_name = item_tree[loc.id.value].name.to_string();
-    enum_name + "::" + &variant_name.unwrap().to_string()
-}
-
-pub fn eval_const(
-    expr_id: ExprId,
-    ctx: &mut ConstEvalCtx<'_>,
-) -> Result<ComputedExpr, ConstEvalError> {
-    let u128_to_i128 = |it: u128| -> Result<i128, ConstEvalError> {
-        it.try_into().map_err(|_| ConstEvalError::NotSupported("u128 is too big"))
-    };
-
-    let expr = &ctx.exprs[expr_id];
-    match expr {
-        Expr::Missing => match ctx.owner {
-            // evaluate the implicit variant index of an enum variant without expression
-            // FIXME: This should return the type of the enum representation
-            DefWithBodyId::VariantId(variant) => {
-                let prev_idx: u32 = variant.local_id.into_raw().into();
-                let prev_idx = prev_idx.checked_sub(1).map(RawIdx::from).map(Idx::from_raw);
-                let value = match prev_idx {
-                    Some(local_id) => {
-                        let prev_variant = EnumVariantId { local_id, parent: variant.parent };
-                        1 + match ctx.db.const_eval_variant(prev_variant)? {
-                            ComputedExpr::Literal(Literal::Int(v, _)) => v,
-                            ComputedExpr::Literal(Literal::Uint(v, _)) => u128_to_i128(v)?,
-                            _ => {
-                                return Err(ConstEvalError::NotSupported(
-                                    "Enum can't contain this kind of value",
-                                ))
-                            }
-                        }
-                    }
-                    _ => 0,
-                };
-                Ok(ComputedExpr::Literal(Literal::Int(value, Some(BuiltinInt::I128))))
-            }
-            _ => Err(ConstEvalError::IncompleteExpr),
-        },
-        Expr::Literal(l) => Ok(ComputedExpr::Literal(l.clone())),
-        &Expr::UnaryOp { expr, op } => {
-            let ty = &ctx.expr_ty(expr);
-            let ev = eval_const(expr, ctx)?;
-            match op {
-                hir_def::expr::UnaryOp::Deref => Err(ConstEvalError::NotSupported("deref")),
-                hir_def::expr::UnaryOp::Not => {
-                    let v = match ev {
-                        ComputedExpr::Literal(Literal::Bool(b)) => {
-                            return Ok(ComputedExpr::Literal(Literal::Bool(!b)))
-                        }
-                        ComputedExpr::Literal(Literal::Int(v, _)) => v,
-                        ComputedExpr::Literal(Literal::Uint(v, _)) => u128_to_i128(v)?,
-                        _ => return Err(ConstEvalError::NotSupported("this kind of operator")),
-                    };
-                    let r = match ty.kind(Interner) {
-                        TyKind::Scalar(Scalar::Uint(x)) => match x {
-                            chalk_ir::UintTy::U8 => !(v as u8) as i128,
-                            chalk_ir::UintTy::U16 => !(v as u16) as i128,
-                            chalk_ir::UintTy::U32 => !(v as u32) as i128,
-                            chalk_ir::UintTy::U64 => !(v as u64) as i128,
-                            chalk_ir::UintTy::U128 => {
-                                return Err(ConstEvalError::NotSupported("negation of u128"))
-                            }
-                            chalk_ir::UintTy::Usize => !(v as usize) as i128,
-                        },
-                        TyKind::Scalar(Scalar::Int(x)) => match x {
-                            chalk_ir::IntTy::I8 => !(v as i8) as i128,
-                            chalk_ir::IntTy::I16 => !(v as i16) as i128,
-                            chalk_ir::IntTy::I32 => !(v as i32) as i128,
-                            chalk_ir::IntTy::I64 => !(v as i64) as i128,
-                            chalk_ir::IntTy::I128 => !v,
-                            chalk_ir::IntTy::Isize => !(v as isize) as i128,
-                        },
-                        _ => return Err(ConstEvalError::NotSupported("unreachable?")),
-                    };
-                    Ok(ComputedExpr::Literal(Literal::Int(r, None)))
-                }
-                hir_def::expr::UnaryOp::Neg => {
-                    let v = match ev {
-                        ComputedExpr::Literal(Literal::Int(v, _)) => v,
-                        ComputedExpr::Literal(Literal::Uint(v, _)) => u128_to_i128(v)?,
-                        _ => return Err(ConstEvalError::NotSupported("this kind of operator")),
-                    };
-                    Ok(ComputedExpr::Literal(Literal::Int(
-                        v.checked_neg().ok_or_else(|| {
-                            ConstEvalError::Panic("overflow in negation".to_string())
-                        })?,
-                        None,
-                    )))
-                }
-            }
-        }
-        &Expr::BinaryOp { lhs, rhs, op } => {
-            let ty = &ctx.expr_ty(lhs);
-            let lhs = eval_const(lhs, ctx)?;
-            let rhs = eval_const(rhs, ctx)?;
-            let op = op.ok_or(ConstEvalError::IncompleteExpr)?;
-            let v1 = match lhs {
-                ComputedExpr::Literal(Literal::Int(v, _)) => v,
-                ComputedExpr::Literal(Literal::Uint(v, _)) => u128_to_i128(v)?,
-                _ => return Err(ConstEvalError::NotSupported("this kind of operator")),
-            };
-            let v2 = match rhs {
-                ComputedExpr::Literal(Literal::Int(v, _)) => v,
-                ComputedExpr::Literal(Literal::Uint(v, _)) => u128_to_i128(v)?,
-                _ => return Err(ConstEvalError::NotSupported("this kind of operator")),
-            };
-            match op {
-                BinaryOp::ArithOp(b) => {
-                    let panic_arith = ConstEvalError::Panic(
-                        "attempt to run invalid arithmetic operation".to_string(),
-                    );
-                    let r = match b {
-                        ArithOp::Add => v1.checked_add(v2).ok_or_else(|| panic_arith.clone())?,
-                        ArithOp::Mul => v1.checked_mul(v2).ok_or_else(|| panic_arith.clone())?,
-                        ArithOp::Sub => v1.checked_sub(v2).ok_or_else(|| panic_arith.clone())?,
-                        ArithOp::Div => v1.checked_div(v2).ok_or_else(|| panic_arith.clone())?,
-                        ArithOp::Rem => v1.checked_rem(v2).ok_or_else(|| panic_arith.clone())?,
-                        ArithOp::Shl => v1
-                            .checked_shl(v2.try_into().map_err(|_| panic_arith.clone())?)
-                            .ok_or_else(|| panic_arith.clone())?,
-                        ArithOp::Shr => v1
-                            .checked_shr(v2.try_into().map_err(|_| panic_arith.clone())?)
-                            .ok_or_else(|| panic_arith.clone())?,
-                        ArithOp::BitXor => v1 ^ v2,
-                        ArithOp::BitOr => v1 | v2,
-                        ArithOp::BitAnd => v1 & v2,
-                    };
-                    if let TyKind::Scalar(s) = ty.kind(Interner) {
-                        if !is_valid(s, r) {
-                            return Err(panic_arith);
-                        }
-                    }
-                    Ok(ComputedExpr::Literal(Literal::Int(r, None)))
-                }
-                BinaryOp::LogicOp(_) => Err(ConstEvalError::SemanticError("logic op on numbers")),
-                _ => Err(ConstEvalError::NotSupported("bin op on this operators")),
-            }
-        }
-        Expr::Block { statements, tail, .. } => {
-            let mut prev_values = HashMap::<PatId, Option<ComputedExpr>>::default();
-            for statement in &**statements {
-                match *statement {
-                    hir_def::expr::Statement::Let { pat: pat_id, initializer, .. } => {
-                        let pat = &ctx.pats[pat_id];
-                        match pat {
-                            Pat::Bind { subpat, .. } if subpat.is_none() => (),
-                            _ => {
-                                return Err(ConstEvalError::NotSupported("complex patterns in let"))
-                            }
-                        };
-                        let value = match initializer {
-                            Some(x) => eval_const(x, ctx)?,
-                            None => continue,
-                        };
-                        if !prev_values.contains_key(&pat_id) {
-                            let prev = ctx.local_data.insert(pat_id, value);
-                            prev_values.insert(pat_id, prev);
-                        } else {
-                            ctx.local_data.insert(pat_id, value);
-                        }
-                    }
-                    hir_def::expr::Statement::Expr { .. } => {
-                        return Err(ConstEvalError::NotSupported("this kind of statement"))
-                    }
-                }
-            }
-            let r = match tail {
-                &Some(x) => eval_const(x, ctx),
-                None => Ok(ComputedExpr::Tuple(Box::new([]))),
-            };
-            // clean up local data, so caller will receive the exact map that passed to us
-            for (name, val) in prev_values {
-                match val {
-                    Some(x) => ctx.local_data.insert(name, x),
-                    None => ctx.local_data.remove(&name),
-                };
-            }
-            r
-        }
-        Expr::Path(p) => {
-            let resolver = resolver_for_expr(ctx.db.upcast(), ctx.owner, expr_id);
-            let pr = resolver
-                .resolve_path_in_value_ns(ctx.db.upcast(), p.mod_path())
-                .ok_or(ConstEvalError::SemanticError("unresolved path"))?;
-            let pr = match pr {
-                ResolveValueResult::ValueNs(v) => v,
-                ResolveValueResult::Partial(..) => {
-                    return match ctx
-                        .infer
-                        .assoc_resolutions_for_expr(expr_id)
-                        .ok_or(ConstEvalError::SemanticError("unresolved assoc item"))?
-                        .0
-                    {
-                        hir_def::AssocItemId::FunctionId(_) => {
-                            Err(ConstEvalError::NotSupported("assoc function"))
-                        }
-                        // FIXME use actual impl for trait assoc const
-                        hir_def::AssocItemId::ConstId(c) => ctx.db.const_eval(c),
-                        hir_def::AssocItemId::TypeAliasId(_) => {
-                            Err(ConstEvalError::NotSupported("assoc type alias"))
-                        }
-                    };
-                }
-            };
-            match pr {
-                ValueNs::LocalBinding(pat_id) => {
-                    let r = ctx
-                        .local_data
-                        .get(&pat_id)
-                        .ok_or(ConstEvalError::NotSupported("Unexpected missing local"))?;
-                    Ok(r.clone())
-                }
-                ValueNs::ConstId(id) => ctx.db.const_eval(id),
-                ValueNs::GenericParam(_) => {
-                    Err(ConstEvalError::NotSupported("const generic without substitution"))
-                }
-                ValueNs::EnumVariantId(id) => match ctx.db.const_eval_variant(id)? {
-                    ComputedExpr::Literal(lit) => {
-                        Ok(ComputedExpr::Enum(get_name(ctx, id), id, lit))
-                    }
-                    _ => Err(ConstEvalError::NotSupported(
-                        "Enums can't evalute to anything but numbers",
-                    )),
-                },
-                _ => Err(ConstEvalError::NotSupported("path that are not const or local")),
-            }
-        }
-        // FIXME: Handle the cast target
-        &Expr::Cast { expr, .. } => match eval_const(expr, ctx)? {
-            ComputedExpr::Enum(_, _, lit) => Ok(ComputedExpr::Literal(lit)),
-            _ => Err(ConstEvalError::NotSupported("Can't cast these types")),
-        },
-        _ => Err(ConstEvalError::NotSupported("This kind of expression")),
+impl From<MirEvalError> for ConstEvalError {
+    fn from(value: MirEvalError) -> Self {
+        ConstEvalError::MirEvalError(value)
     }
 }
 
@@ -449,68 +122,102 @@ pub fn intern_const_scalar(value: ConstScalar, ty: Ty) -> Const {
         .intern(Interner)
 }
 
+/// Interns a constant scalar with the given type
+pub fn intern_const_ref(db: &dyn HirDatabase, value: &ConstRef, ty: Ty, krate: CrateId) -> Const {
+    let bytes = match value {
+        ConstRef::Int(i) => {
+            // FIXME: We should handle failure of layout better.
+            let size = layout_of_ty(db, &ty, krate).map(|x| x.size.bytes_usize()).unwrap_or(16);
+            ConstScalar::Bytes(i.to_le_bytes()[0..size].to_vec(), MemoryMap::default())
+        }
+        ConstRef::UInt(i) => {
+            let size = layout_of_ty(db, &ty, krate).map(|x| x.size.bytes_usize()).unwrap_or(16);
+            ConstScalar::Bytes(i.to_le_bytes()[0..size].to_vec(), MemoryMap::default())
+        }
+        ConstRef::Bool(b) => ConstScalar::Bytes(vec![*b as u8], MemoryMap::default()),
+        ConstRef::Char(c) => {
+            ConstScalar::Bytes((*c as u32).to_le_bytes().to_vec(), MemoryMap::default())
+        }
+        ConstRef::Unknown => ConstScalar::Unknown,
+    };
+    intern_const_scalar(bytes, ty)
+}
+
 /// Interns a possibly-unknown target usize
-pub fn usize_const(value: Option<u128>) -> Const {
-    intern_const_scalar(value.map_or(ConstScalar::Unknown, ConstScalar::UInt), TyBuilder::usize())
+pub fn usize_const(db: &dyn HirDatabase, value: Option<u128>, krate: CrateId) -> Const {
+    intern_const_ref(
+        db,
+        &value.map_or(ConstRef::Unknown, ConstRef::UInt),
+        TyBuilder::usize(),
+        krate,
+    )
+}
+
+pub fn try_const_usize(c: &Const) -> Option<u128> {
+    match &c.data(Interner).value {
+        chalk_ir::ConstValue::BoundVar(_) => None,
+        chalk_ir::ConstValue::InferenceVar(_) => None,
+        chalk_ir::ConstValue::Placeholder(_) => None,
+        chalk_ir::ConstValue::Concrete(c) => match &c.interned {
+            ConstScalar::Bytes(x, _) => Some(u128::from_le_bytes(pad16(&x, false))),
+            _ => None,
+        },
+    }
 }
 
 pub(crate) fn const_eval_recover(
     _: &dyn HirDatabase,
     _: &[String],
     _: &ConstId,
-) -> Result<ComputedExpr, ConstEvalError> {
-    Err(ConstEvalError::Loop)
+) -> Result<Const, ConstEvalError> {
+    Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
 
-pub(crate) fn const_eval_variant_recover(
+pub(crate) fn const_eval_discriminant_recover(
     _: &dyn HirDatabase,
     _: &[String],
     _: &EnumVariantId,
-) -> Result<ComputedExpr, ConstEvalError> {
-    Err(ConstEvalError::Loop)
+) -> Result<i128, ConstEvalError> {
+    Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
 
-pub(crate) fn const_eval_variant_query(
+pub(crate) fn const_eval_query(
     db: &dyn HirDatabase,
     const_id: ConstId,
-) -> Result<ComputedExpr, ConstEvalError> {
+) -> Result<Const, ConstEvalError> {
     let def = const_id.into();
-    let body = db.body(def);
-    let infer = &db.infer(def);
-    let result = eval_const(
-        body.body_expr,
-        &mut ConstEvalCtx {
-            db,
-            owner: const_id.into(),
-            exprs: &body.exprs,
-            pats: &body.pats,
-            local_data: HashMap::default(),
-            infer,
-        },
-    );
-    result
+    let body = db.mir_body(def)?;
+    let c = interpret_mir(db, &body, false)?;
+    Ok(c)
 }
 
-pub(crate) fn const_eval_query_variant(
+pub(crate) fn const_eval_discriminant_variant(
     db: &dyn HirDatabase,
     variant_id: EnumVariantId,
-) -> Result<ComputedExpr, ConstEvalError> {
+) -> Result<i128, ConstEvalError> {
     let def = variant_id.into();
     let body = db.body(def);
-    let infer = &db.infer(def);
-    eval_const(
-        body.body_expr,
-        &mut ConstEvalCtx {
-            db,
-            owner: def,
-            exprs: &body.exprs,
-            pats: &body.pats,
-            local_data: HashMap::default(),
-            infer,
-        },
-    )
+    if body.exprs[body.body_expr] == Expr::Missing {
+        let prev_idx: u32 = variant_id.local_id.into_raw().into();
+        let prev_idx = prev_idx.checked_sub(1).map(RawIdx::from).map(Idx::from_raw);
+        let value = match prev_idx {
+            Some(local_id) => {
+                let prev_variant = EnumVariantId { local_id, parent: variant_id.parent };
+                1 + db.const_eval_discriminant(prev_variant)?
+            }
+            _ => 0,
+        };
+        return Ok(value);
+    }
+    let mir_body = db.mir_body(def)?;
+    let c = interpret_mir(db, &mir_body, false)?;
+    let c = try_const_usize(&c).unwrap() as i128;
+    Ok(c)
 }
 
+// FIXME: Ideally constants in const eval should have separate body (issue #7434), and this function should
+// get an `InferenceResult` instead of an `InferenceContext`. And we should remove `ctx.clone().resolve_all()` here
+// and make this function private. See the fixme comment on `InferenceContext::resolve_all`.
 pub(crate) fn eval_to_const(
     expr: Idx<Expr>,
     mode: ParamLoweringMode,
@@ -518,28 +225,20 @@ pub(crate) fn eval_to_const(
     args: impl FnOnce() -> Generics,
     debruijn: DebruijnIndex,
 ) -> Const {
+    let db = ctx.db;
     if let Expr::Path(p) = &ctx.body.exprs[expr] {
-        let db = ctx.db;
         let resolver = &ctx.resolver;
         if let Some(c) = path_to_const(db, resolver, p.mod_path(), mode, args, debruijn) {
             return c;
         }
     }
-    let body = ctx.body.clone();
-    let mut ctx = ConstEvalCtx {
-        db: ctx.db,
-        owner: ctx.owner,
-        exprs: &body.exprs,
-        pats: &body.pats,
-        local_data: HashMap::default(),
-        infer: &ctx.result,
-    };
-    let computed_expr = eval_const(expr, &mut ctx);
-    let const_scalar = match computed_expr {
-        Ok(ComputedExpr::Literal(literal)) => literal.into(),
-        _ => ConstScalar::Unknown,
-    };
-    intern_const_scalar(const_scalar, TyBuilder::usize())
+    let infer = ctx.clone().resolve_all();
+    if let Ok(mir_body) = lower_to_mir(ctx.db, ctx.owner, &ctx.body, &infer, expr) {
+        if let Ok(result) = interpret_mir(db, &mir_body, true) {
+            return result;
+        }
+    }
+    unknown_const(infer[expr].clone())
 }
 
 #[cfg(test)]

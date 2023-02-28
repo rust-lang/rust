@@ -822,7 +822,11 @@ impl<'a> InferenceContext<'a> {
                             let cur_elem_ty = self.infer_expr_inner(expr, &expected);
                             coerce.coerce(self, Some(expr), &cur_elem_ty);
                         }
-                        consteval::usize_const(Some(elements.len() as u128))
+                        consteval::usize_const(
+                            self.db,
+                            Some(elements.len() as u128),
+                            self.resolver.krate(),
+                        )
                     }
                     &Array::Repeat { initializer, repeat } => {
                         self.infer_expr_coerce(initializer, &Expectation::has_type(elem_ty));
@@ -843,7 +847,7 @@ impl<'a> InferenceContext<'a> {
                                 DebruijnIndex::INNERMOST,
                             )
                         } else {
-                            consteval::usize_const(None)
+                            consteval::usize_const(self.db, None, self.resolver.krate())
                         }
                     }
                 };
@@ -859,7 +863,11 @@ impl<'a> InferenceContext<'a> {
                 Literal::ByteString(bs) => {
                     let byte_type = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner);
 
-                    let len = consteval::usize_const(Some(bs.len() as u128));
+                    let len = consteval::usize_const(
+                        self.db,
+                        Some(bs.len() as u128),
+                        self.resolver.krate(),
+                    );
 
                     let array_type = TyKind::Array(byte_type, len).intern(Interner);
                     TyKind::Ref(Mutability::Not, static_lifetime(), array_type).intern(Interner)
@@ -982,8 +990,11 @@ impl<'a> InferenceContext<'a> {
                     // type and length). This should not be just an error type,
                     // because we are to compute the unifiability of this type and
                     // `rhs_ty` in the end of this function to issue type mismatches.
-                    _ => TyKind::Array(self.err_ty(), crate::consteval::usize_const(None))
-                        .intern(Interner),
+                    _ => TyKind::Array(
+                        self.err_ty(),
+                        crate::consteval::usize_const(self.db, None, self.resolver.krate()),
+                    )
+                    .intern(Interner),
                 }
             }
             Expr::RecordLit { path, fields, .. } => {

@@ -1110,6 +1110,11 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.interpret.tests": {
+                    "markdownDescription": "Enables the experimental support for interpreting tests.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.joinLines.joinAssignments": {
                     "markdownDescription": "Join lines merges consecutive declaration and initialization of an assignment.",
                     "default": true,

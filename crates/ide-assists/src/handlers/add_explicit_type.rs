@@ -211,10 +211,8 @@ fn main() {
         check_assist_not_applicable(
             add_explicit_type,
             r#"
-//- minicore: option
-
 fn main() {
-    let $0l = [0.0; Some(2).unwrap()];
+    let $0l = [0.0; unresolved_function(5)];
 }
 "#,
         );

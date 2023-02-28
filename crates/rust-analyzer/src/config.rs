@@ -366,6 +366,8 @@ config_data! {
         inlayHints_typeHints_hideClosureInitialization: bool       = "false",
         /// Whether to hide inlay type hints for constructors.
         inlayHints_typeHints_hideNamedConstructor: bool            = "false",
+        /// Enables the experimental support for interpreting tests.
+        interpret_tests: bool                                      = "false",
 
         /// Join lines merges consecutive declaration and initialization of an assignment.
         joinLines_joinAssignments: bool = "true",
@@ -1444,6 +1446,7 @@ impl Config {
                 }
             },
             keywords: self.data.hover_documentation_keywords_enable,
+            interpret_tests: self.data.interpret_tests,
         }
     }
 

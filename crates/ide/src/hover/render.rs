@@ -3,7 +3,8 @@ use std::fmt::Display;
 
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo,
+    db::DefDatabase, Adt, AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay,
+    MirEvalError, Semantics, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -402,7 +403,20 @@ pub(super) fn definition(
             ))
         }),
         Definition::Module(it) => label_and_docs(db, it),
-        Definition::Function(it) => label_and_docs(db, it),
+        Definition::Function(it) => label_and_layout_info_and_docs(db, it, |_| {
+            if !config.interpret_tests {
+                return None;
+            }
+            match it.eval(db) {
+                Ok(()) => Some("pass".into()),
+                Err(MirEvalError::Panic) => Some("fail".into()),
+                Err(MirEvalError::MirLowerError(f, e)) => {
+                    let name = &db.function_data(f).name;
+                    Some(format!("error: fail to lower {name} due {e:?}"))
+                }
+                Err(e) => Some(format!("error: {e:?}")),
+            }
+        }),
         Definition::Adt(it) => label_and_layout_info_and_docs(db, it, |&it| {
             let layout = it.layout(db).ok()?;
             Some(format!("size = {}, align = {}", layout.size.bytes(), layout.align.abi.bytes()))
@@ -410,7 +424,7 @@ pub(super) fn definition(
         Definition::Variant(it) => label_value_and_docs(db, it, |&it| {
             if !it.parent_enum(db).is_data_carrying(db) {
                 match it.eval(db) {
-                    Ok(x) => Some(format!("{x}")),
+                    Ok(x) => Some(if x >= 10 { format!("{x} ({x:#X})") } else { format!("{x}") }),
                     Err(_) => it.value(db).map(|x| format!("{x:?}")),
                 }
             } else {
@@ -420,7 +434,7 @@ pub(super) fn definition(
         Definition::Const(it) => label_value_and_docs(db, it, |it| {
             let body = it.eval(db);
             match body {
-                Ok(x) => Some(format!("{x}")),
+                Ok(x) => Some(format!("{}", x.display(db))),
                 Err(_) => {
                     let source = it.source(db)?;
                     let mut body = source.value.body()?.syntax().clone();

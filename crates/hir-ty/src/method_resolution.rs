@@ -660,10 +660,10 @@ pub fn lookup_impl_const(
     env: Arc<TraitEnvironment>,
     const_id: ConstId,
     subs: Substitution,
-) -> ConstId {
+) -> (ConstId, Substitution) {
     let trait_id = match const_id.lookup(db.upcast()).container {
         ItemContainerId::TraitId(id) => id,
-        _ => return const_id,
+        _ => return (const_id, subs),
     };
     let substitution = Substitution::from_iter(Interner, subs.iter(Interner));
     let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution };
@@ -671,12 +671,14 @@ pub fn lookup_impl_const(
     let const_data = db.const_data(const_id);
     let name = match const_data.name.as_ref() {
         Some(name) => name,
-        None => return const_id,
+        None => return (const_id, subs),
     };
 
     lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name)
-        .and_then(|assoc| if let AssocItemId::ConstId(id) = assoc { Some(id) } else { None })
-        .unwrap_or(const_id)
+        .and_then(
+            |assoc| if let (AssocItemId::ConstId(id), s) = assoc { Some((id, s)) } else { None },
+        )
+        .unwrap_or((const_id, subs))
 }
 
 /// Looks up the impl method that actually runs for the trait method `func`.
@@ -687,10 +689,10 @@ pub fn lookup_impl_method(
     env: Arc<TraitEnvironment>,
     func: FunctionId,
     fn_subst: Substitution,
-) -> FunctionId {
+) -> (FunctionId, Substitution) {
     let trait_id = match func.lookup(db.upcast()).container {
         ItemContainerId::TraitId(id) => id,
-        _ => return func,
+        _ => return (func, fn_subst),
     };
     let trait_params = db.generic_params(trait_id.into()).type_or_consts.len();
     let fn_params = fn_subst.len(Interner) - trait_params;
@@ -701,8 +703,14 @@ pub fn lookup_impl_method(
 
     let name = &db.function_data(func).name;
     lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name)
-        .and_then(|assoc| if let AssocItemId::FunctionId(id) = assoc { Some(id) } else { None })
-        .unwrap_or(func)
+        .and_then(|assoc| {
+            if let (AssocItemId::FunctionId(id), subst) = assoc {
+                Some((id, subst))
+            } else {
+                None
+            }
+        })
+        .unwrap_or((func, fn_subst))
 }
 
 fn lookup_impl_assoc_item_for_trait_ref(
@@ -710,7 +718,7 @@ fn lookup_impl_assoc_item_for_trait_ref(
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     name: &Name,
-) -> Option<AssocItemId> {
+) -> Option<(AssocItemId, Substitution)> {
     let self_ty = trait_ref.self_type_parameter(Interner);
     let self_ty_fp = TyFingerprint::for_trait_impl(&self_ty)?;
     let impls = db.trait_impls_in_deps(env.krate);
@@ -718,8 +726,8 @@ fn lookup_impl_assoc_item_for_trait_ref(
 
     let table = InferenceTable::new(db, env);
 
-    let impl_data = find_matching_impl(impls, table, trait_ref)?;
-    impl_data.items.iter().find_map(|&it| match it {
+    let (impl_data, impl_subst) = find_matching_impl(impls, table, trait_ref)?;
+    let item = impl_data.items.iter().find_map(|&it| match it {
         AssocItemId::FunctionId(f) => {
             (db.function_data(f).name == *name).then_some(AssocItemId::FunctionId(f))
         }
@@ -730,14 +738,15 @@ fn lookup_impl_assoc_item_for_trait_ref(
             .map(|n| n == name)
             .and_then(|result| if result { Some(AssocItemId::ConstId(c)) } else { None }),
         AssocItemId::TypeAliasId(_) => None,
-    })
+    })?;
+    Some((item, impl_subst))
 }
 
 fn find_matching_impl(
     mut impls: impl Iterator<Item = ImplId>,
     mut table: InferenceTable<'_>,
     actual_trait_ref: TraitRef,
-) -> Option<Arc<ImplData>> {
+) -> Option<(Arc<ImplData>, Substitution)> {
     let db = table.db;
     loop {
         let impl_ = impls.next()?;
@@ -758,7 +767,7 @@ fn find_matching_impl(
                 .into_iter()
                 .map(|b| b.cast(Interner));
             let goal = crate::Goal::all(Interner, wcs);
-            table.try_obligation(goal).map(|_| impl_data)
+            table.try_obligation(goal).map(|_| (impl_data, table.resolve_completely(impl_substs)))
         });
         if r.is_some() {
             break r;

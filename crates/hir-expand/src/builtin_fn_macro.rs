@@ -206,7 +206,7 @@ fn assert_expand(
             let cond = cond.clone();
             let panic_args = itertools::Itertools::intersperse(panic_args.iter().cloned(), comma);
             quote! {{
-                if !#cond {
+                if !(#cond) {
                     #DOLLAR_CRATE::panic!(##panic_args);
                 }
             }}
