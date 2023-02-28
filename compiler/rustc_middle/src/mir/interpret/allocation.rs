@@ -42,11 +42,10 @@ pub trait AllocBytes:
 
     /// Create a zeroed `AllocBytes` of the specified size and alignment;
     /// call the callback error handler if there is an error in allocating the memory.
-    fn zeroed<'tcx, F: Fn() -> InterpError<'tcx>>(
+    fn zeroed(
         size: Size,
         _align: Align,
-        handle_alloc_fail: F,
-    ) -> Result<Self, InterpError<'tcx>>;
+    ) -> Option<Self>;
 }
 
 // Default `bytes` for `Allocation` is a `Box<[u8]>`.
@@ -59,16 +58,14 @@ impl AllocBytes for Box<[u8]> {
         Box::<[u8]>::from(slice.into())
     }
 
-    fn zeroed<'tcx, F: Fn() -> InterpError<'tcx>>(
+    fn zeroed(
         size: Size,
         _align: Align,
-        handle_alloc_fail: F,
-    ) -> Result<Self, InterpError<'tcx>> {
-        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize())
-            .map_err(|_| handle_alloc_fail())?;
+    ) -> Option<Self> {
+        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).ok()?;
         // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
         let bytes = unsafe { bytes.assume_init() };
-        Ok(bytes)
+        Some(bytes)
     }
 }
 
@@ -304,7 +301,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     ///
     /// If `panic_on_fail` is true, this will never return `Err`.
     pub fn uninit<'tcx>(size: Size, align: Align, panic_on_fail: bool) -> InterpResult<'tcx, Self> {
-        let handle_alloc_fail = || -> InterpError<'tcx> {
+        let bytes = Bytes::zeroed(size, align).ok_or_else(|| {
             // This results in an error that can happen non-deterministically, since the memory
             // available to the compiler can change between runs. Normally queries are always
             // deterministic. However, we can be non-deterministic here because all uses of const
@@ -317,9 +314,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
                 tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
             });
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
-        };
-
-        let bytes = Bytes::zeroed(size, align, handle_alloc_fail)?;
+        })?;
 
         Ok(Allocation {
             bytes,
