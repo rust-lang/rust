@@ -777,7 +777,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(mutable_debug_assertion::DebugAssertWithMutCall));
     store.register_late_pass(|_| Box::new(exit::Exit));
     store.register_late_pass(|_| Box::new(to_digit_is_some::ToDigitIsSome));
-    let array_size_threshold = conf.array_size_threshold;
+    let array_size_threshold = u128::from(conf.array_size_threshold);
     store.register_late_pass(move |_| Box::new(large_stack_arrays::LargeStackArrays::new(array_size_threshold)));
     store.register_late_pass(move |_| Box::new(large_const_arrays::LargeConstArrays::new(array_size_threshold)));
     store.register_late_pass(|_| Box::new(floating_point_arithmetic::FloatingPointArithmetic));
