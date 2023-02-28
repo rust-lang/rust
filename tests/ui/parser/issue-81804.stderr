@@ -1,5 +1,5 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-81804.rs:9:11
+  --> $DIR/issue-81804.rs:6:11
    |
 LL | fn p([=(}
    |     --    ^
@@ -8,7 +8,7 @@ LL | fn p([=(}
    |     unclosed delimiter
 
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-81804.rs:9:11
+  --> $DIR/issue-81804.rs:6:11
    |
 LL | fn p([=(}
    |     --    ^
@@ -16,26 +16,13 @@ LL | fn p([=(}
    |     |unclosed delimiter
    |     unclosed delimiter
 
-error: expected pattern, found `=`
-  --> $DIR/issue-81804.rs:9:7
+error: mismatched closing delimiter: `}`
+  --> $DIR/issue-81804.rs:6:8
    |
 LL | fn p([=(}
-   |       ^ expected pattern
-
-error: expected one of `)`, `,`, `->`, `where`, or `{`, found `]`
-  --> $DIR/issue-81804.rs:9:8
-   |
-LL | fn p([=(}
-   |        ^ -^
-   |        | |
-   |        | help: `)` may belong here
+   |        ^^ mismatched closing delimiter
+   |        |
    |        unclosed delimiter
 
-error: expected item, found `]`
-  --> $DIR/issue-81804.rs:9:11
-   |
-LL | fn p([=(}
-   |           ^ expected item
-
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 

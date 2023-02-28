@@ -1,21 +1,3 @@
-error: expected one of `.`, `;`, `?`, `else`, or an operator, found `}`
-  --> $DIR/issue-60075.rs:6:10
-   |
-LL |         });
-   |          ^ expected one of `.`, `;`, `?`, `else`, or an operator
-
-error: non-item in item list
-  --> $DIR/issue-60075.rs:6:11
-   |
-LL | trait T {
-   |         - item list starts here
-...
-LL |         });
-   |           ^ non-item starts here
-...
-LL |     }
-   |     - item list ends here
-
 error: mismatched closing delimiter: `)`
   --> $DIR/issue-60075.rs:4:31
    |
@@ -25,5 +7,5 @@ LL |         let _ = if true {
 LL |         });
    |          ^ mismatched closing delimiter
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 

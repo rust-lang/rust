@@ -1,3 +1,11 @@
+error: mismatched closing delimiter: `)`
+  --> $DIR/issue-68987-unmatch-issue-2.rs:3:32
+   |
+LL | async fn obstest() -> Result<> {
+   |                                ^ unclosed delimiter
+LL |     let obs_connect = || -> Result<(), MyError) {
+   |                                               ^ mismatched closing delimiter
+
 error: unexpected closing delimiter: `}`
   --> $DIR/issue-68987-unmatch-issue-2.rs:14:1
    |
@@ -6,14 +14,6 @@ LL |     let obs_connect = || -> Result<(), MyError) {
 ...
 LL | }
    | ^ unexpected closing delimiter
-
-error: mismatched closing delimiter: `)`
-  --> $DIR/issue-68987-unmatch-issue-2.rs:3:32
-   |
-LL | async fn obstest() -> Result<> {
-   |                                ^ unclosed delimiter
-LL |     let obs_connect = || -> Result<(), MyError) {
-   |                                               ^ mismatched closing delimiter
 
 error: aborting due to 2 previous errors
 

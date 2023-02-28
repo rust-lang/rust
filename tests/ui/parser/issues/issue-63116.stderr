@@ -7,12 +7,6 @@ LL | impl W <s(f;Y(;]
    |          |     missing open `[` for this delimiter
    |          unclosed delimiter
 
-error: expected one of `!`, `(`, `)`, `+`, `,`, `::`, or `<`, found `;`
-  --> $DIR/issue-63116.rs:3:12
-   |
-LL | impl W <s(f;Y(;]
-   |            ^ expected one of 7 possible tokens
-
 error: mismatched closing delimiter: `]`
   --> $DIR/issue-63116.rs:3:14
    |
@@ -21,5 +15,5 @@ LL | impl W <s(f;Y(;]
    |              |
    |              unclosed delimiter
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
