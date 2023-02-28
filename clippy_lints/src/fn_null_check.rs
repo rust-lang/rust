@@ -25,7 +25,7 @@ declare_clippy_lint! {
     ///
     /// if fn_ptr.is_none() { ... }
     /// ```
-    #[clippy::version = "1.67.0"]
+    #[clippy::version = "1.68.0"]
     pub FN_NULL_CHECK,
     correctness,
     "`fn()` type assumed to be nullable"

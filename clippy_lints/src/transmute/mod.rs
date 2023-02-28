@@ -458,7 +458,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let null_fn: Option<fn()> = None;
     /// ```
-    #[clippy::version = "1.67.0"]
+    #[clippy::version = "1.68.0"]
     pub TRANSMUTE_NULL_TO_FN,
     correctness,
     "transmute results in a null function pointer, which is undefined behavior"
