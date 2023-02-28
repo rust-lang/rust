@@ -18,6 +18,14 @@ LL |     fn bar(&self) -> impl Sized;
    = note: expected signature `fn(&U) -> impl Sized`
               found signature `fn(&U) -> U`
 
-error: aborting due to previous error
+error: method with return-position `impl Trait` in trait cannot be specialized
+  --> $DIR/specialization-broken.rs:16:5
+   |
+LL |     fn bar(&self) -> U {
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: specialization behaves in inconsistent and surprising ways with `#![feature(return_position_impl_trait_in_trait)]`, and for now is disallowed
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0053`.
