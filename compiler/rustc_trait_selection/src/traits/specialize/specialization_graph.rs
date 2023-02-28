@@ -88,9 +88,6 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
         simplified_self: Option<SimplifiedType>,
         overlap_mode: OverlapMode,
     ) -> Result<OverlapResult<'tcx>, OverlapError<'tcx>> {
-        let mut last_lint = None;
-        let mut replace_children = Vec::new();
-
         debug!("insert(impl_def_id={:?}, simplified_self={:?})", impl_def_id, simplified_self,);
 
         let possible_siblings = match simplified_self {
@@ -98,117 +95,136 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
             None => PotentialSiblings::Unfiltered(iter_children(self)),
         };
 
-        for possible_sibling in possible_siblings {
-            debug!(
-                "insert: impl_def_id={:?}, simplified_self={:?}, possible_sibling={:?}",
-                impl_def_id, simplified_self, possible_sibling,
-            );
+        let result = overlap_check_considering_specialization(
+            tcx,
+            impl_def_id,
+            possible_siblings,
+            overlap_mode,
+        );
 
-            let create_overlap_error = |overlap: traits::coherence::OverlapResult<'tcx>| {
-                let trait_ref = overlap.impl_header.trait_ref.unwrap();
-                let self_ty = trait_ref.self_ty();
+        if let Ok(OverlapResult::NoOverlap(_)) = result {
+            // No overlap with any potential siblings, so add as a new sibling.
+            debug!("placing as new sibling");
+            self.insert_blindly(tcx, impl_def_id);
+        }
 
-                OverlapError {
-                    with_impl: possible_sibling,
-                    trait_ref,
-                    // Only report the `Self` type if it has at least
-                    // some outer concrete shell; otherwise, it's
-                    // not adding much information.
-                    self_ty: self_ty.has_concrete_skeleton().then_some(self_ty),
-                    intercrate_ambiguity_causes: overlap.intercrate_ambiguity_causes,
-                    involves_placeholder: overlap.involves_placeholder,
-                }
-            };
+        result
+    }
+}
 
-            let report_overlap_error = |overlap: traits::coherence::OverlapResult<'tcx>,
-                                        last_lint: &mut _| {
-                // Found overlap, but no specialization; error out or report future-compat warning.
+fn overlap_check_considering_specialization<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_def_id: DefId,
+    possible_siblings: PotentialSiblings<impl Iterator<Item = DefId>, impl Iterator<Item = DefId>>,
+    overlap_mode: OverlapMode,
+) -> Result<OverlapResult<'tcx>, OverlapError<'tcx>> {
+    let mut last_lint = None;
+    let mut replace_children = Vec::new();
 
-                // Do we *still* get overlap if we disable the future-incompatible modes?
-                let should_err = traits::overlapping_impls(
-                    tcx,
-                    possible_sibling,
-                    impl_def_id,
-                    traits::SkipLeakCheck::default(),
-                    overlap_mode,
-                )
-                .is_some();
+    for possible_sibling in possible_siblings {
+        debug!("insert: impl_def_id={:?}, possible_sibling={:?}", impl_def_id, possible_sibling);
 
-                let error = create_overlap_error(overlap);
+        let create_overlap_error = |overlap: traits::coherence::OverlapResult<'tcx>| {
+            let trait_ref = overlap.impl_header.trait_ref.unwrap();
+            let self_ty = trait_ref.self_ty();
 
-                if should_err {
-                    Err(error)
-                } else {
-                    *last_lint = Some(FutureCompatOverlapError {
-                        error,
-                        kind: FutureCompatOverlapErrorKind::LeakCheck,
-                    });
+            OverlapError {
+                with_impl: possible_sibling,
+                trait_ref,
+                // Only report the `Self` type if it has at least
+                // some outer concrete shell; otherwise, it's
+                // not adding much information.
+                self_ty: self_ty.has_concrete_skeleton().then_some(self_ty),
+                intercrate_ambiguity_causes: overlap.intercrate_ambiguity_causes,
+                involves_placeholder: overlap.involves_placeholder,
+            }
+        };
 
-                    Ok((false, false))
-                }
-            };
+        let report_overlap_error = |overlap: traits::coherence::OverlapResult<'tcx>,
+                                    last_lint: &mut _| {
+            // Found overlap, but no specialization; error out or report future-compat warning.
 
-            let last_lint_mut = &mut last_lint;
-            let (le, ge) = traits::overlapping_impls(
+            // Do we *still* get overlap if we disable the future-incompatible modes?
+            let should_err = traits::overlapping_impls(
                 tcx,
                 possible_sibling,
                 impl_def_id,
-                traits::SkipLeakCheck::Yes,
+                traits::SkipLeakCheck::default(),
                 overlap_mode,
             )
-            .map_or(Ok((false, false)), |overlap| {
-                if let Some(overlap_kind) =
-                    tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling)
-                {
-                    match overlap_kind {
-                        ty::ImplOverlapKind::Permitted { marker: _ } => {}
-                        ty::ImplOverlapKind::Issue33140 => {
-                            *last_lint_mut = Some(FutureCompatOverlapError {
-                                error: create_overlap_error(overlap),
-                                kind: FutureCompatOverlapErrorKind::Issue33140,
-                            });
-                        }
-                    }
+            .is_some();
 
-                    return Ok((false, false));
+            let error = create_overlap_error(overlap);
+
+            if should_err {
+                Err(error)
+            } else {
+                *last_lint = Some(FutureCompatOverlapError {
+                    error,
+                    kind: FutureCompatOverlapErrorKind::LeakCheck,
+                });
+
+                Ok((false, false))
+            }
+        };
+
+        let last_lint_mut = &mut last_lint;
+        let (le, ge) = traits::overlapping_impls(
+            tcx,
+            possible_sibling,
+            impl_def_id,
+            traits::SkipLeakCheck::Yes,
+            overlap_mode,
+        )
+        .map_or(Ok((false, false)), |overlap| {
+            if let Some(overlap_kind) =
+                tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling)
+            {
+                match overlap_kind {
+                    ty::ImplOverlapKind::Permitted { marker: _ } => {}
+                    ty::ImplOverlapKind::Issue33140 => {
+                        *last_lint_mut = Some(FutureCompatOverlapError {
+                            error: create_overlap_error(overlap),
+                            kind: FutureCompatOverlapErrorKind::Issue33140,
+                        });
+                    }
                 }
 
-                let le = tcx.specializes((impl_def_id, possible_sibling));
-                let ge = tcx.specializes((possible_sibling, impl_def_id));
-
-                if le == ge { report_overlap_error(overlap, last_lint_mut) } else { Ok((le, ge)) }
-            })?;
-
-            if le && !ge {
-                debug!(
-                    "descending as child of TraitRef {:?}",
-                    tcx.impl_trait_ref(possible_sibling).unwrap().subst_identity()
-                );
-
-                // The impl specializes `possible_sibling`.
-                return Ok(OverlapResult::SpecializeOne(possible_sibling));
-            } else if ge && !le {
-                debug!(
-                    "placing as parent of TraitRef {:?}",
-                    tcx.impl_trait_ref(possible_sibling).unwrap().subst_identity()
-                );
-
-                replace_children.push(possible_sibling);
-            } else {
-                // Either there's no overlap, or the overlap was already reported by
-                // `overlap_error`.
+                return Ok((false, false));
             }
-        }
 
-        if !replace_children.is_empty() {
-            return Ok(OverlapResult::SpecializeAll(replace_children));
-        }
+            let le = tcx.specializes((impl_def_id, possible_sibling));
+            let ge = tcx.specializes((possible_sibling, impl_def_id));
 
-        // No overlap with any potential siblings, so add as a new sibling.
-        debug!("placing as new sibling");
-        self.insert_blindly(tcx, impl_def_id);
-        Ok(OverlapResult::NoOverlap(last_lint))
+            if le == ge { report_overlap_error(overlap, last_lint_mut) } else { Ok((le, ge)) }
+        })?;
+
+        if le && !ge {
+            debug!(
+                "descending as child of TraitRef {:?}",
+                tcx.impl_trait_ref(possible_sibling).unwrap().subst_identity()
+            );
+
+            // The impl specializes `possible_sibling`.
+            return Ok(OverlapResult::SpecializeOne(possible_sibling));
+        } else if ge && !le {
+            debug!(
+                "placing as parent of TraitRef {:?}",
+                tcx.impl_trait_ref(possible_sibling).unwrap().subst_identity()
+            );
+
+            replace_children.push(possible_sibling);
+        } else {
+            // Either there's no overlap, or the overlap was already reported by
+            // `overlap_error`.
+        }
     }
+
+    if !replace_children.is_empty() {
+        return Ok(OverlapResult::SpecializeAll(replace_children));
+    }
+
+    Ok(OverlapResult::NoOverlap(last_lint))
 }
 
 fn iter_children(children: &mut Children) -> impl Iterator<Item = DefId> + '_ {
