@@ -4,7 +4,6 @@
 
 #![crate_type = "lib"]
 #![feature(no_sanitize)]
-#![feature(target_feature_11)]
 #![feature(c_variadic)]
 
 // EMIT_MIR inline_compatibility.inlined_target_feature.Inline.diff
