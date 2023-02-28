@@ -36,5 +36,11 @@ error: collection is never read
 LL |     let mut x = vec![1, 2, 3]; // WARNING
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: collection is never read
+  --> $DIR/collection_is_never_read.rs:119:5
+   |
+LL |     let mut x = HashSet::new(); // WARNING
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
 

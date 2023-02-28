@@ -1,7 +1,7 @@
 #![allow(unused)]
 #![warn(clippy::collection_is_never_read)]
 
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 
 fn main() {}
 
@@ -113,4 +113,16 @@ fn method_argument_but_not_target() {
     let mut x = vec![1, 2, 3]; // Ok
     x.reverse();
     my_struct.my_method(&x);
+}
+
+fn insert_is_not_a_read() {
+    let mut x = HashSet::new(); // WARNING
+    x.insert(5);
+}
+
+fn insert_is_a_read() {
+    let mut x = HashSet::new(); // Ok
+    if x.insert(5) {
+        println!("5 was inserted");
+    }
 }
