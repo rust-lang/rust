@@ -191,11 +191,17 @@ TODO(antoyo): but that's not what I remember I was doing.
 
 Using git-subtree with `rustc` requires a patched git to make it work.
 The PR that is needed is [here](https://github.com/gitgitgadget/git/pull/493).
-Compile it and copy those files to `/usr/local/bin`:
+Use the following instructions to install it:
 
 ```
-git-commit-tree  git-ls-tree        git-merge-tree  git-read-tree  git-write-tree
-git-diff-tree    git-merge-subtree  git-mktree      git-worktree
+git clone git@github.com:tqc/git.git
+cd git
+git checkout tqc/subtree
+make
+make install
+cd contrib/subtree
+make
+cp git-subtree ~/bin
 ```
 
 ### How to use [mem-trace](https://github.com/antoyo/mem-trace)
