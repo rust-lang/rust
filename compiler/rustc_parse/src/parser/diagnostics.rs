@@ -1368,6 +1368,7 @@ impl<'a> Parser<'a> {
         };
         self.recover_from_inc_dec(operand_expr, kind, op_span)
     }
+
     fn recover_from_inc_dec(
         &mut self,
         base: P<Expr>,

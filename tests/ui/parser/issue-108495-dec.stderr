@@ -55,7 +55,7 @@ LL |     let _ = ({ let tmp = i; i -= 1; tmp } + 1) + 2;
    |              +++++++++++  ~~~~~~~~~~~~~~~
 
 error: Rust has no postfix decrement operator
-  --> $DIR/issue-108495-dec.rs:37:10
+  --> $DIR/issue-108495-dec.rs:35:10
    |
 LL |         i--;
    |          ^^ not a valid postfix operator

@@ -281,6 +281,7 @@ impl<'a> Parser<'a> {
                 lhs = self.recover_from_postfix_increment(lhs, op_span, starts_stmt)?;
                 continue;
             }
+
             if self.prev_token == token::BinOp(token::Minus)
                 && self.token == token::BinOp(token::Minus)
                 && self.prev_token.span.between(self.token.span).is_empty()
@@ -606,7 +607,6 @@ impl<'a> Parser<'a> {
                 let operand_expr = this.parse_dot_or_call_expr(Default::default())?;
                 this.recover_from_prefix_increment(operand_expr, pre_span, starts_stmt)
             }
-
             token::Ident(..) if this.token.is_keyword(kw::Box) => {
                 make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
             }
