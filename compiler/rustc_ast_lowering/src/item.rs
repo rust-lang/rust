@@ -1339,13 +1339,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .map(|predicate| self.lower_where_predicate(predicate)),
         );
 
-        let mut params: SmallVec<[hir::GenericParam<'hir>; 4]> =
-            self.lower_generic_params_mut(&generics.params).collect();
+        let mut params: SmallVec<[hir::GenericParam<'hir>; 4]> = self
+            .lower_generic_params_mut(&generics.params, hir::GenericParamSource::Generics)
+            .collect();
 
         // Introduce extra lifetimes if late resolution tells us to.
         let extra_lifetimes = self.resolver.take_extra_lifetime_params(parent_node_id);
         params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
-            self.lifetime_res_to_generic_param(ident, node_id, res)
+            self.lifetime_res_to_generic_param(
+                ident,
+                node_id,
+                res,
+                hir::GenericParamSource::Generics,
+            )
         }));
 
         let has_where_clause_predicates = !generics.where_clause.predicates.is_empty();
@@ -1449,7 +1455,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 span,
             }) => hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
                 hir_id: self.next_id(),
-                bound_generic_params: self.lower_generic_params(bound_generic_params),
+                bound_generic_params: self
+                    .lower_generic_params(bound_generic_params, hir::GenericParamSource::Binder),
                 bounded_ty: self
                     .lower_ty(bounded_ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Bound)),
                 bounds: self.arena.alloc_from_iter(bounds.iter().map(|bound| {
