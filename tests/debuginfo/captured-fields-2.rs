@@ -1,5 +1,5 @@
 // compile-flags:-g
-
+// edition:2021
 // === GDB TESTS ===================================================================================
 
 // gdb-command:run
@@ -20,7 +20,6 @@
 // lldbg-check:(unsigned int) $1 = 22
 // lldb-command:continue
 
-#![feature(capture_disjoint_fields)]
 #![allow(unused)]
 
 struct MyStruct {
@@ -29,10 +28,7 @@ struct MyStruct {
 }
 
 fn main() {
-    let mut my_var = MyStruct {
-        my_field1: 11,
-        my_field2: 22,
-    };
+    let mut my_var = MyStruct { my_field1: 11, my_field2: 22 };
     let my_ref = &mut my_var;
 
     let test = || {
