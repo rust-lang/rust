@@ -20,16 +20,17 @@ pub struct FutureCompatOverlapError<'tcx> {
     pub kind: FutureCompatOverlapErrorKind,
 }
 
-/// The result of attempting to insert an impl into a group of children.
-enum Inserted<'tcx> {
-    /// The impl was inserted as a new child in this group of children.
-    BecameNewSibling(Option<FutureCompatOverlapError<'tcx>>),
+/// The result of overlap_check, we would attempt to insert an impl into a group of children
+/// afterwards.
+enum OverlapResult<'tcx> {
+    /// The impl is going to be inserted as a new child in this group of children.
+    NoOverlap(Option<FutureCompatOverlapError<'tcx>>),
 
     /// The impl should replace existing impls [X1, ..], because the impl specializes X1, X2, etc.
-    ReplaceChildren(Vec<DefId>),
+    SpecializeAll(Vec<DefId>),
 
     /// The impl is a specialization of an existing child.
-    ShouldRecurseOn(DefId),
+    SpecializeOne(DefId),
 }
 
 trait ChildrenExt<'tcx> {
@@ -42,7 +43,7 @@ trait ChildrenExt<'tcx> {
         impl_def_id: DefId,
         simplified_self: Option<SimplifiedType>,
         overlap_mode: OverlapMode,
-    ) -> Result<Inserted<'tcx>, OverlapError<'tcx>>;
+    ) -> Result<OverlapResult<'tcx>, OverlapError<'tcx>>;
 }
 
 impl<'tcx> ChildrenExt<'tcx> for Children {
@@ -86,7 +87,7 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
         impl_def_id: DefId,
         simplified_self: Option<SimplifiedType>,
         overlap_mode: OverlapMode,
-    ) -> Result<Inserted<'tcx>, OverlapError<'tcx>> {
+    ) -> Result<OverlapResult<'tcx>, OverlapError<'tcx>> {
         let mut last_lint = None;
         let mut replace_children = Vec::new();
 
@@ -185,7 +186,7 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
                 );
 
                 // The impl specializes `possible_sibling`.
-                return Ok(Inserted::ShouldRecurseOn(possible_sibling));
+                return Ok(OverlapResult::SpecializeOne(possible_sibling));
             } else if ge && !le {
                 debug!(
                     "placing as parent of TraitRef {:?}",
@@ -200,13 +201,13 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
         }
 
         if !replace_children.is_empty() {
-            return Ok(Inserted::ReplaceChildren(replace_children));
+            return Ok(OverlapResult::SpecializeAll(replace_children));
         }
 
         // No overlap with any potential siblings, so add as a new sibling.
         debug!("placing as new sibling");
         self.insert_blindly(tcx, impl_def_id);
-        Ok(Inserted::BecameNewSibling(last_lint))
+        Ok(OverlapResult::NoOverlap(last_lint))
     }
 }
 
@@ -306,7 +307,7 @@ impl<'tcx> GraphExt<'tcx> for Graph {
 
         // Descend the specialization tree, where `parent` is the current parent node.
         loop {
-            use self::Inserted::*;
+            use self::OverlapResult::*;
 
             let insert_result = self.children.entry(parent).or_default().insert(
                 tcx,
@@ -316,11 +317,11 @@ impl<'tcx> GraphExt<'tcx> for Graph {
             )?;
 
             match insert_result {
-                BecameNewSibling(opt_lint) => {
+                NoOverlap(opt_lint) => {
                     last_lint = opt_lint;
                     break;
                 }
-                ReplaceChildren(grand_children_to_be) => {
+                SpecializeAll(grand_children_to_be) => {
                     // We currently have
                     //
                     //     P
@@ -359,7 +360,7 @@ impl<'tcx> GraphExt<'tcx> for Graph {
                     }
                     break;
                 }
-                ShouldRecurseOn(new_parent) => {
+                SpecializeOne(new_parent) => {
                     parent = new_parent;
                 }
             }
