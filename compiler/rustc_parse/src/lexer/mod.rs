@@ -1,10 +1,11 @@
 use crate::errors;
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
+use crate::make_unclosed_delims_error;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
-use rustc_errors::{error_code, Applicability, DiagnosticBuilder, PResult, StashKey};
+use rustc_errors::{error_code, Applicability, Diagnostic, DiagnosticBuilder, StashKey};
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::Cursor;
 use rustc_lexer::{Base, DocStyle, RawStrError};
@@ -31,7 +32,7 @@ use unescape_error_reporting::{emit_unescape_error, escaped_char};
 rustc_data_structures::static_assert_size!(rustc_lexer::Token, 12);
 
 #[derive(Clone, Debug)]
-pub struct UnmatchedBrace {
+pub struct UnmatchedDelim {
     pub expected_delim: Delimiter,
     pub found_delim: Option<Delimiter>,
     pub found_span: Span,
@@ -44,7 +45,7 @@ pub(crate) fn parse_token_trees<'a>(
     mut src: &'a str,
     mut start_pos: BytePos,
     override_span: Option<Span>,
-) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
+) -> Result<TokenStream, Vec<Diagnostic>> {
     // Skip `#!`, if present.
     if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
         src = &src[shebang_len..];
@@ -61,7 +62,29 @@ pub(crate) fn parse_token_trees<'a>(
         override_span,
         nbsp_is_whitespace: false,
     };
-    tokentrees::TokenTreesReader::parse_all_token_trees(string_reader)
+    let (token_trees, unmatched_delims) =
+        tokentrees::TokenTreesReader::parse_all_token_trees(string_reader);
+    match token_trees {
+        Ok(stream) if unmatched_delims.is_empty() => Ok(stream),
+        _ => {
+            // Return error if there are unmatched delimiters or unclosng delimiters.
+            // We emit delimiter mismatch errors first, then emit the unclosing delimiter mismatch
+            // because the delimiter mismatch is more likely to be the root cause of error
+
+            let mut buffer = Vec::with_capacity(1);
+            // Not using `emit_unclosed_delims` to use `db.buffer`
+            for unmatched in unmatched_delims {
+                if let Some(err) = make_unclosed_delims_error(unmatched, &sess) {
+                    err.buffer(&mut buffer);
+                }
+            }
+            if let Err(err) = token_trees {
+                // Add unclosing delimiter error
+                err.buffer(&mut buffer);
+            }
+            Err(buffer)
+        }
+    }
 }
 
 struct StringReader<'a> {

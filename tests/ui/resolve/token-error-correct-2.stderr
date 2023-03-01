@@ -3,16 +3,8 @@ error: mismatched closing delimiter: `)`
    |
 LL |     if foo {
    |            ^ unclosed delimiter
-LL |
 LL |     )
    |     ^ mismatched closing delimiter
 
-error[E0425]: cannot find value `foo` in this scope
-  --> $DIR/token-error-correct-2.rs:4:8
-   |
-LL |     if foo {
-   |        ^^^ not found in this scope
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0425`.

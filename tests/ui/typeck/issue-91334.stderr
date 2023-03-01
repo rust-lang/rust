@@ -1,34 +1,5 @@
-error: this file contains an unclosed delimiter
-  --> $DIR/issue-91334.rs:10:23
-   |
-LL | fn f(){||yield(((){),
-   |       -       -    -  ^
-   |       |       |    |
-   |       |       |    missing open `(` for this delimiter
-   |       |       unclosed delimiter
-   |       unclosed delimiter
-
-error: this file contains an unclosed delimiter
-  --> $DIR/issue-91334.rs:10:23
-   |
-LL | fn f(){||yield(((){),
-   |       -       -    -  ^
-   |       |       |    |
-   |       |       |    missing open `(` for this delimiter
-   |       |       unclosed delimiter
-   |       unclosed delimiter
-
-error: expected one of `)`, `,`, `.`, `?`, or an operator, found `{`
-  --> $DIR/issue-91334.rs:10:19
-   |
-LL | fn f(){||yield(((){),
-   |                   ^
-   |                   |
-   |                   expected one of `)`, `,`, `.`, `?`, or an operator
-   |                   help: missing `,`
-
 error: mismatched closing delimiter: `)`
-  --> $DIR/issue-91334.rs:10:19
+  --> $DIR/issue-91334.rs:7:19
    |
 LL | fn f(){||yield(((){),
    |                -  ^^ mismatched closing delimiter
@@ -36,17 +7,15 @@ LL | fn f(){||yield(((){),
    |                |  unclosed delimiter
    |                closing delimiter possibly meant for this
 
-error[E0308]: mismatched types
-  --> $DIR/issue-91334.rs:10:8
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-91334.rs:7:23
    |
 LL | fn f(){||yield(((){),
-   |       -^^^^^^^^^^^^^^^ expected `()`, found generator
-   |       |
-   |       help: a return type might be missing here: `-> _`
-   |
-   = note: expected unit type `()`
-              found generator `[generator@$DIR/issue-91334.rs:10:8: 10:10]`
+   |       -       -    -  ^
+   |       |       |    |
+   |       |       |    missing open `(` for this delimiter
+   |       |       unclosed delimiter
+   |       unclosed delimiter
 
-error: aborting due to 5 previous errors
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0308`.

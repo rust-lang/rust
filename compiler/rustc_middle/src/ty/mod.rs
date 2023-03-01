@@ -2541,6 +2541,34 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         def_id
     }
+
+    pub fn impl_method_has_trait_impl_trait_tys(self, def_id: DefId) -> bool {
+        if self.def_kind(def_id) != DefKind::AssocFn {
+            return false;
+        }
+
+        let Some(item) = self.opt_associated_item(def_id) else { return false; };
+        if item.container != ty::AssocItemContainer::ImplContainer {
+            return false;
+        }
+
+        let Some(trait_item_def_id) = item.trait_item_def_id else { return false; };
+
+        // FIXME(RPITIT): This does a somewhat manual walk through the signature
+        // of the trait fn to look for any RPITITs, but that's kinda doing a lot
+        // of work. We can probably remove this when we refactor RPITITs to be
+        // associated types.
+        self.fn_sig(trait_item_def_id).subst_identity().skip_binder().output().walk().any(|arg| {
+            if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                && let ty::Alias(ty::Projection, data) = ty.kind()
+                && self.def_kind(data.def_id) == DefKind::ImplTraitPlaceholder
+            {
+                true
+            } else {
+                false
+            }
+        })
+    }
 }
 
 /// Yields the parent function's `LocalDefId` if `def_id` is an `impl Trait` definition.

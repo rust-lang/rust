@@ -2,11 +2,10 @@
 
 trait Foo {
     fn bar() {
-        let x = foo(); //~ ERROR cannot find function `foo` in this scope
+        let x = foo();
     ) //~ ERROR mismatched closing delimiter: `)`
 }
 
 fn main() {
-    let x = y.;  //~ ERROR unexpected token
-                 //~^ ERROR cannot find value `y` in this scope
+    let x = y.;
 }

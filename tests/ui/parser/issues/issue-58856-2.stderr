@@ -1,34 +1,13 @@
-error: expected one of `)` or `,`, found `->`
+error: mismatched closing delimiter: `}`
   --> $DIR/issue-58856-2.rs:6:19
    |
-LL |     fn how_are_you(&self -> Empty {
-   |                   ^     -^^
-   |                   |     |
-   |                   |     help: `)` may belong here
-   |                   unclosed delimiter
-
-error: non-item in item list
-  --> $DIR/issue-58856-2.rs:11:1
-   |
 LL | impl Howness for () {
-   |                     - item list starts here
+   |                     - closing delimiter possibly meant for this
+LL |     fn how_are_you(&self -> Empty {
+   |                   ^ unclosed delimiter
 ...
 LL | }
-   | ^
-   | |
-   | non-item starts here
-   | item list ends here
+   | ^ mismatched closing delimiter
 
-error[E0407]: method `how_are_you` is not a member of trait `Howness`
-  --> $DIR/issue-58856-2.rs:6:5
-   |
-LL | /     fn how_are_you(&self -> Empty {
-LL | |
-LL | |
-LL | |         Empty
-LL | |     }
-   | |_____^ not a member of trait `Howness`
+error: aborting due to previous error
 
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0407`.

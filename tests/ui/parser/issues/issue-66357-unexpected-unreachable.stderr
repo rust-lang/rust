@@ -1,16 +1,11 @@
-error: expected one of `,` or `:`, found `(`
+error: mismatched closing delimiter: `}`
   --> $DIR/issue-66357-unexpected-unreachable.rs:12:13
    |
 LL | fn f() { |[](* }
-   |             ^ expected one of `,` or `:`
+   |        -    ^  ^ mismatched closing delimiter
+   |        |    |
+   |        |    unclosed delimiter
+   |        closing delimiter possibly meant for this
 
-error: expected one of `&`, `(`, `)`, `-`, `...`, `..=`, `..`, `[`, `_`, `box`, `mut`, `ref`, `|`, identifier, or path, found `*`
-  --> $DIR/issue-66357-unexpected-unreachable.rs:12:13
-   |
-LL | fn f() { |[](* }
-   |             ^^ help: `)` may belong here
-   |             |
-   |             unclosed delimiter
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

@@ -792,8 +792,10 @@ fn check_impl_items_against_trait<'tcx>(
             trait_def.must_implement_one_of.as_deref();
 
         for &trait_item_id in tcx.associated_item_def_ids(impl_trait_ref.def_id) {
-            let is_implemented = ancestors
-                .leaf_def(tcx, trait_item_id)
+            let leaf_def = ancestors.leaf_def(tcx, trait_item_id);
+
+            let is_implemented = leaf_def
+                .as_ref()
                 .map_or(false, |node_item| node_item.item.defaultness(tcx).has_value());
 
             if !is_implemented && tcx.impl_defaultness(impl_id).is_final() {
@@ -801,8 +803,8 @@ fn check_impl_items_against_trait<'tcx>(
             }
 
             // true if this item is specifically implemented in this impl
-            let is_implemented_here = ancestors
-                .leaf_def(tcx, trait_item_id)
+            let is_implemented_here = leaf_def
+                .as_ref()
                 .map_or(false, |node_item| !node_item.defining_node.is_from_trait());
 
             if !is_implemented_here {
@@ -830,6 +832,36 @@ fn check_impl_items_against_trait<'tcx>(
                         must_implement_one_of = None;
                     }
                 }
+            }
+
+            if let Some(leaf_def) = &leaf_def
+                && !leaf_def.is_final()
+                && let def_id = leaf_def.item.def_id
+                && tcx.impl_method_has_trait_impl_trait_tys(def_id)
+            {
+                let def_kind = tcx.def_kind(def_id);
+                let descr = tcx.def_kind_descr(def_kind, def_id);
+                let (msg, feature) = if tcx.asyncness(def_id).is_async() {
+                    (
+                        format!("async {descr} in trait cannot be specialized"),
+                        sym::async_fn_in_trait,
+                    )
+                } else {
+                    (
+                        format!(
+                            "{descr} with return-position `impl Trait` in trait cannot be specialized"
+                        ),
+                        sym::return_position_impl_trait_in_trait,
+                    )
+                };
+                tcx.sess
+                    .struct_span_err(tcx.def_span(def_id), msg)
+                    .note(format!(
+                        "specialization behaves in inconsistent and \
+                        surprising ways with `#![feature({feature})]`, \
+                        and for now is disallowed"
+                    ))
+                    .emit();
             }
         }
 

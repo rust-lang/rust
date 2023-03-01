@@ -1,7 +1,7 @@
 use super::diagnostics::report_suspicious_mismatch_block;
 use super::diagnostics::same_identation_level;
 use super::diagnostics::TokenTreeDiagInfo;
-use super::{StringReader, UnmatchedBrace};
+use super::{StringReader, UnmatchedDelim};
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::token_to_string;
@@ -18,14 +18,14 @@ pub(super) struct TokenTreesReader<'a> {
 impl<'a> TokenTreesReader<'a> {
     pub(super) fn parse_all_token_trees(
         string_reader: StringReader<'a>,
-    ) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
+    ) -> (PResult<'a, TokenStream>, Vec<UnmatchedDelim>) {
         let mut tt_reader = TokenTreesReader {
             string_reader,
             token: Token::dummy(),
             diag_info: TokenTreeDiagInfo::default(),
         };
         let res = tt_reader.parse_token_trees(/* is_delimited */ false);
-        (res, tt_reader.diag_info.unmatched_braces)
+        (res, tt_reader.diag_info.unmatched_delims)
     }
 
     // Parse a stream of tokens into a list of `TokenTree`s.
@@ -34,7 +34,7 @@ impl<'a> TokenTreesReader<'a> {
         let mut buf = Vec::new();
         loop {
             match self.token.kind {
-                token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)),
+                token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)?),
                 token::CloseDelim(delim) => {
                     return if is_delimited {
                         Ok(TokenStream::new(buf))
@@ -43,10 +43,11 @@ impl<'a> TokenTreesReader<'a> {
                     };
                 }
                 token::Eof => {
-                    if is_delimited {
-                        self.eof_err().emit();
-                    }
-                    return Ok(TokenStream::new(buf));
+                    return if is_delimited {
+                        Err(self.eof_err())
+                    } else {
+                        Ok(TokenStream::new(buf))
+                    };
                 }
                 _ => {
                     // Get the next normal token. This might require getting multiple adjacent
@@ -78,7 +79,7 @@ impl<'a> TokenTreesReader<'a> {
         let mut err = self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, msg);
         for &(_, sp) in &self.diag_info.open_braces {
             err.span_label(sp, "unclosed delimiter");
-            self.diag_info.unmatched_braces.push(UnmatchedBrace {
+            self.diag_info.unmatched_delims.push(UnmatchedDelim {
                 expected_delim: Delimiter::Brace,
                 found_delim: None,
                 found_span: self.token.span,
@@ -98,7 +99,7 @@ impl<'a> TokenTreesReader<'a> {
         err
     }
 
-    fn parse_token_tree_open_delim(&mut self, open_delim: Delimiter) -> TokenTree {
+    fn parse_token_tree_open_delim(&mut self, open_delim: Delimiter) -> PResult<'a, TokenTree> {
         // The span for beginning of the delimited section
         let pre_span = self.token.span;
 
@@ -107,7 +108,7 @@ impl<'a> TokenTreesReader<'a> {
         // Parse the token trees within the delimiters.
         // We stop at any delimiter so we can try to recover if the user
         // uses an incorrect delimiter.
-        let tts = self.parse_token_trees(/* is_delimited */ true).unwrap();
+        let tts = self.parse_token_trees(/* is_delimited */ true)?;
 
         // Expand to cover the entire delimited token tree
         let delim_span = DelimSpan::from_pair(pre_span, self.token.span);
@@ -160,7 +161,7 @@ impl<'a> TokenTreesReader<'a> {
                         }
                     }
                     let (tok, _) = self.diag_info.open_braces.pop().unwrap();
-                    self.diag_info.unmatched_braces.push(UnmatchedBrace {
+                    self.diag_info.unmatched_delims.push(UnmatchedDelim {
                         expected_delim: tok,
                         found_delim: Some(close_delim),
                         found_span: self.token.span,
@@ -190,7 +191,7 @@ impl<'a> TokenTreesReader<'a> {
             _ => unreachable!(),
         }
 
-        TokenTree::Delimited(delim_span, open_delim, tts)
+        Ok(TokenTree::Delimited(delim_span, open_delim, tts))
     }
 
     fn close_delim_err(&mut self, delim: Delimiter) -> PErr<'a> {

@@ -1,16 +1,10 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-84104.rs:3:13
+  --> $DIR/issue-84104.rs:2:13
    |
 LL | #[i=i::<ښܖ<
    |  -          ^
    |  |
    |  unclosed delimiter
 
-error: expected one of `>`, a const expression, lifetime, or type, found `]`
-  --> $DIR/issue-84104.rs:3:13
-   |
-LL | #[i=i::<ښܖ<
-   |             ^ expected one of `>`, a const expression, lifetime, or type
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

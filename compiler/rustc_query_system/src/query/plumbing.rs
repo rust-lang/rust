@@ -25,7 +25,6 @@ use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
-use std::ptr;
 use thin_vec::ThinVec;
 
 use super::QueryConfig;
@@ -250,12 +249,15 @@ where
     where
         C: QueryCache<Key = K>,
     {
-        // We can move out of `self` here because we `mem::forget` it below
-        let key = unsafe { ptr::read(&self.key) };
+        let key = self.key;
         let state = self.state;
 
         // Forget ourself so our destructor won't poison the query
         mem::forget(self);
+
+        // Mark as complete before we remove the job from the active state
+        // so no other thread can re-execute this query.
+        cache.complete(key, result, dep_node_index);
 
         let job = {
             #[cfg(parallel_compiler)]
@@ -267,7 +269,6 @@ where
                 QueryResult::Poisoned => panic!(),
             }
         };
-        cache.complete(key, result, dep_node_index);
 
         job.signal_complete();
     }
