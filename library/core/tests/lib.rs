@@ -67,6 +67,7 @@
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(ip)]
+#![feature(ip_in_core)]
 #![feature(iter_advance_by)]
 #![feature(iter_array_chunks)]
 #![feature(iter_collect_into)]
