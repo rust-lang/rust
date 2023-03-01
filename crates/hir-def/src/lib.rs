@@ -128,7 +128,7 @@ impl ModuleId {
     }
 }
 
-/// An ID of a module, **local** to a specific crate
+/// An ID of a module, **local** to a `DefMap`.
 pub type LocalModuleId = Idx<nameres::ModuleData>;
 
 #[derive(Debug)]

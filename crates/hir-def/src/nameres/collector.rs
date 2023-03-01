@@ -666,8 +666,10 @@ impl DefCollector<'_> {
         macro_: Macro2Id,
         vis: &RawVisibility,
     ) {
-        let vis =
-            self.def_map.resolve_visibility(self.db, module_id, vis).unwrap_or(Visibility::Public);
+        let vis = self
+            .def_map
+            .resolve_visibility(self.db, module_id, vis, false)
+            .unwrap_or(Visibility::Public);
         self.def_map.modules[module_id].scope.declare(macro_.into());
         self.update(
             module_id,
@@ -831,7 +833,7 @@ impl DefCollector<'_> {
         let mut def = directive.status.namespaces();
         let vis = self
             .def_map
-            .resolve_visibility(self.db, module_id, &directive.import.visibility)
+            .resolve_visibility(self.db, module_id, &directive.import.visibility, false)
             .unwrap_or(Visibility::Public);
 
         match import.kind {
@@ -1547,7 +1549,7 @@ impl ModCollector<'_, '_> {
                 };
             let resolve_vis = |def_map: &DefMap, visibility| {
                 def_map
-                    .resolve_visibility(db, self.module_id, visibility)
+                    .resolve_visibility(db, self.module_id, visibility, false)
                     .unwrap_or(Visibility::Public)
             };
 
@@ -1823,7 +1825,7 @@ impl ModCollector<'_, '_> {
     ) -> LocalModuleId {
         let def_map = &mut self.def_collector.def_map;
         let vis = def_map
-            .resolve_visibility(self.def_collector.db, self.module_id, visibility)
+            .resolve_visibility(self.def_collector.db, self.module_id, visibility, false)
             .unwrap_or(Visibility::Public);
         let modules = &mut def_map.modules;
         let origin = match definition {
