@@ -5,7 +5,7 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::TyCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::ty::{self, Binder, DefIdTree, Region, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Binder, Region, Ty, TypeVisitable};
 use rustc_span::Span;
 
 /// Information about the anonymous region we are searching for.

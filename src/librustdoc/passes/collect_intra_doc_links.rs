@@ -13,7 +13,7 @@ use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::Mutability;
-use rustc_middle::ty::{DefIdTree, Ty, TyCtxt};
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, ty};
 use rustc_resolve::rustdoc::MalformedGenerics;
 use rustc_resolve::rustdoc::{prepare_to_doc_link_resolution, strip_generics_from_path};
