@@ -282,6 +282,18 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
+            if self.prev_token == token::BinOp(token::Minus)
+                && self.token == token::BinOp(token::Minus)
+                && self.prev_token.span.between(self.token.span).is_empty()
+                && !self.look_ahead(1, |tok| tok.can_begin_expr())
+            {
+                let op_span = self.prev_token.span.to(self.token.span);
+                // Eat the second `-`
+                self.bump();
+                lhs = self.recover_from_postfix_decrement(lhs, op_span, starts_stmt)?;
+                continue;
+            }
+
             let op = op.node;
             // Special cases:
             if op == AssocOp::As {
