@@ -1,4 +1,4 @@
-use rustc_middle::ty::layout::{InitKind, LayoutCx, LayoutError, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_session::Limit;
 use rustc_target::abi::{Abi, FieldsShape, Scalar, Variants};
@@ -18,16 +18,23 @@ use crate::interpret::{InterpCx, MemoryKind, OpTy};
 /// Rust UB as long as there is no risk of miscompilations. The `strict_init_checks` can be set to
 /// do a full check against Rust UB instead (in which case we will also ignore the 0x01-filling and
 /// to the full uninit check).
-pub fn might_permit_raw_init<'tcx>(
+pub fn check_validity_requirement<'tcx>(
     tcx: TyCtxt<'tcx>,
-    kind: InitKind,
+    kind: ValidityRequirement,
     param_env_and_ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Result<bool, LayoutError<'tcx>> {
+    let layout = tcx.layout_of(param_env_and_ty)?;
+
+    // There is nothing strict or lax about inhabitedness.
+    if kind == ValidityRequirement::Inhabited {
+        return Ok(!layout.abi.is_uninhabited());
+    }
+
     if tcx.sess.opts.unstable_opts.strict_init_checks {
-        might_permit_raw_init_strict(tcx.layout_of(param_env_and_ty)?, tcx, kind)
+        might_permit_raw_init_strict(layout, tcx, kind)
     } else {
         let layout_cx = LayoutCx { tcx, param_env: param_env_and_ty.param_env };
-        might_permit_raw_init_lax(tcx.layout_of(param_env_and_ty)?, &layout_cx, kind)
+        might_permit_raw_init_lax(layout, &layout_cx, kind)
     }
 }
 
@@ -36,7 +43,7 @@ pub fn might_permit_raw_init<'tcx>(
 fn might_permit_raw_init_strict<'tcx>(
     ty: TyAndLayout<'tcx>,
     tcx: TyCtxt<'tcx>,
-    kind: InitKind,
+    kind: ValidityRequirement,
 ) -> Result<bool, LayoutError<'tcx>> {
     let machine = CompileTimeInterpreter::new(
         Limit::new(0),
@@ -50,7 +57,7 @@ fn might_permit_raw_init_strict<'tcx>(
         .allocate(ty, MemoryKind::Machine(crate::const_eval::MemoryKind::Heap))
         .expect("OOM: failed to allocate for uninit check");
 
-    if kind == InitKind::Zero {
+    if kind == ValidityRequirement::Zero {
         cx.write_bytes_ptr(
             allocated.ptr,
             std::iter::repeat(0_u8).take(ty.layout.size().bytes_usize()),
@@ -72,15 +79,18 @@ fn might_permit_raw_init_strict<'tcx>(
 fn might_permit_raw_init_lax<'tcx>(
     this: TyAndLayout<'tcx>,
     cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
-    init_kind: InitKind,
+    init_kind: ValidityRequirement,
 ) -> Result<bool, LayoutError<'tcx>> {
     let scalar_allows_raw_init = move |s: Scalar| -> bool {
         match init_kind {
-            InitKind::Zero => {
+            ValidityRequirement::Inhabited => {
+                bug!("ValidityRequirement::Inhabited should have been handled above")
+            }
+            ValidityRequirement::Zero => {
                 // The range must contain 0.
                 s.valid_range(cx).contains(0)
             }
-            InitKind::UninitMitigated0x01Fill => {
+            ValidityRequirement::UninitMitigated0x01Fill => {
                 // The range must include an 0x01-filled buffer.
                 let mut val: u128 = 0x01;
                 for _ in 1..s.size(cx).bytes() {

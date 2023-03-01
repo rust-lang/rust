@@ -14,7 +14,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, AssertKind, SwitchTargets};
-use rustc_middle::ty::layout::{HasTyCtxt, InitKind, LayoutOf};
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
 use rustc_session::config::OptLevel;
@@ -655,44 +655,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
-        #[derive(Debug, PartialEq)]
-        enum AssertIntrinsic {
-            Inhabited,
-            ZeroValid,
-            MemUninitializedValid,
-        }
-        let panic_intrinsic = intrinsic.and_then(|i| match i {
-            sym::assert_inhabited => Some(AssertIntrinsic::Inhabited),
-            sym::assert_zero_valid => Some(AssertIntrinsic::ZeroValid),
-            sym::assert_mem_uninitialized_valid => Some(AssertIntrinsic::MemUninitializedValid),
-            _ => None,
-        });
-        if let Some(intrinsic) = panic_intrinsic {
-            use AssertIntrinsic::*;
-
+        let panic_intrinsic = intrinsic.and_then(|s| ValidityRequirement::from_intrinsic(s));
+        if let Some(requirement) = panic_intrinsic {
             let ty = instance.unwrap().substs.type_at(0);
+
+            let do_panic = !bx
+                .tcx()
+                .check_validity_requirement((requirement, bx.param_env().and(ty)))
+                .expect("expect to have layout during codegen");
+
             let layout = bx.layout_of(ty);
-            let do_panic = match intrinsic {
-                Inhabited => layout.abi.is_uninhabited(),
-                ZeroValid => !bx
-                    .tcx()
-                    .check_validity_of_init((InitKind::Zero, bx.param_env().and(ty)))
-                    .expect("expected to have layout during codegen"),
-                MemUninitializedValid => !bx
-                    .tcx()
-                    .check_validity_of_init((
-                        InitKind::UninitMitigated0x01Fill,
-                        bx.param_env().and(ty),
-                    ))
-                    .expect("expected to have layout during codegen"),
-            };
+
             Some(if do_panic {
                 let msg_str = with_no_visible_paths!({
                     with_no_trimmed_paths!({
                         if layout.abi.is_uninhabited() {
                             // Use this error even for the other intrinsics as it is more precise.
                             format!("attempted to instantiate uninhabited type `{}`", ty)
-                        } else if intrinsic == ZeroValid {
+                        } else if requirement == ValidityRequirement::Zero {
                             format!("attempted to zero-initialize type `{}`, which is invalid", ty)
                         } else {
                             format!(

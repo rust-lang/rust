@@ -61,7 +61,7 @@ pub fn provide(providers: &mut Providers) {
         let (param_env, value) = param_env_and_value.into_parts();
         const_eval::deref_mir_constant(tcx, param_env, value)
     };
-    providers.check_validity_of_init = |tcx, (init_kind, param_env_and_ty)| {
-        util::might_permit_raw_init(tcx, init_kind, param_env_and_ty)
+    providers.check_validity_requirement = |tcx, (init_kind, param_env_and_ty)| {
+        util::check_validity_requirement(tcx, init_kind, param_env_and_ty)
     };
 }
