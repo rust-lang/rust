@@ -43,7 +43,7 @@ use std::{cmp, fmt, mem};
 use errors::{
     FieldIsPrivate, FieldIsPrivateLabel, FromPrivateDependencyInPublicInterface, InPublicInterface,
     InPublicInterfaceTraits, ItemIsPrivate, PrivateInPublicLint, ReportEffectiveVisibility,
-    UnnamedItemIsPrivate,
+    UnnamedItemIsPrivate, WarnInPublicInterfaceTraits,
 };
 
 fluent_messages! { "../locales/en-US.ftl" }
@@ -1753,6 +1753,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'tcx> {
     required_visibility: ty::Visibility,
     has_old_errors: bool,
     in_assoc_ty: bool,
+    in_trait_impl: bool,
 }
 
 impl SearchInterfaceForPrivateItemsVisitor<'_> {
@@ -1817,10 +1818,24 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         };
 
         let vis = self.tcx.local_visibility(local_def_id);
-        if !vis.is_at_least(self.required_visibility, self.tcx) {
+        let is_a_trait = matches!(self.tcx.def_kind(local_def_id), DefKind::Trait);
+        let vis_at_least = vis.is_at_least(self.required_visibility, self.tcx);
+        let is_exported = if !vis_at_least {
+            true
+        } else if self.tcx.entry_fn(()).is_none() {
+            // If this is not a binary, it's an issue to have a private item in a public API.
+            let visibilities = self.tcx.effective_visibilities(());
+            is_a_trait
+                || self.in_trait_impl
+                || !visibilities.is_exported(self.item_def_id)
+                || visibilities.is_exported(local_def_id)
+        } else {
+            true
+        };
+        if !vis_at_least || !is_exported {
             let hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
             let vis_descr = match vis {
-                ty::Visibility::Public => "public",
+                ty::Visibility::Public => "public but not reexported",
                 ty::Visibility::Restricted(vis_def_id) => {
                     if vis_def_id == self.tcx.parent_module(hir_id) {
                         "private"
@@ -1838,21 +1853,49 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
             {
                 let vis_span = self.tcx.def_span(def_id);
                 if kind == "trait" {
-                    self.tcx.sess.emit_err(InPublicInterfaceTraits {
-                        span,
-                        vis_descr,
-                        kind,
-                        descr: descr.into(),
-                        vis_span,
-                    });
+                    if vis == ty::Visibility::Public {
+                        let (vis_descr, descr) = rustc_middle::ty::print::with_no_trimmed_paths!((
+                            vis_descr.into(),
+                            descr.into()
+                        ));
+                        self.tcx.sess.emit_warning(WarnInPublicInterfaceTraits {
+                            span,
+                            vis_descr,
+                            kind,
+                            descr,
+                            vis_span,
+                        });
+                    } else {
+                        self.tcx.sess.emit_err(InPublicInterfaceTraits {
+                            span,
+                            vis_descr,
+                            kind,
+                            descr: descr.into(),
+                            vis_span,
+                        });
+                    }
                 } else {
-                    self.tcx.sess.emit_err(InPublicInterface {
-                        span,
-                        vis_descr,
-                        kind,
-                        descr: descr.into(),
-                        vis_span,
-                    });
+                    if vis == ty::Visibility::Public {
+                        let (vis_descr, descr) = rustc_middle::ty::print::with_no_trimmed_paths!((
+                            vis_descr.into(),
+                            descr.into()
+                        ));
+                        self.tcx.sess.emit_warning(WarnInPublicInterfaceTraits {
+                            span,
+                            vis_descr,
+                            kind,
+                            descr,
+                            vis_span,
+                        });
+                    } else {
+                        self.tcx.sess.emit_err(InPublicInterface {
+                            span,
+                            vis_descr,
+                            kind,
+                            descr: descr.into(),
+                            vis_span,
+                        });
+                    }
                 }
             } else {
                 self.tcx.emit_spanned_lint(
@@ -1900,6 +1943,7 @@ impl<'tcx> DefIdVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'tcx> {
 struct PrivateItemsInPublicInterfacesChecker<'tcx> {
     tcx: TyCtxt<'tcx>,
     old_error_set_ancestry: HirIdSet,
+    in_trait_impl: bool,
 }
 
 impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
@@ -1916,6 +1960,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
                 .old_error_set_ancestry
                 .contains(&self.tcx.hir().local_def_id_to_hir_id(def_id)),
             in_assoc_ty: false,
+            in_trait_impl: self.in_trait_impl,
         }
     }
 
@@ -2022,11 +2067,13 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
                 if let hir::ItemKind::Impl(ref impl_) = item.kind {
                     let impl_vis =
                         ty::Visibility::of_impl(item.owner_id.def_id, tcx, &Default::default());
-                    // check that private components do not appear in the generics or predicates of inherent impls
-                    // this check is intentionally NOT performed for impls of traits, per #90586
+                    // check that private components do not appear in the generics or predicates of
+                    // inherent impls this check is intentionally NOT performed for impls of traits,
+                    // per #90586
                     if impl_.of_trait.is_none() {
                         self.check(item.owner_id.def_id, impl_vis).generics().predicates();
                     }
+                    self.in_trait_impl = impl_.of_trait.is_some();
                     for impl_item_ref in impl_.items {
                         let impl_item_vis = if impl_.of_trait.is_none() {
                             min(
@@ -2043,6 +2090,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx> {
                             impl_item_vis,
                         );
                     }
+                    self.in_trait_impl = false;
                 }
             }
             _ => {}
@@ -2180,7 +2228,8 @@ fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
     }
 
     // Check for private types and traits in public interfaces.
-    let mut checker = PrivateItemsInPublicInterfacesChecker { tcx, old_error_set_ancestry };
+    let mut checker =
+        PrivateItemsInPublicInterfacesChecker { tcx, old_error_set_ancestry, in_trait_impl: false };
 
     for id in tcx.hir().items() {
         checker.check_item(id);

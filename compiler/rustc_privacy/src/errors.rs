@@ -75,6 +75,20 @@ pub struct InPublicInterface<'a> {
     pub vis_span: Span,
 }
 
+// Duplicate of `InPublicInterface` but with a different error code, shares the same slug.
+#[derive(Diagnostic)]
+#[diag(privacy_in_public_interface)]
+pub struct WarnInPublicInterfaceTraits<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub vis_descr: &'static str,
+    pub kind: &'a str,
+    pub descr: DiagnosticArgFromDisplay<'a>,
+    #[label(privacy_visibility_label)]
+    pub vis_span: Span,
+}
+
 #[derive(Diagnostic)]
 #[diag(privacy_report_effective_visibility)]
 pub struct ReportEffectiveVisibility {
