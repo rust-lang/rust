@@ -42,7 +42,7 @@ const UTF8_REPLACEMENT_CHARACTER: &str = "\u{FFFD}";
 /// which represents a Unicode scalar value:
 /// a code point that is not a surrogate (U+D800 to U+DFFF).
 #[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
-pub struct CodePoint {
+pub(crate) struct CodePoint {
     value: u32,
 }
 
@@ -133,7 +133,7 @@ impl CodePoint {
 /// Similar to `String`, but can additionally contain surrogate code points
 /// if they’re not in a surrogate pair.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Clone)]
-pub struct Wtf8Buf {
+pub(crate) struct Wtf8Buf {
     bytes: Vec<u8>,
 
     /// Do we know that `bytes` holds a valid UTF-8 encoding? We can easily
@@ -496,7 +496,7 @@ impl Extend<CodePoint> for Wtf8Buf {
 /// Similar to `&str`, but can additionally contain surrogate code points
 /// if they’re not in a surrogate pair.
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
-pub struct Wtf8 {
+pub(crate) struct Wtf8 {
     bytes: [u8],
 }
 
@@ -869,7 +869,7 @@ fn decode_surrogate_pair(lead: u16, trail: u16) -> char {
 
 /// Copied from core::str::StrPrelude::is_char_boundary
 #[inline]
-pub fn is_code_point_boundary(slice: &Wtf8, index: usize) -> bool {
+pub(crate) fn is_code_point_boundary(slice: &Wtf8, index: usize) -> bool {
     if index == slice.len() {
         return true;
     }
@@ -881,14 +881,14 @@ pub fn is_code_point_boundary(slice: &Wtf8, index: usize) -> bool {
 
 /// Copied from core::str::raw::slice_unchecked
 #[inline]
-pub unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
+pub(crate) unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
     // memory layout of a &[u8] and &Wtf8 are the same
     Wtf8::from_bytes_unchecked(slice::from_raw_parts(s.bytes.as_ptr().add(begin), end - begin))
 }
 
 /// Copied from core::str::raw::slice_error_fail
 #[inline(never)]
-pub fn slice_error_fail(s: &Wtf8, begin: usize, end: usize) -> ! {
+pub(crate) fn slice_error_fail(s: &Wtf8, begin: usize, end: usize) -> ! {
     assert!(begin <= end);
     panic!("index {begin} and/or {end} in `{s:?}` do not lie on character boundary");
 }
@@ -897,7 +897,7 @@ pub fn slice_error_fail(s: &Wtf8, begin: usize, end: usize) -> ! {
 ///
 /// Created with the method `.code_points()`.
 #[derive(Clone)]
-pub struct Wtf8CodePoints<'a> {
+pub(crate) struct Wtf8CodePoints<'a> {
     bytes: slice::Iter<'a, u8>,
 }
 

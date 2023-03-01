@@ -19,12 +19,12 @@ mod tests;
 
 #[derive(Hash)]
 #[repr(transparent)]
-pub struct Buf {
+pub(crate) struct Buf {
     pub inner: Vec<u8>,
 }
 
 #[repr(transparent)]
-pub struct Slice {
+pub(crate) struct Slice {
     pub inner: [u8],
 }
 

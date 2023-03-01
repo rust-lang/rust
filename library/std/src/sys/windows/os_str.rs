@@ -10,7 +10,7 @@ use crate::sys_common::wtf8::{Wtf8, Wtf8Buf};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 #[derive(Clone, Hash)]
-pub struct Buf {
+pub(crate) struct Buf {
     pub inner: Wtf8Buf,
 }
 
@@ -46,7 +46,7 @@ impl fmt::Display for Buf {
 }
 
 #[repr(transparent)]
-pub struct Slice {
+pub(crate) struct Slice {
     pub inner: Wtf8,
 }
 
