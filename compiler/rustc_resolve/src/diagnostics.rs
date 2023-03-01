@@ -15,7 +15,7 @@ use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_middle::bug;
-use rustc_middle::ty::{DefIdTree, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE;
 use rustc_session::lint::builtin::MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS;
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -1197,7 +1197,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         segms.push(ast::PathSegment::from_ident(ident));
                         let path = Path { span: name_binding.span, segments: segms, tokens: None };
                         let did = match res {
-                            Res::Def(DefKind::Ctor(..), did) => this.opt_parent(did),
+                            Res::Def(DefKind::Ctor(..), did) => this.tcx.opt_parent(did),
                             _ => res.opt_def_id(),
                         };
 
@@ -1591,7 +1591,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ctor_def_id,
         )) = binding.kind
         {
-            let def_id = self.parent(ctor_def_id);
+            let def_id = self.tcx.parent(ctor_def_id);
             let fields = self.field_names.get(&def_id)?;
             return fields.iter().map(|name| name.span).reduce(Span::to); // None for `struct Foo()`
         }

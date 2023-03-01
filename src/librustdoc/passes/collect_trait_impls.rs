@@ -9,7 +9,7 @@ use crate::visit::DocVisitor;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
-use rustc_middle::ty::{self, DefIdTree};
+use rustc_middle::ty;
 use rustc_span::symbol::sym;
 
 pub(crate) const COLLECT_TRAIT_IMPLS: Pass = Pass {

@@ -8,7 +8,7 @@ use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
 use rustc_hir::intravisit::{walk_item, Visitor};
 use rustc_hir::{Node, CRATE_HIR_ID};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{DefIdTree, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;

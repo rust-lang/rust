@@ -25,7 +25,7 @@ use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, AdtKind, DefIdTree, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, EarlyBinder, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};

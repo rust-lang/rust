@@ -22,9 +22,7 @@ use rustc_hir::BodyOwnerKind;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{
-    self, DefIdTree, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt,
-};
+use rustc_middle::ty::{self, InlineConstSubsts, InlineConstSubstsParts, RegionVid, Ty, TyCtxt};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_span::Symbol;
 use std::iter;
