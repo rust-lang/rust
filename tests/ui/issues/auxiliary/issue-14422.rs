@@ -1,12 +1,12 @@
 #![crate_type="lib"]
 #![deny(warnings)]
 
-pub use src::aliases::B;
+pub use src::aliases::{A, B};
 pub use src::hidden_core::make;
 
 mod src {
     pub mod aliases {
-        use super::hidden_core::A;
+        pub use super::hidden_core::A;
         pub type B = A;
     }
 

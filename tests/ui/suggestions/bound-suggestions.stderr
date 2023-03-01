@@ -1,8 +1,8 @@
-error[E0277]: `impl Sized` doesn't implement `Debug`
+error[E0277]: `impl Sized` doesn't implement `std::fmt::Debug`
   --> $DIR/bound-suggestions.rs:9:22
    |
 LL |     println!("{:?}", t);
-   |                      ^ `impl Sized` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                      ^ `impl Sized` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
@@ -10,11 +10,11 @@ help: consider further restricting this bound
 LL | fn test_impl(t: impl Sized + std::fmt::Debug) {
    |                            +++++++++++++++++
 
-error[E0277]: `T` doesn't implement `Debug`
+error[E0277]: `T` doesn't implement `std::fmt::Debug`
   --> $DIR/bound-suggestions.rs:15:22
    |
 LL |     println!("{:?}", t);
-   |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T`
@@ -22,11 +22,11 @@ help: consider restricting type parameter `T`
 LL | fn test_no_bounds<T: std::fmt::Debug>(t: T) {
    |                    +++++++++++++++++
 
-error[E0277]: `T` doesn't implement `Debug`
+error[E0277]: `T` doesn't implement `std::fmt::Debug`
   --> $DIR/bound-suggestions.rs:21:22
    |
 LL |     println!("{:?}", t);
-   |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
@@ -34,11 +34,11 @@ help: consider further restricting this bound
 LL | fn test_one_bound<T: Sized + std::fmt::Debug>(t: T) {
    |                            +++++++++++++++++
 
-error[E0277]: `Y` doesn't implement `Debug`
+error[E0277]: `Y` doesn't implement `std::fmt::Debug`
   --> $DIR/bound-suggestions.rs:27:30
    |
 LL |     println!("{:?} {:?}", x, y);
-   |                              ^ `Y` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                              ^ `Y` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting type parameter `Y`
@@ -46,11 +46,11 @@ help: consider further restricting type parameter `Y`
 LL | fn test_no_bounds_where<X, Y>(x: X, y: Y) where X: std::fmt::Debug, Y: std::fmt::Debug {
    |                                                                   ~~~~~~~~~~~~~~~~~~~~
 
-error[E0277]: `X` doesn't implement `Debug`
+error[E0277]: `X` doesn't implement `std::fmt::Debug`
   --> $DIR/bound-suggestions.rs:33:22
    |
 LL |     println!("{:?}", x);
-   |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
@@ -58,11 +58,11 @@ help: consider further restricting this bound
 LL | fn test_one_bound_where<X>(x: X) where X: Sized + std::fmt::Debug {
    |                                                 +++++++++++++++++
 
-error[E0277]: `X` doesn't implement `Debug`
+error[E0277]: `X` doesn't implement `std::fmt::Debug`
   --> $DIR/bound-suggestions.rs:39:22
    |
 LL |     println!("{:?}", x);
-   |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
