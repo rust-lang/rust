@@ -20,7 +20,6 @@ abs_path() {
 S="$(abs_path $(dirname $0))"
 
 TEST_DIR="$S/test"
-TMP_DIR="$S/tmp"
 WORK_DIR="$TMP_DIR/workdir"
 OUT_DIR="$TMP_DIR/outdir"
 PREFIX_DIR="$TMP_DIR/prefix"
