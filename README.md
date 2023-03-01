@@ -1,5 +1,6 @@
 # The Rust Programming Language
 
+[![CI](https://github.com/rust-lang/rust/actions/workflows/ci.yml/badge.svg)](https://github.com/rust-lang/rust/actions/workflows/ci.yml)
 [![Rust Community](https://img.shields.io/badge/Rust_Community%20-Join_us-brightgreen?style=plastic&logo=rust)](https://www.rust-lang.org/community)
 
 This is the main source code repository for [Rust]. It contains the compiler,
