@@ -15,6 +15,7 @@ where
 {
     fn bar(&self) -> U {
         //~^ ERROR method `bar` has an incompatible type for trait
+        //~| ERROR method with return-position `impl Trait` in trait cannot be specialized
         *self
     }
 }
