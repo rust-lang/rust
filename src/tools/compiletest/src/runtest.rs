@@ -1432,12 +1432,13 @@ impl<'test> TestCx<'test> {
         expect_help: bool,
         expect_note: bool,
     ) -> bool {
-        match actual_error.kind {
-            Some(ErrorKind::Help) => expect_help,
-            Some(ErrorKind::Note) => expect_note,
-            Some(ErrorKind::Error) | Some(ErrorKind::Warning) => true,
-            Some(ErrorKind::Suggestion) | None => false,
-        }
+        !actual_error.msg.is_empty()
+            && match actual_error.kind {
+                Some(ErrorKind::Help) => expect_help,
+                Some(ErrorKind::Note) => expect_note,
+                Some(ErrorKind::Error) | Some(ErrorKind::Warning) => true,
+                Some(ErrorKind::Suggestion) | None => false,
+            }
     }
 
     fn should_emit_metadata(&self, pm: Option<PassMode>) -> Emit {

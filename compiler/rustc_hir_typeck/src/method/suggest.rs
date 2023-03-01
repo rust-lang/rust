@@ -333,6 +333,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rcvr_ty.prefix_string(self.tcx),
             ty_str_reported,
         );
+        if tcx.sess.source_map().is_multiline(sugg_span) {
+            err.span_label(sugg_span.with_hi(span.lo()), "");
+        }
         let ty_str = if short_ty_str.len() < ty_str.len() && ty_str.len() > 10 {
             short_ty_str
         } else {
