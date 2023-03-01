@@ -9,7 +9,6 @@
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
-#include "llvm/InitializePasses.h"
 #include "llvm/IR/AutoUpgrade.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -57,22 +56,6 @@ typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
 
 DEFINE_STDCXX_CONVERSION_FUNCTIONS(Pass, LLVMPassRef)
 DEFINE_STDCXX_CONVERSION_FUNCTIONS(TargetMachine, LLVMTargetMachineRef)
-
-extern "C" void LLVMInitializePasses() {
-  PassRegistry &Registry = *PassRegistry::getPassRegistry();
-  initializeCore(Registry);
-  initializeCodeGen(Registry);
-  initializeScalarOpts(Registry);
-  initializeVectorization(Registry);
-  initializeIPO(Registry);
-  initializeAnalysis(Registry);
-  initializeTransformUtils(Registry);
-  initializeInstCombine(Registry);
-#if LLVM_VERSION_LT(16, 0)
-  initializeInstrumentation(Registry);
-#endif
-  initializeTarget(Registry);
-}
 
 extern "C" void LLVMTimeTraceProfilerInitialize() {
   timeTraceProfilerInitialize(
@@ -1004,7 +987,6 @@ LLVMRustPrintModule(LLVMModuleRef M, const char *Path, DemangleFn Demangle) {
 }
 
 extern "C" void LLVMRustPrintPasses() {
-  LLVMInitializePasses();
   struct MyListener : PassRegistrationListener {
     void passEnumerate(const PassInfo *Info) {
       StringRef PassArg = Info->getPassArgument();
