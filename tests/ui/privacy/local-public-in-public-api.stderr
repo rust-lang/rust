@@ -1,0 +1,25 @@
+error: public but not reexported type `MyTypeBuilder` in public interface (error E0446)
+  --> $DIR/local-public-in-public-api.rs:14:9
+   |
+LL |         pub fn builder() -> MyTypeBuilder {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+note: the lint level is defined here
+  --> $DIR/local-public-in-public-api.rs:5:9
+   |
+LL | #![deny(private_in_public)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: public but not reexported type `MyTypeBuilder` in public interface (error E0446)
+  --> $DIR/local-public-in-public-api.rs:20:9
+   |
+LL |         pub fn with_builder(_: MyTypeBuilder) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+
+error: aborting due to 2 previous errors
+
