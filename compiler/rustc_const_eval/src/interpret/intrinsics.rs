@@ -124,10 +124,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let substs = instance.substs;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
 
+        if let sym::copy_nonoverlapping | sym::transmute = intrinsic_name {
+            bug!("Intrinsic {intrinsic_name} should have been lowered before interpreting MIR");
+        }
+
         // First handle intrinsics without return place.
         let ret = match ret {
             None => match intrinsic_name {
-                sym::transmute => throw_ub_format!("transmuting to uninhabited type"),
                 sym::abort => M::abort(self, "the program aborted execution".to_owned())?,
                 // Unsupported diverging intrinsic.
                 _ => return Ok(false),
@@ -411,9 +414,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.exact_div(&val, &size, dest)?;
             }
 
-            sym::transmute => {
-                self.copy_op(&args[0], dest, /*allow_transmute*/ true)?;
-            }
             sym::assert_inhabited
             | sym::assert_zero_valid
             | sym::assert_mem_uninitialized_valid => {

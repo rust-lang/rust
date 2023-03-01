@@ -133,6 +133,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     bug!()
                 }
             }
+
+            Transmute => {
+                self.copy_op(src, dest, /*allow_transmute*/ true)?;
+            }
         }
         Ok(())
     }

@@ -135,6 +135,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 dest.codegen_set_discr(bx, variant_index);
             }
 
+            mir::Rvalue::Cast(mir::CastKind::Transmute, ref operand, _ty) => {
+                self.codegen_transmute_into(bx, operand, dest);
+            }
+
             _ => {
                 assert!(self.rvalue_creates_operand(rvalue, DUMMY_SP));
                 let temp = self.codegen_rvalue_operand(bx, rvalue);
@@ -343,6 +347,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             _ => bug!("unsupported cast: {:?} to {:?}", operand.layout.ty, cast.ty),
                         };
                         OperandValue::Immediate(newval)
+                    }
+                    mir::CastKind::Transmute => {
+                        bug!("Transmute operand {:?} in `codegen_rvalue_operand`", operand);
                     }
                 };
                 OperandRef { val, layout: cast }
@@ -684,6 +691,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
         match *rvalue {
+            mir::Rvalue::Cast(mir::CastKind::Transmute, ..) =>
+                // sometimes this could, but for aggregates it can't
+                false,
             mir::Rvalue::Ref(..) |
             mir::Rvalue::CopyForDeref(..) |
             mir::Rvalue::AddressOf(..) |
