@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use rustc_hash::FxHashMap;
 use rustdoc_json_types::{Crate, Item, ItemKind, ItemSummary, Visibility, FORMAT_VERSION};
 
 use crate::json_find::SelectorPart;
@@ -27,7 +26,7 @@ fn errors_on_missing_links() {
         root: id("0"),
         crate_version: None,
         includes_private: false,
-        index: HashMap::from_iter([(
+        index: FxHashMap::from_iter([(
             id("0"),
             Item {
                 name: Some("root".to_owned()),
@@ -36,7 +35,7 @@ fn errors_on_missing_links() {
                 span: None,
                 visibility: Visibility::Public,
                 docs: None,
-                links: HashMap::from_iter([("Not Found".to_owned(), id("1"))]),
+                links: FxHashMap::from_iter([("Not Found".to_owned(), id("1"))]),
                 attrs: vec![],
                 deprecation: None,
                 inner: ItemEnum::Module(Module {
@@ -46,8 +45,8 @@ fn errors_on_missing_links() {
                 }),
             },
         )]),
-        paths: HashMap::new(),
-        external_crates: HashMap::new(),
+        paths: FxHashMap::default(),
+        external_crates: FxHashMap::default(),
         format_version: rustdoc_json_types::FORMAT_VERSION,
     };
 
@@ -73,7 +72,7 @@ fn errors_on_local_in_paths_and_not_index() {
         root: id("0:0:1572"),
         crate_version: None,
         includes_private: false,
-        index: HashMap::from_iter([
+        index: FxHashMap::from_iter([
             (
                 id("0:0:1572"),
                 Item {
@@ -83,7 +82,7 @@ fn errors_on_local_in_paths_and_not_index() {
                     span: None,
                     visibility: Visibility::Public,
                     docs: None,
-                    links: HashMap::from_iter([(("prim@i32".to_owned(), id("0:1:1571")))]),
+                    links: FxHashMap::from_iter([(("prim@i32".to_owned(), id("0:1:1571")))]),
                     attrs: Vec::new(),
                     deprecation: None,
                     inner: ItemEnum::Module(Module {
@@ -102,14 +101,14 @@ fn errors_on_local_in_paths_and_not_index() {
                     span: None,
                     visibility: Visibility::Public,
                     docs: None,
-                    links: HashMap::default(),
+                    links: FxHashMap::default(),
                     attrs: Vec::new(),
                     deprecation: None,
                     inner: ItemEnum::Primitive(Primitive { name: "i32".to_owned(), impls: vec![] }),
                 },
             ),
         ]),
-        paths: HashMap::from_iter([(
+        paths: FxHashMap::from_iter([(
             id("0:1:1571"),
             ItemSummary {
                 crate_id: 0,
@@ -117,7 +116,7 @@ fn errors_on_local_in_paths_and_not_index() {
                 kind: ItemKind::Primitive,
             },
         )]),
-        external_crates: HashMap::default(),
+        external_crates: FxHashMap::default(),
         format_version: rustdoc_json_types::FORMAT_VERSION,
     };
 
@@ -137,7 +136,7 @@ fn checks_local_crate_id_is_correct() {
         root: id("root"),
         crate_version: None,
         includes_private: false,
-        index: HashMap::from_iter([(
+        index: FxHashMap::from_iter([(
             id("root"),
             Item {
                 id: id("root"),
@@ -146,7 +145,7 @@ fn checks_local_crate_id_is_correct() {
                 span: None,
                 visibility: Visibility::Public,
                 docs: None,
-                links: HashMap::default(),
+                links: FxHashMap::default(),
                 attrs: Vec::new(),
                 deprecation: None,
                 inner: ItemEnum::Module(Module {
@@ -156,8 +155,8 @@ fn checks_local_crate_id_is_correct() {
                 }),
             },
         )]),
-        paths: HashMap::default(),
-        external_crates: HashMap::default(),
+        paths: FxHashMap::default(),
+        external_crates: FxHashMap::default(),
         format_version: FORMAT_VERSION,
     };
     check(&krate, &[]);
