@@ -1379,17 +1379,40 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_foreign_fn(&mut self, def_id: LocalDefId, decl: &hir::FnDecl<'_>) {
+    /// Check if a function's argument types and result type are "ffi-safe".
+    ///
+    /// Argument types and the result type are checked for functions with external ABIs.
+    /// For functions with internal ABIs, argument types and the result type are walked to find
+    /// fn-ptr types that have external ABIs, as these still need checked.
+    fn check_maybe_foreign_fn(&mut self, abi: SpecAbi, def_id: LocalDefId, decl: &hir::FnDecl<'_>) {
         let sig = self.cx.tcx.fn_sig(def_id).subst_identity();
         let sig = self.cx.tcx.erase_late_bound_regions(sig);
 
+        let is_internal_abi = self.is_internal_abi(abi);
+        let check_ty = |this: &mut ImproperCTypesVisitor<'a, 'tcx>,
+                        span: Span,
+                        ty: Ty<'tcx>,
+                        is_return_type: bool| {
+            // If this function has an external ABI, then its arguments and return type should be
+            // checked..
+            if !is_internal_abi {
+                this.check_type_for_ffi_and_report_errors(span, ty, false, is_return_type);
+                return;
+            }
+
+            // ..but if this function has an internal ABI, then search the argument or return type
+            // for any fn-ptr types with external ABI, which should be checked..
+            if let Some(fn_ptr_ty) = this.find_fn_ptr_ty_with_external_abi(ty) {
+                this.check_type_for_ffi_and_report_errors(span, fn_ptr_ty, false, is_return_type);
+            }
+        };
+
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
-            self.check_type_for_ffi_and_report_errors(input_hir.span, *input_ty, false, false);
+            check_ty(self, input_hir.span, *input_ty, false);
         }
 
         if let hir::FnRetTy::Return(ref ret_hir) = decl.output {
-            let ret_ty = sig.output();
-            self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty, false, true);
+            check_ty(self, ret_hir.span, sig.output(), true);
         }
     }
 
@@ -1404,6 +1427,30 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             SpecAbi::Rust | SpecAbi::RustCall | SpecAbi::RustIntrinsic | SpecAbi::PlatformIntrinsic
         )
     }
+
+    /// Find any fn-ptr types with external ABIs in `ty`.
+    ///
+    /// For example, `Option<extern "C" fn()>` returns `extern "C" fn()`
+    fn find_fn_ptr_ty_with_external_abi(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        struct FnPtrFinder<'parent, 'a, 'tcx>(&'parent ImproperCTypesVisitor<'a, 'tcx>);
+        impl<'vis, 'a, 'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for FnPtrFinder<'vis, 'a, 'tcx> {
+            type BreakTy = Ty<'tcx>;
+
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                if let ty::FnPtr(sig) = ty.kind() && !self.0.is_internal_abi(sig.abi()) {
+                    ControlFlow::Break(ty)
+                } else {
+                    ty.super_visit_with(self)
+                }
+            }
+        }
+
+        self.cx
+            .tcx
+            .normalize_erasing_regions(self.cx.param_env, ty)
+            .visit_with(&mut FnPtrFinder(&*self))
+            .break_value()
+    }
 }
 
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
@@ -1411,16 +1458,14 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
         let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Declaration };
         let abi = cx.tcx.hir().get_foreign_abi(it.hir_id());
 
-        if !vis.is_internal_abi(abi) {
-            match it.kind {
-                hir::ForeignItemKind::Fn(ref decl, _, _) => {
-                    vis.check_foreign_fn(it.owner_id.def_id, decl);
-                }
-                hir::ForeignItemKind::Static(ref ty, _) => {
-                    vis.check_foreign_static(it.owner_id, ty.span);
-                }
-                hir::ForeignItemKind::Type => (),
+        match it.kind {
+            hir::ForeignItemKind::Fn(ref decl, _, _) => {
+                vis.check_maybe_foreign_fn(abi, it.owner_id.def_id, decl);
             }
+            hir::ForeignItemKind::Static(ref ty, _) if !vis.is_internal_abi(abi) => {
+                vis.check_foreign_static(it.owner_id, ty.span);
+            }
+            hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => (),
         }
     }
 }
@@ -1444,9 +1489,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
         };
 
         let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Definition };
-        if !vis.is_internal_abi(abi) {
-            vis.check_foreign_fn(id, decl);
-        }
+        vis.check_maybe_foreign_fn(abi, id, decl);
     }
 }
 
