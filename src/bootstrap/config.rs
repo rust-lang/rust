@@ -119,7 +119,6 @@ pub struct Config {
     pub llvm_optimize: bool,
     pub llvm_thin_lto: bool,
     pub llvm_release_debuginfo: bool,
-    pub llvm_version_check: bool,
     pub llvm_static_stdcpp: bool,
     /// `None` if `llvm_from_ci` is true and we haven't yet downloaded llvm.
     #[cfg(not(test))]
@@ -674,7 +673,6 @@ define_config! {
         tests: Option<bool> = "tests",
         plugins: Option<bool> = "plugins",
         ccache: Option<StringOrBool> = "ccache",
-        version_check: Option<bool> = "version-check",
         static_libstdcpp: Option<bool> = "static-libstdcpp",
         ninja: Option<bool> = "ninja",
         targets: Option<String> = "targets",
@@ -806,7 +804,6 @@ impl Config {
         let mut config = Config::default();
         config.llvm_optimize = true;
         config.ninja_in_file = true;
-        config.llvm_version_check = true;
         config.llvm_static_stdcpp = false;
         config.backtrace = true;
         config.rust_optimize = true;
@@ -1174,7 +1171,6 @@ impl Config {
             set(&mut config.llvm_optimize, llvm.optimize);
             set(&mut config.llvm_thin_lto, llvm.thin_lto);
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
-            set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
             if let Some(v) = llvm.link_shared {
                 config.llvm_link_shared.set(Some(v));

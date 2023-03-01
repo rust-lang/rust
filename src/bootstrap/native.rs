@@ -549,10 +549,6 @@ fn get_built_llvm_lib_path(llvm_config_path: &Path) -> PathBuf {
 }
 
 fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
-    if !builder.config.llvm_version_check {
-        return;
-    }
-
     if builder.config.dry_run() {
         return;
     }
