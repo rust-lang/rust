@@ -1034,45 +1034,53 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: DefId) -> ObjectLifetimeDefault {
     debug_assert_eq!(tcx.def_kind(param_def_id), DefKind::TyParam);
     let param_def_id = param_def_id.expect_local();
-    let parent_def_id = tcx.local_parent(param_def_id);
-    let generics = tcx.hir().get_generics(parent_def_id).unwrap();
-    let param_hir_id = tcx.local_def_id_to_hir_id(param_def_id);
-    let param = generics.params.iter().find(|p| p.hir_id == param_hir_id).unwrap();
+    let hir::Node::GenericParam(param) = tcx.hir().get_by_def_id(param_def_id) else {
+        bug!("expected GenericParam for object_lifetime_default");
+    };
+    match param.source {
+        hir::GenericParamSource::Generics => {
+            let parent_def_id = tcx.local_parent(param_def_id);
+            let generics = tcx.hir().get_generics(parent_def_id).unwrap();
+            let param_hir_id = tcx.local_def_id_to_hir_id(param_def_id);
+            let param = generics.params.iter().find(|p| p.hir_id == param_hir_id).unwrap();
 
-    // Scan the bounds and where-clauses on parameters to extract bounds
-    // of the form `T:'a` so as to determine the `ObjectLifetimeDefault`
-    // for each type parameter.
-    match param.kind {
-        GenericParamKind::Type { .. } => {
-            let mut set = Set1::Empty;
+            // Scan the bounds and where-clauses on parameters to extract bounds
+            // of the form `T:'a` so as to determine the `ObjectLifetimeDefault`
+            // for each type parameter.
+            match param.kind {
+                GenericParamKind::Type { .. } => {
+                    let mut set = Set1::Empty;
 
-            // Look for `type: ...` where clauses.
-            for bound in generics.bounds_for_param(param_def_id) {
-                // Ignore `for<'a> type: ...` as they can change what
-                // lifetimes mean (although we could "just" handle it).
-                if !bound.bound_generic_params.is_empty() {
-                    continue;
-                }
+                    // Look for `type: ...` where clauses.
+                    for bound in generics.bounds_for_param(param_def_id) {
+                        // Ignore `for<'a> type: ...` as they can change what
+                        // lifetimes mean (although we could "just" handle it).
+                        if !bound.bound_generic_params.is_empty() {
+                            continue;
+                        }
 
-                for bound in bound.bounds {
-                    if let hir::GenericBound::Outlives(lifetime) = bound {
-                        set.insert(lifetime.res);
+                        for bound in bound.bounds {
+                            if let hir::GenericBound::Outlives(lifetime) = bound {
+                                set.insert(lifetime.res);
+                            }
+                        }
+                    }
+
+                    match set {
+                        Set1::Empty => ObjectLifetimeDefault::Empty,
+                        Set1::One(hir::LifetimeName::Static) => ObjectLifetimeDefault::Static,
+                        Set1::One(hir::LifetimeName::Param(param_def_id)) => {
+                            ObjectLifetimeDefault::Param(param_def_id.to_def_id())
+                        }
+                        _ => ObjectLifetimeDefault::Ambiguous,
                     }
                 }
-            }
-
-            match set {
-                Set1::Empty => ObjectLifetimeDefault::Empty,
-                Set1::One(hir::LifetimeName::Static) => ObjectLifetimeDefault::Static,
-                Set1::One(hir::LifetimeName::Param(param_def_id)) => {
-                    ObjectLifetimeDefault::Param(param_def_id.to_def_id())
+                _ => {
+                    bug!("object_lifetime_default_raw must only be called on a type parameter")
                 }
-                _ => ObjectLifetimeDefault::Ambiguous,
             }
         }
-        _ => {
-            bug!("object_lifetime_default_raw must only be called on a type parameter")
-        }
+        hir::GenericParamSource::Binder => ObjectLifetimeDefault::Empty,
     }
 }
 
@@ -1392,9 +1400,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             return;
         }
 
-        self.tcx
-            .sess
-            .delay_span_bug(self.tcx.hir().span(hir_id), "could not resolve {param_def_id:?}");
+        self.tcx.sess.delay_span_bug(
+            self.tcx.hir().span(hir_id),
+            format!("could not resolve {param_def_id:?}"),
+        );
     }
 
     #[instrument(level = "debug", skip(self))]
