@@ -1924,7 +1924,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
         if T::IS_ZST {
-            self.len += other.len;
+            self.len = self.len.checked_add(other.len).expect("capacity overflow");
             other.len = 0;
             other.head = 0;
             return;

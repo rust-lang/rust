@@ -1101,9 +1101,18 @@ fn should_encode_const(def_kind: DefKind) -> bool {
     }
 }
 
-// Return `false` to avoid encoding impl trait in trait, while we don't use the query.
-fn should_encode_fn_impl_trait_in_trait<'tcx>(_tcx: TyCtxt<'tcx>, _def_id: DefId) -> bool {
-    false
+// We only encode impl trait in trait when using `lower-impl-trait-in-trait-to-assoc-ty` unstable
+// option.
+fn should_encode_fn_impl_trait_in_trait<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+    if tcx.sess.opts.unstable_opts.lower_impl_trait_in_trait_to_assoc_ty
+        && let Some(assoc_item) = tcx.opt_associated_item(def_id)
+        && assoc_item.container == ty::AssocItemContainer::TraitContainer
+        && assoc_item.kind == ty::AssocKind::Fn
+    {
+        true
+    } else {
+        false
+    }
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {

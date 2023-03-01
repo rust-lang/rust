@@ -1,0 +1,82 @@
+error[E0107]: function takes 2 generic arguments but 1 generic argument was supplied
+  --> $DIR/issue-107280.rs:4:5
+   |
+LL |     inner::<false>().await
+   |     ^^^^^   ----- supplied 1 generic argument
+   |     |
+   |     expected 2 generic arguments
+   |
+note: function defined here, with 2 generic parameters: `T`, `PING`
+  --> $DIR/issue-107280.rs:13:10
+   |
+LL | async fn inner<T, const PING: bool>() {}
+   |          ^^^^^ -  ----------------
+help: add missing generic argument
+   |
+LL |     inner::<false, PING>().await
+   |                  ++++++
+
+error[E0698]: type inside `async fn` body must be known in this context
+  --> $DIR/issue-107280.rs:4:5
+   |
+LL |     inner::<false>().await
+   |     ^^^^^^^^^^^^^^ cannot infer the value of const parameter `PING` declared on the function `inner`
+   |
+note: the type is part of the `async fn` body because of this `await`
+  --> $DIR/issue-107280.rs:4:21
+   |
+LL |     inner::<false>().await
+   |                     ^^^^^^
+
+error[E0698]: type inside `async fn` body must be known in this context
+  --> $DIR/issue-107280.rs:4:5
+   |
+LL |     inner::<false>().await
+   |     ^^^^^^^^^^^^^^ cannot infer the value of const parameter `PING` declared on the function `inner`
+   |
+note: the type is part of the `async fn` body because of this `await`
+  --> $DIR/issue-107280.rs:4:21
+   |
+LL |     inner::<false>().await
+   |                     ^^^^^^
+
+error[E0698]: type inside `async fn` body must be known in this context
+  --> $DIR/issue-107280.rs:4:5
+   |
+LL |     inner::<false>().await
+   |     ^^^^^^^^^^^^^^ cannot infer the value of const parameter `PING` declared on the function `inner`
+   |
+note: the type is part of the `async fn` body because of this `await`
+  --> $DIR/issue-107280.rs:4:21
+   |
+LL |     inner::<false>().await
+   |                     ^^^^^^
+
+error[E0698]: type inside `async fn` body must be known in this context
+  --> $DIR/issue-107280.rs:4:5
+   |
+LL |     inner::<false>().await
+   |     ^^^^^^^^^^^^^^ cannot infer the value of const parameter `PING` declared on the function `inner`
+   |
+note: the type is part of the `async fn` body because of this `await`
+  --> $DIR/issue-107280.rs:4:21
+   |
+LL |     inner::<false>().await
+   |                     ^^^^^^
+
+error[E0698]: type inside `async fn` body must be known in this context
+  --> $DIR/issue-107280.rs:4:5
+   |
+LL |     inner::<false>().await
+   |     ^^^^^^^^^^^^^^ cannot infer the value of const parameter `PING` declared on the function `inner`
+   |
+note: the type is part of the `async fn` body because of this `await`
+  --> $DIR/issue-107280.rs:4:21
+   |
+LL |     inner::<false>().await
+   |                     ^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0107, E0698.
+For more information about an error, try `rustc --explain E0107`.
