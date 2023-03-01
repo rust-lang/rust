@@ -87,6 +87,7 @@ fn aarch64_linux() {
 #[cfg(all(target_arch = "aarch64", target_os = "windows"))]
 fn aarch64_windows() {
     println!("asimd: {:?}", is_aarch64_feature_detected!("asimd"));
+    println!("fp: {:?}", is_aarch64_feature_detected!("fp"));
     println!("crc: {:?}", is_aarch64_feature_detected!("crc"));
     println!("lse: {:?}", is_aarch64_feature_detected!("lse"));
     println!("dotprod: {:?}", is_aarch64_feature_detected!("dotprod"));
