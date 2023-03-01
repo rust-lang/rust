@@ -422,37 +422,36 @@ impl<'a> LintExtractor<'a> {
             .filter(|line| line.starts_with('{'))
             .map(serde_json::from_str)
             .collect::<Result<Vec<serde_json::Value>, _>>()?;
-        match msgs
+        // First try to find the messages with the `code` field set to our lint.
+        let matches: Vec<_> = msgs
             .iter()
-            .find(|msg| matches!(&msg["code"]["code"], serde_json::Value::String(s) if s==name))
-        {
-            Some(msg) => {
-                let rendered = msg["rendered"].as_str().expect("rendered field should exist");
-                Ok(rendered.to_string())
+            .filter(|msg| matches!(&msg["code"]["code"], serde_json::Value::String(s) if s==name))
+            .map(|msg| msg["rendered"].as_str().expect("rendered field should exist").to_string())
+            .collect();
+        if matches.is_empty() {
+            // Some lints override their code to something else (E0566).
+            // Try to find something that looks like it could be our lint.
+            let matches: Vec<_> = msgs.iter().filter(|msg|
+                matches!(&msg["rendered"], serde_json::Value::String(s) if s.contains(name)))
+                .map(|msg| msg["rendered"].as_str().expect("rendered field should exist").to_string())
+                .collect();
+            if matches.is_empty() {
+                let rendered: Vec<&str> =
+                    msgs.iter().filter_map(|msg| msg["rendered"].as_str()).collect();
+                let non_json: Vec<&str> =
+                    stderr.lines().filter(|line| !line.starts_with('{')).collect();
+                Err(format!(
+                    "did not find lint `{}` in output of example, got:\n{}\n{}",
+                    name,
+                    non_json.join("\n"),
+                    rendered.join("\n")
+                )
+                .into())
+            } else {
+                Ok(matches.join("\n"))
             }
-            None => {
-                match msgs.iter().find(
-                    |msg| matches!(&msg["rendered"], serde_json::Value::String(s) if s.contains(name)),
-                ) {
-                    Some(msg) => {
-                        let rendered = msg["rendered"].as_str().expect("rendered field should exist");
-                        Ok(rendered.to_string())
-                    }
-                    None => {
-                        let rendered: Vec<&str> =
-                            msgs.iter().filter_map(|msg| msg["rendered"].as_str()).collect();
-                        let non_json: Vec<&str> =
-                            stderr.lines().filter(|line| !line.starts_with('{')).collect();
-                        Err(format!(
-                            "did not find lint `{}` in output of example, got:\n{}\n{}",
-                            name,
-                            non_json.join("\n"),
-                            rendered.join("\n")
-                        )
-                        .into())
-                    }
-                }
-            }
+        } else {
+            Ok(matches.join("\n"))
         }
     }
 
