@@ -144,8 +144,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for MatchVisitor<'a, '_, 'tcx> {
             ExprKind::Let { box ref pat, expr } => {
                 self.check_let(pat, expr, self.let_source, ex.span);
             }
-            ExprKind::LogicalOp { op: LogicalOp::And, .. } => {
-                self.check_let_chain(ex, self.let_source);
+            ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
+                self.check_let_chain(self.let_source, ex.span, lhs, rhs);
             }
             _ => {}
         };
@@ -296,12 +296,16 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn check_let_chain(&mut self, top_expr: &Expr<'tcx>, let_source: LetSource) {
+    fn check_let_chain(
+        &mut self,
+        let_source: LetSource,
+        top_expr_span: Span,
+        mut lhs: ExprId,
+        rhs: ExprId,
+    ) {
         if let LetSource::None = let_source {
             return;
         }
-
-        let ExprKind::LogicalOp { op: LogicalOp::And, mut lhs, rhs } = top_expr.kind else { bug!() };
 
         // Lint level enclosing the next `lhs`.
         let mut cur_lint_level = self.lint_level;
@@ -367,7 +371,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 self.lint_level,
                 let_source,
                 chain_refutabilities.len(),
-                top_expr.span,
+                top_expr_span,
             );
             return;
         }
