@@ -61,13 +61,24 @@ impl CompressionFormat {
                 lzma_ops.literal_context_bits(3);
 
                 filters.lzma2(&lzma_ops);
+
+                let mut builder = xz2::stream::MtStreamBuilder::new();
+                builder.filters(filters);
+
+                // On 32-bit platforms limit ourselves to 3 threads, otherwise we exceed memory
+                // usage this process can take. In the future we'll likely only do super-fast
+                // compression in CI and move this heavyweight processing to promote-release (which
+                // is always 64-bit and can run on big-memory machines) but for now this lets us
+                // move forward.
+                if std::mem::size_of::<usize>() == 4 {
+                    builder.threads(3);
+                } else {
+                    builder.threads(6);
+                }
+
                 let compressor = XzEncoder::new_stream(
                     std::io::BufWriter::new(file),
-                    xz2::stream::MtStreamBuilder::new()
-                        .threads(1)
-                        .filters(filters)
-                        .encoder()
-                        .unwrap(),
+                    builder.encoder().unwrap(),
                 );
                 Box::new(compressor)
             }
