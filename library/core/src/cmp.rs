@@ -22,6 +22,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+mod bytewise;
+pub(crate) use bytewise::BytewiseEq;
+
 use crate::marker::Destruct;
 
 use self::Ordering::*;
