@@ -12,7 +12,6 @@ The [Fuchsia team]:
 - Tyler Mandry ([@tmandry](https://github.com/tmandry))
 - Dan Johnson ([@computerdruid](https://github.com/computerdruid))
 - David Koloski ([@djkoloski](https://github.com/djkoloski))
-- Andrew Pollack ([@andrewpollack](https://github.com/andrewpollack))
 - Joseph Ryan ([@P1n3appl3](https://github.com/P1n3appl3))
 
 As the team evolves over time, the specific members listed here may differ from
