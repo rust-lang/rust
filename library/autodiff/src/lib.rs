@@ -9,7 +9,7 @@ mod gen;
 #[proc_macro_error]
 pub fn autodiff(args: TokenStream, input: TokenStream) -> TokenStream {
     let mut params = parser::parse(args.into(), input.clone().into());
-    let (primal, adjoint) = (gen::primal_fnc(&params), gen::adjoint_fnc(&params));
+    let (primal, adjoint) = (gen::primal_fnc(&mut params), gen::adjoint_fnc(&params));
 
     let res = quote!(
         #primal

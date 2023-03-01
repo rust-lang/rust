@@ -1,5 +1,5 @@
 use quote::{quote, format_ident};
-use syn::{FnArg, ReturnType, ItemFn, Signature};
+use syn::{FnArg, ReturnType, ItemFn, Signature, Type, parse_quote};
 use crate::parser::{DiffItem, Activity, Mode};
 use proc_macro2::TokenStream;
 use crate::{parser, parser::{PrimalSig, is_ref_mut}};
@@ -15,7 +15,18 @@ pub(crate) fn generate_header(item: &DiffItem) -> TokenStream {
     quote!(#[autodiff_into(#mode, #ret_act, #( #param_act, )*)])
 }
 
-pub(crate) fn primal_fnc(item: &DiffItem) -> TokenStream {
+pub(crate) fn primal_fnc(item: &mut DiffItem) -> TokenStream {
+    // construct body of primal if not given
+    let body = item.block.clone().map(|x| quote!(x)).unwrap_or_else(|| {
+        let primal_wrapper = format_ident!("primal_{}", item.primal.ident);
+        item.primal.ident = primal_wrapper.clone();
+        let inputs = &item.primal.inputs;
+
+        quote!({
+            #primal_wrapper(#(#inputs,)*)
+        })
+    });
+
     let (sig, body) = (&item.primal, &item.block);
     let PrimalSig {
         ident, inputs, output
@@ -30,12 +41,25 @@ pub(crate) fn primal_fnc(item: &DiffItem) -> TokenStream {
     )
 }
 
+fn only_type(arg: &FnArg) -> Type {
+    match arg {
+        FnArg::Receiver(_) => parse_quote!(Self),
+        FnArg::Typed(t) => {
+            match &*t.ty {
+                Type::Reference(t) => *t.elem.clone(),
+                x => x.clone(),
+            }
+        }
+    }
+}
+
 fn as_ref_mut(arg: &FnArg, mutability: Option<bool>) -> FnArg {
     arg.clone()
 }
 
 pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
     let mut res_inputs: Vec<FnArg> = Vec::new();
+    let mut add_inputs: Vec<FnArg> = Vec::new();
     let mut outputs = Vec::new();
 
     let PrimalSig {
@@ -46,24 +70,48 @@ pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
         res_inputs.push(input.clone());
 
         match (item.header.mode, activity, is_ref_mut(&input)) {
-            (Mode::Forward, Activity::Duplicated, Some(true)) => 
-                res_inputs.push(as_ref_mut(&input, Some(true))),
-            (Mode::Forward, Activity::Duplicated, None) => outputs.push(input.clone()),
-            (Mode::Reverse, Activity::Duplicated, Some(false)) =>
-                res_inputs.push(as_ref_mut(&input, Some(true))),
-            (Mode::Reverse, Activity::Duplicated, Some(true)) =>
-                res_inputs.push(as_ref_mut(&input, Some(false))),
-            (Mode::Reverse, Activity::Active, None) => outputs.push(input.clone()),
+            (Mode::Forward, Activity::Duplicated, Some(true)) => {
+                res_inputs.push(as_ref_mut(&input, Some(true)));
+                add_inputs.push(as_ref_mut(&input, Some(true)));
+            },
+            (Mode::Forward, Activity::Duplicated, None) => outputs.push(only_type(&input)),
+            (Mode::Reverse, Activity::Duplicated, Some(false)) => {
+                res_inputs.push(as_ref_mut(&input, Some(true)));
+                add_inputs.push(as_ref_mut(&input, Some(true)));
+            },
+            (Mode::Reverse, Activity::Duplicated, Some(true)) => {
+                res_inputs.push(as_ref_mut(&input, Some(false)));
+                add_inputs.push(as_ref_mut(&input, Some(false)));
+            },
+            (Mode::Reverse, Activity::Active, None) => outputs.push(only_type(&input)),
             _ => {}
         }
     }
 
     let ident = format_ident!("grad_{}", ident);
-    let output = quote!(-> #(#outputs,)*);
+    let output = match outputs.len() {
+        0 => quote!(),
+        1 => {
+            let output = outputs.first().unwrap();
+
+            quote!(-> #output)
+        },
+        _ => quote!(-> #(#outputs,)*),
+    };
 
     let sig = quote!(fn #ident(#(#res_inputs,)*) #output);
+    //let inputs = inputs.iter().map(|x| x.ident.clone()).collect::<Vec<_>>();
+    let body = quote!({
+        std::hint::black_box((#ident(#(#inputs,)*), #(#add_inputs,)*));
 
-    quote!()
+        unsafe { std::mem::zeroed() }
+    });
+
+    quote!(
+        #[autodiff_into]
+        #sig
+        #body
+    )
 }
 
 //pub(crate) fn generate_body(token: TokenStream, item: &AutoDiffItem) -> (TokenStream, TokenStream) {
