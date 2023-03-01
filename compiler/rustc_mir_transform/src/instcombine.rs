@@ -6,9 +6,9 @@ use rustc_middle::mir::{
     BinOp, Body, Constant, ConstantKind, LocalDecls, Operand, Place, ProjectionElem, Rvalue,
     SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UnOp,
 };
-use rustc_middle::ty::layout::InitKind;
+use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, ParamEnv, SubstsRef, Ty, TyCtxt};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::Symbol;
 
 pub struct InstCombine;
 
@@ -256,16 +256,8 @@ fn intrinsic_assert_panics<'tcx>(
     ty: Ty<'tcx>,
     intrinsic_name: Symbol,
 ) -> Option<bool> {
-    Some(match intrinsic_name {
-        sym::assert_inhabited => tcx.layout_of(param_env.and(ty)).ok()?.abi.is_uninhabited(),
-        sym::assert_zero_valid => {
-            !tcx.check_validity_of_init((InitKind::Zero, param_env.and(ty))).ok()?
-        }
-        sym::assert_mem_uninitialized_valid => !tcx
-            .check_validity_of_init((InitKind::UninitMitigated0x01Fill, param_env.and(ty)))
-            .ok()?,
-        _ => return None,
-    })
+    let requirement = ValidityRequirement::from_intrinsic(intrinsic_name)?;
+    Some(!tcx.check_validity_requirement((requirement, param_env.and(ty))).ok()?)
 }
 
 fn resolve_rust_intrinsic<'tcx>(
