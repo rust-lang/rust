@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::sugg::Sugg;
+use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_ast::visit as ast_visit;
@@ -118,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
             impl<'a, 'tcx> hir_visit::Visitor<'tcx> for ClosureUsageCount<'a, 'tcx> {
                 type NestedFilter = nested_filter::OnlyBodies;
 
-                fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+                fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
                     if_chain! {
                         if let hir::ExprKind::Call(closure, _) = expr.kind;
                         if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = closure.kind;
@@ -128,7 +129,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                             self.count += 1;
                         }
                     }
-                    hir_visit::walk_expr(self, expr);
+                    hir_visit::walk_expr(self, expr)
                 }
 
                 fn nested_visit_map(&mut self) -> Self::Map {

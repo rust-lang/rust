@@ -37,6 +37,7 @@ use std::collections::BTreeMap;
 use std::default::Default;
 use std::hash::Hash;
 use std::mem;
+use std::ops::ControlFlow::{self, Break, Continue};
 use thin_vec::ThinVec;
 
 use crate::core::{self, DocContext, ImplTraitParam};
@@ -2069,36 +2070,36 @@ fn clean_bare_fn_ty<'tcx>(
 /// item while looking for a given `Ident` which is stored into `item` if found.
 struct OneLevelVisitor<'hir> {
     map: rustc_middle::hir::map::Map<'hir>,
-    item: Option<&'hir hir::Item<'hir>>,
     looking_for: Ident,
     target_def_id: LocalDefId,
 }
 
 impl<'hir> OneLevelVisitor<'hir> {
     fn new(map: rustc_middle::hir::map::Map<'hir>, target_def_id: LocalDefId) -> Self {
-        Self { map, item: None, looking_for: Ident::empty(), target_def_id }
+        Self { map, looking_for: Ident::empty(), target_def_id }
     }
 
     fn reset(&mut self, looking_for: Ident) {
         self.looking_for = looking_for;
-        self.item = None;
     }
 }
 
 impl<'hir> hir::intravisit::Visitor<'hir> for OneLevelVisitor<'hir> {
     type NestedFilter = rustc_middle::hir::nested_filter::All;
+    type BreakTy = &'hir hir::Item<'hir>;
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.map
     }
 
-    fn visit_item(&mut self, item: &'hir hir::Item<'hir>) {
-        if self.item.is_none()
-            && item.ident == self.looking_for
+    fn visit_item(&mut self, item: &'hir hir::Item<'hir>) -> ControlFlow<Self::BreakTy> {
+        if item.ident == self.looking_for
             && (matches!(item.kind, hir::ItemKind::Use(_, _))
                 || item.owner_id.def_id == self.target_def_id)
         {
-            self.item = Some(item);
+            Break(item)
+        } else {
+            Continue(())
         }
     }
 }
@@ -2150,20 +2151,20 @@ fn get_all_import_attributes<'hir>(
         let looking_for = path.segments[path.segments.len() - 1].ident;
         visitor.reset(looking_for);
 
-        match parent {
+        let res = match parent {
             hir::Node::Item(parent_item) => {
-                hir::intravisit::walk_item(&mut visitor, parent_item);
+                hir::intravisit::walk_item(&mut visitor, parent_item)
             }
             hir::Node::Crate(m) => {
                 hir::intravisit::walk_mod(
                     &mut visitor,
                     m,
                     tcx.local_def_id_to_hir_id(def_id.as_local().unwrap()),
-                );
+                )
             }
             _ => break,
-        }
-        if let Some(i) = visitor.item {
+        };
+        if let Break(i) = res {
             item = i;
         } else {
             break;

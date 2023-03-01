@@ -13,6 +13,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{GenericPredicates, ToPredicate};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
+use std::ops::ControlFlow::{self, Continue};
 
 #[derive(Debug)]
 struct OnlySelfBounds(bool);
@@ -336,7 +337,7 @@ fn const_evaluatable_predicates_of(
     }
 
     impl<'tcx> intravisit::Visitor<'tcx> for ConstCollector<'tcx> {
-        fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
+        fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) -> ControlFlow<!> {
             let ct = ty::Const::from_anon_const(self.tcx, c.def_id);
             if let ty::ConstKind::Unevaluated(_) = ct.kind() {
                 let span = self.tcx.def_span(c.def_id);
@@ -346,9 +347,14 @@ fn const_evaluatable_predicates_of(
                     span,
                 ));
             }
+            Continue(())
         }
 
-        fn visit_const_param_default(&mut self, _param: HirId, _ct: &'tcx hir::AnonConst) {
+        fn visit_const_param_default(
+            &mut self,
+            _param: HirId,
+            _ct: &'tcx hir::AnonConst,
+        ) -> ControlFlow<!> {
             // Do not look into const param defaults,
             // these get checked when they are actually instantiated.
             //
@@ -356,6 +362,7 @@ fn const_evaluatable_predicates_of(
             //
             //     struct Foo<const N: usize, const M: usize = { N + 1 }>;
             //     struct Bar<const N: usize>(Foo<N, 3>);
+            Continue(())
         }
     }
 

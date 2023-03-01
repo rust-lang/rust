@@ -1,3 +1,4 @@
+use core::ops::ControlFlow::{self, Continue};
 use rustc_errors::Applicability;
 use rustc_hir::{
     intravisit::{walk_expr, Visitor},
@@ -134,7 +135,7 @@ struct RetCollector {
 }
 
 impl<'tcx> Visitor<'tcx> for RetCollector {
-    fn visit_expr(&mut self, expr: &Expr<'_>) {
+    fn visit_expr(&mut self, expr: &Expr<'_>) -> ControlFlow<!> {
         match expr.kind {
             ExprKind::Ret(..) => {
                 if self.loop_depth > 0 && !self.ret_in_loop {
@@ -148,12 +149,12 @@ impl<'tcx> Visitor<'tcx> for RetCollector {
                 self.loop_depth += 1;
                 walk_expr(self, expr);
                 self.loop_depth -= 1;
-                return;
+                return Continue(());
             },
 
             _ => {},
         }
 
-        walk_expr(self, expr);
+        walk_expr(self, expr)
     }
 }

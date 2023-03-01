@@ -1,6 +1,7 @@
 use super::MUT_RANGE_BOUND;
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::{get_enclosing_block, higher, path_to_local};
+use core::ops::ControlFlow::{self, Break, Continue};
 use if_chain::if_chain;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, Node, PatKind};
@@ -125,8 +126,6 @@ impl MutatePairDelegate<'_, '_> {
 struct BreakAfterExprVisitor {
     hir_id: HirId,
     past_expr: bool,
-    past_candidate: bool,
-    break_after_expr: bool,
 }
 
 impl BreakAfterExprVisitor {
@@ -134,33 +133,22 @@ impl BreakAfterExprVisitor {
         let mut visitor = BreakAfterExprVisitor {
             hir_id,
             past_expr: false,
-            past_candidate: false,
-            break_after_expr: false,
         };
 
-        get_enclosing_block(cx, hir_id).map_or(false, |block| {
-            visitor.visit_block(block);
-            visitor.break_after_expr
-        })
+        get_enclosing_block(cx, hir_id).map_or(false, |block| visitor.visit_block(block).break_value().unwrap_or(false))
     }
 }
 
 impl<'tcx> intravisit::Visitor<'tcx> for BreakAfterExprVisitor {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        if self.past_candidate {
-            return;
-        }
-
+    type BreakTy = bool;
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> ControlFlow<Self::BreakTy> {
         if expr.hir_id == self.hir_id {
             self.past_expr = true;
+            Continue(())
         } else if self.past_expr {
-            if matches!(&expr.kind, ExprKind::Break(..)) {
-                self.break_after_expr = true;
-            }
-
-            self.past_candidate = true;
+            Break(matches!(&expr.kind, ExprKind::Break(..)))
         } else {
-            intravisit::walk_expr(self, expr);
+            intravisit::walk_expr(self, expr)
         }
     }
 }

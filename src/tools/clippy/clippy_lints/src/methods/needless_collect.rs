@@ -8,6 +8,7 @@ use clippy_utils::{
     can_move_expr_to_closure, get_enclosing_block, get_parent_node, is_trait_method, path_to_local, path_to_local_id,
     CaptureKind,
 };
+use core::ops::ControlFlow::{self, Continue};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
@@ -238,7 +239,7 @@ struct IterFunctionVisitor<'a, 'tcx> {
     target: HirId,
 }
 impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
-    fn visit_block(&mut self, block: &'tcx Block<'tcx>) {
+    fn visit_block(&mut self, block: &'tcx Block<'tcx>) -> ControlFlow<!> {
         for (expr, hir_id) in block.stmts.iter().filter_map(get_expr_and_hir_id_from_stmt) {
             if check_loop_kind(expr).is_some() {
                 continue;
@@ -254,15 +255,16 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
                 self.visit_block_expr(expr, None);
             }
         }
+        Continue(())
     }
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> ControlFlow<!> {
         // Check function calls on our collection
         if let ExprKind::MethodCall(method_name, recv, [args @ ..], _) = &expr.kind {
             if method_name.ident.name == sym!(collect) && is_trait_method(self.cx, expr, sym::Iterator) {
                 self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(recv));
                 self.visit_expr(recv);
-                return;
+                return Continue(());
             }
 
             if path_to_local_id(recv, self.target) {
@@ -300,7 +302,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
                         },
                     }
                 }
-                return;
+                return Continue(());
             }
 
             if let Some(hir_id) = path_to_local(recv) {
@@ -326,6 +328,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
         } else {
             walk_expr(self, expr);
         }
+        Continue(())
     }
 }
 
@@ -382,11 +385,12 @@ struct UsedCountVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for UsedCountVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<!> {
         if path_to_local_id(expr, self.id) {
             self.count += 1;
+            Continue(())
         } else {
-            walk_expr(self, expr);
+            walk_expr(self, expr)
         }
     }
 

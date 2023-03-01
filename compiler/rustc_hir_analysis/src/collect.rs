@@ -38,6 +38,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 use rustc_trait_selection::traits::ObligationCtxt;
 use std::iter;
+use std::ops::ControlFlow::{self, Continue};
 
 mod generics_of;
 mod item_bounds;
@@ -122,23 +123,23 @@ pub struct ItemCtxt<'tcx> {
 pub(crate) struct HirPlaceholderCollector(pub(crate) Vec<Span>);
 
 impl<'v> Visitor<'v> for HirPlaceholderCollector {
-    fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
+    fn visit_ty(&mut self, t: &'v hir::Ty<'v>) -> ControlFlow<!> {
         if let hir::TyKind::Infer = t.kind {
             self.0.push(t.span);
         }
         intravisit::walk_ty(self, t)
     }
-    fn visit_generic_arg(&mut self, generic_arg: &'v hir::GenericArg<'v>) {
+    fn visit_generic_arg(&mut self, generic_arg: &'v hir::GenericArg<'v>) -> ControlFlow<!> {
         match generic_arg {
             hir::GenericArg::Infer(inf) => {
                 self.0.push(inf.span);
-                intravisit::walk_inf(self, inf);
+                intravisit::walk_inf(self, inf)
             }
             hir::GenericArg::Type(t) => self.visit_ty(t),
-            _ => {}
+            _ => Continue(()),
         }
     }
-    fn visit_array_length(&mut self, length: &'v hir::ArrayLen) {
+    fn visit_array_length(&mut self, length: &'v hir::ArrayLen) -> ControlFlow<!> {
         if let &hir::ArrayLen::Infer(_, span) = length {
             self.0.push(span);
         }
@@ -273,13 +274,13 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) -> ControlFlow<!> {
         convert_item(self.tcx, item.item_id());
         reject_placeholder_type_signatures_in_item(self.tcx, item);
-        intravisit::walk_item(self, item);
+        intravisit::walk_item(self, item)
     }
 
-    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
+    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) -> ControlFlow<!> {
         for param in generics.params {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => {}
@@ -297,10 +298,10 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
                 }
             }
         }
-        intravisit::walk_generics(self, generics);
+        intravisit::walk_generics(self, generics)
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         if let hir::ExprKind::Closure(closure) = expr.kind {
             self.tcx.ensure().generics_of(closure.def_id);
             self.tcx.ensure().codegen_fn_attrs(closure.def_id);
@@ -308,17 +309,17 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
             // depends on typecheck and would therefore hide
             // any further errors in case one typeck fails.
         }
-        intravisit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr)
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) -> ControlFlow<!> {
         convert_trait_item(self.tcx, trait_item.trait_item_id());
-        intravisit::walk_trait_item(self, trait_item);
+        intravisit::walk_trait_item(self, trait_item)
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) -> ControlFlow<!> {
         convert_impl_item(self.tcx, impl_item.impl_item_id());
-        intravisit::walk_impl_item(self, impl_item);
+        intravisit::walk_impl_item(self, impl_item)
     }
 }
 

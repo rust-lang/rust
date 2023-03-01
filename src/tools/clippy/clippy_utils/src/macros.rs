@@ -16,7 +16,7 @@ use rustc_span::def_id::DefId;
 use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
 use rustc_span::{sym, BytePos, ExpnData, ExpnId, ExpnKind, Pos, Span, SpanData, Symbol};
 use std::iter::{once, zip};
-use std::ops::ControlFlow;
+use std::ops::ControlFlow::{self, Continue};
 
 const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
     sym::assert_eq_macro,
@@ -490,7 +490,7 @@ struct ParamPosition {
 }
 
 impl<'tcx> Visitor<'tcx> for ParamPosition {
-    fn visit_expr_field(&mut self, field: &'tcx ExprField<'tcx>) {
+    fn visit_expr_field(&mut self, field: &'tcx ExprField<'tcx>) -> ControlFlow<!> {
         match field.ident.name {
             sym::position => {
                 if let ExprKind::Lit(lit) = &field.expr.kind
@@ -505,8 +505,11 @@ impl<'tcx> Visitor<'tcx> for ParamPosition {
             sym::width => {
                 self.width = parse_count(field.expr);
             },
-            _ => walk_expr(self, field.expr),
+            _ => {
+                walk_expr(self, field.expr);
+            },
         }
+        Continue(())
     }
 }
 

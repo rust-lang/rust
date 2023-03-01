@@ -1,5 +1,6 @@
 use clippy_utils::ty::{has_iter_method, implements_trait};
 use clippy_utils::{get_parent_expr, is_integer_const, path_to_local, path_to_local_id, sugg};
+use core::ops::ControlFlow::{self, Continue};
 use if_chain::if_chain;
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
@@ -48,14 +49,14 @@ impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<!> {
         // If node is a variable
         if let Some(def_id) = path_to_local(expr) {
             if let Some(parent) = get_parent_expr(self.cx, expr) {
                 let state = self.states.entry(def_id).or_insert(IncrementVisitorVarState::Initial);
                 if *state == IncrementVisitorVarState::IncrOnce {
                     *state = IncrementVisitorVarState::DontWarn;
-                    return;
+                    return Continue(());
                 }
 
                 match parent.kind {
@@ -95,6 +96,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
         } else {
             walk_expr(self, expr);
         }
+        Continue(())
     }
 }
 
@@ -144,7 +146,7 @@ impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_local(&mut self, l: &'tcx Local<'_>) {
+    fn visit_local(&mut self, l: &'tcx Local<'_>) -> ControlFlow<!> {
         // Look for declarations of the variable
         if_chain! {
             if l.pat.hir_id == self.var_id;
@@ -162,28 +164,28 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
             }
         }
 
-        walk_local(self, l);
+        walk_local(self, l)
     }
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<!> {
         if matches!(self.state, InitializeVisitorState::DontWarn) {
-            return;
+            return Continue(());
         }
         if expr.hir_id == self.end_expr.hir_id {
             self.past_loop = true;
-            return;
+            return Continue(());
         }
         // No need to visit expressions before the variable is
         // declared
         if matches!(self.state, InitializeVisitorState::Initial) {
-            return;
+            return Continue(());
         }
 
         // If node is the desired variable, see how it's used
         if path_to_local_id(expr, self.var_id) {
             if self.past_loop {
                 self.state = InitializeVisitorState::DontWarn;
-                return;
+                return Continue(());
             }
 
             if let Some(parent) = get_parent_expr(self.cx, expr) {
@@ -243,6 +245,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         } else {
             walk_expr(self, expr);
         }
+        Continue(())
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {
@@ -274,43 +277,45 @@ pub(super) struct LoopNestVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
-    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
+    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) -> ControlFlow<!> {
         if stmt.hir_id == self.hir_id {
             self.nesting = LookFurther;
         } else if self.nesting == Unknown {
             walk_stmt(self, stmt);
         }
+        Continue(())
     }
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<!> {
         if self.nesting != Unknown {
-            return;
+            return Continue(());
         }
         if expr.hir_id == self.hir_id {
             self.nesting = LookFurther;
-            return;
+            return Continue(());
         }
         match expr.kind {
             ExprKind::Assign(path, _, _) | ExprKind::AssignOp(_, path, _) => {
                 if path_to_local_id(path, self.iterator) {
                     self.nesting = RuledOut;
                 }
+                Continue(())
             },
             _ => walk_expr(self, expr),
         }
     }
 
-    fn visit_pat(&mut self, pat: &'tcx Pat<'_>) {
+    fn visit_pat(&mut self, pat: &'tcx Pat<'_>) -> ControlFlow<!> {
         if self.nesting != Unknown {
-            return;
+            return Continue(());
         }
         if let PatKind::Binding(_, id, ..) = pat.kind {
             if id == self.iterator {
                 self.nesting = RuledOut;
-                return;
+                return Continue(());
             }
         }
-        walk_pat(self, pat);
+        walk_pat(self, pat)
     }
 }
 

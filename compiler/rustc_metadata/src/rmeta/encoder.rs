@@ -44,6 +44,7 @@ use std::hash::Hash;
 use std::io::{Read, Seek, Write};
 use std::iter;
 use std::num::NonZeroUsize;
+use std::ops::ControlFlow::{self, Continue};
 use std::path::{Path, PathBuf};
 
 pub(super) struct EncodeContext<'a, 'tcx> {
@@ -2014,24 +2015,28 @@ impl<'a, 'tcx> Visitor<'tcx> for EncodeContext<'a, 'tcx> {
     fn nested_visit_map(&mut self) -> Self::Map {
         self.tcx.hir()
     }
-    fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         intravisit::walk_expr(self, ex);
         self.encode_info_for_expr(ex);
+        Continue(())
     }
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) -> ControlFlow<!> {
         intravisit::walk_item(self, item);
         match item.kind {
             hir::ItemKind::ExternCrate(_) | hir::ItemKind::Use(..) => {} // ignore these
             _ => self.encode_info_for_item(item.owner_id.to_def_id(), item),
         }
+        Continue(())
     }
-    fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem<'tcx>) {
+    fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem<'tcx>) -> ControlFlow<!> {
         intravisit::walk_foreign_item(self, ni);
         self.encode_info_for_foreign_item(ni.owner_id.to_def_id(), ni);
+        Continue(())
     }
-    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
+    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) -> ControlFlow<!> {
         intravisit::walk_generics(self, generics);
         self.encode_info_for_generics(generics);
+        Continue(())
     }
 }
 

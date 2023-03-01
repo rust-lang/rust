@@ -17,6 +17,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_span::{sym, Span, Symbol};
 
+use std::ops::ControlFlow::{self, Continue};
+
 use crate::errors::{ExprNotAllowedInContext, SkippingConstChecks};
 
 /// An expression that is not *always* legal in a const context.
@@ -177,7 +179,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
         &mut self,
         kind: Option<hir::ConstContext>,
         def_id: Option<LocalDefId>,
-        f: impl FnOnce(&mut Self),
+        f: impl FnOnce(&mut Self) -> ControlFlow<!>,
     ) {
         let parent_def_id = self.def_id;
         let parent_kind = self.const_kind;
@@ -196,18 +198,20 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) {
+    fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) -> ControlFlow<!> {
         let kind = Some(hir::ConstContext::Const);
         self.recurse_into(kind, None, |this| intravisit::walk_anon_const(this, anon));
+        Continue(())
     }
 
-    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
+    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) -> ControlFlow<!> {
         let owner = self.tcx.hir().body_owner_def_id(body.id());
         let kind = self.tcx.hir().body_const_context(owner);
         self.recurse_into(kind, Some(owner), |this| intravisit::walk_body(this, body));
+        Continue(())
     }
 
-    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         match &e.kind {
             // Skip the following checks if we are not currently in a const context.
             _ if self.const_kind.is_none() => {}
@@ -232,6 +236,6 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
             _ => {}
         }
 
-        intravisit::walk_expr(self, e);
+        intravisit::walk_expr(self, e)
     }
 }

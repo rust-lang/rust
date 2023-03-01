@@ -4,6 +4,7 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
     get_enclosing_block, is_integer_literal, is_path_diagnostic_item, path_to_local, path_to_local_id, SpanlessEq,
 };
+use core::ops::ControlFlow::{self, Continue};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_stmt, Visitor};
@@ -266,7 +267,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
-    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
+    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) -> ControlFlow<!> {
         if self.initialization_found {
             match stmt.kind {
                 StmtKind::Expr(expr) | StmtKind::Semi(expr) => {
@@ -280,9 +281,10 @@ impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
         } else {
             walk_stmt(self, stmt);
         }
+        Continue(())
     }
 
-    fn visit_block(&mut self, block: &'tcx Block<'_>) {
+    fn visit_block(&mut self, block: &'tcx Block<'_>) -> ControlFlow<!> {
         if self.initialization_found {
             if let Some(s) = block.stmts.get(0) {
                 self.visit_stmt(s);
@@ -292,14 +294,15 @@ impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
         } else {
             walk_block(self, block);
         }
+        Continue(())
     }
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<!> {
         // Skip all the expressions previous to the vector initialization
         if self.vec_alloc.allocation_expr.hir_id == expr.hir_id {
             self.initialization_found = true;
         }
 
-        walk_expr(self, expr);
+        walk_expr(self, expr)
     }
 }

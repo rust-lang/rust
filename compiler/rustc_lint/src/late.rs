@@ -28,6 +28,7 @@ use rustc_span::Span;
 
 use std::any::Any;
 use std::cell::Cell;
+use std::ops::ControlFlow::{self, Continue};
 
 /// Extract the `LintStore` from the query context.
 /// This function exists because we've erased `LintStore` as `dyn Any` in the context.
@@ -92,7 +93,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         self.context.tcx.hir()
     }
 
-    fn visit_nested_body(&mut self, body_id: hir::BodyId) {
+    fn visit_nested_body(&mut self, body_id: hir::BodyId) -> ControlFlow<!> {
         let old_enclosing_body = self.context.enclosing_body.replace(body_id);
         let old_cached_typeck_results = self.context.cached_typeck_results.get();
 
@@ -111,21 +112,24 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         if old_enclosing_body != Some(body_id) {
             self.context.cached_typeck_results.set(old_cached_typeck_results);
         }
+        Continue(())
     }
 
-    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) -> ControlFlow<!> {
         self.with_lint_attrs(param.hir_id, |cx| {
             hir_visit::walk_param(cx, param);
         });
+        Continue(())
     }
 
-    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
+    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) -> ControlFlow<!> {
         lint_callback!(self, check_body, body);
         hir_visit::walk_body(self, body);
         lint_callback!(self, check_body_post, body);
+        Continue(())
     }
 
-    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
+    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) -> ControlFlow<!> {
         let generics = self.context.generics.take();
         self.context.generics = it.kind.generics();
         let old_cached_typeck_results = self.context.cached_typeck_results.take();
@@ -140,37 +144,40 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         self.context.enclosing_body = old_enclosing_body;
         self.context.cached_typeck_results.set(old_cached_typeck_results);
         self.context.generics = generics;
+        Continue(())
     }
 
-    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
+    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) -> ControlFlow<!> {
         self.with_lint_attrs(it.hir_id(), |cx| {
             cx.with_param_env(it.owner_id, |cx| {
                 lint_callback!(cx, check_foreign_item, it);
                 hir_visit::walk_foreign_item(cx, it);
             });
-        })
+        });
+        Continue(())
     }
 
-    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
+    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) -> ControlFlow<!> {
         lint_callback!(self, check_pat, p);
-        hir_visit::walk_pat(self, p);
+        hir_visit::walk_pat(self, p)
     }
 
-    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         self.with_lint_attrs(e.hir_id, |cx| {
             lint_callback!(cx, check_expr, e);
             hir_visit::walk_expr(cx, e);
             lint_callback!(cx, check_expr_post, e);
-        })
+        });
+        Continue(())
     }
 
-    fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) {
+    fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) -> ControlFlow<!> {
         // See `EarlyContextAndPass::visit_stmt` for an explanation
         // of why we call `walk_stmt` outside of `with_lint_attrs`
         self.with_lint_attrs(s.hir_id, |cx| {
             lint_callback!(cx, check_stmt, s);
         });
-        hir_visit::walk_stmt(self, s);
+        hir_visit::walk_stmt(self, s)
     }
 
     fn visit_fn(
@@ -180,7 +187,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         body_id: hir::BodyId,
         span: Span,
         id: LocalDefId,
-    ) {
+    ) -> ControlFlow<!> {
         // Wrap in typeck results here, not just in visit_nested_body,
         // in order for `check_fn` to be able to use them.
         let old_enclosing_body = self.context.enclosing_body.replace(body_id);
@@ -190,80 +197,86 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         hir_visit::walk_fn(self, fk, decl, body_id, id);
         self.context.enclosing_body = old_enclosing_body;
         self.context.cached_typeck_results.set(old_cached_typeck_results);
+        Continue(())
     }
 
-    fn visit_variant_data(&mut self, s: &'tcx hir::VariantData<'tcx>) {
+    fn visit_variant_data(&mut self, s: &'tcx hir::VariantData<'tcx>) -> ControlFlow<!> {
         lint_callback!(self, check_struct_def, s);
-        hir_visit::walk_struct_def(self, s);
+        hir_visit::walk_struct_def(self, s)
     }
 
-    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
+    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) -> ControlFlow<!> {
         self.with_lint_attrs(s.hir_id, |cx| {
             lint_callback!(cx, check_field_def, s);
             hir_visit::walk_field_def(cx, s);
-        })
+        });
+        Continue(())
     }
 
-    fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
+    fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) -> ControlFlow<!> {
         self.with_lint_attrs(v.hir_id, |cx| {
             lint_callback!(cx, check_variant, v);
             hir_visit::walk_variant(cx, v);
-        })
+        });
+        Continue(())
     }
 
-    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) -> ControlFlow<!> {
         lint_callback!(self, check_ty, t);
-        hir_visit::walk_ty(self, t);
+        hir_visit::walk_ty(self, t)
     }
 
-    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
-        hir_visit::walk_inf(self, inf);
+    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) -> ControlFlow<!> {
+        hir_visit::walk_inf(self, inf)
     }
 
-    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, _: Span, n: hir::HirId) {
+    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, _: Span, n: hir::HirId) -> ControlFlow<!> {
         if !self.context.only_module {
             self.process_mod(m, n);
         }
+        Continue(())
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) -> ControlFlow<!> {
         self.with_lint_attrs(l.hir_id, |cx| {
             lint_callback!(cx, check_local, l);
             hir_visit::walk_local(cx, l);
-        })
+        });
+        Continue(())
     }
 
-    fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) {
+    fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) -> ControlFlow<!> {
         lint_callback!(self, check_block, b);
         hir_visit::walk_block(self, b);
         lint_callback!(self, check_block_post, b);
+        Continue(())
     }
 
-    fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
+    fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) -> ControlFlow<!> {
         lint_callback!(self, check_arm, a);
-        hir_visit::walk_arm(self, a);
+        hir_visit::walk_arm(self, a)
     }
 
-    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
+    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) -> ControlFlow<!> {
         lint_callback!(self, check_generic_param, p);
-        hir_visit::walk_generic_param(self, p);
+        hir_visit::walk_generic_param(self, p)
     }
 
-    fn visit_generics(&mut self, g: &'tcx hir::Generics<'tcx>) {
+    fn visit_generics(&mut self, g: &'tcx hir::Generics<'tcx>) -> ControlFlow<!> {
         lint_callback!(self, check_generics, g);
-        hir_visit::walk_generics(self, g);
+        hir_visit::walk_generics(self, g)
     }
 
-    fn visit_where_predicate(&mut self, p: &'tcx hir::WherePredicate<'tcx>) {
-        hir_visit::walk_where_predicate(self, p);
+    fn visit_where_predicate(&mut self, p: &'tcx hir::WherePredicate<'tcx>) -> ControlFlow<!> {
+        hir_visit::walk_where_predicate(self, p)
     }
 
-    fn visit_poly_trait_ref(&mut self, t: &'tcx hir::PolyTraitRef<'tcx>) {
+    fn visit_poly_trait_ref(&mut self, t: &'tcx hir::PolyTraitRef<'tcx>) -> ControlFlow<!> {
         lint_callback!(self, check_poly_trait_ref, t);
-        hir_visit::walk_poly_trait_ref(self, t);
+        hir_visit::walk_poly_trait_ref(self, t)
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) -> ControlFlow<!> {
         let generics = self.context.generics.take();
         self.context.generics = Some(&trait_item.generics);
         self.with_lint_attrs(trait_item.hir_id(), |cx| {
@@ -273,9 +286,10 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
             });
         });
         self.context.generics = generics;
+        Continue(())
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) -> ControlFlow<!> {
         let generics = self.context.generics.take();
         self.context.generics = Some(&impl_item.generics);
         self.with_lint_attrs(impl_item.hir_id(), |cx| {
@@ -286,19 +300,21 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
             });
         });
         self.context.generics = generics;
+        Continue(())
     }
 
-    fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
-        hir_visit::walk_lifetime(self, lt);
+    fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) -> ControlFlow<!> {
+        hir_visit::walk_lifetime(self, lt)
     }
 
-    fn visit_path(&mut self, p: &hir::Path<'tcx>, id: hir::HirId) {
+    fn visit_path(&mut self, p: &hir::Path<'tcx>, id: hir::HirId) -> ControlFlow<!> {
         lint_callback!(self, check_path, p, id);
-        hir_visit::walk_path(self, p);
+        hir_visit::walk_path(self, p)
     }
 
-    fn visit_attribute(&mut self, attr: &'tcx ast::Attribute) {
+    fn visit_attribute(&mut self, attr: &'tcx ast::Attribute) -> ControlFlow<!> {
         lint_callback!(self, check_attribute, attr);
+        Continue(())
     }
 }
 
@@ -376,7 +392,7 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
     // Visit the crate attributes
     if hir_id == hir::CRATE_HIR_ID {
         for attr in tcx.hir().attrs(hir::CRATE_HIR_ID).iter() {
-            cx.visit_attribute(attr)
+            cx.visit_attribute(attr);
         }
     }
 }

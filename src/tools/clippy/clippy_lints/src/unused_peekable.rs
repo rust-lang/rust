@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{match_type, peel_mid_ty_refs_is_mutable};
 use clippy_utils::{fn_def_id, is_trait_method, path_to_local_id, paths, peel_ref_operators};
+use core::ops::ControlFlow::{self, Break, Continue};
 use rustc_ast::Mutability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Block, Expr, ExprKind, HirId, Local, Node, PatKind, PathSegment, StmtKind};
@@ -64,21 +65,17 @@ impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
                 && let (ty, _, Mutability::Mut) = peel_mid_ty_refs_is_mutable(ty)
                 && match_type(cx, ty, &paths::PEEKABLE)
             {
-                let mut vis = PeekableVisitor::new(cx, binding);
-
                 if idx + 1 == block.stmts.len() && block.expr.is_none() {
                     return;
                 }
 
-                for stmt in &block.stmts[idx..] {
-                    vis.visit_stmt(stmt);
+                let mut vis = PeekableVisitor::new(cx, binding);
+                let mut found = block.stmts.iter().any(|s| vis.visit_stmt(s).is_break());
+                if !found && let Some(e) = block.expr {
+                    found = vis.visit_expr(e).is_break();
                 }
 
-                if let Some(expr) = block.expr {
-                    vis.visit_expr(expr);
-                }
-
-                if !vis.found_peek_call {
+                if !found {
                     span_lint_and_help(
                         cx,
                         UNUSED_PEEKABLE,
@@ -96,31 +93,23 @@ impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
 struct PeekableVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     expected_hir_id: HirId,
-    found_peek_call: bool,
 }
 
 impl<'a, 'tcx> PeekableVisitor<'a, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>, expected_hir_id: HirId) -> Self {
-        Self {
-            cx,
-            expected_hir_id,
-            found_peek_call: false,
-        }
+        Self { cx, expected_hir_id }
     }
 }
 
 impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
     type NestedFilter = OnlyBodies;
+    type BreakTy = ();
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.cx.tcx.hir()
     }
 
-    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-        if self.found_peek_call {
-            return;
-        }
-
+    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) -> ControlFlow<()> {
         if path_to_local_id(ex, self.expected_hir_id) {
             for (_, node) in self.cx.tcx.hir().parent_iter(ex.hir_id) {
                 match node {
@@ -139,14 +128,14 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
                                     && func_did == into_iter_did
                                 {
                                     // Probably a for loop desugar, stop searching
-                                    return;
+                                    return Continue(());
                                 }
 
                                 if args.iter().any(|arg| arg_is_mut_peekable(self.cx, arg)) {
-                                    self.found_peek_call = true;
+                                    return Break(());
                                 }
 
-                                return;
+                                return Continue(());
                             },
                             // Catch anything taking a Peekable mutably
                             ExprKind::MethodCall(
@@ -164,16 +153,14 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
                                 if matches!(method_name, "peek" | "peek_mut" | "next_if" | "next_if_eq")
                                     && arg_is_mut_peekable(self.cx, self_arg)
                                 {
-                                    self.found_peek_call = true;
-                                    return;
+                                    return Break(());
                                 }
 
                                 // foo.some_method() excluding Iterator methods
                                 if remaining_args.iter().any(|arg| arg_is_mut_peekable(self.cx, arg))
                                     && !is_trait_method(self.cx, expr, sym::Iterator)
                                 {
-                                    self.found_peek_call = true;
-                                    return;
+                                    return Break(());
                                 }
 
                                 // foo.by_ref(), keep checking for `peek`
@@ -181,41 +168,38 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
                                     continue;
                                 }
 
-                                return;
+                                return Continue(());
                             },
                             ExprKind::AddrOf(_, Mutability::Mut, _) | ExprKind::Unary(..) | ExprKind::DropTemps(_) => {
                             },
-                            ExprKind::AddrOf(_, Mutability::Not, _) => return,
-                            _ => {
-                                self.found_peek_call = true;
-                                return;
-                            },
+                            ExprKind::AddrOf(_, Mutability::Not, _) => return Continue(()),
+                            _ => return Break(()),
                         }
                     },
                     Node::Local(Local { init: Some(init), .. }) => {
                         if arg_is_mut_peekable(self.cx, init) {
-                            self.found_peek_call = true;
+                            return Break(());
                         }
 
-                        return;
+                        return Continue(());
                     },
                     Node::Stmt(stmt) => {
                         match stmt.kind {
-                            StmtKind::Local(_) | StmtKind::Item(_) => self.found_peek_call = true,
+                            StmtKind::Local(_) | StmtKind::Item(_) => return Break(()),
                             StmtKind::Expr(_) | StmtKind::Semi(_) => {},
                         }
 
-                        return;
+                        return Continue(());
                     },
                     Node::Block(_) | Node::ExprField(_) => {},
                     _ => {
-                        return;
+                        return Continue(());
                     },
                 }
             }
         }
 
-        walk_expr(self, ex);
+        walk_expr(self, ex)
     }
 }
 

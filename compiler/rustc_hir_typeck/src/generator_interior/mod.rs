@@ -20,6 +20,7 @@ use rustc_middle::ty::{self, BoundVariableKind, RvalueScopes, Ty, TyCtxt, TypeVi
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
+use std::ops::ControlFlow::{self, Continue};
 
 mod drop_ranges;
 
@@ -337,7 +338,7 @@ pub fn resolve_interior<'a, 'tcx>(
 // librustc_middle/middle/region.rs since `expr_count` is compared against the results
 // there.
 impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
-    fn visit_arm(&mut self, arm: &'tcx Arm<'tcx>) {
+    fn visit_arm(&mut self, arm: &'tcx Arm<'tcx>) -> ControlFlow<!> {
         let Arm { guard, pat, body, .. } = arm;
         self.visit_pat(pat);
         if let Some(ref g) = guard {
@@ -353,7 +354,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 }
 
                 impl<'a, 'b, 'tcx> Visitor<'tcx> for ArmPatCollector<'a, 'b, 'tcx> {
-                    fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
+                    fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) -> ControlFlow<!> {
                         intravisit::walk_pat(self, pat);
                         if let PatKind::Binding(_, id, ident, ..) = pat.kind {
                             let ty =
@@ -373,6 +374,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                                 ident.span,
                             );
                         }
+                        Continue(())
                     }
                 }
 
@@ -392,10 +394,10 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 }
             }
         }
-        self.visit_expr(body);
+        self.visit_expr(body)
     }
 
-    fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
+    fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) -> ControlFlow<!> {
         intravisit::walk_pat(self, pat);
 
         self.expr_count += 1;
@@ -405,36 +407,31 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
             let ty = self.fcx.typeck_results.borrow().pat_ty(pat);
             self.record(ty, pat.hir_id, Some(scope), None, pat.span);
         }
+        Continue(())
     }
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        match &expr.kind {
-            ExprKind::Call(callee, args) => match &callee.kind {
-                ExprKind::Path(qpath) => {
-                    let res = self.fcx.typeck_results.borrow().qpath_res(qpath, callee.hir_id);
-                    match res {
-                        // Direct calls never need to keep the callee `ty::FnDef`
-                        // ZST in a temporary, so skip its type, just in case it
-                        // can significantly complicate the generator type.
-                        Res::Def(
-                            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn),
-                            _,
-                        ) => {
-                            // NOTE(eddyb) this assumes a path expression has
-                            // no nested expressions to keep track of.
-                            self.expr_count += 1;
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> ControlFlow<!> {
+        if let ExprKind::Call(callee, args) = expr.kind
+            && let ExprKind::Path(qpath) = &callee.kind
+            && let res = self.fcx.typeck_results.borrow().qpath_res(qpath, callee.hir_id)
+            // Direct calls never need to keep the callee `ty::FnDef`
+            // ZST in a temporary, so skip its type, just in case it
+            // can significantly complicate the generator type.
+            && let Res::Def(
+                DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn),
+                _,
+            ) = res
+        {
+            // NOTE(eddyb) this assumes a path expression has
+            // no nested expressions to keep track of.
+            self.expr_count += 1;
 
-                            // Record the rest of the call expression normally.
-                            for arg in *args {
-                                self.visit_expr(arg);
-                            }
-                        }
-                        _ => intravisit::walk_expr(self, expr),
-                    }
-                }
-                _ => intravisit::walk_expr(self, expr),
-            },
-            _ => intravisit::walk_expr(self, expr),
+            // Record the rest of the call expression normally.
+            for arg in args {
+                self.visit_expr(arg);
+            }
+        } else {
+            intravisit::walk_expr(self, expr);
         }
 
         self.expr_count += 1;
@@ -525,6 +522,8 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         } else {
             self.fcx.tcx.sess.delay_span_bug(expr.span, "no type for node");
         }
+
+        Continue(())
     }
 }
 

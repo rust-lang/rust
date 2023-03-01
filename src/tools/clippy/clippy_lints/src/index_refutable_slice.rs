@@ -4,6 +4,7 @@ use clippy_utils::higher::IfLet;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::is_copy;
 use clippy_utils::{is_expn_of, is_lint_allowed, path_to_local};
+use core::ops::ControlFlow::{self, Continue};
 use if_chain::if_chain;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
@@ -236,7 +237,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'a, 'tcx> {
         self.cx.tcx.hir()
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         if let Some(local_id) = path_to_local(expr) {
             let Self {
                 cx,
@@ -264,13 +265,13 @@ impl<'a, 'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'a, 'tcx> {
                 if let hir::ExprKind::AddrOf(_kind, hir::Mutability::Not, _inner_expr) = maybe_addrof_expr.kind;
                 then {
                     use_info.index_use.push((index_value, map.span(parent_expr.hir_id)));
-                    return;
+                    return Continue(());
                 }
             }
 
             // The slice was used for something other than indexing
             self.slice_lint_info.remove(&local_id);
         }
-        intravisit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr)
     }
 }

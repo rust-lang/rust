@@ -12,6 +12,7 @@ use rustc_middle::{
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, BytePos, Span};
+use std::ops::ControlFlow::{self, Break, Continue};
 
 use crate::diagnostics::BorrowedContentSource;
 use crate::MirBorrowckCtxt;
@@ -608,17 +609,23 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             Some((false, err_label_span, message)) => {
                                 struct BindingFinder {
                                     span: Span,
-                                    hir_id: Option<hir::HirId>,
                                 }
 
                                 impl<'tcx> Visitor<'tcx> for BindingFinder {
-                                    fn visit_stmt(&mut self, s: &'tcx hir::Stmt<'tcx>) {
-                                        if let hir::StmtKind::Local(local) = s.kind {
-                                            if local.pat.span == self.span {
-                                                self.hir_id = Some(local.hir_id);
-                                            }
+                                    type BreakTy = hir::HirId;
+
+                                    fn visit_stmt(
+                                        &mut self,
+                                        s: &'tcx hir::Stmt<'tcx>,
+                                    ) -> ControlFlow<Self::BreakTy>
+                                    {
+                                        if let hir::StmtKind::Local(local) = s.kind
+                                            && local.pat.span == self.span
+                                        {
+                                            Break(local.hir_id)
+                                        } else {
+                                            hir::intravisit::walk_stmt(self, s)
                                         }
-                                        hir::intravisit::walk_stmt(self, s);
                                     }
                                 }
                                 let hir_map = self.infcx.tcx.hir();
@@ -631,10 +638,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     let body = hir_map.body(body_id);
                                     let mut v = BindingFinder {
                                         span: err_label_span,
-                                        hir_id: None,
                                     };
-                                    v.visit_body(body);
-                                    v.hir_id
+                                    v.visit_body(body).break_value()
                                 } else {
                                     None
                                 };
@@ -732,16 +737,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 assign_span: Span,
                 err: &'a mut Diagnostic,
                 ty: Ty<'tcx>,
-                suggested: bool,
             }
             impl<'a, 'tcx> Visitor<'tcx> for V<'a, 'tcx> {
-                fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
-                    hir::intravisit::walk_stmt(self, stmt);
+                type BreakTy = ();
+
+                fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) -> ControlFlow<()> {
+                    hir::intravisit::walk_stmt(self, stmt)?;
                     let expr = match stmt.kind {
                         hir::StmtKind::Semi(expr) | hir::StmtKind::Expr(expr) => expr,
                         hir::StmtKind::Local(hir::Local { init: Some(expr), .. }) => expr,
                         _ => {
-                            return;
+                            return Continue(());
                         }
                     };
                     if let hir::ExprKind::Assign(place, rv, _sp) = expr.kind
@@ -796,7 +802,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             ],
                             Applicability::MachineApplicable,
                         );
-                        self.suggested = true;
+                        Break(())
                     } else if let hir::ExprKind::MethodCall(_path, receiver, _, sp) = expr.kind
                         && let hir::ExprKind::Index(val, index) = receiver.kind
                         && expr.span == self.assign_span
@@ -817,7 +823,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             ],
                             Applicability::MachineApplicable,
                         );
-                        self.suggested = true;
+                        Break(())
+                    } else {
+                        Continue(())
                     }
                 }
             }
@@ -828,9 +836,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let Some(hir::Node::Item(item)) = node else { return; };
             let hir::ItemKind::Fn(.., body_id) = item.kind else { return; };
             let body = self.infcx.tcx.hir().body(body_id);
-            let mut v = V { assign_span: span, err, ty, suggested: false };
-            v.visit_body(body);
-            if !v.suggested {
+            let mut v = V { assign_span: span, err, ty };
+
+            if v.visit_body(body).is_continue() {
                 err.help(&format!(
                     "to modify a `{ty}`, use `.get_mut()`, `.insert()` or the entry API",
                 ));

@@ -137,12 +137,11 @@ impl<'tcx> Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) -> ControlFlow<!> {
         match arg.kind {
             hir::TyKind::Ref(_, ref mut_ty) => {
                 // We don't want to suggest looking into borrowing `&T` or `&Self`.
-                hir::intravisit::walk_ty(self, mut_ty.ty);
-                return;
+                return hir::intravisit::walk_ty(self, mut_ty.ty);
             }
             hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {
                 [segment]
@@ -159,6 +158,6 @@ impl<'tcx> Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
             },
             _ => {}
         }
-        hir::intravisit::walk_ty(self, arg);
+        hir::intravisit::walk_ty(self, arg)
     }
 }

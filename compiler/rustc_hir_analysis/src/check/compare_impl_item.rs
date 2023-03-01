@@ -7,7 +7,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit;
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericParamKind, ImplItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -27,6 +27,7 @@ use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, ObligationCtxt, Reveal,
 };
 use std::iter;
+use std::ops::ControlFlow::{self, Break};
 
 /// Checks that a method from an impl conforms to the signature of
 /// the same method as declared in the trait.
@@ -1497,24 +1498,27 @@ fn compare_synthetic_generics<'tcx>(
                         let (sig, _) = impl_m.expect_fn();
                         let input_tys = sig.decl.inputs;
 
-                        struct Visitor(Option<Span>, hir::def_id::LocalDefId);
+                        struct Visitor(hir::def_id::LocalDefId);
                         impl<'v> intravisit::Visitor<'v> for Visitor {
-                            fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
-                                intravisit::walk_ty(self, ty);
+                            type BreakTy = Span;
+                            fn visit_ty(
+                                &mut self,
+                                ty: &'v hir::Ty<'v>,
+                            ) -> ControlFlow<Self::BreakTy> {
                                 if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = ty.kind
                                     && let Res::Def(DefKind::TyParam, def_id) = path.res
-                                    && def_id == self.1.to_def_id()
+                                    && def_id == self.0.to_def_id()
                                 {
-                                    self.0 = Some(ty.span);
+                                    Break(ty.span)
+                                } else {
+                                    intravisit::walk_ty(self, ty)
                                 }
                             }
                         }
 
-                        let mut visitor = Visitor(None, impl_def_id);
-                        for ty in input_tys {
-                            intravisit::Visitor::visit_ty(&mut visitor, ty);
-                        }
-                        let span = visitor.0?;
+                        let mut visitor = Visitor(impl_def_id);
+                        let span =
+                            input_tys.iter().find_map(|ty| visitor.visit_ty(ty).break_value())?;
 
                         let bounds = impl_m.generics.bounds_for_param(impl_def_id).next()?.bounds;
                         let bounds = bounds.first()?.span().to(bounds.last()?.span());

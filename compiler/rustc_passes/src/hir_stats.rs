@@ -14,6 +14,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::common::to_readable_str;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use std::ops::ControlFlow::{self, Continue};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 enum Id {
@@ -186,37 +187,37 @@ macro_rules! record_variants {
 }
 
 impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
-    fn visit_param(&mut self, param: &'v hir::Param<'v>) {
+    fn visit_param(&mut self, param: &'v hir::Param<'v>) -> ControlFlow<!> {
         self.record("Param", Id::Node(param.hir_id), param);
         hir_visit::walk_param(self, param)
     }
 
-    fn visit_nested_item(&mut self, id: hir::ItemId) {
+    fn visit_nested_item(&mut self, id: hir::ItemId) -> ControlFlow<!> {
         let nested_item = self.krate.unwrap().item(id);
         self.visit_item(nested_item)
     }
 
-    fn visit_nested_trait_item(&mut self, trait_item_id: hir::TraitItemId) {
+    fn visit_nested_trait_item(&mut self, trait_item_id: hir::TraitItemId) -> ControlFlow<!> {
         let nested_trait_item = self.krate.unwrap().trait_item(trait_item_id);
         self.visit_trait_item(nested_trait_item)
     }
 
-    fn visit_nested_impl_item(&mut self, impl_item_id: hir::ImplItemId) {
+    fn visit_nested_impl_item(&mut self, impl_item_id: hir::ImplItemId) -> ControlFlow<!> {
         let nested_impl_item = self.krate.unwrap().impl_item(impl_item_id);
         self.visit_impl_item(nested_impl_item)
     }
 
-    fn visit_nested_foreign_item(&mut self, id: hir::ForeignItemId) {
+    fn visit_nested_foreign_item(&mut self, id: hir::ForeignItemId) -> ControlFlow<!> {
         let nested_foreign_item = self.krate.unwrap().foreign_item(id);
-        self.visit_foreign_item(nested_foreign_item);
+        self.visit_foreign_item(nested_foreign_item)
     }
 
-    fn visit_nested_body(&mut self, body_id: hir::BodyId) {
+    fn visit_nested_body(&mut self, body_id: hir::BodyId) -> ControlFlow<!> {
         let nested_body = self.krate.unwrap().body(body_id);
         self.visit_body(nested_body)
     }
 
-    fn visit_item(&mut self, i: &'v hir::Item<'v>) {
+    fn visit_item(&mut self, i: &'v hir::Item<'v>) -> ControlFlow<!> {
         record_variants!(
             (self, i, i.kind, Id::Node(i.hir_id()), hir, Item, ItemKind),
             [
@@ -242,17 +243,17 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_item(self, i)
     }
 
-    fn visit_body(&mut self, b: &'v hir::Body<'v>) {
+    fn visit_body(&mut self, b: &'v hir::Body<'v>) -> ControlFlow<!> {
         self.record("Body", Id::None, b);
-        hir_visit::walk_body(self, b);
+        hir_visit::walk_body(self, b)
     }
 
-    fn visit_mod(&mut self, m: &'v hir::Mod<'v>, _s: Span, n: HirId) {
+    fn visit_mod(&mut self, m: &'v hir::Mod<'v>, _s: Span, n: HirId) -> ControlFlow<!> {
         self.record("Mod", Id::None, m);
         hir_visit::walk_mod(self, m, n)
     }
 
-    fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem<'v>) {
+    fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem<'v>) -> ControlFlow<!> {
         record_variants!(
             (self, i, i.kind, Id::Node(i.hir_id()), hir, ForeignItem, ForeignItemKind),
             [Fn, Static, Type]
@@ -260,17 +261,17 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_foreign_item(self, i)
     }
 
-    fn visit_local(&mut self, l: &'v hir::Local<'v>) {
+    fn visit_local(&mut self, l: &'v hir::Local<'v>) -> ControlFlow<!> {
         self.record("Local", Id::Node(l.hir_id), l);
         hir_visit::walk_local(self, l)
     }
 
-    fn visit_block(&mut self, b: &'v hir::Block<'v>) {
+    fn visit_block(&mut self, b: &'v hir::Block<'v>) -> ControlFlow<!> {
         self.record("Block", Id::Node(b.hir_id), b);
         hir_visit::walk_block(self, b)
     }
 
-    fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) {
+    fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) -> ControlFlow<!> {
         record_variants!(
             (self, s, s.kind, Id::Node(s.hir_id), hir, Stmt, StmtKind),
             [Local, Item, Expr, Semi]
@@ -278,12 +279,12 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_stmt(self, s)
     }
 
-    fn visit_arm(&mut self, a: &'v hir::Arm<'v>) {
+    fn visit_arm(&mut self, a: &'v hir::Arm<'v>) -> ControlFlow<!> {
         self.record("Arm", Id::Node(a.hir_id), a);
         hir_visit::walk_arm(self, a)
     }
 
-    fn visit_pat(&mut self, p: &'v hir::Pat<'v>) {
+    fn visit_pat(&mut self, p: &'v hir::Pat<'v>) -> ControlFlow<!> {
         record_variants!(
             (self, p, p.kind, Id::Node(p.hir_id), hir, Pat, PatKind),
             [Wild, Binding, Struct, TupleStruct, Or, Path, Tuple, Box, Ref, Lit, Range, Slice]
@@ -291,12 +292,12 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_pat(self, p)
     }
 
-    fn visit_pat_field(&mut self, f: &'v hir::PatField<'v>) {
+    fn visit_pat_field(&mut self, f: &'v hir::PatField<'v>) -> ControlFlow<!> {
         self.record("PatField", Id::Node(f.hir_id), f);
         hir_visit::walk_pat_field(self, f)
     }
 
-    fn visit_expr(&mut self, e: &'v hir::Expr<'v>) {
+    fn visit_expr(&mut self, e: &'v hir::Expr<'v>) -> ControlFlow<!> {
         record_variants!(
             (self, e, e.kind, Id::Node(e.hir_id), hir, Expr, ExprKind),
             [
@@ -308,17 +309,17 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_expr(self, e)
     }
 
-    fn visit_let_expr(&mut self, lex: &'v hir::Let<'v>) {
+    fn visit_let_expr(&mut self, lex: &'v hir::Let<'v>) -> ControlFlow<!> {
         self.record("Let", Id::Node(lex.hir_id), lex);
         hir_visit::walk_let_expr(self, lex)
     }
 
-    fn visit_expr_field(&mut self, f: &'v hir::ExprField<'v>) {
+    fn visit_expr_field(&mut self, f: &'v hir::ExprField<'v>) -> ControlFlow<!> {
         self.record("ExprField", Id::Node(f.hir_id), f);
         hir_visit::walk_expr_field(self, f)
     }
 
-    fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
+    fn visit_ty(&mut self, t: &'v hir::Ty<'v>) -> ControlFlow<!> {
         record_variants!(
             (self, t, t.kind, Id::Node(t.hir_id), hir, Ty, TyKind),
             [
@@ -340,17 +341,17 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_ty(self, t)
     }
 
-    fn visit_generic_param(&mut self, p: &'v hir::GenericParam<'v>) {
+    fn visit_generic_param(&mut self, p: &'v hir::GenericParam<'v>) -> ControlFlow<!> {
         self.record("GenericParam", Id::Node(p.hir_id), p);
         hir_visit::walk_generic_param(self, p)
     }
 
-    fn visit_generics(&mut self, g: &'v hir::Generics<'v>) {
+    fn visit_generics(&mut self, g: &'v hir::Generics<'v>) -> ControlFlow<!> {
         self.record("Generics", Id::None, g);
         hir_visit::walk_generics(self, g)
     }
 
-    fn visit_where_predicate(&mut self, p: &'v hir::WherePredicate<'v>) {
+    fn visit_where_predicate(&mut self, p: &'v hir::WherePredicate<'v>) -> ControlFlow<!> {
         record_variants!(
             (self, p, p, Id::None, hir, WherePredicate, WherePredicate),
             [BoundPredicate, RegionPredicate, EqPredicate]
@@ -365,18 +366,18 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         b: hir::BodyId,
         _: Span,
         id: LocalDefId,
-    ) {
+    ) -> ControlFlow<!> {
         self.record("FnDecl", Id::None, fd);
         hir_visit::walk_fn(self, fk, fd, b, id)
     }
 
-    fn visit_use(&mut self, p: &'v hir::UsePath<'v>, hir_id: hir::HirId) {
+    fn visit_use(&mut self, p: &'v hir::UsePath<'v>, hir_id: hir::HirId) -> ControlFlow<!> {
         // This is `visit_use`, but the type is `Path` so record it that way.
         self.record("Path", Id::None, p);
         hir_visit::walk_use(self, p, hir_id)
     }
 
-    fn visit_trait_item(&mut self, ti: &'v hir::TraitItem<'v>) {
+    fn visit_trait_item(&mut self, ti: &'v hir::TraitItem<'v>) -> ControlFlow<!> {
         record_variants!(
             (self, ti, ti.kind, Id::Node(ti.hir_id()), hir, TraitItem, TraitItemKind),
             [Const, Fn, Type]
@@ -384,12 +385,12 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_trait_item(self, ti)
     }
 
-    fn visit_trait_item_ref(&mut self, ti: &'v hir::TraitItemRef) {
+    fn visit_trait_item_ref(&mut self, ti: &'v hir::TraitItemRef) -> ControlFlow<!> {
         self.record("TraitItemRef", Id::Node(ti.id.hir_id()), ti);
         hir_visit::walk_trait_item_ref(self, ti)
     }
 
-    fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
+    fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) -> ControlFlow<!> {
         record_variants!(
             (self, ii, ii.kind, Id::Node(ii.hir_id()), hir, ImplItem, ImplItemKind),
             [Const, Fn, Type]
@@ -397,17 +398,17 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_impl_item(self, ii)
     }
 
-    fn visit_foreign_item_ref(&mut self, fi: &'v hir::ForeignItemRef) {
+    fn visit_foreign_item_ref(&mut self, fi: &'v hir::ForeignItemRef) -> ControlFlow<!> {
         self.record("ForeignItemRef", Id::Node(fi.id.hir_id()), fi);
         hir_visit::walk_foreign_item_ref(self, fi)
     }
 
-    fn visit_impl_item_ref(&mut self, ii: &'v hir::ImplItemRef) {
+    fn visit_impl_item_ref(&mut self, ii: &'v hir::ImplItemRef) -> ControlFlow<!> {
         self.record("ImplItemRef", Id::Node(ii.id.hir_id()), ii);
         hir_visit::walk_impl_item_ref(self, ii)
     }
 
-    fn visit_param_bound(&mut self, b: &'v hir::GenericBound<'v>) {
+    fn visit_param_bound(&mut self, b: &'v hir::GenericBound<'v>) -> ControlFlow<!> {
         record_variants!(
             (self, b, b, Id::None, hir, GenericBound, GenericBound),
             [Trait, LangItemTrait, Outlives]
@@ -415,17 +416,17 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_param_bound(self, b)
     }
 
-    fn visit_field_def(&mut self, s: &'v hir::FieldDef<'v>) {
+    fn visit_field_def(&mut self, s: &'v hir::FieldDef<'v>) -> ControlFlow<!> {
         self.record("FieldDef", Id::Node(s.hir_id), s);
         hir_visit::walk_field_def(self, s)
     }
 
-    fn visit_variant(&mut self, v: &'v hir::Variant<'v>) {
+    fn visit_variant(&mut self, v: &'v hir::Variant<'v>) -> ControlFlow<!> {
         self.record("Variant", Id::None, v);
         hir_visit::walk_variant(self, v)
     }
 
-    fn visit_generic_arg(&mut self, ga: &'v hir::GenericArg<'v>) {
+    fn visit_generic_arg(&mut self, ga: &'v hir::GenericArg<'v>) -> ControlFlow<!> {
         record_variants!(
             (self, ga, ga, Id::Node(ga.hir_id()), hir, GenericArg, GenericArg),
             [Lifetime, Type, Const, Infer]
@@ -438,38 +439,42 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         }
     }
 
-    fn visit_lifetime(&mut self, lifetime: &'v hir::Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'v hir::Lifetime) -> ControlFlow<!> {
         self.record("Lifetime", Id::Node(lifetime.hir_id), lifetime);
         hir_visit::walk_lifetime(self, lifetime)
     }
 
-    fn visit_path(&mut self, path: &hir::Path<'v>, _id: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'v>, _id: hir::HirId) -> ControlFlow<!> {
         self.record("Path", Id::None, path);
         hir_visit::walk_path(self, path)
     }
 
-    fn visit_path_segment(&mut self, path_segment: &'v hir::PathSegment<'v>) {
+    fn visit_path_segment(&mut self, path_segment: &'v hir::PathSegment<'v>) -> ControlFlow<!> {
         self.record("PathSegment", Id::None, path_segment);
         hir_visit::walk_path_segment(self, path_segment)
     }
 
-    fn visit_generic_args(&mut self, ga: &'v hir::GenericArgs<'v>) {
+    fn visit_generic_args(&mut self, ga: &'v hir::GenericArgs<'v>) -> ControlFlow<!> {
         self.record("GenericArgs", Id::None, ga);
         hir_visit::walk_generic_args(self, ga)
     }
 
-    fn visit_assoc_type_binding(&mut self, type_binding: &'v hir::TypeBinding<'v>) {
+    fn visit_assoc_type_binding(
+        &mut self,
+        type_binding: &'v hir::TypeBinding<'v>,
+    ) -> ControlFlow<!> {
         self.record("TypeBinding", Id::Node(type_binding.hir_id), type_binding);
         hir_visit::walk_assoc_type_binding(self, type_binding)
     }
 
-    fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
+    fn visit_attribute(&mut self, attr: &'v ast::Attribute) -> ControlFlow<!> {
         self.record("Attribute", Id::Attr(attr.id), attr);
+        Continue(())
     }
 
-    fn visit_inline_asm(&mut self, asm: &'v hir::InlineAsm<'v>, id: HirId) {
+    fn visit_inline_asm(&mut self, asm: &'v hir::InlineAsm<'v>, id: HirId) -> ControlFlow<!> {
         self.record("InlineAsm", Id::None, asm);
-        hir_visit::walk_inline_asm(self, asm, id);
+        hir_visit::walk_inline_asm(self, asm, id)
     }
 }
 

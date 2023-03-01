@@ -290,7 +290,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
             self.tcx.hir()
         }
 
-        fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
+        fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) -> ControlFlow<!> {
             match arg.kind {
                 hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {
                     [PathSegment { res: Res::SelfTyParam { .. }, .. }] => {
@@ -305,7 +305,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
                 },
                 _ => {}
             }
-            hir::intravisit::walk_ty(self, arg);
+            hir::intravisit::walk_ty(self, arg)
         }
     }
 

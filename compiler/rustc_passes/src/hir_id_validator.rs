@@ -7,6 +7,8 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{DefIdTree, TyCtxt};
 
+use std::ops::ControlFlow::{self, Continue};
+
 pub fn check_crate(tcx: TyCtxt<'_>) {
     tcx.dep_graph.assert_ignored();
 
@@ -56,7 +58,11 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
         self.errors.lock().push(f());
     }
 
-    fn check<F: FnOnce(&mut HirIdValidator<'a, 'hir>)>(&mut self, owner: hir::OwnerId, walk: F) {
+    fn check<F: FnOnce(&mut HirIdValidator<'a, 'hir>) -> ControlFlow<!>>(
+        &mut self,
+        owner: hir::OwnerId,
+        walk: F,
+    ) {
         assert!(self.owner.is_none());
         self.owner = Some(owner);
         walk(self);
@@ -124,28 +130,33 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
         self.tcx.hir()
     }
 
-    fn visit_nested_item(&mut self, id: hir::ItemId) {
+    fn visit_nested_item(&mut self, id: hir::ItemId) -> ControlFlow<!> {
         self.check_nested_id(id.owner_id.def_id);
+        Continue(())
     }
 
-    fn visit_nested_trait_item(&mut self, id: hir::TraitItemId) {
+    fn visit_nested_trait_item(&mut self, id: hir::TraitItemId) -> ControlFlow<!> {
         self.check_nested_id(id.owner_id.def_id);
+        Continue(())
     }
 
-    fn visit_nested_impl_item(&mut self, id: hir::ImplItemId) {
+    fn visit_nested_impl_item(&mut self, id: hir::ImplItemId) -> ControlFlow<!> {
         self.check_nested_id(id.owner_id.def_id);
+        Continue(())
     }
 
-    fn visit_nested_foreign_item(&mut self, id: hir::ForeignItemId) {
+    fn visit_nested_foreign_item(&mut self, id: hir::ForeignItemId) -> ControlFlow<!> {
         self.check_nested_id(id.owner_id.def_id);
+        Continue(())
     }
 
-    fn visit_item(&mut self, i: &'hir hir::Item<'hir>) {
+    fn visit_item(&mut self, i: &'hir hir::Item<'hir>) -> ControlFlow<!> {
         let mut inner_visitor = self.new_visitor(self.tcx);
         inner_visitor.check(i.owner_id, |this| intravisit::walk_item(this, i));
+        Continue(())
     }
 
-    fn visit_id(&mut self, hir_id: HirId) {
+    fn visit_id(&mut self, hir_id: HirId) -> ControlFlow<!> {
         let owner = self.owner.expect("no owner");
 
         if owner != hir_id.owner {
@@ -160,20 +171,24 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
         }
 
         self.hir_ids_seen.insert(hir_id.local_id);
+        Continue(())
     }
 
-    fn visit_foreign_item(&mut self, i: &'hir hir::ForeignItem<'hir>) {
+    fn visit_foreign_item(&mut self, i: &'hir hir::ForeignItem<'hir>) -> ControlFlow<!> {
         let mut inner_visitor = self.new_visitor(self.tcx);
         inner_visitor.check(i.owner_id, |this| intravisit::walk_foreign_item(this, i));
+        Continue(())
     }
 
-    fn visit_trait_item(&mut self, i: &'hir hir::TraitItem<'hir>) {
+    fn visit_trait_item(&mut self, i: &'hir hir::TraitItem<'hir>) -> ControlFlow<!> {
         let mut inner_visitor = self.new_visitor(self.tcx);
         inner_visitor.check(i.owner_id, |this| intravisit::walk_trait_item(this, i));
+        Continue(())
     }
 
-    fn visit_impl_item(&mut self, i: &'hir hir::ImplItem<'hir>) {
+    fn visit_impl_item(&mut self, i: &'hir hir::ImplItem<'hir>) -> ControlFlow<!> {
         let mut inner_visitor = self.new_visitor(self.tcx);
         inner_visitor.check(i.owner_id, |this| intravisit::walk_impl_item(this, i));
+        Continue(())
     }
 }

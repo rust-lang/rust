@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lin
 use clippy_utils::paths;
 use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
 use clippy_utils::{is_lint_allowed, match_def_path};
+use core::ops::ControlFlow::{self, Break};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -389,9 +390,8 @@ fn check_unsafe_derive_deserialize<'tcx>(
     ty: Ty<'tcx>,
 ) {
     fn has_unsafe<'tcx>(cx: &LateContext<'tcx>, item: &'tcx Item<'_>) -> bool {
-        let mut visitor = UnsafeVisitor { cx, has_unsafe: false };
-        walk_item(&mut visitor, item);
-        visitor.has_unsafe
+        let mut visitor = UnsafeVisitor { cx };
+        walk_item(&mut visitor, item).is_break()
     }
 
     if_chain! {
@@ -420,40 +420,37 @@ fn check_unsafe_derive_deserialize<'tcx>(
 
 struct UnsafeVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    has_unsafe: bool,
 }
 
 impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::All;
+    type BreakTy = ();
 
-    fn visit_fn(&mut self, kind: FnKind<'tcx>, decl: &'tcx FnDecl<'_>, body_id: BodyId, _: Span, id: LocalDefId) {
-        if self.has_unsafe {
-            return;
+    fn visit_fn(
+        &mut self,
+        kind: FnKind<'tcx>,
+        decl: &'tcx FnDecl<'_>,
+        body_id: BodyId,
+        _: Span,
+        id: LocalDefId,
+    ) -> ControlFlow<()> {
+        if let Some(header) = kind.header()
+            && header.unsafety == Unsafety::Unsafe
+        {
+            Break(())
+        } else {
+            walk_fn(self, kind, decl, body_id, id)
         }
-
-        if_chain! {
-            if let Some(header) = kind.header();
-            if header.unsafety == Unsafety::Unsafe;
-            then {
-                self.has_unsafe = true;
-            }
-        }
-
-        walk_fn(self, kind, decl, body_id, id);
     }
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.has_unsafe {
-            return;
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<()> {
+        if let ExprKind::Block(block, _) = expr.kind
+            && block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+        {
+            Break(())
+        } else {
+            walk_expr(self, expr)
         }
-
-        if let ExprKind::Block(block, _) = expr.kind {
-            if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) {
-                self.has_unsafe = true;
-            }
-        }
-
-        walk_expr(self, expr);
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {

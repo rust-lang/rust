@@ -2,6 +2,7 @@ use clippy_utils::{
     diagnostics::span_lint_and_sugg, get_parent_node, is_default_equivalent, macros::macro_backtrace, match_path,
     path_def_id, paths, ty::expr_sig,
 };
+use core::ops::ControlFlow::{self, Break};
 use rustc_errors::Applicability;
 use rustc_hir::{
     intravisit::{walk_ty, Visitor},
@@ -83,14 +84,15 @@ fn is_vec_expn(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         .map_or(false, |call| cx.tcx.is_diagnostic_item(sym::vec_macro, call.def_id))
 }
 
-#[derive(Default)]
-struct InferVisitor(bool);
+struct InferVisitor;
 
 impl<'tcx> Visitor<'tcx> for InferVisitor {
-    fn visit_ty(&mut self, t: &rustc_hir::Ty<'_>) {
-        self.0 |= matches!(t.kind, TyKind::Infer | TyKind::OpaqueDef(..) | TyKind::TraitObject(..));
-        if !self.0 {
-            walk_ty(self, t);
+    type BreakTy = ();
+    fn visit_ty(&mut self, t: &rustc_hir::Ty<'_>) -> ControlFlow<()> {
+        if matches!(t.kind, TyKind::Infer | TyKind::OpaqueDef(..) | TyKind::TraitObject(..)) {
+            Break(())
+        } else {
+            walk_ty(self, t)
         }
     }
 }
@@ -98,9 +100,8 @@ impl<'tcx> Visitor<'tcx> for InferVisitor {
 fn given_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match get_parent_node(cx.tcx, expr.hir_id) {
         Some(Node::Local(Local { ty: Some(ty), .. })) => {
-            let mut v = InferVisitor::default();
-            v.visit_ty(ty);
-            !v.0
+            let mut v = InferVisitor;
+            !v.visit_ty(ty).is_break()
         },
         Some(
             Node::Expr(Expr {

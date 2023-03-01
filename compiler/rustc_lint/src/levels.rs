@@ -31,6 +31,7 @@ use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use std::ops::ControlFlow;
 
 use crate::errors::{
     MalformedAttribute, MalformedAttributeSub, OverruledAttribute, OverruledAttributeSub,
@@ -172,13 +173,21 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
         // a standard visit.
         // FIXME(#102522) Just iterate on attrs once that iteration order matches HIR's.
         _ => match tcx.hir().owner(owner) {
-            hir::OwnerNode::Item(item) => levels.visit_item(item),
-            hir::OwnerNode::ForeignItem(item) => levels.visit_foreign_item(item),
-            hir::OwnerNode::TraitItem(item) => levels.visit_trait_item(item),
-            hir::OwnerNode::ImplItem(item) => levels.visit_impl_item(item),
+            hir::OwnerNode::Item(item) => {
+                levels.visit_item(item);
+            }
+            hir::OwnerNode::ForeignItem(item) => {
+                levels.visit_foreign_item(item);
+            }
+            hir::OwnerNode::TraitItem(item) => {
+                levels.visit_trait_item(item);
+            }
+            hir::OwnerNode::ImplItem(item) => {
+                levels.visit_impl_item(item);
+            }
             hir::OwnerNode::Crate(mod_) => {
                 levels.add_id(hir::CRATE_HIR_ID);
-                levels.visit_mod(mod_, mod_.spans.inner_span, hir::CRATE_HIR_ID)
+                levels.visit_mod(mod_, mod_.spans.inner_span, hir::CRATE_HIR_ID);
             }
         },
     }
@@ -295,61 +304,61 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
         self.provider.tcx.hir()
     }
 
-    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) -> ControlFlow<!> {
         self.add_id(param.hir_id);
-        intravisit::walk_param(self, param);
+        intravisit::walk_param(self, param)
     }
 
-    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
+    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) -> ControlFlow<!> {
         self.add_id(it.hir_id());
-        intravisit::walk_item(self, it);
+        intravisit::walk_item(self, it)
     }
 
-    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
+    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) -> ControlFlow<!> {
         self.add_id(it.hir_id());
-        intravisit::walk_foreign_item(self, it);
+        intravisit::walk_foreign_item(self, it)
     }
 
-    fn visit_stmt(&mut self, e: &'tcx hir::Stmt<'tcx>) {
+    fn visit_stmt(&mut self, e: &'tcx hir::Stmt<'tcx>) -> ControlFlow<!> {
         // We will call `add_id` when we walk
         // the `StmtKind`. The outer statement itself doesn't
         // define the lint levels.
-        intravisit::walk_stmt(self, e);
+        intravisit::walk_stmt(self, e)
     }
 
-    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         self.add_id(e.hir_id);
-        intravisit::walk_expr(self, e);
+        intravisit::walk_expr(self, e)
     }
 
-    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
+    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) -> ControlFlow<!> {
         self.add_id(s.hir_id);
-        intravisit::walk_field_def(self, s);
+        intravisit::walk_field_def(self, s)
     }
 
-    fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
+    fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) -> ControlFlow<!> {
         self.add_id(v.hir_id);
-        intravisit::walk_variant(self, v);
+        intravisit::walk_variant(self, v)
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) -> ControlFlow<!> {
         self.add_id(l.hir_id);
-        intravisit::walk_local(self, l);
+        intravisit::walk_local(self, l)
     }
 
-    fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
+    fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) -> ControlFlow<!> {
         self.add_id(a.hir_id);
-        intravisit::walk_arm(self, a);
+        intravisit::walk_arm(self, a)
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) -> ControlFlow<!> {
         self.add_id(trait_item.hir_id());
-        intravisit::walk_trait_item(self, trait_item);
+        intravisit::walk_trait_item(self, trait_item)
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) -> ControlFlow<!> {
         self.add_id(impl_item.hir_id());
-        intravisit::walk_impl_item(self, impl_item);
+        intravisit::walk_impl_item(self, impl_item)
     }
 }
 
@@ -367,61 +376,61 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, QueryMapExpectationsWrapper<'
         self.provider.tcx.hir()
     }
 
-    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) -> ControlFlow<!> {
         self.add_id(param.hir_id);
-        intravisit::walk_param(self, param);
+        intravisit::walk_param(self, param)
     }
 
-    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
+    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) -> ControlFlow<!> {
         self.add_id(it.hir_id());
-        intravisit::walk_item(self, it);
+        intravisit::walk_item(self, it)
     }
 
-    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
+    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) -> ControlFlow<!> {
         self.add_id(it.hir_id());
-        intravisit::walk_foreign_item(self, it);
+        intravisit::walk_foreign_item(self, it)
     }
 
-    fn visit_stmt(&mut self, e: &'tcx hir::Stmt<'tcx>) {
+    fn visit_stmt(&mut self, e: &'tcx hir::Stmt<'tcx>) -> ControlFlow<!> {
         // We will call `add_id` when we walk
         // the `StmtKind`. The outer statement itself doesn't
         // define the lint levels.
-        intravisit::walk_stmt(self, e);
+        intravisit::walk_stmt(self, e)
     }
 
-    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         self.add_id(e.hir_id);
-        intravisit::walk_expr(self, e);
+        intravisit::walk_expr(self, e)
     }
 
-    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
+    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) -> ControlFlow<!> {
         self.add_id(s.hir_id);
-        intravisit::walk_field_def(self, s);
+        intravisit::walk_field_def(self, s)
     }
 
-    fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
+    fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) -> ControlFlow<!> {
         self.add_id(v.hir_id);
-        intravisit::walk_variant(self, v);
+        intravisit::walk_variant(self, v)
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) -> ControlFlow<!> {
         self.add_id(l.hir_id);
-        intravisit::walk_local(self, l);
+        intravisit::walk_local(self, l)
     }
 
-    fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
+    fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) -> ControlFlow<!> {
         self.add_id(a.hir_id);
-        intravisit::walk_arm(self, a);
+        intravisit::walk_arm(self, a)
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) -> ControlFlow<!> {
         self.add_id(trait_item.hir_id());
-        intravisit::walk_trait_item(self, trait_item);
+        intravisit::walk_trait_item(self, trait_item)
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) -> ControlFlow<!> {
         self.add_id(impl_item.hir_id());
-        intravisit::walk_impl_item(self, impl_item);
+        intravisit::walk_impl_item(self, impl_item)
     }
 }
 

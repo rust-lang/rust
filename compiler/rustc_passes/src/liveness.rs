@@ -103,6 +103,7 @@ use rustc_span::{BytePos, Span};
 use std::collections::VecDeque;
 use std::io;
 use std::io::prelude::*;
+use std::ops::ControlFlow;
 use std::rc::Rc;
 
 mod rwu_table;
@@ -233,11 +234,11 @@ struct CollectLitsVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CollectLitsVisitor<'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> ControlFlow<!> {
         if let hir::ExprKind::Lit(_) = expr.kind {
             self.lit_exprs.push(expr);
         }
-        intravisit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr)
     }
 }
 
@@ -369,23 +370,23 @@ impl<'tcx> IrMaps<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
-    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) -> ControlFlow<!> {
         self.add_from_pat(&local.pat);
         if local.els.is_some() {
             self.add_live_node_for_node(local.hir_id, ExprNode(local.span, local.hir_id));
         }
-        intravisit::walk_local(self, local);
+        intravisit::walk_local(self, local)
     }
 
-    fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
+    fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) -> ControlFlow<!> {
         self.add_from_pat(&arm.pat);
         if let Some(hir::Guard::IfLet(ref let_expr)) = arm.guard {
             self.add_from_pat(let_expr.pat);
         }
-        intravisit::walk_arm(self, arm);
+        intravisit::walk_arm(self, arm)
     }
 
-    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) -> ControlFlow<!> {
         let shorthand_field_ids = self.collect_shorthand_field_ids(param.pat);
         param.pat.each_binding(|_bm, hir_id, _x, ident| {
             let var = match param.pat.kind {
@@ -398,10 +399,10 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             };
             self.add_variable(var);
         });
-        intravisit::walk_param(self, param);
+        intravisit::walk_param(self, param)
     }
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> ControlFlow<!> {
         match expr.kind {
             // live nodes required for uses or definitions of variables:
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
@@ -409,7 +410,6 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 if let Res::Local(_var_hir_id) = path.res {
                     self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
                 }
-                intravisit::walk_expr(self, expr);
             }
             hir::ExprKind::Closure(closure) => {
                 // Interesting control flow (for loops can contain labeled
@@ -429,12 +429,10 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                     }));
                 }
                 self.set_captures(expr.hir_id, call_caps);
-                intravisit::walk_expr(self, expr);
             }
 
             hir::ExprKind::Let(let_expr) => {
                 self.add_from_pat(let_expr.pat);
-                intravisit::walk_expr(self, expr);
             }
 
             // live nodes required for interesting control flow:
@@ -443,11 +441,9 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::Loop(..)
             | hir::ExprKind::Yield(..) => {
                 self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
-                intravisit::walk_expr(self, expr);
             }
             hir::ExprKind::Binary(op, ..) if op.node.is_lazy() => {
                 self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
-                intravisit::walk_expr(self, expr);
             }
 
             // otherwise, live nodes are not required:
@@ -477,10 +473,9 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::Type(..)
             | hir::ExprKind::Err(_)
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
-            | hir::ExprKind::Path(hir::QPath::LangItem(..)) => {
-                intravisit::walk_expr(self, expr);
-            }
+            | hir::ExprKind::Path(hir::QPath::LangItem(..)) => {}
         }
+        intravisit::walk_expr(self, expr)
     }
 }
 
@@ -1341,24 +1336,24 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 // Checking for error conditions
 
 impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
-    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) -> ControlFlow<!> {
         self.check_unused_vars_in_pat(&local.pat, None, None, |spans, hir_id, ln, var| {
             if local.init.is_some() {
                 self.warn_about_dead_assign(spans, hir_id, ln, var);
             }
         });
 
-        intravisit::walk_local(self, local);
+        intravisit::walk_local(self, local)
     }
 
-    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
+    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) -> ControlFlow<!> {
         check_expr(self, ex);
-        intravisit::walk_expr(self, ex);
+        intravisit::walk_expr(self, ex)
     }
 
-    fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
+    fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) -> ControlFlow<!> {
         self.check_unused_vars_in_pat(&arm.pat, None, None, |_, _, _, _| {});
-        intravisit::walk_arm(self, arm);
+        intravisit::walk_arm(self, arm)
     }
 }
 

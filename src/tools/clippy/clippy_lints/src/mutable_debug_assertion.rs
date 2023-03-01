@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{find_assert_eq_args, root_macro_call_first_node};
+use core::ops::ControlFlow::{self, Break, Continue};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{BorrowKind, Expr, ExprKind, MatchSource, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
@@ -50,8 +51,9 @@ impl<'tcx> LateLintPass<'tcx> for DebugAssertWithMutCall {
         let Some((lhs, rhs, _)) = find_assert_eq_args(cx, e, macro_call.expn) else { return };
         for arg in [lhs, rhs] {
             let mut visitor = MutArgVisitor::new(cx);
-            visitor.visit_expr(arg);
-            if let Some(span) = visitor.expr_span() {
+            if visitor.visit_expr(arg).is_break()
+                && let Some(span) = visitor.expr_span
+            {
                 span_lint(
                     cx,
                     DEBUG_ASSERT_WITH_MUT_CALL,
@@ -66,53 +68,36 @@ impl<'tcx> LateLintPass<'tcx> for DebugAssertWithMutCall {
 struct MutArgVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     expr_span: Option<Span>,
-    found: bool,
 }
 
 impl<'a, 'tcx> MutArgVisitor<'a, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>) -> Self {
-        Self {
-            cx,
-            expr_span: None,
-            found: false,
-        }
-    }
-
-    fn expr_span(&self) -> Option<Span> {
-        if self.found { self.expr_span } else { None }
+        Self { cx, expr_span: None }
     }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
+    type BreakTy = ();
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<()> {
         match expr.kind {
-            ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) => {
-                self.found = true;
-                return;
-            },
-            ExprKind::If(..) => {
-                self.found = true;
-                return;
-            },
+            ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) | ExprKind::If(..) => return Break(()),
             ExprKind::Path(_) => {
                 if let Some(adj) = self.cx.typeck_results().adjustments().get(expr.hir_id) {
                     if adj
                         .iter()
                         .any(|a| matches!(a.target.kind(), ty::Ref(_, _, Mutability::Mut)))
                     {
-                        self.found = true;
-                        return;
+                        return Break(());
                     }
                 }
             },
             // Don't check await desugars
-            ExprKind::Match(_, _, MatchSource::AwaitDesugar) => return,
-            _ if !self.found => self.expr_span = Some(expr.span),
-            _ => return,
+            ExprKind::Match(_, _, MatchSource::AwaitDesugar) => return Continue(()),
+            _ => self.expr_span = Some(expr.span),
         }
-        walk_expr(self, expr);
+        walk_expr(self, expr)
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {

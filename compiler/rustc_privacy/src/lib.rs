@@ -1,5 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(associated_type_defaults)]
+#![feature(never_type)]
 #![feature(rustc_private)]
 #![feature(try_blocks)]
 #![feature(let_chains)]
@@ -37,7 +38,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 
 use std::marker::PhantomData;
-use std::ops::ControlFlow;
+use std::ops::ControlFlow::{self, Break, Continue};
 use std::{cmp, fmt, mem};
 
 use errors::{
@@ -629,7 +630,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) -> ControlFlow<!> {
         let item_level = match item.kind {
             hir::ItemKind::Impl { .. } => {
                 let impl_level = Option::<Level>::of_impl(
@@ -838,15 +839,17 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
         let orig_level = mem::replace(&mut self.prev_level, item_level);
         intravisit::walk_item(self, item);
         self.prev_level = orig_level;
+        Continue(())
     }
 
-    fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) {
+    fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) -> ControlFlow<!> {
         // Blocks can have public items, for example impls, but they always
         // start as completely private regardless of publicity of a function,
         // constant, type, field, etc., in which this block resides.
         let orig_level = mem::replace(&mut self.prev_level, None);
         intravisit::walk_block(self, b);
         self.prev_level = orig_level;
+        Continue(())
     }
 }
 
@@ -951,7 +954,7 @@ impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
 }
 
 impl<'tcx, 'a> Visitor<'tcx> for TestReachabilityVisitor<'tcx, 'a> {
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) -> ControlFlow<!> {
         self.effective_visibility_diagnostic(item.owner_id.def_id);
 
         match item.kind {
@@ -976,16 +979,20 @@ impl<'tcx, 'a> Visitor<'tcx> for TestReachabilityVisitor<'tcx, 'a> {
             }
             _ => {}
         }
+        Continue(())
     }
 
-    fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem<'tcx>) {
+    fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem<'tcx>) -> ControlFlow<!> {
         self.effective_visibility_diagnostic(item.owner_id.def_id);
+        Continue(())
     }
-    fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem<'tcx>) {
+    fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem<'tcx>) -> ControlFlow<!> {
         self.effective_visibility_diagnostic(item.owner_id.def_id);
+        Continue(())
     }
-    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
+    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) -> ControlFlow<!> {
         self.effective_visibility_diagnostic(item.owner_id.def_id);
+        Continue(())
     }
 }
 
@@ -1054,26 +1061,29 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _s: Span, _n: hir::HirId) {
+    fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _s: Span, _n: hir::HirId) -> ControlFlow<!> {
         // Don't visit nested modules, since we run a separate visitor walk
         // for each module in `effective_visibilities`
+        Continue(())
     }
 
-    fn visit_nested_body(&mut self, body: hir::BodyId) {
+    fn visit_nested_body(&mut self, body: hir::BodyId) -> ControlFlow<!> {
         let old_maybe_typeck_results =
             self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
         let body = self.tcx.hir().body(body);
         self.visit_body(body);
         self.maybe_typeck_results = old_maybe_typeck_results;
+        Continue(())
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) -> ControlFlow<!> {
         let orig_current_item = mem::replace(&mut self.current_item, item.owner_id.def_id);
         intravisit::walk_item(self, item);
         self.current_item = orig_current_item;
+        Continue(())
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         if let hir::ExprKind::Struct(qpath, fields, ref base) = expr.kind {
             let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
             let adt = self.typeck_results().expr_ty(expr).ty_adt_def().unwrap();
@@ -1101,10 +1111,10 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
             }
         }
 
-        intravisit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr)
     }
 
-    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) -> ControlFlow<!> {
         if let PatKind::Struct(ref qpath, fields, _) = pat.kind {
             let res = self.typeck_results().qpath_res(qpath, pat.hir_id);
             let adt = self.typeck_results().pat_ty(pat).ty_adt_def().unwrap();
@@ -1116,7 +1126,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
             }
         }
 
-        intravisit::walk_pat(self, pat);
+        intravisit::walk_pat(self, pat)
     }
 }
 
@@ -1179,52 +1189,54 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _s: Span, _n: hir::HirId) {
+    fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _s: Span, _n: hir::HirId) -> ControlFlow<!> {
         // Don't visit nested modules, since we run a separate visitor walk
         // for each module in `effective_visibilities`
+        Continue(())
     }
 
-    fn visit_nested_body(&mut self, body: hir::BodyId) {
+    fn visit_nested_body(&mut self, body: hir::BodyId) -> ControlFlow<!> {
         let old_maybe_typeck_results =
             self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
         let body = self.tcx.hir().body(body);
         self.visit_body(body);
         self.maybe_typeck_results = old_maybe_typeck_results;
+        Continue(())
     }
 
-    fn visit_generic_arg(&mut self, generic_arg: &'tcx hir::GenericArg<'tcx>) {
+    fn visit_generic_arg(&mut self, generic_arg: &'tcx hir::GenericArg<'tcx>) -> ControlFlow<!> {
         match generic_arg {
             hir::GenericArg::Type(t) => self.visit_ty(t),
             hir::GenericArg::Infer(inf) => self.visit_infer(inf),
-            hir::GenericArg::Lifetime(_) | hir::GenericArg::Const(_) => {}
+            hir::GenericArg::Lifetime(_) | hir::GenericArg::Const(_) => Continue(()),
         }
     }
 
-    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) -> ControlFlow<!> {
         self.span = hir_ty.span;
         if let Some(typeck_results) = self.maybe_typeck_results {
             // Types in bodies.
             if self.visit(typeck_results.node_type(hir_ty.hir_id)).is_break() {
-                return;
+                return Continue(());
             }
         } else {
             // Types in signatures.
             // FIXME: This is very ineffective. Ideally each HIR type should be converted
             // into a semantic type only once and the result should be cached somehow.
             if self.visit(rustc_hir_analysis::hir_ty_to_ty(self.tcx, hir_ty)).is_break() {
-                return;
+                return Continue(());
             }
         }
 
-        intravisit::walk_ty(self, hir_ty);
+        intravisit::walk_ty(self, hir_ty)
     }
 
-    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
+    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) -> ControlFlow<!> {
         self.span = inf.span;
         if let Some(typeck_results) = self.maybe_typeck_results {
             if let Some(ty) = typeck_results.node_type_opt(inf.hir_id) {
                 if self.visit(ty).is_break() {
-                    return;
+                    return Continue(());
                 }
             } else {
                 // We don't do anything for const infers here.
@@ -1232,10 +1244,10 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         } else {
             bug!("visit_infer without typeck_results");
         }
-        intravisit::walk_inf(self, inf);
+        intravisit::walk_inf(self, inf)
     }
 
-    fn visit_trait_ref(&mut self, trait_ref: &'tcx hir::TraitRef<'tcx>) {
+    fn visit_trait_ref(&mut self, trait_ref: &'tcx hir::TraitRef<'tcx>) -> ControlFlow<!> {
         self.span = trait_ref.path.span;
         if self.maybe_typeck_results.is_none() {
             // Avoid calling `hir_trait_to_predicates` in bodies, it will ICE.
@@ -1252,7 +1264,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 match pred.kind().skip_binder() {
                     ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
                         if self.visit_trait(trait_predicate.trait_ref).is_break() {
-                            return;
+                            return Continue(());
                         }
                     }
                     ty::PredicateKind::Clause(ty::Clause::Projection(proj_predicate)) => {
@@ -1260,7 +1272,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                         if term.is_break()
                             || self.visit_projection_ty(proj_predicate.projection_ty).is_break()
                         {
-                            return;
+                            return Continue(());
                         }
                     }
                     _ => {}
@@ -1268,20 +1280,20 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
             }
         }
 
-        intravisit::walk_trait_ref(self, trait_ref);
+        intravisit::walk_trait_ref(self, trait_ref)
     }
 
     // Check types of expressions
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         if self.check_expr_pat_type(expr.hir_id, expr.span) {
             // Do not check nested expressions if the error already happened.
-            return;
+            return Continue(());
         }
         match expr.kind {
             hir::ExprKind::Assign(_, rhs, _) | hir::ExprKind::Match(rhs, ..) => {
                 // Do not report duplicate errors for `x = y` and `match x { ... }`.
                 if self.check_expr_pat_type(rhs.hir_id, rhs.span) {
-                    return;
+                    return Continue(());
                 }
             }
             hir::ExprKind::MethodCall(segment, ..) => {
@@ -1289,7 +1301,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 self.span = segment.ident.span;
                 if let Some(def_id) = self.typeck_results().type_dependent_def_id(expr.hir_id) {
                     if self.visit(self.tcx.type_of(def_id).subst_identity()).is_break() {
-                        return;
+                        return Continue(());
                     }
                 } else {
                     self.tcx
@@ -1300,7 +1312,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
             _ => {}
         }
 
-        intravisit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr)
     }
 
     // Prohibit access to associated items with insufficient nominal visibility.
@@ -1309,7 +1321,12 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
     // we prohibit access to private statics from other crates, this allows to give
     // more code internal visibility at link time. (Access to private functions
     // is already prohibited by type privacy for function types.)
-    fn visit_qpath(&mut self, qpath: &'tcx hir::QPath<'tcx>, id: hir::HirId, span: Span) {
+    fn visit_qpath(
+        &mut self,
+        qpath: &'tcx hir::QPath<'tcx>,
+        id: hir::HirId,
+        span: Span,
+    ) -> ControlFlow<!> {
         let def = match qpath {
             hir::QPath::Resolved(_, path) => match path.res {
                 Res::Def(kind, def_id) => Some((kind, def_id)),
@@ -1344,41 +1361,42 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                     }
                     None => sess.emit_err(UnnamedItemIsPrivate { span, kind }),
                 };
-                return;
+                return Continue(());
             }
         }
 
-        intravisit::walk_qpath(self, qpath, id);
+        intravisit::walk_qpath(self, qpath, id)
     }
 
     // Check types of patterns.
-    fn visit_pat(&mut self, pattern: &'tcx hir::Pat<'tcx>) {
+    fn visit_pat(&mut self, pattern: &'tcx hir::Pat<'tcx>) -> ControlFlow<!> {
         if self.check_expr_pat_type(pattern.hir_id, pattern.span) {
             // Do not check nested patterns if the error already happened.
-            return;
+            return Continue(());
         }
 
-        intravisit::walk_pat(self, pattern);
+        intravisit::walk_pat(self, pattern)
     }
 
-    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) -> ControlFlow<!> {
         if let Some(init) = local.init {
             if self.check_expr_pat_type(init.hir_id, init.span) {
                 // Do not report duplicate errors for `let x = y`.
-                return;
+                return Continue(());
             }
         }
 
-        intravisit::walk_local(self, local);
+        intravisit::walk_local(self, local)
     }
 
     // Check types in item interfaces.
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) -> ControlFlow<!> {
         let orig_current_item = mem::replace(&mut self.current_item, item.owner_id.def_id);
         let old_maybe_typeck_results = self.maybe_typeck_results.take();
         intravisit::walk_item(self, item);
         self.maybe_typeck_results = old_maybe_typeck_results;
         self.current_item = orig_current_item;
+        Continue(())
     }
 }
 
@@ -1417,8 +1435,6 @@ struct ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 
 struct ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
     inner: &'a ObsoleteVisiblePrivateTypesVisitor<'b, 'tcx>,
-    /// Whether the type refers to private types.
-    contains_private: bool,
     /// Whether we've recurred at all (i.e., if we're pointing at the
     /// first type on which `visit_ty` was called).
     at_outer_type: bool,
@@ -1469,20 +1485,20 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
-    fn visit_generic_arg(&mut self, generic_arg: &'v hir::GenericArg<'v>) {
+    type BreakTy = ();
+    fn visit_generic_arg(&mut self, generic_arg: &'v hir::GenericArg<'v>) -> ControlFlow<()> {
         match generic_arg {
             hir::GenericArg::Type(t) => self.visit_ty(t),
             hir::GenericArg::Infer(inf) => self.visit_ty(&inf.to_ty()),
-            hir::GenericArg::Lifetime(_) | hir::GenericArg::Const(_) => {}
+            hir::GenericArg::Lifetime(_) | hir::GenericArg::Const(_) => Continue(()),
         }
     }
 
-    fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
+    fn visit_ty(&mut self, ty: &hir::Ty<'_>) -> ControlFlow<()> {
         if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind {
             if self.inner.path_is_private_type(path) {
-                self.contains_private = true;
                 // Found what we're looking for, so let's stop working.
-                return;
+                return Break(());
             }
         }
         if let hir::TyKind::Path(_) = ty.kind {
@@ -1495,7 +1511,9 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a
     }
 
     // Don't want to recurse into `[, .. expr]`.
-    fn visit_expr(&mut self, _: &hir::Expr<'_>) {}
+    fn visit_expr(&mut self, _: &hir::Expr<'_>) -> ControlFlow<()> {
+        Continue(())
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
@@ -1507,7 +1525,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) -> ControlFlow<!> {
         match item.kind {
             // Contents of a private mod can be re-exported, so we need
             // to check internals.
@@ -1519,7 +1537,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 
             hir::ItemKind::Trait(.., bounds, _) => {
                 if !self.trait_is_public(item.owner_id.def_id) {
-                    return;
+                    return Continue(());
                 }
 
                 for bound in bounds.iter() {
@@ -1543,12 +1561,10 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                 {
                     let mut visitor = ObsoleteCheckTypeForPrivatenessVisitor {
                         inner: self,
-                        contains_private: false,
                         at_outer_type: true,
                         outer_type_is_public_path: false,
                     };
-                    visitor.visit_ty(impl_.self_ty);
-                    self_contains_private = visitor.contains_private;
+                    self_contains_private = visitor.visit_ty(impl_.self_ty).is_break();
                     self_is_public_path = visitor.outer_type_is_public_path;
                 }
 
@@ -1601,10 +1617,10 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                     hir::ImplItemKind::Const(..) | hir::ImplItemKind::Fn(..)
                                         if self.item_is_public(impl_item.owner_id.def_id) =>
                                     {
-                                        intravisit::walk_impl_item(self, impl_item)
+                                        intravisit::walk_impl_item(self, impl_item);
                                     }
                                     hir::ImplItemKind::Type(..) => {
-                                        intravisit::walk_impl_item(self, impl_item)
+                                        intravisit::walk_impl_item(self, impl_item);
                                     }
                                     _ => {}
                                 }
@@ -1660,19 +1676,19 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                         }
                     }
                     if found_pub_static {
-                        intravisit::walk_generics(self, &impl_.generics)
+                        intravisit::walk_generics(self, &impl_.generics);
                     }
                 }
-                return;
+                return Continue(());
             }
 
             // `type ... = ...;` can contain private types, because
             // we're introducing a new name.
-            hir::ItemKind::TyAlias(..) => return,
+            hir::ItemKind::TyAlias(..) => return Continue(()),
 
             // Not at all public, so we don't care.
             _ if !self.item_is_public(item.owner_id.def_id) => {
-                return;
+                return Continue(());
             }
 
             _ => {}
@@ -1682,10 +1698,10 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         // any `visit_ty`'s will be called on things that are in
         // public signatures, i.e., things that we're interested in for
         // this visitor.
-        intravisit::walk_item(self, item);
+        intravisit::walk_item(self, item)
     }
 
-    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
+    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) -> ControlFlow<!> {
         for predicate in generics.predicates {
             match predicate {
                 hir::WherePredicate::BoundPredicate(bound_pred) => {
@@ -1699,15 +1715,17 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                 }
             }
         }
+        Continue(())
     }
 
-    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
+    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) -> ControlFlow<!> {
         if self.effective_visibilities.is_reachable(item.owner_id.def_id) {
-            intravisit::walk_foreign_item(self, item)
+            intravisit::walk_foreign_item(self, item);
         }
+        Continue(())
     }
 
-    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) -> ControlFlow<!> {
         if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = t.kind {
             if self.path_is_private_type(path) {
                 self.old_error_set.insert(t.hir_id);
@@ -1716,27 +1734,33 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         intravisit::walk_ty(self, t)
     }
 
-    fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) {
+    fn visit_variant(&mut self, v: &'tcx hir::Variant<'tcx>) -> ControlFlow<!> {
         if self.effective_visibilities.is_reachable(v.def_id) {
             self.in_variant = true;
             intravisit::walk_variant(self, v);
             self.in_variant = false;
         }
+        Continue(())
     }
 
-    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
+    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) -> ControlFlow<!> {
         let vis = self.tcx.visibility(s.def_id);
         if vis.is_public() || self.in_variant {
             intravisit::walk_field_def(self, s);
         }
+        Continue(())
     }
 
     // We don't need to introspect into these at all: an
     // expression/block context can't possibly contain exported things.
     // (Making them no-ops stops us from traversing the whole AST without
     // having to be super careful about our `walk_...` calls above.)
-    fn visit_block(&mut self, _: &'tcx hir::Block<'tcx>) {}
-    fn visit_expr(&mut self, _: &'tcx hir::Expr<'tcx>) {}
+    fn visit_block(&mut self, _: &'tcx hir::Block<'tcx>) -> ControlFlow<!> {
+        Continue(())
+    }
+    fn visit_expr(&mut self, _: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
+        Continue(())
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////

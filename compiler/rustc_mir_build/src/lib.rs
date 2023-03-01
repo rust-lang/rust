@@ -8,6 +8,7 @@
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(min_specialization)]
+#![feature(never_type)]
 #![feature(once_cell)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]

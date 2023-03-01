@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use clippy_utils::ty::is_type_diagnostic_item;
+use core::ops::ControlFlow::{self, Break};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_path, Visitor};
@@ -38,11 +39,9 @@ pub(super) fn check<'tcx>(
             let mut map_expr_visitor = MapExprVisitor {
                 cx,
                 identifiers: unwrap_visitor.identifiers,
-                found_identifier: false,
             };
-            map_expr_visitor.visit_expr(map_arg);
 
-            if map_expr_visitor.found_identifier {
+            if map_expr_visitor.visit_expr(map_arg).is_break() {
                 return;
             }
         }
@@ -97,9 +96,9 @@ struct UnwrapVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) -> ControlFlow<!> {
         self.identifiers.insert(ident(path));
-        walk_path(self, path);
+        walk_path(self, path)
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {
@@ -110,18 +109,18 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
 struct MapExprVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     identifiers: FxHashSet<Symbol>,
-    found_identifier: bool,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::All;
+    type BreakTy = ();
 
-    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) -> ControlFlow<()> {
         if self.identifiers.contains(&ident(path)) {
-            self.found_identifier = true;
-            return;
+            Break(())
+        } else {
+            walk_path(self, path)
         }
-        walk_path(self, path);
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {

@@ -22,6 +22,7 @@ use tempfile::Builder as TempFileBuilder;
 
 use std::env;
 use std::io::{self, Write};
+use std::ops::ControlFlow::{self, Continue};
 use std::panic;
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
@@ -141,7 +142,9 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
                         "".to_string(),
                         CRATE_DEF_ID,
                         tcx.hir().span(CRATE_HIR_ID),
-                        |this| tcx.hir().walk_toplevel_module(this),
+                        |this| {
+                            tcx.hir().walk_toplevel_module(this);
+                        },
                     );
 
                     collector
@@ -1269,7 +1272,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         self.map
     }
 
-    fn visit_item(&mut self, item: &'hir hir::Item<'_>) {
+    fn visit_item(&mut self, item: &'hir hir::Item<'_>) -> ControlFlow<!> {
         let name = match &item.kind {
             hir::ItemKind::Impl(impl_) => {
                 rustc_hir_pretty::id_to_string(&self.map, impl_.self_ty.hir_id)
@@ -1280,36 +1283,42 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         self.visit_testable(name, item.owner_id.def_id, item.span, |this| {
             intravisit::walk_item(this, item);
         });
+        Continue(())
     }
 
-    fn visit_trait_item(&mut self, item: &'hir hir::TraitItem<'_>) {
+    fn visit_trait_item(&mut self, item: &'hir hir::TraitItem<'_>) -> ControlFlow<!> {
         self.visit_testable(item.ident.to_string(), item.owner_id.def_id, item.span, |this| {
             intravisit::walk_trait_item(this, item);
         });
+        Continue(())
     }
 
-    fn visit_impl_item(&mut self, item: &'hir hir::ImplItem<'_>) {
+    fn visit_impl_item(&mut self, item: &'hir hir::ImplItem<'_>) -> ControlFlow<!> {
         self.visit_testable(item.ident.to_string(), item.owner_id.def_id, item.span, |this| {
             intravisit::walk_impl_item(this, item);
         });
+        Continue(())
     }
 
-    fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem<'_>) {
+    fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem<'_>) -> ControlFlow<!> {
         self.visit_testable(item.ident.to_string(), item.owner_id.def_id, item.span, |this| {
             intravisit::walk_foreign_item(this, item);
         });
+        Continue(())
     }
 
-    fn visit_variant(&mut self, v: &'hir hir::Variant<'_>) {
+    fn visit_variant(&mut self, v: &'hir hir::Variant<'_>) -> ControlFlow<!> {
         self.visit_testable(v.ident.to_string(), v.def_id, v.span, |this| {
             intravisit::walk_variant(this, v);
         });
+        Continue(())
     }
 
-    fn visit_field_def(&mut self, f: &'hir hir::FieldDef<'_>) {
+    fn visit_field_def(&mut self, f: &'hir hir::FieldDef<'_>) -> ControlFlow<!> {
         self.visit_testable(f.ident.to_string(), f.def_id, f.span, |this| {
             intravisit::walk_field_def(this, f);
         });
+        Continue(())
     }
 }
 

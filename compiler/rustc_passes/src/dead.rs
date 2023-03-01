@@ -17,6 +17,7 @@ use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{sym, Symbol};
 use std::mem;
+use std::ops::ControlFlow::{self, Continue};
 
 use crate::errors::{
     ChangeFieldsToBeOfUnitType, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo,
@@ -300,10 +301,12 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     self.repr_has_repr_c = def.repr().c();
                     self.repr_has_repr_simd = def.repr().simd();
 
-                    intravisit::walk_item(self, &item)
+                    intravisit::walk_item(self, &item);
                 }
                 hir::ItemKind::ForeignMod { .. } => {}
-                _ => intravisit::walk_item(self, &item),
+                _ => {
+                    intravisit::walk_item(self, &item);
+                }
             },
             Node::TraitItem(trait_item) => {
                 intravisit::walk_trait_item(self, trait_item);
@@ -349,15 +352,16 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
-    fn visit_nested_body(&mut self, body: hir::BodyId) {
+    fn visit_nested_body(&mut self, body: hir::BodyId) -> ControlFlow<!> {
         let old_maybe_typeck_results =
             self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
         let body = self.tcx.hir().body(body);
         self.visit_body(body);
         self.maybe_typeck_results = old_maybe_typeck_results;
+        Continue(())
     }
 
-    fn visit_variant_data(&mut self, def: &'tcx hir::VariantData<'tcx>) {
+    fn visit_variant_data(&mut self, def: &'tcx hir::VariantData<'tcx>) -> ControlFlow<!> {
         let tcx = self.tcx;
         let has_repr_c = self.repr_has_repr_c;
         let has_repr_simd = self.repr_has_repr_simd;
@@ -373,10 +377,10 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         });
         self.live_symbols.extend(live_fields);
 
-        intravisit::walk_struct_def(self, def);
+        intravisit::walk_struct_def(self, def)
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         match expr.kind {
             hir::ExprKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
                 let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
@@ -401,10 +405,10 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             _ => (),
         }
 
-        intravisit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr)
     }
 
-    fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
+    fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) -> ControlFlow<!> {
         // Inside the body, ignore constructions of variants
         // necessary for the pattern to match. Those construction sites
         // can't be reached unless the variant is constructed elsewhere.
@@ -412,9 +416,10 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         self.ignore_variant_stack.extend(arm.pat.necessary_variants());
         intravisit::walk_arm(self, arm);
         self.ignore_variant_stack.truncate(len);
+        Continue(())
     }
 
-    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) -> ControlFlow<!> {
         self.in_pat = true;
         match pat.kind {
             PatKind::Struct(ref path, ref fields, _) => {
@@ -434,22 +439,23 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
 
         intravisit::walk_pat(self, pat);
         self.in_pat = false;
+        Continue(())
     }
 
-    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) -> ControlFlow<!> {
         self.handle_res(path.res);
-        intravisit::walk_path(self, path);
+        intravisit::walk_path(self, path)
     }
 
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) -> ControlFlow<!> {
         if let TyKind::OpaqueDef(item_id, _, _) = ty.kind {
             let item = self.tcx.hir().item(item_id);
             intravisit::walk_item(self, item);
         }
-        intravisit::walk_ty(self, ty);
+        intravisit::walk_ty(self, ty)
     }
 
-    fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
+    fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) -> ControlFlow<!> {
         // When inline const blocks are used in pattern position, paths
         // referenced by it should be considered as used.
         let in_pat = mem::replace(&mut self.in_pat, false);
@@ -458,6 +464,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         intravisit::walk_anon_const(self, c);
 
         self.in_pat = in_pat;
+        Continue(())
     }
 }
 

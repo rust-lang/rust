@@ -5,6 +5,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{
     get_enclosing_loop_or_multi_call_closure, is_refutable, is_res_lang_ctor, is_trait_method, visitors::is_res_used,
 };
+use core::ops::ControlFlow::{self, Break, Continue};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
@@ -208,35 +209,29 @@ fn uses_iter<'tcx>(cx: &LateContext<'tcx>, iter_expr: &IterExpr, container: &'tc
     struct V<'a, 'b, 'tcx> {
         cx: &'a LateContext<'tcx>,
         iter_expr: &'b IterExpr,
-        uses_iter: bool,
     }
     impl<'tcx> Visitor<'tcx> for V<'_, '_, 'tcx> {
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            if self.uses_iter {
-                // return
-            } else if is_expr_same_child_or_parent_field(self.cx, e, &self.iter_expr.fields, self.iter_expr.path) {
-                self.uses_iter = true;
+        type BreakTy = ();
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> ControlFlow<()> {
+            if is_expr_same_child_or_parent_field(self.cx, e, &self.iter_expr.fields, self.iter_expr.path) {
+                return Break(());
             } else if let (e, true) = skip_fields_and_path(e) {
                 if let Some(e) = e {
-                    self.visit_expr(e);
+                    self.visit_expr(e)?;
                 }
             } else if let ExprKind::Closure(&Closure { body: id, .. }) = e.kind {
                 if is_res_used(self.cx, self.iter_expr.path, id) {
-                    self.uses_iter = true;
+                    return Break(());
                 }
             } else {
-                walk_expr(self, e);
+                walk_expr(self, e)?;
             }
+            Continue(())
         }
     }
 
-    let mut v = V {
-        cx,
-        iter_expr,
-        uses_iter: false,
-    };
-    v.visit_expr(container);
-    v.uses_iter
+    let mut v = V { cx, iter_expr };
+    v.visit_expr(container).is_break()
 }
 
 #[expect(clippy::too_many_lines)]
@@ -246,35 +241,36 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
         iter_expr: &'b IterExpr,
         loop_id: HirId,
         after_loop: bool,
-        used_iter: bool,
     }
     impl<'tcx> Visitor<'tcx> for AfterLoopVisitor<'_, '_, 'tcx> {
         type NestedFilter = OnlyBodies;
+        type BreakTy = ();
+
         fn nested_visit_map(&mut self) -> Self::Map {
             self.cx.tcx.hir()
         }
 
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            if self.used_iter {
-                return;
-            }
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> ControlFlow<()> {
             if self.after_loop {
                 if is_expr_same_child_or_parent_field(self.cx, e, &self.iter_expr.fields, self.iter_expr.path) {
-                    self.used_iter = true;
+                    return Break(());
                 } else if let (e, true) = skip_fields_and_path(e) {
                     if let Some(e) = e {
-                        self.visit_expr(e);
+                        self.visit_expr(e)?;
                     }
                 } else if let ExprKind::Closure(&Closure { body: id, .. }) = e.kind {
-                    self.used_iter = is_res_used(self.cx, self.iter_expr.path, id);
+                    if is_res_used(self.cx, self.iter_expr.path, id) {
+                        return Break(());
+                    }
                 } else {
-                    walk_expr(self, e);
+                    walk_expr(self, e)?;
                 }
             } else if self.loop_id == e.hir_id {
                 self.after_loop = true;
             } else {
-                walk_expr(self, e);
+                walk_expr(self, e)?;
             }
+            Continue(())
         }
     }
 
@@ -285,15 +281,16 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
         loop_id: HirId,
         after_loop: bool,
         found_local: bool,
-        used_after: bool,
     }
     impl<'a, 'b, 'tcx> Visitor<'tcx> for NestedLoopVisitor<'a, 'b, 'tcx> {
         type NestedFilter = OnlyBodies;
+        type BreakTy = ();
+
         fn nested_visit_map(&mut self) -> Self::Map {
             self.cx.tcx.hir()
         }
 
-        fn visit_local(&mut self, l: &'tcx Local<'_>) {
+        fn visit_local(&mut self, l: &'tcx Local<'_>) -> ControlFlow<()> {
             if !self.after_loop {
                 l.pat.each_binding_or_first(&mut |_, id, _, _| {
                     if id == self.local_id {
@@ -302,31 +299,33 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
                 });
             }
             if let Some(e) = l.init {
-                self.visit_expr(e);
+                self.visit_expr(e)
+            } else {
+                Continue(())
             }
         }
 
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            if self.used_after {
-                return;
-            }
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> ControlFlow<()> {
             if self.after_loop {
                 if is_expr_same_child_or_parent_field(self.cx, e, &self.iter_expr.fields, self.iter_expr.path) {
-                    self.used_after = true;
+                    return Break(());
                 } else if let (e, true) = skip_fields_and_path(e) {
                     if let Some(e) = e {
-                        self.visit_expr(e);
+                        self.visit_expr(e)?;
                     }
                 } else if let ExprKind::Closure(&Closure { body: id, .. }) = e.kind {
-                    self.used_after = is_res_used(self.cx, self.iter_expr.path, id);
+                    if is_res_used(self.cx, self.iter_expr.path, id) {
+                        return Break(());
+                    }
                 } else {
-                    walk_expr(self, e);
+                    walk_expr(self, e)?;
                 }
             } else if e.hir_id == self.loop_id {
                 self.after_loop = true;
             } else {
-                walk_expr(self, e);
+                walk_expr(self, e)?;
             }
+            Continue(())
         }
     }
 
@@ -341,19 +340,17 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
             loop_id: loop_expr.hir_id,
             after_loop: false,
             found_local: false,
-            used_after: false,
         };
-        v.visit_expr(e);
-        v.used_after || !v.found_local
+        let used_after = v.visit_expr(e).is_break();
+        used_after || !v.found_local
     } else {
         let mut v = AfterLoopVisitor {
             cx,
             iter_expr,
             loop_id: loop_expr.hir_id,
             after_loop: false,
-            used_iter: false,
         };
-        v.visit_expr(cx.tcx.hir().body(cx.enclosing_body.unwrap()).value);
-        v.used_iter
+        v.visit_expr(cx.tcx.hir().body(cx.enclosing_body.unwrap()).value)
+            .is_break()
     }
 }

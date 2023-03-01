@@ -3,6 +3,7 @@
 #![allow(rustc::potential_query_instability)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
+#![feature(control_flow_enum)]
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(never_type)]

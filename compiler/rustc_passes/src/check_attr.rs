@@ -32,6 +32,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
+use std::ops::ControlFlow;
 
 pub(crate) fn target_from_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -2293,7 +2294,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
+    fn visit_item(&mut self, item: &'tcx Item<'tcx>) -> ControlFlow<!> {
         // Historically we've run more checks on non-exported than exported macros,
         // so this lets us continue to run them while maintaining backwards compatibility.
         // In the long run, the checks should be harmonized.
@@ -2309,41 +2310,44 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_item(self, item)
     }
 
-    fn visit_generic_param(&mut self, generic_param: &'tcx hir::GenericParam<'tcx>) {
+    fn visit_generic_param(
+        &mut self,
+        generic_param: &'tcx hir::GenericParam<'tcx>,
+    ) -> ControlFlow<!> {
         let target = Target::from_generic_param(generic_param);
         self.check_attributes(generic_param.hir_id, generic_param.span, target, None);
         intravisit::walk_generic_param(self, generic_param)
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx TraitItem<'tcx>) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx TraitItem<'tcx>) -> ControlFlow<!> {
         let target = Target::from_trait_item(trait_item);
         self.check_attributes(trait_item.hir_id(), trait_item.span, target, None);
         intravisit::walk_trait_item(self, trait_item)
     }
 
-    fn visit_field_def(&mut self, struct_field: &'tcx hir::FieldDef<'tcx>) {
+    fn visit_field_def(&mut self, struct_field: &'tcx hir::FieldDef<'tcx>) -> ControlFlow<!> {
         self.check_attributes(struct_field.hir_id, struct_field.span, Target::Field, None);
-        intravisit::walk_field_def(self, struct_field);
+        intravisit::walk_field_def(self, struct_field)
     }
 
-    fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
+    fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) -> ControlFlow<!> {
         self.check_attributes(arm.hir_id, arm.span, Target::Arm, None);
-        intravisit::walk_arm(self, arm);
+        intravisit::walk_arm(self, arm)
     }
 
-    fn visit_foreign_item(&mut self, f_item: &'tcx ForeignItem<'tcx>) {
+    fn visit_foreign_item(&mut self, f_item: &'tcx ForeignItem<'tcx>) -> ControlFlow<!> {
         let target = Target::from_foreign_item(f_item);
         self.check_attributes(f_item.hir_id(), f_item.span, target, Some(ItemLike::ForeignItem));
         intravisit::walk_foreign_item(self, f_item)
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) -> ControlFlow<!> {
         let target = target_from_impl_item(self.tcx, impl_item);
         self.check_attributes(impl_item.hir_id(), impl_item.span, target, None);
         intravisit::walk_impl_item(self, impl_item)
     }
 
-    fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
+    fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) -> ControlFlow<!> {
         // When checking statements ignore expressions, they will be checked later.
         if let hir::StmtKind::Local(ref l) = stmt.kind {
             self.check_attributes(l.hir_id, stmt.span, Target::Statement, None);
@@ -2351,7 +2355,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_stmt(self, stmt)
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         let target = match expr.kind {
             hir::ExprKind::Closure { .. } => Target::Closure,
             _ => Target::Expression,
@@ -2361,25 +2365,25 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_expr(self, expr)
     }
 
-    fn visit_expr_field(&mut self, field: &'tcx hir::ExprField<'tcx>) {
+    fn visit_expr_field(&mut self, field: &'tcx hir::ExprField<'tcx>) -> ControlFlow<!> {
         self.check_attributes(field.hir_id, field.span, Target::ExprField, None);
         intravisit::walk_expr_field(self, field)
     }
 
-    fn visit_variant(&mut self, variant: &'tcx hir::Variant<'tcx>) {
+    fn visit_variant(&mut self, variant: &'tcx hir::Variant<'tcx>) -> ControlFlow<!> {
         self.check_attributes(variant.hir_id, variant.span, Target::Variant, None);
         intravisit::walk_variant(self, variant)
     }
 
-    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) -> ControlFlow<!> {
         self.check_attributes(param.hir_id, param.span, Target::Param, None);
 
-        intravisit::walk_param(self, param);
+        intravisit::walk_param(self, param)
     }
 
-    fn visit_pat_field(&mut self, field: &'tcx hir::PatField<'tcx>) {
+    fn visit_pat_field(&mut self, field: &'tcx hir::PatField<'tcx>) -> ControlFlow<!> {
         self.check_attributes(field.hir_id, field.span, Target::PatField, None);
-        intravisit::walk_pat_field(self, field);
+        intravisit::walk_pat_field(self, field)
     }
 }
 

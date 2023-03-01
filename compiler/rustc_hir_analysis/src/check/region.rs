@@ -6,11 +6,11 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/borrow_check.html
 
-use rustc_ast::walk_list;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::walk_list;
 use rustc_hir::{Arm, Block, Expr, Local, Pat, PatKind, Stmt};
 use rustc_index::vec::Idx;
 use rustc_middle::middle::region::*;
@@ -19,6 +19,7 @@ use rustc_span::source_map;
 use rustc_span::Span;
 
 use std::mem;
+use std::ops::ControlFlow::{self, Continue};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Context {
@@ -85,7 +86,10 @@ fn record_var_lifetime(
     }
 }
 
-fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx hir::Block<'tcx>) {
+fn resolve_block<'tcx>(
+    visitor: &mut RegionResolutionVisitor<'tcx>,
+    blk: &'tcx hir::Block<'tcx>,
+) -> ControlFlow<!> {
     debug!("resolve_block(blk.hir_id={:?})", blk.hir_id);
 
     let prev_cx = visitor.cx;
@@ -161,15 +165,18 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                         data: ScopeData::Remainder(FirstStatementIndex::new(i)),
                     });
                     visitor.cx.var_parent = visitor.cx.parent;
-                    visitor.visit_stmt(statement)
+                    visitor.visit_stmt(statement);
                 }
-                hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => visitor.visit_stmt(statement),
+                hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {
+                    visitor.visit_stmt(statement);
+                }
             }
         }
         walk_list!(visitor, visit_expr, &blk.expr);
     }
 
     visitor.cx = prev_cx;
+    Continue(())
 }
 
 fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
@@ -466,7 +473,9 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             visitor.cx = expr_cx;
         }
 
-        _ => intravisit::walk_expr(visitor, expr),
+        _ => {
+            intravisit::walk_expr(visitor, expr);
+        }
     }
 
     visitor.expr_and_pat_count += 1;
@@ -756,11 +765,11 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
-    fn visit_block(&mut self, b: &'tcx Block<'tcx>) {
-        resolve_block(self, b);
+    fn visit_block(&mut self, b: &'tcx Block<'tcx>) -> ControlFlow<!> {
+        resolve_block(self, b)
     }
 
-    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
+    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) -> ControlFlow<!> {
         let body_id = body.id();
         let owner_id = self.tcx.hir().body_owner_def_id(body_id);
 
@@ -797,7 +806,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         // The body of the every fn is a root scope.
         self.cx.parent = self.cx.var_parent;
         if self.tcx.hir().body_owner_kind(owner_id).is_fn_or_closure() {
-            self.visit_expr(&body.value)
+            self.visit_expr(&body.value);
         } else {
             // Only functions have an outer terminating (drop) scope, while
             // temporaries in constant initializers may be 'static, but only
@@ -830,22 +839,28 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
         self.cx = outer_cx;
         self.terminating_scopes = outer_ts;
         self.pessimistic_yield = outer_pessimistic_yield;
+        Continue(())
     }
 
-    fn visit_arm(&mut self, a: &'tcx Arm<'tcx>) {
+    fn visit_arm(&mut self, a: &'tcx Arm<'tcx>) -> ControlFlow<!> {
         resolve_arm(self, a);
+        Continue(())
     }
-    fn visit_pat(&mut self, p: &'tcx Pat<'tcx>) {
+    fn visit_pat(&mut self, p: &'tcx Pat<'tcx>) -> ControlFlow<!> {
         resolve_pat(self, p);
+        Continue(())
     }
-    fn visit_stmt(&mut self, s: &'tcx Stmt<'tcx>) {
+    fn visit_stmt(&mut self, s: &'tcx Stmt<'tcx>) -> ControlFlow<!> {
         resolve_stmt(self, s);
+        Continue(())
     }
-    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
+    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) -> ControlFlow<!> {
         resolve_expr(self, ex);
+        Continue(())
     }
-    fn visit_local(&mut self, l: &'tcx Local<'tcx>) {
-        resolve_local(self, Some(&l.pat), l.init)
+    fn visit_local(&mut self, l: &'tcx Local<'tcx>) -> ControlFlow<!> {
+        resolve_local(self, Some(&l.pat), l.init);
+        Continue(())
     }
 }
 

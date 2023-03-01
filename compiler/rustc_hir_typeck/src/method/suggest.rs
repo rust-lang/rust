@@ -44,6 +44,7 @@ use super::{CandidateSource, MethodError, NoMatchData};
 use rustc_hir::intravisit::Visitor;
 use std::cmp::Ordering;
 use std::iter;
+use std::ops::ControlFlow::{self, Continue};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
@@ -1628,14 +1629,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // FIXME: This really should be taking scoping, etc into account.
         impl<'v> Visitor<'v> for LetVisitor<'v> {
-            fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
+            fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) -> ControlFlow<!> {
                 if let hir::StmtKind::Local(hir::Local { pat, init, .. }) = &ex.kind
                     && let Binding(_, _, ident, ..) = pat.kind
                     && ident.name == self.ident_name
                 {
                     self.result = *init;
+                    Continue(())
                 } else {
-                    hir::intravisit::walk_stmt(self, ex);
+                    hir::intravisit::walk_stmt(self, ex)
                 }
             }
         }

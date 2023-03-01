@@ -14,6 +14,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::parse::ParseSess;
 use rustc_span::{edition::Edition, sym, symbol::Ident, Span, Symbol};
+use std::ops::ControlFlow;
 
 use crate::{
     builtin::InitError, builtin::TypeAliasBounds, errors::OverruledAttributeSub, LateContext,
@@ -296,7 +297,7 @@ impl AddToDiagnostic for SuggestChangingAssocTypes<'_, '_> {
                 qpath: &rustc_hir::QPath<'_>,
                 id: rustc_hir::HirId,
                 span: Span,
-            ) {
+            ) -> ControlFlow<!> {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
                     self.err.span_help(span, fluent::lint_builtin_type_alias_bounds_help);
                 }

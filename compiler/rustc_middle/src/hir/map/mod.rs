@@ -16,6 +16,7 @@ use rustc_span::def_id::StableCrateId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
+use std::ops::ControlFlow::{self, Continue};
 
 #[inline]
 pub fn associated_body(node: Node<'_>) -> Option<(LocalDefId, BodyId)> {
@@ -540,23 +541,27 @@ impl<'hir> Map<'hir> {
     }
 
     /// Walks the contents of the local crate. See also `visit_all_item_likes_in_crate`.
-    pub fn walk_toplevel_module(self, visitor: &mut impl Visitor<'hir>) {
+    pub fn walk_toplevel_module<V: Visitor<'hir>>(
+        self,
+        visitor: &mut V,
+    ) -> ControlFlow<V::BreakTy> {
         let (top_mod, span, hir_id) = self.get_module(CRATE_DEF_ID);
-        visitor.visit_mod(top_mod, span, hir_id);
+        visitor.visit_mod(top_mod, span, hir_id)
     }
 
     /// Walks the attributes in a crate.
-    pub fn walk_attributes(self, visitor: &mut impl Visitor<'hir>) {
+    pub fn walk_attributes<V: Visitor<'hir>>(self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         let krate = self.krate();
         for info in krate.owners.iter() {
             if let MaybeOwner::Owner(info) = info {
                 for attrs in info.attrs.map.values() {
                     for a in *attrs {
-                        visitor.visit_attribute(a)
+                        visitor.visit_attribute(a)?;
                     }
                 }
             }
         }
+        Continue(())
     }
 
     /// Visits all item-likes in the crate in some deterministic (but unspecified) order. If you
@@ -1380,7 +1385,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         self.tcx.hir()
     }
 
-    fn visit_item(&mut self, item: &'hir Item<'hir>) {
+    fn visit_item(&mut self, item: &'hir Item<'hir>) -> ControlFlow<!> {
         if associated_body(Node::Item(item)).is_some() {
             self.body_owners.push(item.owner_id.def_id);
         }
@@ -1392,31 +1397,32 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
             self.submodules.push(item.owner_id);
             // A module collector does not recurse inside nested modules.
             if self.crate_collector {
-                intravisit::walk_mod(self, module, item.hir_id());
+                intravisit::walk_mod(self, module, item.hir_id())?;
             }
         } else {
-            intravisit::walk_item(self, item)
+            intravisit::walk_item(self, item)?;
         }
+        Continue(())
     }
 
-    fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) {
+    fn visit_foreign_item(&mut self, item: &'hir ForeignItem<'hir>) -> ControlFlow<!> {
         self.foreign_items.push(item.foreign_item_id());
         intravisit::walk_foreign_item(self, item)
     }
 
-    fn visit_anon_const(&mut self, c: &'hir AnonConst) {
+    fn visit_anon_const(&mut self, c: &'hir AnonConst) -> ControlFlow<!> {
         self.body_owners.push(c.def_id);
         intravisit::walk_anon_const(self, c)
     }
 
-    fn visit_expr(&mut self, ex: &'hir Expr<'hir>) {
+    fn visit_expr(&mut self, ex: &'hir Expr<'hir>) -> ControlFlow<!> {
         if let ExprKind::Closure(closure) = ex.kind {
             self.body_owners.push(closure.def_id);
         }
         intravisit::walk_expr(self, ex)
     }
 
-    fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) {
+    fn visit_trait_item(&mut self, item: &'hir TraitItem<'hir>) -> ControlFlow<!> {
         if associated_body(Node::TraitItem(item)).is_some() {
             self.body_owners.push(item.owner_id.def_id);
         }
@@ -1425,7 +1431,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
         intravisit::walk_trait_item(self, item)
     }
 
-    fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) {
+    fn visit_impl_item(&mut self, item: &'hir ImplItem<'hir>) -> ControlFlow<!> {
         if associated_body(Node::ImplItem(item)).is_some() {
             self.body_owners.push(item.owner_id.def_id);
         }

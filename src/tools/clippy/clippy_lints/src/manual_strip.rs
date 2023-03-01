@@ -4,6 +4,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::{eq_expr_value, higher, match_def_path, paths};
+use core::ops::ControlFlow::{self, Continue};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_hir::def::Res;
@@ -201,7 +202,7 @@ fn find_stripping<'tcx>(
     }
 
     impl<'a, 'tcx> Visitor<'tcx> for StrippingFinder<'a, 'tcx> {
-        fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
+        fn visit_expr(&mut self, ex: &'tcx Expr<'_>) -> ControlFlow<!> {
             if_chain! {
                 if is_ref_str(self.cx, ex);
                 let unref = peel_ref(ex);
@@ -214,7 +215,7 @@ fn find_stripping<'tcx>(
                         (StripKind::Prefix, Some(start), None) => {
                             if eq_pattern_length(self.cx, self.pattern, start) {
                                 self.results.push(ex.span);
-                                return;
+                                return Continue(());
                             }
                         },
                         (StripKind::Suffix, None, Some(end)) => {
@@ -226,7 +227,7 @@ fn find_stripping<'tcx>(
                                 if eq_pattern_length(self.cx, self.pattern, right);
                                 then {
                                     self.results.push(ex.span);
-                                    return;
+                                    return Continue(());
                                 }
                             }
                         },
@@ -235,7 +236,7 @@ fn find_stripping<'tcx>(
                 }
             }
 
-            walk_expr(self, ex);
+            walk_expr(self, ex)
         }
     }
 

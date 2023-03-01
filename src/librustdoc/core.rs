@@ -20,6 +20,7 @@ use rustc_span::{source_map, Span};
 
 use std::cell::RefCell;
 use std::mem;
+use std::ops::ControlFlow;
 use std::rc::Rc;
 use std::sync::LazyLock;
 
@@ -465,7 +466,7 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) -> ControlFlow<!> {
         debug!("visiting path {:?}", path);
         if path.res == Res::Err {
             // We have less context here than in rustc_resolve,
@@ -494,7 +495,7 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
         // We could have an outer resolution that succeeded,
         // but with generic parameters that failed.
         // Recurse into the segments so we catch those too.
-        intravisit::walk_path(self, path);
+        intravisit::walk_path(self, path)
     }
 }
 

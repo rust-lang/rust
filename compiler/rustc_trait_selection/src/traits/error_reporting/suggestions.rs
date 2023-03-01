@@ -8,6 +8,7 @@ use super::{
 use crate::infer::InferCtxt;
 use crate::traits::{NormalizeExt, ObligationCtxt};
 
+use either::Either;
 use hir::def::CtorOf;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -39,7 +40,10 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span, DUMMY_SP};
 use rustc_target::spec::abi;
-use std::ops::Deref;
+use std::ops::{
+    ControlFlow::{self, Break, Continue},
+    Deref,
+};
 
 use super::method_chain::CollectAllMismatches;
 use super::InferCtxtPrivExt;
@@ -1002,11 +1006,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // Remove all the desugaring and macro contexts.
             span.remove_mark();
         }
-        let mut expr_finder = FindExprBySpan::new(span);
+        let mut expr_finder = FindExprBySpan { span };
         let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else { return; };
         let body = self.tcx.hir().body(body_id);
-        expr_finder.visit_expr(body.value);
-        let Some(expr) = expr_finder.result else { return; };
+        let Break(Either::Left(expr)) = expr_finder.visit_expr(body.value) else { return; };
         let Some(typeck) = &self.typeck_results else { return; };
         let Some(ty) = typeck.expr_ty_adjusted_opt(expr) else { return; };
         if !ty.is_unit() {
@@ -1354,9 +1357,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         // should be `x.starts_with(&("hi".to_string() + "you"))`
                         let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else { return false; };
                         let body = self.tcx.hir().body(body_id);
-                        let mut expr_finder = FindExprBySpan::new(span);
-                        expr_finder.visit_expr(body.value);
-                        let Some(expr) = expr_finder.result else { return false; };
+                        let mut expr_finder = FindExprBySpan { span };
+                        let Break(Either::Left(expr)) = expr_finder.visit_expr(body.value) else { return false; };
                         let needs_parens = match expr.kind {
                             // parenthesize if needed (Issue #46756)
                             hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
@@ -1456,12 +1458,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // Remove all the hir desugaring contexts while maintaining the macro contexts.
             span.remove_mark();
         }
-        let mut expr_finder = super::FindExprBySpan::new(span);
+        let mut expr_finder = super::FindExprBySpan { span };
         let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
             return false;
         };
         let body = self.tcx.hir().body(body_id);
-        expr_finder.visit_expr(body.value);
+        let found_expr = expr_finder.visit_expr(body.value);
         let mut maybe_suggest = |suggested_ty, count, suggestions| {
             // Remapping bound vars here
             let trait_pred_and_suggested_ty =
@@ -1496,7 +1498,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut suggestions = vec![];
         // Skipping binder here, remapping below
         let mut suggested_ty = trait_pred.self_ty().skip_binder();
-        if let Some(mut hir_ty) = expr_finder.ty_result {
+        if let Break(Either::Right(mut hir_ty)) = found_expr {
             while let hir::TyKind::Ref(_, mut_ty) = &hir_ty.kind {
                 count += 1;
                 let span = hir_ty.span.until(mut_ty.ty.span);
@@ -1516,7 +1518,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         // Maybe suggest removal of borrows from expressions, like in `for i in &&&foo {}`.
-        let Some(mut expr) = expr_finder.result else { return false; };
+        let Break(Either::Left(mut expr)) = found_expr else { return false; };
         let mut count = 0;
         let mut suggestions = vec![];
         // Skipping binder here, remapping below
@@ -3932,7 +3934,7 @@ pub struct ReturnsVisitor<'v> {
 }
 
 impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
-    fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+    fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) -> ControlFlow<!> {
         // Visit every expression to detect `return` paths, either through the function's tail
         // expression or `return` statements. We walk all nodes to find `return` statements, but
         // we only care about tail expressions when `in_block_tail` is `true`, which means that
@@ -3963,12 +3965,15 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
                 }
             }
             // We need to walk to find `return`s in the entire body.
-            _ if !self.in_block_tail => hir::intravisit::walk_expr(self, ex),
+            _ if !self.in_block_tail => {
+                hir::intravisit::walk_expr(self, ex);
+            }
             _ => self.returns.push(ex),
         }
+        Continue(())
     }
 
-    fn visit_body(&mut self, body: &'v hir::Body<'v>) {
+    fn visit_body(&mut self, body: &'v hir::Body<'v>) -> ControlFlow<!> {
         assert!(!self.in_block_tail);
         if body.generator_kind().is_none() {
             if let hir::ExprKind::Block(block, None) = body.value.kind {
@@ -3977,7 +3982,7 @@ impl<'v> Visitor<'v> for ReturnsVisitor<'v> {
                 }
             }
         }
-        hir::intravisit::walk_body(self, body);
+        hir::intravisit::walk_body(self, body)
     }
 }
 
@@ -3988,7 +3993,7 @@ struct AwaitsVisitor {
 }
 
 impl<'v> Visitor<'v> for AwaitsVisitor {
-    fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+    fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) -> ControlFlow<!> {
         if let hir::ExprKind::Yield(_, hir::YieldSource::Await { expr: Some(id) }) = ex.kind {
             self.awaits.push(id)
         }
@@ -4060,7 +4065,7 @@ struct ReplaceImplTraitVisitor<'a> {
 }
 
 impl<'a, 'hir> hir::intravisit::Visitor<'hir> for ReplaceImplTraitVisitor<'a> {
-    fn visit_ty(&mut self, t: &'hir hir::Ty<'hir>) {
+    fn visit_ty(&mut self, t: &'hir hir::Ty<'hir>) -> ControlFlow<!> {
         if let hir::TyKind::Path(hir::QPath::Resolved(
             None,
             hir::Path { res: hir::def::Res::Def(_, segment_did), .. },
@@ -4072,11 +4077,11 @@ impl<'a, 'hir> hir::intravisit::Visitor<'hir> for ReplaceImplTraitVisitor<'a> {
 
                 // There might be more than one `impl Trait`.
                 self.ty_spans.push(t.span);
-                return;
+                return Continue(());
             }
         }
 
-        hir::intravisit::walk_ty(self, t);
+        hir::intravisit::walk_ty(self, t)
     }
 }
 

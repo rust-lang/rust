@@ -2,6 +2,7 @@ use super::WHILE_IMMUTABLE_CONDITION;
 use clippy_utils::consts::constant;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::usage::mutated_variables;
+use core::ops::ControlFlow::{self, Break, Continue};
 use if_chain::if_chain;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
@@ -20,10 +21,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'
         cx,
         ids: HirIdSet::default(),
         def_ids: DefIdMap::default(),
-        skip: false,
     };
-    var_visitor.visit_expr(cond);
-    if var_visitor.skip {
+    if var_visitor.visit_expr(cond).is_break() {
         return;
     }
     let used_in_condition = &var_visitor.ids;
@@ -37,11 +36,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'
         };
     let mutable_static_in_cond = var_visitor.def_ids.items().any(|(_, v)| *v);
 
-    let mut has_break_or_return_visitor = HasBreakOrReturnVisitor {
-        has_break_or_return: false,
-    };
-    has_break_or_return_visitor.visit_expr(expr);
-    let has_break_or_return = has_break_or_return_visitor.has_break_or_return;
+    let mut has_break_or_return_visitor = HasBreakOrReturnVisitor;
+    let has_break_or_return = has_break_or_return_visitor.visit_expr(expr).is_break();
 
     if no_cond_variable_mutated && !mutable_static_in_cond {
         span_lint_and_then(
@@ -61,25 +57,14 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'
     }
 }
 
-struct HasBreakOrReturnVisitor {
-    has_break_or_return: bool,
-}
-
+struct HasBreakOrReturnVisitor;
 impl<'tcx> Visitor<'tcx> for HasBreakOrReturnVisitor {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.has_break_or_return {
-            return;
-        }
-
+    type BreakTy = ();
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<()> {
         match expr.kind {
-            ExprKind::Ret(_) | ExprKind::Break(_, _) => {
-                self.has_break_or_return = true;
-                return;
-            },
-            _ => {},
+            ExprKind::Ret(_) | ExprKind::Break(_, _) => Break(()),
+            _ => walk_expr(self, expr),
         }
-
-        walk_expr(self, expr);
     }
 }
 
@@ -91,7 +76,6 @@ struct VarCollectorVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     ids: HirIdSet,
     def_ids: DefIdMap<bool>,
-    skip: bool,
 }
 
 impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
@@ -116,11 +100,15 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
+    type BreakTy = ();
+    fn visit_expr(&mut self, ex: &'tcx Expr<'_>) -> ControlFlow<()> {
         match ex.kind {
-            ExprKind::Path(_) => self.insert_def_id(ex),
+            ExprKind::Path(_) => {
+                self.insert_def_id(ex);
+                Continue(())
+            },
             // If there is any function/method call… we just stop analysis
-            ExprKind::Call(..) | ExprKind::MethodCall(..) => self.skip = true,
+            ExprKind::Call(..) | ExprKind::MethodCall(..) => Break(()),
 
             _ => walk_expr(self, ex),
         }

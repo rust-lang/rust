@@ -15,6 +15,7 @@ use rustc_middle::{
     ty::{ParamEnv, TyCtxt, TypeVisitableExt, TypeckResults},
 };
 use std::mem::swap;
+use std::ops::ControlFlow::{self, Continue};
 
 /// Traverses the body to find the control flow graph and locations for the
 /// relevant places are dropped or reinitialized.
@@ -300,7 +301,7 @@ fn find_last_block_expression(block: &hir::Block<'_>) -> HirId {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> ControlFlow<!> {
         let mut reinit = None;
         match expr.kind {
             ExprKind::Assign(lhs, rhs, _) => {
@@ -369,7 +370,9 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
                         self.visit_pat(pat);
                         // B -> C and E -> F are added implicitly due to the traversal order.
                         match guard {
-                            Some(Guard::If(expr)) => self.visit_expr(expr),
+                            Some(Guard::If(expr)) => {
+                                self.visit_expr(expr);
+                            },
                             Some(Guard::IfLet(let_expr)) => {
                                 self.visit_let_expr(let_expr);
                             }
@@ -496,7 +499,9 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
             | ExprKind::Tup(..)
             | ExprKind::Type(..)
             | ExprKind::Unary(..)
-            | ExprKind::Yield(..) => intravisit::walk_expr(self, expr),
+            | ExprKind::Yield(..) => {
+                intravisit::walk_expr(self, expr);
+            },
         }
 
         self.expr_index = self.expr_index + 1;
@@ -505,9 +510,10 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
         if let Some(expr) = reinit {
             self.reinit_expr(expr);
         }
+        Continue(())
     }
 
-    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) -> ControlFlow<!> {
         intravisit::walk_pat(self, pat);
 
         // Increment expr_count here to match what InteriorVisitor expects.
@@ -515,6 +521,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
 
         // Save a node mapping to get better CFG visualization
         self.drop_ranges.add_node_mapping(pat.hir_id, self.expr_index);
+        Continue(())
     }
 }
 

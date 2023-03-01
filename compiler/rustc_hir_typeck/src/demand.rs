@@ -27,6 +27,7 @@ use super::method::probe;
 
 use std::cmp::min;
 use std::iter;
+use std::ops::ControlFlow;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn emit_type_mismatch_suggestions(
@@ -247,14 +248,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             uses: Vec<&'hir hir::Expr<'hir>>,
         }
         impl<'v> Visitor<'v> for FindExprs<'v> {
-            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) -> ControlFlow<!> {
                 if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = ex.kind
                     && let hir::def::Res::Local(hir_id) = path.res
                     && hir_id == self.hir_id
                 {
                     self.uses.push(ex);
                 }
-                hir::intravisit::walk_expr(self, ex);
+                hir::intravisit::walk_expr(self, ex)
             }
         }
 

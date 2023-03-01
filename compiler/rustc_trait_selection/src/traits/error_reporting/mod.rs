@@ -15,6 +15,7 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::query::normalize::QueryNormalizeExt as _;
 use crate::traits::specialize::to_pretty_impl_header;
 use crate::traits::NormalizeExt;
+use either::Either;
 use on_unimplemented::OnUnimplementedNote;
 use on_unimplemented::TypeErrCtxtExt as _;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -47,7 +48,7 @@ use rustc_span::symbol::sym;
 use rustc_span::{ExpnKind, Span, DUMMY_SP};
 use std::fmt;
 use std::iter;
-use std::ops::ControlFlow;
+use std::ops::ControlFlow::{self, Break, Continue};
 use suggestions::TypeErrCtxtExt as _;
 
 pub use rustc_infer::traits::error_reporting::*;
@@ -2378,12 +2379,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let (Some(body_id), Some(ty::subst::GenericArgKind::Type(_))) =
                     (body_id, subst.map(|subst| subst.unpack()))
                 {
-                    let mut expr_finder = FindExprBySpan::new(span);
-                    expr_finder.visit_expr(&self.tcx.hir().body(body_id).value);
+                    let mut expr_finder = FindExprBySpan { span };
 
-                    if let Some(hir::Expr {
+                    if let Break(Either::Left(hir::Expr {
                         kind: hir::ExprKind::Path(hir::QPath::Resolved(None, path)), .. }
-                    ) = expr_finder.result
+                    )) = expr_finder.visit_expr(&self.tcx.hir().body(body_id).value)
                         && let [
                             ..,
                             trait_path_segment @ hir::PathSegment {
@@ -2866,31 +2866,25 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 }
 
 /// Crude way of getting back an `Expr` from a `Span`.
-pub struct FindExprBySpan<'hir> {
+pub struct FindExprBySpan {
     pub span: Span,
-    pub result: Option<&'hir hir::Expr<'hir>>,
-    pub ty_result: Option<&'hir hir::Ty<'hir>>,
 }
 
-impl<'hir> FindExprBySpan<'hir> {
-    pub fn new(span: Span) -> Self {
-        Self { span, result: None, ty_result: None }
-    }
-}
+impl<'v> Visitor<'v> for FindExprBySpan {
+    type BreakTy = Either<&'v hir::Expr<'v>, &'v hir::Ty<'v>>;
 
-impl<'v> Visitor<'v> for FindExprBySpan<'v> {
-    fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+    fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) -> ControlFlow<Self::BreakTy> {
         if self.span == ex.span {
-            self.result = Some(ex);
+            Break(Either::Left(ex))
         } else {
-            hir::intravisit::walk_expr(self, ex);
+            hir::intravisit::walk_expr(self, ex)
         }
     }
-    fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+    fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) -> ControlFlow<Self::BreakTy> {
         if self.span == ty.span {
-            self.ty_result = Some(ty);
+            Break(Either::Right(ty))
         } else {
-            hir::intravisit::walk_ty(self, ty);
+            hir::intravisit::walk_ty(self, ty)
         }
     }
 }
@@ -2904,11 +2898,12 @@ struct FindTypeParam {
 }
 
 impl<'v> Visitor<'v> for FindTypeParam {
-    fn visit_where_predicate(&mut self, _: &'v hir::WherePredicate<'v>) {
+    fn visit_where_predicate(&mut self, _: &'v hir::WherePredicate<'v>) -> ControlFlow<!> {
         // Skip where-clauses, to avoid suggesting indirection for type parameters found there.
+        Continue(())
     }
 
-    fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
+    fn visit_ty(&mut self, ty: &hir::Ty<'_>) -> ControlFlow<!> {
         // We collect the spans of all uses of the "bare" type param, like in `field: T` or
         // `field: (T, T)` where we could make `T: ?Sized` while skipping cases that are known to be
         // valid like `field: &'a T` or `field: *mut T` and cases that *might* have further `Sized`
@@ -2935,6 +2930,7 @@ impl<'v> Visitor<'v> for FindTypeParam {
                 hir::intravisit::walk_ty(self, ty);
             }
         }
+        Continue(())
     }
 }
 

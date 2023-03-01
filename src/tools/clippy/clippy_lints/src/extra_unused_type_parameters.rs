@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::trait_ref_of_method;
+use core::ops::ControlFlow::{self, Continue};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
 use rustc_hir::intravisit::{walk_impl_item, walk_item, walk_param_bound, walk_ty, Visitor};
@@ -160,21 +161,22 @@ fn bound_to_trait_def_id(bound: &GenericBound<'_>) -> Option<LocalDefId> {
 impl<'cx, 'tcx> Visitor<'tcx> for TypeWalker<'cx, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_ty(&mut self, t: &'tcx Ty<'tcx>) {
+    fn visit_ty(&mut self, t: &'tcx Ty<'tcx>) -> ControlFlow<!> {
         if let Some((def_id, _)) = t.peel_refs().as_generic_param() {
             self.mark_param_used(def_id);
+            Continue(())
         } else if let TyKind::OpaqueDef(id, _, _) = t.kind {
             // Explicitly walk OpaqueDef. Normally `walk_ty` would do the job, but it calls
             // `visit_nested_item`, which checks that `Self::NestedFilter::INTER` is set. We're
             // using `OnlyBodies`, so the check ends up failing and the type isn't fully walked.
             let item = self.nested_visit_map().item(id);
-            walk_item(self, item);
+            walk_item(self, item)
         } else {
-            walk_ty(self, t);
+            walk_ty(self, t)
         }
     }
 
-    fn visit_where_predicate(&mut self, predicate: &'tcx WherePredicate<'tcx>) {
+    fn visit_where_predicate(&mut self, predicate: &'tcx WherePredicate<'tcx>) -> ControlFlow<!> {
         if let WherePredicate::BoundPredicate(predicate) = predicate {
             // Collect spans for any bounds on type parameters. We only keep bounds that appear in
             // the list of generics (not in a where-clause).
@@ -197,6 +199,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for TypeWalker<'cx, 'tcx> {
                 walk_param_bound(self, bound);
             }
         }
+        Continue(())
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {

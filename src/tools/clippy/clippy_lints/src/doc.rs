@@ -4,6 +4,7 @@ use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::source::{first_line_of_span, snippet_with_applicability};
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{is_entrypoint_fn, method_chain_args, return_ty};
+use core::ops::ControlFlow::{self, Break, Continue};
 use if_chain::if_chain;
 use itertools::Itertools;
 use pulldown_cmark::Event::{
@@ -303,10 +304,9 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                     let mut fpu = FindPanicUnwrap {
                         cx,
                         typeck_results: cx.tcx.typeck(item.owner_id.def_id),
-                        panic_span: None,
                     };
-                    fpu.visit_expr(body.value);
-                    lint_for_missing_headers(cx, item.owner_id, sig, headers, Some(body_id), fpu.panic_span);
+                    let panic_span = fpu.visit_expr(body.value).break_value();
+                    lint_for_missing_headers(cx, item.owner_id, sig, headers, Some(body_id), panic_span);
                 }
             },
             hir::ItemKind::Impl(impl_) => {
@@ -358,10 +358,9 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
             let mut fpu = FindPanicUnwrap {
                 cx,
                 typeck_results: cx.tcx.typeck(item.owner_id.def_id),
-                panic_span: None,
             };
-            fpu.visit_expr(body.value);
-            lint_for_missing_headers(cx, item.owner_id, sig, headers, Some(body_id), fpu.panic_span);
+            let panic_span = fpu.visit_expr(body.value).break_value();
+            lint_for_missing_headers(cx, item.owner_id, sig, headers, Some(body_id), panic_span);
         }
     }
 }
@@ -890,18 +889,14 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
 
 struct FindPanicUnwrap<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    panic_span: Option<Span>,
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
+    type BreakTy = Span;
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.panic_span.is_some() {
-            return;
-        }
-
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<Self::BreakTy> {
         if let Some(macro_call) = root_macro_call_first_node(self.cx, expr) {
             if is_panic(self.cx, macro_call.def_id)
                 || matches!(
@@ -909,7 +904,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
                     "assert" | "assert_eq" | "assert_ne" | "todo"
                 )
             {
-                self.panic_span = Some(macro_call.span);
+                return Break(macro_call.span);
             }
         }
 
@@ -919,16 +914,18 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
             if is_type_diagnostic_item(self.cx, receiver_ty, sym::Option)
                 || is_type_diagnostic_item(self.cx, receiver_ty, sym::Result)
             {
-                self.panic_span = Some(expr.span);
+                return Break(expr.span);
             }
         }
 
         // and check sub-expressions
-        intravisit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr)
     }
 
     // Panics in const blocks will cause compilation to fail.
-    fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}
+    fn visit_anon_const(&mut self, _: &'tcx AnonConst) -> ControlFlow<Self::BreakTy> {
+        Continue(())
+    }
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.cx.tcx.hir()

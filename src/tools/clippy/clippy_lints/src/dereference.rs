@@ -8,6 +8,7 @@ use clippy_utils::{
     fn_def_id, get_parent_expr, get_parent_expr_for_hir, is_lint_allowed, path_to_local, walk_to_expr_usage,
 };
 
+use core::ops::ControlFlow::{self, Break, Continue};
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph::iterate::{CycleDetector, TriColorDepthFirstSearch};
@@ -1059,32 +1060,32 @@ fn binding_ty_auto_deref_stability<'tcx>(
 // Checks whether a type is inferred at some point.
 // e.g. `_`, `Box<_>`, `[_]`
 fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
-    struct V(bool);
+    struct V;
     impl Visitor<'_> for V {
-        fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
-            if self.0
-                || matches!(
-                    ty.kind,
-                    TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(_) | TyKind::Err(_)
-                )
-            {
-                self.0 = true;
+        type BreakTy = ();
+        fn visit_ty(&mut self, ty: &hir::Ty<'_>) -> ControlFlow<()> {
+            if matches!(
+                ty.kind,
+                TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(_) | TyKind::Err(_)
+            ) {
+                Break(())
             } else {
-                walk_ty(self, ty);
+                walk_ty(self, ty)
             }
         }
 
-        fn visit_generic_arg(&mut self, arg: &GenericArg<'_>) {
-            if self.0 || matches!(arg, GenericArg::Infer(_)) {
-                self.0 = true;
+        fn visit_generic_arg(&mut self, arg: &GenericArg<'_>) -> ControlFlow<()> {
+            if matches!(arg, GenericArg::Infer(_)) {
+                Break(())
             } else if let GenericArg::Type(ty) = arg {
-                self.visit_ty(ty);
+                self.visit_ty(ty)
+            } else {
+                Continue(())
             }
         }
     }
-    let mut v = V(false);
-    v.visit_ty(ty);
-    v.0
+    let mut v = V;
+    v.visit_ty(ty).is_break()
 }
 
 fn call_is_qualified(expr: &Expr<'_>) -> bool {

@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::trait_ref_of_method;
+use core::ops::ControlFlow::{self, Break, Continue};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
@@ -373,11 +374,8 @@ fn could_use_elision<'tcx>(
             return None;
         }
 
-        let mut checker = BodyLifetimeChecker {
-            lifetimes_used_in_body: false,
-        };
-        checker.visit_expr(body.value);
-        if checker.lifetimes_used_in_body {
+        let mut checker = BodyLifetimeChecker;
+        if checker.visit_expr(body.value).is_break() {
             return None;
         }
     }
@@ -497,11 +495,12 @@ impl<'a, 'tcx> RefVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
     // for lifetimes as parameters of generics
-    fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) -> ControlFlow<!> {
         self.lts.push(*lifetime);
+        Continue(())
     }
 
-    fn visit_poly_trait_ref(&mut self, poly_tref: &'tcx PolyTraitRef<'tcx>) {
+    fn visit_poly_trait_ref(&mut self, poly_tref: &'tcx PolyTraitRef<'tcx>) -> ControlFlow<!> {
         let trait_ref = &poly_tref.trait_ref;
         if let Some(id) = trait_ref.trait_def_id() && lang_items::FN_TRAITS.iter().any(|&item| {
             self.cx.tcx.lang_items().get(item) == Some(id)
@@ -512,9 +511,10 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
         } else {
             walk_poly_trait_ref(self, poly_tref);
         }
+        Continue(())
     }
 
-    fn visit_ty(&mut self, ty: &'tcx Ty<'_>) {
+    fn visit_ty(&mut self, ty: &'tcx Ty<'_>) -> ControlFlow<!> {
         match ty.kind {
             TyKind::OpaqueDef(item, bounds, _) => {
                 let map = self.cx.tcx.hir();
@@ -540,8 +540,11 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                     self.visit_poly_trait_ref(bound);
                 }
             },
-            _ => walk_ty(self, ty),
+            _ => {
+                walk_ty(self, ty);
+            },
         }
+        Continue(())
     }
 }
 
@@ -611,11 +614,12 @@ where
     type NestedFilter = F;
 
     // for lifetimes as parameters of generics
-    fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) -> ControlFlow<!> {
         self.map.remove(&lifetime.ident.name);
+        Continue(())
     }
 
-    fn visit_generic_param(&mut self, param: &'tcx GenericParam<'_>) {
+    fn visit_generic_param(&mut self, param: &'tcx GenericParam<'_>) -> ControlFlow<!> {
         // don't actually visit `<'a>` or `<'a: 'b>`
         // we've already visited the `'a` declarations and
         // don't want to spuriously remove them
@@ -624,6 +628,7 @@ where
         if let GenericParamKind::Type { .. } = param.kind {
             walk_generic_param(self, param);
         }
+        Continue(())
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {
@@ -685,15 +690,16 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
     }
 }
 
-struct BodyLifetimeChecker {
-    lifetimes_used_in_body: bool,
-}
+struct BodyLifetimeChecker;
 
 impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
+    type BreakTy = ();
     // for lifetimes as parameters of generics
-    fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) -> ControlFlow<()> {
         if !lifetime.is_anonymous() && lifetime.ident.name != kw::StaticLifetime {
-            self.lifetimes_used_in_body = true;
+            Break(())
+        } else {
+            Continue(())
         }
     }
 }

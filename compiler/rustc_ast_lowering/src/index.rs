@@ -10,6 +10,7 @@ use rustc_middle::span_bug;
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, DUMMY_SP};
+use std::ops::ControlFlow::{self, Continue};
 
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
@@ -110,39 +111,44 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     /// deep walking so that we walk nested items in the context of
     /// their outer items.
 
-    fn visit_nested_item(&mut self, item: ItemId) {
+    fn visit_nested_item(&mut self, item: ItemId) -> ControlFlow<!> {
         debug!("visit_nested_item: {:?}", item);
         self.insert_nested(item.owner_id.def_id);
+        Continue(())
     }
 
-    fn visit_nested_trait_item(&mut self, item_id: TraitItemId) {
+    fn visit_nested_trait_item(&mut self, item_id: TraitItemId) -> ControlFlow<!> {
         self.insert_nested(item_id.owner_id.def_id);
+        Continue(())
     }
 
-    fn visit_nested_impl_item(&mut self, item_id: ImplItemId) {
+    fn visit_nested_impl_item(&mut self, item_id: ImplItemId) -> ControlFlow<!> {
         self.insert_nested(item_id.owner_id.def_id);
+        Continue(())
     }
 
-    fn visit_nested_foreign_item(&mut self, foreign_id: ForeignItemId) {
+    fn visit_nested_foreign_item(&mut self, foreign_id: ForeignItemId) -> ControlFlow<!> {
         self.insert_nested(foreign_id.owner_id.def_id);
+        Continue(())
     }
 
-    fn visit_nested_body(&mut self, id: BodyId) {
+    fn visit_nested_body(&mut self, id: BodyId) -> ControlFlow<!> {
         debug_assert_eq!(id.hir_id.owner, self.owner);
         let body = self.bodies[&id.hir_id.local_id];
-        self.visit_body(body);
+        self.visit_body(body)
     }
 
-    fn visit_param(&mut self, param: &'hir Param<'hir>) {
+    fn visit_param(&mut self, param: &'hir Param<'hir>) -> ControlFlow<!> {
         let node = Node::Param(param);
         self.insert(param.pat.span, param.hir_id, node);
         self.with_parent(param.hir_id, |this| {
             intravisit::walk_param(this, param);
         });
+        Continue(())
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn visit_item(&mut self, i: &'hir Item<'hir>) {
+    fn visit_item(&mut self, i: &'hir Item<'hir>) -> ControlFlow<!> {
         debug_assert_eq!(i.owner_id, self.owner);
         self.with_parent(i.hir_id(), |this| {
             if let ItemKind::Struct(struct_def, _) = &i.kind {
@@ -153,59 +159,66 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
             }
             intravisit::walk_item(this, i);
         });
+        Continue(())
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn visit_foreign_item(&mut self, fi: &'hir ForeignItem<'hir>) {
+    fn visit_foreign_item(&mut self, fi: &'hir ForeignItem<'hir>) -> ControlFlow<!> {
         debug_assert_eq!(fi.owner_id, self.owner);
         self.with_parent(fi.hir_id(), |this| {
             intravisit::walk_foreign_item(this, fi);
         });
+        Continue(())
     }
 
-    fn visit_generic_param(&mut self, param: &'hir GenericParam<'hir>) {
+    fn visit_generic_param(&mut self, param: &'hir GenericParam<'hir>) -> ControlFlow<!> {
         self.insert(param.span, param.hir_id, Node::GenericParam(param));
-        intravisit::walk_generic_param(self, param);
+        intravisit::walk_generic_param(self, param)
     }
 
-    fn visit_const_param_default(&mut self, param: HirId, ct: &'hir AnonConst) {
+    fn visit_const_param_default(&mut self, param: HirId, ct: &'hir AnonConst) -> ControlFlow<!> {
         self.with_parent(param, |this| {
             intravisit::walk_const_param_default(this, ct);
-        })
+        });
+        Continue(())
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn visit_trait_item(&mut self, ti: &'hir TraitItem<'hir>) {
+    fn visit_trait_item(&mut self, ti: &'hir TraitItem<'hir>) -> ControlFlow<!> {
         debug_assert_eq!(ti.owner_id, self.owner);
         self.with_parent(ti.hir_id(), |this| {
             intravisit::walk_trait_item(this, ti);
         });
+        Continue(())
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn visit_impl_item(&mut self, ii: &'hir ImplItem<'hir>) {
+    fn visit_impl_item(&mut self, ii: &'hir ImplItem<'hir>) -> ControlFlow<!> {
         debug_assert_eq!(ii.owner_id, self.owner);
         self.with_parent(ii.hir_id(), |this| {
             intravisit::walk_impl_item(this, ii);
         });
+        Continue(())
     }
 
-    fn visit_pat(&mut self, pat: &'hir Pat<'hir>) {
+    fn visit_pat(&mut self, pat: &'hir Pat<'hir>) -> ControlFlow<!> {
         self.insert(pat.span, pat.hir_id, Node::Pat(pat));
 
         self.with_parent(pat.hir_id, |this| {
             intravisit::walk_pat(this, pat);
         });
+        Continue(())
     }
 
-    fn visit_pat_field(&mut self, field: &'hir PatField<'hir>) {
+    fn visit_pat_field(&mut self, field: &'hir PatField<'hir>) -> ControlFlow<!> {
         self.insert(field.span, field.hir_id, Node::PatField(field));
         self.with_parent(field.hir_id, |this| {
             intravisit::walk_pat_field(this, field);
         });
+        Continue(())
     }
 
-    fn visit_arm(&mut self, arm: &'hir Arm<'hir>) {
+    fn visit_arm(&mut self, arm: &'hir Arm<'hir>) -> ControlFlow<!> {
         let node = Node::Arm(arm);
 
         self.insert(arm.span, arm.hir_id, node);
@@ -213,87 +226,98 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.with_parent(arm.hir_id, |this| {
             intravisit::walk_arm(this, arm);
         });
+        Continue(())
     }
 
-    fn visit_anon_const(&mut self, constant: &'hir AnonConst) {
+    fn visit_anon_const(&mut self, constant: &'hir AnonConst) -> ControlFlow<!> {
         self.insert(DUMMY_SP, constant.hir_id, Node::AnonConst(constant));
 
         self.with_parent(constant.hir_id, |this| {
             intravisit::walk_anon_const(this, constant);
         });
+        Continue(())
     }
 
-    fn visit_expr(&mut self, expr: &'hir Expr<'hir>) {
+    fn visit_expr(&mut self, expr: &'hir Expr<'hir>) -> ControlFlow<!> {
         self.insert(expr.span, expr.hir_id, Node::Expr(expr));
 
         self.with_parent(expr.hir_id, |this| {
             intravisit::walk_expr(this, expr);
         });
+        Continue(())
     }
 
-    fn visit_expr_field(&mut self, field: &'hir ExprField<'hir>) {
+    fn visit_expr_field(&mut self, field: &'hir ExprField<'hir>) -> ControlFlow<!> {
         self.insert(field.span, field.hir_id, Node::ExprField(field));
         self.with_parent(field.hir_id, |this| {
             intravisit::walk_expr_field(this, field);
         });
+        Continue(())
     }
 
-    fn visit_stmt(&mut self, stmt: &'hir Stmt<'hir>) {
+    fn visit_stmt(&mut self, stmt: &'hir Stmt<'hir>) -> ControlFlow<!> {
         self.insert(stmt.span, stmt.hir_id, Node::Stmt(stmt));
 
         self.with_parent(stmt.hir_id, |this| {
             intravisit::walk_stmt(this, stmt);
         });
+        Continue(())
     }
 
-    fn visit_path_segment(&mut self, path_segment: &'hir PathSegment<'hir>) {
+    fn visit_path_segment(&mut self, path_segment: &'hir PathSegment<'hir>) -> ControlFlow<!> {
         self.insert(path_segment.ident.span, path_segment.hir_id, Node::PathSegment(path_segment));
-        intravisit::walk_path_segment(self, path_segment);
+        intravisit::walk_path_segment(self, path_segment)
     }
 
-    fn visit_ty(&mut self, ty: &'hir Ty<'hir>) {
+    fn visit_ty(&mut self, ty: &'hir Ty<'hir>) -> ControlFlow<!> {
         self.insert(ty.span, ty.hir_id, Node::Ty(ty));
 
         self.with_parent(ty.hir_id, |this| {
             intravisit::walk_ty(this, ty);
         });
+        Continue(())
     }
 
-    fn visit_infer(&mut self, inf: &'hir InferArg) {
+    fn visit_infer(&mut self, inf: &'hir InferArg) -> ControlFlow<!> {
         self.insert(inf.span, inf.hir_id, Node::Infer(inf));
 
         self.with_parent(inf.hir_id, |this| {
             intravisit::walk_inf(this, inf);
         });
+        Continue(())
     }
 
-    fn visit_trait_ref(&mut self, tr: &'hir TraitRef<'hir>) {
+    fn visit_trait_ref(&mut self, tr: &'hir TraitRef<'hir>) -> ControlFlow<!> {
         self.insert(tr.path.span, tr.hir_ref_id, Node::TraitRef(tr));
 
         self.with_parent(tr.hir_ref_id, |this| {
             intravisit::walk_trait_ref(this, tr);
         });
+        Continue(())
     }
 
-    fn visit_block(&mut self, block: &'hir Block<'hir>) {
+    fn visit_block(&mut self, block: &'hir Block<'hir>) -> ControlFlow<!> {
         self.insert(block.span, block.hir_id, Node::Block(block));
         self.with_parent(block.hir_id, |this| {
             intravisit::walk_block(this, block);
         });
+        Continue(())
     }
 
-    fn visit_local(&mut self, l: &'hir Local<'hir>) {
+    fn visit_local(&mut self, l: &'hir Local<'hir>) -> ControlFlow<!> {
         self.insert(l.span, l.hir_id, Node::Local(l));
         self.with_parent(l.hir_id, |this| {
             intravisit::walk_local(this, l);
-        })
+        });
+        Continue(())
     }
 
-    fn visit_lifetime(&mut self, lifetime: &'hir Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &'hir Lifetime) -> ControlFlow<!> {
         self.insert(lifetime.ident.span, lifetime.hir_id, Node::Lifetime(lifetime));
+        Continue(())
     }
 
-    fn visit_variant(&mut self, v: &'hir Variant<'hir>) {
+    fn visit_variant(&mut self, v: &'hir Variant<'hir>) -> ControlFlow<!> {
         self.insert(v.span, v.hir_id, Node::Variant(v));
         self.with_parent(v.hir_id, |this| {
             // Register the constructor of this variant.
@@ -302,43 +326,49 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
             }
             intravisit::walk_variant(this, v);
         });
+        Continue(())
     }
 
-    fn visit_field_def(&mut self, field: &'hir FieldDef<'hir>) {
+    fn visit_field_def(&mut self, field: &'hir FieldDef<'hir>) -> ControlFlow<!> {
         self.insert(field.span, field.hir_id, Node::Field(field));
         self.with_parent(field.hir_id, |this| {
             intravisit::walk_field_def(this, field);
         });
+        Continue(())
     }
 
-    fn visit_assoc_type_binding(&mut self, type_binding: &'hir TypeBinding<'hir>) {
+    fn visit_assoc_type_binding(
+        &mut self,
+        type_binding: &'hir TypeBinding<'hir>,
+    ) -> ControlFlow<!> {
         self.insert(type_binding.span, type_binding.hir_id, Node::TypeBinding(type_binding));
         self.with_parent(type_binding.hir_id, |this| {
-            intravisit::walk_assoc_type_binding(this, type_binding)
-        })
+            intravisit::walk_assoc_type_binding(this, type_binding);
+        });
+        Continue(())
     }
 
-    fn visit_trait_item_ref(&mut self, ii: &'hir TraitItemRef) {
+    fn visit_trait_item_ref(&mut self, ii: &'hir TraitItemRef) -> ControlFlow<!> {
         // Do not visit the duplicate information in TraitItemRef. We want to
         // map the actual nodes, not the duplicate ones in the *Ref.
         let TraitItemRef { id, ident: _, kind: _, span: _ } = *ii;
 
-        self.visit_nested_trait_item(id);
+        self.visit_nested_trait_item(id)
     }
 
-    fn visit_impl_item_ref(&mut self, ii: &'hir ImplItemRef) {
+    fn visit_impl_item_ref(&mut self, ii: &'hir ImplItemRef) -> ControlFlow<!> {
         // Do not visit the duplicate information in ImplItemRef. We want to
         // map the actual nodes, not the duplicate ones in the *Ref.
         let ImplItemRef { id, ident: _, kind: _, span: _, trait_item_def_id: _ } = *ii;
 
-        self.visit_nested_impl_item(id);
+        self.visit_nested_impl_item(id)
     }
 
-    fn visit_foreign_item_ref(&mut self, fi: &'hir ForeignItemRef) {
+    fn visit_foreign_item_ref(&mut self, fi: &'hir ForeignItemRef) -> ControlFlow<!> {
         // Do not visit the duplicate information in ForeignItemRef. We want to
         // map the actual nodes, not the duplicate ones in the *Ref.
         let ForeignItemRef { id, ident: _, span: _ } = *fi;
 
-        self.visit_nested_foreign_item(id);
+        self.visit_nested_foreign_item(id)
     }
 }

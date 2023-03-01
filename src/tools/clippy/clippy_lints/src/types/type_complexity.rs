@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
+use core::ops::ControlFlow::{self, Continue};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_inf, walk_ty, Visitor};
 use rustc_hir::{GenericParamKind, TyKind};
@@ -36,12 +37,12 @@ struct TypeComplexityVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
-    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
+    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) -> ControlFlow<!> {
         self.score += 1;
-        walk_inf(self, inf);
+        walk_inf(self, inf)
     }
 
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) -> ControlFlow<!> {
         let (add_score, sub_nest) = match ty.kind {
             // _, &x and *x have only small overhead; don't mess with nesting level
             TyKind::Infer | TyKind::Ptr(..) | TyKind::Ref(..) => (1, 0),
@@ -74,5 +75,6 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
         self.nest += sub_nest;
         walk_ty(self, ty);
         self.nest -= sub_nest;
+        Continue(())
     }
 }

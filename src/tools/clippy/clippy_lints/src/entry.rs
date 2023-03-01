@@ -7,6 +7,7 @@ use clippy_utils::{
     SpanlessEq,
 };
 use core::fmt::{self, Write};
+use core::ops::ControlFlow::{self, Break, Continue};
 use rustc_errors::Applicability;
 use rustc_hir::{
     hir_id::HirIdSet,
@@ -316,8 +317,6 @@ struct InsertSearcher<'cx, 'tcx> {
     ctxt: SyntaxContext,
     /// Whether this expression can be safely moved into a closure.
     allow_insert_closure: bool,
-    /// Whether this expression can use the entry api.
-    can_use_entry: bool,
     /// Whether this expression is the final expression in this code path. This may be a statement.
     in_tail_pos: bool,
     // Is this expression a single insert. A slightly better suggestion can be made in this case.
@@ -335,30 +334,33 @@ impl<'tcx> InsertSearcher<'_, 'tcx> {
     /// Visit the expression as a branch in control flow. Multiple insert calls can be used, but
     /// only if they are on separate code paths. This will return whether the map was used in the
     /// given expression.
-    fn visit_cond_arm(&mut self, e: &'tcx Expr<'_>) -> bool {
+    fn visit_cond_arm(&mut self, e: &'tcx Expr<'_>) -> ControlFlow<(), bool> {
         let is_map_used = self.is_map_used;
         let in_tail_pos = self.in_tail_pos;
-        self.visit_expr(e);
+        self.visit_expr(e)?;
         let res = self.is_map_used;
         self.is_map_used = is_map_used;
         self.in_tail_pos = in_tail_pos;
-        res
+        Continue(res)
     }
 
     /// Visits an expression which is not itself in a tail position, but other sibling expressions
     /// may be. e.g. if conditions
-    fn visit_non_tail_expr(&mut self, e: &'tcx Expr<'_>) {
+    fn visit_non_tail_expr(&mut self, e: &'tcx Expr<'_>) -> ControlFlow<()> {
         let in_tail_pos = self.in_tail_pos;
         self.in_tail_pos = false;
-        self.visit_expr(e);
+        self.visit_expr(e)?;
         self.in_tail_pos = in_tail_pos;
+        Continue(())
     }
 }
 impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
-    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
+    type BreakTy = ();
+
+    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) -> ControlFlow<()> {
         match stmt.kind {
             StmtKind::Semi(e) => {
-                self.visit_expr(e);
+                self.visit_expr(e)?;
 
                 if self.in_tail_pos && self.allow_insert_closure {
                     // The spans are used to slice the top level expression into multiple parts. This requires that
@@ -371,14 +373,14 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                     }
                 }
             },
-            StmtKind::Expr(e) => self.visit_expr(e),
+            StmtKind::Expr(e) => self.visit_expr(e)?,
             StmtKind::Local(l) => {
-                self.visit_pat(l.pat);
+                self.visit_pat(l.pat)?;
                 if let Some(e) = l.init {
                     self.allow_insert_closure &= !self.in_tail_pos;
                     self.in_tail_pos = false;
                     self.is_single_insert = false;
-                    self.visit_expr(e);
+                    self.visit_expr(e)?;
                 }
             },
             StmtKind::Item(_) => {
@@ -386,42 +388,40 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                 self.is_single_insert = false;
             },
         }
+        Continue(())
     }
 
-    fn visit_block(&mut self, block: &'tcx Block<'_>) {
+    fn visit_block(&mut self, block: &'tcx Block<'_>) -> ControlFlow<()> {
         // If the block is in a tail position, then the last expression (possibly a statement) is in the
         // tail position. The rest, however, are not.
         match (block.stmts, block.expr) {
             ([], None) => {
                 self.allow_insert_closure &= !self.in_tail_pos;
             },
-            ([], Some(expr)) => self.visit_expr(expr),
+            ([], Some(expr)) => self.visit_expr(expr)?,
             (stmts, Some(expr)) => {
                 let in_tail_pos = self.in_tail_pos;
                 self.in_tail_pos = false;
                 for stmt in stmts {
-                    self.visit_stmt(stmt);
+                    self.visit_stmt(stmt)?;
                 }
                 self.in_tail_pos = in_tail_pos;
-                self.visit_expr(expr);
+                self.visit_expr(expr)?;
             },
             ([stmts @ .., stmt], None) => {
                 let in_tail_pos = self.in_tail_pos;
                 self.in_tail_pos = false;
                 for stmt in stmts {
-                    self.visit_stmt(stmt);
+                    self.visit_stmt(stmt)?;
                 }
                 self.in_tail_pos = in_tail_pos;
-                self.visit_stmt(stmt);
+                self.visit_stmt(stmt)?;
             },
         }
+        Continue(())
     }
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if !self.can_use_entry {
-            return;
-        }
-
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<()> {
         match try_parse_insert(self.cx, expr) {
             Some(insert_expr) if SpanlessEq::new(self.cx).eq_expr(self.map, insert_expr.map) => {
                 // Multiple inserts, inserts with a different key, and inserts from a macro can't use the entry api.
@@ -429,8 +429,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                     || !SpanlessEq::new(self.cx).eq_expr(self.key, insert_expr.key)
                     || expr.span.ctxt() != self.ctxt
                 {
-                    self.can_use_entry = false;
-                    return;
+                    return Break(());
                 }
 
                 self.edits.push(Edit::Insertion(Insertion {
@@ -442,7 +441,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
 
                 // The value doesn't affect whether there is only a single insert expression.
                 let is_single_insert = self.is_single_insert;
-                self.visit_non_tail_expr(insert_expr.value);
+                self.visit_non_tail_expr(insert_expr.value)?;
                 self.is_single_insert = is_single_insert;
             },
             _ if SpanlessEq::new(self.cx).eq_expr(self.map, expr) => {
@@ -451,23 +450,23 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
             _ => match expr.kind {
                 ExprKind::If(cond_expr, then_expr, Some(else_expr)) => {
                     self.is_single_insert = false;
-                    self.visit_non_tail_expr(cond_expr);
+                    self.visit_non_tail_expr(cond_expr)?;
                     // Each branch may contain it's own insert expression.
-                    let mut is_map_used = self.visit_cond_arm(then_expr);
-                    is_map_used |= self.visit_cond_arm(else_expr);
+                    let mut is_map_used = self.visit_cond_arm(then_expr)?;
+                    is_map_used |= self.visit_cond_arm(else_expr)?;
                     self.is_map_used = is_map_used;
                 },
                 ExprKind::Match(scrutinee_expr, arms, _) => {
                     self.is_single_insert = false;
-                    self.visit_non_tail_expr(scrutinee_expr);
+                    self.visit_non_tail_expr(scrutinee_expr)?;
                     // Each branch may contain it's own insert expression.
                     let mut is_map_used = self.is_map_used;
                     for arm in arms {
-                        self.visit_pat(arm.pat);
+                        self.visit_pat(arm.pat)?;
                         if let Some(Guard::If(guard) | Guard::IfLet(&Let { init: guard, .. })) = arm.guard {
-                            self.visit_non_tail_expr(guard);
+                            self.visit_non_tail_expr(guard)?;
                         }
-                        is_map_used |= self.visit_cond_arm(arm.body);
+                        is_map_used |= self.visit_cond_arm(arm.body)?;
                     }
                     self.is_map_used = is_map_used;
                 },
@@ -477,16 +476,14 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                     self.allow_insert_closure &= !self.in_tail_pos;
                     // Don't allow insertions inside of a loop.
                     let edit_len = self.edits.len();
-                    self.visit_block(block);
+                    self.visit_block(block)?;
                     if self.edits.len() != edit_len {
-                        self.can_use_entry = false;
+                        return Break(());
                     }
                     self.loops.pop();
                 },
-                ExprKind::Block(block, _) => self.visit_block(block),
-                ExprKind::InlineAsm(_) => {
-                    self.can_use_entry = false;
-                },
+                ExprKind::Block(block, _) => self.visit_block(block)?,
+                ExprKind::InlineAsm(_) => return Break(()),
                 _ => {
                     self.allow_insert_closure &= !self.in_tail_pos;
                     self.allow_insert_closure &=
@@ -494,16 +491,18 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                     // Sub expressions are no longer in the tail position.
                     self.is_single_insert = false;
                     self.in_tail_pos = false;
-                    walk_expr(self, expr);
+                    walk_expr(self, expr)?;
                 },
             },
         }
+        Continue(())
     }
 
-    fn visit_pat(&mut self, p: &'tcx Pat<'tcx>) {
+    fn visit_pat(&mut self, p: &'tcx Pat<'tcx>) -> ControlFlow<()> {
         p.each_binding_or_first(&mut |_, id, _, _| {
             self.locals.insert(id);
         });
+        Continue(())
     }
 }
 
@@ -626,19 +625,15 @@ fn find_insert_calls<'tcx>(
         edits: Vec::new(),
         is_map_used: false,
         allow_insert_closure: true,
-        can_use_entry: true,
         in_tail_pos: true,
         is_single_insert: true,
         loops: Vec::new(),
         locals: HirIdSet::default(),
     };
-    s.visit_expr(expr);
-    let allow_insert_closure = s.allow_insert_closure;
-    let is_single_insert = s.is_single_insert;
-    let edits = s.edits;
-    s.can_use_entry.then_some(InsertSearchResults {
-        edits,
-        allow_insert_closure,
-        is_single_insert,
+    let can_use_entry = s.visit_expr(expr).is_continue();
+    can_use_entry.then_some(InsertSearchResults {
+        edits: s.edits,
+        allow_insert_closure: s.allow_insert_closure,
+        is_single_insert: s.is_single_insert,
     })
 }

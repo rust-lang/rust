@@ -1,6 +1,7 @@
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{get_parent_expr, path_to_local_id, usage};
+use core::ops::ControlFlow::{self, Continue};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
@@ -130,14 +131,14 @@ impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
         self.cx.tcx.hir()
     }
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> ControlFlow<!> {
         walk_expr(self, expr);
         if self.is_binding(expr) {
             if let Some(parent) = get_parent_expr(self.cx, expr) {
                 match parent.kind {
                     ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, _) => {
                         self.addr_of_exprs.push(parent);
-                        return;
+                        return Continue(());
                     },
                     ExprKind::MethodCall(.., args, _) => {
                         if_chain! {
@@ -147,7 +148,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
                             let self_ty = method_ty.fn_sig(self.cx.tcx).input(0).skip_binder();
                             if matches!(self_ty.kind(), ty::Ref(_, _, Mutability::Not));
                             then {
-                                return;
+                                return Continue(());
                             }
                         }
                     },
@@ -156,6 +157,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
             }
             self.clone_or_copy_needed = true;
         }
+        Continue(())
     }
 }
 

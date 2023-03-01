@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::method_chain_args;
 use clippy_utils::ty::is_type_diagnostic_item;
+use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -75,7 +76,7 @@ fn lint_impl_body(cx: &LateContext<'_>, impl_span: Span, impl_items: &[hir::Impl
     }
 
     impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
-        fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+        fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<!> {
             if let Some(macro_call) = root_macro_call_first_node(self.lcx, expr) {
                 if is_panic(self.lcx, macro_call.def_id) {
                     self.result.push(expr.span);
@@ -93,7 +94,7 @@ fn lint_impl_body(cx: &LateContext<'_>, impl_span: Span, impl_items: &[hir::Impl
             }
 
             // and check sub-expressions
-            intravisit::walk_expr(self, expr);
+            intravisit::walk_expr(self, expr)
         }
     }
 

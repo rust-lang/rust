@@ -37,6 +37,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
+use std::ops::ControlFlow;
 
 #[macro_use]
 mod pass_manager;
@@ -226,7 +227,7 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
         set: &'a mut FxIndexSet<LocalDefId>,
     }
     impl<'tcx> Visitor<'tcx> for GatherCtors<'_> {
-        fn visit_variant_data(&mut self, v: &'tcx hir::VariantData<'tcx>) {
+        fn visit_variant_data(&mut self, v: &'tcx hir::VariantData<'tcx>) -> ControlFlow<!> {
             if let hir::VariantData::Tuple(_, _, def_id) = *v {
                 self.set.insert(def_id);
             }

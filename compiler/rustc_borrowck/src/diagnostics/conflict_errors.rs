@@ -24,6 +24,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
+use std::ops::ControlFlow::{self, Break, Continue};
 
 use crate::borrow_set::TwoPhaseActivation;
 use crate::borrowck_errors;
@@ -317,58 +318,72 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         in_pattern: &mut bool,
         move_spans: UseSpans<'_>,
     ) {
-        struct ExpressionFinder<'hir> {
+        struct ExpressionFinder {
             expr_span: Span,
-            expr: Option<&'hir hir::Expr<'hir>>,
-            pat: Option<&'hir hir::Pat<'hir>>,
-            parent_pat: Option<&'hir hir::Pat<'hir>>,
         }
-        impl<'hir> Visitor<'hir> for ExpressionFinder<'hir> {
-            fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
+        impl<'hir> Visitor<'hir> for ExpressionFinder {
+            type BreakTy =
+                Either<&'hir hir::Expr<'hir>, (&'hir hir::Pat<'hir>, Option<&'hir hir::Pat<'hir>>)>;
+
+            fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) -> ControlFlow<Self::BreakTy> {
                 if e.span == self.expr_span {
-                    self.expr = Some(e);
+                    return Break(Either::Left(e));
                 }
-                hir::intravisit::walk_expr(self, e);
+                hir::intravisit::walk_expr(self, e)
             }
-            fn visit_pat(&mut self, p: &'hir hir::Pat<'hir>) {
+            fn visit_pat(&mut self, p: &'hir hir::Pat<'hir>) -> ControlFlow<Self::BreakTy> {
                 if p.span == self.expr_span {
-                    self.pat = Some(p);
+                    return Break(Either::Right((p, None)));
                 }
                 if let hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, i, sub) = p.kind {
-                    if i.span == self.expr_span || p.span == self.expr_span {
-                        self.pat = Some(p);
+                    if i.span == self.expr_span {
+                        return Break(Either::Right((p, None)));
                     }
                     // Check if we are in a situation of `ident @ ident` where we want to suggest
                     // `ref ident @ ref ident` or `ref ident @ Struct { ref ident }`.
-                    if let Some(subpat) = sub && self.pat.is_none() {
-                        self.visit_pat(subpat);
-                        if self.pat.is_some() {
-                            self.parent_pat = Some(p);
-                        }
-                        return;
+                    if let Some(subpat) = sub {
+                        return match self.visit_pat(subpat) {
+                            Break(Either::Right((found, _))) => {
+                                Break(Either::Right((found, Some(p))))
+                            }
+                            res => res,
+                        };
                     }
                 }
-                hir::intravisit::walk_pat(self, p);
+                hir::intravisit::walk_pat(self, p)
             }
         }
         let hir = self.infcx.tcx.hir();
-        if let Some(hir::Node::Item(hir::Item {
+        let Some(hir::Node::Item(hir::Item {
             kind: hir::ItemKind::Fn(_, _, body_id),
             ..
-        })) = hir.find(self.mir_hir_id())
-            && let Some(hir::Node::Expr(expr)) = hir.find(body_id.hir_id)
-        {
-            let place = &self.move_data.move_paths[mpi].place;
-            let span = place.as_local()
-                .map(|local| self.body.local_decls[local].source_info.span);
-            let mut finder = ExpressionFinder {
-                expr_span: move_span,
-                expr: None,
-                pat: None,
-                parent_pat: None,
-            };
-            finder.visit_expr(expr);
-            if let Some(span) = span && let Some(expr) = finder.expr {
+        })) = hir.find(self.mir_hir_id()) else {
+            return;
+        };
+        let Some(hir::Node::Expr(expr)) = hir.find(body_id.hir_id) else {
+            return;
+        };
+        let place = &self.move_data.move_paths[mpi].place;
+        let span = place.as_local().map(|local| self.body.local_decls[local].source_info.span);
+        let mut finder = ExpressionFinder { expr_span: move_span };
+        match finder.visit_expr(expr) {
+            Continue(()) => {}
+            Break(Either::Right((pat, parent))) => {
+                *in_pattern = true;
+                let mut sugg = vec![(pat.span.shrink_to_lo(), "ref ".to_string())];
+                if let Some(pat) = parent {
+                    sugg.insert(0, (pat.span.shrink_to_lo(), "ref ".to_string()));
+                }
+                err.multipart_suggestion_verbose(
+                    "borrow this binding in the pattern to avoid moving the value",
+                    sugg,
+                    Applicability::MachineApplicable,
+                );
+            }
+            Break(Either::Left(expr)) => {
+                let Some(span) = span else {
+                    return;
+                };
                 for (_, expr) in hir.parent_iter(expr.hir_id) {
                     if let hir::Node::Expr(expr) = expr {
                         if expr.span.contains(span) {
@@ -453,18 +468,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         self.suggest_cloning(err, ty, move_span);
                     }
                 }
-            }
-            if let Some(pat) = finder.pat {
-                *in_pattern = true;
-                let mut sugg = vec![(pat.span.shrink_to_lo(), "ref ".to_string())];
-                if let Some(pat) = finder.parent_pat {
-                    sugg.insert(0, (pat.span.shrink_to_lo(), "ref ".to_string()));
-                }
-                err.multipart_suggestion_verbose(
-                    "borrow this binding in the pattern to avoid moving the value",
-                    sugg,
-                    Applicability::MachineApplicable,
-                );
             }
         }
     }
@@ -592,26 +595,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if show_assign_sugg {
             struct LetVisitor {
                 decl_span: Span,
-                sugg_span: Option<Span>,
             }
 
             impl<'v> Visitor<'v> for LetVisitor {
-                fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
-                    if self.sugg_span.is_some() {
-                        return;
-                    }
+                type BreakTy = Span;
+
+                fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) -> ControlFlow<Self::BreakTy> {
                     if let hir::StmtKind::Local(hir::Local {
                             span, ty, init: None, ..
                         }) = &ex.kind && span.contains(self.decl_span) {
-                            self.sugg_span = ty.map_or(Some(self.decl_span), |ty| Some(ty.span));
+                            return Break(ty.map_or(self.decl_span, |ty| ty.span));
                     }
-                    hir::intravisit::walk_stmt(self, ex);
+                    hir::intravisit::walk_stmt(self, ex)
                 }
             }
 
-            let mut visitor = LetVisitor { decl_span, sugg_span: None };
-            visitor.visit_body(&body);
-            if let Some(span) = visitor.sugg_span {
+            let mut visitor = LetVisitor { decl_span };
+            if let Break(span) = visitor.visit_body(&body) {
                 self.suggest_assign_value(&mut err, moved_place, span);
             }
         }
@@ -1264,7 +1264,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             closure_call_changes: Vec<(Span, String)>,
         }
         impl<'hir> Visitor<'hir> for ExpressionFinder<'hir> {
-            fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
+            fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) -> ControlFlow<!> {
                 if e.span.contains(self.capture_span) {
                     if let hir::ExprKind::Closure(&hir::Closure {
                             movability: None,
@@ -1290,10 +1290,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             self.closure_change_spans.push(e.span);
                     }
                 }
-                hir::intravisit::walk_expr(self, e);
+                hir::intravisit::walk_expr(self, e)
             }
 
-            fn visit_local(&mut self, local: &'hir hir::Local<'hir>) {
+            fn visit_local(&mut self, local: &'hir hir::Local<'hir>) -> ControlFlow<!> {
                 if let hir::Pat { kind: hir::PatKind::Binding(_, hir_id, _ident, _), .. } = local.pat &&
                     let Some(init) = local.init
                 {
@@ -1305,10 +1305,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             self.closure_local_id = Some(*hir_id);
                     }
                 }
-                hir::intravisit::walk_local(self, local);
+                hir::intravisit::walk_local(self, local)
             }
 
-            fn visit_stmt(&mut self, s: &'hir hir::Stmt<'hir>) {
+            fn visit_stmt(&mut self, s: &'hir hir::Stmt<'hir>) -> ControlFlow<!> {
                 if let hir::StmtKind::Semi(e) = s.kind &&
                     let hir::ExprKind::Call(hir::Expr { kind: hir::ExprKind::Path(path), ..}, args) = e.kind &&
                     let hir::QPath::Resolved(_, hir::Path { segments: [seg], ..}) = path &&
@@ -1322,7 +1322,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         };
                         self.closure_call_changes.push((span, arg_str));
                 }
-                hir::intravisit::walk_stmt(self, s);
+                hir::intravisit::walk_stmt(self, s)
             }
         }
 
@@ -1863,20 +1863,22 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 struct NestedStatementVisitor {
                     span: Span,
                     current: usize,
-                    found: usize,
                 }
 
                 impl<'tcx> Visitor<'tcx> for NestedStatementVisitor {
-                    fn visit_block(&mut self, block: &hir::Block<'tcx>) {
+                    type BreakTy = ();
+
+                    fn visit_block(&mut self, block: &hir::Block<'tcx>) -> ControlFlow<()> {
                         self.current += 1;
-                        walk_block(self, block);
+                        walk_block(self, block)?;
                         self.current -= 1;
+                        Continue(())
                     }
-                    fn visit_expr(&mut self, expr: &hir::Expr<'tcx>) {
-                        if self.span == expr.span {
-                            self.found = self.current;
+                    fn visit_expr(&mut self, expr: &hir::Expr<'tcx>) -> ControlFlow<()> {
+                        if self.span == expr.span && self.current != 0 {
+                            return Break(());
                         }
-                        walk_expr(self, expr);
+                        walk_expr(self, expr)
                     }
                 }
                 let source_info = self.body.source_info(location);
@@ -1890,10 +1892,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let mut visitor = NestedStatementVisitor {
                             span: proper_span,
                             current: 0,
-                            found: 0,
                         };
-                        visitor.visit_stmt(stmt);
-                        if visitor.found == 0
+                        if visitor.visit_stmt(stmt).is_continue()
                             && stmt.span.contains(proper_span)
                             && let Some(p) = sm.span_to_margin(stmt.span)
                             && let Ok(s) = sm.span_to_snippet(proper_span)
@@ -2986,15 +2986,14 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
 }
 
 /// Detect whether one of the provided spans is a statement nested within the top-most visited expr
-struct ReferencedStatementsVisitor<'a>(&'a [Span], bool);
+struct ReferencedStatementsVisitor<'a>(&'a [Span]);
 
 impl<'a, 'v> Visitor<'v> for ReferencedStatementsVisitor<'a> {
-    fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) {
+    type BreakTy = ();
+    fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) -> ControlFlow<()> {
         match s.kind {
-            hir::StmtKind::Semi(expr) if self.0.contains(&expr.span) => {
-                self.1 = true;
-            }
-            _ => {}
+            hir::StmtKind::Semi(expr) if self.0.contains(&expr.span) => Break(()),
+            _ => Continue(()),
         }
     }
 }
@@ -3008,14 +3007,13 @@ struct ConditionVisitor<'b> {
 }
 
 impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
-    fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+    fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) -> ControlFlow<!> {
         match ex.kind {
             hir::ExprKind::If(cond, body, None) => {
                 // `if` expressions with no `else` that initialize the binding might be missing an
                 // `else` arm.
-                let mut v = ReferencedStatementsVisitor(self.spans, false);
-                v.visit_expr(body);
-                if v.1 {
+                let mut v = ReferencedStatementsVisitor(self.spans);
+                if v.visit_expr(body).is_break() {
                     self.errors.push((
                         cond.span,
                         format!(
@@ -3032,11 +3030,9 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
             hir::ExprKind::If(cond, body, Some(other)) => {
                 // `if` expressions where the binding is only initialized in one of the two arms
                 // might be missing a binding initialization.
-                let mut a = ReferencedStatementsVisitor(self.spans, false);
-                a.visit_expr(body);
-                let mut b = ReferencedStatementsVisitor(self.spans, false);
-                b.visit_expr(other);
-                match (a.1, b.1) {
+                let mut a = ReferencedStatementsVisitor(self.spans);
+                let mut b = ReferencedStatementsVisitor(self.spans);
+                match (a.visit_expr(body).is_break(), b.visit_expr(other).is_break()) {
                     (true, true) | (false, false) => {}
                     (true, false) => {
                         if other.span.is_desugaring(DesugaringKind::WhileLoop) {
@@ -3076,9 +3072,8 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                 let results: Vec<bool> = arms
                     .iter()
                     .map(|arm| {
-                        let mut v = ReferencedStatementsVisitor(self.spans, false);
-                        v.visit_arm(arm);
-                        v.1
+                        let mut v = ReferencedStatementsVisitor(self.spans);
+                        v.visit_arm(arm).is_break()
                     })
                     .collect();
                 if results.iter().any(|x| *x) && !results.iter().all(|x| *x) {
@@ -3120,6 +3115,6 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
             // *some* context.
             _ => {}
         }
-        walk_expr(self, ex);
+        walk_expr(self, ex)
     }
 }

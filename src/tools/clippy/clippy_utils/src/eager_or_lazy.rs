@@ -18,7 +18,10 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::{self, PredicateKind};
 use rustc_span::{sym, Symbol};
 use std::cmp;
-use std::ops;
+use std::ops::{
+    self,
+    ControlFlow::{self, Break, Continue},
+};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum EagernessSuggestion {
@@ -109,11 +112,9 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
     }
 
     impl<'cx, 'tcx> Visitor<'tcx> for V<'cx, 'tcx> {
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            use EagernessSuggestion::{ForceNoChange, Lazy, NoChange};
-            if self.eagerness == ForceNoChange {
-                return;
-            }
+        type BreakTy = ();
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> ControlFlow<()> {
+            use EagernessSuggestion::{Lazy, NoChange};
             match e.kind {
                 ExprKind::Call(
                     &Expr {
@@ -125,15 +126,14 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 ) => match self.cx.qpath_res(path, hir_id) {
                     res @ (Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_)) => {
                         if res_has_significant_drop(res, self.cx, e) {
-                            self.eagerness = ForceNoChange;
-                            return;
+                            return Break(());
                         }
                     },
                     Res::Def(_, id) if self.cx.tcx.is_promotable_const_fn(id) => (),
                     // No need to walk the arguments here, `is_const_evaluatable` already did
                     Res::Def(..) if is_const_evaluatable(self.cx, e) => {
                         self.eagerness |= NoChange;
-                        return;
+                        return Continue(());
                     },
                     Res::Def(_, id) => match path {
                         QPath::Resolved(_, p) => {
@@ -150,12 +150,11 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 // No need to walk the arguments here, `is_const_evaluatable` already did
                 ExprKind::MethodCall(..) if is_const_evaluatable(self.cx, e) => {
                     self.eagerness |= NoChange;
-                    return;
+                    return Continue(());
                 },
                 ExprKind::Path(ref path) => {
                     if res_has_significant_drop(self.cx.qpath_res(path, e.hir_id), self.cx, e) {
-                        self.eagerness = ForceNoChange;
-                        return;
+                        return Break(());
                     }
                 },
                 ExprKind::MethodCall(name, ..) => {
@@ -193,10 +192,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 | ExprKind::Ret(_)
                 | ExprKind::InlineAsm(_)
                 | ExprKind::Yield(..)
-                | ExprKind::Err(_) => {
-                    self.eagerness = ForceNoChange;
-                    return;
-                },
+                | ExprKind::Err(_) => return Break(()),
 
                 // Memory allocation, custom operator, loop, or call to an unknown function
                 ExprKind::Box(_)
@@ -227,7 +223,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 // TODO: Actually check if either of these are true here.
                 ExprKind::Assign(..) | ExprKind::AssignOp(..) | ExprKind::Block(..) => self.eagerness |= NoChange,
             }
-            walk_expr(self, e);
+            walk_expr(self, e)
         }
     }
 
@@ -235,8 +231,10 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
         cx,
         eagerness: EagernessSuggestion::Eager,
     };
-    v.visit_expr(e);
-    v.eagerness
+    match v.visit_expr(e) {
+        Continue(()) => v.eagerness,
+        Break(()) => EagernessSuggestion::ForceNoChange,
+    }
 }
 
 /// Whether the given expression should be changed to evaluate eagerly

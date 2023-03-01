@@ -10,6 +10,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
+use std::ops::ControlFlow::{self, Break, Continue};
 
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     use rustc_hir::*;
@@ -34,14 +35,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             let mut in_param_ty = false;
             for (_parent, node) in tcx.hir().parent_iter(hir_id) {
                 if let Some(generics) = node.generics() {
-                    let mut visitor = AnonConstInParamTyDetector {
-                        in_param_ty: false,
-                        found_anon_const_in_param_ty: false,
-                        ct: hir_id,
-                    };
+                    let mut visitor = AnonConstInParamTyDetector { in_param_ty: false, ct: hir_id };
 
-                    visitor.visit_generics(generics);
-                    in_param_ty = visitor.found_anon_const_in_param_ty;
+                    in_param_ty = visitor.visit_generics(generics).is_break();
                     break;
                 }
             }
@@ -362,50 +358,49 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
     struct LateBoundRegionsDetector<'tcx> {
         tcx: TyCtxt<'tcx>,
         outer_index: ty::DebruijnIndex,
-        has_late_bound_regions: Option<Span>,
     }
 
     impl<'tcx> Visitor<'tcx> for LateBoundRegionsDetector<'tcx> {
-        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-            if self.has_late_bound_regions.is_some() {
-                return;
-            }
+        type BreakTy = Span;
+
+        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             match ty.kind {
                 hir::TyKind::BareFn(..) => {
                     self.outer_index.shift_in(1);
-                    intravisit::walk_ty(self, ty);
+                    intravisit::walk_ty(self, ty)?;
                     self.outer_index.shift_out(1);
                 }
-                _ => intravisit::walk_ty(self, ty),
+                _ => intravisit::walk_ty(self, ty)?,
             }
+            Continue(())
         }
 
-        fn visit_poly_trait_ref(&mut self, tr: &'tcx hir::PolyTraitRef<'tcx>) {
-            if self.has_late_bound_regions.is_some() {
-                return;
-            }
+        fn visit_poly_trait_ref(
+            &mut self,
+            tr: &'tcx hir::PolyTraitRef<'tcx>,
+        ) -> ControlFlow<Self::BreakTy> {
             self.outer_index.shift_in(1);
-            intravisit::walk_poly_trait_ref(self, tr);
+            intravisit::walk_poly_trait_ref(self, tr)?;
             self.outer_index.shift_out(1);
+            Continue(())
         }
 
-        fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
-            if self.has_late_bound_regions.is_some() {
-                return;
-            }
-
+        fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) -> ControlFlow<Self::BreakTy> {
             match self.tcx.named_bound_var(lt.hir_id) {
-                Some(rbv::ResolvedArg::StaticLifetime | rbv::ResolvedArg::EarlyBound(..)) => {}
+                Some(rbv::ResolvedArg::StaticLifetime | rbv::ResolvedArg::EarlyBound(..)) => {
+                    Continue(())
+                }
                 Some(rbv::ResolvedArg::LateBound(debruijn, _, _))
-                    if debruijn < self.outer_index => {}
+                    if debruijn < self.outer_index =>
+                {
+                    Continue(())
+                }
                 Some(
                     rbv::ResolvedArg::LateBound(..)
                     | rbv::ResolvedArg::Free(..)
                     | rbv::ResolvedArg::Error(_),
                 )
-                | None => {
-                    self.has_late_bound_regions = Some(lt.ident.span);
-                }
+                | None => Break(lt.ident.span),
             }
         }
     }
@@ -415,11 +410,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
         generics: &'tcx hir::Generics<'tcx>,
         decl: &'tcx hir::FnDecl<'tcx>,
     ) -> Option<Span> {
-        let mut visitor = LateBoundRegionsDetector {
-            tcx,
-            outer_index: ty::INNERMOST,
-            has_late_bound_regions: None,
-        };
+        let mut visitor = LateBoundRegionsDetector { tcx, outer_index: ty::INNERMOST };
         for param in generics.params {
             if let GenericParamKind::Lifetime { .. } = param.kind {
                 if tcx.is_late_bound(param.hir_id) {
@@ -427,8 +418,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
                 }
             }
         }
-        visitor.visit_fn_decl(decl);
-        visitor.has_late_bound_regions
+        visitor.visit_fn_decl(decl).break_value()
     }
 
     match node {
@@ -458,23 +448,25 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
 struct AnonConstInParamTyDetector {
     in_param_ty: bool,
-    found_anon_const_in_param_ty: bool,
     ct: HirId,
 }
 
 impl<'v> Visitor<'v> for AnonConstInParamTyDetector {
-    fn visit_generic_param(&mut self, p: &'v hir::GenericParam<'v>) {
+    type BreakTy = ();
+
+    fn visit_generic_param(&mut self, p: &'v hir::GenericParam<'v>) -> ControlFlow<()> {
         if let GenericParamKind::Const { ty, default: _ } = p.kind {
             let prev = self.in_param_ty;
             self.in_param_ty = true;
-            self.visit_ty(ty);
+            self.visit_ty(ty)?;
             self.in_param_ty = prev;
         }
+        Continue(())
     }
 
-    fn visit_anon_const(&mut self, c: &'v hir::AnonConst) {
+    fn visit_anon_const(&mut self, c: &'v hir::AnonConst) -> ControlFlow<()> {
         if self.in_param_ty && self.ct == c.hir_id {
-            self.found_anon_const_in_param_ty = true;
+            Break(())
         } else {
             intravisit::walk_anon_const(self, c)
         }

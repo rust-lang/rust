@@ -26,6 +26,7 @@ use rustc_session::lint::builtin::{
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::{BytePos, Span};
+use std::ops::ControlFlow::{self, Continue};
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match def_id.as_local() {
@@ -66,7 +67,7 @@ struct MatchVisitor<'a, 'p, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
-    fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         intravisit::walk_expr(self, ex);
         match &ex.kind {
             hir::ExprKind::Match(scrut, arms, source) => {
@@ -77,9 +78,10 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
             }
             _ => {}
         }
+        Continue(())
     }
 
-    fn visit_local(&mut self, loc: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, loc: &'tcx hir::Local<'tcx>) -> ControlFlow<!> {
         intravisit::walk_local(self, loc);
         let els = loc.els;
         if let Some(init) = loc.init && els.is_some() {
@@ -98,11 +100,13 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
         if els.is_none() {
             self.check_irrefutable(&loc.pat, msg, sp);
         }
+        Continue(())
     }
 
-    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) -> ControlFlow<!> {
         intravisit::walk_param(self, param);
         self.check_irrefutable(&param.pat, "function argument", None);
+        Continue(())
     }
 }
 

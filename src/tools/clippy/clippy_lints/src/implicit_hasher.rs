@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::ops::ControlFlow::{self, Continue};
 
 use rustc_errors::Diagnostic;
 use rustc_hir as hir;
@@ -292,20 +293,20 @@ impl<'a, 'tcx> ImplicitHasherTypeVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ImplicitHasherTypeVisitor<'a, 'tcx> {
-    fn visit_ty(&mut self, t: &'tcx hir::Ty<'_>) {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'_>) -> ControlFlow<!> {
         if let Some(target) = ImplicitHasherType::new(self.cx, t) {
             self.found.push(target);
         }
 
-        walk_ty(self, t);
+        walk_ty(self, t)
     }
 
-    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
+    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) -> ControlFlow<!> {
         if let Some(target) = ImplicitHasherType::new(self.cx, &inf.to_ty()) {
             self.found.push(target);
         }
 
-        walk_inf(self, inf);
+        walk_inf(self, inf)
     }
 }
 
@@ -331,13 +332,14 @@ impl<'a, 'b, 'tcx> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
 impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_body(&mut self, body: &'tcx Body<'_>) {
+    fn visit_body(&mut self, body: &'tcx Body<'_>) -> ControlFlow<!> {
         let old_maybe_typeck_results = self.maybe_typeck_results.replace(self.cx.tcx.typeck_body(body.id()));
         walk_body(self, body);
         self.maybe_typeck_results = old_maybe_typeck_results;
+        Continue(())
     }
 
-    fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> ControlFlow<!> {
         if_chain! {
             if let ExprKind::Call(fun, args) = e.kind;
             if let ExprKind::Path(QPath::TypeRelative(ty, method)) = fun.kind;
@@ -345,7 +347,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
             if let Some(ty_did) = ty_path.res.opt_def_id();
             then {
                 if self.target.ty() != self.maybe_typeck_results.unwrap().expr_ty(e) {
-                    return;
+                    return Continue(());
                 }
 
                 if self.cx.tcx.is_diagnostic_item(sym::HashMap, ty_did) {
@@ -378,7 +380,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
             }
         }
 
-        walk_expr(self, e);
+        walk_expr(self, e)
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {

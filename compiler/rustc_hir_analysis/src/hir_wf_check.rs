@@ -8,6 +8,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Region, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_span::def_id::LocalDefId;
 use rustc_trait_selection::traits;
+use std::ops::ControlFlow::{self, Continue};
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers { diagnostic_hir_wf_check, ..*providers };
@@ -64,7 +65,7 @@ fn diagnostic_hir_wf_check<'tcx>(
     }
 
     impl<'tcx> Visitor<'tcx> for HirWfCheck<'tcx> {
-        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
+        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) -> ControlFlow<!> {
             let infcx = self.tcx.infer_ctxt().build();
             let tcx_ty = self.icx.to_ty(ty).fold_with(&mut EraseAllBoundRegions { tcx: self.tcx });
             let cause = traits::ObligationCause::new(
@@ -98,6 +99,7 @@ fn diagnostic_hir_wf_check<'tcx>(
             self.depth += 1;
             intravisit::walk_ty(self, ty);
             self.depth -= 1;
+            Continue(())
         }
     }
 

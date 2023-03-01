@@ -12,6 +12,8 @@ use rustc_session::Session;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::Span;
 
+use std::ops::ControlFlow::{self, Continue};
+
 use crate::errors::{
     BreakInsideAsyncBlock, BreakInsideClosure, BreakNonLoop, ContinueLabeledBlock, OutsideLoop,
     UnlabeledCfInWhileCondition, UnlabeledInLabeledBlock,
@@ -52,11 +54,12 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
         self.hir_map
     }
 
-    fn visit_anon_const(&mut self, c: &'hir hir::AnonConst) {
+    fn visit_anon_const(&mut self, c: &'hir hir::AnonConst) -> ControlFlow<!> {
         self.with_context(AnonConst, |v| intravisit::walk_anon_const(v, c));
+        Continue(())
     }
 
-    fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
+    fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) -> ControlFlow<!> {
         match e.kind {
             hir::ExprKind::Loop(ref b, _, source, _) => {
                 self.with_context(Loop(source), |v| v.visit_block(&b));
@@ -73,7 +76,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 } else {
                     Closure(fn_decl_span)
                 };
-                self.visit_fn_decl(&fn_decl);
+                self.visit_fn_decl(&fn_decl)?;
                 self.with_context(cx, |v| v.visit_nested_body(body));
             }
             hir::ExprKind::Block(ref b, Some(_label)) => {
@@ -81,13 +84,13 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             }
             hir::ExprKind::Break(break_label, ref opt_expr) => {
                 if let Some(e) = opt_expr {
-                    self.visit_expr(e);
+                    self.visit_expr(e)?;
                 }
 
                 if self.require_label_in_labeled_block(e.span, &break_label, "break") {
                     // If we emitted an error about an unlabeled break in a labeled
                     // block, we don't need any further checking for this break any more
-                    return;
+                    return Continue(());
                 }
 
                 let loop_id = match break_label.target_id {
@@ -104,7 +107,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 };
 
                 if let Some(Node::Block(_)) = loop_id.and_then(|id| self.hir_map.find(id)) {
-                    return;
+                    return Continue(());
                 }
 
                 if let Some(break_expr) = opt_expr {
@@ -167,15 +170,16 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 }
                 self.require_break_cx("continue", e.span)
             }
-            _ => intravisit::walk_expr(self, e),
+            _ => intravisit::walk_expr(self, e)?,
         }
+        Continue(())
     }
 }
 
 impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
     fn with_context<F>(&mut self, cx: Context, f: F)
     where
-        F: FnOnce(&mut CheckLoopVisitor<'a, 'hir>),
+        F: FnOnce(&mut CheckLoopVisitor<'a, 'hir>) -> ControlFlow<!>,
     {
         let old_cx = self.cx;
         self.cx = cx;

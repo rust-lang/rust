@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{path_to_local, usage::is_potentially_mutated};
+use core::ops::ControlFlow::{self, Continue};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
@@ -218,10 +219,10 @@ impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<!> {
         // Shouldn't lint when `expr` is in macro.
         if in_external_macro(self.cx.tcx.sess, expr.span) {
-            return;
+            return Continue(());
         }
         if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr) {
             walk_expr(self, cond);
@@ -296,6 +297,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
             }
             walk_expr(self, expr);
         }
+        Continue(())
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {

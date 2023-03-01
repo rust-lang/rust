@@ -1,6 +1,6 @@
 use crate as utils;
 use crate::visitors::{for_each_expr, for_each_expr_with_closures, Descend};
-use core::ops::ControlFlow;
+use core::ops::ControlFlow::{self, Break, Continue};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirIdSet;
@@ -95,44 +95,42 @@ impl<'tcx> ParamBindingIdCollector {
     }
 }
 impl<'tcx> intravisit::Visitor<'tcx> for ParamBindingIdCollector {
-    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) -> ControlFlow<!> {
         if let hir::PatKind::Binding(_, hir_id, ..) = pat.kind {
             self.binding_hir_ids.push(hir_id);
         }
-        intravisit::walk_pat(self, pat);
+        intravisit::walk_pat(self, pat)
     }
 }
 
 pub struct BindingUsageFinder<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     binding_ids: Vec<hir::HirId>,
-    usage_found: bool,
 }
 impl<'a, 'tcx> BindingUsageFinder<'a, 'tcx> {
     pub fn are_params_used(cx: &'a LateContext<'tcx>, body: &'tcx hir::Body<'tcx>) -> bool {
         let mut finder = BindingUsageFinder {
             cx,
             binding_ids: ParamBindingIdCollector::collect_binding_hir_ids(body),
-            usage_found: false,
         };
-        finder.visit_body(body);
-        finder.usage_found
+        finder.visit_body(body).is_break()
     }
 }
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
+    type BreakTy = ();
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if !self.usage_found {
-            intravisit::walk_expr(self, expr);
-        }
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<()> {
+        intravisit::walk_expr(self, expr)
     }
 
-    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
-        if let hir::def::Res::Local(id) = path.res {
-            if self.binding_ids.contains(&id) {
-                self.usage_found = true;
-            }
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) -> ControlFlow<()> {
+        if let hir::def::Res::Local(id) = path.res
+            && self.binding_ids.contains(&id)
+        {
+            Break(())
+        } else {
+            Continue(())
         }
     }
 

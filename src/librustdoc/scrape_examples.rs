@@ -28,6 +28,7 @@ use rustc_span::{
 };
 
 use std::fs;
+use std::ops::ControlFlow::{self, Continue};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -136,7 +137,7 @@ where
         self.map
     }
 
-    fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         intravisit::walk_expr(self, ex);
 
         let tcx = self.tcx;
@@ -146,7 +147,7 @@ where
         // test/run-make/rustdoc-scrape-examples-invalid-expr for an example.
         let hir = tcx.hir();
         if hir.maybe_body_owned_by(ex.hir_id.owner.def_id).is_none() {
-            return;
+            return Continue(());
         }
 
         // Get type of function if expression is a function call
@@ -158,21 +159,21 @@ where
                     (ty, ex.span, f.span)
                 } else {
                     trace!("node_type_opt({}) = None", f.hir_id);
-                    return;
+                    return Continue(());
                 }
             }
             hir::ExprKind::MethodCall(path, _, _, call_span) => {
                 let types = tcx.typeck(ex.hir_id.owner.def_id);
                 let Some(def_id) = types.type_dependent_def_id(ex.hir_id) else {
                     trace!("type_dependent_def_id({}) = None", ex.hir_id);
-                    return;
+                    return Continue(());
                 };
 
                 let ident_span = path.ident.span;
                 (tcx.type_of(def_id).subst_identity(), call_span, ident_span)
             }
             _ => {
-                return;
+                return Continue(());
             }
         };
 
@@ -180,7 +181,7 @@ where
         // a use of the given item, so it would be a poor example. Hence, we skip all uses in macros.
         if call_span.from_expansion() {
             trace!("Rejecting expr from macro: {call_span:?}");
-            return;
+            return Continue(());
         }
 
         // If the enclosing item has a span coming from a proc macro, then we also don't want to include
@@ -189,7 +190,7 @@ where
             tcx.hir().span_with_body(tcx.hir().get_parent_item(ex.hir_id).into());
         if enclosing_item_span.from_expansion() {
             trace!("Rejecting expr ({call_span:?}) from macro item: {enclosing_item_span:?}");
-            return;
+            return Continue(());
         }
 
         // If the enclosing item doesn't actually enclose the call, this means we probably have a weird
@@ -198,7 +199,7 @@ where
             warn!(
                 "Attempted to scrape call at [{call_span:?}] whose enclosing item [{enclosing_item_span:?}] doesn't contain the span of the call."
             );
-            return;
+            return Continue(());
         }
 
         // Similarly for the call w/ the function ident.
@@ -206,14 +207,14 @@ where
             warn!(
                 "Attempted to scrape call at [{call_span:?}] whose identifier [{ident_span:?}] was not contained in the span of the call."
             );
-            return;
+            return Continue(());
         }
 
         // Save call site if the function resolves to a concrete definition
         if let ty::FnDef(def_id, _) = ty.kind() {
             if self.target_crates.iter().all(|krate| *krate != def_id.krate) {
                 trace!("Rejecting expr from crate not being documented: {call_span:?}");
-                return;
+                return Continue(());
             }
 
             let source_map = tcx.sess.source_map();
@@ -228,7 +229,7 @@ where
                     Ok(abs_path) => abs_path,
                     Err(_) => {
                         trace!("Could not canonicalize file path: {}", file_path.display());
-                        return;
+                        return Continue(());
                     }
                 };
 
@@ -240,7 +241,7 @@ where
                         trace!(
                             "Rejecting expr ({call_span:?}) whose clean span ({clean_span:?}) cannot be turned into a link"
                         );
-                        return;
+                        return Continue(());
                     }
                 };
 
@@ -263,12 +264,13 @@ where
                         Some(location) => location,
                         None => {
                             trace!("Could not get serializable call location for {call_span:?}");
-                            return;
+                            return Continue(());
                         }
                     };
                 fn_entries.entry(abs_path).or_insert_with(mk_call_data).locations.push(location);
             }
         }
+        Continue(())
     }
 }
 

@@ -557,7 +557,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for TraitObjectVisitor {
 pub struct HirTraitObjectVisitor<'a>(pub &'a mut Vec<Span>, pub DefId);
 
 impl<'a, 'tcx> Visitor<'tcx> for HirTraitObjectVisitor<'a> {
-    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) -> ControlFlow<!> {
         if let TyKind::TraitObject(
             poly_trait_refs,
             Lifetime { res: LifetimeName::ImplicitObjectLifetimeDefault, .. },
@@ -570,6 +570,6 @@ impl<'a, 'tcx> Visitor<'tcx> for HirTraitObjectVisitor<'a> {
                 }
             }
         }
-        walk_ty(self, t);
+        walk_ty(self, t)
     }
 }

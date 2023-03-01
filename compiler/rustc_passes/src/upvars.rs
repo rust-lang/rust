@@ -8,6 +8,7 @@ use rustc_hir::{self, HirId};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
+use std::ops::ControlFlow;
 
 pub fn provide(providers: &mut Providers) {
     providers.upvars_mentioned = |tcx, def_id| {
@@ -43,11 +44,11 @@ struct LocalCollector {
 }
 
 impl<'tcx> Visitor<'tcx> for LocalCollector {
-    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) -> ControlFlow<!> {
         if let hir::PatKind::Binding(_, hir_id, ..) = pat.kind {
             self.locals.insert(hir_id);
         }
-        intravisit::walk_pat(self, pat);
+        intravisit::walk_pat(self, pat)
     }
 }
 
@@ -66,15 +67,15 @@ impl CaptureCollector<'_, '_> {
 }
 
 impl<'tcx> Visitor<'tcx> for CaptureCollector<'_, 'tcx> {
-    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) -> ControlFlow<!> {
         if let Res::Local(var_id) = path.res {
             self.visit_local_use(var_id, path.span);
         }
 
-        intravisit::walk_path(self, path);
+        intravisit::walk_path(self, path)
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         if let hir::ExprKind::Closure(closure) = expr.kind {
             if let Some(upvars) = self.tcx.upvars_mentioned(closure.def_id) {
                 // Every capture of a closure expression is a local in scope,
@@ -91,6 +92,6 @@ impl<'tcx> Visitor<'tcx> for CaptureCollector<'_, 'tcx> {
             }
         }
 
-        intravisit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr)
     }
 }

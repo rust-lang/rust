@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
+use core::ops::ControlFlow::{self, Break};
 use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, YieldSource};
 use rustc_lint::{LateContext, LateLintPass};
@@ -41,17 +42,18 @@ declare_lint_pass!(UnusedAsync => [UNUSED_ASYNC]);
 
 struct AsyncFnVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    found_await: bool,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for AsyncFnVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
+    type BreakTy = ();
 
-    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
+    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) -> ControlFlow<()> {
         if let ExprKind::Yield(_, YieldSource::Await { .. }) = ex.kind {
-            self.found_await = true;
+            Break(())
+        } else {
+            walk_expr(self, ex)
         }
-        walk_expr(self, ex);
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {
@@ -70,9 +72,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
         def_id: LocalDefId,
     ) {
         if !span.from_expansion() && fn_kind.asyncness().is_async() {
-            let mut visitor = AsyncFnVisitor { cx, found_await: false };
-            walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), def_id);
-            if !visitor.found_await {
+            let mut visitor = AsyncFnVisitor { cx };
+            if walk_fn(&mut visitor, fn_kind, fn_decl, body.id(), def_id).is_continue() {
                 span_lint_and_help(
                     cx,
                     UNUSED_ASYNC,

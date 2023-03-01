@@ -2,6 +2,7 @@ use crate::FxHashSet;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{indent_of, snippet};
 use clippy_utils::{get_attr, is_lint_allowed};
+use core::ops::ControlFlow::{self, Continue};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
@@ -279,14 +280,14 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
-    fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, ex: &'tcx Expr<'_>) -> ControlFlow<!> {
         if !self.is_chain_end
             && self
                 .sig_drop_checker
                 .has_sig_drop_attr(self.cx, self.sig_drop_checker.get_type(ex))
         {
             self.has_significant_drop = true;
-            return;
+            return Continue(());
         }
         self.is_chain_end = false;
 
@@ -331,7 +332,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
             ExprKind::Index(..) |
             ExprKind::Ret(..) |
             ExprKind::Repeat(..) |
-            ExprKind::Yield(..) => walk_expr(self, ex),
+            ExprKind::Yield(..) => {walk_expr(self, ex);},
             ExprKind::AddrOf(_, _, _) |
             ExprKind::Block(_, _) |
             ExprKind::Break(_, _) |
@@ -349,7 +350,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
             ExprKind::Path(_) |
             ExprKind::Struct(_, _, _) |
             ExprKind::Type(_, _) => {
-                return;
+                return Continue(());
             }
         }
 
@@ -360,6 +361,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
         if self.has_significant_drop && !self.special_handling_for_binary_op {
             self.try_setting_current_suggestion(ex, false);
         }
+        Continue(())
     }
 }
 
@@ -386,14 +388,15 @@ fn has_significant_drop_in_arms<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ArmSigDropHelper<'a, 'tcx> {
-    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
+    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) -> ControlFlow<!> {
         if self
             .sig_drop_checker
             .has_sig_drop_attr(self.sig_drop_checker.cx, self.sig_drop_checker.get_type(ex))
         {
             self.found_sig_drop_spans.insert(ex.span);
-            return;
+            Continue(())
+        } else {
+            walk_expr(self, ex)
         }
-        walk_expr(self, ex);
     }
 }

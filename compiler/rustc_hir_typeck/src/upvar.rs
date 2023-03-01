@@ -53,6 +53,7 @@ use rustc_index::vec::Idx;
 use rustc_target::abi::VariantIdx;
 
 use std::iter;
+use std::ops::ControlFlow;
 
 /// Describe the relationship between the paths of two places
 /// eg:
@@ -138,7 +139,7 @@ struct InferBorrowKindVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         match expr.kind {
             hir::ExprKind::Closure(&hir::Closure { capture_clause, body: body_id, .. }) => {
                 let body = self.fcx.tcx.hir().body(body_id);
@@ -152,7 +153,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
             _ => {}
         }
 
-        intravisit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr)
     }
 }
 

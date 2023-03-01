@@ -11,6 +11,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{BytePos, ExpnKind, Span};
 
+use std::ops::ControlFlow::{self, Continue};
 use std::path::{Path, PathBuf};
 
 /// This enum allows us to store two different kinds of information:
@@ -140,15 +141,15 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_path(&mut self, path: &rustc_hir::Path<'tcx>, _id: HirId) {
+    fn visit_path(&mut self, path: &rustc_hir::Path<'tcx>, _id: HirId) -> ControlFlow<!> {
         if self.handle_macro(path.span) {
-            return;
+            return Continue(());
         }
         self.handle_path(path);
-        intravisit::walk_path(self, path);
+        intravisit::walk_path(self, path)
     }
 
-    fn visit_mod(&mut self, m: &'tcx Mod<'tcx>, span: Span, id: HirId) {
+    fn visit_mod(&mut self, m: &'tcx Mod<'tcx>, span: Span, id: HirId) -> ControlFlow<!> {
         // To make the difference between "mod foo {}" and "mod foo;". In case we "import" another
         // file, we want to link to it. Otherwise no need to create a link.
         if !span.overlaps(m.spans.inner_span) {
@@ -161,10 +162,10 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
                 );
             }
         }
-        intravisit::walk_mod(self, m, id);
+        intravisit::walk_mod(self, m, id)
     }
 
-    fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) -> ControlFlow<!> {
         if let ExprKind::MethodCall(segment, ..) = expr.kind {
             let hir = self.tcx.hir();
             let body_id = hir.enclosing_body_owner(segment.hir_id);
@@ -186,8 +187,8 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             }
         } else if self.handle_macro(expr.span) {
             // We don't want to go deeper into the macro.
-            return;
+            return Continue(());
         }
-        intravisit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr)
     }
 }

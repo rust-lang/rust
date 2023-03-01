@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::higher;
+use core::ops::ControlFlow::{self, Continue};
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -46,9 +47,9 @@ pub struct MutVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) -> ControlFlow<!> {
         if in_external_macro(self.cx.sess(), expr.span) {
-            return;
+            return Continue(());
         }
 
         if let Some(higher::ForLoop { arg, body, .. }) = higher::ForLoop::hir(expr) {
@@ -79,11 +80,12 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
                 }
             }
         }
+        Continue(())
     }
 
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) -> ControlFlow<!> {
         if in_external_macro(self.cx.sess(), ty.span) {
-            return;
+            return Continue(());
         }
 
         if let hir::TyKind::Ref(
@@ -111,6 +113,6 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             }
         }
 
-        intravisit::walk_ty(self, ty);
+        intravisit::walk_ty(self, ty)
     }
 }

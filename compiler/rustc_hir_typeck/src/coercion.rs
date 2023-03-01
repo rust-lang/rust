@@ -67,6 +67,7 @@ use rustc_trait_selection::traits::{
 };
 
 use smallvec::{smallvec, SmallVec};
+use std::ops::ControlFlow;
 use std::ops::Deref;
 
 struct Coerce<'a, 'tcx> {
@@ -96,11 +97,11 @@ struct CollectRetsVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CollectRetsVisitor<'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> ControlFlow<!> {
         if let hir::ExprKind::Ret(_) = expr.kind {
             self.ret_exprs.push(expr);
         }
-        intravisit::walk_expr(self, expr);
+        intravisit::walk_expr(self, expr)
     }
 }
 

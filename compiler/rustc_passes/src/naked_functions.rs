@@ -13,6 +13,8 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
+use std::ops::ControlFlow::{self, Continue};
+
 use crate::errors::{
     CannotInlineNakedFunction, NakedFunctionsAsmBlock, NakedFunctionsAsmOptions,
     NakedFunctionsMustUseNoreturn, NakedFunctionsOperands, NoPatterns, ParamsNotAllowed,
@@ -109,7 +111,7 @@ struct CheckParameters<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CheckParameters<'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         if let hir::ExprKind::Path(hir::QPath::Resolved(
             _,
             hir::Path { res: hir::def::Res::Local(var_hir_id), .. },
@@ -117,10 +119,10 @@ impl<'tcx> Visitor<'tcx> for CheckParameters<'tcx> {
         {
             if self.params.contains(var_hir_id) {
                 self.tcx.sess.emit_err(ParamsNotAllowed { span: expr.span });
-                return;
+                return Continue(());
             }
         }
-        hir::intravisit::walk_expr(self, expr);
+        hir::intravisit::walk_expr(self, expr)
     }
 }
 
@@ -275,7 +277,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CheckInlineAssembly<'tcx> {
-    fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
+    fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) -> ControlFlow<!> {
         match stmt.kind {
             StmtKind::Item(..) => {}
             StmtKind::Local(..) => {
@@ -285,9 +287,11 @@ impl<'tcx> Visitor<'tcx> for CheckInlineAssembly<'tcx> {
                 self.check_expr(expr, stmt.span);
             }
         }
+        Continue(())
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         self.check_expr(&expr, expr.span);
+        Continue(())
     }
 }

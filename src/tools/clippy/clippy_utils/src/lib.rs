@@ -1,5 +1,6 @@
 #![feature(array_chunks)]
 #![feature(box_patterns)]
+#![feature(control_flow_enum)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
 #![feature(never_type)]
@@ -71,7 +72,7 @@ pub use self::hir_utils::{
     both, count_eq, eq_expr_value, hash_expr, hash_stmt, is_bool, over, HirEqInterExpr, SpanlessEq, SpanlessHash,
 };
 
-use core::ops::ControlFlow;
+use core::ops::ControlFlow::{self, Break, Continue};
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
 use std::sync::OnceLock;
@@ -1099,18 +1100,14 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
         loops: Vec<HirId>,
         /// Local variables created in the expression. These don't need to be captured.
         locals: HirIdSet,
-        /// Whether this expression can be turned into a closure.
-        allow_closure: bool,
         /// Locals which need to be captured, and whether they need to be by value, reference, or
         /// mutable reference.
         captures: HirIdMap<CaptureKind>,
     }
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            if !self.allow_closure {
-                return;
-            }
+        type BreakTy = ();
 
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> ControlFlow<()> {
             match e.kind {
                 ExprKind::Path(QPath::Resolved(None, &Path { res: Res::Local(l), .. })) => {
                     if !self.locals.contains(&l) {
@@ -1144,32 +1141,35 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
                 },
                 ExprKind::Loop(b, ..) => {
                     self.loops.push(e.hir_id);
-                    self.visit_block(b);
+                    self.visit_block(b)?;
                     self.loops.pop();
                 },
                 _ => {
-                    self.allow_closure &= can_move_expr_to_closure_no_visit(self.cx, e, &self.loops, &self.locals);
-                    walk_expr(self, e);
+                    if !can_move_expr_to_closure_no_visit(self.cx, e, &self.loops, &self.locals) {
+                        return Break(());
+                    }
+                    walk_expr(self, e)?;
                 },
             }
+            Continue(())
         }
 
-        fn visit_pat(&mut self, p: &'tcx Pat<'tcx>) {
+        fn visit_pat(&mut self, p: &'tcx Pat<'tcx>) -> ControlFlow<()> {
             p.each_binding_or_first(&mut |_, id, _, _| {
                 self.locals.insert(id);
             });
+            Continue(())
         }
     }
 
     let mut v = V {
         cx,
-        allow_closure: true,
         loops: Vec::new(),
         locals: HirIdSet::default(),
         captures: HirIdMap::default(),
     };
-    v.visit_expr(expr);
-    v.allow_closure.then_some(v.captures)
+    let allow_closure = v.visit_expr(expr).is_continue();
+    allow_closure.then_some(v.captures)
 }
 
 /// Arguments of a method: the receiver and all the additional arguments.
@@ -1259,16 +1259,14 @@ pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
 pub struct ContainsName<'a, 'tcx> {
     pub cx: &'a LateContext<'tcx>,
     pub name: Symbol,
-    pub result: bool,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ContainsName<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
+    type BreakTy = ();
 
-    fn visit_name(&mut self, name: Symbol) {
-        if self.name == name {
-            self.result = true;
-        }
+    fn visit_name(&mut self, name: Symbol) -> ControlFlow<()> {
+        if self.name == name { Break(()) } else { Continue(()) }
     }
 
     fn nested_visit_map(&mut self) -> Self::Map {
@@ -1278,13 +1276,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ContainsName<'a, 'tcx> {
 
 /// Checks if an `Expr` contains a certain name.
 pub fn contains_name<'tcx>(name: Symbol, expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> bool {
-    let mut cn = ContainsName {
-        name,
-        result: false,
-        cx,
-    };
-    cn.visit_expr(expr);
-    cn.result
+    let mut cn = ContainsName { name, cx };
+    cn.visit_expr(expr).is_break()
 }
 
 /// Returns `true` if `expr` contains a return expression

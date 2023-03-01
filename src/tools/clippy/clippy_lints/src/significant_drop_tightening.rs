@@ -4,6 +4,7 @@ use clippy_utils::{
     get_attr,
     source::{indent_of, snippet},
 };
+use core::ops::ControlFlow::{self, Break, Continue};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::{
     self as hir,
@@ -119,8 +120,7 @@ impl<'tcx> SignificantDropTightening<'tcx> {
         cb: impl Fn(&mut SigDropAuxParams),
     ) {
         let mut sig_drop_finder = SigDropFinder::new(cx, &mut self.seen_types);
-        sig_drop_finder.visit_expr(expr);
-        if sig_drop_finder.has_sig_drop {
+        if sig_drop_finder.visit_expr(expr).is_break() {
             cb(sdap);
             if sdap.number_of_stmts > 0 {
                 sdap.last_use_stmt_idx = idx;
@@ -348,7 +348,6 @@ impl<'cx, 'sdt, 'tcx> SigDropChecker<'cx, 'sdt, 'tcx> {
 /// Performs recursive calls to find any inner type marked with `#[has_significant_drop]`.
 struct SigDropFinder<'cx, 'sdt, 'tcx> {
     cx: &'cx LateContext<'tcx>,
-    has_sig_drop: bool,
     sig_drop_checker: SigDropChecker<'cx, 'sdt, 'tcx>,
 }
 
@@ -356,26 +355,23 @@ impl<'cx, 'sdt, 'tcx> SigDropFinder<'cx, 'sdt, 'tcx> {
     fn new(cx: &'cx LateContext<'tcx>, seen_types: &'sdt mut FxHashSet<Ty<'tcx>>) -> Self {
         Self {
             cx,
-            has_sig_drop: false,
             sig_drop_checker: SigDropChecker::new(cx, seen_types),
         }
     }
 }
 
 impl<'cx, 'sdt, 'tcx> Visitor<'tcx> for SigDropFinder<'cx, 'sdt, 'tcx> {
-    fn visit_expr(&mut self, ex: &'tcx hir::Expr<'_>) {
+    type BreakTy = ();
+    fn visit_expr(&mut self, ex: &'tcx hir::Expr<'_>) -> ControlFlow<()> {
         if self
             .sig_drop_checker
             .has_sig_drop_attr(self.cx.typeck_results().expr_ty(ex))
         {
-            self.has_sig_drop = true;
-            return;
+            return Break(());
         }
 
         match ex.kind {
-            hir::ExprKind::MethodCall(_, expr, ..) => {
-                self.visit_expr(expr);
-            },
+            hir::ExprKind::MethodCall(_, expr, ..) => self.visit_expr(expr),
             hir::ExprKind::Array(..)
             | hir::ExprKind::Assign(..)
             | hir::ExprKind::AssignOp(..)
@@ -390,10 +386,8 @@ impl<'cx, 'sdt, 'tcx> Visitor<'tcx> for SigDropFinder<'cx, 'sdt, 'tcx> {
             | hir::ExprKind::Ret(..)
             | hir::ExprKind::Tup(..)
             | hir::ExprKind::Unary(..)
-            | hir::ExprKind::Yield(..) => {
-                walk_expr(self, ex);
-            },
-            _ => {},
+            | hir::ExprKind::Yield(..) => walk_expr(self, ex),
+            _ => Continue(()),
         }
     }
 }

@@ -4,6 +4,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::ty::has_iter_method;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{contains_name, higher, is_integer_const, sugg, SpanlessEq};
+use core::ops::ControlFlow::{self, Continue};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -300,7 +301,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<!> {
         if_chain! {
             // a range index op
             if let ExprKind::MethodCall(meth, args_0, [args_1, ..], _) = &expr.kind;
@@ -313,7 +314,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 || (meth.ident.name == sym::index_mut && self.cx.tcx.lang_items().index_mut_trait() == Some(trait_id));
             if !self.check(args_1, args_0, expr);
             then {
-                return;
+                return Continue(());
             }
         }
 
@@ -322,7 +323,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             if let ExprKind::Index(seqexpr, idx) = expr.kind;
             if !self.check(idx, seqexpr, expr);
             then {
-                return;
+                return Continue(());
             }
         }
 
@@ -386,8 +387,9 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 let body = self.cx.tcx.hir().body(body);
                 self.visit_expr(body.value);
             },
-            _ => walk_expr(self, expr),
+            _ => walk_expr(self, expr)?,
         }
         self.prefer_mutable = old;
+        Continue(())
     }
 }

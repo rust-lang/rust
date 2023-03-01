@@ -8,6 +8,7 @@ use rustc_middle::ty::UserType;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
+use std::ops::ControlFlow::{self, Continue};
 
 /// A declaration is an abstraction of [hir::Local] and [hir::Let].
 ///
@@ -103,24 +104,25 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     // Add explicitly-declared locals.
-    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) -> ControlFlow<!> {
         self.declare(local.into());
         intravisit::walk_local(self, local)
     }
 
-    fn visit_let_expr(&mut self, let_expr: &'tcx hir::Let<'tcx>) {
+    fn visit_let_expr(&mut self, let_expr: &'tcx hir::Let<'tcx>) -> ControlFlow<!> {
         self.declare(let_expr.into());
-        intravisit::walk_let_expr(self, let_expr);
+        intravisit::walk_let_expr(self, let_expr)
     }
 
-    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) -> ControlFlow<!> {
         let old_outermost_fn_param_pat = self.outermost_fn_param_pat.replace(param.ty_span);
         intravisit::walk_param(self, param);
         self.outermost_fn_param_pat = old_outermost_fn_param_pat;
+        Continue(())
     }
 
     // Add pattern bindings.
-    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
+    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) -> ControlFlow<!> {
         if let PatKind::Binding(_, _, ident, _) = p.kind {
             let var_ty = self.assign(p.span, p.hir_id, None);
 
@@ -148,6 +150,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         let old_outermost_fn_param_pat = self.outermost_fn_param_pat.take();
         intravisit::walk_pat(self, p);
         self.outermost_fn_param_pat = old_outermost_fn_param_pat;
+        Continue(())
     }
 
     // Don't descend into the bodies of nested closures.
@@ -158,6 +161,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         _: hir::BodyId,
         _: Span,
         _: LocalDefId,
-    ) {
+    ) -> ControlFlow<!> {
+        Continue(())
     }
 }

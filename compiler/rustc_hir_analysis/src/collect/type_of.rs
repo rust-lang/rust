@@ -13,6 +13,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
+use std::ops::ControlFlow::{self, Continue};
 
 use super::ItemCtxt;
 use super::{bad_placeholder, is_suggestable_infer_ty};
@@ -635,32 +636,34 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
         fn nested_visit_map(&mut self) -> Self::Map {
             self.tcx.hir()
         }
-        fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
+        fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) -> ControlFlow<!> {
             if let hir::ExprKind::Closure(closure) = ex.kind {
                 self.check(closure.def_id);
             }
-            intravisit::walk_expr(self, ex);
+            intravisit::walk_expr(self, ex)
         }
-        fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
+        fn visit_item(&mut self, it: &'tcx Item<'tcx>) -> ControlFlow<!> {
             trace!(?it.owner_id);
             // The opaque type itself or its children are not within its reveal scope.
             if it.owner_id.def_id != self.def_id {
                 self.check(it.owner_id.def_id);
                 intravisit::walk_item(self, it);
             }
+            Continue(())
         }
-        fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
+        fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) -> ControlFlow<!> {
             trace!(?it.owner_id);
             // The opaque type itself or its children are not within its reveal scope.
             if it.owner_id.def_id != self.def_id {
                 self.check(it.owner_id.def_id);
                 intravisit::walk_impl_item(self, it);
             }
+            Continue(())
         }
-        fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
+        fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) -> ControlFlow<!> {
             trace!(?it.owner_id);
             self.check(it.owner_id.def_id);
-            intravisit::walk_trait_item(self, it);
+            intravisit::walk_trait_item(self, it)
         }
     }
 
@@ -689,9 +692,15 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
             //
             // requires us to explicitly process `foo()` in order
             // to notice the defining usage of `Blah`.
-            Node::Item(it) => locator.visit_item(it),
-            Node::ImplItem(it) => locator.visit_impl_item(it),
-            Node::TraitItem(it) => locator.visit_trait_item(it),
+            Node::Item(it) => {
+                locator.visit_item(it);
+            }
+            Node::ImplItem(it) => {
+                locator.visit_impl_item(it);
+            }
+            Node::TraitItem(it) => {
+                locator.visit_trait_item(it);
+            }
             other => bug!("{:?} is not a valid scope for an opaque type item", other),
         }
     }
@@ -769,32 +778,34 @@ fn find_opaque_ty_constraints_for_rpit(
         fn nested_visit_map(&mut self) -> Self::Map {
             self.tcx.hir()
         }
-        fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
+        fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) -> ControlFlow<!> {
             if let hir::ExprKind::Closure(closure) = ex.kind {
                 self.check(closure.def_id);
             }
-            intravisit::walk_expr(self, ex);
+            intravisit::walk_expr(self, ex)
         }
-        fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
+        fn visit_item(&mut self, it: &'tcx Item<'tcx>) -> ControlFlow<!> {
             trace!(?it.owner_id);
             // The opaque type itself or its children are not within its reveal scope.
             if it.owner_id.def_id != self.def_id {
                 self.check(it.owner_id.def_id);
                 intravisit::walk_item(self, it);
             }
+            Continue(())
         }
-        fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
+        fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) -> ControlFlow<!> {
             trace!(?it.owner_id);
             // The opaque type itself or its children are not within its reveal scope.
             if it.owner_id.def_id != self.def_id {
                 self.check(it.owner_id.def_id);
                 intravisit::walk_impl_item(self, it);
             }
+            Continue(())
         }
-        fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
+        fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) -> ControlFlow<!> {
             trace!(?it.owner_id);
             self.check(it.owner_id.def_id);
-            intravisit::walk_trait_item(self, it);
+            intravisit::walk_trait_item(self, it)
         }
     }
 
@@ -806,9 +817,15 @@ fn find_opaque_ty_constraints_for_rpit(
         let mut locator = ConstraintChecker { def_id, tcx, found: concrete };
 
         match tcx.hir().get(scope) {
-            Node::Item(it) => intravisit::walk_item(&mut locator, it),
-            Node::ImplItem(it) => intravisit::walk_impl_item(&mut locator, it),
-            Node::TraitItem(it) => intravisit::walk_trait_item(&mut locator, it),
+            Node::Item(it) => {
+                intravisit::walk_item(&mut locator, it);
+            }
+            Node::ImplItem(it) => {
+                intravisit::walk_impl_item(&mut locator, it);
+            }
+            Node::TraitItem(it) => {
+                intravisit::walk_trait_item(&mut locator, it);
+            }
             other => bug!("{:?} is not a valid scope for an opaque type item", other),
         }
     }

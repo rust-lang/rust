@@ -3,6 +3,7 @@ use clippy_utils::macros::span_is_local;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::path_def_id;
 use clippy_utils::source::snippet_opt;
+use core::ops::ControlFlow::{self, Continue};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_path, Visitor};
 use rustc_hir::{
@@ -127,7 +128,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SelfFinder<'a, 'tcx> {
         self.cx.tcx.hir()
     }
 
-    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) -> ControlFlow<!> {
         for segment in path.segments {
             match segment.ident.name {
                 kw::SelfLower => self.lower.push(segment.ident.span),
@@ -140,12 +141,14 @@ impl<'a, 'tcx> Visitor<'tcx> for SelfFinder<'a, 'tcx> {
         if !self.invalid {
             walk_path(self, path);
         }
+        Continue(())
     }
 
-    fn visit_name(&mut self, name: Symbol) {
+    fn visit_name(&mut self, name: Symbol) -> ControlFlow<!> {
         if name == sym::val {
             self.invalid = true;
         }
+        Continue(())
     }
 }
 

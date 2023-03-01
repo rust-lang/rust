@@ -28,6 +28,7 @@ use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use std::fmt;
 use std::iter;
+use std::ops::ControlFlow::{self, Break, Continue};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -550,17 +551,16 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
     }
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
         type NestedFilter = nested_filter::OnlyBodies;
+        type BreakTy = ();
         fn nested_visit_map(&mut self) -> Self::Map {
             self.cx.tcx.hir()
         }
 
-        fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}
+        fn visit_anon_const(&mut self, _: &'tcx AnonConst) -> ControlFlow<()> {
+            Continue(())
+        }
 
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            if self.skip_count == self.args.len() {
-                return;
-            }
-
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> ControlFlow<()> {
             // Check if this is local we care about
             let Some(&args_idx) = path_to_local(e).and_then(|id| self.bindings.get(&id)) else {
                 return walk_expr(self, e);
@@ -571,9 +571,13 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
             // Helper function to handle early returns.
             let mut set_skip_flag = || {
                 if !result.skip {
+                    result.skip = true;
                     self.skip_count += 1;
+                    if self.skip_count == self.args.len() {
+                        return Break(());
+                    }
                 }
-                result.skip = true;
+                Continue(())
             };
 
             match get_expr_use_or_unification_node(self.cx.tcx, e) {
@@ -583,7 +587,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                     if let PatKind::Binding(BindingAnnotation::NONE, id, _, None) = l.pat.kind {
                         self.bindings.insert(id, args_idx);
                     } else {
-                        set_skip_flag();
+                        set_skip_flag()?;
                     }
                 },
                 Some((Node::Expr(e), child_id)) => match e.kind {
@@ -598,7 +602,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             }
                         }) {
                             // Passed to a function taking the non-dereferenced type.
-                            set_skip_flag();
+                            set_skip_flag()?;
                         }
                     },
                     ExprKind::MethodCall(name, self_arg, expr_args, _) => {
@@ -615,13 +619,12 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                                     self_span: self_arg.span,
                                     replacement,
                                 });
-                                return;
+                                return Continue(());
                             }
                         }
 
                         let Some(id) = self.cx.typeck_results().type_dependent_def_id(e.hir_id) else {
-                            set_skip_flag();
-                            return;
+                            return set_skip_flag();
                         };
 
                         match *self.cx.tcx.fn_sig(id).subst_identity().skip_binder().inputs()[i]
@@ -629,25 +632,26 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             .kind()
                         {
                             ty::Dynamic(preds, _, _) if !matches_preds(self.cx, args.deref_ty.ty(self.cx), preds) => {
-                                set_skip_flag();
+                                set_skip_flag()?;
                             },
                             ty::Param(_) => {
-                                set_skip_flag();
+                                set_skip_flag()?;
                             },
                             // If the types match check for methods which exist on both types. e.g. `Vec::len` and
                             // `slice::len`
                             ty::Adt(def, _) if def.did() == args.ty_did => {
-                                set_skip_flag();
+                                set_skip_flag()?;
                             },
                             _ => (),
                         }
                     },
                     // Indexing is fine for currently supported types.
                     ExprKind::Index(e, _) if e.hir_id == child_id => (),
-                    _ => set_skip_flag(),
+                    _ => set_skip_flag()?,
                 },
-                _ => set_skip_flag(),
+                _ => set_skip_flag()?,
             }
+            Continue(())
         }
     }
 

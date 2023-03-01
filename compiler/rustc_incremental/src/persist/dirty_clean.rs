@@ -32,6 +32,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::iter::FromIterator;
+use std::ops::ControlFlow::{self, Continue};
 use thin_vec::ThinVec;
 
 const LOADED_FROM_DISK: Symbol = sym::loaded_from_disk;
@@ -461,9 +462,10 @@ impl<'tcx> intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_attribute(&mut self, attr: &'tcx Attribute) {
+    fn visit_attribute(&mut self, attr: &'tcx Attribute) -> ControlFlow<!> {
         if self.is_active_attr(attr) {
             self.found_attrs.push(attr);
         }
+        Continue(())
     }
 }

@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::is_type_lang_item;
+use core::ops::ControlFlow::{self, Continue};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
@@ -46,9 +47,11 @@ struct MatchExprVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MatchExprVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, ex: &'tcx Expr<'_>) -> ControlFlow<!> {
         match ex.kind {
-            ExprKind::MethodCall(segment, receiver, [], _) if self.case_altered(segment.ident.as_str(), receiver) => {},
+            ExprKind::MethodCall(segment, receiver, [], _) if self.case_altered(segment.ident.as_str(), receiver) => {
+                Continue(())
+            },
             _ => walk_expr(self, ex),
         }
     }

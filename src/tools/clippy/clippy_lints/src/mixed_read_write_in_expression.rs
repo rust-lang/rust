@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
+use core::ops::ControlFlow::{self, Continue};
 use if_chain::if_chain;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Guard, HirId, Local, Node, Stmt, StmtKind};
@@ -125,7 +126,9 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
                     self.maybe_walk_expr(arm.body);
                 }
             },
-            _ => walk_expr(self, e),
+            _ => {
+                walk_expr(self, e);
+            },
         }
     }
     fn report_diverging_sub_expr(&mut self, e: &Expr<'_>) {
@@ -134,7 +137,7 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> ControlFlow<!> {
         match e.kind {
             ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => self.report_diverging_sub_expr(e),
             ExprKind::Call(func, _) => {
@@ -162,9 +165,11 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
             },
         }
         self.maybe_walk_expr(e);
+        Continue(())
     }
-    fn visit_block(&mut self, _: &'tcx Block<'_>) {
+    fn visit_block(&mut self, _: &'tcx Block<'_>) -> ControlFlow<!> {
         // don't continue over blocks, LateLintPass already does that
+        Continue(())
     }
 }
 
@@ -292,9 +297,9 @@ struct ReadVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<!> {
         if expr.hir_id == self.last_expr.hir_id {
-            return;
+            return Continue(());
         }
 
         if path_to_local_id(expr, self.var) {
@@ -327,12 +332,12 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
             //
             // TODO: fix this
             ExprKind::AddrOf(_, _, _) => {
-                return;
+                return Continue(());
             }
             _ => {}
         }
 
-        walk_expr(self, expr);
+        walk_expr(self, expr)
     }
 }
 

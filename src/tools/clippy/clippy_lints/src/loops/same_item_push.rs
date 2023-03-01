@@ -3,6 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::path_to_local;
 use clippy_utils::source::snippet_with_macro_callsite;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use core::ops::ControlFlow::{self, Continue};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
@@ -130,11 +131,11 @@ impl<'a, 'tcx> SameItemPushVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<!> {
         match &expr.kind {
             // Non-determinism may occur ... don't give a lint
             ExprKind::Loop(..) | ExprKind::Match(..) | ExprKind::If(..) => self.non_deterministic_expr = true,
-            ExprKind::Block(block, _) => self.visit_block(block),
+            ExprKind::Block(block, _) => self.visit_block(block)?,
             _ => {
                 if let Some(hir_id) = path_to_local(expr) {
                     self.used_locals.insert(hir_id);
@@ -142,20 +143,22 @@ impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
                 walk_expr(self, expr);
             },
         }
+        Continue(())
     }
 
-    fn visit_block(&mut self, b: &'tcx Block<'_>) {
+    fn visit_block(&mut self, b: &'tcx Block<'_>) -> ControlFlow<!> {
         for stmt in b.stmts.iter() {
             self.visit_stmt(stmt);
         }
+        Continue(())
     }
 
-    fn visit_stmt(&mut self, s: &'tcx Stmt<'_>) {
+    fn visit_stmt(&mut self, s: &'tcx Stmt<'_>) -> ControlFlow<!> {
         let vec_push_option = get_vec_push(self.cx, s);
         if vec_push_option.is_none() {
             // Current statement is not a push so visit inside
             match &s.kind {
-                StmtKind::Expr(expr) | StmtKind::Semi(expr) => self.visit_expr(expr),
+                StmtKind::Expr(expr) | StmtKind::Semi(expr) => self.visit_expr(expr)?,
                 _ => {},
             }
         } else {
@@ -168,6 +171,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
                 self.multiple_pushes = true;
             }
         }
+        Continue(())
     }
 }
 

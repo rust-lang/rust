@@ -52,6 +52,7 @@ use rustc_span::Span;
 use std::env;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
+use std::ops::ControlFlow;
 
 #[allow(missing_docs)]
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
@@ -176,24 +177,24 @@ impl<'tcx> Visitor<'tcx> for IfThisChanged<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) -> ControlFlow<!> {
         self.process_attrs(item.owner_id.def_id);
-        intravisit::walk_item(self, item);
+        intravisit::walk_item(self, item)
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) -> ControlFlow<!> {
         self.process_attrs(trait_item.owner_id.def_id);
-        intravisit::walk_trait_item(self, trait_item);
+        intravisit::walk_trait_item(self, trait_item)
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) -> ControlFlow<!> {
         self.process_attrs(impl_item.owner_id.def_id);
-        intravisit::walk_impl_item(self, impl_item);
+        intravisit::walk_impl_item(self, impl_item)
     }
 
-    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
+    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) -> ControlFlow<!> {
         self.process_attrs(s.def_id);
-        intravisit::walk_field_def(self, s);
+        intravisit::walk_field_def(self, s)
     }
 }
 

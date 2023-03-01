@@ -1,5 +1,6 @@
 //! Print diagnostics to explain why values are borrowed.
 
+use either::Either;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
@@ -14,6 +15,7 @@ use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
 use rustc_trait_selection::traits::error_reporting::FindExprBySpan;
+use std::ops::ControlFlow::Break;
 
 use crate::region_infer::{BlameConstraint, ExtraConstraintInfo};
 use crate::{
@@ -72,9 +74,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 && let Some(body_id) = node.body_id()
             {
                 let body = tcx.hir().body(body_id);
-                let mut expr_finder = FindExprBySpan::new(span);
-                expr_finder.visit_expr(body.value);
-                if let Some(mut expr) = expr_finder.result {
+                let mut expr_finder = FindExprBySpan { span };
+                if let Break(Either::Left(mut expr)) = expr_finder.visit_expr(body.value) {
                     while let hir::ExprKind::AddrOf(_, _, inner)
                         | hir::ExprKind::Unary(hir::UnOp::Deref, inner)
                         | hir::ExprKind::Field(inner, _)

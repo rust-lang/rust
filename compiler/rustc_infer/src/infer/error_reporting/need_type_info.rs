@@ -24,6 +24,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span};
 use std::borrow::Cow;
 use std::iter;
+use std::ops::ControlFlow::{self, Continue};
 
 pub enum TypeAnnotationNeeded {
     /// ```compile_fail,E0282
@@ -1111,8 +1112,8 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
         self.infcx.tcx.hir()
     }
 
-    fn visit_local(&mut self, local: &'tcx Local<'tcx>) {
-        intravisit::walk_local(self, local);
+    fn visit_local(&mut self, local: &'tcx Local<'tcx>) -> ControlFlow<!> {
+        intravisit::walk_local(self, local)?;
 
         if let Some(ty) = self.opt_node_type(local.hir_id) {
             if self.generic_arg_contains_target(ty.into()) {
@@ -1132,11 +1133,13 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 }
             }
         }
+
+        Continue(())
     }
 
     /// For closures, we first visit the parameters and then the content,
     /// as we prefer those.
-    fn visit_body(&mut self, body: &'tcx Body<'tcx>) {
+    fn visit_body(&mut self, body: &'tcx Body<'tcx>) -> ControlFlow<!> {
         for param in body.params {
             debug!(
                 "param: span {:?}, ty_span {:?}, pat.span {:?}",
@@ -1161,22 +1164,22 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 })
             }
         }
-        intravisit::walk_body(self, body);
+        intravisit::walk_body(self, body)
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> ControlFlow<!> {
         let tcx = self.infcx.tcx;
         match expr.kind {
             // When encountering `func(arg)` first look into `arg` and then `func`,
             // as `arg` is "more specific".
             ExprKind::Call(func, args) => {
                 for arg in args {
-                    self.visit_expr(arg);
+                    self.visit_expr(arg)?;
                 }
-                self.visit_expr(func);
+                self.visit_expr(func)?;
             }
-            _ => intravisit::walk_expr(self, expr),
+            _ => intravisit::walk_expr(self, expr)?,
         }
 
         for args in self.expr_inferred_subst_iter(expr) {
@@ -1268,5 +1271,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 }
             })
         }
+
+        Continue(())
     }
 }

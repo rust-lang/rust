@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::{get_parent_node, numeric_literal};
+use core::ops::ControlFlow::{self, Continue};
 use if_chain::if_chain;
 use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
@@ -125,7 +126,7 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<!> {
         match &expr.kind {
             ExprKind::Call(func, args) => {
                 if let Some(fn_sig) = fn_sig_opt(self.cx, func.hir_id) {
@@ -135,7 +136,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                         self.visit_expr(expr);
                         self.ty_bounds.pop();
                     }
-                    return;
+                    return Continue(());
                 }
             },
 
@@ -147,7 +148,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                         self.visit_expr(expr);
                         self.ty_bounds.pop();
                     }
-                    return;
+                    return Continue(());
                 }
             },
 
@@ -181,7 +182,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                             self.visit_expr(base);
                             self.ty_bounds.pop();
                         }
-                        return;
+                        return Continue(());
                     }
                 }
             },
@@ -189,16 +190,16 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
             ExprKind::Lit(lit) => {
                 let ty = self.cx.typeck_results().expr_ty(expr);
                 self.check_lit(lit, ty, expr.hir_id);
-                return;
+                return Continue(());
             },
 
             _ => {},
         }
 
-        walk_expr(self, expr);
+        walk_expr(self, expr)
     }
 
-    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
+    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) -> ControlFlow<!> {
         match stmt.kind {
             // we cannot check the exact type since it's a hir::Ty which does not implement `is_numeric`
             StmtKind::Local(local) => self.ty_bounds.push(ExplicitTyBound(local.ty.is_some())),
@@ -208,6 +209,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
 
         walk_stmt(self, stmt);
         self.ty_bounds.pop();
+        Continue(())
     }
 }
 

@@ -25,6 +25,7 @@ use rustc_target::spec::abi::Abi;
 
 use smallvec::SmallVec;
 use std::fmt;
+use std::ops::ControlFlow::{self, Continue};
 
 #[derive(Debug, Copy, Clone, Encodable, HashStable_Generic)]
 pub struct Lifetime {
@@ -2501,7 +2502,7 @@ impl<'hir> Ty<'hir> {
         use crate::intravisit::Visitor;
         struct MyVisitor(Vec<Span>);
         impl<'v> Visitor<'v> for MyVisitor {
-            fn visit_ty(&mut self, t: &'v Ty<'v>) {
+            fn visit_ty(&mut self, t: &'v Ty<'v>) -> ControlFlow<!> {
                 if matches!(
                     &t.kind,
                     TyKind::Path(QPath::Resolved(
@@ -2510,9 +2511,9 @@ impl<'hir> Ty<'hir> {
                     ))
                 ) {
                     self.0.push(t.span);
-                    return;
+                    return Continue(());
                 }
-                crate::intravisit::walk_ty(self, t);
+                crate::intravisit::walk_ty(self, t)
             }
         }
 

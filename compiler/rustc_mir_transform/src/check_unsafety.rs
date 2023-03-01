@@ -14,6 +14,7 @@ use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
 
 use std::ops::Bound;
+use std::ops::ControlFlow::{self, Continue};
 
 pub struct UnsafetyChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
@@ -413,7 +414,7 @@ struct UnusedUnsafeVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'_, 'tcx> {
-    fn visit_block(&mut self, block: &'tcx hir::Block<'tcx>) {
+    fn visit_block(&mut self, block: &'tcx hir::Block<'tcx>) -> ControlFlow<!> {
         if let hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::UserProvided) = block.rules {
             let used = match self.tcx.lint_level_at_node(UNUSED_UNSAFE, block.hir_id) {
                 (Level::Allow, _) => true,
@@ -426,19 +427,20 @@ impl<'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'_, 'tcx> {
                     self.context = Context::UnsafeBlock(block.hir_id);
                     intravisit::walk_block(self, block);
                     self.context = previous_context;
-                    return;
+                    return Continue(());
                 }
                 (Context::UnsafeBlock(hir_id), true) => UnusedUnsafe::InUnsafeBlock(hir_id),
             };
             self.unused_unsafes.push((block.hir_id, unused_unsafe));
         }
-        intravisit::walk_block(self, block);
+        intravisit::walk_block(self, block)
     }
 
-    fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
+    fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) -> ControlFlow<!> {
         if matches!(self.tcx.def_kind(c.def_id), DefKind::InlineConst) {
-            self.visit_body(self.tcx.hir().body(c.body))
+            self.visit_body(self.tcx.hir().body(c.body));
         }
+        Continue(())
     }
 
     fn visit_fn(
@@ -448,10 +450,11 @@ impl<'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'_, 'tcx> {
         b: hir::BodyId,
         _s: rustc_span::Span,
         _id: LocalDefId,
-    ) {
+    ) -> ControlFlow<!> {
         if matches!(fk, intravisit::FnKind::Closure) {
-            self.visit_body(self.tcx.hir().body(b))
+            self.visit_body(self.tcx.hir().body(b));
         }
+        Continue(())
     }
 }
 

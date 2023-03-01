@@ -5,6 +5,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
+use std::ops::ControlFlow;
 
 pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
@@ -134,7 +135,7 @@ fn associated_items_for_impl_trait_in_trait(tcx: TyCtxt<'_>, fn_def_id: DefId) -
             }
 
             impl<'v> Visitor<'v> for RPITVisitor {
-                fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+                fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) -> ControlFlow<!> {
                     if let hir::TyKind::OpaqueDef(item_id, _, _) = ty.kind {
                         self.rpits.push(item_id.owner_id.def_id)
                     }

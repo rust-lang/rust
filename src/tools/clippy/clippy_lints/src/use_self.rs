@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::same_type_and_consts;
+use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -270,15 +271,15 @@ struct SkipTyCollector {
 }
 
 impl<'tcx> Visitor<'tcx> for SkipTyCollector {
-    fn visit_infer(&mut self, inf: &hir::InferArg) {
+    fn visit_infer(&mut self, inf: &hir::InferArg) -> ControlFlow<!> {
         self.types_to_skip.push(inf.hir_id);
 
-        walk_inf(self, inf);
+        walk_inf(self, inf)
     }
-    fn visit_ty(&mut self, hir_ty: &hir::Ty<'_>) {
+    fn visit_ty(&mut self, hir_ty: &hir::Ty<'_>) -> ControlFlow<!> {
         self.types_to_skip.push(hir_ty.hir_id);
 
-        walk_ty(self, hir_ty);
+        walk_ty(self, hir_ty)
     }
 }
 

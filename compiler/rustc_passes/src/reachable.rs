@@ -17,6 +17,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::config::CrateType;
 use rustc_target::spec::abi::Abi;
+use std::ops::ControlFlow::{self, Continue};
 
 // Returns true if the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return
@@ -73,15 +74,16 @@ struct ReachableContext<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
-    fn visit_nested_body(&mut self, body: hir::BodyId) {
+    fn visit_nested_body(&mut self, body: hir::BodyId) -> ControlFlow<!> {
         let old_maybe_typeck_results =
             self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
         let body = self.tcx.hir().body(body);
-        self.visit_body(body);
+        self.visit_body(body)?;
         self.maybe_typeck_results = old_maybe_typeck_results;
+        Continue(())
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         let res = match expr.kind {
             hir::ExprKind::Path(ref qpath) => {
                 Some(self.typeck_results().qpath_res(qpath, expr.hir_id))
@@ -117,7 +119,11 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
         intravisit::walk_expr(self, expr)
     }
 
-    fn visit_inline_asm(&mut self, asm: &'tcx hir::InlineAsm<'tcx>, id: hir::HirId) {
+    fn visit_inline_asm(
+        &mut self,
+        asm: &'tcx hir::InlineAsm<'tcx>,
+        id: hir::HirId,
+    ) -> ControlFlow<!> {
         for (op, _) in asm.operands {
             if let hir::InlineAsmOperand::SymStatic { def_id, .. } = op {
                 if let Some(def_id) = def_id.as_local() {
@@ -125,7 +131,7 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
                 }
             }
         }
-        intravisit::walk_inline_asm(self, asm, id);
+        intravisit::walk_inline_asm(self, asm, id)
     }
 }
 
@@ -279,7 +285,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 hir::ImplItemKind::Fn(_, body) => {
                     let impl_def_id = self.tcx.local_parent(search_item);
                     if method_might_be_inlined(self.tcx, impl_item, impl_def_id) {
-                        self.visit_nested_body(body)
+                        self.visit_nested_body(body);
                     }
                 }
                 hir::ImplItemKind::Type(_) => {}

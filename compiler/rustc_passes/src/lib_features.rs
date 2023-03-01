@@ -13,6 +13,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
+use std::ops::ControlFlow::{self, Continue};
 
 use crate::errors::{FeaturePreviouslyDeclared, FeatureStableTwice};
 
@@ -128,10 +129,11 @@ impl<'tcx> Visitor<'tcx> for LibFeatureCollector<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_attribute(&mut self, attr: &'tcx Attribute) {
+    fn visit_attribute(&mut self, attr: &'tcx Attribute) -> ControlFlow<!> {
         if let Some((feature, stable, span)) = self.extract(attr) {
             self.collect_feature(feature, stable, span);
         }
+        Continue(())
     }
 }
 

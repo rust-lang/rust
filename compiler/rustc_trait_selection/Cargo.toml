@@ -25,3 +25,4 @@ rustc_target = { path = "../rustc_target" }
 rustc_transmute = { path = "../rustc_transmute", features = ["rustc"] }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 itertools = "0.10.1"
+either = "1.7.0"

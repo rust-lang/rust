@@ -14,6 +14,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
 use std::mem;
+use std::ops::ControlFlow::{self, Continue};
 
 use crate::clean::{cfg::Cfg, AttributesExt, NestedAttributesExt};
 use crate::core;
@@ -455,33 +456,40 @@ impl<'a, 'tcx> Visitor<'tcx> for RustdocVisitor<'a, 'tcx> {
         self.cx.tcx.hir()
     }
 
-    fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
+    fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) -> ControlFlow<!> {
         if self.visit_item_inner(i, None, None) {
             walk_item(self, i);
         }
+        Continue(())
     }
 
-    fn visit_mod(&mut self, _: &hir::Mod<'tcx>, _: Span, _: hir::HirId) {
+    fn visit_mod(&mut self, _: &hir::Mod<'tcx>, _: Span, _: hir::HirId) -> ControlFlow<!> {
         // Handled in `visit_item_inner`
+        Continue(())
     }
 
-    fn visit_use(&mut self, _: &hir::UsePath<'tcx>, _: hir::HirId) {
+    fn visit_use(&mut self, _: &hir::UsePath<'tcx>, _: hir::HirId) -> ControlFlow<!> {
         // Handled in `visit_item_inner`
+        Continue(())
     }
 
-    fn visit_path(&mut self, _: &hir::Path<'tcx>, _: hir::HirId) {
+    fn visit_path(&mut self, _: &hir::Path<'tcx>, _: hir::HirId) -> ControlFlow<!> {
         // Handled in `visit_item_inner`
+        Continue(())
     }
 
-    fn visit_label(&mut self, _: &rustc_ast::Label) {
+    fn visit_label(&mut self, _: &rustc_ast::Label) -> ControlFlow<!> {
         // Unneeded.
+        Continue(())
     }
 
-    fn visit_infer(&mut self, _: &hir::InferArg) {
+    fn visit_infer(&mut self, _: &hir::InferArg) -> ControlFlow<!> {
         // Unneeded.
+        Continue(())
     }
 
-    fn visit_lifetime(&mut self, _: &hir::Lifetime) {
+    fn visit_lifetime(&mut self, _: &hir::Lifetime) -> ControlFlow<!> {
         // Unneeded.
+        Continue(())
     }
 }

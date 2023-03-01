@@ -1,6 +1,6 @@
 //! Diagnostics related methods for `Ty`.
 
-use std::ops::ControlFlow;
+use std::ops::ControlFlow::{self, Continue};
 
 use crate::ty::{
     AliasTy, Const, ConstKind, DefIdTree, FallibleTypeFolder, InferConst, InferTy, Opaque,
@@ -419,7 +419,7 @@ pub fn suggest_constraining_type_params<'a>(
 pub struct TraitObjectVisitor<'tcx>(pub Vec<&'tcx hir::Ty<'tcx>>, pub crate::hir::map::Map<'tcx>);
 
 impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
-    fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+    fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) -> ControlFlow<!> {
         match ty.kind {
             hir::TyKind::TraitObject(
                 _,
@@ -435,11 +435,11 @@ impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
             hir::TyKind::OpaqueDef(item_id, _, _) => {
                 self.0.push(ty);
                 let item = self.1.item(item_id);
-                hir::intravisit::walk_item(self, item);
+                hir::intravisit::walk_item(self, item)?;
             }
             _ => {}
         }
-        hir::intravisit::walk_ty(self, ty);
+        hir::intravisit::walk_ty(self, ty)
     }
 }
 
@@ -447,11 +447,12 @@ impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
 pub struct StaticLifetimeVisitor<'tcx>(pub Vec<Span>, pub crate::hir::map::Map<'tcx>);
 
 impl<'v> hir::intravisit::Visitor<'v> for StaticLifetimeVisitor<'v> {
-    fn visit_lifetime(&mut self, lt: &'v hir::Lifetime) {
+    fn visit_lifetime(&mut self, lt: &'v hir::Lifetime) -> ControlFlow<!> {
         if let hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static = lt.res
         {
             self.0.push(lt.ident.span);
         }
+        Continue(())
     }
 }
 

@@ -21,7 +21,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 use std::mem;
-use std::ops::ControlFlow;
+use std::ops::ControlFlow::{self, Continue};
 
 ///////////////////////////////////////////////////////////////////////////
 // Entry point
@@ -278,7 +278,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 // traffic in node-ids or update typeck results in the type context etc.
 
 impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
-    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
+    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) -> ControlFlow<!> {
         self.fix_scalar_builtin_expr(e);
         self.fix_index_builtin_expr(e);
 
@@ -309,10 +309,10 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         }
 
         self.visit_node_id(e.span, e.hir_id);
-        intravisit::walk_expr(self, e);
+        intravisit::walk_expr(self, e)
     }
 
-    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
+    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) -> ControlFlow<!> {
         match &p.kind {
             hir::GenericParamKind::Lifetime { .. } => {
                 // Nothing to write back here
@@ -321,14 +321,15 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
                 self.tcx().sess.delay_span_bug(p.span, format!("unexpected generic param: {p:?}"));
             }
         }
+        Continue(())
     }
 
-    fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) {
+    fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) -> ControlFlow<!> {
         self.visit_node_id(b.span, b.hir_id);
-        intravisit::walk_block(self, b);
+        intravisit::walk_block(self, b)
     }
 
-    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
+    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) -> ControlFlow<!> {
         match p.kind {
             hir::PatKind::Binding(..) => {
                 let typeck_results = self.fcx.typeck_results.borrow();
@@ -349,17 +350,18 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         self.visit_pat_adjustments(p.span, p.hir_id);
 
         self.visit_node_id(p.span, p.hir_id);
-        intravisit::walk_pat(self, p);
+        intravisit::walk_pat(self, p)
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
+    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) -> ControlFlow<!> {
         intravisit::walk_local(self, l);
         let var_ty = self.fcx.local_ty(l.span, l.hir_id).decl_ty;
         let var_ty = self.resolve(var_ty, &l.span);
         self.write_ty_to_typeck_results(l.hir_id, var_ty);
+        Continue(())
     }
 
-    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) -> ControlFlow<!> {
         intravisit::walk_ty(self, hir_ty);
         // If there are type checking errors, Type privacy pass will stop,
         // so we may not get the type from hid_id, see #104513
@@ -367,15 +369,17 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             let ty = self.resolve(ty, &hir_ty.span);
             self.write_ty_to_typeck_results(hir_ty.hir_id, ty);
         }
+        Continue(())
     }
 
-    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
+    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) -> ControlFlow<!> {
         intravisit::walk_inf(self, inf);
         // Ignore cases where the inference is a const.
         if let Some(ty) = self.fcx.node_ty_opt(inf.hir_id) {
             let ty = self.resolve(ty, &inf.span);
             self.write_ty_to_typeck_results(inf.hir_id, ty);
         }
+        Continue(())
     }
 }
 
