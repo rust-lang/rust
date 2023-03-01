@@ -17,6 +17,9 @@ pub trait Sized {}
 #[lang = "destruct"]
 pub trait Destruct {}
 
+#[lang = "tuple_trait"]
+pub trait Tuple {}
+
 #[lang = "unsize"]
 pub trait Unsize<T: ?Sized> {}
 
@@ -396,7 +399,7 @@ pub struct PhantomData<T: ?Sized>;
 
 #[lang = "fn_once"]
 #[rustc_paren_sugar]
-pub trait FnOnce<Args> {
+pub trait FnOnce<Args: Tuple> {
     #[lang = "fn_once_output"]
     type Output;
 
@@ -405,7 +408,7 @@ pub trait FnOnce<Args> {
 
 #[lang = "fn_mut"]
 #[rustc_paren_sugar]
-pub trait FnMut<Args>: FnOnce<Args> {
+pub trait FnMut<Args: Tuple>: FnOnce<Args> {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
@@ -418,8 +421,8 @@ pub fn panic(_msg: &'static str) -> ! {
     }
 }
 
-#[lang = "panic_no_unwind"]
-fn panic_no_unwind() -> ! {
+#[lang = "panic_cannot_unwind"]
+fn panic_cannot_unwind() -> ! {
     unsafe {
         libc::puts("Panicking\n\0" as *const str as *const u8);
         intrinsics::abort();
@@ -531,16 +534,22 @@ pub mod intrinsics {
     use crate::Sized;
 
     extern "rust-intrinsic" {
+        #[rustc_safe_intrinsic]
         pub fn abort() -> !;
+        #[rustc_safe_intrinsic]
         pub fn size_of<T>() -> usize;
         pub fn size_of_val<T: ?Sized>(val: *const T) -> usize;
+        #[rustc_safe_intrinsic]
         pub fn min_align_of<T>() -> usize;
         pub fn min_align_of_val<T: ?Sized>(val: *const T) -> usize;
         pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
         pub fn transmute<T, U>(e: T) -> U;
         pub fn ctlz_nonzero<T>(x: T) -> T;
+        #[rustc_safe_intrinsic]
         pub fn needs_drop<T: ?Sized>() -> bool;
+        #[rustc_safe_intrinsic]
         pub fn bitreverse<T>(x: T) -> T;
+        #[rustc_safe_intrinsic]
         pub fn bswap<T>(x: T) -> T;
         pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
         pub fn unreachable() -> !;
