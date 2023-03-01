@@ -619,6 +619,43 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
+                    CastKind::Transmute => {
+                        if let MirPhase::Runtime(..) = self.mir_phase {
+                            // `mem::transmute` currently requires types concrete enough
+                            // to *know* that their sizes are the same, and we repeat
+                            // that check here. This restriction may be lifted in future,
+                            // should some optimizations need to it be more general.
+                            // (It might just end up being UB if they don't match, say.)
+
+                            let src_layout = self.tcx.layout_of(self.param_env.and(op_ty));
+                            let dst_layout = self.tcx.layout_of(self.param_env.and(*target_type));
+                            if let Err(e) = src_layout {
+                                self.fail(
+                                    location,
+                                    format!(
+                                        "Unable to compute layout for source type {op_ty:?}: {e}"
+                                    ),
+                                );
+                            }
+                            if let Err(e) = dst_layout {
+                                self.fail(location, format!("Unable to compute layout for destination type {target_type:?}: {e}"));
+                            }
+
+                            if let (Ok(src_layout), Ok(dst_layout)) = (src_layout, dst_layout) {
+                                if src_layout.layout.size() != dst_layout.layout.size() {
+                                    self.fail(location, format!("Source and destination layouts have different sizes: {src_layout:?} vs {dst_layout:?}"));
+                                }
+                            }
+                        } else {
+                            self.fail(
+                                location,
+                                format!(
+                                    "Transmute is not supported in non-runtime phase {:?}.",
+                                    self.mir_phase
+                                ),
+                            );
+                        }
+                    }
                 }
             }
             Rvalue::Repeat(_, _)

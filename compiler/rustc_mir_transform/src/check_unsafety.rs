@@ -132,6 +132,12 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                     self.register_violations(violations, used_unsafe_blocks.iter().copied());
                 }
             },
+            Rvalue::Cast(CastKind::Transmute, ..) => {
+                self.require_unsafe(
+                    UnsafetyViolationKind::General,
+                    UnsafetyViolationDetails::CallToUnsafeFunction,
+                );
+            }
             _ => {}
         }
         self.super_rvalue(rvalue, location);
