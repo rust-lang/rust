@@ -574,6 +574,27 @@ const foo$0: u32 = {
 }
 
 #[test]
+fn hover_eval_complex_constants() {
+    check(
+        r#"
+        struct X { f1: (), f2: i32 }
+        const foo$0: (i8, X, i64) = (1, X { f2: 5 - 1, f1: () }, 1 - 2);
+        "#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const foo: (i8, X, i64) = (1, X { f1: (), f2: 4 }, -1)
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_default_generic_types() {
     check(
         r#"

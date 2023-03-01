@@ -425,8 +425,36 @@ fn render_const_scalar(
                 let s = std::str::from_utf8(bytes).unwrap_or("<utf8-error>");
                 write!(f, "{s:?}")
             }
-            _ => f.write_str("<error>"),
+            _ => f.write_str("<ref-not-supported>"),
         },
+        chalk_ir::TyKind::Tuple(_, subst) => {
+            // FIXME: Remove this line. If the target data layout is independent
+            // of the krate, the `db.target_data_layout` and its callers like `layout_of_ty` don't need
+            // to get krate. Otherwise, we need to get krate from the final callers of the hir display
+            // infrastructure and have it here as a field on `f`.
+            let krate = *f.db.crate_graph().crates_in_topological_order().last().unwrap();
+            let Ok(layout) = layout_of_ty(f.db, ty, krate) else {
+                return f.write_str("<layout-error>");
+            };
+            f.write_str("(")?;
+            let mut first = true;
+            for (id, ty) in subst.iter(Interner).enumerate() {
+                if first {
+                    first = false;
+                } else {
+                    f.write_str(", ")?;
+                }
+                let ty = ty.assert_ty_ref(Interner); // Tuple only has type argument
+                let offset = layout.fields.offset(id).bytes_usize();
+                let Ok(layout) = layout_of_ty(f.db, &ty, krate) else {
+                    f.write_str("<layout-error>")?;
+                    continue;
+                };
+                let size = layout.size.bytes_usize();
+                render_const_scalar(f, &b[offset..offset + size], memory_map, &ty)?;
+            }
+            f.write_str(")")
+        }
         chalk_ir::TyKind::Adt(adt, subst) => match adt.0 {
             hir_def::AdtId::StructId(s) => {
                 let data = f.db.struct_data(s);
@@ -457,7 +485,7 @@ fn render_const_scalar(
                                 render_field(f, id)?;
                             }
                             for (id, data) in it {
-                                write!(f, ",  {}: ", data.name)?;
+                                write!(f, ", {}: ", data.name)?;
                                 render_field(f, id)?;
                             }
                             write!(f, " }}")?;
@@ -481,7 +509,7 @@ fn render_const_scalar(
             hir_def::AdtId::UnionId(u) => write!(f, "{}", f.db.union_data(u).name),
             hir_def::AdtId::EnumId(_) => f.write_str("<enum-not-supported>"),
         },
-        _ => f.write_str("<error>"),
+        _ => f.write_str("<not-supported>"),
     }
 }
 
