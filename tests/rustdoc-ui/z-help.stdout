@@ -87,6 +87,7 @@
     -Z                          llvm-plugins=val -- a list LLVM plugins to enable (space separated)
     -Z                       llvm-time-trace=val -- generate JSON tracing data file from LLVM data (default: no)
     -Z                       location-detail=val -- what location details should be tracked when using caller_location, either `none`, or a comma separated list of location details, for which valid options are `file`, `line`, and `column` (default: `file,line,column`)
+    -Z lower-impl-trait-in-trait-to-assoc-ty=val -- modify the lowering strategy for `impl Trait` in traits so that they are lowered to generic associated types
     -Z                                    ls=val -- list the symbols defined by a library crate (default: no)
     -Z                       macro-backtrace=val -- show macro backtraces (default: no)
     -Z           maximal-hir-to-mir-coverage=val -- save as much information as possible about the correspondence between MIR and HIR as source scopes (default: no)

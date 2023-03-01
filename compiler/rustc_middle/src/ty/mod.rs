@@ -2071,6 +2071,12 @@ pub enum ImplOverlapKind {
     Issue33140,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
+pub enum ImplTraitInTraitData {
+    Trait { fn_def_id: DefId, opaque_def_id: DefId },
+    Impl { fn_def_id: DefId },
+}
+
 impl<'tcx> TyCtxt<'tcx> {
     pub fn typeck_body(self, body: hir::BodyId) -> &'tcx TypeckResults<'tcx> {
         self.typeck(self.hir().body_owner_def_id(body))
