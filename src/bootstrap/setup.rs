@@ -24,7 +24,7 @@ pub enum Profile {
     None,
 }
 
-/// A list of historical hashes of `src/etc/vscode_settings.json`.
+/// A list of historical hashes of `src/etc/rust_analyzer_settings.json`.
 /// New entries should be appended whenever this is updated so we can detect
 /// outdated vs. user-modified settings files.
 static SETTINGS_HASHES: &[&str] = &[
@@ -32,7 +32,7 @@ static SETTINGS_HASHES: &[&str] = &[
     "56e7bf011c71c5d81e0bf42e84938111847a810eee69d906bba494ea90b51922",
     "af1b5efe196aed007577899db9dae15d6dbc923d6fa42fa0934e68617ba9bbe0",
 ];
-static VSCODE_SETTINGS: &str = include_str!("../etc/vscode_settings.json");
+static RUST_ANALYZER_SETTINGS: &str = include_str!("../etc/rust_analyzer_settings.json");
 
 impl Profile {
     fn include_path(&self, src_path: &Path) -> PathBuf {
@@ -489,7 +489,7 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
     Ok(())
 }
 
-/// Sets up or displays `src/etc/vscode_settings.json`
+/// Sets up or displays `src/etc/rust_analyzer_settings.json`
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct Vscode;
 
@@ -580,10 +580,10 @@ fn create_vscode_settings_maybe(config: &Config) -> io::Result<()> {
             }
             _ => "Created",
         };
-        fs::write(&vscode_settings, &VSCODE_SETTINGS)?;
+        fs::write(&vscode_settings, &RUST_ANALYZER_SETTINGS)?;
         println!("{verb} `.vscode/settings.json`");
     } else {
-        println!("\n{VSCODE_SETTINGS}");
+        println!("\n{RUST_ANALYZER_SETTINGS}");
     }
     Ok(())
 }
