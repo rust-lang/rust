@@ -20,8 +20,11 @@ fn all() {
 }
 
 #[test]
-#[cfg(all(target_arch = "arm", any(target_os = "linux", target_os = "android")))]
-fn arm_linux() {
+#[cfg(all(
+    target_arch = "arm",
+    any(target_os = "linux", target_os = "android", target_os = "freebsd"),
+))]
+fn arm_linux_or_freebsd() {
     println!("neon: {}", is_arm_feature_detected!("neon"));
     println!("pmull: {}", is_arm_feature_detected!("pmull"));
     println!("crc: {}", is_arm_feature_detected!("crc"));
