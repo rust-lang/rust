@@ -1,5 +1,5 @@
 use quote::{quote, format_ident};
-use syn::{FnArg, ReturnType, ItemFn, Signature, Type, parse_quote};
+use syn::{FnArg, ReturnType, ItemFn, Signature, Type, parse_quote, Pat};
 use crate::parser::{DiffItem, Activity, Mode};
 use proc_macro2::TokenStream;
 use crate::{parser, parser::{PrimalSig, is_ref_mut}};
@@ -53,14 +53,46 @@ fn only_type(arg: &FnArg) -> Type {
     }
 }
 
-fn as_ref_mut(arg: &FnArg, mutability: Option<bool>) -> FnArg {
-    arg.clone()
+fn as_ref_mut(arg: &FnArg, name: &str, mutable: bool) -> FnArg {
+    match arg {
+        FnArg::Receiver(_) => {
+            let name = format_ident!("{}_self", name);
+            if mutable {
+                parse_quote!(#name: &mut Self)
+            } else {
+                parse_quote!(#name: &Self)
+            }
+        },
+        FnArg::Typed(t) => {
+            let inner = match &*t.ty {
+                Type::Reference(t) => &t.elem,
+                _ => panic!("") // should not be reachable, as we checked mutability before
+            };
+
+            let pat_name = match &*t.pat {
+                Pat::Ident(x) => &x.ident,
+                _ => panic!(""),
+            };
+
+            let name = format_ident!("{}_{}", name, pat_name);
+            if mutable {
+                parse_quote!(#name: &mut #inner)
+            } else {
+                parse_quote!(#name: &#inner)
+            }
+        }
+    }
 }
 
 pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
     let mut res_inputs: Vec<FnArg> = Vec::new();
     let mut add_inputs: Vec<FnArg> = Vec::new();
-    let mut outputs = Vec::new();
+    let mut outputs: Vec<Type> = Vec::new();
+    let out_type = 
+        match &item.primal.output {
+            ReturnType::Type(_, x) => *x.clone(),
+            _ => panic!(""),
+        };
 
     let PrimalSig {
         ident, inputs, output
@@ -71,24 +103,41 @@ pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
 
         match (item.header.mode, activity, is_ref_mut(&input)) {
             (Mode::Forward, Activity::Duplicated, Some(true)) => {
-                res_inputs.push(as_ref_mut(&input, Some(true)));
-                add_inputs.push(as_ref_mut(&input, Some(true)));
+                res_inputs.push(as_ref_mut(&input, "grad", true));
+                add_inputs.push(as_ref_mut(&input, "grad", true));
+            },
+            (Mode::Forward, Activity::Duplicated, Some(false)) => {
+                res_inputs.push(as_ref_mut(&input, "grad", false));
+                add_inputs.push(as_ref_mut(&input, "grad", false));
+                outputs.push(out_type.clone());
             },
             (Mode::Forward, Activity::Duplicated, None) => outputs.push(only_type(&input)),
             (Mode::Reverse, Activity::Duplicated, Some(false)) => {
-                res_inputs.push(as_ref_mut(&input, Some(true)));
-                add_inputs.push(as_ref_mut(&input, Some(true)));
+                res_inputs.push(as_ref_mut(&input, "grad", true));
+                add_inputs.push(as_ref_mut(&input, "grad", true));
             },
             (Mode::Reverse, Activity::Duplicated, Some(true)) => {
-                res_inputs.push(as_ref_mut(&input, Some(false)));
-                add_inputs.push(as_ref_mut(&input, Some(false)));
+                res_inputs.push(as_ref_mut(&input, "grad", false));
+                add_inputs.push(as_ref_mut(&input, "grad", false));
             },
             (Mode::Reverse, Activity::Active, None) => outputs.push(only_type(&input)),
             _ => {}
         }
     }
 
-    let ident = format_ident!("grad_{}", ident);
+    match (item.header.mode, item.header.ret_act) {
+        (Mode::Reverse, Activity::Active) => {
+            let t: FnArg = match &item.primal.output {
+                ReturnType::Type(_, ty) => parse_quote!(tang_y: #ty),
+                _ => panic!(""),
+            };
+            res_inputs.push(t.clone());
+            add_inputs.push(t);
+        },
+        _ => {}
+    }
+
+    let adjoint_ident = &item.header.name;
     let output = match outputs.len() {
         0 => quote!(),
         1 => {
@@ -96,19 +145,33 @@ pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
 
             quote!(-> #output)
         },
-        _ => quote!(-> #(#outputs,)*),
+        _ => quote!(-> (#(#outputs,)*)),
     };
 
-    let sig = quote!(fn #ident(#(#res_inputs,)*) #output);
-    //let inputs = inputs.iter().map(|x| x.ident.clone()).collect::<Vec<_>>();
+    let sig = quote!(fn #adjoint_ident(#(#res_inputs,)*) #output);
+    let inputs = inputs.iter().map(|x| match x {
+        FnArg::Typed(ty) => { let pat = &ty.pat; quote!(#pat) },
+        FnArg::Receiver(_) => quote!(self),
+    }).collect::<Vec<_>>();
+    let add_inputs = add_inputs.iter().map(|x| match x {
+        FnArg::Typed(ty) => { let pat = &ty.pat; quote!(#pat) },
+        FnArg::Receiver(_) => quote!(self),
+    }).collect::<Vec<_>>();
+
+    let call_ident = match item.block.is_some() {
+        false => format_ident!("primal_{}", ident),
+        true => ident.clone(),
+    };
+
     let body = quote!({
-        std::hint::black_box((#ident(#(#inputs,)*), #(#add_inputs,)*));
+        std::hint::black_box((#call_ident(#(#inputs,)*), #(#add_inputs,)*));
 
         unsafe { std::mem::zeroed() }
     });
+    let header = generate_header(&item);
 
     quote!(
-        #[autodiff_into]
+        #header
         #sig
         #body
     )

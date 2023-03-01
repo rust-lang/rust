@@ -214,7 +214,6 @@ pub(crate) fn reduce_params(mut sig: Signature, header_acts: Vec<Activity>, is_a
         // Compare current with last argument when parsing duplicated rules. This only
         // happens when we parse the signature of adjoint function
         if let Some(prev_arg) = last_arg.take() {
-            dbg!(&is_ref_mut(&prev_arg), is_ref_mut(&arg));
             match (header.mode, is_ref_mut(&prev_arg), is_ref_mut(&arg)) {
                 (Mode::Forward, Some(false), Some(true) | None) => 
                     abort!(
