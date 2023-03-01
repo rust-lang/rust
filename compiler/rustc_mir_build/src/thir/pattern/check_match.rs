@@ -900,7 +900,6 @@ fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
 fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, '_, 'tcx>, pat: &Pat<'tcx>) {
     // Extract `sub` in `binding @ sub`.
     let PatKind::Binding { name, mode, ty, subpattern: Some(box ref sub), .. } = pat.kind else { return };
-    let binding_span = pat.span; //.with_hi(name.span.hi());
 
     let is_binding_by_move = |ty: Ty<'tcx>| !ty.is_copy_modulo_regions(cx.tcx, cx.param_env);
 
@@ -917,15 +916,11 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, '_, 'tcx>, 
             });
             if !conflicts_ref.is_empty() {
                 sess.emit_err(BorrowOfMovedValue {
-                    span: pat.span,
-                    binding_span,
+                    binding_span: pat.span,
                     conflicts_ref,
                     name,
                     ty,
-                    suggest_borrowing: pat
-                        .span
-                        .contains(binding_span)
-                        .then(|| binding_span.shrink_to_lo()),
+                    suggest_borrowing: Some(pat.span.shrink_to_lo()),
                 });
             }
             return;
@@ -967,8 +962,8 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, '_, 'tcx>, 
     let report_move_conflict = !conflicts_move.is_empty();
 
     let mut occurences = match mut_outer {
-        Mutability::Mut => vec![Conflict::Mut { span: binding_span, name }],
-        Mutability::Not => vec![Conflict::Ref { span: binding_span, name }],
+        Mutability::Mut => vec![Conflict::Mut { span: pat.span, name }],
+        Mutability::Not => vec![Conflict::Ref { span: pat.span, name }],
     };
     occurences.extend(conflicts_mut_mut);
     occurences.extend(conflicts_mut_ref);

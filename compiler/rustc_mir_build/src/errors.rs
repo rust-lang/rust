@@ -576,7 +576,6 @@ pub struct IrrefutableLetPatternsWhileLet {
 #[diag(mir_build_borrow_of_moved_value)]
 pub struct BorrowOfMovedValue<'tcx> {
     #[primary_span]
-    pub span: Span,
     #[label]
     #[label(mir_build_occurs_because_label)]
     pub binding_span: Span,
