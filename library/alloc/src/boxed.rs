@@ -283,9 +283,7 @@ impl<T> Box<T> {
     #[must_use]
     #[inline(always)]
     pub fn pin(x: T) -> Pin<Box<T>> {
-        (#[rustc_box]
-        Box::new(x))
-        .into()
+        Box::new(x).into()
     }
 
     /// Allocates memory on the heap then places `x` into it,
@@ -1242,8 +1240,8 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Box<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Box<T> {
     /// Creates a `Box<T>`, with the `Default` value for T.
+    #[inline]
     fn default() -> Self {
-        #[rustc_box]
         Box::new(T::default())
     }
 }
@@ -1252,6 +1250,7 @@ impl<T: Default> Default for Box<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
 impl<T> const Default for Box<[T]> {
+    #[inline]
     fn default() -> Self {
         let ptr: Unique<[T]> = Unique::<[T; 0]>::dangling();
         Box(ptr, Global)
@@ -1262,6 +1261,7 @@ impl<T> const Default for Box<[T]> {
 #[stable(feature = "default_box_extra", since = "1.17.0")]
 #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
 impl const Default for Box<str> {
+    #[inline]
     fn default() -> Self {
         // SAFETY: This is the same as `Unique::cast<U>` but with an unsized `U = str`.
         let ptr: Unique<str> = unsafe {
@@ -1616,7 +1616,6 @@ impl<T, const N: usize> From<[T; N]> for Box<[T]> {
     /// println!("{boxed:?}");
     /// ```
     fn from(array: [T; N]) -> Box<[T]> {
-        #[rustc_box]
         Box::new(array)
     }
 }
