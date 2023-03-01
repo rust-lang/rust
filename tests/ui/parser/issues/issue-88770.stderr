@@ -1,5 +1,5 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-88770.rs:11:3
+  --> $DIR/issue-88770.rs:8:3
    |
 LL | fn m(){print!("",(c for&g
    |       -      -   - unclosed delimiter
@@ -10,51 +10,5 @@ LL | fn m(){print!("",(c for&g
 LL | e
    |   ^
 
-error: this file contains an unclosed delimiter
-  --> $DIR/issue-88770.rs:11:3
-   |
-LL | fn m(){print!("",(c for&g
-   |       -      -   - unclosed delimiter
-   |       |      |
-   |       |      unclosed delimiter
-   |       unclosed delimiter
-...
-LL | e
-   |   ^
-
-error: this file contains an unclosed delimiter
-  --> $DIR/issue-88770.rs:11:3
-   |
-LL | fn m(){print!("",(c for&g
-   |       -      -   - unclosed delimiter
-   |       |      |
-   |       |      unclosed delimiter
-   |       unclosed delimiter
-...
-LL | e
-   |   ^
-
-error: missing `in` in `for` loop
-  --> $DIR/issue-88770.rs:8:26
-   |
-LL |   fn m(){print!("",(c for&g
-   |  __________________________^
-LL | | u
-   | |_ help: try adding `in` here
-
-error: expected one of `!`, `)`, `,`, `.`, `::`, `?`, `{`, or an operator, found keyword `for`
-  --> $DIR/issue-88770.rs:8:21
-   |
-LL | fn m(){print!("",(c for&g
-   |                     ^^^ expected one of 8 possible tokens
-
-error: expected one of `!`, `)`, `,`, `.`, `::`, `;`, `?`, `{`, or an operator, found `e`
-  --> $DIR/issue-88770.rs:11:1
-   |
-LL | e
-   |  - expected one of 9 possible tokens
-LL | e
-   | ^ unexpected token
-
-error: aborting due to 6 previous errors
+error: aborting due to previous error
 

@@ -1,72 +1,3 @@
-error: this file contains an unclosed delimiter
-  --> $DIR/issue-62973.rs:8:2
-   |
-LL | fn p() { match s { v, E { [) {) }
-   |        -         -         -  - missing open `(` for this delimiter
-   |        |         |         |
-   |        |         |         missing open `(` for this delimiter
-   |        |         unclosed delimiter
-   |        unclosed delimiter
-LL |
-LL |
-   |  ^
-
-error: this file contains an unclosed delimiter
-  --> $DIR/issue-62973.rs:8:2
-   |
-LL | fn p() { match s { v, E { [) {) }
-   |        -         -         -  - missing open `(` for this delimiter
-   |        |         |         |
-   |        |         |         missing open `(` for this delimiter
-   |        |         unclosed delimiter
-   |        unclosed delimiter
-LL |
-LL |
-   |  ^
-
-error: expected one of `,`, `:`, or `}`, found `{`
-  --> $DIR/issue-62973.rs:6:8
-   |
-LL | fn p() { match s { v, E { [) {) }
-   |        ^       -        ^ expected one of `,`, `:`, or `}`
-   |        |       |
-   |        |       while parsing this struct
-   |        unclosed delimiter
-   |
-help: `}` may belong here
-   |
-LL | fn p() { match s { v, E} { [) {) }
-   |                        +
-help: try naming a field
-   |
-LL | fn p() { match s { v, E: E { [) {) }
-   |                       ++
-
-error: struct literals are not allowed here
-  --> $DIR/issue-62973.rs:6:16
-   |
-LL |   fn p() { match s { v, E { [) {) }
-   |  ________________^
-LL | |
-LL | |
-   | |_^
-   |
-help: surround the struct literal with parentheses
-   |
-LL ~ fn p() { match (s { v, E { [) {) }
-LL | 
-LL ~ )
-   |
-
-error: expected one of `.`, `?`, `{`, or an operator, found `}`
-  --> $DIR/issue-62973.rs:8:2
-   |
-LL | fn p() { match s { v, E { [) {) }
-   |          ----- while parsing this `match` expression
-LL |
-LL |
-   |  ^ expected one of `.`, `?`, `{`, or an operator
-
 error: mismatched closing delimiter: `)`
   --> $DIR/issue-62973.rs:6:27
    |
@@ -83,5 +14,18 @@ LL | fn p() { match s { v, E { [) {) }
    |                              |
    |                              unclosed delimiter
 
-error: aborting due to 7 previous errors
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-62973.rs:8:2
+   |
+LL | fn p() { match s { v, E { [) {) }
+   |        -         -         -  - missing open `(` for this delimiter
+   |        |         |         |
+   |        |         |         missing open `(` for this delimiter
+   |        |         unclosed delimiter
+   |        unclosed delimiter
+LL |
+LL |
+   |  ^
+
+error: aborting due to 3 previous errors
 

@@ -43,7 +43,6 @@ pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
         ps.source_map().new_source_file(PathBuf::from("bogofile").into(), source_str),
         None,
     )
-    .0
 }
 
 /// Parses a string, returns a crate.
