@@ -300,20 +300,21 @@ function initSearch(rawSearchIndex) {
      * @return {integer}
      */
     function getIdentEndPosition(parserState) {
+        const start = parserState.pos;
         let end = parserState.pos;
-        let foundExclamation = false;
+        let foundExclamation = -1;
         while (parserState.pos < parserState.length) {
             const c = parserState.userQuery[parserState.pos];
             if (!isIdentCharacter(c)) {
                 if (c === "!") {
-                    if (foundExclamation) {
+                    if (foundExclamation !== -1) {
                         throw new Error("Cannot have more than one `!` in an ident");
                     } else if (parserState.pos + 1 < parserState.length &&
                         isIdentCharacter(parserState.userQuery[parserState.pos + 1])
                     ) {
                         throw new Error("`!` can only be at the end of an ident");
                     }
-                    foundExclamation = true;
+                    foundExclamation = parserState.pos;
                 } else if (isErrorCharacter(c)) {
                     throw new Error(`Unexpected \`${c}\``);
                 } else if (
@@ -326,15 +327,34 @@ function initSearch(rawSearchIndex) {
                     if (!isPathStart(parserState)) {
                         break;
                     }
+                    if (foundExclamation !== -1) {
+                        if (start <= (end - 2)) {
+                            throw new Error("Cannot have associated items in macros");
+                        } else {
+                            // if start == end - 1, we got the never type
+                            // while the never type has no associated macros, we still
+                            // can parse a path like that
+                            foundExclamation = -1;
+                        }
+                    }
                     // Skip current ":".
                     parserState.pos += 1;
-                    foundExclamation = false;
                 } else {
                     throw new Error(`Unexpected \`${c}\``);
                 }
             }
             parserState.pos += 1;
             end = parserState.pos;
+        }
+        // if start == end - 1, we got the never type
+        if (foundExclamation !== -1 && start <= (end - 2)) {
+            if (parserState.typeFilter === null) {
+                parserState.typeFilter = "macro";
+            } else if (parserState.typeFilter !== "macro") {
+                throw new Error("Invalid search type: macro `!` and " +
+                    `\`${parserState.typeFilter}\` both specified`);
+            }
+            end = foundExclamation;
         }
         return end;
     }
@@ -589,8 +609,8 @@ function initSearch(rawSearchIndex) {
      *
      * The supported syntax by this parser is as follow:
      *
-     * ident = *(ALPHA / DIGIT / "_") [!]
-     * path = ident *(DOUBLE-COLON ident)
+     * ident = *(ALPHA / DIGIT / "_")
+     * path = ident *(DOUBLE-COLON ident) [!]
      * arg = path [generics]
      * arg-without-generic = path
      * type-sep = COMMA/WS *(COMMA/WS)
