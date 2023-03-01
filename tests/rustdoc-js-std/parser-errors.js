@@ -37,6 +37,8 @@ const QUERY = [
     "mod : :",
     "a!a",
     "a!!",
+    "mod:a!",
+    "a!::a",
 ];
 
 const PARSED = [
@@ -381,5 +383,23 @@ const PARSED = [
         typeFilter: -1,
         userQuery: "a!!",
         error: 'Cannot have more than one `!` in an ident',
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "mod:a!",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "mod:a!",
+        error: 'Invalid search type: macro `!` and `mod` both specified',
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "a!::a",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "a!::a",
+        error: 'Cannot have associated items in macros',
     },
 ];

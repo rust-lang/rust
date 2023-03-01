@@ -1,4 +1,4 @@
-const QUERY = ['fn:foo', 'enum : foo', 'macro<f>:foo'];
+const QUERY = ['fn:foo', 'enum : foo', 'macro<f>:foo', 'macro!', 'macro:mac!', 'a::mac!'];
 
 const PARSED = [
     {
@@ -39,5 +39,50 @@ const PARSED = [
         typeFilter: -1,
         userQuery: "macro<f>:foo",
         error: "Unexpected `:`",
+    },
+    {
+        elems: [{
+            name: "macro",
+            fullPath: ["macro"],
+            pathWithoutLast: [],
+            pathLast: "macro",
+            generics: [],
+        }],
+        foundElems: 1,
+        original: "macro!",
+        returned: [],
+        typeFilter: 14,
+        userQuery: "macro!",
+        error: null,
+    },
+    {
+        elems: [{
+            name: "mac",
+            fullPath: ["mac"],
+            pathWithoutLast: [],
+            pathLast: "mac",
+            generics: [],
+        }],
+        foundElems: 1,
+        original: "macro:mac!",
+        returned: [],
+        typeFilter: 14,
+        userQuery: "macro:mac!",
+        error: null,
+    },
+    {
+        elems: [{
+            name: "a::mac",
+            fullPath: ["a", "mac"],
+            pathWithoutLast: ["a"],
+            pathLast: "mac",
+            generics: [],
+        }],
+        foundElems: 1,
+        original: "a::mac!",
+        returned: [],
+        typeFilter: 14,
+        userQuery: "a::mac!",
+        error: null,
     },
 ];
