@@ -1,0 +1,62 @@
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `foo`
+  --> $DIR/issue-108242-semicolon-recovery.rs:4:5
+   |
+LL |     foo(;
+   |          -
+   |          |
+   |          expected one of `)`, `,`, `.`, `?`, or an operator
+   |          help: missing `,`
+LL |     foo(;
+   |     ^^^ unexpected token
+
+error: mismatched closing delimiter: `}`
+  --> $DIR/issue-108242-semicolon-recovery.rs:4:8
+   |
+LL | fn main() {
+   |           - closing delimiter possibly meant for this
+LL |     foo(;
+LL |     foo(;
+   |        ^ unclosed delimiter
+LL |
+LL | }
+   | ^ mismatched closing delimiter
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/issue-108242-semicolon-recovery.rs:4:5
+   |
+LL |     foo(;
+   |     ^^^ -
+   |         |
+   |         unexpected argument
+   |         help: remove the extra argument
+   |
+note: function defined here
+  --> $DIR/issue-108242-semicolon-recovery.rs:1:4
+   |
+LL | fn foo() {}
+   |    ^^^
+
+error[E0061]: this function takes 0 arguments but 2 arguments were supplied
+  --> $DIR/issue-108242-semicolon-recovery.rs:3:5
+   |
+LL |       foo(;
+   |       ^^^ - unexpected argument
+LL | /     foo(;
+LL | |
+LL | | }
+   | |_- unexpected argument of type `()`
+   |
+note: function defined here
+  --> $DIR/issue-108242-semicolon-recovery.rs:1:4
+   |
+LL | fn foo() {}
+   |    ^^^
+help: remove the extra arguments
+   |
+LL -     foo(;
+LL +     foo(
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0061`.
