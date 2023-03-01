@@ -1,9 +1,0 @@
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for static items
-  --> $DIR/invalid-toplevel-const.rs:1:31
-   |
-LL | static CONST: Option<dyn Fn(& _)> = None;
-   |                               ^ not allowed in type signatures
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0121`.
