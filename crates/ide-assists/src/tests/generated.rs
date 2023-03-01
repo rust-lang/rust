@@ -2006,12 +2006,12 @@ fn doctest_remove_dbg() {
         "remove_dbg",
         r#####"
 fn main() {
-    $0dbg!(92);
+    let x = $0dbg!(42 * dbg!(4 + 2));$0
 }
 "#####,
         r#####"
 fn main() {
-    92;
+    let x = 42 * (4 + 2);
 }
 "#####,
     )
