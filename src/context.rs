@@ -391,7 +391,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                             tcx,
                             ty::ParamEnv::reveal_all(),
                             def_id,
-                            tcx.intern_substs(&[]),
+                            ty::List::empty(),
                         )
                         .unwrap().unwrap();
 

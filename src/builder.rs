@@ -455,12 +455,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(feature="master")]
-    fn invoke(&mut self, typ: Type<'gcc>, fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
+    fn invoke(&mut self, typ: Type<'gcc>, _fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
         let try_block = self.current_func().new_block("try");
 
         let current_block = self.block.clone();
         self.block = try_block;
-        let call = self.call(typ, func, args, None); // TODO(antoyo): use funclet here?
+        let call = self.call(typ, None, func, args, None); // TODO(antoyo): use funclet here?
         self.block = current_block;
 
         let return_value = self.current_func()
@@ -1210,23 +1210,20 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let zero = self.cx.context.new_rvalue_zero(self.int_type);
         let ptr = self.cx.context.new_call(None, eh_pointer_builtin, &[zero]);
 
-        let field1_type = self.u8_type.make_pointer();
-        let field1 = self.context.new_field(None, field1_type, "landing_pad_field_1");
-        let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_2");
-        let struct_type = self.context.new_struct_type(None, "landing_pad", &[field1, field2]);
-        let value = self.current_func().new_local(None, struct_type.as_type(), "landing_pad");
-        let ptr = self.cx.context.new_cast(None, ptr, field1_type);
-        self.block.add_assignment(None, value.access_field(None, field1), ptr);
-        self.block.add_assignment(None, value.access_field(None, field2), zero); // TODO(antoyo): set the proper value here (the type of exception?).
+        let value1_type = self.u8_type.make_pointer();
+        let ptr = self.cx.context.new_cast(None, ptr, value1_type);
+        let value1 = ptr;
+        let value2 = zero; // TODO(antoyo): set the proper value here (the type of exception?).
 
-        value.to_rvalue()
+        (value1, value2)
     }
 
     #[cfg(not(feature="master"))]
     fn cleanup_landing_pad(&mut self, _pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
-        let field1 = self.context.new_field(None, self.u8_type.make_pointer(), "landing_pad_field_1");
-        let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_1");
-        (field1, field2)
+        let value1 = self.current_func().new_local(None, self.u8_type.make_pointer(), "landing_pad0")
+                .to_rvalue();
+        let value2 = self.current_func().new_local(None, self.i32_type, "landing_pad1").to_rvalue();
+        (value1, value2)
     }
 
     #[cfg(feature="master")]

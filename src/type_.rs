@@ -247,10 +247,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn type_named_struct(&self, name: &str) -> Struct<'gcc> {
         self.context.new_opaque_struct_type(None, name)
     }
-
-    pub fn type_bool(&self) -> Type<'gcc> {
-        self.context.new_type::<bool>()
-    }
 }
 
 pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout<'tcx>) -> (Vec<Type<'gcc>>, bool) {

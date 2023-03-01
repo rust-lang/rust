@@ -1202,21 +1202,21 @@ fn codegen_gnu_try<'gcc>(bx: &mut Builder<'_, 'gcc, '_>, try_func: RValue<'gcc>,
         let zero = bx.cx.context.new_rvalue_zero(bx.int_type);
         let ptr = bx.cx.context.new_call(None, eh_pointer_builtin, &[zero]);
         let catch_ty = bx.type_func(&[bx.type_i8p(), bx.type_i8p()], bx.type_void());
-        bx.call(catch_ty, catch_func, &[data, ptr], None);
+        bx.call(catch_ty, None, catch_func, &[data, ptr], None);
         bx.ret(bx.const_i32(1));
 
         // NOTE: the blocks must be filled before adding the try/catch, otherwise gcc will not
         // generate a try/catch.
         // FIXME(antoyo): add a check in the libgccjit API to prevent this.
         bx.switch_to_block(current_block);
-        bx.invoke(try_func_ty, try_func, &[data], then, catch, None);
+        bx.invoke(try_func_ty, None, try_func, &[data], then, catch, None);
     });
 
     let func = unsafe { std::mem::transmute(func) };
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = bx.call(llty, func, &[try_func, data, catch_func], None);
+    let ret = bx.call(llty, None, func, &[try_func, data, catch_func], None);
     let i32_align = bx.tcx().data_layout.i32_align.abi;
     bx.store(ret, dest, i32_align);
 }
@@ -1253,8 +1253,8 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, codegen: &mut 
     )));
     // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
     let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig(
-        [try_fn_ty, i8p, catch_fn_ty].iter(),
-        &tcx.types.i32,
+        [try_fn_ty, i8p, catch_fn_ty],
+        tcx.types.i32,
         false,
         rustc_hir::Unsafety::Unsafe,
         Abi::Rust,
