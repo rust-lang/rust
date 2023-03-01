@@ -1,9 +1,0 @@
-error[E0747]: constant provided when a type was expected
-  --> $DIR/invalid_const_in_type_position.rs:3:28
-   |
-LL | fn gen() -> impl Generator<{}> {}
-   |                            ^^
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0747`.
