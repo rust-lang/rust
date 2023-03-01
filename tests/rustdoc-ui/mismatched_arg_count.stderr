@@ -1,5 +1,5 @@
 error[E0107]: type alias takes 1 lifetime argument but 2 lifetime arguments were supplied
-  --> $DIR/mismatched_arg_count.rs:9:29
+  --> $DIR/mismatched_arg_count.rs:7:29
    |
 LL | fn bar<'a, T: Trait<'a>>(_: Alias<'a, 'a, T>) {}
    |                             ^^^^^     -- help: remove this lifetime argument
@@ -7,7 +7,7 @@ LL | fn bar<'a, T: Trait<'a>>(_: Alias<'a, 'a, T>) {}
    |                             expected 1 lifetime argument
    |
 note: type alias defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/mismatched_arg_count.rs:7:6
+  --> $DIR/mismatched_arg_count.rs:5:6
    |
 LL | type Alias<'a, T> = <T as Trait<'a>>::Assoc;
    |      ^^^^^ --
