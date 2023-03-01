@@ -45,6 +45,36 @@ impl Lint {
     fn check_style(&self) -> Result<(), Box<dyn Error>> {
         for &expected in &["### Example", "### Explanation", "{{produces}}"] {
             if expected == "{{produces}}" && self.is_ignored() {
+                if self.doc_contains("{{produces}}") {
+                    return Err(format!(
+                        "the lint example has `ignore`, but also contains the {{{{produces}}}} marker\n\
+                        \n\
+                        The documentation generator cannot generate the example output when the \
+                        example is ignored.\n\
+                        Manually include the sample output below the example. For example:\n\
+                        \n\
+                        /// ```rust,ignore (needs command line option)\n\
+                        /// #[cfg(widnows)]\n\
+                        /// fn foo() {{}}\n\
+                        /// ```\n\
+                        ///\n\
+                        /// This will produce:\n\
+                        /// \n\
+                        /// ```text\n\
+                        /// warning: unknown condition name used\n\
+                        ///  --> lint_example.rs:1:7\n\
+                        ///   |\n\
+                        /// 1 | #[cfg(widnows)]\n\
+                        ///   |       ^^^^^^^\n\
+                        ///   |\n\
+                        ///   = note: `#[warn(unexpected_cfgs)]` on by default\n\
+                        /// ```\n\
+                        \n\
+                        Replacing the output with the text of the example you \
+                        compiled manually yourself.\n\
+                        "
+                    ).into());
+                }
                 continue;
             }
             if !self.doc_contains(expected) {
@@ -317,10 +347,10 @@ impl<'a> LintExtractor<'a> {
                             ..,
                             &format!(
                                 "This will produce:\n\
-                            \n\
-                            ```text\n\
-                            {}\
-                            ```",
+                                \n\
+                                ```text\n\
+                                {}\
+                                ```",
                                 output
                             ),
                         );
