@@ -107,6 +107,17 @@ where
     }
 }
 
+#[cfg(not(all(target_arch = "x86_64", target_feature = "avx512f")))]
+impl<T, const LANES: usize> core::convert::From<Mask<T, LANES>> for Simd<T, LANES>
+where
+    T: MaskElement,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    fn from(value: Mask<T, LANES>) -> Self {
+        value.0.0
+    }
+}
+
 impl<T, const LANES: usize> Mask<T, LANES>
 where
     T: MaskElement,

@@ -69,6 +69,7 @@ impl<'a> Utf8Chunk<'a> {
     }
 }
 
+/// Utility struct for debug printing `Utf8Chunks`.
 #[must_use]
 #[unstable(feature = "str_internals", issue = "none")]
 pub struct Debug<'a>(&'a [u8]);

@@ -8,7 +8,7 @@ use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask};
 use crate::simd::ToBitMaskArray;
 
 #[repr(transparent)]
-pub struct Mask<T, const LANES: usize>(Simd<T, LANES>)
+pub struct Mask<T, const LANES: usize>(pub(super) Simd<T, LANES>)
 where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount;
@@ -254,16 +254,6 @@ where
     pub fn all(self) -> bool {
         // Safety: use `self` as an integer vector
         unsafe { intrinsics::simd_reduce_all(self.to_int()) }
-    }
-}
-
-impl<T, const LANES: usize> core::convert::From<Mask<T, LANES>> for Simd<T, LANES>
-where
-    T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
-{
-    fn from(value: Mask<T, LANES>) -> Self {
-        value.0
     }
 }
 

@@ -7,6 +7,9 @@ mod tests;
 use crate::any::{Demand, Provider, TypeId};
 use crate::fmt::{Debug, Display};
 
+#[doc(hidden)]
+pub use private::Internal;
+
 /// `Error` is a trait representing the basic expectations for error values,
 /// i.e., values of type `E` in [`Result<T, E>`].
 ///
@@ -205,8 +208,8 @@ where
 }
 
 mod private {
-    // This is a hack to prevent `type_id` from being overridden by `Error`
-    // implementations, since that can enable unsound downcasting.
+    /// This is a hack to prevent `type_id` from being overridden by `Error`
+    /// implementations, since that can enable unsound downcasting.
     #[unstable(feature = "error_type_id", issue = "60784")]
     #[derive(Debug)]
     pub struct Internal;

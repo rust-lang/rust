@@ -32,6 +32,13 @@ pub use self::from_fn::{from_fn, FromFn};
     reason = "generators are unstable"
 )]
 pub use self::from_generator::from_generator;
+#[unstable(
+    feature = "iter_from_generator",
+    issue = "43122",
+    reason = "generators are unstable"
+)]
+#[doc(hidden)]
+pub use self::from_generator::FromGenerator;
 
 #[stable(feature = "iter_successors", since = "1.34.0")]
 pub use self::successors::{successors, Successors};

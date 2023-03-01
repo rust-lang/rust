@@ -24,6 +24,9 @@ pub mod pattern;
 
 mod lossy;
 #[unstable(feature = "utf8_chunks", issue = "99543")]
+#[doc(hidden)]
+pub use lossy::Debug;
+#[unstable(feature = "utf8_chunks", issue = "99543")]
 pub use lossy::{Utf8Chunk, Utf8Chunks};
 
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -26,6 +26,7 @@
 // Public reexports
 pub use self::bench::{black_box, Bencher};
 pub use self::console::run_tests_console;
+pub use self::event::{CompletedTest, TestEvent};
 pub use self::options::{ColorConfig, Options, OutputFormat, RunIgnored, ShouldPanic};
 pub use self::types::TestName::*;
 pub use self::types::*;
@@ -43,7 +44,7 @@ pub mod test {
         options::{Options, RunIgnored, RunStrategy, ShouldPanic},
         run_test, test_main, test_main_static,
         test_result::{TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk},
-        time::{TestExecTime, TestTimeOptions},
+        time::{TestExecTime, TestTimeOptions, TimeThreshold},
         types::{
             DynTestFn, DynTestName, StaticBenchFn, StaticTestFn, StaticTestName, TestDesc,
             TestDescAndFn, TestId, TestName, TestType,
@@ -81,7 +82,6 @@ mod types;
 mod tests;
 
 use core::any::Any;
-use event::{CompletedTest, TestEvent};
 use helpers::concurrency::get_concurrency;
 use helpers::exit_code::get_exit_code;
 use helpers::shuffle::{get_shuffle_seed, shuffle_tests};

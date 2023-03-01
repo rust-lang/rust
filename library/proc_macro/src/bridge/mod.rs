@@ -155,7 +155,8 @@ pub mod server;
 #[allow(unsafe_code)]
 mod symbol;
 
-use buffer::Buffer;
+#[doc(hidden)]
+pub use buffer::Buffer;
 pub use rpc::PanicMessage;
 use rpc::{Decode, DecodeMut, Encode, Reader, Writer};
 

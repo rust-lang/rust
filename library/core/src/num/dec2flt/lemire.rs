@@ -1,6 +1,7 @@
 //! Implementation of the Eisel-Lemire algorithm.
 
-use crate::num::dec2flt::common::BiasedFp;
+#[doc(hidden)]
+pub use crate::num::dec2flt::common::BiasedFp;
 use crate::num::dec2flt::float::RawFloat;
 use crate::num::dec2flt::table::{
     LARGEST_POWER_OF_FIVE, POWER_OF_FIVE_128, SMALLEST_POWER_OF_FIVE,
