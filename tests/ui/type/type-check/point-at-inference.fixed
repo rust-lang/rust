@@ -6,7 +6,7 @@ fn main() {
     let mut foo = vec![];
     baz(&foo);
     for i in &v {
-        foo.push(*i);
+        foo.push(i);
     }
     baz(&foo);
     bar(foo); //~ ERROR E0308

@@ -807,24 +807,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 full_call_span,
                 format!("arguments to this {} are incorrect", call_name),
             );
-            if let (Some(callee_ty), hir::ExprKind::MethodCall(_, rcvr, _, _)) =
-                (callee_ty, &call_expr.kind)
-            {
-                // Type that would have accepted this argument if it hadn't been inferred earlier.
-                // FIXME: We leave an inference variable for now, but it'd be nice to get a more
-                // specific type to increase the accuracy of the diagnostic.
-                let expected = self.infcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::MiscVariable,
-                    span: full_call_span,
-                });
-                self.point_at_expr_source_of_inferred_type(
-                    &mut err,
-                    rcvr,
-                    expected,
-                    callee_ty,
-                    provided_arg_span,
-                );
-            }
+
+            // TODO: We would like to point out when the rcvr was constrained
+            // such that the arg mismatch occurs.
+
             // Call out where the function is defined
             self.label_fn_like(
                 &mut err,

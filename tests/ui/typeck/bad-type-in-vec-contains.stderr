@@ -7,7 +7,6 @@ LL |     primes.contains(3);
    |            |        expected `&_`, found integer
    |            |        help: consider borrowing here: `&3`
    |            arguments to this method are incorrect
-   |            here the type of `primes` is inferred to be `[_]`
    |
    = note: expected reference `&_`
                    found type `{integer}`

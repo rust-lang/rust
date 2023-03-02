@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/point-at-inference.rs:12:9
    |
 LL |         foo.push(i);
-   |                  - this is of type `&{integer}`, which causes `foo` to be inferred as `Vec<&{integer}>`
+   |         --- here the type of `foo` is inferred to be `Vec<&{integer}>`
 ...
 LL |     bar(foo);
    |     --- ^^^ expected `Vec<i32>`, found `Vec<&{integer}>`
@@ -16,10 +16,6 @@ note: function defined here
    |
 LL | fn bar(_: Vec<i32>) {}
    |    ^^^ -----------
-help: consider dereferencing the borrow
-   |
-LL |         foo.push(*i);
-   |                  +
 
 error: aborting due to previous error
 

@@ -11,6 +11,7 @@ fn main() {
     let s = S(None);
     s.infer(0i32);
     //~^ ERROR this method takes 2 arguments but 1 argument was supplied
+    //~| NOTE here the type of `s` is inferred to be `S<i32, _>`
     //~| NOTE an argument is missing
     //~| HELP provide the argument
     let t: S<u32, _> = s;
