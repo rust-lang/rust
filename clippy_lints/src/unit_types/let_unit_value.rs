@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_parent_node;
-use clippy_utils::source::snippet_with_macro_callsite;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::visitors::{for_each_local_assignment, for_each_value_source};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
@@ -48,12 +48,13 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
                 "this let-binding has unit value",
                 |diag| {
                     if let Some(expr) = &local.init {
-                        let snip = snippet_with_macro_callsite(cx, expr.span, "()");
+                        let mut app = Applicability::MachineApplicable;
+                        let snip = snippet_with_context(cx, expr.span, local.span.ctxt(), "()", &mut app).0;
                         diag.span_suggestion(
                             local.span,
                             "omit the `let` binding",
                             format!("{snip};"),
-                            Applicability::MachineApplicable, // snippet
+                            app,
                         );
                     }
                 },

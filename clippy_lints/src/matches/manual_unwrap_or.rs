@@ -33,14 +33,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, scrutinee: 
             let reindented_or_body =
                 reindent_multiline(or_body_snippet.into(), true, Some(indent));
 
-            let suggestion = if scrutinee.span.from_expansion() {
-                    // we don't want parentheses around macro, e.g. `(some_macro!()).unwrap_or(0)`
-                    sugg::Sugg::hir_with_macro_callsite(cx, scrutinee, "..")
-                }
-                else {
-                    sugg::Sugg::hir(cx, scrutinee, "..").maybe_par()
-                };
-
+            let mut app = Applicability::MachineApplicable;
+            let suggestion = sugg::Sugg::hir_with_context(cx, scrutinee, expr.span.ctxt(), "..", &mut app).maybe_par();
             span_lint_and_sugg(
                 cx,
                 MANUAL_UNWRAP_OR, expr.span,
@@ -49,7 +43,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, scrutinee: 
                 format!(
                     "{suggestion}.unwrap_or({reindented_or_body})",
                 ),
-                Applicability::MachineApplicable,
+                app,
             );
         }
     }
