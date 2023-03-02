@@ -342,8 +342,8 @@ impl AtomicBool {
     /// * The value behind `ptr` must not be accessed through non-atomic operations for the whole lifetime `'a`.
     ///
     /// [valid]: crate::ptr#safety
-    #[unstable(feature = "atomic_from_ptr", issue = "none")]
-    #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "none")]
+    #[unstable(feature = "atomic_from_ptr", issue = "108652")]
+    #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "108652")]
     pub const unsafe fn from_ptr<'a>(ptr: *mut bool) -> &'a AtomicBool {
         // SAFETY: guaranteed by the caller
         unsafe { &*ptr.cast() }
@@ -1098,8 +1098,8 @@ impl<T> AtomicPtr<T> {
     /// * The value behind `ptr` must not be accessed through non-atomic operations for the whole lifetime `'a`.
     ///
     /// [valid]: crate::ptr#safety
-    #[unstable(feature = "atomic_from_ptr", issue = "none")]
-    #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "none")]
+    #[unstable(feature = "atomic_from_ptr", issue = "108652")]
+    #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "108652")]
     pub const unsafe fn from_ptr<'a>(ptr: *mut *mut T) -> &'a AtomicPtr<T> {
         // SAFETY: guaranteed by the caller
         unsafe { &*ptr.cast() }
@@ -2085,8 +2085,8 @@ macro_rules! atomic_int {
             /// * The value behind `ptr` must not be accessed through non-atomic operations for the whole lifetime `'a`.
             ///
             /// [valid]: crate::ptr#safety
-            #[unstable(feature = "atomic_from_ptr", issue = "none")]
-            #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "none")]
+            #[unstable(feature = "atomic_from_ptr", issue = "108652")]
+            #[rustc_const_unstable(feature = "atomic_from_ptr", issue = "108652")]
             pub const unsafe fn from_ptr<'a>(ptr: *mut $int_type) -> &'a $atomic_type {
                 // SAFETY: guaranteed by the caller
                 unsafe { &*ptr.cast() }
