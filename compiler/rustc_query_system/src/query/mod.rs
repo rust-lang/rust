@@ -128,7 +128,7 @@ pub trait QueryContext: HasDepContext {
         token: QueryJobId,
         depth_limit: bool,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
-        compute: &mut dyn FnMut() -> R,
+        compute: impl FnOnce() -> R,
     ) -> R;
 
     fn depth_limit_error(self, job: QueryJobId);
